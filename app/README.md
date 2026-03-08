@@ -62,7 +62,7 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Rasp
 2. **Clone and install:**
 
    ```bash
-   sudo apt install git && git clone https://github.com/AleksandrRogachev94/BirdLense
+   sudo apt install git && git clone https://github.com/Gfermoto/BirdLense-Hub
    cd BirdLense/app
    chmod +x install.sh && ./install.sh
    ```

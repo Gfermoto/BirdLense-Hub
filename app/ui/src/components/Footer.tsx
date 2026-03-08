@@ -37,7 +37,7 @@ export function Footer() {
           ·
         </Typography>
         <Link
-          href="https://github.com/AleksandrRogachev94/BirdLense"
+          href="https://github.com/Gfermoto/BirdLense-Hub"
           target="_blank"
           rel="noopener noreferrer"
           sx={{
