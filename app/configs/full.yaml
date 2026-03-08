@@ -1,0 +1,37 @@
+# Full — MQTT (Frigate + BirdNET), несколько камер, погода HA, фидер
+# Использование: cp configs/full.yaml app_config/user_config.yaml
+# Настройте MQTT_BROKER, HA_TOKEN, GO2RTC_URL в .env
+
+video:
+  source: go2rtc
+  go2rtc_url: "http://go2rtc:1984"
+  cameras:
+    - id: bird_cam
+      stream_name: bird_cam
+      name: "Камера 1"
+      feeder: "Кормушка 1"
+    - id: bird_cam2
+      stream_name: bird_cam2
+      name: "Камера 2"
+      feeder: "Кормушка 2"
+
+motion:
+  source: mqtt
+
+mqtt:
+  broker: "mqtt.local"
+  frigate_topic: "frigate/events"
+  birdnet_topic: "birdnet/sightings"
+  publish_topic: "birdlense/detections"
+
+weather:
+  source: homeassistant
+  ha_entity_id: "weather.home"
+
+feed:
+  source: mqtt
+  mqtt_topic: "homeassistant/switch/bird_feeder/command"
+
+retention:
+  days: 90
+  max_gb: 50

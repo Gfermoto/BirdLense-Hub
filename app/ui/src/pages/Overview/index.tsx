@@ -11,6 +11,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOverviewData, fetchWeather } from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
+import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
 import DailyPatternChart from './DailyPatternChart';
 import { DailySummary } from './DailySummary';
@@ -147,6 +148,11 @@ export const Overview = () => {
         {/* Weather Card */}
         <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
           {weather && <WeatherCard weather={weather} />}
+        </Grid>
+
+        {/* Feed Control */}
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
+          <FeedCard />
         </Grid>
 
         {/* Daily Summary */}

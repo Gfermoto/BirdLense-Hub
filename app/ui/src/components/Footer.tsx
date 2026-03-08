@@ -28,7 +28,7 @@ export function Footer() {
           variant="body2"
           sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
         >
-          BirdLense
+          BirdLense Hub
         </Typography>
         <Typography
           variant="body2"
@@ -80,7 +80,7 @@ export function Footer() {
         >
           Created by{' '}
           <Link
-            href="https://github.com/AleksandrRogachev94"
+            href="https://github.com/Gfermoto"
             target="_blank"
             rel="noopener noreferrer"
             sx={{
@@ -92,7 +92,7 @@ export function Footer() {
               },
             }}
           >
-            Aleksandr Rogachev
+            Stas Kolesnik
           </Link>
         </Typography>
       </Box>

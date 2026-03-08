@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import timedelta, datetime
 import requests
 import re
@@ -72,12 +73,75 @@ class WeatherFetcher:
         return new_data
 
 
-weather_fetcher = WeatherFetcher(
-    api_url='https://api.openweathermap.org/data/2.5/weather',
-    latitude=app_config.get('secrets.latitude'),
-    longitude=app_config.get('secrets.longitude'),
-    api_key=app_config.get('secrets.openweather_api_key')
-)
+class HAWeatherFetcher:
+    """Fetch weather from Home Assistant REST API."""
+
+    def __init__(self, ha_url, entity_id, token, cache_duration=timedelta(minutes=10)):
+        self.ha_url = (ha_url or '').rstrip('/')
+        self.entity_id = entity_id or 'weather.home'
+        self.token = token
+        self.cache_duration = cache_duration
+        self.last_fetched = None
+        self.cached_data = None
+
+    def _is_cache_valid(self):
+        if not self.cached_data or not self.last_fetched:
+            return False
+        return datetime.now() - self.last_fetched < self.cache_duration
+
+    def _fetch(self):
+        if not self.ha_url or not self.token:
+            return {}
+        url = f"{self.ha_url}/api/states/{self.entity_id}"
+        try:
+            r = requests.get(
+                url,
+                headers={'Authorization': f'Bearer {self.token}'},
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+            attrs = data.get('attributes', {})
+            return {
+                'weather_main': attrs.get('condition', 'unknown'),
+                'weather_description': attrs.get('condition', ''),
+                'weather_temp': attrs.get('temperature'),
+                'weather_humidity': attrs.get('humidity'),
+                'weather_pressure': attrs.get('pressure'),
+                'weather_clouds': attrs.get('cloud_coverage'),
+                'weather_wind_speed': attrs.get('wind_speed'),
+            }
+        except Exception as e:
+            logging.error(f"HA weather fetch failed: {e}")
+            return {}
+
+    def fetch(self):
+        if self._is_cache_valid():
+            return self.cached_data
+        new_data = self._fetch()
+        self.cached_data = new_data
+        self.last_fetched = datetime.now()
+        return new_data
+
+
+def _create_weather_fetcher():
+    source = app_config.get('weather.source', 'openweather')
+    if source == 'homeassistant':
+        ha_url = os.environ.get('HA_URL') or app_config.get('weather.ha_url')
+        return HAWeatherFetcher(
+            ha_url=ha_url,
+            entity_id=app_config.get('weather.ha_entity_id', 'weather.home'),
+            token=os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token'),
+        )
+    return WeatherFetcher(
+        api_url='https://api.openweathermap.org/data/2.5/weather',
+        latitude=app_config.get('secrets.latitude'),
+        longitude=app_config.get('secrets.longitude'),
+        api_key=os.environ.get('OPENWEATHER_API_KEY') or app_config.get('secrets.openweather_api_key'),
+    )
+
+
+weather_fetcher = _create_weather_fetcher()
 
 
 def build_hierarchy_tree():

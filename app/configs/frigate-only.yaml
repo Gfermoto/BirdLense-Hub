@@ -1,0 +1,17 @@
+# Frigate-only — MQTT триггер от Frigate, без BirdNET
+# Использование: cp configs/frigate-only.yaml app_config/user_config.yaml
+
+video:
+  source: go2rtc
+  stream_name: "bird_cam"
+
+motion:
+  source: mqtt
+
+mqtt:
+  broker: "mqtt.local"
+  frigate_topic: "frigate/events"
+  # birdnet_topic по умолчанию — BirdNET не используется
+
+retention:
+  days: 60

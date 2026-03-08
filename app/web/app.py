@@ -25,7 +25,9 @@ def create_app():
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://birdlense.local",
-        "http://birdlense.local:80"
+        "http://birdlense.local:80",
+        "http://192.168.1.11:8085",
+        "http://192.168.1.11:80",
     ]}})
     app.config.from_object('config.Config')
 

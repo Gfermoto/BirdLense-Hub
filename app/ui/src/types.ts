@@ -120,6 +120,32 @@ export interface Settings {
     longitude: string; // Longitude as a string, e.g., "YOUR_LONGITUDE_HERE"
     zip?: string;
   };
+  video?: {
+    source?: string;
+    go2rtc_url?: string;
+    stream_name?: string;
+    go2rtc_username?: string;
+    go2rtc_password?: string;
+  };
+  mqtt?: {
+    broker?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+  };
+  weather?: {
+    source?: string;
+    ha_url?: string;
+    ha_entity_id?: string;
+  };
+  feed?: {
+    source?: string;
+    mqtt_topic?: string;
+    esphome_url?: string;
+  };
+  motion?: {
+    source?: 'opencv' | 'mqtt';
+  };
 }
 
 export interface Species {

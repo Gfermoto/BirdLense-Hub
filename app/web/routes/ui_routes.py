@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
 from util import weather_fetcher, update_species_info_from_wiki
 from app_config.app_config import app_config
+from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 
 
 
@@ -13,6 +14,70 @@ def register_routes(app):
     @app.route('/api/ui/health', methods=['GET'])
     def health():
         return {'status': 'ok'}
+
+    @app.route('/api/ui/cameras', methods=['GET'])
+    def list_cameras():
+        """List cameras for multi-camera live view."""
+        cameras_config = app_config.get('video.cameras')
+        if cameras_config:
+            cameras = [
+                {
+                    'id': c.get('id') or c.get('stream_name', ''),
+                    'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
+                    'feeder': c.get('feeder'),
+                    'stream_url': f'/processor/live/{i}',
+                }
+                for i, c in enumerate(cameras_config)
+            ]
+        else:
+            stream_name = app_config.get('video.stream_name', 'bird_cam')
+            cameras = [
+                {
+                    'id': stream_name,
+                    'name': stream_name,
+                    'feeder': None,
+                    'stream_url': '/processor/live',
+                }
+            ]
+        return {'cameras': cameras}
+
+    @app.route('/api/ui/status', methods=['GET'])
+    def component_status():
+        """Component status for UI indicators (Video/MQTT/YOLO)."""
+        from datetime import datetime, timezone, timedelta
+        from models import ActivityLog
+        # Processor heartbeat: last activity_log of type heartbeat
+        last_heartbeat = (
+            ActivityLog.query.filter_by(type='heartbeat')
+            .order_by(ActivityLog.updated_at.desc())
+            .first()
+        )
+        processor_ok = False
+        if last_heartbeat and last_heartbeat.updated_at:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+            processor_ok = last_heartbeat.updated_at.replace(tzinfo=timezone.utc) >= cutoff
+        mqtt_status = check_mqtt_connected()
+        esphome_status = check_esphome_reachable()
+        # MQTT: show real status if feed source is mqtt, else unknown
+        feed_source = app_config.get('feed.source', 'mqtt')
+        mqtt_display = mqtt_status if feed_source == 'mqtt' else 'not_used'
+        # ESPHome: show real status if feed source is esphome
+        esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
+        return {
+            'web': 'ok',
+            'processor': 'ok' if processor_ok else 'offline',
+            'video': 'ok' if processor_ok else 'unknown',
+            'mqtt': mqtt_display,
+            'esphome': esphome_display,
+            'yolo': 'ok' if processor_ok else 'unknown',
+        }
+
+    @app.route('/api/ui/feed/dispense', methods=['POST'])
+    def feed_dispense():
+        success, message = dispense_feed()
+        if success:
+            return {'message': message}, 200
+        return {'error': message}, 500
 
     @app.route('/api/ui/weather', methods=['GET'])
     def weather():
@@ -467,6 +532,20 @@ def register_routes(app):
             # Return the updated configuration
             return app_config.config
 
+        except Exception as e:
+            return {"error": str(e)}, 500
+
+    @app.route('/api/ui/restart-processor', methods=['POST'])
+    def restart_processor():
+        """Create flag file; processor will exit and docker restarts it."""
+        import os
+        data_dir = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
+        flag_path = os.path.join(data_dir, 'restart_processor.flag')
+        try:
+            os.makedirs(os.path.dirname(flag_path), exist_ok=True)
+            with open(flag_path, 'w') as f:
+                f.write('1')
+            return {"message": "Processor restart requested"}, 200
         except Exception as e:
             return {"error": str(e)}, 500
 

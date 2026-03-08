@@ -4,45 +4,113 @@ general:
 
 # Video/Audio processor settings
 processor:
-  # frame_rate: 30
   tracker: "bytetrack.yaml"
-  max_record_seconds: 60 # maximum length of video/audio recording
-  max_inactive_seconds: 10 # maximum number of seconds with no activity before stopping recording
-  spectrogram_px_per_sec: 200 # pixels per second in the spectrogram
-  included_bird_families: # List of bird families to use in detections
-    - "Perching Birds" # Main feeder visitors: finches, cardinals, chickadees, etc.
-    - "Pigeons and Doves" # Common ground and platform feeder visitors
-    - "Woodpeckers" # Regular visitors to suet and seed feeders
-    - "Squirrel" # Important to detect for feeder management
-
-  save_images: false # save frames with detectiond to disk. Testing only
-
-  detection_strategy: "two_stage" # Options: "single_stage", "two_stage"
+  max_record_seconds: 60
+  max_inactive_seconds: 10
+  spectrogram_px_per_sec: 200
+  included_bird_families:
+    - "Perching Birds"
+    - "Pigeons and Doves"
+    - "Woodpeckers"
+    - "Squirrel"
+  save_images: false
+  detection_strategy: "two_stage"
   models:
+    # x86/amd64: use .pt (PyTorch). RPi: use best_ncnn_model
     single_stage: "models/detection/nabirds_yolov8n_ncnn_model"
-    binary: "models/detection/nabirds_yolo11n_binary/weights/best_ncnn_model"
-    classifier: "models/classification/nabirds_yolo11n_cls/weights/best_ncnn_model"
+    binary: "models/detection/weights/best.pt"
+    classifier: "models/classification/weights/best.pt"
 
 # AI settings for LLM verification and daily summaries
 ai:
-  gemini_api_key: "" # API key for Google Gemini
-  model: "gemini-3-flash-preview" # Model for LLM verification & summaries
+  gemini_api_key: ""
+  model: "gemini-3-flash-preview"
   llm_verification:
-    min_confidence: 0.4 # Only verify detections below this confidence threshold
-    max_calls_per_hour: 20 # Rate limit: max API calls per hour
-    max_calls_per_day: 100 # Rate limit: max API calls per day
+    min_confidence: 0.4
+    max_calls_per_hour: 20
+    max_calls_per_day: 100
 
-# Camera settings (Pi Camera v3 / IMX708)
+# Video source: go2rtc | pi_camera | file
+# go2rtc - stream from Go2RTC (x86, no RPi hardware)
+# pi_camera - legacy Pi Camera (RPi only)
+# file - video file path (testing)
+video:
+  source: go2rtc
+  go2rtc_url: "http://go2rtc:1984"
+  # Single camera (legacy):
+  stream_name: "bird_cam"
+  # Multiple cameras (разные кормушки или несколько камер у одной)
+  # id = Frigate camera name, stream_name = Go2RTC stream
+  # feeder = опционально, для подписи (например "Кормушка 1")
+  # cameras:
+  #   - id: bird_cam
+  #     stream_name: bird_cam
+  #     name: "Камера 1"
+  #     feeder: "Кормушка 1"
+  #   - id: bird_cam2
+  #     stream_name: bird_cam2
+  #     name: "Камера 2"
+  #     feeder: "Кормушка 2"
+  pre_record_seconds: 5
+  auto_reconnect: true
+  video_width: 1280
+  video_height: 720
+
+# Legacy Pi Camera (only when video.source: pi_camera)
 camera:
   video_width: 1280
   video_height: 720
-  hdr_mode: true # Enable HDR if available.
-  focus_mode: "manual" # Options: "auto" (continuous autofocus), "manual" (fixed focus)
-  lens_position: 7.0 # Diopters for manual focus. Higher = closer. 7.0 ≈ 14cm, good for 10-20cm range
+  hdr_mode: true
+  focus_mode: "manual"
+  lens_position: 7.0
 
-# Add your secrets and other configurations here
+# Motion trigger: mqtt | opencv | pir
+# pir - RPi only
+motion:
+  source: opencv  # opencv | mqtt | pir
+  frigate_camera_filter: []  # e.g. ["bird_cam"] to filter by camera
+  frigate_label_filter: ["bird", "Bird"]  # labels that trigger recording
+
+# MQTT - Frigate and BirdNET (confirmations)
+mqtt:
+  broker: ""
+  port: 1883
+  frigate_topic: "frigate/events"
+  birdnet_topic: "birdnet/sightings"
+  publish_topic: "birdlense/detections"
+
+# Detection merging (YOLO + Frigate + BirdNET)
+detection:
+  merge_window_seconds: 5
+  dedup_window_seconds: 45
+  species_mapping: {}
+
+# Feeder control: mqtt | esphome
+feed:
+  source: mqtt
+  mqtt_topic: "homeassistant/switch/bird_feeder/command"
+  esphome_url: "http://feeder.local"
+  esphome_switch_id: "bird_feeder"
+
+# Weather: openweather | homeassistant
+weather:
+  source: openweather
+  ha_url: "http://homeassistant:8123"
+  ha_entity_id: "weather.home"
+
+# Retention
+retention:
+  days: 90
+  # max_gb: 50
+
+# Notifications (ntfy)
+notifications:
+  enabled: true
+  excluded_species: []
+  rate_limit_per_minute: 5
+
+# Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""
-  # Default location. This is near the geographic center of the contiguous United States.
   latitude: "39.8283"
   longitude: "-98.5795"

@@ -11,6 +11,7 @@ import {
   fetchBirdDirectory,
   fetchSettings,
   updateSettings,
+  restartProcessor,
 } from '../../api/api';
 import { Settings as SettingsType, Species } from '../../types';
 
@@ -25,6 +26,7 @@ const useAllBirdsQuery = (select?: (species: Species[]) => any) => {
 export const Settings: React.FC = () => {
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = React.useState(false);
+  const [restartMessage, setRestartMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
@@ -44,9 +46,15 @@ export const Settings: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: updateSettings,
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       setShowSuccessAlert(true);
+      const result = await restartProcessor();
+      setRestartMessage(
+        result.success
+          ? { type: 'success', text: 'Settings saved. Processor will restart within ~60 seconds.' }
+          : { type: 'error', text: result.message || 'Failed to restart processor' },
+      );
     },
   });
 
@@ -63,9 +71,17 @@ export const Settings: React.FC = () => {
         Update Settings
       </Typography>
       <Alert severity="info" sx={{ mb: 3 }}>
-        Some settings changes require a system restart to take effect. After
-        saving, please restart the system.
+        After saving, the processor restarts automatically to apply changes.
       </Alert>
+      {restartMessage && (
+        <Alert
+          severity={restartMessage.type}
+          sx={{ mb: 2 }}
+          onClose={() => setRestartMessage(null)}
+        >
+          {restartMessage.text}
+        </Alert>
+      )}
       <SettingsForm
         currentSettings={settings as SettingsType}
         observedSpecies={observedSpecies}
@@ -82,8 +98,7 @@ export const Settings: React.FC = () => {
           severity="success"
           sx={{ width: '100%' }}
         >
-          Settings saved successfully. Please restart the system for changes to
-          take effect.
+          Settings saved. Processor is restarting.
         </Alert>
       </Snackbar>
     </Container>

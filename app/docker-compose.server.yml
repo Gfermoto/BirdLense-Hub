@@ -1,0 +1,22 @@
+# BirdLense + Frigate (общая сеть)
+# MQTT, видео, погода и прочее — через Web UI (Настройки)
+# Опционально .env: MQTT_BROKER, MQTT_USERNAME, MQTT_PASSWORD (переопределяют UI)
+# Запуск: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml -f docker-compose.server.yml up -d
+
+# Порты 8085/8086 задаются через .env (NGINX_HTTP_PORT, NGINX_WS_PORT)
+# См. scripts/deploy-to-server.sh
+
+services:
+  processor:
+    networks:
+      - default
+      - frigate_default
+    environment:
+      - GO2RTC_URL=http://frigate:1984
+      - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_USERNAME=${MQTT_USERNAME:-}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+
+networks:
+  frigate_default:
+    external: true

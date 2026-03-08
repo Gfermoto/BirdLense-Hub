@@ -1,6 +1,6 @@
 {
-  "name": "BirdLense",
-  "short_name": "BirdLense",
+  "name": "BirdLense Hub",
+  "short_name": "BirdLense Hub",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
