@@ -20,7 +20,8 @@ import {
 import axios from 'axios';
 
 const useMockData = false; // Set to false to use real API calls
-export const BASE_URL = 'http://birdlense.local';
+// Relative path = same origin (works with any host/IP)
+export const BASE_URL = typeof window !== 'undefined' ? '' : 'http://birdlense.local';
 export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -96,6 +97,50 @@ export const addBirdFood = async (newFood: Partial<BirdFood>) => {
   }
 };
 
+export const fetchCameras = async (): Promise<
+  { id: string; name: string; stream_url: string; feeder?: string }[]
+> => {
+  if (useMockData) {
+    await sleep(200);
+    return [{ id: 'bird_cam', name: 'Bird Cam', stream_url: '/processor/live' }];
+  }
+  const response = await axios.get(`${BASE_API_URL}/cameras`);
+  return response.data.cameras || [];
+};
+
+export const fetchStatus = async (): Promise<{
+  web: string;
+  processor: string;
+  video: string;
+  mqtt: string;
+  esphome?: string;
+  yolo: string;
+}> => {
+  if (useMockData) {
+    await sleep(300);
+    return { web: 'ok', processor: 'ok', video: 'ok', mqtt: 'unknown', esphome: 'not_used', yolo: 'ok' };
+  }
+  const response = await axios.get(`${BASE_API_URL}/status`);
+  return response.data;
+};
+
+export const dispenseFeed = async (): Promise<{ success: boolean; message?: string }> => {
+  if (useMockData) {
+    await sleep(500);
+    return { success: true, message: 'Feed dispensed' };
+  }
+  try {
+    const response = await axios.post(`${BASE_API_URL}/feed/dispense`);
+    return { success: true, message: response.data?.message };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      success: false,
+      message: err.response?.data?.error || 'Failed to dispense feed',
+    };
+  }
+};
+
 export const fetchSettings = async () => {
   if (useMockData) {
     await sleep(1000);
@@ -116,6 +161,23 @@ export const updateSettings = async (settings: Settings) => {
   }
 };
 
+export const restartProcessor = async (): Promise<{ success: boolean; message?: string }> => {
+  if (useMockData) {
+    await sleep(500);
+    return { success: true, message: 'Restart requested' };
+  }
+  try {
+    const response = await axios.post(`${BASE_API_URL}/restart-processor`);
+    return { success: true, message: response.data?.message };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      success: false,
+      message: err.response?.data?.error || 'Failed to restart',
+    };
+  }
+};
+
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {
@@ -129,7 +191,7 @@ export const fetchCoordinatesByZip = async (
         params: {
           format: 'json',
           postalcode: zip,
-          countrycodes: 'us',
+          countrycodes: 'ru,us,de,gb',
         },
       },
     );

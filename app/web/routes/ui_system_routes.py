@@ -1,4 +1,5 @@
 import os
+import threading
 from datetime import datetime
 from datetime import datetime, timezone, timedelta
 import psutil
@@ -6,6 +7,7 @@ from flask import request
 import shutil
 from models import ActivityLog, db
 from sqlalchemy import func
+from services.retention_service import run_retention
 
 RECORDINGS_DIR = "data/recordings"
 
@@ -207,4 +209,18 @@ def register_routes(app):
 
         except Exception as e:
             app.logger.error(f"Error during purge: {str(e)}")
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/retention', methods=['POST'])
+    def trigger_retention():
+        """Run retention policy (delete old recordings)."""
+        try:
+            count, size = run_retention()
+            return {
+                'message': f'Deleted {count} recordings',
+                'deletedCount': count,
+                'deletedSize': size,
+            }, 200
+        except Exception as e:
+            app.logger.error(f"Retention failed: {e}")
             return {'error': str(e)}, 500

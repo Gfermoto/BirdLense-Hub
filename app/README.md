@@ -1,5 +1,48 @@
 # BirdLense Application
 
+## x86 / Docker (Go2RTC)
+
+BirdLense runs on x86 with video from Go2RTC (no RPi hardware required).
+
+### Запуск
+
+```bash
+cd BirdLense/app
+make build && make start
+
+# С Go2RTC в составе (профиль hybrid):
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml -f docker-compose.go2rtc.yml --profile hybrid up -d
+
+# Без Go2RTC (minimal): укажите GO2RTC_URL в .env на внешний инстанс
+```
+
+### Конфигурация
+
+- `app_config/user_config.yaml` или env
+- Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`
+- **Профили конфигов:** `configs/minimal.yaml`, `configs/full.yaml`, `configs/frigate-only.yaml`
+
+### Режимы конфигов
+
+```bash
+cp configs/minimal.yaml app_config/user_config.yaml   # OpenCV, одна камера
+cp configs/full.yaml app_config/user_config.yaml     # MQTT, несколько камер, HA
+cp configs/frigate-only.yaml app_config/user_config.yaml  # только Frigate
+```
+
+### Разработка
+
+```bash
+# Без MQTT брокера (fake motion):
+python src/main.py --mock-mqtt
+```
+
+### Live
+
+`http://localhost/processor/live` — все камеры на одной странице.
+
+---
+
 ## Raspberry Pi Setup
 
 Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Raspberry Pi OS Lite (64-bit)**:
@@ -70,6 +113,55 @@ app/
 ```
 
 ## Architecture
+
+### x86 / Docker (Go2RTC + MQTT)
+
+```mermaid
+flowchart TB
+    subgraph External["Внешние сервисы"]
+        GO2RTC[Go2RTC]
+        MQTT[MQTT Broker]
+        FRIGATE[Frigate]
+        BIRDNET_MQTT[BirdNET]
+        HA[Home Assistant]
+    end
+
+    subgraph BirdLense["BirdLense"]
+        subgraph processor[Processor]
+            SOURCE[Go2RTCStreamSource]
+            MOTION[Motion: MQTT / OpenCV]
+            YOLO[YOLO + ByteTrack]
+            MERGE[Merge YOLO+Frigate+BirdNET]
+            AUDIO[BirdNET Audio]
+        end
+
+        subgraph web[Web]
+            API[Flask API]
+            DB[(SQLite)]
+        end
+
+        UI[React UI]
+        NGINX[Nginx]
+    end
+
+    GO2RTC -->|RTSP| SOURCE
+    FRIGATE -->|frigate/events| MQTT
+    BIRDNET_MQTT -->|birdnet/sightings| MQTT
+    MQTT -->|trigger| MOTION
+    processor -->|birdlense/detections| MQTT
+    MQTT --> HA
+
+    SOURCE --> MOTION
+    MOTION --> YOLO
+    YOLO --> MERGE
+    MERGE --> API
+    API --> DB
+    UI --> NGINX
+    NGINX --> API
+    NGINX -->|MJPEG| processor
+```
+
+### Raspberry Pi (legacy)
 
 ```mermaid
 flowchart TB

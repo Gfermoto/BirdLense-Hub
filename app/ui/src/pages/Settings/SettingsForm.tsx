@@ -130,7 +130,7 @@ export const SettingsForm = ({
                       label="Exclude from Notifications"
                       renderValue={(selected) => selected.join(', ')}
                     >
-                      {observedSpecies.map((species) => (
+                      {(observedSpecies ?? []).map((species) => (
                         <MenuItem key={species.id} value={species.name}>
                           <Checkbox
                             checked={(field.state.value || []).includes(
@@ -343,7 +343,7 @@ export const SettingsForm = ({
                   label="Included Bird Families"
                   renderValue={(selected) => selected.join(', ')}
                 >
-                  {birdFamilies.map((family) => (
+                  {(birdFamilies ?? []).map((family) => (
                     <MenuItem key={family.id} value={family.name}>
                       <Checkbox
                         checked={(field.state.value || []).includes(
@@ -496,6 +496,208 @@ export const SettingsForm = ({
               </form.Field>
             )}
           </form.Subscribe>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* Video & MQTT (x86/Frigate) */}
+      <Typography variant="h5" gutterBottom>
+        Video & MQTT
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Go2RTC stream, Frigate camera, MQTT broker. После изменений — перезапуск processor.
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="motion.source">
+            {(field) => (
+              <FormControl fullWidth>
+                <InputLabel>Motion trigger</InputLabel>
+                <Select
+                  value={field.state.value ?? 'opencv'}
+                  label="Motion trigger"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="opencv">OpenCV (постоянный поток)</MenuItem>
+                  <MenuItem value="mqtt">MQTT/Frigate (события)</MenuItem>
+                </Select>
+                <FormHelperText>
+                  mqtt = триггер по событиям Frigate, opencv = анализ каждого кадра
+                </FormHelperText>
+              </FormControl>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.stream_name">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Stream name (Go2RTC/Frigate)"
+                helperText="e.g. BirdBox, Garden — имя камеры во Frigate"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.go2rtc_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Go2RTC URL"
+                helperText="В Docker с Frigate: http://frigate:1984 (RTSP=8554)"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.go2rtc_username">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Go2RTC логин (если включена авторизация)"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.go2rtc_password">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                type="password"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Go2RTC пароль"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.broker">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="MQTT Broker"
+                helperText="e.g. 192.168.1.10 or mqtt.local"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.username">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="MQTT Username"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.password">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                type="password"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="MQTT Password"
+              />
+            )}
+          </form.Field>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* Weather & Feed */}
+      <Typography variant="h5" gutterBottom>
+        Weather & Feed
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Weather source, feeder control
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="weather.source">
+            {(field) => (
+              <FormControl fullWidth>
+                <InputLabel>Weather Source</InputLabel>
+                <Select
+                  value={field.state.value ?? 'openweather'}
+                  label="Weather Source"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="openweather">OpenWeather</MenuItem>
+                  <MenuItem value="homeassistant">Home Assistant</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="weather.ha_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="HA URL (if homeassistant)"
+                helperText="e.g. http://homeassistant:8123"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="feed.source">
+            {(field) => (
+              <FormControl fullWidth>
+                <InputLabel>Feed Source</InputLabel>
+                <Select
+                  value={field.state.value ?? 'mqtt'}
+                  label="Feed Source"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="mqtt">MQTT</MenuItem>
+                  <MenuItem value="esphome">ESPHome</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="feed.mqtt_topic">
+            {(field) => (
+              <TextField
+                fullWidth
+                id={field.name}
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Feed MQTT Topic"
+                helperText="e.g. homeassistant/switch/bird_feeder/command"
+              />
+            )}
+          </form.Field>
         </Grid>
       </Grid>
 

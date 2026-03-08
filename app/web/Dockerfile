@@ -1,11 +1,7 @@
-# Use a minimal Python image
-FROM python:3.11-alpine
+# Debian slim: pre-built wheels for psutil, no gcc needed
+FROM python:3.11-slim
 
-# Set the working directory
 WORKDIR /app
-
-# dependencies needed to build psutil
-RUN apk add --no-cache gcc python3-dev musl-dev linux-headers
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

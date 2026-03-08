@@ -1,24 +1,16 @@
-# Use the base image
-FROM ultralytics/ultralytics:8.3.231-arm64
+# x86/amd64 image for Go2RTC + YOLO (no RPi hardware)
+FROM ultralytics/ultralytics:8.3.231
 
-RUN echo "deb http://archive.raspberrypi.org/debian/ bookworm main" > /etc/apt/sources.list.d/raspi.list \
-  && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 82B129927FA3303E
+# Install ffmpeg for RTSP recording (no picamera2, no ALSA)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-# Install ffmpeg, pulseaudio, and picamera2 for media recording
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y --no-install-recommends \
-  alsa-utils ffmpeg pulseaudio-utils python3-picamera2 \
-  && apt-get clean \
-  && apt-get autoremove -y \
-  && rm -rf /var/cache/apt/archives/* \
-  && rm -rf /var/lib/apt/lists/*
-
-# Set the working directory inside the container
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .
 
-# Specify the command to run when the container starts
-CMD ["bash"]
+CMD ["python", "src/main.py"]

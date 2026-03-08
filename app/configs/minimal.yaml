@@ -1,0 +1,15 @@
+# Minimal — только OpenCV motion, без MQTT/Frigate
+# Использование: cp configs/minimal.yaml app_config/user_config.yaml
+
+video:
+  source: go2rtc
+  stream_name: "bird_cam"
+
+motion:
+  source: opencv
+
+mqtt:
+  broker: ""
+
+retention:
+  days: 30
