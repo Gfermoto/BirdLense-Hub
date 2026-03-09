@@ -106,6 +106,15 @@ notifications:
   excluded_species: []
   rate_limit_per_minute: 5
 
+# MCP (Model Context Protocol) — AI-агенты (Cursor, Claude) могут вызывать API BirdLense
+mcp:
+  enabled: false
+  # Токен для доступа. Пусто — без защиты. Рекомендуется для продакшена.
+  # Env MCP_TOKEN переопределяет (для хранения секрета вне конфига).
+  token: ""
+  # API URL для MCP-клиента. В контейнере: http://127.0.0.1:8000/api/ui
+  # api_url: ""  # пусто = авто (127.0.0.1:8000 в Docker, иначе из env BIRDLENSE_API_URL)
+
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""

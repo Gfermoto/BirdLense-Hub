@@ -678,6 +678,51 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
+      {/* ========== 8. MCP ========== */}
+      <Typography variant="h5" gutterBottom>
+        {t('settings.section8')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t('settings.section8Desc')}
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="mcp.enabled">
+            {(field) => (
+              <>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.state.value ?? false}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  }
+                  label={t('settings.mcpEnabled')}
+                />
+                <FormHelperText>{t('settings.mcpHint')}</FormHelperText>
+              </>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mcp.token">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="password"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.mcpToken')}
+                placeholder={t('settings.mcpTokenPlaceholder')}
+                helperText={t('settings.mcpTokenHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
       {/* ========== РАСШИРЕННЫЕ ========== */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>{t('settings.advanced')}</AccordionSummary>

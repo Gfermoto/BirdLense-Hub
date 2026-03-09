@@ -28,6 +28,14 @@ tar --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude=
     --exclude='scripts/deploy.local.sh' \
     -czf - . | ssh "${HOST}" "mkdir -p ${REMOTE_DIR} && cd ${REMOTE_DIR} && tar -xzf -"
 
+# 1.5 MCP_TOKEN в app/.env (если задан в deploy.local.sh)
+if [ -n "${MCP_TOKEN:-}" ]; then
+  echo "1.5 Запись MCP_TOKEN в app/.env на сервере..."
+  ssh "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
+    (grep -v '^MCP_TOKEN=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; echo 'MCP_TOKEN=${MCP_TOKEN}') > ${REMOTE_DIR}/app/.env.new && \
+    mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
+fi
+
 # 2. Сборка и запуск
 echo "2. Сборка и запуск..."
 ssh "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && make stop 2>/dev/null; make build && make start"
