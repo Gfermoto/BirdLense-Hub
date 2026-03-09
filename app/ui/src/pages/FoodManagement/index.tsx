@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -18,6 +19,7 @@ import { PageHelp } from '../../components/PageHelp';
 import { foodHelpConfig } from '../../page-help-config';
 
 export const FoodManagement = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: foodData, isLoading } = useQuery({
     queryKey: ['birdFood'],
@@ -61,9 +63,9 @@ export const FoodManagement = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Food</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="center">Active</TableCell>
+              <TableCell>{t('food.food')}</TableCell>
+              <TableCell>{t('food.description')}</TableCell>
+              <TableCell align="center">{t('food.active')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -88,7 +90,7 @@ export const FoodManagement = () => {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {food.description || 'No description available'}
+                    {food.description || t('food.noDescription')}
                   </Typography>
                 </TableCell>
                 <TableCell align="center" sx={{ width: '100px' }}>

@@ -69,9 +69,9 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
       data: hourlyData,
       color: chartColor,
       yAxisId: 'detections',
-      label: 'Detections',
+      label: t('commonLabels.detections'),
       valueFormatter: (v: number | null) =>
-        v !== null ? `${v} detections` : '',
+        v !== null ? t('commonLabels.detectionsCount', { count: v }) : '',
     },
     ...(showTempLine
       ? [

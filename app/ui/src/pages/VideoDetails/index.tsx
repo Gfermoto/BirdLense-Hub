@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { fetchVideo } from '../../api/api';
@@ -12,6 +13,7 @@ import { PageHelp } from '../../components/PageHelp';
 import { videoDetailsHelpConfig } from '../../page-help-config';
 
 export const VideoDetails = () => {
+  const { t } = useTranslation();
   const params = useParams();
 
   const {
@@ -29,7 +31,7 @@ export const VideoDetails = () => {
         <CircularProgress />
       </Box>
     );
-  if (error) return <div>Error loading sightings data.</div>;
+  if (error) return <div>{t('errors.loadSightings')}</div>;
 
   return (
     <>

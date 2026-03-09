@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import GitHubIcon from '@mui/icons-material/GitHub';
 
 export function Footer() {
+  const { t } = useTranslation();
   return (
     <Box
       component="footer"
@@ -28,7 +30,7 @@ export function Footer() {
           variant="body2"
           sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
         >
-          BirdLense Hub
+          {t('common.appName')}
         </Typography>
         <Typography
           variant="body2"
@@ -54,7 +56,7 @@ export function Footer() {
           }}
         >
           <GitHubIcon sx={{ fontSize: '1rem' }} />
-          Open Source
+          {t('common.openSource')}
         </Link>
         <Typography
           variant="body2"
@@ -66,7 +68,7 @@ export function Footer() {
           variant="body2"
           sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
         >
-          MIT License
+          {t('common.mitLicense')}
         </Typography>
         <Typography
           variant="body2"
@@ -78,7 +80,7 @@ export function Footer() {
           variant="body2"
           sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
         >
-          Created by{' '}
+          {t('common.createdBy')}{' '}
           <Link
             href="https://github.com/Gfermoto"
             target="_blank"

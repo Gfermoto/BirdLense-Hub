@@ -152,6 +152,7 @@ const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
 };
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const timeoutRef = useRef<number>();
   const [view, setView] = useState<'video' | 'audio'>('video');
@@ -335,7 +336,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
                   }}
                 />
               }
-              label="Tracks"
+              label={t('commonLabels.tracks')}
               sx={{
                 margin: 0,
                 '& .MuiFormControlLabel-label': {
@@ -422,7 +423,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
             src={`${BASE_URL}/${video.video_path}`}
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
-            onError={() => setError('Failed to load video')}
+            onError={() => setError(t('errors.loadVideo'))}
             style={{ height: '100%', width: '100%', objectFit: 'contain' }}
             playsInline
             controls={false}

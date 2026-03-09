@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
@@ -27,6 +28,7 @@ interface DetectedSpeciesProps {
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species,
 }) => {
+  const { t } = useTranslation();
   // Group species by species_id and calculate stats
   const groupedSpecies = species
     .filter((s) => s.source === 'video')
@@ -63,7 +65,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Species in This Video
+        {t('video.speciesInVideo')}
       </Typography>
       <Grid container spacing={2}>
         {groupedSpecies.map((group) => (
@@ -91,12 +93,11 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   {group.species_name}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {group.detections.length} detection
-                  {group.detections.length > 1 ? 's' : ''} •{' '}
+                  {group.detections.length} {group.detections.length > 1 ? t('video.detections') : t('video.detection')} •{' '}
                   {Math.round(group.totalDuration)}s
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Confidence: {group.confidenceRange}
+                  {t('video.confidence')}: {group.confidenceRange}
                 </Typography>
               </CardContent>
               <CardActions sx={{ pt: 0 }}>
@@ -105,7 +106,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   component={Link}
                   to={`/species/${group.species_id}`}
                 >
-                  Learn More
+                  {t('video.learnMore')}
                 </Button>
               </CardActions>
             </Card>

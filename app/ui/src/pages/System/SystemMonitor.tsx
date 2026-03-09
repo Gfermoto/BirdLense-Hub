@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -43,6 +44,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 );
 
 export const SystemMonitor = () => {
+  const { t } = useTranslation();
   const { data, error, isLoading } = useQuery({
     queryKey: ['systemMetrics'],
     queryFn: async () => {
@@ -55,12 +57,12 @@ export const SystemMonitor = () => {
 
   if (isLoading) return <LinearProgress />;
   if (error)
-    return <Typography color="error">Error loading system metrics</Typography>;
+    return <Typography color="error">{t('system.errorLoadMetrics')}</Typography>;
 
   return (
     <Box sx={{ width: '100%' }}>
       <Typography variant="h5" sx={{ mb: 3 }}>
-        System Resources
+        {t('system.resources')}
       </Typography>
 
       <Grid container spacing={3}>
@@ -71,7 +73,7 @@ export const SystemMonitor = () => {
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
               >
                 <SpeedIcon color="action" />
-                <Typography variant="h6">CPU</Typography>
+                <Typography variant="h6">{t('system.cpu')}</Typography>
               </Box>
               <LinearProgress
                 variant="determinate"
@@ -80,7 +82,7 @@ export const SystemMonitor = () => {
               />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" color="text.secondary">
-                  {data.cpu.percent}% Usage
+                  {t('system.usagePercent', { percent: data.cpu.percent })}
                 </Typography>
                 {data.cpu.temperature && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -98,7 +100,7 @@ export const SystemMonitor = () => {
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
             icon={MemoryIcon}
-            title="Memory"
+            title={t('system.memory')}
             value={`${data.memory.used}GB / ${data.memory.total}GB (${data.memory.percent}%)`}
             percent={data.memory.percent}
           />
@@ -107,7 +109,7 @@ export const SystemMonitor = () => {
         <Grid size={{ xs: 12, md: 4 }}>
           <MetricCard
             icon={StorageIcon}
-            title="Disk"
+            title={t('system.disk')}
             value={`${data.disk.used}GB / ${data.disk.total}GB (${data.disk.percent}%)`}
             percent={data.disk.percent}
           />
