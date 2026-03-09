@@ -52,6 +52,7 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
             "end_time": d.get("end_time", video_duration),
             "confidence": d.get("confidence", 0),
             "source": d.get("source", "video"),
+            "detection_provider": d.get("detection_provider", "yolo"),
             "track_id": d.get("track_id"),
             "frames": d.get("frames"),
         }
@@ -70,6 +71,9 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
                     break
             continue
         seen_species.add(species)
+        provider = ev.get("source", "mqtt")
+        if provider == "birdnet":
+            provider = "birdnet_mqtt"
         result.append({
             "species_name": species,
             "species": species,
@@ -77,5 +81,6 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
             "end_time": video_duration,
             "confidence": conf,
             "source": "video",
+            "detection_provider": provider,
         })
     return result

@@ -1,6 +1,7 @@
 """Feed control service: MQTT or ESPHome for feeder dispense."""
 import logging
 import os
+from urllib.parse import quote
 
 import paho.mqtt.client as mqtt
 import requests
@@ -69,18 +70,22 @@ def check_esphome_reachable():
 
 
 def dispense_feed():
-    """Dispense feed via MQTT or ESPHome. Returns (success, message)."""
+    """Dispense feed via MQTT (Tasmota) or ESPHome. Relay on for duration_seconds."""
+    import time
     source = app_config.get('feed.source', 'mqtt')
+    if source in (None, '', 'none'):
+        return False, 'Подкормка выключена в настройках'
+    duration = app_config.get('feed.duration_seconds', 3)
     if source == 'mqtt':
         client = _get_mqtt_client()
-        topic = app_config.get(
-            'feed.mqtt_topic', 'homeassistant/switch/bird_feeder/command'
-        )
+        topic = app_config.get('feed.mqtt_topic', 'cmnd/bird_feeder/Power')
         if not client:
             return False, 'MQTT broker not configured'
         try:
             client.publish(topic, 'ON', qos=1)
-            logger.info('Feed dispensed via MQTT')
+            time.sleep(duration)
+            client.publish(topic, 'OFF', qos=1)
+            logger.info('Feed dispensed via MQTT (relay %ds)', duration)
             return True, 'Feed dispensed'
         except Exception as e:
             logger.error('MQTT feed failed: %s', e)
@@ -89,15 +94,29 @@ def dispense_feed():
         url = os.environ.get('ESPHOME_FEEDER_URL') or app_config.get(
             'feed.esphome_url', 'http://feeder.local'
         )
-        switch_id = os.environ.get('ESPHOME_SWITCH_ID') or app_config.get(
+        entity_id = os.environ.get('ESPHOME_SWITCH_ID') or app_config.get(
             'feed.esphome_switch_id', 'bird_feeder'
         )
+        esphome_type = app_config.get('feed.esphome_type', 'switch')
+        # ESPHome REST API: /switch/{object_id}/turn_on (object_id from YAML id)
+        entity_path = quote(str(entity_id).strip(), safe='')
         try:
-            r = requests.post(
-                f"{url.rstrip('/')}/switch/{switch_id}/turn_on", timeout=5
-            )
-            r.raise_for_status()
-            logger.info('Feed dispensed via ESPHome')
+            if esphome_type == 'button':
+                r = requests.post(
+                    f"{url.rstrip('/')}/button/{entity_path}/press", timeout=5
+                )
+                r.raise_for_status()
+                logger.info('Feed dispensed via ESPHome (button press)')
+            else:
+                r = requests.post(
+                    f"{url.rstrip('/')}/switch/{entity_path}/turn_on", timeout=5
+                )
+                r.raise_for_status()
+                time.sleep(duration)
+                requests.post(
+                    f"{url.rstrip('/')}/switch/{entity_path}/turn_off", timeout=5
+                )
+                logger.info('Feed dispensed via ESPHome (switch %ds)', duration)
             return True, 'Feed dispensed'
         except Exception as e:
             logger.error('ESPHome feed failed: %s', e)

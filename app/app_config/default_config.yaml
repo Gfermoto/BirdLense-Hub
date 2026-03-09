@@ -8,6 +8,8 @@ processor:
   max_record_seconds: 60
   max_inactive_seconds: 10
   spectrogram_px_per_sec: 200
+  # regional_species: [] — без локального BirdNET; YOLO использует все классы
+  regional_species: []
   included_bird_families:
     - "Perching Birds"
     - "Pigeons and Doves"
@@ -20,15 +22,6 @@ processor:
     single_stage: "models/detection/nabirds_yolov8n_ncnn_model"
     binary: "models/detection/weights/best.pt"
     classifier: "models/classification/weights/best.pt"
-
-# AI settings for LLM verification and daily summaries
-ai:
-  gemini_api_key: ""
-  model: "gemini-3-flash-preview"
-  llm_verification:
-    min_confidence: 0.4
-    max_calls_per_hour: 20
-    max_calls_per_day: 100
 
 # Video source: go2rtc | pi_camera | file
 # go2rtc - stream from Go2RTC (x86, no RPi hardware)
@@ -64,19 +57,25 @@ camera:
   focus_mode: "manual"
   lens_position: 7.0
 
-# Motion trigger: mqtt | opencv | pir
-# pir - RPi only
+# Motion trigger: opencv | frigate | mqtt | esphome
+# opencv - analyze every frame; frigate - Frigate MQTT events; mqtt - binary sensor topic; esphome - ESPHome binary sensor
 motion:
-  source: opencv  # opencv | mqtt | pir
-  frigate_camera_filter: []  # e.g. ["bird_cam"] to filter by camera
-  frigate_label_filter: ["bird", "Bird"]  # labels that trigger recording
+  source: opencv
+  frigate_camera_filter: []  # from cameras list; frigate/events
+  frigate_label_filter: ["bird", "Bird"]
+  mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
+  esphome_url: ""
+  esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
 
 # MQTT - Frigate and BirdNET (confirmations)
+# birdnet_topic: BirdNET-Pi (birdnet/sightings) или BirdNET-Go (birdnet/detections)
+# birdnet_go_topic: опционально — подписаться на оба (BirdNET-Pi + BirdNET-Go)
 mqtt:
   broker: ""
   port: 1883
   frigate_topic: "frigate/events"
   birdnet_topic: "birdnet/sightings"
+  birdnet_go_topic: ""  # e.g. birdnet/detections for BirdNET-Go
   publish_topic: "birdlense/detections"
 
 # Detection merging (YOLO + Frigate + BirdNET)
@@ -85,12 +84,15 @@ detection:
   dedup_window_seconds: 45
   species_mapping: {}
 
-# Feeder control: mqtt | esphome
+# Feeder control: mqtt (Tasmota) | esphome. Relay on for duration_seconds.
+# esphome_type: switch (turn_on/turn_off) | button (press — если реле управляется кнопкой/скриптом)
 feed:
   source: mqtt
-  mqtt_topic: "homeassistant/switch/bird_feeder/command"
+  duration_seconds: 3
+  mqtt_topic: "cmnd/bird_feeder/Power"
   esphome_url: "http://feeder.local"
   esphome_switch_id: "bird_feeder"
+  esphome_type: switch  # switch | button
 
 # Weather: openweather | homeassistant
 weather:

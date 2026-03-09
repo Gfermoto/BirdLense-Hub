@@ -35,7 +35,7 @@ const pulse = keyframes`
 
 const NAVIGATION_ITEMS = [
   { label: 'Dashboard', path: '/' },
-  { label: 'Timeline', path: '/timeline' },
+  { label: 'Записи', path: '/timeline' },
   { label: 'Food Management', path: '/food' },
   { label: 'Bird Directory', path: '/species' },
 ] as const;
@@ -187,18 +187,6 @@ export function Navigation() {
               >
                 System
               </MenuItem>
-              <MenuItem onClick={handleMobileMenuClose}>
-                <MUILink
-                  href="/data/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  color="inherit"
-                  underline="none"
-                  sx={{ display: 'block', width: '100%' }}
-                >
-                  Data Viewer
-                </MUILink>
-              </MenuItem>
             </Menu>
           </Box>
 
@@ -346,18 +334,6 @@ export function Navigation() {
               selected={currentPath === '/system'}
             >
               System
-            </MenuItem>
-            <MenuItem onClick={handleSettingsMenuClose}>
-              <MUILink
-                href="/data/"
-                target="_blank"
-                rel="noopener noreferrer"
-                color="inherit"
-                underline="none"
-                sx={{ display: 'block', width: '100%' }}
-              >
-                Data Viewer
-              </MUILink>
             </MenuItem>
           </Menu>
         </Toolbar>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useForm } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -16,6 +17,113 @@ import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormHelperText from '@mui/material/FormHelperText';
+import Alert from '@mui/material/Alert';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+
+type CameraRow = { stream_name?: string; feeder?: string; name?: string };
+
+function CamerasListField({
+  value,
+  onChange,
+}: {
+  value: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }> | undefined;
+  onChange: (v: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }>) => void;
+}) {
+  const rows: CameraRow[] = Array.isArray(value) && value.length > 0
+    ? value.map((c) => ({
+        stream_name: c.stream_name ?? c.id ?? '',
+        feeder: c.feeder ?? '',
+        name: c.name ?? c.id ?? c.stream_name ?? '',
+      }))
+    : [{ stream_name: '', feeder: '', name: '' }];
+
+  const sync = (newRows: CameraRow[]) => {
+    const filtered = newRows.filter((r) => (r.stream_name ?? '').trim());
+    const arr = filtered.length
+      ? filtered.map((r) => ({
+          id: (r.stream_name ?? '').trim(),
+          stream_name: (r.stream_name ?? '').trim(),
+          name: (r.name ?? '').trim() || (r.stream_name ?? '').trim(),
+          feeder: (r.feeder ?? '').trim() || undefined,
+        }))
+      : [];
+    onChange(arr);
+  };
+
+  const updateRow = (i: number, field: keyof CameraRow, val: string) => {
+    const next = [...rows];
+    if (!next[i]) next[i] = { stream_name: '', feeder: '', name: '' };
+    next[i] = { ...next[i], [field]: val };
+    sync(next);
+  };
+
+  const addRow = () => {
+    sync([...rows, { stream_name: '', feeder: '', name: '' }]);
+  };
+
+  const removeRow = (i: number) => {
+    const next = rows.filter((_, idx) => idx !== i);
+    sync(next.length ? next : [{ stream_name: '', feeder: '', name: '' }]);
+  };
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Имя потока — из Go2RTC. Номер кормушки и название — для подписи.
+      </Typography>
+      {rows.map((row, i) => (
+        <Grid container key={i} spacing={1} sx={{ mb: 1 }} alignItems="center">
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={row.stream_name ?? ''}
+              onChange={(e) => updateRow(i, 'stream_name', e.target.value)}
+              label="Имя потока (Go2RTC)"
+              placeholder="BirdBox"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={row.feeder ?? ''}
+              onChange={(e) => updateRow(i, 'feeder', e.target.value)}
+              label="Номер кормушки"
+              placeholder="1"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={row.name ?? ''}
+              onChange={(e) => updateRow(i, 'name', e.target.value)}
+              label="Название камеры"
+              placeholder="Кормушка"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 1 }}>
+            <Button
+              size="small"
+              color="error"
+              onClick={() => removeRow(i)}
+              disabled={rows.length <= 1}
+            >
+              −
+            </Button>
+          </Grid>
+        </Grid>
+      ))}
+      <Button size="small" onClick={addRow} sx={{ mt: 0.5 }}>
+        + Добавить камеру
+      </Button>
+    </Box>
+  );
+}
 
 export const SettingsForm = ({
   currentSettings,
@@ -52,28 +160,9 @@ export const SettingsForm = ({
     { label: 'VGA (640x480)', width: 640, height: 480 },
   ];
 
-  // Calculate focus distance from lens position (diopters)
-  // LensPosition in diopters = 1 / distance_in_meters
-  const formatFocusDistance = (diopters: number): string => {
-    const cm = Math.round(100 / diopters);
-    const inches = Math.round(cm / 2.54);
-    return `~${cm} cm (${inches} in)`;
-  };
-
-  const focusDistanceOptions = [
-    { diopters: 12, note: 'Very Close' },
-    { diopters: 10, note: '' },
-    { diopters: 7, note: 'Recommended' },
-    { diopters: 5, note: '' },
-    { diopters: 4, note: '' },
-    { diopters: 3, note: '' },
-    { diopters: 2, note: 'Far' },
-  ];
-
   return (
     <Box
       component="form"
-      // sx={{ '& > :not(style)': { m: 1, width: '25ch' } }}
       noValidate
       autoComplete="off"
       onSubmit={(e) => {
@@ -82,508 +171,14 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      {/* Secrets Section */}
-      <Typography variant="h5" gutterBottom>
-        General
+      {/* ========== 1. ПОДКЛЮЧЕНИЕ ========== */}
+      <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
+        1. Подключение
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Notification preferences and alerts
-      </Typography>
-      <Grid container spacing={2} alignItems="center">
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <form.Field name="general.enable_notifications">
-            {(field) => (
-              <>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      id={field.name}
-                      name={field.name}
-                      checked={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.checked)}
-                    />
-                  }
-                  label="Enable Notifications"
-                />
-                <FormHelperText>
-                  Get notified when birds visit your feeder
-                </FormHelperText>
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
-          <form.Subscribe
-            selector={(state) => [state.values.general.enable_notifications]}
-          >
-            {([notificationsEnabled]) => (
-              <form.Field name="general.notification_excluded_species">
-                {(field) => (
-                  <FormControl fullWidth disabled={!notificationsEnabled}>
-                    <InputLabel>Exclude from Notifications</InputLabel>
-                    <Select
-                      multiple
-                      value={field.state.value || []}
-                      onChange={(e) =>
-                        field.handleChange(e.target.value as string[])
-                      }
-                      label="Exclude from Notifications"
-                      renderValue={(selected) => selected.join(', ')}
-                    >
-                      {(observedSpecies ?? []).map((species) => (
-                        <MenuItem key={species.id} value={species.name}>
-                          <Checkbox
-                            checked={(field.state.value || []).includes(
-                              species.name,
-                            )}
-                          />
-                          <ListItemText
-                            primary={species.name}
-                            secondary={`Detected ${species.count} times`}
-                          />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <FormHelperText>
-                      Select species to ignore when sending notifications
-                    </FormHelperText>
-                  </FormControl>
-                )}
-              </form.Field>
-            )}
-          </form.Subscribe>
-        </Grid>
-      </Grid>
-      <Divider sx={{ my: 4 }} />
-      {/* Secrets Section */}
-      <Typography variant="h5" gutterBottom>
-        Location & API Keys
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Your location and third-party service credentials
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        MQTT и Go2RTC — основа для камер, детекции движения и реле.
       </Typography>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="secrets.openweather_api_key">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                type="string"
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="OpenWeather API Key"
-                helperText="Free key from openweathermap.org. Shows weather with detections."
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.zip">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  label="ZIP Code"
-                  helperText="Enter ZIP code to automatically fetch location"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <Button
-            fullWidth
-            sx={{ height: '100%' }}
-            variant="outlined"
-            color="secondary"
-            onClick={handleZipLookup}
-          >
-            Convert ZIP to Lat/Lon
-          </Button>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.latitude">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  label="Latitude"
-                  helperText="For regional species & weather"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.longitude">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  label="Longitude"
-                  helperText="For regional species & weather"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* Processor Settings */}
-      <Typography variant="h5" gutterBottom>
-        Processor Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Recording behavior and detection filters
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="processor.tracker">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  label="Object Tracker"
-                  helperText="Advanced: tracking algorithm config"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="processor.max_record_seconds">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(Number(e.target.value))}
-                  label="Max Record Seconds"
-                  helperText="Maximum duration for a single recording session"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="processor.max_inactive_seconds">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(Number(e.target.value))}
-                  label="Max Inactive Seconds"
-                  helperText="Stop recording after this many seconds of no activity"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="processor.spectrogram_px_per_sec">
-            {(field) => (
-              <>
-                <TextField
-                  fullWidth
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  type="string"
-                  onChange={(e) => field.handleChange(Number(e.target.value))}
-                  label="Spectrogram Detail"
-                  helperText="Audio visualization quality (higher = more detail)"
-                />
-              </>
-            )}
-          </form.Field>
-        </Grid>
-
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.included_bird_families">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel>Included Bird Families</InputLabel>
-                <Select
-                  multiple
-                  value={field.state.value || []}
-                  onChange={(e) =>
-                    field.handleChange(e.target.value as string[])
-                  }
-                  label="Included Bird Families"
-                  renderValue={(selected) => selected.join(', ')}
-                >
-                  {(birdFamilies ?? []).map((family) => (
-                    <MenuItem key={family.id} value={family.name}>
-                      <Checkbox
-                        checked={(field.state.value || []).includes(
-                          family.name as string,
-                        )}
-                      />
-                      <ListItemText primary={family.name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  Filter detections to only these bird types
-                </FormHelperText>
-              </FormControl>
-            )}
-          </form.Field>
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* Camera Settings */}
-      <Typography variant="h5" gutterBottom>
-        Camera Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Video quality and Pi Camera v3 features
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="camera.video_width">
-            {(widthField) => (
-              <form.Field name="camera.video_height">
-                {(heightField) => {
-                  const currentWidth = widthField.state.value;
-                  const currentHeight = heightField.state.value;
-                  const selectedResolution = resolutions.find(
-                    (r) =>
-                      r.width === currentWidth && r.height === currentHeight,
-                  );
-
-                  return (
-                    <FormControl fullWidth>
-                      <InputLabel>Video Resolution</InputLabel>
-                      <Select
-                        value={
-                          selectedResolution
-                            ? `${selectedResolution.width}x${selectedResolution.height}`
-                            : ''
-                        }
-                        label="Video Resolution"
-                        onChange={(e) => {
-                          const [w, h] = (e.target.value as string)
-                            .split('x')
-                            .map(Number);
-                          widthField.handleChange(w);
-                          heightField.handleChange(h);
-                        }}
-                      >
-                        {resolutions.map((res) => (
-                          <MenuItem
-                            key={res.label}
-                            value={`${res.width}x${res.height}`}
-                          >
-                            {res.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      <FormHelperText>
-                        Recording resolution only. Does not affect detection
-                        accuracy.
-                      </FormHelperText>
-                    </FormControl>
-                  );
-                }}
-              </form.Field>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="camera.hdr_mode">
-            {(field) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    id={field.name}
-                    name={field.name}
-                    checked={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.checked)}
-                  />
-                }
-                label="Enable HDR Mode"
-              />
-            )}
-          </form.Field>
-          <FormHelperText>
-            Enable High Dynamic Range mode (Pi Camera v3 only)
-          </FormHelperText>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="camera.focus_mode">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel>Focus Mode</InputLabel>
-                <Select
-                  value={field.state.value || 'auto'}
-                  label="Focus Mode"
-                  onChange={(e) =>
-                    field.handleChange(e.target.value as 'auto' | 'manual')
-                  }
-                >
-                  <MenuItem value="auto">Auto (Continuous)</MenuItem>
-                  <MenuItem value="manual">Manual (Fixed Distance)</MenuItem>
-                </Select>
-                <FormHelperText>
-                  Manual focus is better for feeders at a fixed distance
-                </FormHelperText>
-              </FormControl>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Subscribe
-            selector={(state) => [state.values.camera?.focus_mode]}
-          >
-            {([focusMode]) => (
-              <form.Field name="camera.lens_position">
-                {(field) => (
-                  <FormControl fullWidth disabled={focusMode !== 'manual'}>
-                    <InputLabel>Focus Distance</InputLabel>
-                    <Select
-                      value={field.state.value || 7}
-                      label="Focus Distance"
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                    >
-                      {focusDistanceOptions.map((opt) => (
-                        <MenuItem key={opt.diopters} value={opt.diopters}>
-                          {formatFocusDistance(opt.diopters)}
-                          {opt.note && ` - ${opt.note}`}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <FormHelperText>
-                      Set to match your feeder distance from camera
-                    </FormHelperText>
-                  </FormControl>
-                )}
-              </form.Field>
-            )}
-          </form.Subscribe>
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* Video & MQTT (x86/Frigate) */}
-      <Typography variant="h5" gutterBottom>
-        Video & MQTT
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Go2RTC stream, Frigate camera, MQTT broker. После изменений — перезапуск processor.
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="motion.source">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel>Motion trigger</InputLabel>
-                <Select
-                  value={field.state.value ?? 'opencv'}
-                  label="Motion trigger"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                >
-                  <MenuItem value="opencv">OpenCV (постоянный поток)</MenuItem>
-                  <MenuItem value="mqtt">MQTT/Frigate (события)</MenuItem>
-                </Select>
-                <FormHelperText>
-                  mqtt = триггер по событиям Frigate, opencv = анализ каждого кадра
-                </FormHelperText>
-              </FormControl>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="video.stream_name">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Stream name (Go2RTC/Frigate)"
-                helperText="e.g. BirdBox, Garden — имя камеры во Frigate"
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="video.go2rtc_url">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Go2RTC URL"
-                helperText="В Docker с Frigate: http://frigate:1984 (RTSP=8554)"
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="video.go2rtc_username">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Go2RTC логин (если включена авторизация)"
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="video.go2rtc_password">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                type="password"
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Go2RTC пароль"
-              />
-            )}
-          </form.Field>
-        </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mqtt.broker">
             {(field) => (
@@ -593,7 +188,21 @@ export const SettingsForm = ({
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
                 label="MQTT Broker"
-                helperText="e.g. 192.168.1.10 or mqtt.local"
+                placeholder="192.168.1.10"
+                helperText="IP или домен брокера (Frigate, Tasmota, датчики)"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.port">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                value={field.state.value ?? 1883}
+                onChange={(e) => field.handleChange(Number(e.target.value) || 1883)}
+                label="MQTT порт"
               />
             )}
           </form.Field>
@@ -603,10 +212,9 @@ export const SettingsForm = ({
             {(field) => (
               <TextField
                 fullWidth
-                id={field.name}
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="MQTT Username"
+                label="MQTT логин"
               />
             )}
           </form.Field>
@@ -616,12 +224,81 @@ export const SettingsForm = ({
             {(field) => (
               <TextField
                 fullWidth
-                id={field.name}
                 type="password"
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="MQTT Password"
+                label="MQTT пароль"
               />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.frigate_topic">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? 'frigate/events'}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Frigate топик"
+                placeholder="frigate/events"
+                helperText="События Frigate для слияния с YOLO"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.birdnet_topic">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? 'birdnet/sightings'}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="BirdNET топик"
+                placeholder="birdnet/sightings"
+                helperText="BirdNET-Pi. BirdNET-Go — ниже."
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.birdnet_go_topic">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="BirdNET-Go топик (опц.)"
+                placeholder="birdnet/detections"
+                helperText="Если есть BirdNET-Go — подписка на оба"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="video.go2rtc_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Go2RTC URL"
+                placeholder="http://frigate:1984"
+                helperText="В Docker с Frigate: http://frigate:1984. RTSP порт 8554."
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.go2rtc_username">
+            {(field) => (
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Go2RTC логин" />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.go2rtc_password">
+            {(field) => (
+              <TextField fullWidth type="password" value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Go2RTC пароль" />
             )}
           </form.Field>
         </Grid>
@@ -629,177 +306,365 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* Weather & Feed */}
+      {/* ========== 2. КАМЕРЫ ========== */}
       <Typography variant="h5" gutterBottom>
-        Weather & Feed
+        2. Камеры
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Weather source, feeder control
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="weather.source">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel>Weather Source</InputLabel>
-                <Select
-                  value={field.state.value ?? 'openweather'}
-                  label="Weather Source"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                >
-                  <MenuItem value="openweather">OpenWeather</MenuItem>
-                  <MenuItem value="homeassistant">Home Assistant</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="weather.ha_url">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="HA URL (if homeassistant)"
-                helperText="e.g. http://homeassistant:8123"
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="feed.source">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel>Feed Source</InputLabel>
-                <Select
-                  value={field.state.value ?? 'mqtt'}
-                  label="Feed Source"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                >
-                  <MenuItem value="mqtt">MQTT</MenuItem>
-                  <MenuItem value="esphome">ESPHome</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="feed.mqtt_topic">
-            {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Feed MQTT Topic"
-                helperText="e.g. homeassistant/switch/bird_feeder/command"
-              />
-            )}
-          </form.Field>
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* AI Settings Section */}
-      <Typography variant="h5" gutterBottom>
-        AI Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Enable AI-powered features like daily summaries and detection
-        verification
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Имена камер из Go2RTC/Frigate. Топики Frigate (frigate/events) и BirdNET (birdnet/sightings) — стандартные. Фильтр камер берётся из списка ниже.
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
-          <form.Field name="ai.gemini_api_key">
+          <form.Field name="video.cameras">
             {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                name={field.name}
+              <CamerasListField
                 value={field.state.value}
-                type="password"
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Gemini API Key"
-                helperText="Enables: Daily AI Summary, LLM verification for bird detection"
+                onChange={field.handleChange}
               />
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="ai.model">
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="video.stream_name">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="Stream name (если одна камера)"
+                placeholder="bird_cam"
+                helperText="Используется, если список камер выше пуст."
+              />
+            )}
+          </form.Field>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* ========== 3. ДЕТЕКЦИЯ ДВИЖЕНИЯ ========== */}
+      <Typography variant="h5" gutterBottom>
+        3. Детекция движения
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Что запускает запись: анализ кадров, события Frigate или внешний датчик (MQTT/ESPHome).
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="motion.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>Model</InputLabel>
+                <InputLabel>Источник движения</InputLabel>
                 <Select
-                  value={field.state.value || 'gemini-3-flash-preview'}
-                  label="Model"
+                  value={field.state.value ?? 'opencv'}
+                  label="Источник движения"
                   onChange={(e) => field.handleChange(e.target.value)}
                 >
-                  <MenuItem value="gemini-3-flash-preview">
-                    Gemini 3 Flash (Preview)
-                  </MenuItem>
-                  <MenuItem value="gemini-2.5-flash-lite">
-                    Gemini 2.5 Flash Lite
-                  </MenuItem>
+                  <MenuItem value="opencv">OpenCV — анализ каждого кадра</MenuItem>
+                  <MenuItem value="frigate">Frigate — события по MQTT (bird, Bird)</MenuItem>
+                  <MenuItem value="mqtt">MQTT — бинарный датчик (Tasmota PIR, Shelly)</MenuItem>
+                  <MenuItem value="esphome">ESPHome — бинарный датчик по IP</MenuItem>
                 </Select>
                 <FormHelperText>
-                  Model used for LLM verification and summaries
+                  OpenCV = всегда включён. Frigate = нужен MQTT. MQTT/ESPHome = как реле подкормки.
                 </FormHelperText>
               </FormControl>
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="ai.llm_verification.min_confidence">
+        <form.Subscribe selector={(state) => state.values.motion?.source}>
+          {(source) => (
+            <>
+              {source === 'frigate' && (
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Frigate публикует события в frigate/events. Фильтр камер — из списка камер выше.
+                  </Alert>
+                </Grid>
+              )}
+              {source === 'mqtt' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <strong>MQTT датчик:</strong> подписка на топик. При ON/1 — запись. Tasmota: stat/ИМЯ/STATE или stat/ИМЯ/PIR.
+                    </Alert>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <form.Field name="motion.mqtt_topic">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="MQTT топик датчика"
+                          placeholder="stat/bird_pir/STATE"
+                          helperText="Топик, где публикуется ON при движении"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+              {source === 'esphome' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <strong>ESPHome:</strong> бинарный датчик (PIR, door). Нужен web_server в конфиге ESPHome.
+                    </Alert>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="motion.esphome_url">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="Адрес ESPHome"
+                          placeholder="http://192.168.1.50"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="motion.esphome_sensor_id">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="ID датчика"
+                          placeholder="bird_pir"
+                          helperText="id из YAML: binary_sensor: - id: bird_pir"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+            </>
+          )}
+        </form.Subscribe>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* ========== 4. РЕЛЕ ПОДКОРМКИ ========== */}
+      <Typography variant="h5" gutterBottom>
+        4. Реле подкормки
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Кнопка «Выдать корм» включает реле на N секунд. Tasmota или ESPHome — как датчик движения выше.
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="feed.source">
+            {(field) => (
+              <FormControl fullWidth>
+                <InputLabel>Тип устройства</InputLabel>
+                <Select
+                  value={field.state.value ?? 'none'}
+                  label="Тип устройства"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="none">Выключено</MenuItem>
+                  <MenuItem value="mqtt">Tasmota (MQTT)</MenuItem>
+                  <MenuItem value="esphome">ESPHome (по IP)</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </form.Field>
+        </Grid>
+        <form.Subscribe selector={(state) => state.values.feed?.source}>
+          {(source) => (
+            <>
+              {source === 'mqtt' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      MQTT брокер — в блоке «Подключение». Ниже только топик реле.
+                    </Alert>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="feed.mqtt_topic">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="MQTT топик реле"
+                          placeholder="cmnd/bird_feeder/Power"
+                          helperText="Tasmota: cmnd/ИМЯ/Power"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+              {source === 'esphome' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      IP и имя из конфига ESPHome. Switch — реле (turn_on/turn_off). Button — кнопка (press, длительность на устройстве).
+                      <strong> Важно:</strong> в YAML ESPHome должен быть <code>web_server:</code>, иначе REST API (404) не работает.
+                    </Alert>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="feed.esphome_type">
+                      {(field) => (
+                        <FormControl fullWidth>
+                          <InputLabel>Тип: switch или button</InputLabel>
+                          <Select
+                            value={field.state.value ?? 'switch'}
+                            label="Тип: switch или button"
+                            onChange={(e) => field.handleChange(e.target.value)}
+                          >
+                            <MenuItem value="switch">Switch (реле)</MenuItem>
+                            <MenuItem value="button">Button (кнопка)</MenuItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="feed.esphome_url">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="Адрес устройства"
+                          placeholder="http://192.168.1.50"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="feed.esphome_switch_id">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label="ID switch или button"
+                          placeholder="bird_feeder"
+                          helperText="ID из YAML: switch: - id: bird_feeder. Должен совпадать с object_id."
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+              {(source === 'mqtt' || source === 'esphome') && (
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="feed.duration_seconds">
+                    {(field) => (
+                      <TextField
+                        fullWidth
+                        type="number"
+                        inputProps={{ min: 1, max: 30 }}
+                        value={field.state.value ?? 3}
+                        onChange={(e) => field.handleChange(Number(e.target.value) || 3)}
+                        label="Секунд работы реле"
+                        helperText="Длительность включения при нажатии «Выдать корм»"
+                      />
+                    )}
+                  </form.Field>
+                </Grid>
+              )}
+            </>
+          )}
+        </form.Subscribe>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* ========== 5. УВЕДОМЛЕНИЯ, ПОГОДА, ЛОКАЦИЯ ========== */}
+      <Typography variant="h5" gutterBottom>
+        5. Уведомления и погода
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <form.Field name="general.enable_notifications">
+            {(field) => (
+              <>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  }
+                  label="Push-уведомления"
+                />
+                <FormHelperText>ntfy, топик birdlense, порт 8086</FormHelperText>
+              </>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 8 }}>
+          <form.Subscribe selector={(state) => [state.values.general?.enable_notifications]}>
+            {([notificationsEnabled]) => (
+              <form.Field name="general.notification_excluded_species">
+                {(field) => (
+                  <FormControl fullWidth disabled={!notificationsEnabled}>
+                    <InputLabel>Исключить из уведомлений</InputLabel>
+                    <Select
+                      multiple
+                      value={field.state.value || []}
+                      onChange={(e) => field.handleChange(e.target.value as string[])}
+                      label="Исключить из уведомлений"
+                      renderValue={(selected) => selected.join(', ')}
+                    >
+                      {(observedSpecies ?? []).map((species) => (
+                        <MenuItem key={species.id} value={species.name}>
+                          <Checkbox checked={(field.state.value || []).includes(species.name)} />
+                          <ListItemText primary={species.name} secondary={`Найдено ${species.count} раз`} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </form.Field>
+            )}
+          </form.Subscribe>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="secrets.openweather_api_key">
             {(field) => (
               <TextField
                 fullWidth
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                type="number"
-                slotProps={{ htmlInput: { min: 0, max: 1, step: 0.1 } }}
-                onChange={(e) => field.handleChange(Number(e.target.value))}
-                label="Verification Threshold"
-                helperText="Re-check detections below this confidence with AI (0=all, 1=none)"
+                type="password"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label="OpenWeather API Key"
+                helperText="Погода: Overview, Timeline, детали видео. Сохраняется с каждой записью. Координаты — ниже."
               />
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <form.Field name="ai.llm_verification.max_calls_per_hour">
+        <Grid size={{ xs: 6 }}>
+          <form.Field name="secrets.zip">
             {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                type="number"
-                slotProps={{ htmlInput: { min: 0 } }}
-                onChange={(e) => field.handleChange(Number(e.target.value))}
-                label="Max Calls/Hour"
-                helperText="Limit AI usage to control costs"
-              />
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="ZIP" />
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <form.Field name="ai.llm_verification.max_calls_per_day">
+        <Grid size={{ xs: 6 }}>
+          <Button fullWidth variant="outlined" onClick={handleZipLookup}>
+            ZIP → координаты
+          </Button>
+        </Grid>
+        <Grid size={{ xs: 6 }}>
+          <form.Field name="secrets.latitude">
             {(field) => (
-              <TextField
-                fullWidth
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                type="number"
-                slotProps={{ htmlInput: { min: 0 } }}
-                onChange={(e) => field.handleChange(Number(e.target.value))}
-                label="Max Calls/Day"
-                helperText="Daily AI usage limit"
-              />
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Широта" />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 6 }}>
+          <form.Field name="secrets.longitude">
+            {(field) => (
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Долгота" />
             )}
           </form.Field>
         </Grid>
@@ -807,8 +672,125 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      <Button variant="contained" fullWidth type="submit">
-        Save Settings
+      {/* ========== РАСШИРЕННЫЕ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>Расширенные настройки</AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            YOLO (детекция птиц) используется в processor — модели в конфиге processor.models. Здесь только параметры записи и фильтры.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.max_record_seconds">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    value={field.state.value ?? 60}
+                    onChange={(e) => field.handleChange(Number(e.target.value))}
+                    label="Макс. секунд записи"
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.max_inactive_seconds">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    value={field.state.value ?? 10}
+                    onChange={(e) => field.handleChange(Number(e.target.value))}
+                    label="Секунд без активности"
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.spectrogram_px_per_sec">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    value={field.state.value ?? 200}
+                    onChange={(e) => field.handleChange(Number(e.target.value))}
+                    label="Детализация спектрограммы"
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.tracker">
+                {(field) => (
+                  <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Object Tracker" />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="processor.included_bird_families">
+                {(field) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Семейства птиц</InputLabel>
+                    <Select
+                      multiple
+                      value={field.state.value || []}
+                      onChange={(e) => field.handleChange(e.target.value as string[])}
+                      label="Семейства птиц"
+                      renderValue={(selected) => selected.join(', ')}
+                    >
+                      {(birdFamilies ?? []).map((family) => (
+                        <MenuItem key={family.id} value={family.name}>
+                          <Checkbox checked={(field.state.value || []).includes(family.name as string)} />
+                          <ListItemText primary={family.name} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="video.video_width">
+                {(widthField) => (
+                  <form.Field name="video.video_height">
+                    {(heightField) => {
+                      const w = widthField.state.value;
+                      const h = heightField.state.value;
+                      const sel = resolutions.find((r) => r.width === w && r.height === h);
+                      return (
+                        <FormControl fullWidth>
+                          <InputLabel>Разрешение записи</InputLabel>
+                          <Select
+                            value={sel ? `${sel.width}x${sel.height}` : ''}
+                            label="Разрешение записи"
+                            onChange={(e) => {
+                              const [a, b] = (e.target.value as string).split('x').map(Number);
+                              widthField.handleChange(a);
+                              heightField.handleChange(b);
+                            }}
+                          >
+                            {resolutions.map((r) => (
+                              <MenuItem key={r.label} value={`${r.width}x${r.height}`}>
+                                {r.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          <FormHelperText>
+                            Размер кадра при захвате и записи видео. Влияет на качество записи и нагрузку.
+                          </FormHelperText>
+                        </FormControl>
+                      );
+                    }}
+                  </form.Field>
+                )}
+              </form.Field>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      <Button variant="contained" fullWidth type="submit" sx={{ mt: 4 }}>
+        Сохранить настройки
       </Button>
     </Box>
   );

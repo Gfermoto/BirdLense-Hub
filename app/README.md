@@ -80,7 +80,7 @@ Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash **Rasp
 
 ## Configuration
 
-Visit the **Settings** page first to configure your location (ZIP code), OpenWeather API key, and optionally a Gemini API key for AI features.
+Visit the **Settings** page first to configure your location (ZIP code) and OpenWeather API key.
 
 ## Notifications
 
@@ -105,7 +105,7 @@ make logs         # View logs
 ```
 app/
 ├── app_config/     # YAML configuration files
-├── data/           # Recordings, samples, LLM logs
+├── data/           # Recordings, samples
 ├── processor/      # Video/audio processing (Python)
 ├── web/            # Flask API backend
 ├── ui/             # React frontend (Vite + MUI)
@@ -176,7 +176,6 @@ flowchart TB
             YOLO[YOLO Detection]
             TRACK[ByteTrack]
             BIRDNET[BirdNET Audio]
-            LLM[Gemini Verifier]
         end
 
         subgraph web[Web API]
@@ -203,8 +202,8 @@ flowchart TB
 
 | Container     | Purpose                                                                                                                        |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Processor** | Captures video, runs YOLO detection with ByteTrack tracking, processes audio with BirdNET, optionally verifies with Gemini LLM |
-| **Web**       | Flask API, SQLite database, visit analytics, daily AI summaries                                                                |
+| **Processor** | Captures video, runs YOLO detection with ByteTrack tracking, processes audio with BirdNET |
+| **Web**       | Flask API, SQLite database, visit analytics |
 | **UI**        | React + Material UI, video playback with track overlays, timeline, species stats                                               |
 | **Nginx**     | Reverse proxy, static file serving, MJPEG stream routing                                                                       |
 | **Ntfy**      | Local push notifications                                                                                                       |
@@ -216,8 +215,7 @@ flowchart TB
 3. **Object tracking** → ByteTrack assigns stable IDs across frames
 4. **Species classification** → Classifier model identifies species
 5. **Blur filtering** → Rejects blurry frames for classification
-6. **LLM verification** → Optional Gemini check for low-confidence detections
-7. **Audio processing** → BirdNET identifies species from audio
+6. **Audio processing** → BirdNET identifies species from audio
 
 ## MCP Integration
 

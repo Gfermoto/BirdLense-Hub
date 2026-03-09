@@ -3,6 +3,7 @@ from util import notify
 from flask import Flask
 from flask_cors import CORS
 import logging
+from sqlalchemy import text
 import routes.ui_routes
 import routes.ui_system_routes
 import routes.processor_routes
@@ -34,6 +35,14 @@ def create_app():
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        # Add detection_provider column if missing (migration)
+        try:
+            db.session.execute(text(
+                "ALTER TABLE video_species ADD COLUMN detection_provider VARCHAR"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         seed()
     routes.ui_routes.register_routes(app)
     routes.ui_system_routes.register_routes(app)

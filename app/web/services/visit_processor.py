@@ -14,7 +14,9 @@ class VisitProcessor:
     def process_video_detection(self, species: Species, video: Video,
                                 detection_start: float, detection_end: float,
                                 confidence: float, track_id: Optional[int] = None,
-                                frames: Optional[List[Dict]] = None) -> Tuple[SpeciesVisit, VideoSpecies]:
+                                frames: Optional[List[Dict]] = None,
+                                detection_provider: Optional[str] = None
+                                ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
         Process a video detection and create/update associated visit.
         Returns the visit and video_species record.
@@ -35,6 +37,7 @@ class VisitProcessor:
             end_time=detection_end,
             confidence=confidence,
             source='video',
+            detection_provider=detection_provider,
             track_id=track_id,
             created_at=detection_time,
             species_visit=visit,
@@ -47,7 +50,9 @@ class VisitProcessor:
 
     def process_audio_detection(self, species: Species, video: Video,
                                 detection_start: float, detection_end: float,
-                                confidence: float) -> Optional[VideoSpecies]:
+                                confidence: float,
+                                detection_provider: Optional[str] = None
+                                ) -> Optional[VideoSpecies]:
         """
         Process an audio detection and associate it with an existing visit if found.
         Returns the video_species record if successful.
@@ -65,6 +70,7 @@ class VisitProcessor:
             end_time=detection_end,
             confidence=confidence,
             source='audio',
+            detection_provider=detection_provider or 'birdnet_local',
             created_at=detection_time,
             species_visit=visit,
             video=video
@@ -99,7 +105,8 @@ class VisitProcessor:
                     detection_end=det['end_time'],
                     confidence=det['confidence'],
                     track_id=det.get('track_id'),
-                    frames=det.get('frames')
+                    frames=det.get('frames'),
+                    detection_provider=det.get('detection_provider')
                 )
                 # Create tuple key from visit attributes
                 visit_key = (visit.species_id, visit.start_time)
@@ -116,7 +123,8 @@ class VisitProcessor:
                     video=video,
                     detection_start=det['start_time'],
                     detection_end=det['end_time'],
-                    confidence=det['confidence']
+                    confidence=det['confidence'],
+                    detection_provider=det.get('detection_provider')
                 )
                 if video_species:
                     video_species_records.append(video_species)

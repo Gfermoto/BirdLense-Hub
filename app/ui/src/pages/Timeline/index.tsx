@@ -4,6 +4,7 @@ import { Timeline } from './Timeline';
 import { TimelineStats } from './TimelineStats';
 import { SpeciesVisit, Species } from '../../types';
 import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
@@ -118,6 +119,9 @@ export function TimelinePage() {
   return (
     <>
       <PageHelp {...timelineHelpConfig} />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Записи с камер: выберите дату и время, чтобы просмотреть видео с обнаружениями птиц.
+      </Typography>
       <Box
         display="flex"
         justifyContent="center"

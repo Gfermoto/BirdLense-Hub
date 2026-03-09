@@ -85,6 +85,7 @@ class Go2RTCStreamSource:
         """Open RTSP connection. Returns True if successful."""
         self._disconnect()
         self.logger.info(f"Connecting to stream: {self.stream_url}")
+        # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
         cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         if not cap.isOpened():

@@ -14,7 +14,6 @@ import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
 import DailyPatternChart from './DailyPatternChart';
-import { DailySummary } from './DailySummary';
 import { SpeciesDistributionChart } from './SpeciesDistributionChart';
 import { HourlyActivityChart } from './HourlyActivityChart';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
@@ -143,6 +142,32 @@ export const Overview = () => {
               />
             </Grid>
           </Grid>
+          {overviewData?.stats.detectionByProvider &&
+            Object.keys(overviewData.stats.detectionByProvider).length > 0 && (
+              <Paper sx={{ p: 2, mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                  По источникам распознавания
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                  {Object.entries(overviewData.stats.detectionByProvider).map(
+                    ([provider, count]) => (
+                      <Typography key={provider} variant="body2">
+                        <strong>
+                          {provider === 'yolo'
+                            ? 'YOLO'
+                            : provider === 'frigate'
+                              ? 'Frigate'
+                              : provider === 'birdnet_mqtt'
+                                ? 'BirdNET (MQTT)'
+                                : provider}
+                        </strong>
+                        : {count}
+                      </Typography>
+                    ),
+                  )}
+                </Box>
+              </Paper>
+            )}
         </Grid>
 
         {/* Weather Card */}
@@ -153,11 +178,6 @@ export const Overview = () => {
         {/* Feed Control */}
         <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
           <FeedCard />
-        </Grid>
-
-        {/* Daily Summary */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
-          <DailySummary date={selectedDay} />
         </Grid>
 
         {/* Hourly Activity Line Chart */}
