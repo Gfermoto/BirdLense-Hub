@@ -98,7 +98,7 @@ export const addBirdFood = async (newFood: Partial<BirdFood>) => {
 };
 
 export const fetchCameras = async (): Promise<
-  { id: string; name: string; stream_url: string; feeder?: string }[]
+  { id: string; name: string; stream_url: string }[]
 > => {
   if (useMockData) {
     await sleep(200);

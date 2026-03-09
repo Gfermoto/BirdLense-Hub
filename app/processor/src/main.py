@@ -60,9 +60,9 @@ def heartbeat():
     api = API()
     id = None
     while True:
-        _check_restart_flag()
-        # keep updating activity_log record until restart
+        # Send heartbeat first so status shows ok before exit on restart flag
         id = api.activity_log(type='heartbeat', data={"status": "up"}, id=id)
+        _check_restart_flag()
         time.sleep(60)
 
 

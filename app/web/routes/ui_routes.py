@@ -3,7 +3,7 @@ import json as json_module
 from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
-from util import fetch_weather, update_species_info_from_wiki
+from util import fetch_weather, update_species_info_from_wiki, ensure_utc
 from app_config.app_config import app_config
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 
@@ -23,7 +23,6 @@ def register_routes(app):
             {
                 'id': c.get('id') or c.get('stream_name', ''),
                 'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
-                'feeder': c.get('feeder'),
                 'stream_url': f'/go2rtc/stream.html?src={valid[i].get("stream_name", c.get("stream_name", ""))}',
             }
             for i, c in enumerate(valid)
@@ -44,7 +43,11 @@ def register_routes(app):
         processor_ok = False
         if last_heartbeat and last_heartbeat.updated_at:
             cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
-            processor_ok = last_heartbeat.updated_at.replace(tzinfo=timezone.utc) >= cutoff
+            try:
+                updated = ensure_utc(last_heartbeat.updated_at)
+                processor_ok = updated >= cutoff
+            except (TypeError, ValueError):
+                processor_ok = False
         mqtt_status = check_mqtt_connected()
         esphome_status = check_esphome_reachable()
         feed_source = app_config.get('feed.source', 'mqtt')

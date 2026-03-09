@@ -24,47 +24,45 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-type CameraRow = { stream_name?: string; feeder?: string; name?: string };
+type CameraRow = { stream_name?: string; name?: string };
 
 function CamerasListField({
   value,
   onChange,
 }: {
-  value: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }> | undefined;
-  onChange: (v: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }>) => void;
+  value: Array<{ id?: string; stream_name?: string; name?: string }> | undefined;
+  onChange: (v: Array<{ id?: string; stream_name?: string; name?: string }>) => void;
 }) {
   const rows: CameraRow[] = Array.isArray(value) && value.length > 0
     ? value.map((c) => ({
         stream_name: c.stream_name ?? c.id ?? '',
-        feeder: c.feeder ?? '',
         name: c.name ?? c.id ?? c.stream_name ?? '',
       }))
-    : [{ stream_name: '', feeder: '', name: '' }];
+    : [{ stream_name: '', name: '' }];
 
   const sync = (newRows: CameraRow[]) => {
     const arr = newRows.map((r) => ({
       id: (r.stream_name ?? '').trim() || undefined,
       stream_name: (r.stream_name ?? '').trim(),
       name: (r.name ?? '').trim() || (r.stream_name ?? '').trim(),
-      feeder: (r.feeder ?? '').trim() || undefined,
     }));
     onChange(arr);
   };
 
   const updateRow = (i: number, field: keyof CameraRow, val: string) => {
     const next = [...rows];
-    if (!next[i]) next[i] = { stream_name: '', feeder: '', name: '' };
+    if (!next[i]) next[i] = { stream_name: '', name: '' };
     next[i] = { ...next[i], [field]: val };
     sync(next);
   };
 
   const addRow = () => {
-    sync([...rows, { stream_name: '', feeder: '', name: '' }]);
+    sync([...rows, { stream_name: '', name: '' }]);
   };
 
   const removeRow = (i: number) => {
     const next = rows.filter((_, idx) => idx !== i);
-    sync(next.length ? next : [{ stream_name: '', feeder: '', name: '' }]);
+    sync(next.length ? next : [{ stream_name: '', name: '' }]);
   };
 
   const { t } = useTranslation();
@@ -75,7 +73,7 @@ function CamerasListField({
       </Typography>
       {rows.map((row, i) => (
         <Grid container key={i} spacing={1} sx={{ mb: 1 }} alignItems="center">
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               size="small"
@@ -85,17 +83,7 @@ function CamerasListField({
               placeholder="BirdBox"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <TextField
-              fullWidth
-              size="small"
-              value={row.feeder ?? ''}
-              onChange={(e) => updateRow(i, 'feeder', e.target.value)}
-              label={t('settings.feederLabel')}
-              placeholder="1"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 5 }}>
             <TextField
               fullWidth
               size="small"

@@ -37,7 +37,7 @@ export const StatusIndicator = () => {
   const { data } = useQuery({
     queryKey: ['status'],
     queryFn: fetchStatus,
-    refetchInterval: 30000,
+    refetchInterval: 10000,
   });
   if (!data) return null;
   return (
