@@ -155,6 +155,9 @@
     "regenerateSpectrogramsHint": "Создать спектрограммы для старых видео без них",
     "regenerating": "Генерация...",
     "regenerateSuccess": "Создано {{generated}} спектрограмм, ошибок {{failed}}, пропущено {{skipped}}",
+    "regenerateTracks": "Перегенерировать треки",
+    "regenerateTracksSuccess": "Треков: {{generated}}, ошибок {{failed}}, пропущено {{skipped}}",
+    "regenerateTracksFailed": "Ошибка перегенерации треков",
     "regenerateTimeout": "Таймаут ожидания результата",
     "regenerateFailed": "Ошибка перегенерации"
   },
