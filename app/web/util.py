@@ -8,6 +8,17 @@ def ensure_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def settings_check_access():
+    """Check if settings access is allowed (no password or session unlocked)."""
+    from flask import session
+    pw = (app_config.get('general.settings_password') or '').strip()
+    if not pw:
+        return True
+    return session.get('settings_unlocked') is True
+
+
 import requests
 import re
 import time

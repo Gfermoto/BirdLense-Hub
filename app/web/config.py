@@ -1,5 +1,8 @@
 import os
 
+# Secret key for Flask session (settings unlock)
+SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'birdlense-settings-session')
+
 
 class Config:
     _data_base = os.getenv('DATA_DIR') or os.path.join(
@@ -10,3 +13,4 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URL', f'sqlite:///{db_path}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SECRET_KEY = SECRET_KEY

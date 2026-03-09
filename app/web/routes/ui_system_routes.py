@@ -9,6 +9,7 @@ from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func
 from services.retention_service import run_retention
 from app_config.app_config import app_config
+from util import settings_check_access
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None}
@@ -167,6 +168,8 @@ def register_routes(app):
 
     @app.route('/api/ui/storage/purge', methods=['POST'])
     def purge_storage():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         try:
             date_str = request.json.get('date')
             if not date_str:
@@ -226,6 +229,8 @@ def register_routes(app):
     @app.route('/api/ui/system/retention', methods=['POST'])
     def trigger_retention():
         """Run retention policy (delete old recordings)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         try:
             count, size = run_retention()
             return {
@@ -312,6 +317,8 @@ def register_routes(app):
         Processes videos without spectrograms (or all if force=true).
         Poll GET .../status to get result.
         """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         force = (request.json or {}).get('force', False)
         t = threading.Thread(target=_run_regenerate_spectrograms, args=(force,), daemon=True)
         t.start()
@@ -395,6 +402,8 @@ def register_routes(app):
     @app.route('/api/ui/system/regenerate-tracks', methods=['POST'])
     def regenerate_tracks():
         """Start track regeneration in background. Processes videos without tracks (or all if force)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         force = (request.json or {}).get('force', False)
         t = threading.Thread(target=_run_regenerate_tracks, args=(force,), daemon=True)
         t.start()
@@ -411,6 +420,8 @@ def register_routes(app):
         Scan data/recordings/ for video.mp4 not in DB and add them.
         Fixes recordings missing from stats after server restart.
         """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         if not os.path.exists(_recordings_dir()):
             return {'imported': 0, 'message': 'No recordings directory'}, 200
 

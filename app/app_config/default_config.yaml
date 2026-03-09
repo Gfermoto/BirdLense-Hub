@@ -1,6 +1,9 @@
 general:
   enable_notifications: false
   notification_excluded_species: []
+  # Пароль для доступа к настройкам. Пусто — без пароля.
+  # Хранится в открытом виде. Для продакшена рассмотрите хеширование.
+  settings_password: ""
 
 # Video/Audio processor settings
 processor:

@@ -1,9 +1,9 @@
-from flask import request
+from flask import request, session
 import json as json_module
 from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
-from util import fetch_weather, update_species_info_from_wiki, ensure_utc
+from util import fetch_weather, update_species_info_from_wiki, ensure_utc, settings_check_access
 from app_config.app_config import app_config
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 
@@ -476,12 +476,37 @@ def register_routes(app):
             app.logger.error(f"Error fetching bird families: {str(e)}")
             return {"error": "Failed to fetch bird families"}, 500
 
+    def _settings_requires_password():
+        pw = app_config.get('general.settings_password') or ''
+        return bool(pw.strip())
+
+    @app.route('/api/ui/settings/requires-password', methods=['GET'])
+    def settings_requires_password():
+        return {'requires': _settings_requires_password()}, 200
+
+    @app.route('/api/ui/settings/verify-password', methods=['POST'])
+    def settings_verify_password():
+        data = request.json or {}
+        pw = (data.get('password') or '').strip()
+        expected = (app_config.get('general.settings_password') or '').strip()
+        if not expected:
+            return {'ok': True}, 200
+        if pw == expected:
+            session['settings_unlocked'] = True
+            session.permanent = True
+            return {'ok': True}, 200
+        return {'ok': False}, 401
+
     @app.route('/api/ui/settings', methods=['GET'])
     def get_settings():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         return app_config.config, 200
 
     @app.route('/api/ui/settings', methods=['PATCH'])
     def update_settings():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         try:
             # Parse JSON body from the request
             updates = request.json
@@ -512,6 +537,8 @@ def register_routes(app):
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():
         """Create flag file; processor will exit and docker restarts it."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         import os
         data_dir = os.environ.get('DATA_DIR') or os.path.join(
             os.path.dirname(__file__), '..', '..', 'data')

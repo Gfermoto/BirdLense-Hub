@@ -141,12 +141,36 @@ export const dispenseFeed = async (): Promise<{ success: boolean; message?: stri
   }
 };
 
+export const fetchSettingsRequiresPassword = async (): Promise<boolean> => {
+  if (useMockData) return false;
+  const response = await axios.get(`${BASE_API_URL}/settings/requires-password`, {
+    withCredentials: true,
+  });
+  return response.data?.requires === true;
+};
+
+export const verifySettingsPassword = async (password: string): Promise<boolean> => {
+  if (useMockData) return true;
+  try {
+    const response = await axios.post(
+      `${BASE_API_URL}/settings/verify-password`,
+      { password },
+      { withCredentials: true },
+    );
+    return response.data?.ok === true;
+  } catch {
+    return false;
+  }
+};
+
 export const fetchSettings = async () => {
   if (useMockData) {
     await sleep(1000);
     return mockSetttings;
   } else {
-    const response = await axios.get(`${BASE_API_URL}/settings`);
+    const response = await axios.get(`${BASE_API_URL}/settings`, {
+      withCredentials: true,
+    });
     return response.data;
   }
 };
@@ -156,7 +180,9 @@ export const updateSettings = async (settings: Settings) => {
     await sleep(1000);
     return settings;
   } else {
-    const response = await axios.patch(`${BASE_API_URL}/settings`, settings);
+    const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
+      withCredentials: true,
+    });
     return response.data;
   }
 };
@@ -167,7 +193,9 @@ export const restartProcessor = async (): Promise<{ success: boolean; message?: 
     return { success: true, message: 'Restart requested' };
   }
   try {
-    const response = await axios.post(`${BASE_API_URL}/restart-processor`);
+    const response = await axios.post(`${BASE_API_URL}/restart-processor`, {}, {
+      withCredentials: true,
+    });
     return { success: true, message: response.data?.message };
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } };

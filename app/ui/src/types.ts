@@ -92,6 +92,7 @@ export interface Settings {
   general: {
     enable_notifications: boolean; // Whether to enable notifications or not
     notification_excluded_species: string[]; // list of species to exclude from notifications
+    settings_password?: string; // Password to access settings; empty = no password
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
