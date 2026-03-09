@@ -9,20 +9,17 @@ import { fetchCameras } from '../../api/api';
 const CameraStream = ({
   streamUrl,
   name,
-  feeder,
 }: {
   streamUrl: string;
   name: string;
-  feeder?: string;
 }) => {
-  const label = feeder ? `${feeder} — ${name}` : name;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
-      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{label}</Typography>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{name}</Typography>
       <Box
         component="iframe"
         src={streamUrl}
-        title={label}
+        title={name}
         sx={{
           flex: 1,
           minHeight: 200,
@@ -75,7 +72,6 @@ export const LivePage = () => {
             <CameraStream
               streamUrl={cam.stream_url}
               name={cam.name}
-              feeder={cam.feeder}
             />
           </Grid>
         ))}

@@ -9,11 +9,9 @@ video:
     - id: bird_cam
       stream_name: bird_cam
       name: "Камера 1"
-      feeder: "Кормушка 1"
     - id: bird_cam2
       stream_name: bird_cam2
       name: "Камера 2"
-      feeder: "Кормушка 2"
 
 motion:
   source: mqtt

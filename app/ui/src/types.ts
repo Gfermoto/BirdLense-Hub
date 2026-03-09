@@ -118,7 +118,7 @@ export interface Settings {
     source?: string;
     go2rtc_url?: string;
     stream_name?: string;
-    cameras?: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }>;
+    cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
     video_width?: number;

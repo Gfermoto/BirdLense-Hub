@@ -1,6 +1,13 @@
 import logging
 import os
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
+
+
+def ensure_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC). SQLite returns naive datetimes."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 import requests
 import re
 import time
