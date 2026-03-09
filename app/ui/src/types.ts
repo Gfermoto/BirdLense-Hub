@@ -130,7 +130,6 @@ export interface Settings {
     password?: string;
     frigate_topic?: string;
     birdnet_topic?: string;
-    birdnet_go_topic?: string;
   };
   weather?: {
     source?: string;

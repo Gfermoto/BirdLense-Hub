@@ -1,0 +1,8 @@
+# Локальные настройки деплоя — скопируйте в deploy.local.sh
+# cp deploy.local.sh.example deploy.local.sh
+# deploy.local.sh не коммитится в git
+
+export DEPLOY_HOST="birdlense"           # хост из ~/.ssh/config
+export DEPLOY_URL="http://YOUR_IP:8085"  # замените на свой IP
+
+# На сервере добавьте в app/.env: CORS_ORIGINS=http://YOUR_IP:8085

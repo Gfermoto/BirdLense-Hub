@@ -21,7 +21,7 @@ motion:
 mqtt:
   broker: "mqtt.local"
   frigate_topic: "frigate/events"
-  birdnet_topic: "birdnet/sightings"
+  birdnet_topic: "birdnet"
   publish_topic: "birdlense/detections"
 
 weather:

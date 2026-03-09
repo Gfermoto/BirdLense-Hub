@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
@@ -29,6 +30,7 @@ export const PageHelp = ({
   details,
   dialogMaxWidth = 'sm',
 }: PageHelpProps) => {
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleOpenDialog = () => setDialogOpen(true);
@@ -41,7 +43,7 @@ export const PageHelp = ({
     <Box component="section" sx={{ mb: 3, mt: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="h4">{title}</Typography>
-        <Tooltip title="Click for help">
+        <Tooltip title={t('common.clickForHelp')}>
           <IconButton
             onClick={handleOpenDialog}
             size="small"
@@ -93,7 +95,7 @@ export const PageHelp = ({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Close</Button>
+          <Button onClick={handleCloseDialog}>{t('common.close')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

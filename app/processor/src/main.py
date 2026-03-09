@@ -10,7 +10,6 @@ from frame_processor import FrameProcessor
 from detection_strategy import SingleStageStrategy, TwoStageStrategy
 from motion_detectors.fake import FakeMotionDetector
 from motion_detectors.opencv_motion import OpenCVMotionDetector
-from motion_detectors.frigate_mqtt import FrigateMQTTMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
@@ -32,19 +31,24 @@ logging.basicConfig(
 
 
 def get_output_path():
-    output_dir = "data/recordings/" + time.strftime("%Y/%m/%d/%H%M%S")
+    data_dir = os.environ.get('DATA_DIR', 'data')
+    subpath = time.strftime("%Y/%m/%d/%H%M%S")
+    output_dir = os.path.join(data_dir, 'recordings', subpath)
     os.makedirs(output_dir, exist_ok=True)
-    return output_dir
+    return output_dir, f"data/recordings/{subpath}"
 
 
-RESTART_FLAG = "data/restart_processor.flag"
+def _restart_flag_path():
+    data_dir = os.environ.get('DATA_DIR', 'data')
+    return os.path.join(data_dir, 'restart_processor.flag')
 
 
 def _check_restart_flag():
     """If flag exists, exit so docker restarts the container."""
-    if os.path.exists(RESTART_FLAG):
+    flag_path = _restart_flag_path()
+    if os.path.exists(flag_path):
         try:
-            os.remove(RESTART_FLAG)
+            os.remove(flag_path)
         except OSError:
             pass
         logging.info("Restart flag found, exiting for restart")
@@ -82,21 +86,24 @@ def main():
     )
     lores_size = (640, 640)
 
-    # Build camera map for multi-camera (go2rtc)
-    cameras_config = app_config.get('video.cameras')
-    if cameras_config:
-        cameras = [
-            {
-                'id': c.get('id') or c.get('stream_name', ''),
-                'stream_name': c.get('stream_name', c.get('id', '')),
-            }
-            for c in cameras_config
-        ]
-    else:
-        stream_name = app_config.get('video.stream_name', 'bird_cam')
-        cameras = [{'id': stream_name, 'stream_name': stream_name}]
-    go2rtc_url = os.environ.get('GO2RTC_URL') or app_config.get('video.go2rtc_url', 'http://go2rtc:1984')
-    default_camera_id = cameras[0]['id'] if cameras else 'bird_cam'
+    # Build camera map — только из video.cameras, без default
+    cameras_config = app_config.get('video.cameras') or []
+    valid = [c for c in cameras_config if (c.get('stream_name') or '').strip()]
+    cameras = [
+        {'id': c.get('id') or c.get('stream_name', ''), 'stream_name': c.get('stream_name', c.get('id', ''))}
+        for c in valid
+    ]
+    go2rtc_url = (os.environ.get('GO2RTC_URL') or app_config.get('video.go2rtc_url') or '').strip()
+    if not go2rtc_url:
+        logging.warning('video.go2rtc_url не задан. Укажите в Настройках: http://IP:1984')
+    if (not cameras or not go2rtc_url) and app_config.get('video.source') == 'go2rtc':
+        logging.warning("video.cameras или video.go2rtc_url не заданы. Добавьте в Настройках. Processor будет ждать перезапуска.")
+        hb_id = None
+        while True:
+            _check_restart_flag()
+            hb_id = api.activity_log(type='heartbeat', data={'status': 'waiting_cameras'}, id=hb_id)
+            time.sleep(60)
+    default_camera_id = cameras[0]['id']
     media_sources_cache = {}
     mjpeg_base_port = 8082
 
@@ -135,18 +142,36 @@ def main():
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
+    frigate_camera_filter = (
+        app_config.get('motion.frigate_camera_filter')
+        or app_config.get('mqtt.frigate_camera_filter')
+        or [c['id'] for c in cameras]
+    )
+    frigate_label_filter = set(app_config.get('motion.frigate_label_filter') or app_config.get('mqtt.frigate_label_filter') or ['bird', 'Bird'])
+    use_frigate_from_aggregator = (
+        app_config.get('motion.source') in ('frigate', 'mqtt')
+        and mqtt_broker
+        and not (app_config.get('motion.mqtt_topic') or '').strip()
+    )
     if mqtt_broker:
+        on_frigate_motion = None
+        if use_frigate_from_aggregator:
+            from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator
+            frigate_detector = FrigateMotionFromAggregator(None, frigate_camera_filter, frigate_label_filter)
+            on_frigate_motion = frigate_detector.get_on_frigate_motion_tuple()
         mqtt_aggregator = MQTTEventAggregator(
             broker=mqtt_broker,
             port=app_config.get('mqtt.port', 1883),
             frigate_topic=app_config.get('mqtt.frigate_topic', 'frigate/events'),
-            birdnet_topic=app_config.get('mqtt.birdnet_topic', 'birdnet/sightings'),
-            birdnet_go_topic=app_config.get('mqtt.birdnet_go_topic', '') or '',
+            birdnet_topic=app_config.get('mqtt.birdnet_topic', 'birdnet'),
             publish_topic=app_config.get('mqtt.publish_topic', 'birdlense/detections'),
             username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
             password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+            on_frigate_motion=on_frigate_motion,
         )
         mqtt_aggregator.start()
+        if use_frigate_from_aggregator:
+            frigate_detector._aggregator = mqtt_aggregator
 
     # Motion detector: fake (arg) | mock-mqtt | opencv | mqtt | pir
     if args.fake_motion:
@@ -155,35 +180,16 @@ def main():
     elif args.mock_mqtt:
         motion_detector = FakeMotionDetector(motion=True, wait=5)
         logging.info('Using --mock-mqtt: fake motion for development')
-    elif (app_config.get('motion.source') in ('frigate', 'mqtt') and mqtt_broker and
-          not (app_config.get('motion.mqtt_topic') or '').strip()):
-        # frigate or legacy mqtt (Frigate) - mqtt_topic empty = Frigate
-        frigate_camera_filter = (
-            app_config.get('motion.frigate_camera_filter')
-            or app_config.get('mqtt.frigate_camera_filter')
-            or [c['id'] for c in cameras]
-        )
-        frigate_detector = FrigateMQTTMotionDetector(
-            broker=mqtt_broker,
-            port=app_config.get('mqtt.port', 1883),
-            topic=app_config.get('mqtt.frigate_topic', 'frigate/events'),
-            camera_filter=frigate_camera_filter,
-            label_filter=set(app_config.get('motion.frigate_label_filter') or app_config.get('mqtt.frigate_label_filter') or ['bird', 'Bird']),
-        )
-        try:
-            frigate_detector.start()
-            for _ in range(5):
-                if frigate_detector._connected:
-                    break
-                time.sleep(1)
-            if not frigate_detector._connected:
-                logging.warning('Frigate MQTT not connected, falling back to OpenCV')
-                motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
-            else:
-                motion_detector = frigate_detector
-        except Exception as e:
-            logging.warning(f'Frigate MQTT failed ({e}), falling back to OpenCV')
+    elif use_frigate_from_aggregator and mqtt_aggregator:
+        for _ in range(5):
+            if mqtt_aggregator.is_connected():
+                break
+            time.sleep(1)
+        if not mqtt_aggregator.is_connected():
+            logging.warning('Frigate MQTT not connected, falling back to OpenCV')
             motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
+        else:
+            motion_detector = frigate_detector
     elif app_config.get('motion.source') == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
         mqtt_topic = app_config.get('motion.mqtt_topic', '').strip()
         from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
@@ -223,16 +229,35 @@ def main():
         api.set_active_species(regional_species)
 
     # Configure Detection Strategy
+    processor_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     strategy_type = app_config.get('processor.detection_strategy', 'single_stage')
-    if strategy_type == 'two_stage':
+    binary_path = app_config.get('processor.models.binary', 'models/detection/weights/best.pt')
+    classifier_path = app_config.get('processor.models.classifier', 'models/classification/weights/best.pt')
+    if not os.path.isabs(binary_path):
+        binary_path = os.path.join(processor_root, binary_path)
+    if not os.path.isabs(classifier_path):
+        classifier_path = os.path.join(processor_root, classifier_path)
+
+    if strategy_type == 'two_stage' and os.path.isfile(binary_path) and os.path.isfile(classifier_path):
         detection_strategy = TwoStageStrategy(
-            binary_model_path=app_config.get('processor.models.binary'),
-            classifier_model_path=app_config.get('processor.models.classifier'),
+            binary_model_path=binary_path,
+            classifier_model_path=classifier_path,
             regional_species=regional_species
         )
     else:
+        if strategy_type == 'two_stage':
+            logging.warning(
+                f'YOLO two_stage: модели не найдены ({binary_path}, {classifier_path}). '
+                'Используем single_stage с yolov8n.pt. Добавьте best.pt в processor/models/ для полной детекции.'
+            )
+        single_path = app_config.get('processor.models.single_stage', 'yolov8n.pt')
+        if not os.path.isabs(single_path):
+            single_path = os.path.join(processor_root, single_path)
+        # .pt файл или yolov8n.pt (pretrained)
+        if not os.path.isfile(single_path):
+            single_path = 'yolov8n.pt'
         detection_strategy = SingleStageStrategy(
-            model_path=app_config.get('processor.models.single_stage'),
+            model_path=single_path,
             regional_species=regional_species
         )
 
@@ -259,8 +284,9 @@ def main():
             media_source = get_media_source(camera_id)
 
         # Configure video sources
-        output_path = get_output_path()
-        video_output = f"{output_path}/video.mp4"
+        output_path_physical, output_path_logical = get_output_path()
+        video_output = os.path.join(output_path_physical, "video.mp4")
+        video_path_for_api = f"{output_path_logical}/video.mp4"
 
         media_source.start_recording(video_output)
 
@@ -325,12 +351,16 @@ def main():
             video_summary = [{k: v for k, v in d.items() if k != 'best_frame'} for d in video_detections]
             logging.info(
                 f'Processing stopped. Video Result: {video_summary}; Audio Result: {audio_detections}')
+            if len(video_detections) == 0 and mqtt_aggregator:
+                logging.warning(
+                    f'No detections after merge. YOLO tracks: {len(frame_processor.tracks)}, '
+                    f'MQTT events in window: {len(mqtt_events)}')
             if len(video_detections) > 0:
                 api.create_video(video_detections, audio_detections, start_time,
-                                 end_time, video_output, spectrogram_path)
+                                 end_time, video_path_for_api, spectrogram_path)
             else:
                 # no detections, delete folder
-                shutil.rmtree(output_path)
+                shutil.rmtree(output_path_physical)
         except Exception as e:
             logging.error(e)
 

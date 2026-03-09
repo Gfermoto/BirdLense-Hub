@@ -20,6 +20,7 @@ import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import { CircularProgress } from '@mui/material';
 import { SpeciesSummary } from '../../types';
 import { fetchSpeciesSummary } from '../../api/api';
+import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
 
@@ -49,6 +50,7 @@ const StatCard = ({
 );
 
 const SpeciesSummaryPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const speciesId = id ? +id : undefined;
 
@@ -63,7 +65,7 @@ const SpeciesSummaryPage = () => {
         <CircularProgress />
       </Box>
     );
-  if (error || !data) return <div>Error loading data.</div>;
+  if (error || !data) return <div>{t('speciesSummary.errorLoad')}</div>;
 
   const hours = Array.from(
     { length: 24 },
@@ -108,11 +110,11 @@ const SpeciesSummaryPage = () => {
                 },
               }}
             >
-              View {data.species.parent.name}
+              {t('speciesSummary.viewParent', { name: data.species.parent.name })}
             </Link>
           }
         >
-          This is a subspecies of {data.species.parent.name}
+          {t('speciesSummary.subspeciesOf', { name: data.species.parent.name })}
         </Alert>
       )}
       {/* Header Section */}
@@ -154,19 +156,19 @@ const SpeciesSummaryPage = () => {
         <Grid size={{ xs: 12, md: 4 }}>
           <StatCard
             icon={<InfoIcon fontSize="small" color="primary" />}
-            title="Total Detection Stats"
+            title={t('speciesSummary.totalDetectionStats')}
           >
             <Stack spacing={1.5}>
               <Typography variant="body1">
-                Last 24 hours:{' '}
+                {t('speciesSummary.last24h')}:{' '}
                 <strong>{data.stats.detections.detections_24h}</strong>
               </Typography>
               <Typography variant="body1">
-                Last 7 days:{' '}
+                {t('speciesSummary.last7d')}:{' '}
                 <strong>{data.stats.detections.detections_7d}</strong>
               </Typography>
               <Typography variant="body1">
-                Last 30 days:{' '}
+                {t('speciesSummary.last30d')}:{' '}
                 <strong>{data.stats.detections.detections_30d}</strong>
               </Typography>
               {data.subspecies.length > 0 && (
@@ -194,7 +196,7 @@ const SpeciesSummaryPage = () => {
               <Divider />
               {data.stats.timeRange.first_sighting && (
                 <Typography variant="body2" color="text.secondary">
-                  First seen:{' '}
+                  {t('speciesSummary.firstSeen')}:{' '}
                   {new Date(
                     data.stats.timeRange.first_sighting,
                   ).toLocaleDateString()}
@@ -202,7 +204,7 @@ const SpeciesSummaryPage = () => {
               )}
               {data.stats.timeRange.last_sighting && (
                 <Typography variant="body2" color="text.secondary">
-                  Last seen:{' '}
+                  {t('speciesSummary.lastSeen')}:{' '}
                   {new Date(
                     data.stats.timeRange.last_sighting,
                   ).toLocaleDateString()}
@@ -216,7 +218,7 @@ const SpeciesSummaryPage = () => {
         <Grid size={{ xs: 12, md: 8 }}>
           <StatCard
             icon={<AccessTimeIcon fontSize="small" color="primary" />}
-            title="Daily Activity Pattern"
+            title={t('speciesSummary.dailyActivityPattern')}
           >
             <Box sx={{ width: '100%', height: 300 }}>
               <LineChart
@@ -236,7 +238,7 @@ const SpeciesSummaryPage = () => {
                     data: localActivity,
                     // area: true,
                     color: labelToUniqueHexColor(data.species.name as string),
-                    label: 'Total',
+                    label: t('speciesSummary.total'),
                   },
                   ...subspeciesActivities.map((sub) => ({
                     data: sub.data,
@@ -254,7 +256,7 @@ const SpeciesSummaryPage = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <StatCard
             icon={<CloudIcon fontSize="small" color="primary" />}
-            title="Weather Preferences"
+            title={t('speciesSummary.weatherPreferences')}
           >
             <Box sx={{ width: '100%', height: 300 }}>
               <ScatterChart
@@ -281,7 +283,7 @@ const SpeciesSummaryPage = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <StatCard
             icon={<RestaurantIcon fontSize="small" color="primary" />}
-            title="Common Food During Sightings"
+            title={t('speciesSummary.commonFoodDuringSightings')}
           >
             <Stack spacing={2}>
               {data.stats.food.map((food) => (
@@ -295,7 +297,7 @@ const SpeciesSummaryPage = () => {
                 >
                   <Typography variant="body1">{food.name}</Typography>
                   <Typography variant="body1" color="primary.main">
-                    {food.count} sightings
+                    {food.count} {t('speciesSummary.sightings')}
                   </Typography>
                 </Box>
               ))}
@@ -309,7 +311,7 @@ const SpeciesSummaryPage = () => {
           <Stack direction="row" spacing={1} alignItems="center">
             <AccessTimeFilledIcon fontSize="small" color="primary" />
             <Typography variant="h6" color="primary">
-              Recent Visits
+              {t('speciesSummary.recentVisits')}
             </Typography>
           </Stack>
           <Divider sx={{ my: 2 }} />

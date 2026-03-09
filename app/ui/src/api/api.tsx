@@ -102,7 +102,7 @@ export const fetchCameras = async (): Promise<
 > => {
   if (useMockData) {
     await sleep(200);
-    return [{ id: 'bird_cam', name: 'Bird Cam', stream_url: '/processor/live' }];
+    return [{ id: 'bird_cam', name: 'Bird Cam', stream_url: '/go2rtc/stream.html?src=bird_cam' }];
   }
   const response = await axios.get(`${BASE_API_URL}/cameras`);
   return response.data.cameras || [];

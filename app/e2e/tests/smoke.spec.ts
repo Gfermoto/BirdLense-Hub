@@ -10,7 +10,7 @@ test.describe('Smoke tests', () => {
   test('navigation links work', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: 'Timeline' }).first().click();
+    await page.getByRole('link', { name: 'Записи' }).first().click();
     await expect(page).toHaveURL(/\/timeline/);
 
     await page.goto('/');

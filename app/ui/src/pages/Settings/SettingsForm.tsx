@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -41,15 +42,12 @@ function CamerasListField({
     : [{ stream_name: '', feeder: '', name: '' }];
 
   const sync = (newRows: CameraRow[]) => {
-    const filtered = newRows.filter((r) => (r.stream_name ?? '').trim());
-    const arr = filtered.length
-      ? filtered.map((r) => ({
-          id: (r.stream_name ?? '').trim(),
-          stream_name: (r.stream_name ?? '').trim(),
-          name: (r.name ?? '').trim() || (r.stream_name ?? '').trim(),
-          feeder: (r.feeder ?? '').trim() || undefined,
-        }))
-      : [];
+    const arr = newRows.map((r) => ({
+      id: (r.stream_name ?? '').trim() || undefined,
+      stream_name: (r.stream_name ?? '').trim(),
+      name: (r.name ?? '').trim() || (r.stream_name ?? '').trim(),
+      feeder: (r.feeder ?? '').trim() || undefined,
+    }));
     onChange(arr);
   };
 
@@ -69,10 +67,11 @@ function CamerasListField({
     sync(next.length ? next : [{ stream_name: '', feeder: '', name: '' }]);
   };
 
+  const { t } = useTranslation();
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Имя потока — из Go2RTC. Номер кормушки и название — для подписи.
+        {t('settings.streamNameHint')}
       </Typography>
       {rows.map((row, i) => (
         <Grid container key={i} spacing={1} sx={{ mb: 1 }} alignItems="center">
@@ -82,7 +81,7 @@ function CamerasListField({
               size="small"
               value={row.stream_name ?? ''}
               onChange={(e) => updateRow(i, 'stream_name', e.target.value)}
-              label="Имя потока (Go2RTC)"
+              label={t('settings.streamName')}
               placeholder="BirdBox"
             />
           </Grid>
@@ -92,7 +91,7 @@ function CamerasListField({
               size="small"
               value={row.feeder ?? ''}
               onChange={(e) => updateRow(i, 'feeder', e.target.value)}
-              label="Номер кормушки"
+              label={t('settings.feederLabel')}
               placeholder="1"
             />
           </Grid>
@@ -102,8 +101,8 @@ function CamerasListField({
               size="small"
               value={row.name ?? ''}
               onChange={(e) => updateRow(i, 'name', e.target.value)}
-              label="Название камеры"
-              placeholder="Кормушка"
+              label={t('settings.cameraName')}
+              placeholder={t('settings.cameraPlaceholder')}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 1 }}>
@@ -119,7 +118,7 @@ function CamerasListField({
         </Grid>
       ))}
       <Button size="small" onClick={addRow} sx={{ mt: 0.5 }}>
-        + Добавить камеру
+        {t('settings.addCamera')}
       </Button>
     </Box>
   );
@@ -136,6 +135,7 @@ export const SettingsForm = ({
   observedSpecies: Species[];
   onSubmit: (settings: Settings) => void;
 }) => {
+  const { t } = useTranslation();
   const form = useForm<Settings>({
     defaultValues: currentSettings,
     onSubmit: ({ value }) => onSubmit(value),
@@ -150,14 +150,14 @@ export const SettingsForm = ({
       form.setFieldValue('secrets.longitude', lon);
     } catch (error) {
       console.log(error);
-      alert('Failed to fetch coordinates. Please check the ZIP code.');
+      alert(t('settings.zipFetchFailed'));
     }
   };
 
   const resolutions = [
-    { label: 'FullHD (1920x1080)', width: 1920, height: 1080 },
-    { label: 'HD (1280x720)', width: 1280, height: 720 },
-    { label: 'VGA (640x480)', width: 640, height: 480 },
+    { label: t('settings.resolutionFullHD'), width: 1920, height: 1080 },
+    { label: t('settings.resolutionHD'), width: 1280, height: 720 },
+    { label: t('settings.resolutionVGA'), width: 640, height: 480 },
   ];
 
   return (
@@ -171,12 +171,12 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      {/* ========== 1. ПОДКЛЮЧЕНИЕ ========== */}
+      {/* ========== 1. CONNECTION ========== */}
       <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
-        1. Подключение
+        {t('settings.section1')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        MQTT и Go2RTC — основа для камер, детекции движения и реле.
+        {t('settings.section1Desc')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
@@ -187,9 +187,9 @@ export const SettingsForm = ({
                 id={field.name}
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="MQTT Broker"
+                label={t('settings.mqttBroker')}
                 placeholder="192.168.1.10"
-                helperText="IP или домен брокера (Frigate, Tasmota, датчики)"
+                helperText={t('settings.mqttBrokerHint')}
               />
             )}
           </form.Field>
@@ -202,7 +202,7 @@ export const SettingsForm = ({
                 type="number"
                 value={field.state.value ?? 1883}
                 onChange={(e) => field.handleChange(Number(e.target.value) || 1883)}
-                label="MQTT порт"
+                label={t('settings.mqttPort')}
               />
             )}
           </form.Field>
@@ -214,7 +214,7 @@ export const SettingsForm = ({
                 fullWidth
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="MQTT логин"
+                label={t('settings.mqttUser')}
               />
             )}
           </form.Field>
@@ -227,7 +227,7 @@ export const SettingsForm = ({
                 type="password"
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="MQTT пароль"
+                label={t('settings.mqttPassword')}
               />
             )}
           </form.Field>
@@ -239,9 +239,9 @@ export const SettingsForm = ({
                 fullWidth
                 value={field.state.value ?? 'frigate/events'}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="Frigate топик"
+                label={t('settings.frigateTopic')}
                 placeholder="frigate/events"
-                helperText="События Frigate для слияния с YOLO"
+                helperText={t('settings.frigateTopicHint')}
               />
             )}
           </form.Field>
@@ -251,25 +251,11 @@ export const SettingsForm = ({
             {(field) => (
               <TextField
                 fullWidth
-                value={field.state.value ?? 'birdnet/sightings'}
+                value={field.state.value ?? 'birdnet'}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="BirdNET топик"
-                placeholder="birdnet/sightings"
-                helperText="BirdNET-Pi. BirdNET-Go — ниже."
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="mqtt.birdnet_go_topic">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="BirdNET-Go топик (опц.)"
-                placeholder="birdnet/detections"
-                helperText="Если есть BirdNET-Go — подписка на оба"
+                label={t('settings.birdnetTopic')}
+                placeholder="birdnet"
+                helperText={t('settings.birdnetTopicHint')}
               />
             )}
           </form.Field>
@@ -281,9 +267,9 @@ export const SettingsForm = ({
                 fullWidth
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="Go2RTC URL"
-                placeholder="http://frigate:1984"
-                helperText="В Docker с Frigate: http://frigate:1984. RTSP порт 8554."
+                label={t('settings.go2rtcUrlLabel')}
+                placeholder="http://192.168.1.10:1984"
+                helperText={t('settings.go2rtcUrlHint')}
               />
             )}
           </form.Field>
@@ -291,14 +277,14 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="video.go2rtc_username">
             {(field) => (
-              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Go2RTC логин" />
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.go2rtcUser')} />
             )}
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="video.go2rtc_password">
             {(field) => (
-              <TextField fullWidth type="password" value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Go2RTC пароль" />
+              <TextField fullWidth type="password" value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.go2rtcPassword')} />
             )}
           </form.Field>
         </Grid>
@@ -306,12 +292,12 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 2. КАМЕРЫ ========== */}
+      {/* ========== 2. CAMERAS ========== */}
       <Typography variant="h5" gutterBottom>
-        2. Камеры
+        {t('settings.section2')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Имена камер из Go2RTC/Frigate. Топики Frigate (frigate/events) и BirdNET (birdnet/sightings) — стандартные. Фильтр камер берётся из списка ниже.
+        {t('settings.section2Desc')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
@@ -324,49 +310,35 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="video.stream_name">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label="Stream name (если одна камера)"
-                placeholder="bird_cam"
-                helperText="Используется, если список камер выше пуст."
-              />
-            )}
-          </form.Field>
-        </Grid>
       </Grid>
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 3. ДЕТЕКЦИЯ ДВИЖЕНИЯ ========== */}
+      {/* ========== 3. MOTION DETECTION ========== */}
       <Typography variant="h5" gutterBottom>
-        3. Детекция движения
+        {t('settings.section3')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Что запускает запись: анализ кадров, события Frigate или внешний датчик (MQTT/ESPHome).
+        {t('settings.section3Desc')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="motion.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>Источник движения</InputLabel>
+                <InputLabel>{t('settings.triggerLabel')}</InputLabel>
                 <Select
-                  value={field.state.value ?? 'opencv'}
-                  label="Источник движения"
-                  onChange={(e) => field.handleChange(e.target.value)}
+                  value={(field.state.value === 'frigate' ? 'auto' : field.state.value) ?? 'auto'}
+                  label={t('settings.triggerLabel')}
+                  onChange={(e) => field.handleChange(e.target.value === 'auto' ? 'frigate' : e.target.value)}
                 >
-                  <MenuItem value="opencv">OpenCV — анализ каждого кадра</MenuItem>
-                  <MenuItem value="frigate">Frigate — события по MQTT (bird, Bird)</MenuItem>
-                  <MenuItem value="mqtt">MQTT — бинарный датчик (Tasmota PIR, Shelly)</MenuItem>
-                  <MenuItem value="esphome">ESPHome — бинарный датчик по IP</MenuItem>
+                  <MenuItem value="auto">{t('settings.triggerFrigate')}</MenuItem>
+                  <MenuItem value="opencv">{t('settings.triggerOpencv')}</MenuItem>
+                  <MenuItem value="mqtt">{t('settings.triggerMqtt')}</MenuItem>
+                  <MenuItem value="esphome">{t('settings.triggerEsp')}</MenuItem>
                 </Select>
                 <FormHelperText>
-                  OpenCV = всегда включён. Frigate = нужен MQTT. MQTT/ESPHome = как реле подкормки.
+                  {t('settings.triggerHint')}
                 </FormHelperText>
               </FormControl>
             )}
@@ -375,18 +347,11 @@ export const SettingsForm = ({
         <form.Subscribe selector={(state) => state.values.motion?.source}>
           {(source) => (
             <>
-              {source === 'frigate' && (
-                <Grid size={{ xs: 12 }}>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    Frigate публикует события в frigate/events. Фильтр камер — из списка камер выше.
-                  </Alert>
-                </Grid>
-              )}
               {source === 'mqtt' && (
                 <>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info" sx={{ mb: 2 }}>
-                      <strong>MQTT датчик:</strong> подписка на топик. При ON/1 — запись. Tasmota: stat/ИМЯ/STATE или stat/ИМЯ/PIR.
+                      {t('settings.mqttSensorAlert')}
                     </Alert>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
@@ -396,9 +361,9 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="MQTT топик датчика"
+                          label={t('settings.mqttTopic')}
                           placeholder="stat/bird_pir/STATE"
-                          helperText="Топик, где публикуется ON при движении"
+                          helperText={t('settings.mqttTopicHint')}
                         />
                       )}
                     </form.Field>
@@ -409,7 +374,7 @@ export const SettingsForm = ({
                 <>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info" sx={{ mb: 2 }}>
-                      <strong>ESPHome:</strong> бинарный датчик (PIR, door). Нужен web_server в конфиге ESPHome.
+                      {t('settings.esphomeAlert')}
                     </Alert>
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
@@ -419,7 +384,7 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="Адрес ESPHome"
+                          label={t('settings.esphomeUrl')}
                           placeholder="http://192.168.1.50"
                         />
                       )}
@@ -432,9 +397,9 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="ID датчика"
+                          label={t('settings.sensorId')}
                           placeholder="bird_pir"
-                          helperText="id из YAML: binary_sensor: - id: bird_pir"
+                          helperText={t('settings.sensorIdHint')}
                         />
                       )}
                     </form.Field>
@@ -448,27 +413,27 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 4. РЕЛЕ ПОДКОРМКИ ========== */}
+      {/* ========== 4. FEED RELAY ========== */}
       <Typography variant="h5" gutterBottom>
-        4. Реле подкормки
+        {t('settings.section4')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Кнопка «Выдать корм» включает реле на N секунд. Tasmota или ESPHome — как датчик движения выше.
+        {t('settings.section4Desc')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="feed.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>Тип устройства</InputLabel>
+                <InputLabel>{t('settings.feedType')}</InputLabel>
                 <Select
                   value={field.state.value ?? 'none'}
-                  label="Тип устройства"
+                  label={t('settings.feedType')}
                   onChange={(e) => field.handleChange(e.target.value)}
                 >
-                  <MenuItem value="none">Выключено</MenuItem>
-                  <MenuItem value="mqtt">Tasmota (MQTT)</MenuItem>
-                  <MenuItem value="esphome">ESPHome (по IP)</MenuItem>
+                  <MenuItem value="none">{t('settings.feedNone')}</MenuItem>
+                  <MenuItem value="mqtt">{t('settings.feedMqtt')}</MenuItem>
+                  <MenuItem value="esphome">{t('settings.feedEsp')}</MenuItem>
                 </Select>
               </FormControl>
             )}
@@ -481,7 +446,7 @@ export const SettingsForm = ({
                 <>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info" sx={{ mb: 2 }}>
-                      MQTT брокер — в блоке «Подключение». Ниже только топик реле.
+                      {t('settings.feedMqttHint')}
                     </Alert>
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
@@ -491,9 +456,9 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="MQTT топик реле"
+                          label={t('settings.relayTopic')}
                           placeholder="cmnd/bird_feeder/Power"
-                          helperText="Tasmota: cmnd/ИМЯ/Power"
+                          helperText={t('settings.relayTopicHint')}
                         />
                       )}
                     </form.Field>
@@ -504,22 +469,21 @@ export const SettingsForm = ({
                 <>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info" sx={{ mb: 2 }}>
-                      IP и имя из конфига ESPHome. Switch — реле (turn_on/turn_off). Button — кнопка (press, длительность на устройстве).
-                      <strong> Важно:</strong> в YAML ESPHome должен быть <code>web_server:</code>, иначе REST API (404) не работает.
+                      {t('settings.esphomeFeedHint')}
                     </Alert>
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <form.Field name="feed.esphome_type">
                       {(field) => (
                         <FormControl fullWidth>
-                          <InputLabel>Тип: switch или button</InputLabel>
+                          <InputLabel>{t('settings.switchType')}</InputLabel>
                           <Select
                             value={field.state.value ?? 'switch'}
-                            label="Тип: switch или button"
+                            label={t('settings.switchType')}
                             onChange={(e) => field.handleChange(e.target.value)}
                           >
-                            <MenuItem value="switch">Switch (реле)</MenuItem>
-                            <MenuItem value="button">Button (кнопка)</MenuItem>
+                            <MenuItem value="switch">{t('settings.switchTypeSwitch')}</MenuItem>
+                            <MenuItem value="button">{t('settings.switchTypeButton')}</MenuItem>
                           </Select>
                         </FormControl>
                       )}
@@ -532,7 +496,7 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="Адрес устройства"
+                          label={t('settings.deviceUrl')}
                           placeholder="http://192.168.1.50"
                         />
                       )}
@@ -545,9 +509,9 @@ export const SettingsForm = ({
                           fullWidth
                           value={field.state.value ?? ''}
                           onChange={(e) => field.handleChange(e.target.value)}
-                          label="ID switch или button"
+                          label={t('settings.switchId')}
                           placeholder="bird_feeder"
-                          helperText="ID из YAML: switch: - id: bird_feeder. Должен совпадать с object_id."
+                          helperText={t('settings.switchIdHint')}
                         />
                       )}
                     </form.Field>
@@ -564,8 +528,8 @@ export const SettingsForm = ({
                         inputProps={{ min: 1, max: 30 }}
                         value={field.state.value ?? 3}
                         onChange={(e) => field.handleChange(Number(e.target.value) || 3)}
-                        label="Секунд работы реле"
-                        helperText="Длительность включения при нажатии «Выдать корм»"
+                        label={t('settings.relaySeconds')}
+                        helperText={t('settings.relaySecondsHint')}
                       />
                     )}
                   </form.Field>
@@ -578,9 +542,9 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 5. УВЕДОМЛЕНИЯ, ПОГОДА, ЛОКАЦИЯ ========== */}
+      {/* ========== 5. NOTIFICATIONS & WEATHER ========== */}
       <Typography variant="h5" gutterBottom>
-        5. Уведомления и погода
+        {t('settings.section5')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 4 }}>
@@ -594,9 +558,9 @@ export const SettingsForm = ({
                       onChange={(e) => field.handleChange(e.target.checked)}
                     />
                   }
-                  label="Push-уведомления"
+                  label={t('settings.notifications')}
                 />
-                <FormHelperText>ntfy, топик birdlense, порт 8086</FormHelperText>
+                <FormHelperText>{t('settings.excludeHint')}</FormHelperText>
               </>
             )}
           </form.Field>
@@ -607,18 +571,18 @@ export const SettingsForm = ({
               <form.Field name="general.notification_excluded_species">
                 {(field) => (
                   <FormControl fullWidth disabled={!notificationsEnabled}>
-                    <InputLabel>Исключить из уведомлений</InputLabel>
+                    <InputLabel>{t('settings.excludeSpecies')}</InputLabel>
                     <Select
                       multiple
                       value={field.state.value || []}
                       onChange={(e) => field.handleChange(e.target.value as string[])}
-                      label="Исключить из уведомлений"
+                      label={t('settings.excludeSpecies')}
                       renderValue={(selected) => selected.join(', ')}
                     >
                       {(observedSpecies ?? []).map((species) => (
                         <MenuItem key={species.id} value={species.name}>
                           <Checkbox checked={(field.state.value || []).includes(species.name)} />
-                          <ListItemText primary={species.name} secondary={`Найдено ${species.count} раз`} />
+                          <ListItemText primary={species.name} secondary={t('settings.foundCount', { count: species.count })} />
                         </MenuItem>
                       ))}
                     </Select>
@@ -636,8 +600,8 @@ export const SettingsForm = ({
                 type="password"
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label="OpenWeather API Key"
-                helperText="Погода: Overview, Timeline, детали видео. Сохраняется с каждой записью. Координаты — ниже."
+                label={t('settings.openWeatherApiKey')}
+                helperText={t('settings.weatherHint')}
               />
             )}
           </form.Field>
@@ -645,26 +609,38 @@ export const SettingsForm = ({
         <Grid size={{ xs: 6 }}>
           <form.Field name="secrets.zip">
             {(field) => (
-              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="ZIP" />
+              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.zip')} />
             )}
           </form.Field>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Button fullWidth variant="outlined" onClick={handleZipLookup}>
-            ZIP → координаты
+            {t('settings.zipLookup')}
           </Button>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <form.Field name="secrets.latitude">
             {(field) => (
-              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Широта" />
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
+                label={t('settings.latitude')}
+                helperText={t('settings.latitudeHint')}
+              />
             )}
           </form.Field>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <form.Field name="secrets.longitude">
             {(field) => (
-              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Долгота" />
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
+                label={t('settings.longitude')}
+                helperText={t('settings.longitudeHint')}
+              />
             )}
           </form.Field>
         </Grid>
@@ -674,11 +650,11 @@ export const SettingsForm = ({
 
       {/* ========== РАСШИРЕННЫЕ ========== */}
       <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>Расширенные настройки</AccordionSummary>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>{t('settings.advanced')}</AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            YOLO (детекция птиц) используется в processor — модели в конфиге processor.models. Здесь только параметры записи и фильтры.
-          </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.advancedDesc')}
+            </Typography>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.max_record_seconds">
@@ -688,7 +664,7 @@ export const SettingsForm = ({
                     type="number"
                     value={field.state.value ?? 60}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
-                    label="Макс. секунд записи"
+                    label={t('settings.maxRecordSeconds')}
                   />
                 )}
               </form.Field>
@@ -701,7 +677,7 @@ export const SettingsForm = ({
                     type="number"
                     value={field.state.value ?? 10}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
-                    label="Секунд без активности"
+                    label={t('settings.inactiveSeconds')}
                   />
                 )}
               </form.Field>
@@ -714,7 +690,7 @@ export const SettingsForm = ({
                     type="number"
                     value={field.state.value ?? 200}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
-                    label="Детализация спектрограммы"
+                    label={t('settings.spectrogramDetail')}
                   />
                 )}
               </form.Field>
@@ -722,7 +698,7 @@ export const SettingsForm = ({
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.tracker">
                 {(field) => (
-                  <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label="Object Tracker" />
+                  <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.objectTracker')} />
                 )}
               </form.Field>
             </Grid>
@@ -730,12 +706,12 @@ export const SettingsForm = ({
               <form.Field name="processor.included_bird_families">
                 {(field) => (
                   <FormControl fullWidth>
-                    <InputLabel>Семейства птиц</InputLabel>
+                    <InputLabel>{t('settings.birdFamilies')}</InputLabel>
                     <Select
                       multiple
                       value={field.state.value || []}
                       onChange={(e) => field.handleChange(e.target.value as string[])}
-                      label="Семейства птиц"
+                      label={t('settings.birdFamilies')}
                       renderValue={(selected) => selected.join(', ')}
                     >
                       {(birdFamilies ?? []).map((family) => (
@@ -759,10 +735,10 @@ export const SettingsForm = ({
                       const sel = resolutions.find((r) => r.width === w && r.height === h);
                       return (
                         <FormControl fullWidth>
-                          <InputLabel>Разрешение записи</InputLabel>
+                          <InputLabel>{t('settings.resolution')}</InputLabel>
                           <Select
                             value={sel ? `${sel.width}x${sel.height}` : ''}
-                            label="Разрешение записи"
+                            label={t('settings.resolution')}
                             onChange={(e) => {
                               const [a, b] = (e.target.value as string).split('x').map(Number);
                               widthField.handleChange(a);
@@ -776,7 +752,7 @@ export const SettingsForm = ({
                             ))}
                           </Select>
                           <FormHelperText>
-                            Размер кадра при захвате и записи видео. Влияет на качество записи и нагрузку.
+                            {t('settings.resolutionHint')}
                           </FormHelperText>
                         </FormControl>
                       );
@@ -790,7 +766,7 @@ export const SettingsForm = ({
       </Accordion>
 
       <Button variant="contained" fullWidth type="submit" sx={{ mt: 4 }}>
-        Сохранить настройки
+        {t('settings.save')}
       </Button>
     </Box>
   );
