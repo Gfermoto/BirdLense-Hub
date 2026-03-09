@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request
@@ -7,6 +8,10 @@ import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func
 from services.retention_service import run_retention
+from app_config.app_config import app_config
+
+# Last spectrogram regeneration result (for status polling)
+_regenerate_status = {'status': 'idle', 'result': None, 'error': None}
 
 def _recordings_dir():
     base = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
@@ -230,6 +235,94 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Retention failed: {e}")
             return {'error': str(e)}, 500
+
+    def _run_regenerate_spectrograms(force: bool):
+        """Background task: regenerate spectrograms. Uses own app context and db session."""
+        global _regenerate_status
+        _regenerate_status = {'status': 'running', 'result': None, 'error': None}
+        try:
+            with app.app_context():
+                try:
+                    import sys
+                    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
+                    from spectrogram import generate_spectrogram
+                except ImportError as e:
+                    app.logger.error(f'Spectrogram import failed: {e}')
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
+                    return
+
+                base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
+                spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
+
+                query = Video.query
+                if not force:
+                    query = query.filter(
+                        (Video.spectrogram_path == None) | (Video.spectrogram_path == '')
+                    )
+                videos = query.all()
+
+                generated = 0
+                failed = 0
+                skipped = 0
+
+                for video in videos:
+                    if not video.video_path:
+                        skipped += 1
+                        continue
+                    full_video = os.path.join(base, video.video_path)
+                    if not os.path.isfile(full_video):
+                        skipped += 1
+                        continue
+                    out_dir = os.path.dirname(full_video)
+                    out_path = os.path.join(out_dir, spectrogram_filename)
+
+                    if generate_spectrogram(full_video, out_path, px_per_sec):
+                        rel_spectrogram = os.path.join(
+                            os.path.dirname(video.video_path), spectrogram_filename
+                        ).replace('\\', '/')
+                        video.spectrogram_path = rel_spectrogram
+                        generated += 1
+                    else:
+                        failed += 1
+
+                try:
+                    db.session.commit()
+                    app.logger.info(
+                        f'Spectrograms: generated={generated}, failed={failed}, skipped={skipped}'
+                    )
+                    _regenerate_status = {
+                        'status': 'done',
+                        'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
+                        'error': None,
+                    }
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.exception(f'Spectrogram commit failed: {e}')
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
+        except Exception as e:
+            app.logger.exception(f'Regenerate spectrograms failed: {e}')
+            _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
+
+    @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
+    def regenerate_spectrograms():
+        """
+        Start spectrogram regeneration in background. Returns immediately.
+        Processes videos without spectrograms (or all if force=true).
+        Poll GET .../status to get result.
+        """
+        force = (request.json or {}).get('force', False)
+        t = threading.Thread(target=_run_regenerate_spectrograms, args=(force,), daemon=True)
+        t.start()
+        return {
+            'message': 'Regeneration started in background.',
+            'started': True,
+        }, 202
+
+    @app.route('/api/ui/system/regenerate-spectrograms/status', methods=['GET'])
+    def regenerate_spectrograms_status():
+        """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
+        return _regenerate_status, 200
 
     @app.route('/api/ui/system/recordings/scan', methods=['POST'])
     def scan_recordings():

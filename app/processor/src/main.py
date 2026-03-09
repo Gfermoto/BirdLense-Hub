@@ -8,6 +8,7 @@ import shutil
 
 from frame_processor import FrameProcessor
 from detection_strategy import SingleStageStrategy, TwoStageStrategy
+from spectrogram import generate_spectrogram
 from motion_detectors.fake import FakeMotionDetector
 from motion_detectors.opencv_motion import OpenCVMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
@@ -221,8 +222,11 @@ def main():
     else:
         motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
 
-    decision_maker = DecisionMaker(max_record_seconds=app_config.get(
-        'processor.max_record_seconds'), max_inactive_seconds=app_config.get('processor.max_inactive_seconds'))
+    decision_maker = DecisionMaker(
+        max_record_seconds=app_config.get('processor.max_record_seconds'),
+        max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
+        min_track_duration=app_config.get('processor.min_track_duration', 1),
+    )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
     if regional_species:
@@ -261,9 +265,11 @@ def main():
             regional_species=regional_species
         )
 
+    tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
+    logging.info(f'Using tracker: {tracker}')
     frame_processor = FrameProcessor(
         detection_strategy=detection_strategy,
-        tracker=app_config.get('processor.tracker'), 
+        tracker=tracker,
         save_images=app_config.get('processor.save_images')
     )
     fps_tracker = FPSTracker()
@@ -319,8 +325,14 @@ def main():
             end_time = datetime.now(timezone.utc)
 
         try:
+            yolo_tracks_count = len(frame_processor.tracks)
             video_detections = decision_maker.get_results(
                 frame_processor.tracks)
+            yolo_passed_count = len(video_detections)
+            if yolo_tracks_count > 0:
+                logging.info(
+                    f"ByteTrack: {yolo_tracks_count} tracks, {yolo_passed_count} passed "
+                    f"min_track_duration (species with frames)")
             species_mapping = app_config.get('detection.species_mapping') or {}
             merge_window = app_config.get('detection.merge_window_seconds', 5)
             dedup_window = app_config.get('detection.dedup_window_seconds', 45)
@@ -330,6 +342,11 @@ def main():
                     start_time, end_time, merge_window)
             # Merge YOLO + MQTT (Frigate, BirdNET-Pi/Go)
             audio_detections, spectrogram_path = [], None
+            px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
+            spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
+            spectrogram_output = os.path.join(output_path_physical, spectrogram_filename)
+            if generate_spectrogram(video_output, spectrogram_output, px_per_sec):
+                spectrogram_path = f"{output_path_logical.rsplit('/', 1)[0]}/{spectrogram_filename}"
             video_list = []
             for d in video_detections:
                 sn = normalize(
@@ -342,6 +359,14 @@ def main():
             video_detections = merge_detections(
                 video_list, mqtt_events, start_time, end_time,
                 merge_window, dedup_window)
+
+            # Log track/frames info for debugging
+            for i, d in enumerate(video_detections):
+                n_frames = len(d.get('frames') or [])
+                if n_frames > 0:
+                    logging.info(f"Detection {i}: {d.get('species_name')} has {n_frames} track frames")
+                else:
+                    logging.debug(f"Detection {i}: {d.get('species_name')} has no frames (source={d.get('source')})")
 
             # MQTT publish for HA automations
             if mqtt_aggregator and video_detections:

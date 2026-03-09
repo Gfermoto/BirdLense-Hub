@@ -97,6 +97,8 @@
     "longitudeHint": "Use dot as decimal separator (36.61)",
     "maxRecordSeconds": "Max recording seconds",
     "inactiveSeconds": "Seconds without activity",
+    "minTrackDuration": "Min track duration (sec)",
+    "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives",
     "spectrogramDetail": "Spectrogram detail",
     "birdFamilies": "Bird families",
     "resolution": "Recording resolution",
@@ -148,7 +150,13 @@
     "loadingStats": "Loading storage statistics...",
     "purgeConfirm": "Are you sure you want to delete all recordings on or before {{date}}? This action cannot be undone.",
     "scanFailed": "Failed to scan recordings",
-    "purgeFailed": "Failed to purge videos"
+    "purgeFailed": "Failed to purge videos",
+    "regenerateSpectrograms": "Regenerate spectrograms",
+    "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them",
+    "regenerating": "Generating...",
+    "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
+    "regenerateTimeout": "Timeout waiting for result",
+    "regenerateFailed": "Failed to regenerate spectrograms"
   },
   "common": {
     "noData": "No data available",
@@ -161,7 +169,8 @@
     "success": "Success",
     "loading": "Loading...",
     "clickForHelp": "Click for help",
-    "appName": "BirdLense Hub"
+    "appName": "BirdLense Hub",
+    "na": "N/A"
   },
   "species": {
     "searchPlaceholder": "Search species...",
