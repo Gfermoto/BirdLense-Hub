@@ -1,18 +1,27 @@
+"""
+BirdLense MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты для AI-агентов.
+Запуск: python birdlense_mcp.py [--transport stdio|http] [--port 8001]
+В контейнере: entrypoint запускает при mcp.enabled=true с transport=http.
+Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
+"""
+import argparse
 import asyncio
 import os
+import sys
 
 import httpx
 import yaml
 
-from fastmcp import FastMCP
-from fastmcp.server.openapi import RouteMap, RouteType
+# app_config: PYTHONPATH=/app при запуске из entrypoint
+from app_config.app_config import app_config
 
-# Load OpenAPI spec from YAML file
+from fastmcp import FastMCP
+from fastmcp.server.providers.openapi import RouteMap, MCPType
+
 OPENAPI_PATH = os.path.join(os.path.dirname(__file__), "openapi.yaml")
 with open(OPENAPI_PATH, "r") as f:
     birdlense_spec = yaml.safe_load(f)
 
-# Patch OpenAPI spec to make all endpoints tools (x-tool: true)
 for path, methods in birdlense_spec.get("paths", {}).items():
     for method, op in methods.items():
         if isinstance(op, dict):
@@ -22,43 +31,80 @@ custom_maps = [
     RouteMap(
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         pattern=r".*",
-        route_type=RouteType.TOOL,
+        mcp_type=MCPType.TOOL,
     )
 ]
 
 
-async def check_mcp(mcp: FastMCP):
-    # List what components were created
-    tools = await mcp.get_tools()
-    resources = await mcp.get_resources()
-    templates = await mcp.get_resource_templates()
-
-    print(
-        f"{len(tools)} Tool(s): {', '.join([t.name for t in tools.values()])}"
-    )  # Should include createPet
-    print(
-        f"{len(resources)} Resource(s): {', '.join([r.name for r in resources.values()])}"
-    )  # Should include listPets
-    print(
-        f"{len(templates)} Resource Template(s): {', '.join([t.name for t in templates.values()])}"
-    )  # Should include getPet
-
-    return mcp
+def get_mcp_token() -> str:
+    """Токен для доступа к MCP. Env MCP_TOKEN приоритетнее конфига."""
+    return (os.environ.get("MCP_TOKEN") or app_config.get("mcp.token") or "").strip()
 
 
-if __name__ == "__main__":
-    # Client for the BirdLense API
-    client = httpx.AsyncClient(base_url="http://birdlense.local/api/ui")
+def get_api_base_url() -> str:
+    """API URL для MCP-клиента (вызовы к BirdLense)."""
+    url = app_config.get("mcp.api_url") or os.environ.get("BIRDLENSE_API_URL", "")
+    if url:
+        return url.rstrip("/")
+    # В контейнере gunicorn на 127.0.0.1:8000
+    return "http://127.0.0.1:8000/api/ui"
 
-    # Create the MCP server with custom route maps
-    mcp = FastMCP.from_openapi(
+
+def create_mcp_server() -> FastMCP:
+    api_url = get_api_base_url()
+    client = httpx.AsyncClient(base_url=api_url, timeout=30.0)
+    token = get_mcp_token()
+
+    mcp_kwargs = dict(
         openapi_spec=birdlense_spec,
         client=client,
         name="BirdLense",
         route_maps=custom_maps,
     )
+    if token:
+        from fastmcp.server.auth.providers.debug import DebugTokenVerifier
 
-    asyncio.run(check_mcp(mcp))
+        verifier = DebugTokenVerifier(validate=lambda t: t == token)
+        mcp_kwargs["auth"] = verifier
 
-    # Start the MCP server
-    mcp.run()
+    return FastMCP.from_openapi(**mcp_kwargs)
+
+
+async def check_mcp(mcp: FastMCP) -> None:
+    tools = await mcp.get_tools()
+    resources = await mcp.get_resources()
+    templates = await mcp.get_resource_templates()
+    print(f"BirdLense MCP: {len(tools)} tools, {len(resources)} resources, {len(templates)} templates")
+    if tools:
+        print(f"  Tools: {', '.join(list(tools.keys())[:8])}{'...' if len(tools) > 8 else ''}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="BirdLense MCP server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="stdio",
+        help="Transport: stdio (default, for Cursor/Claude) or http (for container)",
+    )
+    parser.add_argument("--port", type=int, default=8001, help="Port for HTTP transport")
+    parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport")
+    parser.add_argument("--check", action="store_true", help="Only check tools and exit")
+    args = parser.parse_args()
+
+    mcp = create_mcp_server()
+
+    if args.check:
+        asyncio.run(check_mcp(mcp))
+        return
+
+    if args.transport == "http":
+        auth_status = "protected" if get_mcp_token() else "no auth"
+        print(f"BirdLense MCP HTTP: http://{args.host}:{args.port}/mcp ({auth_status})")
+        mcp.run(transport="http", host=args.host, port=args.port)
+    else:
+        mcp.run()
+
+
+if __name__ == "__main__":
+    main()

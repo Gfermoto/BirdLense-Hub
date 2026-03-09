@@ -154,6 +154,11 @@ export interface Settings {
     esphome_url?: string;
     esphome_sensor_id?: string;
   };
+  mcp?: {
+    enabled?: boolean;
+    token?: string;
+    api_url?: string;
+  };
 }
 
 export interface Species {

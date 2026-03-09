@@ -36,6 +36,10 @@ UI: http://localhost:8085
 
 Записи не видны? System → «Сканировать и импортировать».
 
+## MCP (AI-агенты)
+
+Настройки → раздел 8. Подключение Cursor: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
+
 ## Деплой
 
 ```bash
