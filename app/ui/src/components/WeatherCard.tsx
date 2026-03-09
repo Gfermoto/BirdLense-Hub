@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -14,6 +15,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { Weather } from '../types';
 
 export const WeatherCard = ({ weather }: { weather: Weather }) => {
+  const { t } = useTranslation();
   const isConfigured = Object.keys(weather).length > 0;
 
   if (!isConfigured) {
@@ -21,11 +23,11 @@ export const WeatherCard = ({ weather }: { weather: Weather }) => {
       <Paper sx={{ padding: 2 }}>
         <Stack spacing={2} alignItems="center">
           <Typography variant="h6" sx={{ width: '100%' }}>
-            Weather
+            {t('weather.title')}
           </Typography>
           <Box sx={{ textAlign: 'center', py: 2 }}>
             <Typography color="text.secondary" paragraph>
-              Weather information is not configured yet.
+              {t('weather.notConfigured')}
             </Typography>
             <Button
               component={Link}
@@ -34,7 +36,7 @@ export const WeatherCard = ({ weather }: { weather: Weather }) => {
               variant="contained"
               color="primary"
             >
-              Configure Weather Settings
+              {t('weather.configureSettings')}
             </Button>
           </Box>
         </Stack>
@@ -45,7 +47,7 @@ export const WeatherCard = ({ weather }: { weather: Weather }) => {
   return (
     <Paper sx={{ padding: 2, height: '100%' }}>
       <Stack spacing={2}>
-        <Typography variant="h6">Weather</Typography>
+        <Typography variant="h6">{t('weather.title')}</Typography>
         <Box
           sx={{
             display: 'flex',

@@ -106,7 +106,7 @@ export function Navigation() {
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              BirdLense Hub
+              {t('common.appName')}
             </Typography>
           </Box>
 
@@ -212,7 +212,7 @@ export function Navigation() {
               alt="BirdLense Logo"
               sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5 }}
             />
-            <Typography variant="h6">BirdLense Hub</Typography>
+            <Typography variant="h6">{t('common.appName')}</Typography>
           </Box>
 
           {/* Desktop Navigation - Pill Style */}

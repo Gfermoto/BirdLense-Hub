@@ -71,9 +71,9 @@ export const Overview = () => {
   }
 
   const formatRecordingTime = (seconds: number) => {
-    if (seconds < 60) return `${Math.round(seconds)} sec`;
-    if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
-    return `${(seconds / 3600).toFixed(1)} hrs`;
+    if (seconds < 60) return `${Math.round(seconds)} ${t('time.sec')}`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} ${t('time.min')}`;
+    return `${(seconds / 3600).toFixed(1)} ${t('time.hrs')}`;
   };
 
   return (
@@ -92,7 +92,7 @@ export const Overview = () => {
         <Grid size={{ xs: 12, sm: 4 }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
-              label="Date"
+              label={t('commonLabels.date')}
               value={selectedDay}
               onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
               disableFuture
@@ -131,7 +131,7 @@ export const Overview = () => {
               <StatCard
                 icon={TimelapseOutlined}
                 title={t('overview.meanDuration')}
-                value={`${Math.round(overviewData?.stats.avgVisitDuration || 0)} sec`}
+                value={`${Math.round(overviewData?.stats.avgVisitDuration || 0)} ${t('time.sec')}`}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>

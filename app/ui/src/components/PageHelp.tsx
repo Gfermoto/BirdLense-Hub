@@ -24,19 +24,44 @@ export interface PageHelpProps {
   dialogMaxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export const PageHelp = ({
-  title,
-  description,
-  details,
-  dialogMaxWidth = 'sm',
-}: PageHelpProps) => {
+export interface PageHelpConfig {
+  configKey: 'overview' | 'food' | 'timeline' | 'birdDir' | 'videoDetails';
+  dialogMaxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+}
+
+export const PageHelp = (
+  props: PageHelpProps | (PageHelpConfig & { title?: never; description?: never; details?: never }),
+) => {
   const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleOpenDialog = () => setDialogOpen(true);
   const handleCloseDialog = () => setDialogOpen(false);
 
-  const dialogTitleId = `help-dialog-${title.toLowerCase().replace(/\s+/g, '-')}`;
+  const isConfigKey = 'configKey' in props && props.configKey;
+  const configKey = isConfigKey ? props.configKey : null;
+
+  let title: string;
+  let description: string | undefined;
+  let details: HelpDetail[] | undefined;
+  const dialogMaxWidth = props.dialogMaxWidth ?? 'sm';
+
+  if (configKey) {
+    const helpData = t(`help.${configKey}`, { returnObjects: true }) as {
+      title: string;
+      description: string;
+      details: HelpDetail[];
+    };
+    title = helpData?.title ?? '';
+    description = helpData?.description;
+    details = Array.isArray(helpData?.details) ? helpData.details : undefined;
+  } else {
+    title = (props as PageHelpProps).title;
+    description = (props as PageHelpProps).description;
+    details = (props as PageHelpProps).details;
+  }
+
+  const dialogTitleId = `help-dialog-${(title || configKey || 'help').toLowerCase().replace(/\s+/g, '-')}`;
   const dialogDescriptionId = `${dialogTitleId}-description`;
 
   return (
@@ -86,7 +111,7 @@ export const PageHelp = ({
                   >
                     {detail.title}
                   </Typography>
-                  <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+                  <Typography component="dd" variant="body2" sx={{ m: 0 }} style={{ whiteSpace: 'pre-line' }}>
                     {detail.content}
                   </Typography>
                 </Box>

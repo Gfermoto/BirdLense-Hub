@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -24,9 +25,10 @@ const useAllBirdsQuery = (select?: (species: Species[]) => any) => {
 };
 
 export const Settings: React.FC = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = React.useState(false);
-  const [restartMessage, setRestartMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [restartMessage, setRestartMessage] = React.useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
@@ -52,8 +54,8 @@ export const Settings: React.FC = () => {
       const result = await restartProcessor();
       setRestartMessage(
         result.success
-          ? { type: 'success', text: 'Settings saved. Processor will restart within ~60 seconds.' }
-          : { type: 'error', text: result.message || 'Failed to restart processor' },
+          ? { type: 'success', textKey: 'settings.savedRestart' }
+          : { type: 'error', textKey: 'settings.restartFailed', apiMessage: result.message },
       );
     },
   });
@@ -68,10 +70,10 @@ export const Settings: React.FC = () => {
   return (
     <Container maxWidth="md" sx={{ pb: 5 }}>
       <Typography variant="h4" gutterBottom>
-        Update Settings
+        {t('settings.updateTitle')}
       </Typography>
       <Alert severity="info" sx={{ mb: 3 }}>
-        After saving, the processor restarts automatically to apply changes.
+        {t('settings.restartInfo')}
       </Alert>
       {restartMessage && (
         <Alert
@@ -79,7 +81,7 @@ export const Settings: React.FC = () => {
           sx={{ mb: 2 }}
           onClose={() => setRestartMessage(null)}
         >
-          {restartMessage.text}
+          {restartMessage.apiMessage || t(restartMessage.textKey)}
         </Alert>
       )}
       <SettingsForm
@@ -98,7 +100,7 @@ export const Settings: React.FC = () => {
           severity="success"
           sx={{ width: '100%' }}
         >
-          Settings saved. Processor is restarting.
+          {t('settings.savedRestarting')}
         </Alert>
       </Snackbar>
     </Container>

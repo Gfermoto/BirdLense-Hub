@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -10,6 +11,7 @@ import { WeatherCard } from '../../components/WeatherCard';
 import { BASE_URL } from '../../api/api';
 
 export const VideoInfo = ({ video }: { video: Video }) => {
+  const { t } = useTranslation();
   const { processor_version, start_time, end_time, favorite, weather, food } =
     video;
 
@@ -29,7 +31,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       {favorite && (
         <Chip
           icon={<FavoriteIcon />}
-          label="Favorite"
+          label={t('videoInfo.favorite')}
           color="primary"
           size="small"
           sx={{ alignSelf: 'flex-start' }}
@@ -44,20 +46,20 @@ export const VideoInfo = ({ video }: { video: Video }) => {
           sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
         >
           <AccessTimeIcon fontSize="small" />
-          Recording Info
+          {t('videoInfo.recordingInfo')}
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            <strong>Start:</strong> {formatDate(start_time)}
+            <strong>{t('videoInfo.start')}:</strong> {formatDate(start_time)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            <strong>End:</strong> {formatDate(end_time)}
+            <strong>{t('videoInfo.end')}:</strong> {formatDate(end_time)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            <strong>Duration:</strong> {duration}s
+            <strong>{t('videoInfo.duration')}:</strong> {duration}s
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            <strong>Processor:</strong> v{processor_version}
+            <strong>{t('videoInfo.processor')}:</strong> v{processor_version}
           </Typography>
         </Box>
       </Paper>
@@ -69,7 +71,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       {food.length > 0 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
-            Bird Food
+            {t('videoInfo.birdFood')}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {food.map((f) => (

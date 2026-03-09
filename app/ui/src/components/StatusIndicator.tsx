@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
@@ -32,6 +33,7 @@ const StatusDot = ({
 };
 
 export const StatusIndicator = () => {
+  const { t } = useTranslation();
   const { data } = useQuery({
     queryKey: ['status'],
     queryFn: fetchStatus,
@@ -40,10 +42,10 @@ export const StatusIndicator = () => {
   if (!data) return null;
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-      <StatusDot status={data.video} label="Video" icon={VideocamOutlined} />
-      <StatusDot status={data.mqtt} label="MQTT" icon={CloudOutlined} />
-      <StatusDot status={data.esphome ?? 'not_used'} label="ESPHome" icon={SmartToyOutlined} />
-      <StatusDot status={data.yolo} label="YOLO" icon={PsychologyOutlined} />
+      <StatusDot status={data.video} label={t('commonLabels.video')} icon={VideocamOutlined} />
+      <StatusDot status={data.mqtt} label={t('commonLabels.mqtt')} icon={CloudOutlined} />
+      <StatusDot status={data.esphome ?? 'not_used'} label={t('commonLabels.esphome')} icon={SmartToyOutlined} />
+      <StatusDot status={data.yolo} label={t('commonLabels.yolo')} icon={PsychologyOutlined} />
     </Box>
   );
 };
