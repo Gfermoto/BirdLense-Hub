@@ -19,6 +19,7 @@ export interface SpeciesVisit {
     end_time: string;
     confidence: number;
     source: 'video' | 'audio';
+    detection_provider?: string;
   }[];
 }
 
@@ -30,11 +31,12 @@ export interface TrackFrame {
 export interface VideoSpecies {
   species_id: number;
   species_name: string;
-  track_id?: number; // ByteTrack ID for stable identification
-  start_time: number; // seconds from video start time
-  end_time: number; // seconds from video start time
+  track_id?: number;
+  start_time: number;
+  end_time: number;
   confidence: number;
   source: string;
+  detection_provider?: string;
   image_url?: string;
   frames?: TrackFrame[];
 }
@@ -98,15 +100,6 @@ export interface Settings {
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
   };
-  ai: {
-    gemini_api_key: string; // API key for Google Gemini
-    model: string; // Model for LLM verification & summaries
-    llm_verification: {
-      min_confidence: number; // Only verify detections below this confidence
-      max_calls_per_hour: number; // Rate limit: max API calls per hour
-      max_calls_per_day: number; // Rate limit: max API calls per day
-    };
-  };
   camera: {
     video_width: number; // Video width in pixels, e.g., 1280
     video_height: number; // Video height in pixels, e.g., 720
@@ -124,14 +117,20 @@ export interface Settings {
     source?: string;
     go2rtc_url?: string;
     stream_name?: string;
+    cameras?: Array<{ id?: string; stream_name?: string; name?: string; feeder?: string }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
+    video_width?: number;
+    video_height?: number;
   };
   mqtt?: {
     broker?: string;
     port?: number;
     username?: string;
     password?: string;
+    frigate_topic?: string;
+    birdnet_topic?: string;
+    birdnet_go_topic?: string;
   };
   weather?: {
     source?: string;
@@ -140,11 +139,19 @@ export interface Settings {
   };
   feed?: {
     source?: string;
+    duration_seconds?: number;
     mqtt_topic?: string;
     esphome_url?: string;
+    esphome_switch_id?: string;
+    esphome_type?: 'switch' | 'button';
   };
   motion?: {
-    source?: 'opencv' | 'mqtt';
+    source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
+    frigate_camera_filter?: string[];
+    frigate_label_filter?: string[];
+    mqtt_topic?: string;
+    esphome_url?: string;
+    esphome_sensor_id?: string;
   };
 }
 
@@ -177,6 +184,7 @@ export interface OverviewStats {
   audioDuration: number;
   busiestHour: number;
   avgVisitDuration: number;
+  detectionByProvider?: Record<string, number>;
 }
 
 export interface OverviewData {

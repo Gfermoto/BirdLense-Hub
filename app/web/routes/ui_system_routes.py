@@ -1,15 +1,15 @@
 import os
-import threading
-from datetime import datetime
+import re
 from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request
 import shutil
-from models import ActivityLog, db
+from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func
 from services.retention_service import run_retention
 
 RECORDINGS_DIR = "data/recordings"
+IMPORT_SPECIES_NAME = "Unknown"
 
 
 def register_routes(app):
@@ -223,4 +223,126 @@ def register_routes(app):
             }, 200
         except Exception as e:
             app.logger.error(f"Retention failed: {e}")
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/recordings/scan', methods=['POST'])
+    def scan_recordings():
+        """
+        Scan data/recordings/ for video.mp4 not in DB and add them.
+        Fixes recordings missing from stats after server restart.
+        """
+        if not os.path.exists(RECORDINGS_DIR):
+            return {'imported': 0, 'message': 'No recordings directory'}, 200
+
+        species = Species.query.filter_by(name=IMPORT_SPECIES_NAME).first()
+        if not species:
+            species = Species(name=IMPORT_SPECIES_NAME, active=False)
+            db.session.add(species)
+            db.session.flush()
+
+        existing_paths = {
+            v.video_path for v in db.session.query(Video.video_path).all()
+        }
+        imported = 0
+        pattern = re.compile(
+            r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})(\d{2})(\d{2})$'
+        )
+
+        try:
+            for year in os.listdir(RECORDINGS_DIR):
+                year_path = os.path.join(RECORDINGS_DIR, year)
+                if not os.path.isdir(year_path) or not year.isdigit():
+                    continue
+                for month in os.listdir(year_path):
+                    month_path = os.path.join(year_path, month)
+                    if not os.path.isdir(month_path) or not month.isdigit():
+                        continue
+                    for day in os.listdir(month_path):
+                        day_path = os.path.join(month_path, day)
+                        if not os.path.isdir(day_path) or not day.isdigit():
+                            continue
+                        for ts in os.listdir(day_path):
+                            ts_path = os.path.join(day_path, ts)
+                            if not os.path.isdir(ts_path):
+                                continue
+                            m = pattern.match(f'{year}/{month}/{day}/{ts}')
+                            if not m:
+                                continue
+                            video_mp4 = os.path.join(ts_path, 'video.mp4')
+                            if not os.path.isfile(video_mp4):
+                                continue
+                            rel_path = os.path.join(
+                                RECORDINGS_DIR, year, month, day, ts,
+                                'video.mp4'
+                            ).replace(os.sep, '/')
+                            if rel_path in existing_paths:
+                                continue
+
+                            try:
+                                with db.session.begin_nested():
+                                    y, mo, d, h, mi, s = map(int, m.groups())
+                                    start_time = datetime(
+                                        y, mo, d, h, mi, s,
+                                        tzinfo=timezone.utc
+                                    )
+                                    end_time = start_time + timedelta(
+                                        seconds=30
+                                    )
+                                    spectrogram = None
+                                    for f in os.listdir(ts_path):
+                                        if (f.startswith('spectrogram') and
+                                                f.endswith('.jpg')):
+                                            spectrogram = os.path.join(
+                                                RECORDINGS_DIR, year, month,
+                                                day, ts, f
+                                            ).replace(os.sep, '/')
+                                            break
+
+                                    video = Video(
+                                        processor_version='1',
+                                        start_time=start_time,
+                                        end_time=end_time,
+                                        video_path=rel_path,
+                                        spectrogram_path=spectrogram,
+                                    )
+                                    db.session.add(video)
+                                    db.session.flush()
+
+                                    visit = SpeciesVisit(
+                                        species_id=species.id,
+                                        start_time=start_time,
+                                        end_time=end_time,
+                                        max_simultaneous=1,
+                                    )
+                                    db.session.add(visit)
+                                    db.session.flush()
+
+                                vs = VideoSpecies(
+                                    video_id=video.id,
+                                    species_id=species.id,
+                                    species_visit_id=visit.id,
+                                    start_time=0,
+                                    end_time=30,
+                                    confidence=0,
+                                    source='video',
+                                    detection_provider='legacy',
+                                    created_at=start_time,
+                                )
+                                    db.session.add(vs)
+                                existing_paths.add(rel_path)
+                                imported += 1
+                            except Exception as e:
+                                app.logger.warning(
+                                    f'Import failed {rel_path}: {e}'
+                                )
+                                continue
+
+            db.session.commit()
+            return {
+                'imported': imported,
+                'message': f'Imported {imported} recordings',
+            }, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception(f'Scan recordings failed: {e}')
             return {'error': str(e)}, 500

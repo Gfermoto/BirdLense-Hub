@@ -45,7 +45,10 @@ class API():
         
         video_data = {
             'processor_version': '1',
-            'species': [clean_detection(sp) for sp in species_video] + [{**sp, 'source': 'audio'} for sp in species_audio],
+            'species': [clean_detection(sp) for sp in species_video] + [
+                {**sp, 'source': 'audio', 'detection_provider': 'birdnet_local'}
+                for sp in species_audio
+            ],
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
             'video_path': video_path,

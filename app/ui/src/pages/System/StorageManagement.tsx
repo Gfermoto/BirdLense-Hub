@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -14,6 +14,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { BarChart } from '@mui/x-charts/BarChart';
 import dayjs, { Dayjs } from 'dayjs';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { BASE_API_URL } from '../../api/api';
 
 interface StorageStats {
@@ -35,6 +36,11 @@ interface PurgeResponse {
   deletedSize: number;
 }
 
+interface ScanResponse {
+  imported: number;
+  message: string;
+}
+
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -44,6 +50,7 @@ const formatBytes = (bytes: number): string => {
 };
 
 export const StorageManagement = () => {
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<PurgeResponse | null>(null);
@@ -59,6 +66,31 @@ export const StorageManagement = () => {
         `${BASE_API_URL}/storage/stats`,
       );
       return data;
+    },
+  });
+
+  const scanMutation = useMutation<ScanResponse, Error, void>({
+    mutationFn: async () => {
+      const { data } = await axios.post<ScanResponse>(
+        `${BASE_API_URL}/system/recordings/scan`,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      setSuccess({
+        message: data.message,
+        deletedCount: data.imported,
+        deletedSize: 0,
+      });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      setTimeout(() => setSuccess(null), 5000);
+    },
+    onError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to scan recordings',
+      );
     },
   });
 
@@ -133,8 +165,9 @@ export const StorageManagement = () => {
           onClose={() => setSuccess(null)}
         >
           <AlertTitle>Success</AlertTitle>
-          Deleted {success.deletedCount} files (
-          {formatBytes(success.deletedSize)})
+            {success.deletedSize > 0
+            ? `Удалено ${success.deletedCount} файлов (${formatBytes(success.deletedSize)})`
+            : `Импортировано ${success.deletedCount} записей в базу данных`}
         </Alert>
       )}
 
@@ -159,6 +192,22 @@ export const StorageManagement = () => {
 
           <Paper sx={{ p: 2, flex: 1 }}>
             <Typography variant="h6" gutterBottom>
+              Recordings
+            </Typography>
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <Button
+                variant="outlined"
+                disabled={scanMutation.isPending}
+                onClick={() => scanMutation.mutate()}
+                startIcon={<FolderOpenIcon />}
+              >
+                {scanMutation.isPending ? 'Сканирование...' : 'Сканировать и импортировать'}
+              </Button>
+              <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                Добавить записи с диска в БД (после перезапуска)
+              </Typography>
+            </Stack>
+            <Typography variant="subtitle2" gutterBottom>
               Purge Old Recordings
             </Typography>
             <Stack direction="row" spacing={2}>

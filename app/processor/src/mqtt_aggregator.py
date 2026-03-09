@@ -40,12 +40,27 @@ def _parse_frigate_event(payload):
 
 
 def _parse_birdnet_event(payload):
+    """Parse BirdNET-Pi (birdnet/sightings) or BirdNET-Go (birdnet) JSON."""
     try:
         data = json.loads(payload.decode())
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None
-    species = data.get("species") or data.get("common_name") or data.get("label", "unknown")
-    confidence = float(data.get("confidence") or data.get("score", 0))
+    # BirdNET-Pi: Common_Name, Confidence_Score
+    # BirdNET-Go: CommonName, Confidence
+    species = (
+        data.get("Common_Name") or data.get("CommonName") or
+        data.get("comname") or data.get("species") or
+        data.get("common_name") or data.get("label") or
+        data.get("Com_Name") or "unknown"
+    )
+    conf_raw = (
+        data.get("Confidence_Score") or data.get("confidence") or
+        data.get("score") or data.get("Confidence") or 0
+    )
+    try:
+        confidence = float(str(conf_raw).replace(",", "."))
+    except (ValueError, TypeError):
+        confidence = 0.0
     return {
         "source": "birdnet",
         "species": species,
@@ -66,6 +81,7 @@ class MQTTEventAggregator:
         port: int = 1883,
         frigate_topic: str = "frigate/events",
         birdnet_topic: str = "birdnet/sightings",
+        birdnet_go_topic: str = "",
         publish_topic: str = "birdlense/detections",
         username=None,
         password=None,
@@ -75,6 +91,7 @@ class MQTTEventAggregator:
         self.port = port
         self.frigate_topic = frigate_topic
         self.birdnet_topic = birdnet_topic
+        self.birdnet_topics = [t for t in [birdnet_topic, birdnet_go_topic] if t]
         self.publish_topic = publish_topic
         self.username = username or os.environ.get("MQTT_USERNAME")
         self.password = password or os.environ.get("MQTT_PASSWORD")
@@ -102,7 +119,7 @@ class MQTTEventAggregator:
         ev = None
         if msg.topic == self.frigate_topic:
             ev = _parse_frigate_event(msg.payload)
-        elif msg.topic == self.birdnet_topic:
+        elif msg.topic in self.birdnet_topics:
             ev = _parse_birdnet_event(msg.payload)
         if ev:
             with self._lock:
@@ -122,7 +139,8 @@ class MQTTEventAggregator:
         try:
             self._client.connect(self.broker, self.port, 60)
             self._client.subscribe(self.frigate_topic)
-            self._client.subscribe(self.birdnet_topic)
+            for t in self.birdnet_topics:
+                self._client.subscribe(t)
             self._client.publish("birdlense/status", "online", qos=1, retain=True)
             self._client.loop_forever()
         except Exception as e:

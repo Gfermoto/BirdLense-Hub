@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
+# Force RTSP over TCP (avoids 461 Unsupported transport)
+ENV OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp
+
 WORKDIR /app
 
 COPY requirements.txt .

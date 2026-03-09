@@ -54,8 +54,10 @@ def register_routes(app):
 
     @app.route('/api/processor/species/active', methods=['PUT'])
     def set_active_species():
-        """Set which species are active based on audio detector's capabilities."""
-        active_names = request.json
+        """Set which species are active (from YOLO regional list or config)."""
+        active_names = request.json or []
+        if not active_names:
+            return {"message": "success", "active_feeder_names": []}, 200
         active_feeder_names = filter_feeder_species(active_names)
 
         # Reset all to inactive
@@ -89,29 +91,33 @@ def register_routes(app):
 
     @app.route('/api/processor/activity_log', methods=['POST'])
     def add_or_update_activity_log():
-        # Get the incoming JSON data
-        data = request.json
-        activity_type = data.get('type')
-        activity_data = json.dumps(data.get('data'))
-        activity_id = data.get('id')
+        try:
+            data = request.json or {}
+            activity_type = data.get('type')
+            raw_data = data.get('data')
+            activity_data = json.dumps(raw_data) if raw_data is not None else '{}'
+            activity_id = data.get('id')
+            if activity_id is not None:
+                activity_id = int(activity_id)
 
-        # Validate required fields
-        if not activity_type or activity_data is None:
-            return {'error': 'Both "type" and "data" are required'}, 400
+            if not activity_type:
+                return {'error': 'Field "type" is required'}, 400
 
-        # If no id is provided, create a new ActivityLog
-        if activity_id is None:
-            new_log = ActivityLog(type=activity_type, data=activity_data)
-            db.session.add(new_log)
-            db.session.commit()
-            return {'message': 'Activity log created successfully', 'id': new_log.id}, 201
-        # If id is provided, update the existing ActivityLog
-        else:
-            log = ActivityLog.query.get(activity_id)
-            if not log:
-                return {'error': 'Activity log with this ID not found'}, 404
-            log.type = activity_type
-            log.data = activity_data
-            log.updated_at = datetime.now(timezone.utc)
-            db.session.commit()
-            return {'message': 'Activity log updated successfully', 'id': log.id}, 200
+            if activity_id is None:
+                new_log = ActivityLog(type=activity_type, data=activity_data)
+                db.session.add(new_log)
+                db.session.commit()
+                return {'message': 'Activity log created successfully', 'id': new_log.id}, 201
+            else:
+                log = ActivityLog.query.get(activity_id)
+                if not log:
+                    return {'error': 'Activity log with this ID not found'}, 404
+                log.type = activity_type
+                log.data = activity_data
+                log.updated_at = datetime.now(timezone.utc)
+                db.session.commit()
+                return {'message': 'Activity log updated successfully', 'id': log.id}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('activity_log failed: %s', e)
+            return {'error': 'Internal server error'}, 500

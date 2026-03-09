@@ -252,30 +252,3 @@ export const fetchSpeciesSummary = async (
   }
 };
 
-export const fetchDailySummary = async (
-  date: string,
-): Promise<{ summary: string }> => {
-  if (useMockData) {
-    await sleep(2000);
-    return {
-      summary:
-        'This is a mock summary for ' + date + '. The birds were active today!',
-    };
-  } else {
-    try {
-      // Create local day boundaries and convert to UTC timestamps
-      const localStart = new Date(date + 'T00:00:00');
-      const localEnd = new Date(date + 'T23:59:59.999');
-      const response = await axios.post(`${BASE_API_URL}/summary`, {
-        start_time: Math.floor(localStart.getTime() / 1000),
-        end_time: Math.floor(localEnd.getTime() / 1000),
-      });
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw error;
-    }
-  }
-};

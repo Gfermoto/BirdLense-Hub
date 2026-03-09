@@ -58,9 +58,14 @@ def register_routes(app):
             processor_ok = last_heartbeat.updated_at.replace(tzinfo=timezone.utc) >= cutoff
         mqtt_status = check_mqtt_connected()
         esphome_status = check_esphome_reachable()
-        # MQTT: show real status if feed source is mqtt, else unknown
         feed_source = app_config.get('feed.source', 'mqtt')
-        mqtt_display = mqtt_status if feed_source == 'mqtt' else 'not_used'
+        motion_source = app_config.get('motion.source', 'opencv')
+        # MQTT: show real status when used for feed OR for motion (Frigate/MQTT)
+        mqtt_used = (
+            feed_source == 'mqtt'
+            or motion_source in ('frigate', 'mqtt')
+        )
+        mqtt_display = mqtt_status if mqtt_used else 'not_used'
         # ESPHome: show real status if feed source is esphome
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
         return {
@@ -111,6 +116,8 @@ def register_routes(app):
                 'track_id': vs.track_id,
                 'image_url': vs.species.image_url,
             }
+            if vs.detection_provider:
+                data['detection_provider'] = vs.detection_provider
             # Always include frames if available
             if vs.frames:
                 data['frames'] = json_module.loads(vs.frames)
@@ -321,18 +328,37 @@ def register_routes(app):
             SpeciesVisit.start_time <= end_of_day
         ).first()
 
+        # Detection count by provider (yolo, frigate, birdnet_mqtt, birdnet_local)
+        provider_query = (
+            db.session.query(
+                VideoSpecies.detection_provider,
+                func.sum(SpeciesVisit.max_simultaneous).label('count')
+            )
+            .join(
+                SpeciesVisit,
+                VideoSpecies.species_visit_id == SpeciesVisit.id
+            )
+            .filter(
+                SpeciesVisit.start_time >= start_of_day,
+                SpeciesVisit.start_time <= end_of_day
+            )
+            .group_by(VideoSpecies.detection_provider)
+            .all()
+        )
+        detection_by_provider = {
+            (p or 'legacy'): int(c) for p, c in provider_query
+        }
+
         # Format stats data
         stats = {
             'uniqueSpecies': stats_query.uniqueSpecies if stats_query.uniqueSpecies else 0,
             'totalDetections': stats_query.totalDetections if stats_query.totalDetections else 0,
             'lastHourDetections': stats_query.lastHourDetections if stats_query.lastHourDetections else 0,
             'busiestHour': int(busiest_hour_query.hour) if busiest_hour_query else 0,
-            # in seconds
             'avgVisitDuration': round(stats_query.avgVisitDuration or 0),
-            # in seconds
             'videoDuration': round(source_duration_query.video_duration or 0),
-            # in seconds
-            'audioDuration': round(source_duration_query.audio_duration or 0)
+            'audioDuration': round(source_duration_query.audio_duration or 0),
+            'detectionByProvider': detection_by_provider,
         }
 
         # Query hourly average temperature from videos
@@ -355,37 +381,6 @@ def register_routes(app):
             'stats': stats,
             'hourlyTemperature': hourly_temperature
         }, 200
-
-    @app.route('/api/ui/summary', methods=['POST'])
-    def get_daily_summary():
-        from services.daily_summary_service import DailySummaryService
-        
-        # Parse request body - accept UTC timestamps directly
-        data = request.json or {}
-        start_time_param = data.get('start_time', None)
-        end_time_param = data.get('end_time', None)
-        
-        try:
-            if start_time_param and end_time_param:
-                # Frontend sends UTC timestamps for the user's local day boundaries
-                start_of_day = datetime.fromtimestamp(int(start_time_param), timezone.utc).replace(tzinfo=None)
-                end_of_day = datetime.fromtimestamp(int(end_time_param), timezone.utc).replace(tzinfo=None)
-            else:
-                # Fallback to server's current day
-                now = datetime.now()
-                start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
-        except (ValueError, TypeError):
-            return {"error": "Invalid timestamp format."}, 400
-
-        try:
-            result = DailySummaryService.get_summary(start_of_day, end_of_day)
-            return result, 200
-        except ValueError as e:
-            return {'error': str(e)}, 400
-        except Exception as e:
-            app.logger.error(f"Error generating summary: {str(e)}")
-            return {'error': f"Failed to generate summary: {str(e)}"}, 500
 
     @app.route('/api/ui/timeline', methods=['GET'])
     def get_video_species():
@@ -435,13 +430,16 @@ def register_routes(app):
                 visit.video_species, key=lambda x: x.created_at, reverse=True)
             for video_species in sorted_video_species:
                 video_start_time = video_species.video.start_time
-                detections.append({
+                det = {
                     'video_id': video_species.video_id,
                     'start_time': (video_start_time + timedelta(seconds=video_species.start_time)).astimezone(timezone.utc).isoformat(),
                     'end_time': (video_start_time + timedelta(seconds=video_species.end_time)).astimezone(timezone.utc).isoformat(),
                     'confidence': video_species.confidence,
                     'source': video_species.source
-                })
+                }
+                if video_species.detection_provider:
+                    det['detection_provider'] = video_species.detection_provider
+                detections.append(det)
 
             response.append({
                 'id': visit.id,
@@ -675,13 +673,16 @@ def register_routes(app):
                 visit.video_species, key=lambda x: x.created_at, reverse=True)
             for video_species in sorted_video_species:
                 video_start_time = video_species.video.start_time
-                detections.append({
+                det = {
                     'video_id': video_species.video_id,
                     'start_time': (video_start_time + timedelta(seconds=video_species.start_time)).astimezone(timezone.utc).isoformat(),
                     'end_time': (video_start_time + timedelta(seconds=video_species.end_time)).astimezone(timezone.utc).isoformat(),
                     'confidence': video_species.confidence,
                     'source': video_species.source
-                })
+                }
+                if video_species.detection_provider:
+                    det['detection_provider'] = video_species.detection_provider
+                detections.append(det)
 
             formatted_visits.append({
                 'id': visit.id,

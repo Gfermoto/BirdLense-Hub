@@ -5,6 +5,7 @@ import argparse
 import logging
 import os
 import shutil
+
 from frame_processor import FrameProcessor
 from detection_strategy import SingleStageStrategy, TwoStageStrategy
 from motion_detectors.fake import FakeMotionDetector
@@ -18,8 +19,6 @@ from api import API
 from sources.video_file_source import VideoFileSource
 from sources.go2rtc_stream_source import Go2RTCStreamSource
 from sources.go2rtc_stream_source import _build_stream_url
-from audio_processor import AudioProcessor
-from llm_verifier import LLMVerifier
 from app_config.app_config import app_config
 
 # Set up logging
@@ -142,6 +141,7 @@ def main():
             port=app_config.get('mqtt.port', 1883),
             frigate_topic=app_config.get('mqtt.frigate_topic', 'frigate/events'),
             birdnet_topic=app_config.get('mqtt.birdnet_topic', 'birdnet/sightings'),
+            birdnet_go_topic=app_config.get('mqtt.birdnet_go_topic', '') or '',
             publish_topic=app_config.get('mqtt.publish_topic', 'birdlense/detections'),
             username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
             password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
@@ -155,7 +155,9 @@ def main():
     elif args.mock_mqtt:
         motion_detector = FakeMotionDetector(motion=True, wait=5)
         logging.info('Using --mock-mqtt: fake motion for development')
-    elif app_config.get('motion.source') == 'mqtt' and mqtt_broker:
+    elif (app_config.get('motion.source') in ('frigate', 'mqtt') and mqtt_broker and
+          not (app_config.get('motion.mqtt_topic') or '').strip()):
+        # frigate or legacy mqtt (Frigate) - mqtt_topic empty = Frigate
         frigate_camera_filter = (
             app_config.get('motion.frigate_camera_filter')
             or app_config.get('mqtt.frigate_camera_filter')
@@ -182,6 +184,29 @@ def main():
         except Exception as e:
             logging.warning(f'Frigate MQTT failed ({e}), falling back to OpenCV')
             motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
+    elif app_config.get('motion.source') == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
+        mqtt_topic = app_config.get('motion.mqtt_topic', '').strip()
+        from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
+        motion_detector = MQTTBinaryMotionDetector(
+            broker=mqtt_broker,
+            port=app_config.get('mqtt.port', 1883),
+            topic=mqtt_topic,
+            username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
+            password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+        )
+        motion_detector.start()
+    elif app_config.get('motion.source') == 'esphome':
+        esphome_url = (os.environ.get('MOTION_ESPHOME_URL') or app_config.get('motion.esphome_url', '')).strip()
+        esphome_sensor = (os.environ.get('MOTION_ESPHOME_SENSOR') or app_config.get('motion.esphome_sensor_id', '')).strip()
+        if esphome_url and esphome_sensor:
+            from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
+            motion_detector = ESPHomeBinaryMotionDetector(
+                url=esphome_url,
+                sensor_id=esphome_sensor,
+            )
+        else:
+            logging.warning('motion.source=esphome but URL/sensor empty, falling back to OpenCV')
+            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
     elif app_config.get('motion.source') == 'opencv':
         motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
     elif app_config.get('motion.source') == 'pir':
@@ -192,25 +217,10 @@ def main():
 
     decision_maker = DecisionMaker(max_record_seconds=app_config.get(
         'processor.max_record_seconds'), max_inactive_seconds=app_config.get('processor.max_inactive_seconds'))
-    audio_processor = AudioProcessor(lat=app_config.get(
-        'secrets.latitude'), lon=app_config.get('secrets.longitude'), spectrogram_px_per_sec=app_config.get('processor.spectrogram_px_per_sec'))
-    regional_species = audio_processor.get_regional_species() + ["Squirrel"]
-    regional_species = api.set_active_species(regional_species)
-
-    # Initialize LLM verifier if API key is configured
-    gemini_api_key = app_config.get('ai.gemini_api_key')
-    llm_verifier = None
-    if gemini_api_key:
-        llm_verifier = LLMVerifier(
-            api_key=gemini_api_key,
-            model=app_config.get('ai.model'),
-            min_confidence=app_config.get('ai.llm_verification.min_confidence'),
-            max_calls_per_hour=app_config.get('ai.llm_verification.max_calls_per_hour'),
-            max_calls_per_day=app_config.get('ai.llm_verification.max_calls_per_day'),
-            latitude=app_config.get('secrets.latitude'),
-            longitude=app_config.get('secrets.longitude'),
-            log_dir=os.path.join('data', 'llm_verification_logs'),
-        )
+    # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
+    regional_species = app_config.get('processor.regional_species') or []
+    if regional_species:
+        api.set_active_species(regional_species)
 
     # Configure Detection Strategy
     strategy_type = app_config.get('processor.detection_strategy', 'single_stage')
@@ -285,27 +295,27 @@ def main():
         try:
             video_detections = decision_maker.get_results(
                 frame_processor.tracks)
-            audio_detections, spectrogram_path = [], None
-            if video_detections:
-                audio_detections, spectrogram_path = audio_processor.run(
-                    video_output)
-                
-                # LLM validation (if enabled)
-                if llm_verifier:
-                    video_detections = llm_verifier.validate_detections(video_detections, start_time)
-
-            # Merge with MQTT events (Frigate/BirdNET)
             species_mapping = app_config.get('detection.species_mapping') or {}
             merge_window = app_config.get('detection.merge_window_seconds', 5)
             dedup_window = app_config.get('detection.dedup_window_seconds', 45)
             mqtt_events = []
             if mqtt_aggregator:
-                mqtt_events = mqtt_aggregator.get_events_in_window(start_time, end_time, merge_window)
+                mqtt_events = mqtt_aggregator.get_events_in_window(
+                    start_time, end_time, merge_window)
+            # Merge YOLO + MQTT (Frigate, BirdNET-Pi/Go)
+            audio_detections, spectrogram_path = [], None
             video_list = []
             for d in video_detections:
-                sn = normalize(d.get('species_name') or d.get('species') or d.get('name', 'unknown'), species_mapping)
-                video_list.append({**d, 'species_name': sn, 'species': sn, 'source': 'video'})
-            video_detections = merge_detections(video_list, mqtt_events, start_time, end_time, merge_window, dedup_window)
+                sn = normalize(
+                    d.get('species_name') or d.get('species') or d.get('name', 'unknown'),
+                    species_mapping)
+                video_list.append({
+                    **d, 'species_name': sn, 'species': sn,
+                    'source': 'video', 'detection_provider': 'yolo'
+                })
+            video_detections = merge_detections(
+                video_list, mqtt_events, start_time, end_time,
+                merge_window, dedup_window)
 
             # MQTT publish for HA automations
             if mqtt_aggregator and video_detections:

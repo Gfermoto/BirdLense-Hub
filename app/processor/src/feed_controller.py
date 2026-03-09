@@ -3,6 +3,7 @@ Feed controller: MQTT or ESPHome for feeder control.
 """
 import logging
 import os
+from urllib.parse import quote
 
 import requests
 
@@ -55,7 +56,8 @@ class FeedController:
         return self.feed_on()
 
     def _esphome_call(self, action: str):
-        url = f"{self.esphome_url.rstrip('/')}/switch/{self.esphome_switch_id}/{action}"
+        entity_path = quote(str(self.esphome_switch_id).strip(), safe='')
+        url = f"{self.esphome_url.rstrip('/')}/switch/{entity_path}/{action}"
         try:
             r = requests.post(url, timeout=5)
             r.raise_for_status()
