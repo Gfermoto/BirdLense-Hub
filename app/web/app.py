@@ -32,7 +32,7 @@ def create_app():
     extra = os.environ.get("CORS_ORIGINS", "")
     if extra:
         cors_origins.extend(s.strip() for s in extra.split(",") if s.strip())
-    CORS(app, resources={r"/*": {"origins": cors_origins}})
+    CORS(app, resources={r"/*": {"origins": cors_origins, "supports_credentials": True}})
     app.config.from_object('config.Config')
 
     db.init_app(app)

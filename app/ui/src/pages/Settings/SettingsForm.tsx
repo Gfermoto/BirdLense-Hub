@@ -530,9 +530,12 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 5. NOTIFICATIONS & WEATHER ========== */}
+      {/* ========== 5. УВЕДОМЛЕНИЯ ========== */}
       <Typography variant="h5" gutterBottom>
         {t('settings.section5')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t('settings.section5Desc')}
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 4 }}>
@@ -580,6 +583,18 @@ export const SettingsForm = ({
             )}
           </form.Subscribe>
         </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* ========== 6. ПОГОДА ========== */}
+      <Typography variant="h5" gutterBottom>
+        {t('settings.section6')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t('settings.section6Desc')}
+      </Typography>
+      <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="secrets.openweather_api_key">
             {(field) => (
@@ -628,6 +643,33 @@ export const SettingsForm = ({
                 onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
                 label={t('settings.longitude')}
                 helperText={t('settings.longitudeHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* ========== 7. БЕЗОПАСНОСТЬ ========== */}
+      <Typography variant="h5" gutterBottom>
+        {t('settings.section7')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t('settings.section7Desc')}
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="general.settings_password">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="password"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.settingsPassword')}
+                placeholder={t('settings.settingsPasswordPlaceholder')}
+                helperText={t('settings.settingsPasswordHint')}
               />
             )}
           </form.Field>
