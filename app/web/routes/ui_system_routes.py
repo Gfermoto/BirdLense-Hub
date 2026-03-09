@@ -12,6 +12,7 @@ from app_config.app_config import app_config
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None}
+_regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None}
 
 def _recordings_dir():
     base = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
@@ -323,6 +324,86 @@ def register_routes(app):
     def regenerate_spectrograms_status():
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
         return _regenerate_status, 200
+
+    def _run_regenerate_tracks(force: bool):
+        """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks."""
+        global _regenerate_tracks_status
+        _regenerate_tracks_status = {'status': 'running', 'result': None, 'error': None}
+        try:
+            with app.app_context():
+                import sys
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
+                from track_regenerator import process_video_for_tracks
+                from services.visit_processor import VisitProcessor
+
+                base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                lores_size = (640, 640)
+
+                if force:
+                    videos = Video.query.all()
+                else:
+                    from sqlalchemy import or_
+                    videos = Video.query.join(VideoSpecies).filter(
+                        or_(VideoSpecies.frames.is_(None), VideoSpecies.frames == '')
+                    ).distinct().all()
+
+                generated = 0
+                failed = 0
+                skipped = 0
+
+                visit_processor = VisitProcessor(db, app.logger)
+
+                for video in videos:
+                    if not video.video_path:
+                        skipped += 1
+                        continue
+                    full_video = os.path.join(base, video.video_path)
+                    if not os.path.isfile(full_video):
+                        skipped += 1
+                        continue
+
+                    try:
+                        detections = process_video_for_tracks(
+                            full_video, lores_size
+                        )
+                        if not detections:
+                            skipped += 1
+                            continue
+
+                        VideoSpecies.query.filter_by(video_id=video.id).delete()
+                        visit_processor.process_detections(video, detections)
+                        generated += 1
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        app.logger.exception(f'Track regen failed {video.video_path}: {e}')
+                        failed += 1
+
+                app.logger.info(
+                    f'Tracks: generated={generated}, failed={failed}, skipped={skipped}'
+                )
+                _regenerate_tracks_status = {
+                    'status': 'done',
+                    'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
+                    'error': None,
+                }
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception(f'Regenerate tracks failed: {e}')
+            _regenerate_tracks_status = {'status': 'done', 'result': None, 'error': str(e)}
+
+    @app.route('/api/ui/system/regenerate-tracks', methods=['POST'])
+    def regenerate_tracks():
+        """Start track regeneration in background. Processes videos without tracks (or all if force)."""
+        force = (request.json or {}).get('force', False)
+        t = threading.Thread(target=_run_regenerate_tracks, args=(force,), daemon=True)
+        t.start()
+        return {'message': 'Track regeneration started.', 'started': True}, 202
+
+    @app.route('/api/ui/system/regenerate-tracks/status', methods=['GET'])
+    def regenerate_tracks_status():
+        """Return last track regeneration result."""
+        return _regenerate_tracks_status, 200
 
     @app.route('/api/ui/system/recordings/scan', methods=['POST'])
     def scan_recordings():

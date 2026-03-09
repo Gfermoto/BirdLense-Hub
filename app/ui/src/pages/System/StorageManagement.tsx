@@ -17,6 +17,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
+import RouteIcon from '@mui/icons-material/Route';
 import { BASE_API_URL } from '../../api/api';
 
 interface StorageStats {
@@ -117,6 +118,19 @@ export const StorageManagement = () => {
     return null;
   }, []);
 
+  const pollRegenerateTracksStatus = useCallback(async (): Promise<RegenerateSpectrogramsResponse | null> => {
+    const { data } = await axios.get<{ status: string; result: RegenerateSpectrogramsResponse | null; error: string | null }>(
+      `${BASE_API_URL}/system/regenerate-tracks/status`,
+    );
+    if (data.status === 'done' && data.result) {
+      return data.result;
+    }
+    if (data.status === 'done' && data.error) {
+      throw new Error(data.error);
+    }
+    return null;
+  }, []);
+
   const regenerateMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
@@ -146,6 +160,40 @@ export const StorageManagement = () => {
     onError: (err) => {
       setError(
         err instanceof Error ? err.message : t('storage.regenerateFailed'),
+      );
+    },
+  });
+
+  const regenerateTracksMutation = useMutation<
+    RegenerateSpectrogramsResponse,
+    Error,
+    { force?: boolean }
+  >({
+    mutationFn: async (params) => {
+      await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {});
+      for (let i = 0; i < 180; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const result = await pollRegenerateTracksStatus();
+        if (result) return result;
+      }
+      throw new Error(t('storage.regenerateTimeout'));
+    },
+    onSuccess: (data) => {
+      setSuccess({
+        message: data.message || '',
+        generated: data.generated,
+        failed: data.failed,
+        skipped: data.skipped,
+        tracks: true,
+      });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      setTimeout(() => setSuccess(null), 8000);
+    },
+    onError: (err) => {
+      setError(
+        err instanceof Error ? err.message : t('storage.regenerateTracksFailed'),
       );
     },
   });
@@ -222,11 +270,17 @@ export const StorageManagement = () => {
         >
           <AlertTitle>{t('common.success')}</AlertTitle>
           {'generated' in success
-            ? t('storage.regenerateSuccess', {
-                generated: success.generated,
-                failed: success.failed,
-                skipped: success.skipped,
-              })
+            ? ('tracks' in success && success.tracks
+                ? t('storage.regenerateTracksSuccess', {
+                    generated: success.generated,
+                    failed: success.failed,
+                    skipped: success.skipped,
+                  })
+                : t('storage.regenerateSuccess', {
+                    generated: success.generated,
+                    failed: success.failed,
+                    skipped: success.skipped,
+                  }))
             : success.deletedSize > 0
             ? t('storage.deleted', { count: success.deletedCount, size: formatBytes(success.deletedSize) })
             : t('storage.imported', { count: success.deletedCount })}
@@ -272,6 +326,14 @@ export const StorageManagement = () => {
                 startIcon={<GraphicEqIcon />}
               >
                 {regenerateMutation.isPending ? t('storage.regenerating') : t('storage.regenerateSpectrograms')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={regenerateTracksMutation.isPending}
+                onClick={() => regenerateTracksMutation.mutate({})}
+                startIcon={<RouteIcon />}
+              >
+                {regenerateTracksMutation.isPending ? t('storage.regenerating') : t('storage.regenerateTracks')}
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
                 {t('storage.scanHint')}

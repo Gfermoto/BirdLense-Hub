@@ -18,14 +18,18 @@ class FrameProcessor:
         self.logger.info('FrameProcessor initialized.')
         self.reset()
 
-    def run(self, img):
-        # incoming frame is BGR
+    def run(self, img, frame_time=None):
+        """
+        Process frame. frame_time: optional seconds (for video file); else uses elapsed real time.
+        """
         if img is None:
             raise Exception('Frame is missing')
         self.cnt += 1
         
-        # Capture frame timestamp BEFORE processing to account for detection latency
-        frame_time = round(time.time() - self.start_time, 2)
+        if frame_time is None:
+            frame_time = round(time.time() - self.start_time, 2)
+        else:
+            frame_time = round(float(frame_time), 2)
 
         # Check lighting condition first
         if not self.light_detector.has_sufficient_light(img):
@@ -51,7 +55,8 @@ class FrameProcessor:
             cv2.imwrite(f'data/test/frame{str(self.cnt)}.jpg', debug_img)
 
         if not results:
-            self.logger.debug('No detections')
+            if self.cnt <= 3 or self.cnt % 30 == 0:
+                self.logger.debug(f'No detections (frame {self.cnt})')
             return False
 
         # Update tracks with valid detections

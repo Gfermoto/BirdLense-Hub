@@ -155,6 +155,9 @@
     "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them",
     "regenerating": "Generating...",
     "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
+    "regenerateTracks": "Regenerate tracks",
+    "regenerateTracksSuccess": "Tracks: {{generated}}, failed {{failed}}, skipped {{skipped}}",
+    "regenerateTracksFailed": "Failed to regenerate tracks",
     "regenerateTimeout": "Timeout waiting for result",
     "regenerateFailed": "Failed to regenerate spectrograms"
   },

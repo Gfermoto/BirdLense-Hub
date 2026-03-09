@@ -333,6 +333,10 @@ def main():
                 logging.info(
                     f"ByteTrack: {yolo_tracks_count} tracks, {yolo_passed_count} passed "
                     f"min_track_duration (species with frames)")
+            elif mqtt_events:
+                logging.warning(
+                    f"ByteTrack: 0 YOLO tracks but {len(mqtt_events)} MQTT events. "
+                    "YOLO не детектирует — треки будут пустые (только вид из Frigate).")
             species_mapping = app_config.get('detection.species_mapping') or {}
             merge_window = app_config.get('detection.merge_window_seconds', 5)
             dedup_window = app_config.get('detection.dedup_window_seconds', 45)

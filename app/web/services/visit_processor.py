@@ -5,6 +5,13 @@ from models import Video, Species, VideoSpecies, SpeciesVisit
 from util import update_species_info_from_wiki
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC). SQLite returns naive datetimes."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 class VisitProcessor:
     def __init__(self, db, logger, visit_timeout: int = 60):
         self.db = db
@@ -21,13 +28,14 @@ class VisitProcessor:
         Process a video detection and create/update associated visit.
         Returns the visit and video_species record.
         """
-        detection_time = video.start_time + timedelta(seconds=detection_start)
+        video_start = _ensure_utc(video.start_time)
+        detection_time = video_start + timedelta(seconds=detection_start)
         visit, _ = self._get_or_create_visit(species, detection_time)
 
         # Extend visit duration
         visit.end_time = max(
             visit.end_time,
-            video.start_time + timedelta(seconds=detection_end)
+            video_start + timedelta(seconds=detection_end)
         )
 
         # Create video species record
@@ -57,7 +65,8 @@ class VisitProcessor:
         Process an audio detection and associate it with an existing visit if found.
         Returns the video_species record if successful.
         """
-        detection_time = video.start_time + timedelta(seconds=detection_start)
+        video_start = _ensure_utc(video.start_time)
+        detection_time = video_start + timedelta(seconds=detection_start)
         visit = self._find_active_visit_for_audio(species, detection_time)
 
         if not visit:

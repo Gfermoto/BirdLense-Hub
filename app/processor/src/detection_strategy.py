@@ -120,11 +120,12 @@ class SingleStageStrategy(DetectionStrategy):
             frame, persist=True, conf=min_confidence,
             classes=self.classes, tracker=tracker_config, verbose=False)
         
-        if not results or results[0].boxes.id is None:
+        if not results or len(results[0].boxes) == 0:
             return []
 
         boxes = results[0].boxes
-        track_ids = boxes.id.int().cpu().tolist()
+        # boxes.id can be None on first frame (ByteTrack has no previous frames to match)
+        track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else list(range(len(boxes)))
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
         xyxyn = boxes.xyxyn.cpu().numpy()
@@ -261,11 +262,12 @@ class TwoStageStrategy(DetectionStrategy):
         results = self.binary_model.track(
             frame, persist=True, conf=min_confidence, verbose=False, imgsz=320, tracker=tracker_config)
             
-        if not results or results[0].boxes.id is None:
+        if not results or len(results[0].boxes) == 0:
             return []
 
         boxes = results[0].boxes
-        track_ids = boxes.id.int().cpu().tolist()
+        # boxes.id can be None on first frame (ByteTrack has no previous frames to match)
+        track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else list(range(len(boxes)))
         confidences = boxes.conf.cpu().tolist()
         xyxyn = boxes.xyxyn.cpu().numpy() # normalized for output
         xyxy = boxes.xyxy.cpu().numpy()   # absolute for cropping
