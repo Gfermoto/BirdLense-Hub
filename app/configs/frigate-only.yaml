@@ -3,7 +3,9 @@
 
 video:
   source: go2rtc
-  stream_name: "bird_cam"
+  cameras:
+    - id: bird_cam
+      stream_name: bird_cam
 
 motion:
   source: mqtt

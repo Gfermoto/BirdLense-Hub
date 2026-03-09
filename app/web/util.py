@@ -8,11 +8,19 @@ from app_config.app_config import app_config
 from models import Species, db
 
 
+def _normalize_coord(v):
+    """Replace comma with dot for OpenWeather API (e.g. 55,934 -> 55.934)."""
+    if v is None:
+        return None
+    s = str(v).strip().replace(',', '.')
+    return s if s else None
+
+
 class WeatherFetcher:
     def __init__(self, api_url, latitude, longitude, api_key, cache_duration=timedelta(minutes=10)):
         self.api_url = api_url
-        self.latitude = latitude
-        self.longitude = longitude
+        self.latitude = _normalize_coord(latitude)
+        self.longitude = _normalize_coord(longitude)
         self.api_key = api_key
         self.cache_duration = cache_duration
         self.last_fetched = None
@@ -35,8 +43,13 @@ class WeatherFetcher:
         Fetches weather data from the API with retry logic.
         """
         params = params or self.default_params
-        if not params['appid']:
+        if not params.get('appid'):
             return {}
+        lat = _normalize_coord(params.get('lat'))
+        lon = _normalize_coord(params.get('lon'))
+        if not lat or not lon:
+            return {}
+        params = {**params, 'lat': lat, 'lon': lon}
         delay = 1
         for attempt in range(retries):
             try:
@@ -133,15 +146,23 @@ def _create_weather_fetcher():
             entity_id=app_config.get('weather.ha_entity_id', 'weather.home'),
             token=os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token'),
         )
+    lat = _normalize_coord(app_config.get('secrets.latitude'))
+    lon = _normalize_coord(app_config.get('secrets.longitude'))
     return WeatherFetcher(
         api_url='https://api.openweathermap.org/data/2.5/weather',
-        latitude=app_config.get('secrets.latitude'),
-        longitude=app_config.get('secrets.longitude'),
+        latitude=lat,
+        longitude=lon,
         api_key=os.environ.get('OPENWEATHER_API_KEY') or app_config.get('secrets.openweather_api_key'),
     )
 
 
 weather_fetcher = _create_weather_fetcher()
+
+
+def fetch_weather():
+    """Fetch weather using current app_config (picks up settings changes without restart)."""
+    fetcher = _create_weather_fetcher()
+    return fetcher.fetch()
 
 
 def build_hierarchy_tree():

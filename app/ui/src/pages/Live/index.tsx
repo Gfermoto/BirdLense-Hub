@@ -1,11 +1,12 @@
-import { useRef, useLayoutEffect } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCameras } from '../../api/api';
 
-const MjpegStream = ({
+/** Go2RTC iframe — формат (WebRTC/MSE) выбирает сам Go2RTC. */
+const CameraStream = ({
   streamUrl,
   name,
   feeder,
@@ -14,32 +15,28 @@ const MjpegStream = ({
   name: string;
   feeder?: string;
 }) => {
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  useLayoutEffect(() => {
-    if (imgRef.current) {
-      imgRef.current.src = streamUrl;
-    }
-    return () => {
-      if (imgRef.current) {
-        imgRef.current.src = '';
-      }
-    };
-  }, [streamUrl]);
-
   const label = feeder ? `${feeder} — ${name}` : name;
-
   return (
-    <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        {label}
-      </Typography>
-      <img width="100%" ref={imgRef} alt={label} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{label}</Typography>
+      <Box
+        component="iframe"
+        src={streamUrl}
+        title={label}
+        sx={{
+          flex: 1,
+          minHeight: 200,
+          border: 'none',
+          borderRadius: 1,
+          bgcolor: 'black',
+        }}
+      />
     </Box>
   );
 };
 
 export const LivePage = () => {
+  const { t } = useTranslation();
   const { data: cameras, isLoading } = useQuery({
     queryKey: ['cameras'],
     queryFn: fetchCameras,
@@ -49,14 +46,14 @@ export const LivePage = () => {
     return (
       <Box>
         <Typography variant="h4" mb={3}>
-          Live Stream
+          {t('live.streamTitle')}
         </Typography>
-        <Typography>Loading...</Typography>
+        <Typography>{t('live.loading')}</Typography>
       </Box>
     );
   }
 
-  const cams = cameras?.length ? cameras : [{ id: 'default', name: 'Camera', stream_url: '/processor/live' }];
+  const cams = cameras ?? [];
 
   // Адаптивная сетка: 1 камера — на всю ширину, 2 — в 2 колонки, 3–4 — в 4, 5+ — в 6
   const numCols = cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
@@ -65,12 +62,17 @@ export const LivePage = () => {
   return (
     <Box>
       <Typography variant="h4" mb={3}>
-        Live — все камеры
+        {t('live.title')}
       </Typography>
+      {cams.length === 0 ? (
+        <Typography color="text.secondary">
+          {t('live.noCameras')}
+        </Typography>
+      ) : (
       <Grid container spacing={2}>
         {cams.map((cam) => (
           <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
-            <MjpegStream
+            <CameraStream
               streamUrl={cam.stream_url}
               name={cam.name}
               feeder={cam.feeder}
@@ -78,6 +80,7 @@ export const LivePage = () => {
           </Grid>
         ))}
       </Grid>
+      )}
     </Box>
   );
 };

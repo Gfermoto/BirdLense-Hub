@@ -1,9 +1,36 @@
 __pycache__
 .ipynb_checkpoints
 .env
+.env.*
 *.db
 app/data/recordings
 app.log
 .DS_Store
-user_config.yaml
 /datasets
+
+# Настройки — не коммитить (только шаблоны в репо)
+user_config.yaml
+app/app_config/user_config.yaml
+app/configs/*.local.yaml
+app/configs/*.local.yml
+app/configs/env.local
+
+# Deploy — локальные переопределения (IP, URL)
+scripts/deploy.local.sh
+
+# Deploy — никогда не коммитить
+.deploy_credentials
+*.pem
+**/secrets/
+**/*password*
+**/*secret*
+
+# E2E — скриншоты/отчёты могут содержать данные из UI
+app/e2e/playwright-report/
+app/e2e/test-results/
+
+# Cursor IDE
+.cursor/
+
+# Обученные модели (веса и артефакты обучения)
+app/processor/models/

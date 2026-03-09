@@ -1,6 +1,9 @@
 import * as React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import AppBar from '@mui/material/AppBar';
+import logoUrl from '../assets/logo.png';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
@@ -33,11 +36,11 @@ const pulse = keyframes`
   }
 `;
 
-const NAVIGATION_ITEMS = [
-  { label: 'Dashboard', path: '/' },
-  { label: 'Записи', path: '/timeline' },
-  { label: 'Food Management', path: '/food' },
-  { label: 'Bird Directory', path: '/species' },
+const NAV_KEYS = [
+  { key: 'dashboard', path: '/' },
+  { key: 'timeline', path: '/timeline' },
+  { key: 'food', path: '/food' },
+  { key: 'species', path: '/species' },
 ] as const;
 
 // Pill-shaped nav item styles (defined outside component to avoid recreation)
@@ -64,6 +67,7 @@ const activeNavPillStyles = {
 };
 
 export function Navigation() {
+  const { t } = useTranslation();
   const location = useLocation();
   const currentPath = location.pathname.split('?')[0];
 
@@ -97,7 +101,7 @@ export function Navigation() {
           >
             <Box
               component="img"
-              src="/logo.png"
+              src={logoUrl}
               alt="BirdLense Logo"
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
@@ -133,7 +137,7 @@ export function Navigation() {
               }}
             >
               {/* Main Navigation Items */}
-              {NAVIGATION_ITEMS.map((item) => (
+              {NAV_KEYS.map((item) => (
                 <MenuItem
                   key={item.path}
                   onClick={handleMobileMenuClose}
@@ -141,7 +145,7 @@ export function Navigation() {
                   to={item.path}
                   selected={currentPath === item.path}
                 >
-                  {item.label}
+                  {t(`nav.${item.key}`)}
                 </MenuItem>
               ))}
 
@@ -165,7 +169,7 @@ export function Navigation() {
                     animation: `${pulse} 1.5s ease-in-out infinite`,
                   }}
                 />
-                Live View
+                {t('nav.liveView')}
               </MenuItem>
 
               {/* Settings Section */}
@@ -177,7 +181,7 @@ export function Navigation() {
                 selected={currentPath === '/settings'}
               >
                 <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
-                Settings
+                {t('nav.settings')}
               </MenuItem>
               <MenuItem
                 onClick={handleMobileMenuClose}
@@ -185,7 +189,7 @@ export function Navigation() {
                 to="/system"
                 selected={currentPath === '/system'}
               >
-                System
+                {t('nav.system')}
               </MenuItem>
             </Menu>
           </Box>
@@ -204,7 +208,7 @@ export function Navigation() {
           >
             <Box
               component="img"
-              src="/logo.png"
+              src={logoUrl}
               alt="BirdLense Logo"
               sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5 }}
             />
@@ -220,7 +224,7 @@ export function Navigation() {
               alignItems: 'center',
             }}
           >
-            {NAVIGATION_ITEMS.map((item) => (
+            {NAV_KEYS.map((item) => (
               <Box
                 key={item.path}
                 component={Link}
@@ -231,7 +235,7 @@ export function Navigation() {
                     : navPillStyles
                 }
               >
-                {item.label}
+                {t(`nav.${item.key}`)}
               </Box>
             ))}
           </Box>
@@ -284,6 +288,9 @@ export function Navigation() {
               <StatusIndicator />
             </Box>
 
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+
             {/* Settings Icon */}
             <IconButton
               color="inherit"
@@ -325,7 +332,7 @@ export function Navigation() {
               onClick={handleSettingsMenuClose}
               selected={currentPath === '/settings'}
             >
-              Settings
+              {t('nav.settings')}
             </MenuItem>
             <MenuItem
               component={Link}
@@ -333,7 +340,7 @@ export function Navigation() {
               onClick={handleSettingsMenuClose}
               selected={currentPath === '/system'}
             >
-              System
+              {t('nav.system')}
             </MenuItem>
           </Menu>
         </Toolbar>

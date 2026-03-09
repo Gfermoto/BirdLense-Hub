@@ -2,7 +2,7 @@ import json
 from flask import request
 from datetime import datetime, timezone
 from models import ActivityLog, db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit
-from util import weather_fetcher, notify, filter_feeder_species
+from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
 
@@ -30,7 +30,7 @@ def register_routes(app):
                 end_time=end_time,
                 video_path=data['video_path'],
                 spectrogram_path=data['spectrogram_path'],
-                **weather_fetcher.fetch()
+                **fetch_weather()
             )
             db.session.add(video)
 

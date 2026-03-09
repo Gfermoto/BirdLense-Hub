@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Timeline } from './Timeline';
 import { TimelineStats } from './TimelineStats';
 import { SpeciesVisit, Species } from '../../types';
@@ -11,10 +11,14 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs, { Dayjs } from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTimeline } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -50,6 +54,7 @@ function useFilteredVisits(
 }
 
 export function TimelinePage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [dateTime, setDateTime] = useState<Dayjs | null>(() => {
@@ -114,14 +119,27 @@ export function TimelinePage() {
         <CircularProgress />
       </Box>
     );
-  if (error) return <div>Error loading data.</div>;
+  if (error) return <div>{t('timeline.errorLoad')}</div>;
 
   return (
     <>
       <PageHelp {...timelineHelpConfig} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Записи с камер: выберите дату и время, чтобы просмотреть видео с обнаружениями птиц.
+        {t('timeline.intro')}
       </Typography>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        {t('timeline.noRecords')}{' '}
+        <Button
+          component={Link}
+          to="/system#recordings"
+          size="small"
+          startIcon={<FolderOpenIcon />}
+          sx={{ verticalAlign: 'baseline' }}
+        >
+          {t('timeline.scanImport')}
+        </Button>
+        {' '}{t('timeline.scanHint')}.
+      </Alert>
       <Box
         display="flex"
         justifyContent="center"
@@ -130,7 +148,7 @@ export function TimelinePage() {
       >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DateTimePicker
-            label="Select Date & Time"
+            label={t('timeline.selectDateTime')}
             value={dateTime}
             onChange={(newValue) => setDateTime(newValue)}
             maxDateTime={dayjs()}
@@ -138,16 +156,16 @@ export function TimelinePage() {
           />
         </LocalizationProvider>
         <FormControl>
-          <InputLabel id="species-select-label">Species</InputLabel>
+          <InputLabel id="species-select-label">{t('timeline.species')}</InputLabel>
           <Select
             labelId="species-select-label"
             multiple
             value={selectedSpeciesIds}
             onChange={handleSpeciesChange}
-            input={<OutlinedInput label="Species" />}
+            input={<OutlinedInput label={t('timeline.species')} />}
             renderValue={(selected) =>
               selected.length === 0
-                ? 'All'
+                ? t('common.all')
                 : speciesList
                     .filter((species) => selected.includes(Number(species.id)))
                     .map((species) => species.name)

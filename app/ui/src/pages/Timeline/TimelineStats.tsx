@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import Grid from '@mui/material/Grid2';
 import TimelapseOutlined from '@mui/icons-material/TimelapseOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
@@ -16,6 +17,7 @@ const calculateTotalDurationMin = (data: SpeciesVisit[]) => {
 };
 
 export const TimelineStats = ({ visits }: { visits: SpeciesVisit[] }) => {
+  const { t } = useTranslation();
   const uniqueSpecies = new Set(visits.map((visit) => visit.species.id)).size;
   const totalDetections = visits.reduce(
     (acc, visit) => acc + visit.max_simultaneous,
@@ -28,21 +30,21 @@ export const TimelineStats = ({ visits }: { visits: SpeciesVisit[] }) => {
       <Grid size={{ xs: 12, sm: 4 }}>
         <StatCard
           icon={BirdIcon}
-          title="Unique Species"
+          title={t('timelineStats.uniqueSpecies')}
           value={uniqueSpecies}
         />
       </Grid>
       <Grid size={{ xs: 12, sm: 4 }}>
         <StatCard
           icon={VisibilityOutlined}
-          title="Total Visits"
+          title={t('timelineStats.totalVisits')}
           value={totalDetections}
         />
       </Grid>
       <Grid size={{ xs: 12, sm: 4 }}>
         <StatCard
           icon={TimelapseOutlined}
-          title="Total Duration"
+          title={t('timelineStats.totalDuration')}
           value={`${totalDurationMin}m`}
         />
       </Grid>

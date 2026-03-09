@@ -1,0 +1,22 @@
+# BirdLense — один контейнер
+# Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
+
+services:
+  birdlense:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: birdlense
+    ports:
+      - "${BIRDLENSE_PORT:-8085}:8080"
+    volumes:
+      - ./data:/app/data
+      - ./app_config:/app/app_config
+    environment:
+      - DATA_DIR=/app/data
+      - API_URL_BASE=http://127.0.0.1:8000/api/processor
+      - GO2RTC_URL=${GO2RTC_URL:-}
+      - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+    restart: unless-stopped

@@ -8,7 +8,11 @@ from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func
 from services.retention_service import run_retention
 
-RECORDINGS_DIR = "data/recordings"
+def _recordings_dir():
+    base = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
+    return os.path.join(base, 'recordings')
+
+
 IMPORT_SPECIES_NAME = "Unknown"
 
 
@@ -118,14 +122,15 @@ def register_routes(app):
 
     @app.route('/api/ui/storage/stats', methods=['GET'])
     def get_storage_stats():
-        if not os.path.exists(RECORDINGS_DIR):
+        if not os.path.exists(_recordings_dir()):
             return [], 200
 
         stats = []
         # Walk through year/month/day structure
         try:
-            for year in sorted(os.listdir(RECORDINGS_DIR), reverse=True):
-                year_path = os.path.join(RECORDINGS_DIR, year)
+            rec_dir = _recordings_dir()
+            for year in sorted(os.listdir(rec_dir), reverse=True):
+                year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
                     continue
 
@@ -166,8 +171,9 @@ def register_routes(app):
             deleted_size = 0
 
             # Walk through the recordings directory
-            for year in os.listdir(RECORDINGS_DIR):
-                year_path = os.path.join(RECORDINGS_DIR, year)
+            rec_dir = _recordings_dir()
+            for year in os.listdir(rec_dir):
+                year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
                     continue
 
@@ -231,7 +237,7 @@ def register_routes(app):
         Scan data/recordings/ for video.mp4 not in DB and add them.
         Fixes recordings missing from stats after server restart.
         """
-        if not os.path.exists(RECORDINGS_DIR):
+        if not os.path.exists(_recordings_dir()):
             return {'imported': 0, 'message': 'No recordings directory'}, 200
 
         species = Species.query.filter_by(name=IMPORT_SPECIES_NAME).first()
@@ -244,13 +250,15 @@ def register_routes(app):
             v.video_path for v in db.session.query(Video.video_path).all()
         }
         imported = 0
+        # YYYY/MM/DD/HHMMSS или YYYY/MM/DD/HH-MM-SS
         pattern = re.compile(
-            r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})(\d{2})(\d{2})$'
+            r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$'
         )
 
         try:
-            for year in os.listdir(RECORDINGS_DIR):
-                year_path = os.path.join(RECORDINGS_DIR, year)
+            rec_dir = _recordings_dir()
+            for year in os.listdir(rec_dir):
+                year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path) or not year.isdigit():
                     continue
                 for month in os.listdir(year_path):
@@ -271,10 +279,7 @@ def register_routes(app):
                             video_mp4 = os.path.join(ts_path, 'video.mp4')
                             if not os.path.isfile(video_mp4):
                                 continue
-                            rel_path = os.path.join(
-                                RECORDINGS_DIR, year, month, day, ts,
-                                'video.mp4'
-                            ).replace(os.sep, '/')
+                            rel_path = f'data/recordings/{year}/{month}/{day}/{ts}/video.mp4'
                             if rel_path in existing_paths:
                                 continue
 
@@ -292,10 +297,7 @@ def register_routes(app):
                                     for f in os.listdir(ts_path):
                                         if (f.startswith('spectrogram') and
                                                 f.endswith('.jpg')):
-                                            spectrogram = os.path.join(
-                                                RECORDINGS_DIR, year, month,
-                                                day, ts, f
-                                            ).replace(os.sep, '/')
+                                            spectrogram = f'data/recordings/{year}/{month}/{day}/{ts}/{f}'
                                             break
 
                                     video = Video(
@@ -328,7 +330,7 @@ def register_routes(app):
                                     detection_provider='legacy',
                                     created_at=start_time,
                                 )
-                                    db.session.add(vs)
+                                db.session.add(vs)
                                 existing_paths.add(rel_path)
                                 imported += 1
                             except Exception as e:

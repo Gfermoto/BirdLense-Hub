@@ -8,6 +8,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 
 interface HourlyActivityChartProps {
@@ -19,6 +20,7 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
   data,
   hourlyTemperature = [],
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [selectedSpecies, setSelectedSpecies] = useState<number | 'all'>('all');
   const [showTemperature, setShowTemperature] = useState(true);
@@ -77,7 +79,7 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
             data: adjustedTemperature,
             color: theme.palette.warning.main,
             yAxisId: 'temperature',
-            label: 'Temperature',
+            label: t('overviewExtra.temperature'),
             valueFormatter: (v: number | null) =>
               v !== null ? `${v}°C` : 'N/A',
           },
@@ -110,7 +112,7 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
             }
             displayEmpty
           >
-            <MenuItem value="all">All Species</MenuItem>
+            <MenuItem value="all">{t('overviewExtra.allSpecies')}</MenuItem>
             {data.map((species) => (
               <MenuItem key={species.id} value={species.id}>
                 {species.name}
@@ -127,7 +129,7 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
                 size="small"
               />
             }
-            label="Temperature"
+            label={t('overviewExtra.temperature')}
             slotProps={{ typography: { variant: 'body2' } }}
           />
         )}

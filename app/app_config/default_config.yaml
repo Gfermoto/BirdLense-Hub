@@ -29,21 +29,15 @@ processor:
 # file - video file path (testing)
 video:
   source: go2rtc
-  go2rtc_url: "http://go2rtc:1984"
-  # Single camera (legacy):
-  stream_name: "bird_cam"
-  # Multiple cameras (разные кормушки или несколько камер у одной)
-  # id = Frigate camera name, stream_name = Go2RTC stream
-  # feeder = опционально, для подписи (например "Кормушка 1")
+  # Хост Go2RTC: http://IP:1984
+  go2rtc_url: ""
+  # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
+  cameras: []
+  # Пример после добавления:
   # cameras:
-  #   - id: bird_cam
-  #     stream_name: bird_cam
-  #     name: "Камера 1"
-  #     feeder: "Кормушка 1"
-  #   - id: bird_cam2
-  #     stream_name: bird_cam2
-  #     name: "Камера 2"
-  #     feeder: "Кормушка 2"
+  #   - id: BirdBox
+  #     stream_name: BirdBox
+  #     name: "Кормушка"
   pre_record_seconds: 5
   auto_reconnect: true
   video_width: 1280
@@ -68,14 +62,11 @@ motion:
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
 
 # MQTT - Frigate and BirdNET (confirmations)
-# birdnet_topic: BirdNET-Pi (birdnet/sightings) или BirdNET-Go (birdnet/detections)
-# birdnet_go_topic: опционально — подписаться на оба (BirdNET-Pi + BirdNET-Go)
 mqtt:
   broker: ""
   port: 1883
   frigate_topic: "frigate/events"
-  birdnet_topic: "birdnet/sightings"
-  birdnet_go_topic: ""  # e.g. birdnet/detections for BirdNET-Go
+  birdnet_topic: "birdnet"  # BirdNET-Go/Pi публикует сюда
   publish_topic: "birdlense/detections"
 
 # Detection merging (YOLO + Frigate + BirdNET)

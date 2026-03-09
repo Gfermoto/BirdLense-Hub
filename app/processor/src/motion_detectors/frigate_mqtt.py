@@ -1,5 +1,6 @@
 """
 Frigate MQTT motion detector. Subscribes to frigate/events, triggers on bird/motion.
+FrigateMotionFromAggregator — один MQTT (через aggregator), без второго подключения.
 """
 import json
 import logging
@@ -10,6 +11,44 @@ import time
 import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
+
+
+class FrigateMotionFromAggregator:
+    """Motion через MQTT aggregator — одно подключение вместо двух (Not authorized)."""
+
+    def __init__(self, aggregator, camera_filter=None, label_filter=None):
+        self._aggregator = aggregator
+        self._camera_filter = set(camera_filter or [])
+        self._label_filter = set(label_filter or ["bird", "Bird"])
+        self._event = threading.Event()
+        self._last_camera = None
+
+    def _on_motion(self, camera, label):
+        self._last_camera = camera
+        logger.info(f"Frigate motion: camera={camera}, label={label}")
+        self._event.set()
+
+    def get_on_frigate_motion_tuple(self):
+        return (self._camera_filter, self._label_filter, self._on_motion)
+
+    @property
+    def _connected(self):
+        return self._aggregator.is_connected()
+
+    def detect(self):
+        if not self._connected:
+            time.sleep(1)
+            return False
+        self._event.clear()
+        self._last_camera = None
+        self._event.wait(timeout=300)
+        return self._event.is_set()
+
+    def get_triggered_camera(self):
+        return self._last_camera
+
+    def stop(self):
+        pass
 
 
 class FrigateMQTTMotionDetector:
@@ -49,7 +88,7 @@ class FrigateMQTTMotionDetector:
             self._connected = False
             logger.warning(f"Frigate MQTT connect failed: {reason_code}")
 
-    def _on_disconnect(self, client, userdata, reason_code, properties=None):
+    def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None):
         self._connected = False
         logger.warning(f"Frigate MQTT disconnected: {reason_code}")
 

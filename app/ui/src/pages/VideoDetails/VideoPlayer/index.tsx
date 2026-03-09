@@ -21,6 +21,7 @@ import { Video, VideoSpecies } from '../../../types';
 import { BASE_URL } from '../../../api/api';
 import { ProgressBar } from './ProgressBar';
 import { SpectrogramPlayer } from './SpectrogramPlayer';
+import { useTranslation } from 'react-i18next';
 import { useVideoControl } from './useVideoControl';
 import { TrackOverlay } from './TrackOverlay';
 
@@ -38,7 +39,9 @@ const ViewToggle: React.FC<ViewToggleProps> = ({
   view,
   onChange,
   audioDisabled,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <Box
     sx={{
       position: 'absolute',
@@ -67,16 +70,17 @@ const ViewToggle: React.FC<ViewToggleProps> = ({
         },
       }}
     >
-      <Tab label="Video" value="video" sx={{ py: 0.5, px: 2 }} />
+      <Tab label={t('video.video')} value="video" sx={{ py: 0.5, px: 2 }} />
       <Tab
-        label="Spectrogram"
+        label={t('video.spectrogram')}
         value="audio"
         disabled={audioDisabled}
         sx={{ py: 0.5, px: 2 }}
       />
     </Tabs>
   </Box>
-);
+  );
+};
 
 // Compact overlay for active species detection
 interface CompactDetectionOverlayProps {

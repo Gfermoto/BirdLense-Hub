@@ -1,10 +1,9 @@
 from flask import request
 import json as json_module
-from sqlalchemy import func, case, distinct, or_
-from sqlalchemy.orm import aliased
+from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
-from util import weather_fetcher, update_species_info_from_wiki
+from util import fetch_weather, update_species_info_from_wiki
 from app_config.app_config import app_config
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 
@@ -17,28 +16,18 @@ def register_routes(app):
 
     @app.route('/api/ui/cameras', methods=['GET'])
     def list_cameras():
-        """List cameras for multi-camera live view."""
-        cameras_config = app_config.get('video.cameras')
-        if cameras_config:
-            cameras = [
-                {
-                    'id': c.get('id') or c.get('stream_name', ''),
-                    'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
-                    'feeder': c.get('feeder'),
-                    'stream_url': f'/processor/live/{i}',
-                }
-                for i, c in enumerate(cameras_config)
-            ]
-        else:
-            stream_name = app_config.get('video.stream_name', 'bird_cam')
-            cameras = [
-                {
-                    'id': stream_name,
-                    'name': stream_name,
-                    'feeder': None,
-                    'stream_url': '/processor/live',
-                }
-            ]
+        """List cameras — только из video.cameras, добавлять по одной. Без default."""
+        cameras_config = app_config.get('video.cameras') or []
+        valid = [c for c in cameras_config if (c.get('stream_name') or '').strip()]
+        cameras = [
+            {
+                'id': c.get('id') or c.get('stream_name', ''),
+                'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
+                'feeder': c.get('feeder'),
+                'stream_url': f'/go2rtc/stream.html?src={valid[i].get("stream_name", c.get("stream_name", ""))}',
+            }
+            for i, c in enumerate(valid)
+        ]
         return {'cameras': cameras}
 
     @app.route('/api/ui/status', methods=['GET'])
@@ -86,7 +75,7 @@ def register_routes(app):
 
     @app.route('/api/ui/weather', methods=['GET'])
     def weather():
-        weather = weather_fetcher.fetch()
+        weather = fetch_weather()
         return {
             'main': weather.get('weather_main'),
             'description': weather.get('weather_description'),
@@ -213,28 +202,9 @@ def register_routes(app):
         except (ValueError, TypeError):
             return {"error": "Invalid timestamp format."}, 400
 
-        # Subquery to get active species and their direct child species
-        ParentSpecies = aliased(Species)  # Alias for self-join
-        active_species_subq = db.session.query(
-            Species.id,
-            Species.name,
-            case(
-                (Species.active == True, Species.id),
-                else_=Species.parent_id
-            ).label('group_id')
-        ).outerjoin(
-            ParentSpecies,
-            Species.parent_id == ParentSpecies.id
-        ).filter(
-            or_(
-                Species.active == True,  # Active species
-                ParentSpecies.active == True  # Parent species is active
-            )
-        ).subquery()
-
-        # Query to get top species with hourly detections for the given day
+        # Top species: все виды с визитами за день (без фильтра active)
         top_species_query = db.session.query(
-            active_species_subq.c.group_id.label('id'),
+            Species.id.label('id'),
             Species.name.label('name'),
             *[
                 func.sum(
@@ -247,14 +217,12 @@ def register_routes(app):
                 for hour in range(24)
             ]
         ).join(
-            Species, Species.id == active_species_subq.c.group_id
-        ).join(
-            SpeciesVisit, SpeciesVisit.species_id == active_species_subq.c.id
+            SpeciesVisit, SpeciesVisit.species_id == Species.id
         ).filter(
             SpeciesVisit.start_time >= start_of_day,
             SpeciesVisit.start_time <= end_of_day
         ).group_by(
-            active_species_subq.c.group_id
+            Species.id, Species.name
         ).order_by(
             func.sum(SpeciesVisit.max_simultaneous).desc()
         ).limit(10)
@@ -282,10 +250,9 @@ def register_routes(app):
             }
             top_species.append(species_data)
 
-        # Statistics query
+        # Statistics query — все визиты за день
         stats_query = db.session.query(
-            func.count(distinct(active_species_subq.c.group_id)
-                       ).label('uniqueSpecies'),
+            func.count(distinct(SpeciesVisit.species_id)).label('uniqueSpecies'),
             func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
             func.sum(
                 case(
@@ -298,8 +265,6 @@ def register_routes(app):
                 func.strftime('%s', SpeciesVisit.end_time) -
                 func.strftime('%s', SpeciesVisit.start_time)
             ).label('avgVisitDuration')
-        ).join(
-            active_species_subq, SpeciesVisit.species_id == active_species_subq.c.id
         ).filter(
             SpeciesVisit.start_time >= start_of_day,
             SpeciesVisit.start_time <= end_of_day
@@ -520,6 +485,14 @@ def register_routes(app):
             if not updates:
                 return {"error": "No data provided for update"}, 400
 
+            # Filter out empty cameras before merge
+            if 'video' in updates and 'cameras' in updates['video']:
+                cameras = updates['video']['cameras'] or []
+                updates['video']['cameras'] = [
+                    c for c in cameras
+                    if (c.get('stream_name') or '').strip()
+                ]
+
             # Recursively merge the updates into the current configuration
             app_config.config = app_config.merge_dicts(
                 app_config.config, updates)
@@ -537,7 +510,8 @@ def register_routes(app):
     def restart_processor():
         """Create flag file; processor will exit and docker restarts it."""
         import os
-        data_dir = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
+        data_dir = os.environ.get('DATA_DIR') or os.path.join(
+            os.path.dirname(__file__), '..', '..', 'data')
         flag_path = os.path.join(data_dir, 'restart_processor.flag')
         try:
             os.makedirs(os.path.dirname(flag_path), exist_ok=True)

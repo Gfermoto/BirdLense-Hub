@@ -89,9 +89,9 @@ class VisitProcessor:
 
         # First pass: Process all detections
         for det in detections:
-            species = Species.query.filter_by(name=det['species_name']).first()
+            species = self._get_or_create_species(det['species_name'])
             if not species:
-                self.logger.warn(f'Unknown species "{det["species_name"]}"')
+                self.logger.warn(f'Could not create species "{det["species_name"]}"')
                 continue
 
             # Update species info from Wikipedia
@@ -170,6 +170,30 @@ class VisitProcessor:
         )
         self.db.session.add(visit)
         return visit, True
+
+    def _get_or_create_species(self, name: str) -> Optional[Species]:
+        """
+        Get species by name, or create if unknown (Frigate/YOLO/BirdNET).
+        Maps generic 'bird' -> 'Bird'. Creates new species under Birds category.
+        """
+        if not name or not isinstance(name, str):
+            return None
+        normalized = name.strip()
+        if not normalized:
+            return None
+        # Frigate generic label -> canonical
+        if normalized.lower() == 'bird':
+            normalized = 'Bird'
+        species = Species.query.filter_by(name=normalized).first()
+        if species:
+            return species
+        birds = Species.query.filter_by(name='Birds').first()
+        parent_id = birds.id if birds else None
+        species = Species(name=normalized, parent_id=parent_id, active=False)
+        self.db.session.add(species)
+        self.db.session.flush()
+        self.logger.info(f'Created species "{normalized}" (parent_id={parent_id})')
+        return species
 
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:
         """

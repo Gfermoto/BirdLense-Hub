@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Box from '@mui/material/Box';
@@ -50,6 +51,7 @@ const formatBytes = (bytes: number): string => {
 };
 
 export const StorageManagement = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export const StorageManagement = () => {
     },
     onError: (err) => {
       setError(
-        err instanceof Error ? err.message : 'Failed to scan recordings',
+        err instanceof Error ? err.message : t('storage.scanFailed'),
       );
     },
   });
@@ -112,7 +114,7 @@ export const StorageManagement = () => {
     },
     onError: (error) => {
       setError(
-        error instanceof Error ? error.message : 'Failed to purge videos',
+        error instanceof Error ? error.message : t('storage.purgeFailed'),
       );
     },
   });
@@ -122,7 +124,7 @@ export const StorageManagement = () => {
 
     if (
       window.confirm(
-        `Are you sure you want to delete all recordings on or before ${selectedDate.format('YYYY-MM-DD')}? This action cannot be undone.`,
+        t('storage.purgeConfirm', { date: selectedDate.format('YYYY-MM-DD') }),
       )
     ) {
       setSuccess(null);
@@ -131,7 +133,7 @@ export const StorageManagement = () => {
   };
 
   if (isLoading) {
-    return <Typography>Loading storage statistics...</Typography>;
+    return <Typography>{t('storage.loadingStats')}</Typography>;
   }
 
   const chartData: ChartDataPoint[] =
@@ -148,12 +150,12 @@ export const StorageManagement = () => {
   return (
     <Box sx={{ pb: 2 }}>
       <Typography variant="h5" gutterBottom>
-        Storage Management
+        {t('storage.title')}
       </Typography>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>{t('common.error')}</AlertTitle>
           {error}
         </Alert>
       )}
@@ -164,10 +166,10 @@ export const StorageManagement = () => {
           sx={{ mb: 2 }}
           onClose={() => setSuccess(null)}
         >
-          <AlertTitle>Success</AlertTitle>
+          <AlertTitle>{t('common.success')}</AlertTitle>
             {success.deletedSize > 0
-            ? `Удалено ${success.deletedCount} файлов (${formatBytes(success.deletedSize)})`
-            : `Импортировано ${success.deletedCount} записей в базу данных`}
+            ? t('storage.deleted', { count: success.deletedCount, size: formatBytes(success.deletedSize) })
+            : t('storage.imported', { count: success.deletedCount })}
         </Alert>
       )}
 
@@ -177,22 +179,22 @@ export const StorageManagement = () => {
             <Stack direction="row" spacing={4}>
               <Box>
                 <Typography variant="subtitle2" gutterBottom>
-                  Total Storage
+                  {t('storage.totalStorage')}
                 </Typography>
                 <Typography variant="h5">{formatBytes(totalSize)}</Typography>
               </Box>
               <Box>
                 <Typography variant="subtitle2" gutterBottom>
-                  Total Files
+                  {t('storage.totalFiles')}
                 </Typography>
                 <Typography variant="h5">{totalFiles}</Typography>
               </Box>
             </Stack>
           </Paper>
 
-          <Paper sx={{ p: 2, flex: 1 }}>
+          <Paper id="recordings" sx={{ p: 2, flex: 1 }}>
             <Typography variant="h6" gutterBottom>
-              Recordings
+              {t('storage.recordings')}
             </Typography>
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
               <Button
@@ -201,19 +203,19 @@ export const StorageManagement = () => {
                 onClick={() => scanMutation.mutate()}
                 startIcon={<FolderOpenIcon />}
               >
-                {scanMutation.isPending ? 'Сканирование...' : 'Сканировать и импортировать'}
+                {scanMutation.isPending ? t('storage.scanning') : t('storage.scanImport')}
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                Добавить записи с диска в БД (после перезапуска)
+                {t('storage.scanHint')}
               </Typography>
             </Stack>
             <Typography variant="subtitle2" gutterBottom>
-              Purge Old Recordings
+              {t('storage.purgeOld')}
             </Typography>
             <Stack direction="row" spacing={2}>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
-                  label="Delete before date"
+                  label={t('storage.deleteBeforeDate')}
                   value={selectedDate}
                   onChange={(newValue: Dayjs | null) =>
                     setSelectedDate(newValue)
@@ -231,7 +233,7 @@ export const StorageManagement = () => {
                 onClick={handlePurge}
                 startIcon={<DeleteOutlineIcon />}
               >
-                Purge
+                {t('storage.purge')}
               </Button>
             </Stack>
           </Paper>
@@ -239,7 +241,7 @@ export const StorageManagement = () => {
 
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
-            Storage Usage Over Time
+            {t('storage.usageOverTime')}
           </Typography>
           {chartData.length > 0 ? (
             <Box sx={{ width: '100%', height: 400 }}>
@@ -269,7 +271,7 @@ export const StorageManagement = () => {
             </Box>
           ) : (
             <Typography color="text.secondary">
-              No storage data available
+              {t('storage.noStorageData')}
             </Typography>
           )}
         </Paper>

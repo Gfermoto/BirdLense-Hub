@@ -16,31 +16,49 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_frigate_event(payload):
+    """Parse Frigate event: before/after, type (new/update/end). Uses after for final state."""
     try:
         data = json.loads(payload.decode())
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None
     after = data.get("after") or data
-    camera = after.get("camera", "")
-    label = after.get("label", "")
-    sub_label_raw = after.get("sub_label")
+    before = data.get("before") or {}
+    camera = after.get("camera") or before.get("camera", "")
+    label = after.get("label") or before.get("label", "")
+    sub_label_raw = after.get("sub_label") or before.get("sub_label")
     sub_label = ""
     if isinstance(sub_label_raw, str):
         sub_label = sub_label_raw
     elif isinstance(sub_label_raw, (list, tuple)) and sub_label_raw:
         sub_label = str(sub_label_raw[0]) if sub_label_raw else ""
-    score = after.get("top_score") or after.get("score", 0)
+    score = after.get("top_score") or after.get("score") or before.get("top_score") or before.get("score", 0)
+    # frame_time — Unix timestamp для слияния по времени (after, before, или root)
+    frame_time = after.get("frame_time") or before.get("frame_time") or data.get("frame_time")
+    if frame_time is not None:
+        try:
+            ts = datetime.fromtimestamp(float(frame_time), tz=timezone.utc)
+            timestamp = ts.isoformat()
+        except (ValueError, TypeError, OSError):
+            timestamp = datetime.now(timezone.utc).isoformat()
+    else:
+        timestamp = datetime.now(timezone.utc).isoformat()
     return {
         "source": "frigate",
         "species": sub_label or label or "unknown",
+        "label": label,
+        "sub_label": sub_label,
         "confidence": float(score),
         "camera": camera,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": timestamp,
     }
 
 
 def _parse_birdnet_event(payload):
-    """Parse BirdNET-Pi (birdnet/sightings) or BirdNET-Go (birdnet) JSON."""
+    """Parse BirdNET-Pi (birdnet/sightings) or BirdNET-Go (birdnet) JSON.
+
+    BirdNET-Go format: ID, SourceNode, Date, Time, BeginTime, EndTime,
+    SpeciesCode, ScientificName, CommonName, Confidence, Source, BirdImage, ...
+    """
     try:
         data = json.loads(payload.decode())
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -61,12 +79,33 @@ def _parse_birdnet_event(payload):
         confidence = float(str(conf_raw).replace(",", "."))
     except (ValueError, TypeError):
         confidence = 0.0
-    return {
+
+    # BirdNET-Go: BeginTime — точное время детекции для слияния с YOLO/Frigate
+    ts_str = data.get("BeginTime") or data.get("Date") or data.get("timestamp")
+    if ts_str:
+        try:
+            ts = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            timestamp = ts.isoformat()
+        except (ValueError, TypeError):
+            timestamp = datetime.now(timezone.utc).isoformat()
+    else:
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+    ev = {
         "source": "birdnet",
         "species": species,
         "confidence": confidence,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": timestamp,
     }
+    # BirdNET-Go: ScientificName для маппинга, BirdImage.URL для UI
+    if data.get("ScientificName"):
+        ev["scientific_name"] = data["ScientificName"]
+    bird_img = data.get("BirdImage")
+    if isinstance(bird_img, dict) and bird_img.get("URL"):
+        ev["bird_image_url"] = bird_img["URL"]
+    return ev
 
 
 class MQTTEventAggregator:
@@ -80,18 +119,18 @@ class MQTTEventAggregator:
         broker: str,
         port: int = 1883,
         frigate_topic: str = "frigate/events",
-        birdnet_topic: str = "birdnet/sightings",
-        birdnet_go_topic: str = "",
+        birdnet_topic: str = "birdnet",
         publish_topic: str = "birdlense/detections",
         username=None,
         password=None,
         max_events: int = 500,
+        on_frigate_motion=None,
     ):
+        """on_frigate_motion: (camera_filter, label_filter, callback) — один MQTT вместо двух."""
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
-        self.birdnet_topic = birdnet_topic
-        self.birdnet_topics = [t for t in [birdnet_topic, birdnet_go_topic] if t]
+        self.birdnet_topics = [birdnet_topic] if (birdnet_topic or "").strip() else []
         self.publish_topic = publish_topic
         self.username = username or os.environ.get("MQTT_USERNAME")
         self.password = password or os.environ.get("MQTT_PASSWORD")
@@ -101,6 +140,7 @@ class MQTTEventAggregator:
         self._client = None
         self._thread = None
         self._connected = False
+        self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -119,6 +159,18 @@ class MQTTEventAggregator:
         ev = None
         if msg.topic == self.frigate_topic:
             ev = _parse_frigate_event(msg.payload)
+            if ev and self._on_frigate_motion:
+                cam_f, lbl_f, cb = self._on_frigate_motion
+                camera = ev.get("camera", "")
+                label = ev.get("label", "")
+                sub_label = ev.get("sub_label", "")
+                species = ev.get("species", "")
+                labels = {label, sub_label, species} if sub_label else {label, species}
+                if (not cam_f or camera in cam_f) and (lbl_f & labels):
+                    try:
+                        cb(camera, species)
+                    except Exception as e:
+                        logger.debug(f"Frigate motion callback: {e}")
         elif msg.topic in self.birdnet_topics:
             ev = _parse_birdnet_event(msg.payload)
         if ev:

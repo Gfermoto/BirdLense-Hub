@@ -16,6 +16,7 @@ import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { BirdDirectoryTreeView } from './BirdDirectoryTreeView';
 import { Species } from '../../types';
+import { useTranslation } from 'react-i18next';
 import { PageHelp } from '../../components/PageHelp';
 import { birdDirHelpConfig } from '../../page-help-config';
 
@@ -134,6 +135,7 @@ const collectTreeInfo = (species: NestedSpecies[], searchQuery: string) => {
 };
 
 export const BirdDirectory = () => {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<FilterType>('observed');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -187,7 +189,7 @@ export const BirdDirectory = () => {
       </Box>
     );
   }
-  if (error) return <div>Error loading bird directory data.</div>;
+  if (error) return <div>{t('species.errorLoad')}</div>;
 
   return (
     <>
@@ -197,7 +199,7 @@ export const BirdDirectory = () => {
       <Box display="flex" flexWrap="wrap" alignItems="center" gap={1.5} mb={3}>
         <TextField
           size="small"
-          placeholder="Search species..."
+          placeholder={t('species.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           slotProps={{
@@ -213,19 +215,19 @@ export const BirdDirectory = () => {
         />
 
         <FormControl size="small">
-          <InputLabel id="filter-label">Filter</InputLabel>
+          <InputLabel id="filter-label">{t('species.filter')}</InputLabel>
           <Select<FilterType>
             labelId="filter-label"
             value={filter}
             onChange={(e: SelectChangeEvent<FilterType>) =>
               setFilter(e.target.value as FilterType)
             }
-            label="Filter"
+            label={t('species.filter')}
             sx={{ minWidth: 120 }}
           >
-            <MenuItem value="all">All Species</MenuItem>
-            <MenuItem value="regional">Regional</MenuItem>
-            <MenuItem value="observed">Observed</MenuItem>
+            <MenuItem value="all">{t('species.allSpecies')}</MenuItem>
+            <MenuItem value="regional">{t('species.regional')}</MenuItem>
+            <MenuItem value="observed">{t('species.observed')}</MenuItem>
           </Select>
         </FormControl>
 
@@ -236,7 +238,7 @@ export const BirdDirectory = () => {
             expandableIds.length === 0 ||
             expandedIds.size === expandableIds.length
           }
-          title="Expand all"
+          title={t('species.expandAll')}
         >
           <UnfoldMoreIcon fontSize="small" />
         </IconButton>
@@ -244,7 +246,7 @@ export const BirdDirectory = () => {
           size="small"
           onClick={() => setExpandedIds(new Set())}
           disabled={expandedIds.size === 0}
-          title="Collapse all"
+          title={t('species.collapseAll')}
         >
           <UnfoldLessIcon fontSize="small" />
         </IconButton>
@@ -253,8 +255,8 @@ export const BirdDirectory = () => {
       {filteredData.length === 0 ? (
         <Box sx={{ color: 'text.secondary', py: 4 }}>
           {searchQuery
-            ? `No species found matching "${searchQuery}"`
-            : 'No species to display with the selected filter.'}
+            ? t('species.noMatch', { query: searchQuery })
+            : t('species.noSpeciesFilter')}
         </Box>
       ) : (
         <BirdDirectoryTreeView

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import dayjs, { Dayjs } from 'dayjs';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
@@ -32,6 +33,7 @@ const formatHour = (hour: number) => {
 };
 
 export const Overview = () => {
+  const { t } = useTranslation();
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
 
   const {
@@ -55,7 +57,18 @@ export const Overview = () => {
         <CircularProgress />
       </Box>
     );
-  if (errorSightings || errorWeather) return <div>Error loading data.</div>;
+  if (errorSightings || errorWeather) {
+    const err = (errorSightings || errorWeather) as Error;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">{t('overview.errorLoad')}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {err?.message || String(errorSightings || errorWeather)}
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 2 }}>{t('overview.checkApi')}</Typography>
+      </Box>
+    );
+  }
 
   const formatRecordingTime = (seconds: number) => {
     if (seconds < 60) return `${Math.round(seconds)} sec`;
@@ -96,35 +109,35 @@ export const Overview = () => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={BirdIcon}
-                title="Unique Species"
+                title={t('overview.uniqueSpecies')}
                 value={overviewData?.stats.uniqueSpecies || 0}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={VisibilityOutlined}
-                title="Total Visits"
+                title={t('overview.totalVisits')}
                 value={overviewData?.stats.totalDetections || 0}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={ScheduleOutlined}
-                title="Visits (Last Hour)"
+                title={t('overview.visitsLastHour')}
                 value={overviewData?.stats.lastHourDetections || 0}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={TimelapseOutlined}
-                title="Mean Visit Duration"
+                title={t('overview.meanDuration')}
                 value={`${Math.round(overviewData?.stats.avgVisitDuration || 0)} sec`}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={WbSunnyOutlined}
-                title="Busiest Hour"
+                title={t('overview.busiestHour')}
                 value={
                   (overviewData?.stats.totalDetections ?? 0) > 0
                     ? formatHour(overviewData?.stats.busiestHour ?? 0)
@@ -135,7 +148,7 @@ export const Overview = () => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <StatCard
                 icon={VideocamOutlined}
-                title="Recording Time"
+                title={t('overview.recordingTime')}
                 value={formatRecordingTime(
                   overviewData?.stats.videoDuration || 0,
                 )}
@@ -146,7 +159,7 @@ export const Overview = () => {
             Object.keys(overviewData.stats.detectionByProvider).length > 0 && (
               <Paper sx={{ p: 2, mt: 2 }}>
                 <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                  По источникам распознавания
+                  {t('overview.bySource')}
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   {Object.entries(overviewData.stats.detectionByProvider).map(
@@ -184,13 +197,17 @@ export const Overview = () => {
         <Grid size={{ xs: 12, md: 8 }} sx={{ display: 'flex' }}>
           <Paper sx={{ p: 2, width: '100%' }}>
             <Typography variant="h6" gutterBottom>
-              Hourly Activity
+              {t('overview.hourlyActivity')}
             </Typography>
-            {overviewData?.topSpecies && (
+            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
               <HourlyActivityChart
                 data={overviewData.topSpecies}
                 hourlyTemperature={overviewData.hourlyTemperature}
               />
+            ) : (
+              <Typography color="text.secondary" sx={{ py: 4 }}>
+                {t('overview.noData')}
+              </Typography>
             )}
           </Paper>
         </Grid>
@@ -201,14 +218,18 @@ export const Overview = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 1, overflow: 'hidden' }}>
             <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
-              Daily Activity Pattern
+              {t('overview.dailyPattern')}
             </Typography>
-            {overviewData?.topSpecies && (
+            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
               <DailyPatternChart
                 data={overviewData.topSpecies}
                 date={selectedDay}
                 size={450}
               />
+            ) : (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                {t('overview.noData')}
+              </Typography>
             )}
           </Paper>
         </Grid>
@@ -217,10 +238,14 @@ export const Overview = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
-              Top Species Distribution
+              {t('overview.topSpecies')}
             </Typography>
-            {overviewData?.topSpecies && (
+            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
               <SpeciesDistributionChart data={overviewData.topSpecies} />
+            ) : (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                {t('overview.noData')}
+              </Typography>
             )}
           </Paper>
         </Grid>

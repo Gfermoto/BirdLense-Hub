@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { OverviewTopSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
@@ -12,6 +13,7 @@ interface SpeciesDistributionChartProps {
 export const SpeciesDistributionChart: React.FC<
   SpeciesDistributionChartProps
 > = ({ data }) => {
+  const { t } = useTranslation();
   const pieData = data
     .map((species) => ({
       id: species.id,
@@ -32,7 +34,7 @@ export const SpeciesDistributionChart: React.FC<
           justifyContent: 'center',
         }}
       >
-        <Typography color="text.secondary">No data available</Typography>
+        <Typography color="text.secondary">{t('common.noData')}</Typography>
       </Box>
     );
   }

@@ -22,14 +22,17 @@ logging.basicConfig(
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, resources={r"/*": {"origins": [
+    # Базовые origins + CORS_ORIGINS из env (через запятую, для своих IP)
+    cors_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://birdlense.local",
         "http://birdlense.local:80",
-        "http://192.168.1.11:8085",
-        "http://192.168.1.11:80",
-    ]}})
+    ]
+    extra = os.environ.get("CORS_ORIGINS", "")
+    if extra:
+        cors_origins.extend(s.strip() for s in extra.split(",") if s.strip())
+    CORS(app, resources={r"/*": {"origins": cors_origins}})
     app.config.from_object('config.Config')
 
     db.init_app(app)
