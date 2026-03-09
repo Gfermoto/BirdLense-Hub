@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -16,6 +16,7 @@ import { BarChart } from '@mui/x-charts/BarChart';
 import dayjs, { Dayjs } from 'dayjs';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import { BASE_API_URL } from '../../api/api';
 
 interface StorageStats {
@@ -42,6 +43,13 @@ interface ScanResponse {
   message: string;
 }
 
+interface RegenerateSpectrogramsResponse {
+  generated: number;
+  failed: number;
+  skipped: number;
+  message: string;
+}
+
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -55,7 +63,7 @@ export const StorageManagement = () => {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<PurgeResponse | null>(null);
+  const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | null>(null);
 
   const {
     data: storageStats,
@@ -92,6 +100,52 @@ export const StorageManagement = () => {
     onError: (err) => {
       setError(
         err instanceof Error ? err.message : t('storage.scanFailed'),
+      );
+    },
+  });
+
+  const pollRegenerateStatus = useCallback(async (): Promise<RegenerateSpectrogramsResponse | null> => {
+    const { data } = await axios.get<{ status: string; result: RegenerateSpectrogramsResponse | null; error: string | null }>(
+      `${BASE_API_URL}/system/regenerate-spectrograms/status`,
+    );
+    if (data.status === 'done' && data.result) {
+      return data.result;
+    }
+    if (data.status === 'done' && data.error) {
+      throw new Error(data.error);
+    }
+    return null;
+  }, []);
+
+  const regenerateMutation = useMutation<
+    RegenerateSpectrogramsResponse,
+    Error,
+    { force?: boolean }
+  >({
+    mutationFn: async (params) => {
+      await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {});
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const result = await pollRegenerateStatus();
+        if (result) return result;
+      }
+      throw new Error(t('storage.regenerateTimeout'));
+    },
+    onSuccess: (data) => {
+      setSuccess({
+        message: data.message || '',
+        generated: data.generated,
+        failed: data.failed,
+        skipped: data.skipped,
+      });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      setTimeout(() => setSuccess(null), 8000);
+    },
+    onError: (err) => {
+      setError(
+        err instanceof Error ? err.message : t('storage.regenerateFailed'),
       );
     },
   });
@@ -167,7 +221,13 @@ export const StorageManagement = () => {
           onClose={() => setSuccess(null)}
         >
           <AlertTitle>{t('common.success')}</AlertTitle>
-            {success.deletedSize > 0
+          {'generated' in success
+            ? t('storage.regenerateSuccess', {
+                generated: success.generated,
+                failed: success.failed,
+                skipped: success.skipped,
+              })
+            : success.deletedSize > 0
             ? t('storage.deleted', { count: success.deletedCount, size: formatBytes(success.deletedSize) })
             : t('storage.imported', { count: success.deletedCount })}
         </Alert>
@@ -196,7 +256,7 @@ export const StorageManagement = () => {
             <Typography variant="h6" gutterBottom>
               {t('storage.recordings')}
             </Typography>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
               <Button
                 variant="outlined"
                 disabled={scanMutation.isPending}
@@ -204,6 +264,14 @@ export const StorageManagement = () => {
                 startIcon={<FolderOpenIcon />}
               >
                 {scanMutation.isPending ? t('storage.scanning') : t('storage.scanImport')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={regenerateMutation.isPending}
+                onClick={() => regenerateMutation.mutate({})}
+                startIcon={<GraphicEqIcon />}
+              >
+                {regenerateMutation.isPending ? t('storage.regenerating') : t('storage.regenerateSpectrograms')}
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
                 {t('storage.scanHint')}

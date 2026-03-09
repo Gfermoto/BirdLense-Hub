@@ -305,12 +305,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
           <ViewToggle
             view={view}
             onChange={setView}
-            audioDisabled={!video.species.some((det) => det.source === 'audio')}
+            audioDisabled={!video.spectrogram_path}
           />
         )}
 
-        {/* Tracks Toggle - show only in video view */}
-        {showControls && view === 'video' && (
+        {/* Tracks Toggle - show only when track data exists */}
+        {showControls && view === 'video' && trackDetections.length > 0 && (
           <Box
             sx={{
               position: 'absolute',

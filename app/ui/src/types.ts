@@ -97,6 +97,7 @@ export interface Settings {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
     max_record_seconds: number; // Max recording duration in seconds
     max_inactive_seconds: number; // Max inactivity before stopping recording
+    min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
   };

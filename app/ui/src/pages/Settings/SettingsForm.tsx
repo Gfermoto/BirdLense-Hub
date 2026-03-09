@@ -683,6 +683,20 @@ export const SettingsForm = ({
               </form.Field>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.min_track_duration">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    value={field.state.value ?? 1}
+                    onChange={(e) => field.handleChange(Number(e.target.value))}
+                    label={t('settings.minTrackDuration')}
+                    helperText={t('settings.minTrackDurationHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.spectrogram_px_per_sec">
                 {(field) => (
                   <TextField

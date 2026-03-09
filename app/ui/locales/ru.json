@@ -97,6 +97,8 @@
     "longitudeHint": "Точка как десятичный разделитель (36.61)",
     "maxRecordSeconds": "Макс. секунд записи",
     "inactiveSeconds": "Секунд без активности",
+    "minTrackDuration": "Мин. длительность трека (сек)",
+    "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. 1 — больше треков, 2 — меньше ложных",
     "spectrogramDetail": "Детализация спектрограммы",
     "birdFamilies": "Семейства птиц",
     "resolution": "Разрешение записи",
@@ -148,7 +150,13 @@
     "loadingStats": "Загрузка статистики...",
     "purgeConfirm": "Удалить все записи до {{date}} включительно? Это действие нельзя отменить.",
     "scanFailed": "Ошибка сканирования",
-    "purgeFailed": "Ошибка удаления"
+    "purgeFailed": "Ошибка удаления",
+    "regenerateSpectrograms": "Перегенерировать спектрограммы",
+    "regenerateSpectrogramsHint": "Создать спектрограммы для старых видео без них",
+    "regenerating": "Генерация...",
+    "regenerateSuccess": "Создано {{generated}} спектрограмм, ошибок {{failed}}, пропущено {{skipped}}",
+    "regenerateTimeout": "Таймаут ожидания результата",
+    "regenerateFailed": "Ошибка перегенерации"
   },
   "common": {
     "noData": "Нет данных",
@@ -161,7 +169,8 @@
     "success": "Успешно",
     "loading": "Загрузка...",
     "clickForHelp": "Нажмите для справки",
-    "appName": "BirdLense Hub"
+    "appName": "BirdLense Hub",
+    "na": "н/д"
   },
   "species": {
     "searchPlaceholder": "Поиск видов...",

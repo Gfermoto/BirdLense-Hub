@@ -141,7 +141,7 @@ export const Overview = () => {
                 value={
                   (overviewData?.stats.totalDetections ?? 0) > 0
                     ? formatHour(overviewData?.stats.busiestHour ?? 0)
-                    : 'N/A'
+                    : t('common.na')
                 }
               />
             </Grid>
@@ -200,10 +200,7 @@ export const Overview = () => {
               {t('overview.hourlyActivity')}
             </Typography>
             {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
-              <HourlyActivityChart
-                data={overviewData.topSpecies}
-                hourlyTemperature={overviewData.hourlyTemperature}
-              />
+              <HourlyActivityChart data={overviewData.topSpecies} />
             ) : (
               <Typography color="text.secondary" sx={{ py: 4 }}>
                 {t('overview.noData')}
