@@ -62,3 +62,7 @@ cd app/e2e && npm test -- --grep @api
 Когда `feed.source` = `esphome`, проверяется доступность URL кормушки.
 
 Индикаторы отображаются в навигации (StatusIndicator).
+
+---
+
+См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md).
