@@ -42,6 +42,7 @@ interface PurgeResponse {
 interface ScanResponse {
   imported: number;
   message: string;
+  spectrogramRegenerationStarted?: boolean;
 }
 
 interface RegenerateSpectrogramsResponse {
@@ -88,8 +89,11 @@ export const StorageManagement = () => {
       return data;
     },
     onSuccess: (data) => {
+      const msg = data.spectrogramRegenerationStarted
+        ? `${data.message}. ${t('storage.spectrogramRegenStarted')}`
+        : data.message;
       setSuccess({
-        message: data.message,
+        message: msg,
         deletedCount: data.imported,
         deletedSize: 0,
       });

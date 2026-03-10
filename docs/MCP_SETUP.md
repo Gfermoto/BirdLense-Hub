@@ -1,6 +1,6 @@
-# Настройка MCP BirdLense
+# Настройка MCP BirdLense Hub
 
-MCP (Model Context Protocol) позволяет Cursor и другим AI-агентам вызывать API BirdLense.
+MCP (Model Context Protocol) позволяет Cursor и другим AI-агентам вызывать API BirdLense Hub.
 
 ## 1. MCP_TOKEN в .env на сервере
 
@@ -23,7 +23,7 @@ ssh birdlense "echo 'MCP_TOKEN=ваш-токен' >> /root/BirdLense/app/.env"
 
 ## 2. Включить MCP в настройках
 
-1. Откройте BirdLense → Настройки
+1. Откройте BirdLense Hub → Настройки
 2. Раздел **8. MCP (AI-агенты)** → включите «Включить MCP-сервер»
 3. Сохраните и перезапустите контейнер
 
@@ -53,7 +53,7 @@ cp docs/mcp.json.example .cursor/mcp.json
 ```
 
 Замените:
-- `192.168.1.11:8085` — IP и порт вашего BirdLense
+- `192.168.1.11:8085` — IP и порт вашего BirdLense Hub
 - `ваш-секретный-токен` — тот же токен, что в MCP_TOKEN на сервере
 
 **Важно:** `.cursor/` в .gitignore — токен не попадёт в репозиторий.
@@ -65,3 +65,7 @@ cp docs/mcp.json.example .cursor/mcp.json
 ## Проверка
 
 В Cursor: Settings → Tools & MCP — сервер `birdlense` должен быть в списке и активен.
+
+---
+
+См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [API.md](./API.md).

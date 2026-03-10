@@ -11,6 +11,8 @@ import Button from '@mui/material/Button';
 import { Link } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
+import { SpeciesIcon } from '../../components/SpeciesIcon';
+import { BASE_URL } from '../../api/api';
 
 interface GroupedSpecies {
   species_id: number;
@@ -78,16 +80,32 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                 border: `2px solid ${labelToUniqueHexColor(group.species_name)}`,
               }}
             >
-              <CardMedia
-                component="img"
-                alt={group.species_name}
-                image={group.image_url}
+              <Box
                 sx={{
                   aspectRatio: '16/10',
-                  objectFit: 'cover',
-                  objectPosition: 'center top',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'action.hover',
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                {group.image_url ? (
+                  <CardMedia
+                    component="img"
+                    alt={group.species_name}
+                    image={`${BASE_URL}/${group.image_url}`}
+                    sx={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center top',
+                    }}
+                  />
+                ) : (
+                  <SpeciesIcon speciesName={group.species_name} size={64} />
+                )}
+              </Box>
               <CardContent sx={{ py: 1.5 }}>
                 <Typography variant="subtitle1" noWrap>
                   {group.species_name}

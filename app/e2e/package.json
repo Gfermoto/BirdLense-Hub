@@ -9,6 +9,6 @@
     "test:api": "playwright test --grep @api"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.52.0"
   }
 }

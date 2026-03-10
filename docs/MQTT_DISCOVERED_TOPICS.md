@@ -1,4 +1,4 @@
-# MQTT и триггеры BirdLense
+# MQTT и триггеры BirdLense Hub
 
 ## Архитектура триггеров
 
@@ -13,7 +13,7 @@
 
 Подключение к вашему брокеру показало:
 
-## BirdLense-релевантные
+## BirdLense Hub — релевантные
 
 | Топик | Назначение | В конфиге |
 |-------|------------|-----------|
@@ -22,7 +22,7 @@
 | `birdnet` | BirdNET — детекции | `mqtt.birdnet_topic` |
 | `birdnet/status` | Статус BirdNET (offline/online) | — |
 | `birdnet/soundlevel` | Уровень звука BirdNET-Go | — |
-| `birdlense/status` | Статус BirdLense (online) | — |
+| `birdlense/status` | Статус BirdLense Hub (online) | — |
 
 ## Формат BirdNET (топик `birdnet`)
 
@@ -52,11 +52,11 @@
 }
 ```
 
-BirdLense извлекает: `CommonName`, `Confidence`, `BeginTime` (для слияния по времени), `ScientificName`, `BirdImage.URL`.
+BirdLense Hub извлекает: `CommonName`, `Confidence`, `BeginTime` (для слияния по времени), `ScientificName`, `BirdImage.URL`.
 
 ## Формат Frigate (топик `frigate/events`)
 
-События с полями `before`, `after`, `type` (new/update/end). BirdLense использует `after`:
+События с полями `before`, `after`, `type` (new/update/end). BirdLense Hub использует `after`:
 `camera`, `label`, `sub_label` (вид птицы), `top_score`, `frame_time` (Unix timestamp для слияния).
 
 ## Рекомендация
@@ -72,3 +72,7 @@ mqtt:
 - `homeassistant/switch/bird_feeder/command` — реле кормушки (feed)
 - `double-take/cameras/*` — Double Take
 - `home/sensor1` — сенсор
+
+---
+
+См. также: [CONFIGURATION.md](./CONFIGURATION.md).

@@ -82,8 +82,8 @@ def main():
     # Instantiate all helper classes
     api = API()
     main_size = (
-        app_config.get('video.video_width') or app_config.get('camera.video_width', 1280),
-        app_config.get('video.video_height') or app_config.get('camera.video_height', 720),
+        app_config.get('video.video_width', 1280),
+        app_config.get('video.video_height', 720),
     )
     lores_size = (640, 640)
 
@@ -126,19 +126,15 @@ def main():
             )
         return media_sources_cache[camera_id]
 
-    # Media source: file (arg) | go2rtc | pi_camera
+    # Media source: file (arg) | go2rtc
     if args.input:
         media_source = VideoFileSource(args.input, main_size=main_size, lores_size=lores_size)
-    elif app_config.get('video.source') == 'go2rtc':
+    else:
+        if app_config.get('video.source') != 'go2rtc':
+            logging.warning("video.source must be go2rtc; falling back")
         media_source = get_media_source(default_camera_id)
-        # Pre-create all camera sources for multi-camera live streams
         for cam in cameras:
             get_media_source(cam['id'])
-    else:
-        # Pi Camera (RPi only, requires picamera2)
-        from sources.media_source import MediaSource
-        camera_config = app_config.get('camera') or {}
-        media_source = MediaSource(main_size=main_size, lores_size=lores_size, camera_config=camera_config)
 
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')

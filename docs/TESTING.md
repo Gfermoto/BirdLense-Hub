@@ -1,4 +1,6 @@
-# Тестирование BirdLense
+# Тестирование BirdLense Hub
+
+> **Безопасность:** если пароль настроек попал в лог или чат — смените его в Settings → General.
 
 ## Unit-тесты (processor)
 
@@ -6,7 +8,7 @@
 cd app && make test
 ```
 
-Запускает `unittest` для processor (detection strategy, decision maker).
+Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужны ultralytics, ncnn — тесты выполняются в контейнере.
 
 ## API-тесты (web)
 
@@ -16,18 +18,35 @@ cd app && make test-web
 
 Запускает pytest для web API в Docker (health, status, settings, feed, cameras).
 
-Если образ не обновлён после добавления pytest: `make build-dev` или пересоберите web.
+Перед первым запуском: `make build`. Тесты выполняются в контейнере.
+
+## Покрытие (coverage)
+
+```bash
+cd app && make test-coverage
+```
+
+Запускает processor + web тесты с измерением покрытия, выводит отчёт в консоль.
+
+```bash
+cd app && make test-report
+```
+
+То же + генерирует HTML-отчёт в `app/htmlcov/index.html`.
+
+Конфигурация: `app/.coveragerc` (исключены tests, app_config, scripts).
+
+Приоритет для расширения покрытия: `ui_system_routes`, `retention_service`, `visit_processor`, `processor_routes`.
 
 ## E2E-тесты (Playwright)
 
-E2E-тесты проверяют UI и API на работающем экземпляре приложения.
+E2E проверяют UI и API на работающем экземпляре.
 
 ### Запуск
 
-1. Запустите приложение (Docker или локально):
+1. Запустите приложение:
    ```bash
-   cd app && make start-dev
-   # или make start для prod
+   cd app && make start
    ```
 
 2. Запустите E2E:
@@ -35,10 +54,12 @@ E2E-тесты проверяют UI и API на работающем экзем
    cd app && make test-e2e
    ```
 
-3. Для тестов против другого хоста (например, 192.168.1.11:8085):
+3. Против другого хоста (например, 192.168.1.11:8085):
    ```bash
-   cd app/e2e && BASE_URL=http://192.168.1.11:8085 npm test
+   cd app && E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
    ```
+
+4. **Пароль обязателен**, если включена защита настроек (`general.settings_password`). Без него тесты Settings и `GET /api/ui/settings` падают.
 
 ### Что проверяют E2E
 
@@ -63,3 +84,7 @@ cd app/e2e && npm test -- --grep @api
 Когда `feed.source` = `esphome`, проверяется доступность URL кормушки.
 
 Индикаторы отображаются в навигации (StatusIndicator).
+
+---
+
+См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md).

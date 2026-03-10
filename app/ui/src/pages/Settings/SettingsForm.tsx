@@ -596,57 +596,136 @@ export const SettingsForm = ({
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
-          <form.Field name="secrets.openweather_api_key">
+          <form.Field name="weather.source">
             {(field) => (
-              <TextField
-                fullWidth
-                type="password"
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.openWeatherApiKey')}
-                helperText={t('settings.weatherHint')}
-              />
+              <FormControl fullWidth>
+                <InputLabel>{t('settings.weatherSource')}</InputLabel>
+                <Select
+                  value={field.state.value ?? 'openweather'}
+                  label={t('settings.weatherSource')}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="openweather">{t('settings.weatherOpenWeather')}</MenuItem>
+                  <MenuItem value="homeassistant">{t('settings.weatherHomeAssistant')}</MenuItem>
+                </Select>
+              </FormControl>
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.zip">
-            {(field) => (
-              <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.zip')} />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <Button fullWidth variant="outlined" onClick={handleZipLookup}>
-            {t('settings.zipLookup')}
-          </Button>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.latitude">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
-                label={t('settings.latitude')}
-                helperText={t('settings.latitudeHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <form.Field name="secrets.longitude">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
-                label={t('settings.longitude')}
-                helperText={t('settings.longitudeHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
+        <form.Subscribe selector={(state) => state.values.weather?.source}>
+          {(source) => (
+            <>
+              {source !== 'homeassistant' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <form.Field name="secrets.openweather_api_key">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          type="password"
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.openWeatherApiKey')}
+                          helperText={t('settings.weatherHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <form.Field name="secrets.zip">
+                      {(field) => (
+                        <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.zip')} />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Button fullWidth variant="outlined" onClick={handleZipLookup}>
+                      {t('settings.zipLookup')}
+                    </Button>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <form.Field name="secrets.latitude">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
+                          label={t('settings.latitude')}
+                          helperText={t('settings.latitudeHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <form.Field name="secrets.longitude">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
+                          label={t('settings.longitude')}
+                          helperText={t('settings.longitudeHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+              {source === 'homeassistant' && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      {t('settings.weatherHaAlert')}
+                    </Alert>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <form.Field name="weather.ha_url">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.weatherHaUrl')}
+                          placeholder="http://homeassistant:8123"
+                          helperText={t('settings.weatherHaUrlHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="weather.ha_entity_id">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.weatherHaEntity')}
+                          placeholder="weather.home"
+                          helperText={t('settings.weatherHaEntityHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="weather.ha_token">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          type="password"
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.weatherHaToken')}
+                          placeholder={t('settings.weatherHaTokenPlaceholder')}
+                          helperText={t('settings.weatherHaTokenHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+            </>
+          )}
+        </form.Subscribe>
       </Grid>
 
       <Divider sx={{ my: 4 }} />

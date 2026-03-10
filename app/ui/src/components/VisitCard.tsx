@@ -3,7 +3,7 @@ import type { SpeciesVisit } from '../types';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
+import { SpeciesIcon } from './SpeciesIcon';
 import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
 import CardActionArea from '@mui/material/CardActionArea';
@@ -134,12 +134,10 @@ export const VisitCard = ({
     <Card>
       <CardContent sx={{ '&:last-child': { pb: 2 } }}>
         <Box display="flex" alignItems="flex-start" gap={2}>
-          <Avatar
-            src={visit.species.image_url}
-            sx={{
-              width: compact ? 44 : 48,
-              height: compact ? 44 : 48,
-            }}
+          <SpeciesIcon
+            speciesName={visit.species.name}
+            imageUrl={visit.species.image_url}
+            size={compact ? 44 : 48}
           />
           <Box flex={1} minWidth={0}>
             <Box display="flex" alignItems="center" gap={1}>

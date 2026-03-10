@@ -10,6 +10,15 @@ def ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
+def recordings_dir():
+    """Path to data/recordings directory."""
+    base = os.environ.get(
+        'DATA_DIR',
+        os.path.join(os.path.dirname(__file__), '..', 'data')
+    )
+    return os.path.join(base, 'recordings')
+
+
 def settings_check_access():
     """Check if settings access is allowed (no password or session unlocked)."""
     from flask import session
@@ -185,8 +194,8 @@ def fetch_weather():
 
 def build_hierarchy_tree():
     species_dict = {}
-
-    with open("seed/hierarchy_names.txt", "r") as file:
+    path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
+    with open(path, "r") as file:
         lines = file.readlines()
     for line in lines:
         species_name, parent_name = line.strip().split("|")
@@ -216,7 +225,7 @@ def get_wikipedia_image_and_description(title):
     """Fetch image and description from Wikipedia. Returns (None, None) on any error."""
     try:
         url = f"https://en.wikipedia.org/w/api.php?action=query&prop=pageimages|pageprops|extracts&format=json&piprop=thumbnail&titles={title}&pithumbsize=300&redirects&exintro"
-        headers = {'User-Agent': 'BirdLense/1.0 (Bird feeder monitoring app)'}
+        headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
         response = requests.get(url, timeout=10, headers=headers)
         data = response.json()
         page = list(data.get("query", {}).get("pages", {}).values())[0]
@@ -248,7 +257,7 @@ def notify(message, link="live", tags=None):
                       data=message.encode(
                           'utf-8'),
                       headers={
-                          "Title": "BirdLense",
+                          "Title": "BirdLense Hub",
                           "Click": f"http://birdlense.local/{link}",
                           "Tags": tags
                       })

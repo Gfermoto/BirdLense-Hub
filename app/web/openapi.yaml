@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: BirdLense UI API
+  title: BirdLense Hub UI API
   version: 0.1.0-alpha.1
   description: |
-    BirdLense is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. This API is designed for both human users and LLM agents to:
+    BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. This API is designed for both human users and LLM agents to:
       - Query real-time and historical bird visit data
       - Retrieve and manage video, species, and food information
       - Access system health, metrics, and storage usage
@@ -24,7 +24,7 @@ paths:
     get:
       summary: Health check
       description: |
-        Returns a simple status object indicating if the BirdLense API is running. Use this to verify connectivity and service health.
+        Returns a simple status object indicating if the BirdLense Hub API is running. Use this to verify connectivity and service health.
       responses:
         "200":
           description: Service is healthy
@@ -335,7 +335,7 @@ paths:
     get:
       summary: Get system metrics
       description: |
-        Retrieve system metrics, including CPU, memory, and disk usage. This is useful for monitoring the health and performance of the BirdLense system.
+        Retrieve system metrics, including CPU, memory, and disk usage. This is useful for monitoring the health and performance of the BirdLense Hub system.
       responses:
         "200":
           description: System metrics
@@ -726,9 +726,6 @@ components:
           properties:
             percent:
               type: number
-            temperature:
-              type: number
-              nullable: true
         memory:
           type: object
           properties:
