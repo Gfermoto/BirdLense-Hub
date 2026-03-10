@@ -8,6 +8,8 @@
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
+**Исследовательский инструмент:** сбор датасетов из записей, скрипты обучения YOLO (NABirds, COCO), ноутбуки дообучения моделей. См. [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
+
 <details>
 <summary>📷 Скриншоты</summary>
 <br>
@@ -33,6 +35,7 @@
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — [ntfy](https://ntfy.sh)
 - **MCP** — Model Context Protocol для AI-агентов (Cursor и др.)
+- **Исследования** — подготовка датасетов (NABirds, COCO → YOLO), ноутбуки обучения, экспорт для дообучения моделей
 
 ## Быстрый старт
 
@@ -59,8 +62,10 @@ UI: http://localhost:8085
 | Путь | Описание |
 |------|----------|
 | [app/](./app) | Приложение (UI, API, processor) — один контейнер |
-| [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP, MQTT, тестирование |
-| [scripts/](./scripts) | Деплой на сервер |
+| [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP, **план датасетов и обучения** |
+| [scripts/](./scripts) | Деплой, **датасеты** (NABirds/COCO→YOLO), **обучение** (ноутбуки) |
+
+**Скрипты для исследований:** `scripts/datasets/` — конвертация датасетов; `scripts/birds_train*.ipynb` — обучение моделей. Полный список: [docs/DATASET_SCRIPTS.md](./docs/DATASET_SCRIPTS.md).
 
 ## Команды
 
