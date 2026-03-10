@@ -1,0 +1,21 @@
+# BirdLense — запуск из готового образа (без сборки)
+# docker compose -f docker-compose.pull.yml up -d
+
+services:
+  birdlense:
+    image: ghcr.io/gfermoto/birdlense-hub:latest
+    container_name: birdlense
+    ports:
+      - "${BIRDLENSE_PORT:-8085}:8080"
+    volumes:
+      - ./data:/app/data
+      - ./app_config:/app/app_config
+    environment:
+      - DATA_DIR=/app/data
+      - API_URL_BASE=http://127.0.0.1:8000/api/processor
+      - GO2RTC_URL=${GO2RTC_URL:-}
+      - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - MCP_TOKEN=${MCP_TOKEN:-}
+    restart: unless-stopped
