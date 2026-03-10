@@ -1,4 +1,4 @@
-.PHONY: build start stop logs deploy test test-web test-e2e
+.PHONY: build start stop logs deploy pull test test-web test-e2e
 
 # Сборка и запуск
 build:
@@ -9,6 +9,12 @@ build:
 start:
 	@echo "Starting BirdLense..."
 	@docker compose up -d
+	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+
+# Запуск из готового образа (без сборки)
+pull:
+	@docker compose -f docker-compose.pull.yml pull
+	@docker compose -f docker-compose.pull.yml up -d
 	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:

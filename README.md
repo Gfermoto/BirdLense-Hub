@@ -55,7 +55,15 @@ A Raspberry Pi-powered smart bird feeder that uses computer vision and audio rec
 
 ## Getting Started
 
-See the [Application README](./app) for installation and setup instructions.
+**Quick start (Docker):**
+```bash
+git clone https://github.com/Gfermoto/BirdLense-Hub.git
+cd BirdLense-Hub/app
+make pull
+```
+UI: http://localhost:8085
+
+Подробнее: [Application README](./app/README.md)
 
 ## Contributing
 

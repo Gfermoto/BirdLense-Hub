@@ -4,6 +4,17 @@
 
 ## Запуск
 
+### Вариант 1: Готовый образ (рекомендуется)
+
+```bash
+cd app
+make pull
+```
+
+Образ: `ghcr.io/gfermoto/birdlense-hub:latest` ([GitHub Packages](https://github.com/Gfermoto/BirdLense-Hub/pkgs/container/birdlense-hub))
+
+### Вариант 2: Сборка из исходников
+
 ```bash
 cd app
 make build && make start
@@ -16,7 +27,8 @@ UI: http://localhost:8085
 | Команда | Описание |
 |---------|----------|
 | `make build` | Сборка образа |
-| `make start` | Запуск |
+| `make start` | Запуск (после build) |
+| `make pull` | Скачать и запустить готовый образ |
 | `make stop` | Остановка |
 | `make logs` | Логи |
 | `make deploy` | Деплой на 192.168.1.11 |
