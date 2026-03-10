@@ -20,6 +20,7 @@
 
 | Документ | Описание |
 |----------|----------|
+| [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (YOLO, зависимости) |
 | [TESTING.md](./TESTING.md) | Unit, API и E2E тесты |
 | [FORK_ANALYSIS.md](./FORK_ANALYSIS.md) | Сравнение с исходным проектом |
 | [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP для Cursor |
