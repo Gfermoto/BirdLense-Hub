@@ -42,5 +42,4 @@
 |----------|----------|
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
 | [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
-| [FORK_ANALYSIS.md](./FORK_ANALYSIS.md) | Сравнение с исходным проектом |
 | [REVIEW.md](./REVIEW.md) | Ревью документации (рефакторинг, карта) |

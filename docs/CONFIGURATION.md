@@ -56,21 +56,12 @@
 
 | Ключ | Описание |
 |------|----------|
-| `source` | `go2rtc` \| `pi_camera` \| `file` |
+| `source` | `go2rtc` (file — только через CLI) |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
 | `cameras` | Список: `{id, stream_name, name}` |
 | `pre_record_seconds` | Предзапись перед триггером |
 | `auto_reconnect` | Автопереподключение к потоку |
-| `video_width`, `video_height` | Разрешение (для pi_camera/file) |
-
-## Camera (Pi Camera, legacy)
-
-| Ключ | Описание |
-|------|----------|
 | `video_width`, `video_height` | Разрешение |
-| `hdr_mode` | HDR |
-| `focus_mode` | Режим фокуса (manual/auto) |
-| `lens_position` | Позиция линзы (manual) |
 
 ---
 

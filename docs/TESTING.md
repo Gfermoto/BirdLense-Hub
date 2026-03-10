@@ -6,7 +6,7 @@
 cd app && make test
 ```
 
-Запускает `unittest` для processor (detection strategy, decision maker). Требуется Python 3 и зависимости processor.
+Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужны ultralytics, ncnn — тесты выполняются в контейнере.
 
 ## API-тесты (web)
 

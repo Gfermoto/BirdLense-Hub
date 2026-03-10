@@ -102,13 +102,6 @@ export interface Settings {
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
   };
-  camera: {
-    video_width: number; // Video width in pixels, e.g., 1280
-    video_height: number; // Video height in pixels, e.g., 720
-    hdr_mode: boolean; // Enable HDR if available (Pi Camera v3)
-    focus_mode: 'auto' | 'manual'; // Focus mode: auto (continuous) or manual (fixed)
-    lens_position: number; // Diopters for manual focus (higher = closer). 7 ≈ 14cm
-  };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather
     latitude: string; // Latitude as a string, e.g., "YOUR_LATITUDE_HERE"
