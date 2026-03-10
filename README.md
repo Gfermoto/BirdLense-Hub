@@ -59,7 +59,7 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 | Path | Description |
 |------|-------------|
 | [app/](./app) | Application (UI, API, processor) — single container |
-| [docs/](./docs) | MCP setup, MQTT topics, testing |
+| [docs/](./docs) | Architecture, config, API, deployment, MCP, MQTT, testing |
 | [scripts/](./scripts) | Deploy to server |
 
 ## Commands
