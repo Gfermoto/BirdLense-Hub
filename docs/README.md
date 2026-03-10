@@ -8,6 +8,7 @@
 | [CONFIGURATION.md](./CONFIGURATION.md) | Описание `default_config.yaml` и env |
 | [API.md](./API.md) | Обзор API, ссылка на OpenAPI |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой на сервер, deploy.local.sh |
+| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | **Исследования:** сбор датасетов, обучение моделей, MCP |
 
 ## Интеграции
 
@@ -20,7 +21,6 @@
 
 | Документ | Описание |
 |----------|----------|
-| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Сбор датасетов, обучение моделей, MCP |
 | [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов датасетов |
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (YOLO, зависимости) |
 | [TESTING.md](./TESTING.md) | Unit, API и E2E тесты |

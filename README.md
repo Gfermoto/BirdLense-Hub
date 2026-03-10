@@ -8,6 +8,8 @@
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
+**Research tool:** dataset collection from live recordings, YOLO training scripts (NABirds, COCO), model fine-tuning notebooks. See [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
+
 <details>
 <summary>📷 Screenshots</summary>
 <br>
@@ -33,6 +35,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — [ntfy](https://ntfy.sh)
 - **MCP** — Model Context Protocol for AI agents (Cursor, etc.)
+- **Research** — dataset prep (NABirds, COCO → YOLO), training notebooks, export pipeline for model fine-tuning
 
 ## Quick Start
 
@@ -59,8 +62,10 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 | Path | Description |
 |------|-------------|
 | [app/](./app) | Application (UI, API, processor) — single container |
-| [docs/](./docs) | Architecture, config, API, deployment, MCP, MQTT, testing |
-| [scripts/](./scripts) | Deploy to server |
+| [docs/](./docs) | Architecture, config, API, deployment, MCP, **dataset & training plan** |
+| [scripts/](./scripts) | Deploy, **datasets** (NABirds/COCO→YOLO), **training** notebooks |
+
+**Research scripts:** `scripts/datasets/` — dataset conversion; `scripts/birds_train*.ipynb` — model training. Full inventory: [docs/DATASET_SCRIPTS.md](./docs/DATASET_SCRIPTS.md).
 
 ## Commands
 
