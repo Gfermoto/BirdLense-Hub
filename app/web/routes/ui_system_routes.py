@@ -26,14 +26,6 @@ def register_routes(app):
             # CPU usage
             cpu_percent = psutil.cpu_percent(interval=0.5)
 
-            # Try to read Raspberry Pi CPU temperature
-            try:
-                with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
-                    temp = float(f.read().strip()) / 1000.0
-                cpu_temp = round(temp, 1)
-            except OSError:
-                cpu_temp = None
-
             # Memory information
             memory = psutil.virtual_memory()
             memory_total_gb = round(memory.total / (1024**3), 1)
@@ -48,8 +40,7 @@ def register_routes(app):
 
             metrics = {
                 'cpu': {
-                    'percent': cpu_percent,
-                    'temperature': cpu_temp
+                    'percent': cpu_percent
                 },
                 'memory': {
                     'total': memory_total_gb,

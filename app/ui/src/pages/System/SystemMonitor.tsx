@@ -9,7 +9,6 @@ import Box from '@mui/material/Box';
 import MemoryIcon from '@mui/icons-material/Memory';
 import StorageIcon from '@mui/icons-material/Storage';
 import SpeedIcon from '@mui/icons-material/Speed';
-import ThermostatIcon from '@mui/icons-material/DeviceThermostat';
 import { BASE_API_URL } from '../../api/api';
 
 interface MetricCardProps {
@@ -80,19 +79,9 @@ export const SystemMonitor = () => {
                 value={data.cpu.percent}
                 sx={{ mb: 2, height: 8, borderRadius: 1 }}
               />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('system.usagePercent', { percent: data.cpu.percent })}
-                </Typography>
-                {data.cpu.temperature && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <ThermostatIcon fontSize="small" color="action" />
-                    <Typography variant="body2" color="text.secondary">
-                      {data.cpu.temperature}°C
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {t('system.usagePercent', { percent: data.cpu.percent })}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>

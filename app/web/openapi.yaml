@@ -726,9 +726,6 @@ components:
           properties:
             percent:
               type: number
-            temperature:
-              type: number
-              nullable: true
         memory:
           type: object
           properties:

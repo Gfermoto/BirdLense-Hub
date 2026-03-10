@@ -1,0 +1,20 @@
+[run]
+source = .
+omit =
+    */tests/*
+    */test_*.py
+    app_config/*
+    scripts/*
+    */__pycache__/*
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+
+[html]
+directory = htmlcov
