@@ -1,5 +1,7 @@
 # Тестирование BirdLense Hub
 
+> **Безопасность:** если пароль настроек попал в лог или чат — смените его в Settings → General.
+
 ## Unit-тесты (processor)
 
 ```bash
@@ -17,6 +19,24 @@ cd app && make test-web
 Запускает pytest для web API в Docker (health, status, settings, feed, cameras).
 
 Перед первым запуском: `make build`. Тесты выполняются в контейнере.
+
+## Покрытие (coverage)
+
+```bash
+cd app && make test-coverage
+```
+
+Запускает processor + web тесты с измерением покрытия, выводит отчёт в консоль.
+
+```bash
+cd app && make test-report
+```
+
+То же + генерирует HTML-отчёт в `app/htmlcov/index.html`.
+
+Конфигурация: `app/.coveragerc` (исключены tests, app_config, scripts).
+
+Приоритет для расширения покрытия: `ui_system_routes`, `retention_service`, `visit_processor`, `processor_routes`.
 
 ## E2E-тесты (Playwright)
 
@@ -38,6 +58,8 @@ E2E проверяют UI и API на работающем экземпляре.
    ```bash
    cd app && E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
    ```
+
+4. **Пароль обязателен**, если включена защита настроек (`general.settings_password`). Без него тесты Settings и `GET /api/ui/settings` падают.
 
 ### Что проверяют E2E
 

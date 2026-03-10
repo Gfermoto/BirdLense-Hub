@@ -29,6 +29,10 @@ scripts/deploy.local.sh
 app/e2e/playwright-report/
 app/e2e/test-results/
 
+# Coverage
+app/htmlcov/
+app/.coverage
+
 # Cursor IDE
 .cursor/
 

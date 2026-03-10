@@ -194,8 +194,8 @@ def fetch_weather():
 
 def build_hierarchy_tree():
     species_dict = {}
-
-    with open("seed/hierarchy_names.txt", "r") as file:
+    path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
+    with open(path, "r") as file:
         lines = file.readlines()
     for line in lines:
         species_name, parent_name = line.strip().split("|")
