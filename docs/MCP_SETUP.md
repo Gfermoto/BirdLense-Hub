@@ -65,3 +65,7 @@ cp docs/mcp.json.example .cursor/mcp.json
 ## Проверка
 
 В Cursor: Settings → Tools & MCP — сервер `birdlense` должен быть в списке и активен.
+
+---
+
+См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [API.md](./API.md).

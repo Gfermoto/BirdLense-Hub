@@ -9,7 +9,8 @@
 | # | Действие | Статус |
 |---|----------|--------|
 | 1 | Обновить Docker base до `ultralytics/ultralytics:8.4.21` | ✅ |
-| 2 | Исправление уязвимостей: npm (Vite 6, @tanstack/form 0.42), Python (requests, PyYAML) | ✅ |
+| 2 | Исправление уязвимостей: npm (Vite 6, @tanstack/form 0.42), Python (requests, PyYAML, numpy 2) | ✅ |
+| 3 | Конфликт numpy/opencv: lapx удалён, librosa 0.11, matplotlib 3.8 | ✅ |
 
 ---
 
@@ -34,3 +35,7 @@
 
 - Full screen video (iOS) — средний приоритет
 - Track trajectory overlay — низкий приоритет
+
+---
+
+См. также: [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md).

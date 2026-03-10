@@ -72,3 +72,7 @@ mqtt:
 - `homeassistant/switch/bird_feeder/command` — реле кормушки (feed)
 - `double-take/cameras/*` — Double Take
 - `home/sensor1` — сенсор
+
+---
+
+См. также: [CONFIGURATION.md](./CONFIGURATION.md).
