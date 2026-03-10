@@ -22,15 +22,12 @@ processor:
   save_images: false
   detection_strategy: "two_stage"
   models:
-    # x86/amd64: use .pt (PyTorch). RPi: use best_ncnn_model
+    # x86/amd64: use .pt (PyTorch). ARM: use best_ncnn_model
     single_stage: "models/detection/nabirds_yolov8n_ncnn_model"
     binary: "models/detection/weights/best.pt"
     classifier: "models/classification/weights/best.pt"
 
-# Video source: go2rtc | pi_camera | file
-# go2rtc - stream from Go2RTC (x86, no RPi hardware)
-# pi_camera - legacy Pi Camera (RPi only)
-# file - video file path (testing)
+# Video source: go2rtc | file (file only via CLI arg)
 video:
   source: go2rtc
   # Хост Go2RTC: http://IP:1984
@@ -46,14 +43,6 @@ video:
   auto_reconnect: true
   video_width: 1280
   video_height: 720
-
-# Legacy Pi Camera (only when video.source: pi_camera)
-camera:
-  video_width: 1280
-  video_height: 720
-  hdr_mode: true
-  focus_mode: "manual"
-  lens_position: 7.0
 
 # Motion trigger: opencv | frigate | mqtt | esphome
 # opencv - analyze every frame; frigate - Frigate MQTT events; mqtt - binary sensor topic; esphome - ESPHome binary sensor

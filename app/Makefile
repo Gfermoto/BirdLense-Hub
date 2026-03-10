@@ -31,9 +31,9 @@ logs:
 deploy:
 	@cd .. && ./scripts/deploy.sh
 
-# Тесты
+# Тесты (в контейнере — нужны ultralytics, ncnn)
 test:
-	python3 -m unittest discover processor/tests
+	docker compose run --rm birdlense python -m unittest discover processor/tests -v
 
 test-web:
 	docker compose run --rm birdlense python -m pytest web/tests/ -v 2>/dev/null || echo "Run: cd app && docker compose run --rm birdlense bash -c 'cd web && python -m pytest tests/ -v'"

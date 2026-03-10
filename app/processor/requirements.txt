@@ -1,10 +1,10 @@
-# RPi deps removed — x86/Docker only (no Pi Camera, no PIR)
-pyyaml==6.0.1
+# x86/Docker only
+pyyaml==6.0.3
 paho-mqtt==2.1.0
-requests>=2.28.0
-lapx==0.5.9.post1
+requests==2.32.4
 ncnn==1.0.20240410
 
-numpy==1.26.4
-librosa>=0.10.0
-matplotlib>=3.7.0
+# numpy 2.x — совместим с opencv, librosa, ultralytics
+numpy>=2.0,<3
+librosa==0.11.0
+matplotlib==3.8.4

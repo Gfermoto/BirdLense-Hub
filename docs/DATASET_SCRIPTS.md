@@ -42,8 +42,8 @@
 |------|------|
 | `detection/weights/best.pt` | Бинарный детектор (PyTorch) |
 | `classification/weights/best.pt` | Классификатор видов (PyTorch) |
-| `detection/nabirds_yolo11n_binary/` | Binary NCNN (RPi) |
-| `classification/nabirds_yolo11n_cls/` | Classification NCNN (RPi) |
+| `detection/nabirds_yolo11n_binary/` | Binary NCNN (ARM) |
+| `classification/nabirds_yolo11n_cls/` | Classification NCNN (ARM) |
 
 ---
 
