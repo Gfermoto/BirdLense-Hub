@@ -246,3 +246,4 @@ nc: 15
 - [MCP_SETUP.md](./MCP_SETUP.md) — настройка MCP
 - [API.md](./API.md) — эндпоинты
 - [scripts/datasets/README.md](../scripts/datasets/README.md) — скрипты датасетов
+- [DATASET_SOURCES.md](./DATASET_SOURCES.md) — датасеты на Hugging Face, Zenodo для сообщества
