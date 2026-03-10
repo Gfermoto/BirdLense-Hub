@@ -38,6 +38,18 @@ export function Footer() {
         >
           ·
         </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
+        >
+          v{__APP_VERSION__}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: 'text.secondary', opacity: 0.5 }}
+        >
+          ·
+        </Typography>
         <Link
           href="https://github.com/Gfermoto/BirdLense-Hub"
           target="_blank"
@@ -64,12 +76,22 @@ export function Footer() {
         >
           ·
         </Typography>
-        <Typography
-          variant="body2"
-          sx={{ color: 'text.secondary', fontSize: '0.8rem' }}
+        <Link
+          href="https://creativecommons.org/licenses/by-nc-nd/4.0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            color: 'text.secondary',
+            textDecoration: 'none',
+            fontSize: '0.8rem',
+            '&:hover': {
+              color: 'primary.main',
+              textDecoration: 'underline',
+            },
+          }}
         >
-          {t('common.mitLicense')}
-        </Typography>
+          {t('common.license')}
+        </Link>
         <Typography
           variant="body2"
           sx={{ color: 'text.secondary', opacity: 0.5 }}
@@ -94,7 +116,7 @@ export function Footer() {
               },
             }}
           >
-            Stas Kolesnik
+            Stanislav Kolesnik
           </Link>
         </Typography>
       </Box>

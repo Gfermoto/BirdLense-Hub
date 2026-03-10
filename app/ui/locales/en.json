@@ -178,13 +178,14 @@
     "regenerateTracksSuccess": "Tracks: {{generated}}, failed {{failed}}, skipped {{skipped}}",
     "regenerateTracksFailed": "Failed to regenerate tracks",
     "regenerateTimeout": "Timeout waiting for result",
-    "regenerateFailed": "Failed to regenerate spectrograms"
+    "regenerateFailed": "Failed to regenerate spectrograms",
+    "spectrogramRegenStarted": "Spectrogram regeneration started in background"
   },
   "common": {
     "cancel": "Cancel",
     "noData": "No data available",
     "openSource": "Open Source",
-    "mitLicense": "MIT License",
+    "license": "CC BY-NC-ND 4.0",
     "createdBy": "Created by",
     "all": "All",
     "close": "Close",

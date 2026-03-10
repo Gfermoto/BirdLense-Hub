@@ -24,6 +24,7 @@ import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
 import { useVideoControl } from './useVideoControl';
 import { TrackOverlay } from './TrackOverlay';
+import { SpeciesIcon } from '../../../components/SpeciesIcon';
 
 interface ViewToggleProps {
   view: 'video' | 'audio';
@@ -122,6 +123,7 @@ const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
               py: 0.75,
             }}
           >
+            <SpeciesIcon speciesName={s.species_name} imageUrl={s.image_url} size={24} />
             <Typography
               variant="body2"
               noWrap
@@ -219,46 +221,60 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   }, [startHideTimer]);
 
   const handleFullscreen = useCallback(() => {
-    if (videoRef.current) {
-      // iOS Safari requires webkitEnterFullscreen for video elements
-      const video = videoRef.current as HTMLVideoElement & {
-        webkitEnterFullscreen?: () => void;
-        webkitSupportsFullscreen?: boolean;
-      };
+    const video = videoRef.current;
+    if (!video) return;
 
-      // Check if iOS Safari fullscreen is available
-      if (video.webkitEnterFullscreen && video.webkitSupportsFullscreen) {
-        try {
-          video.webkitEnterFullscreen();
-        } catch (err) {
-          console.error('Error attempting to enable webkit fullscreen:', err);
-        }
-      } else if (videoRef.current.requestFullscreen) {
-        // Standard Fullscreen API for other browsers
-        videoRef.current
-          .requestFullscreen()
-          .then(() => {
-            if (videoRef.current) {
-              videoRef.current.controls = true;
-            }
-          })
-          .catch((err) => {
-            console.error('Error attempting to enable fullscreen:', err);
-          });
+    const v = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitSupportsFullscreen?: boolean;
+    };
+
+    // iOS Safari: webkitEnterFullscreen on <video> (iPad works; iPhone may fallback to native)
+    if (typeof v.webkitEnterFullscreen === 'function') {
+      try {
+        v.webkitEnterFullscreen();
+      } catch (err) {
+        console.warn('webkitEnterFullscreen failed, trying native controls:', err);
+        video.controls = true;
       }
+      return;
+    }
+
+    // Standard Fullscreen API (desktop, Android)
+    if (typeof video.requestFullscreen === 'function') {
+      video
+        .requestFullscreen()
+        .then(() => {
+          if (videoRef.current) videoRef.current.controls = true;
+        })
+        .catch((err) => {
+          console.warn('requestFullscreen failed:', err);
+          video.controls = true;
+        });
+    } else {
+      video.controls = true;
     }
   }, []);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && videoRef.current) {
-        videoRef.current.controls = false;
-      }
+    const video = videoRef.current;
+    if (!video) return;
+
+    const hideControls = () => {
+      if (videoRef.current) videoRef.current.controls = false;
     };
 
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) hideControls();
+    };
+
+    const handleWebkitEndFullscreen = () => hideControls();
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    video.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      video.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
     };
   }, []);
 

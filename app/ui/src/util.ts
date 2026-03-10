@@ -38,3 +38,12 @@ export const formatHourToLocalTime = (utcHour: number): number => {
   date.setUTCHours(utcHour, 0, 0, 0);
   return date.getHours();
 };
+
+/** Squirrel, chipmunk, mouse — show SquirrelIcon instead of BirdIcon */
+export const isSquirrelLike = (speciesName: string): boolean => {
+  if (!speciesName || typeof speciesName !== 'string') return false;
+  const lower = speciesName.toLowerCase();
+  return ['squirrel', 'chipmunk', 'mouse', 'мышь', 'белка', 'мышка'].some(
+    (s) => lower.includes(s)
+  );
+};

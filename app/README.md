@@ -26,6 +26,7 @@ UI: http://localhost:8085
 
 | Команда | Описание |
 |---------|----------|
+| `make setup` | Создать app/.env с PROCESSOR_SECRET и FLASK_SECRET_KEY (вызывается автоматически) |
 | `make build` | Сборка образа |
 | `make start` | Запуск (после build) |
 | `make pull` | Скачать и запустить готовый образ |

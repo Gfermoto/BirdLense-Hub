@@ -28,11 +28,19 @@ tar --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude=
     --exclude='scripts/deploy.local.sh' \
     -czf - . | ssh "${HOST}" "mkdir -p ${REMOTE_DIR} && cd ${REMOTE_DIR} && tar -xzf -"
 
-# 1.5 MCP_TOKEN в app/.env (если задан в deploy.local.sh)
-if [ -n "${MCP_TOKEN:-}" ]; then
-  echo "1.5 Запись MCP_TOKEN в app/.env на сервере..."
+# 1.5 Секреты в app/.env
+# PROCESSOR_SECRET — всегда задаём (генерируем при отсутствии)
+if [ -z "${PROCESSOR_SECRET:-}" ]; then
+  PROCESSOR_SECRET=$(openssl rand -hex 16)
+  echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
+fi
+if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ]; then
+  echo "1.5 Запись секретов в app/.env на сервере..."
   ssh "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
-    (grep -v '^MCP_TOKEN=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; echo 'MCP_TOKEN=${MCP_TOKEN}') > ${REMOTE_DIR}/app/.env.new && \
+    (grep -v '^MCP_TOKEN=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
+     grep -v '^PROCESSOR_SECRET=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
+     [ -n '${MCP_TOKEN:-}' ] && echo 'MCP_TOKEN=${MCP_TOKEN}'; \
+     echo 'PROCESSOR_SECRET=${PROCESSOR_SECRET}') > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
 
