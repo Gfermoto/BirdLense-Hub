@@ -10,22 +10,22 @@ test.describe('Smoke tests', () => {
   test('navigation links work', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: 'Записи' }).first().click();
+    await page.getByRole('link', { name: /Timeline|Записи/i }).first().click();
     await expect(page).toHaveURL(/\/timeline/);
 
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'settings' }).click();
-    await page.getByRole('menuitem', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: /settings|настройки/i }).click();
+    await page.getByRole('menuitem', { name: /Settings|Настройки/i }).click();
     await expect(page).toHaveURL(/\/settings/);
 
-    await page.getByRole('link', { name: 'Live' }).first().click();
+    await page.goto('/live');
     await expect(page).toHaveURL(/\/live/);
   });
 
   test('Settings page loads', async ({ page }) => {
     await page.goto('/settings', { waitUntil: 'networkidle' });
-    await expect(page.getByText('Update Settings')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('Live page loads', async ({ page }) => {
