@@ -1,4 +1,4 @@
-# BirdLense — один контейнер
+# BirdLense Hub — один контейнер
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
 
 services:
@@ -15,6 +15,7 @@ services:
     environment:
       - DATA_DIR=/app/data
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
+      - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}

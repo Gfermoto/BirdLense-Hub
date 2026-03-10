@@ -4,7 +4,7 @@ import {
   mockBirdFood,
   mockTimeline,
   mockOverviewData,
-  mockSetttings,
+  mockSettings,
   mockSpeciesSummary,
   mockVideo,
   mockWeather,
@@ -166,7 +166,7 @@ export const verifySettingsPassword = async (password: string): Promise<boolean>
 export const fetchSettings = async () => {
   if (useMockData) {
     await sleep(1000);
-    return mockSetttings;
+    return mockSettings;
   } else {
     const response = await axios.get(`${BASE_API_URL}/settings`, {
       withCredentials: true,

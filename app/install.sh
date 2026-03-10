@@ -30,7 +30,7 @@ fi
 echo -e "Success: microphone detected\n"
 
 # START INSTALLATION
-echo "Starting BirdLense installation..."
+echo "Starting BirdLense Hub installation..."
 
 # Update package lists
 sudo apt-get update

@@ -1,21 +1,25 @@
-.PHONY: build start stop logs deploy pull test test-web test-e2e
+.PHONY: build start stop logs deploy pull setup test test-web test-e2e test-coverage test-report
+
+# Настройка секретов (app/.env) — перед первым запуском
+setup:
+	@./scripts/setup-env.sh
 
 # Сборка и запуск
 build:
-	@echo "Building BirdLense..."
+	@echo "Building BirdLense Hub..."
 	@docker compose build
 	@echo "Build finished."
 
-start:
-	@echo "Starting BirdLense..."
+start: setup
+	@echo "Starting BirdLense Hub..."
 	@docker compose up -d
-	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
-pull:
+pull: setup
 	@docker compose -f docker-compose.pull.yml pull
 	@docker compose -f docker-compose.pull.yml up -d
-	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:
 	@docker compose down
@@ -27,12 +31,30 @@ logs:
 deploy:
 	@cd .. && ./scripts/deploy.sh
 
-# Тесты
+# Тесты (в контейнере — нужны ultralytics, ncnn)
+# -v монтирует локальный код: тесты идут по коду на диске, а не по образу
 test:
-	python3 -m unittest discover processor/tests
+	docker compose run --rm -v $$(pwd):/app birdlense python -m unittest discover processor/tests -v
 
 test-web:
-	docker compose run --rm birdlense python -m pytest web/tests/ -v 2>/dev/null || echo "Run: cd app && docker compose run --rm birdlense bash -c 'cd web && python -m pytest tests/ -v'"
+	docker compose run --rm -v $$(pwd):/app birdlense python -m pytest web/tests/ -v
+
+# Тесты с измерением покрытия (processor + web)
+# -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)
+test-coverage:
+	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+		python -m coverage run -m unittest discover -s processor/tests -v && \
+		python -m coverage run -a -m pytest web/tests/ -v && \
+		python -m coverage report -m'
+
+# Покрытие + HTML-отчёт в app/htmlcov/
+test-report:
+	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+		python -m coverage run -m unittest discover -s processor/tests -v && \
+		python -m coverage run -a -m pytest web/tests/ -v && \
+		python -m coverage report -m && \
+		python -m coverage html'
+	@echo "Отчёт: app/htmlcov/index.html"
 
 test-e2e:
 	cd e2e && npm ci && npx playwright install chromium && npm test

@@ -1,4 +1,4 @@
-# BirdLense — один контейнер: UI + API + processor
+# BirdLense Hub — один контейнер: UI + API + processor
 # Подключается к внешним: Go2RTC (Frigate), MQTT (BirdNET, Frigate)
 
 # Stage 1: UI
@@ -10,7 +10,7 @@ COPY ui/ ./
 RUN npm run build
 
 # Stage 2: всё в одном
-FROM ultralytics/ultralytics:8.3.231
+FROM ultralytics/ultralytics:8.4.21
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*

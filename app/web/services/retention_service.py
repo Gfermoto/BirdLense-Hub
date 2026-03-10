@@ -8,17 +8,14 @@ from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
 from models import Video, db
+from util import recordings_dir
 
 logger = logging.getLogger(__name__)
-
-def _recordings_dir():
-    base = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
-    return os.path.join(base, 'recordings')
 
 
 def _get_recordings_size_gb():
     """Total size of recordings dir in GB."""
-    rec_dir = _recordings_dir()
+    rec_dir = recordings_dir()
     if not os.path.isdir(rec_dir):
         return 0
     total = 0
@@ -50,7 +47,7 @@ def run_retention():
         for video in videos:
             try:
                 if video.video_path:
-                    app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                    app_base = os.path.dirname(os.path.dirname(recordings_dir()))
                     dir_path = os.path.join(app_base, os.path.dirname(video.video_path))
                     if os.path.isdir(dir_path):
                         for f in os.listdir(dir_path):
@@ -72,7 +69,7 @@ def run_retention():
     # Clean empty dirs
     if cutoff:
         try:
-            rec_dir = _recordings_dir()
+            rec_dir = recordings_dir()
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
@@ -103,7 +100,7 @@ def run_retention():
             if not oldest:
                 break
             try:
-                app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                app_base = os.path.dirname(os.path.dirname(recordings_dir()))
                 dir_path = os.path.join(app_base, os.path.dirname(oldest.video_path))
                 if os.path.isdir(dir_path):
                     for f in os.listdir(dir_path):

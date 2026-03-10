@@ -12,13 +12,21 @@ class API():
         if not self.api_url_base:
             raise EnvironmentError(
                 "API_URL_BASE environment variable is not set.")
+        self._processor_secret = os.environ.get('PROCESSOR_SECRET', '').strip()
+
+    def _headers(self):
+        headers = {}
+        if self._processor_secret:
+            headers['X-Processor-Token'] = self._processor_secret
+        return headers
 
     def _send_request(self, method, endpoint, json_data):
         """ Helper function to send HTTP requests and handle errors """
         url = f"{self.api_url_base}/{endpoint}"
         try:
-            # Directly use requests methods based on method argument
-            response = requests.request(method, url, json=json_data)
+            response = requests.request(
+                method, url, json=json_data, headers=self._headers()
+            )
 
             # Raise an error if the response status code is not 200 or 201
             response.raise_for_status()
