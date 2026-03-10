@@ -10,6 +10,7 @@
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой на сервер, deploy.local.sh |
 | [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | **Исследования:** сбор датасетов, обучение моделей, MCP |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (как Frigate): подтвердить/исправить, куда уходят данные |
+| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты птиц (HF, CUB, Birdsnap), Hugging Face и Zenodo для сообщества |
 
 ## Интеграции
 
