@@ -94,6 +94,7 @@ weather:
   source: openweather
   ha_url: "http://homeassistant:8123"
   ha_entity_id: "weather.home"
+  # ha_token: ""  # Long-Lived Access Token; HA_TOKEN in env overrides
 
 # Retention
 retention:

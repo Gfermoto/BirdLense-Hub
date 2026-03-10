@@ -134,9 +134,10 @@ export interface Settings {
     birdnet_topic?: string;
   };
   weather?: {
-    source?: string;
+    source?: 'openweather' | 'homeassistant';
     ha_url?: string;
     ha_entity_id?: string;
+    ha_token?: string;
   };
   feed?: {
     source?: string;
