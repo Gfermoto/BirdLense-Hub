@@ -30,3 +30,4 @@ test-web:
 
 test-e2e:
 	cd e2e && npm ci && npx playwright install chromium && npm test
+# E2E с паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
