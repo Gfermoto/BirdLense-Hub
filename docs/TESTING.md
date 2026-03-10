@@ -6,7 +6,7 @@
 cd app && make test
 ```
 
-Запускает `unittest` для processor (detection strategy, decision maker).
+Запускает `unittest` для processor (detection strategy, decision maker). Требуется Python 3 и зависимости processor.
 
 ## API-тесты (web)
 
@@ -16,7 +16,7 @@ cd app && make test-web
 
 Запускает pytest для web API в Docker (health, status, settings, feed, cameras).
 
-Если образ не обновлён: `make build` перед `make test-web`.
+Перед первым запуском: `make build`. Тесты выполняются в контейнере.
 
 ## E2E-тесты (Playwright)
 

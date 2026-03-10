@@ -11,7 +11,7 @@
 | Компонент | Исходник | Наш форк |
 |-----------|----------|----------|
 | **Docker** | Несколько compose (base, dev, prod, server, go2rtc), отдельные Dockerfile для ui/web/processor/nginx | Один `docker-compose.yml`, один `Dockerfile` — всё в одном контейнере |
-| **Деплой** | Нет единого скрипта | `scripts/deploy.sh` — rsync, исключает `app/data`, не перезаписывает записи |
+| **Деплой** | Нет единого скрипта | `scripts/deploy.sh` — tar+ssh, исключает `app/data`, не перезаписывает записи |
 | **Образ** | Только локальная сборка | GitHub Actions → `ghcr.io/gfermoto/birdlense-hub:latest`, `make pull` |
 | **Версия** | Нет | `VERSION`, теги `v0.1.0-alpha.1`, GitHub Release |
 
@@ -36,7 +36,7 @@
 | Компонент | Исходник | Наш форк |
 |-----------|----------|----------|
 | **Локализация** | Нет | i18n (ru/en), LanguageSwitcher |
-| **Настройки** | Один блок | Разделы: видео, камеры, уведомления, погода, безопасность, MCP |
+| **Настройки** | Один блок | Разделы: 1) Connection (MQTT, Go2RTC), 2) Cameras, 3) Motion, 4) Feed, 5) Notifications, 6) Weather, 7) Security, 8) MCP |
 | **Безопасность** | Нет | Пароль доступа к настройкам |
 | **FeedCard** | FoodManagement (привязка корма к видам) | FeedCard — кнопка «Выдать корм» (MQTT/ESPHome) |
 | **FoodManagement** | Есть | Есть (привязка корма к видам) |
@@ -54,7 +54,7 @@
 | Компонент | Исходник | Наш форк |
 |-----------|----------|----------|
 | **E2E** | Нет | Playwright (smoke, settings, api), поддержка пароля |
-| **Документация** | README | docs: MCP_SETUP, MQTT_DISCOVERED_TOPICS, TESTING |
+| **Документация** | README | docs: ARCHITECTURE, CONFIGURATION, API, DEPLOYMENT, MCP_SETUP, MQTT, TESTING |
 
 ---
 
@@ -90,7 +90,7 @@
 
 ### 3.1 Секция 3D Printing
 
-В README есть ссылка `[3D Printing](./3d_printing)`, но папки `3d_printing` в репозитории нет. В upstream её тоже нет в корне — возможно, она в другом месте или не закоммичена.
+Папки `3d_printing` в репозитории нет. В README нет ссылки на неё.
 
 ### 3.2 Потенциально полезное из upstream
 
