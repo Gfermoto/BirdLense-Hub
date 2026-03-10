@@ -166,8 +166,8 @@ MCP экспортирует OpenAPI BirdLense как инструменты д�
 | # | Скрипт/доработка | Назначение |
 |---|-------------------|------------|
 | 4 | `scripts/merge_birdlense_with_nabirds.py` | Объединение BirdLense export + NABirds |
-| 5 | UI: кнопка «Исправить вид» в VideoDetails | Ручная коррекция разметки |
-| 6 | API: `PATCH /videos/{id}/species/{vs_id}` | Программная коррекция |
+| 5 | UI: «Подтвердить» / «Исправить» в VideoDetails | Совместная разметка (как Frigate) |
+| 6 | API: confirm, correct для VideoSpecies | Программная коррекция |
 | 7 | `POST /system/export-dataset` | API-триггер экспорта |
 
 ---
@@ -196,9 +196,12 @@ MCP экспортирует OpenAPI BirdLense как инструменты д�
 - [ ] Адаптировать `birds_train_cls.ipynb` под classification crops из export
 - [ ] Инструкция: RunPod/Colab, деплой весов
 
-### Фаза 5: UI для разметки (низкий приоритет)
-- [ ] Кнопка «Исправить вид» в деталях видео
-- [ ] Выбор из списка видов, сохранение в БД
+### Фаза 5: Совместная разметка (collaborative labeling)
+- [ ] UI: «Подтвердить» / «Исправить» на каждой детекции (как во Frigate)
+- [ ] Таблица `detection_feedback` или поля в VideoSpecies
+- [ ] API: confirm, correct
+- [ ] Опции «куда уходят данные»: локально, экспорт, opt-in в сообщество
+- [ ] См. [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md)
 
 ---
 
