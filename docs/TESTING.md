@@ -1,4 +1,4 @@
-# Тестирование BirdLense
+# Тестирование BirdLense Hub
 
 ## Unit-тесты (processor)
 

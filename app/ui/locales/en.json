@@ -40,7 +40,7 @@
     "section7": "7. Security",
     "section7Desc": "Password for settings and system operations access.",
     "section8": "8. MCP (AI agents)",
-    "section8Desc": "Model Context Protocol — Cursor, Claude and other AIs can call BirdLense API.",
+    "section8Desc": "Model Context Protocol — Cursor, Claude and other AIs can call BirdLense Hub API.",
     "mcpEnabled": "Enable MCP server",
     "mcpHint": "Container restart required after enabling. URL: /mcp",
     "mcpToken": "MCP access token",

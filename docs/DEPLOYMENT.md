@@ -1,4 +1,4 @@
-# Деплой BirdLense
+# Деплой BirdLense Hub
 
 ## Быстрый старт
 

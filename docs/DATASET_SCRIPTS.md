@@ -49,4 +49,8 @@
 
 ## Планируется
 
-- `export_birdlense_to_yolo.py` — экспорт записей BirdLense в YOLO-формат (см. [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md)).
+- `export_birdlense_to_yolo.py` — экспорт записей BirdLense Hub в YOLO-формат (см. [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md)).
+
+---
+
+**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [scripts/datasets/README.md](../scripts/datasets/README.md)

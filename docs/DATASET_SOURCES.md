@@ -1,6 +1,6 @@
 # Источники датасетов и платформы для сообщества
 
-Датасеты птиц, похожие на NABirds, и платформы для размещения данных от участников BirdLense (Hugging Face, Zenodo).
+Датасеты птиц, похожие на NABirds, и платформы для размещения данных от участников BirdLense Hub (Hugging Face, Zenodo).
 
 ---
 
@@ -35,7 +35,7 @@ ds = load_dataset("randall-lab/cub200", split="train", trust_remote_code=True)
 
 ---
 
-## 2. Hugging Face для сообщества BirdLense
+## 2. Hugging Face для сообщества BirdLense Hub
 
 ### Плюсы
 - Бесплатно для публичных датасетов
@@ -67,7 +67,7 @@ birdlense-community/
 
 ---
 
-## 3. Zenodo для сообщества BirdLense
+## 3. Zenodo для сообщества BirdLense Hub
 
 ### Плюсы
 - **DOI** — цитирование в статьях
@@ -91,7 +91,7 @@ birdlense-community/
 
 ---
 
-## 4. Сравнение для BirdLense
+## 4. Сравнение для BirdLense Hub
 
 | Критерий | Hugging Face | Zenodo |
 |----------|--------------|--------|
@@ -113,7 +113,7 @@ birdlense-community/
 
 | Вариант | Платформа |
 |---------|-----------|
-| Локально | SQLite BirdLense |
+| Локально | SQLite BirdLense Hub |
 | Экспорт | Ручная выгрузка |
 | Сообщество (итеративно) | **Hugging Face** |
 | Сообщество (снапшот для статьи) | **Zenodo** |
@@ -128,8 +128,6 @@ birdlense-community/
 
 ## 6. Ссылки
 
-- [Hugging Face Datasets](https://huggingface.co/datasets)
-- [Zenodo](https://zenodo.org)
-- [iNaturalist API](https://www.inaturalist.org/pages/api+recommended+practices)
-- [NABirds](https://dl.allaboutbirds.org/nabirds)
-- [CUB-200-2011](https://www.vision.caltech.edu/datasets/cub_200_2011/)
+**Внешние:** [Hugging Face](https://huggingface.co/datasets) · [Zenodo](https://zenodo.org) · [iNaturalist API](https://www.inaturalist.org/pages/api+recommended+practices) · [NABirds](https://dl.allaboutbirds.org/nabirds) · [CUB-200-2011](https://www.vision.caltech.edu/datasets/cub_200_2011/)
+
+**См. также:** [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md)

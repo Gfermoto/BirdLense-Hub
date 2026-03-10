@@ -1,4 +1,4 @@
-# BirdLense — запуск из готового образа (без сборки)
+# BirdLense Hub — запуск из готового образа (без сборки)
 # docker compose -f docker-compose.pull.yml up -d
 
 services:
