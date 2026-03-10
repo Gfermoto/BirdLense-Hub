@@ -20,6 +20,8 @@
 
 | Документ | Описание |
 |----------|----------|
+| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Сбор датасетов, обучение моделей, MCP |
+| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов датасетов |
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (YOLO, зависимости) |
 | [TESTING.md](./TESTING.md) | Unit, API и E2E тесты |
 | [FORK_ANALYSIS.md](./FORK_ANALYSIS.md) | Сравнение с исходным проектом |
