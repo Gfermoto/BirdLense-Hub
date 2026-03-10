@@ -1,4 +1,4 @@
-# BirdLense — один контейнер: UI + API + processor
+# BirdLense Hub — один контейнер: UI + API + processor
 # Подключается к внешним: Go2RTC (Frigate), MQTT (BirdNET, Frigate)
 
 # Stage 1: UI

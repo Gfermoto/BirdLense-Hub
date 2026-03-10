@@ -95,7 +95,7 @@
 | `port` | Порт (1883) |
 | `frigate_topic` | Топик событий Frigate |
 | `birdnet_topic` | Топик BirdNET |
-| `publish_topic` | Топик публикации детекций BirdLense |
+| `publish_topic` | Топик публикации детекций BirdLense Hub |
 
 ---
 

@@ -1,44 +1,16 @@
 # План: сбор датасетов и обучение моделей
 
-BirdLense — **исследовательский инструмент** для орнитологии и компьютерного зрения: сбор данных с кормушки, разметка, дообучение моделей. Подходит для научных статей и экспериментов.
+BirdLense Hub — **исследовательский инструмент** для орнитологии и компьютерного зрения: сбор данных с кормушки, разметка, дообучение моделей. Подходит для научных статей и экспериментов.
 
-Цель: использовать BirdLense для сбора данных, разметки и дообучения моделей детекции/классификации птиц. Максимально задействовать MCP для автоматизации через AI-агентов.
+Цель: использовать BirdLense Hub для сбора данных, разметки и дообучения моделей детекции/классификации птиц. Максимально задействовать MCP для автоматизации через AI-агентов.
 
 ---
 
-## 1. Существующие скрипты (инвентарь)
+## 1. Существующие скрипты и модели
 
-### 1.1 Подготовка датасетов (`scripts/datasets/`)
+**Инвентарь:** [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) — полный список скриптов и моделей.
 
-| Скрипт | Назначение | Вход | Выход |
-|--------|------------|------|-------|
-| `convert_nabirds_to_yolo.py` | NABirds → YOLO detection | `./nabirds/` | `./nabirds_yolo/` |
-| `remove_unused_classes.py` | Удаление пустых классов | `nabirds_yolo/` | `nabirds_yolo_cleaned/` |
-| `convert_nabirds_to_yolo_reduced.py` | Группировка по полу | `nabirds_yolo/` | `nabirds_yolo_reduced/` |
-| `convert_oidv4_to_yolo.py` | OIDv4 (белка) → YOLO | OIDv4 | `./squirrel_yolo/` |
-| `download_coco_birds.py` | COCO 2017 (птицы) → YOLO | — | `./coco_birds_yolo/` |
-| `merge_datasets_binary.py` | NABirds + COCO → бинарный детектор | nabirds_cleaned, coco_birds | `birds_binary_yolo/` |
-| `classification/convert_yolo_det_to_cls.py` | YOLO detection → classification crops | data.yaml | crops по классам |
-
-### 1.2 Обучение (`scripts/`)
-
-| Файл | Назначение |
-|------|------------|
-| `birds_train.ipynb` | Обучение детектора (binary/single-stage) на RunPod |
-| `birds_train_cls.ipynb` | Обучение классификатора (yolo11n-cls) |
-| `birds_predict_test.ipynb` | Тест инференса моделей |
-| `experiment/compare.py` | Сравнение binary vs single-stage на видео |
-| `experiment/cp_rand_videos.sh` | Копирование случайных видео |
-
-### 1.3 Модели в проекте
-
-| Путь | Назначение |
-|------|------------|
-| `processor/models/detection/weights/best.pt` | Бинарный детектор (bird/not bird) |
-| `processor/models/classification/weights/best.pt` | Классификатор видов |
-| `processor/models/detection/nabirds_yolov8n_ncnn_model/` | Single-stage NCNN (RPi) |
-| `processor/models/detection/nabirds_yolo11n_binary/` | Binary YOLO11 NCNN |
-| `processor/models/classification/nabirds_yolo11n_cls/` | Classification YOLO11 NCNN |
+Кратко: `scripts/datasets/` — NABirds, COCO, OIDv4 → YOLO; `scripts/birds_train*.ipynb` — обучение на RunPod; `processor/models/` — best.pt (binary, classifier).
 
 ---
 
@@ -48,7 +20,7 @@ BirdLense — **исследовательский инструмент** для
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  ЭТАП 1: Сбор данных                                                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  BirdLense (live) → data/recordings/YYYY/MM/DD/HHMMSS/video.mp4              │
+│  BirdLense Hub (live) → data/recordings/YYYY/MM/DD/HHMMSS/video.mp4              │
 │  Processor → DB: Video, VideoSpecies (species, frames, bbox)                 │
 │  Опция: save_images → crops (нужно доработать)                               │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -67,7 +39,7 @@ BirdLense — **исследовательский инструмент** для
 │  ЭТАП 3: Разметка / коррекция                                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  • Ручная: LabelImg, CVAT, Roboflow                                          │
-│  • Полуавто: UI BirdLense — «Исправить вид» для VideoSpecies                 │
+│  • Полуавто: UI BirdLense Hub — «Исправить вид» для VideoSpecies              │
 │  • MCP: AI-агент анализирует low-confidence, предлагает правки              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↓
@@ -93,7 +65,7 @@ BirdLense — **исследовательский инструмент** для
 
 ## 3. MCP: как задействовать по максимуму
 
-MCP экспортирует OpenAPI BirdLense как инструменты для AI-агентов (Cursor, Claude и др.).
+MCP экспортирует OpenAPI BirdLense Hub как инструменты для AI-агентов (Cursor, Claude и др.).
 
 ### 3.1 Релевантные MCP-инструменты (из OpenAPI)
 
@@ -132,7 +104,7 @@ MCP экспортирует OpenAPI BirdLense как инструменты д�
 - Запускает экспорт (внешний скрипт или новый API)
 - После обучения — инструкция по деплою весов
 
-### 3.3 Примеры промптов для Cursor (с MCP BirdLense)
+### 3.3 Примеры промптов для Cursor (с MCP BirdLense Hub)
 
 - «Получи overview и storage/stats — сколько записей, какие виды чаще всего?»
 - «Дай timeline за последние 7 дней — сколько видео с детекциями?»
@@ -165,7 +137,7 @@ MCP экспортирует OpenAPI BirdLense как инструменты д�
 
 | # | Скрипт/доработка | Назначение |
 |---|-------------------|------------|
-| 4 | `scripts/merge_birdlense_with_nabirds.py` | Объединение BirdLense export + NABirds |
+| 4 | `scripts/merge_birdlense_with_nabirds.py` | Объединение BirdLense Hub export + NABirds |
 | 5 | UI: «Подтвердить» / «Исправить» в VideoDetails | Совместная разметка (как Frigate) |
 | 6 | API: confirm, correct для VideoSpecies | Программная коррекция |
 | 7 | `POST /system/export-dataset` | API-триггер экспорта |
@@ -241,9 +213,4 @@ nc: 15
 
 ## 7. Ссылки
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — потоки данных
-- [CONFIGURATION.md](./CONFIGURATION.md) — `save_images`, `processor.models`
-- [MCP_SETUP.md](./MCP_SETUP.md) — настройка MCP
-- [API.md](./API.md) — эндпоинты
-- [scripts/datasets/README.md](../scripts/datasets/README.md) — скрипты датасетов
-- [DATASET_SOURCES.md](./DATASET_SOURCES.md) — датасеты на Hugging Face, Zenodo для сообщества
+**См. также:** [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [CONFIGURATION.md](./CONFIGURATION.md) · [MCP_SETUP.md](./MCP_SETUP.md) · [API.md](./API.md)

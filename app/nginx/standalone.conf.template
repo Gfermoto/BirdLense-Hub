@@ -1,4 +1,4 @@
-# BirdLense — один контейнер
+# BirdLense Hub — один контейнер
 # Go2RTC upstream — из video.go2rtc_url (http://IP:1984)
 
 resolver 127.0.0.11 valid=10s ipv6=off;

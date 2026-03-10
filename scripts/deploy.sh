@@ -1,5 +1,5 @@
 #!/bin/bash
-# Деплой BirdLense
+# Деплой BirdLense Hub
 # Локальные настройки (IP, URL) — в scripts/deploy.local.sh (не коммитить)
 # Критично: НЕ перезаписываем data и app_config на сервере
 
@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
-echo "=== Деплой BirdLense на ${HOST} ==="
+echo "=== Деплой BirdLense Hub на ${HOST} ==="
 
 # 0. Удаление старых контейнеров (nginx, processor, web, ntfy)
 echo "0. Остановка старых контейнеров..."

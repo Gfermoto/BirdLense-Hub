@@ -1,4 +1,4 @@
-# BirdLense
+# BirdLense Hub
 
 Один контейнер. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
 

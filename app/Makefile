@@ -6,20 +6,20 @@ setup:
 
 # Сборка и запуск
 build:
-	@echo "Building BirdLense..."
+	@echo "Building BirdLense Hub..."
 	@docker compose build
 	@echo "Build finished."
 
 start: setup
-	@echo "Starting BirdLense..."
+	@echo "Starting BirdLense Hub..."
 	@docker compose up -d
-	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
 pull: setup
 	@docker compose -f docker-compose.pull.yml pull
 	@docker compose -f docker-compose.pull.yml up -d
-	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:
 	@docker compose down

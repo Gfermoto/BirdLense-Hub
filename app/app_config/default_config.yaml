@@ -107,7 +107,7 @@ notifications:
   excluded_species: []
   rate_limit_per_minute: 5
 
-# MCP (Model Context Protocol) — AI-агенты (Cursor, Claude) могут вызывать API BirdLense
+# MCP (Model Context Protocol) — AI-агенты (Cursor, Claude) могут вызывать API BirdLense Hub
 mcp:
   enabled: false
   # Токен для доступа. Пусто — без защиты. Рекомендуется для продакшена.

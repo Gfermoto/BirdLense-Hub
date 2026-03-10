@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/ui/public/logo.png" width="200" alt="BirdLense Logo">
+  <img src="app/ui/public/logo.png" width="200" alt="BirdLense Hub Logo">
 </p>
 
 # BirdLense Hub

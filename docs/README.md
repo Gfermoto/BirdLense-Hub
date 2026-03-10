@@ -1,34 +1,46 @@
 # Документация BirdLense Hub
 
-## Основные
+Навигация по документации. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
+
+---
+
+## Система
 
 | Документ | Описание |
 |----------|----------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Архитектура: компоненты, потоки данных |
-| [CONFIGURATION.md](./CONFIGURATION.md) | Описание `default_config.yaml` и env |
-| [API.md](./API.md) | Обзор API, ссылка на OpenAPI |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
+| [CONFIGURATION.md](./CONFIGURATION.md) | `default_config.yaml`, переменные окружения |
+| [API.md](./API.md) | Эндпоинты UI, System, Processor |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой на сервер, deploy.local.sh |
-| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | **Исследования:** сбор датасетов, обучение моделей, MCP |
-| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (как Frigate): подтвердить/исправить, куда уходят данные |
-| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты птиц (HF, CUB, Birdsnap), Hugging Face и Zenodo для сообщества |
+
+---
+
+## Исследования (датасеты, обучение)
+
+| Документ | Описание |
+|----------|----------|
+| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение, MCP |
+| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (NABirds, COCO, ноутбуки) |
+| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты на Hugging Face (Birdsnap, CUB-200), Zenodo |
+| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (подтвердить/исправить), куда уходят данные |
+
+---
 
 ## Интеграции
 
 | Документ | Описание |
 |----------|----------|
 | [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP для Cursor и AI-агентов |
-| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики (Frigate, BirdNET), форматы сообщений |
+| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, форматы сообщений |
+| [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP |
+
+---
 
 ## Прочее
 
 | Документ | Описание |
 |----------|----------|
-| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов датасетов |
-| [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (YOLO, зависимости) |
-| [TESTING.md](./TESTING.md) | Unit, API и E2E тесты |
+| [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
+| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
 | [FORK_ANALYSIS.md](./FORK_ANALYSIS.md) | Сравнение с исходным проектом |
-| [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP для Cursor |
-
----
-
-**OpenAPI:** [app/web/openapi.yaml](../app/web/openapi.yaml) — полная спецификация UI API.
+| [REVIEW.md](./REVIEW.md) | Ревью документации (рефакторинг, карта) |

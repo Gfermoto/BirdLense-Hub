@@ -40,7 +40,7 @@
     "section7": "7. Безопасность",
     "section7Desc": "Пароль для доступа к настройкам и системным операциям.",
     "section8": "8. MCP (AI-агенты)",
-    "section8Desc": "Model Context Protocol — Cursor, Claude и другие AI могут вызывать API BirdLense.",
+    "section8Desc": "Model Context Protocol — Cursor, Claude и другие AI могут вызывать API BirdLense Hub.",
     "mcpEnabled": "Включить MCP-сервер",
     "mcpHint": "После включения нужен перезапуск контейнера. URL: /mcp",
     "mcpToken": "Токен доступа MCP",

@@ -1,5 +1,5 @@
 """
-BirdLense MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты для AI-агентов.
+BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты для AI-агентов.
 Запуск: python birdlense_mcp.py [--transport stdio|http] [--port 8001]
 В контейнере: entrypoint запускает при mcp.enabled=true с transport=http.
 Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
@@ -42,7 +42,7 @@ def get_mcp_token() -> str:
 
 
 def get_api_base_url() -> str:
-    """API URL для MCP-клиента (вызовы к BirdLense)."""
+    """API URL для MCP-клиента (вызовы к BirdLense Hub)."""
     url = app_config.get("mcp.api_url") or os.environ.get("BIRDLENSE_API_URL", "")
     if url:
         return url.rstrip("/")
@@ -58,7 +58,7 @@ def create_mcp_server() -> FastMCP:
     mcp_kwargs = dict(
         openapi_spec=birdlense_spec,
         client=client,
-        name="BirdLense",
+        name="BirdLense Hub",
         route_maps=custom_maps,
     )
     if token:
@@ -74,13 +74,13 @@ async def check_mcp(mcp: FastMCP) -> None:
     tools = await mcp.get_tools()
     resources = await mcp.get_resources()
     templates = await mcp.get_resource_templates()
-    print(f"BirdLense MCP: {len(tools)} tools, {len(resources)} resources, {len(templates)} templates")
+    print(f"BirdLense Hub MCP: {len(tools)} tools, {len(resources)} resources, {len(templates)} templates")
     if tools:
         print(f"  Tools: {', '.join(list(tools.keys())[:8])}{'...' if len(tools) > 8 else ''}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="BirdLense MCP server")
+    parser = argparse.ArgumentParser(description="BirdLense Hub MCP server")
     parser.add_argument(
         "--transport",
         choices=["stdio", "http"],
@@ -100,7 +100,7 @@ def main() -> None:
 
     if args.transport == "http":
         auth_status = "protected" if get_mcp_token() else "no auth"
-        print(f"BirdLense MCP HTTP: http://{args.host}:{args.port}/mcp ({auth_status})")
+        print(f"BirdLense Hub MCP HTTP: http://{args.host}:{args.port}/mcp ({auth_status})")
         mcp.run(transport="http", host=args.host, port=args.port)
     else:
         mcp.run()

@@ -102,7 +102,7 @@ export function Navigation() {
             <Box
               component="img"
               src={logoUrl}
-              alt="BirdLense Logo"
+              alt="BirdLense Hub Logo"
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -209,7 +209,7 @@ export function Navigation() {
             <Box
               component="img"
               src={logoUrl}
-              alt="BirdLense Logo"
+              alt="BirdLense Hub Logo"
               sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5 }}
             />
             <Typography variant="h6">{t('common.appName')}</Typography>
