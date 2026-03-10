@@ -23,6 +23,8 @@ import { fetchSpeciesSummary } from '../../api/api';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
+import { SpeciesIcon } from '../../components/SpeciesIcon';
+import { BASE_URL } from '../../api/api';
 
 const StatCard = ({
   icon,
@@ -120,21 +122,35 @@ const SpeciesSummaryPage = () => {
       {/* Header Section */}
       <Paper elevation={0} sx={{ mb: 4, bgcolor: 'background.default' }}>
         <Grid container spacing={4} alignItems="center">
-          {data.species.image_url && (
-            <Grid size={{ xs: 12, md: 4 }}>
-              <img
-                src={data.species.image_url}
-                alt={data.species.name}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-            </Grid>
-          )}
-          <Grid size={{ xs: 12, md: data.species.image_url ? 8 : 12 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 200,
+                bgcolor: 'action.hover',
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}
+            >
+              {data.species.image_url ? (
+                <img
+                  src={`${BASE_URL}/${data.species.image_url}`}
+                  alt={data.species.name}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  }}
+                />
+              ) : (
+                <SpeciesIcon speciesName={data.species.name} size={120} />
+              )}
+            </Box>
+          </Grid>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Typography variant="h4" gutterBottom color="primary">
               {data.species.name}
             </Typography>

@@ -226,7 +226,7 @@ export const mockBirdFood: BirdFood[] = [
   { id: 4, name: 'Nyjer Seeds', active: false },
 ];
 
-export const mockSetttings: Settings = {
+export const mockSettings: Settings = {
   general: {
     enable_notifications: true,
     notification_excluded_species: [],

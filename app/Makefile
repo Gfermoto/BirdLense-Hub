@@ -1,4 +1,8 @@
-.PHONY: build start stop logs deploy pull test test-web test-e2e
+.PHONY: build start stop logs deploy pull setup test test-web test-e2e
+
+# Настройка секретов (app/.env) — перед первым запуском
+setup:
+	@./scripts/setup-env.sh
 
 # Сборка и запуск
 build:
@@ -6,13 +10,13 @@ build:
 	@docker compose build
 	@echo "Build finished."
 
-start:
+start: setup
 	@echo "Starting BirdLense..."
 	@docker compose up -d
 	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
-pull:
+pull: setup
 	@docker compose -f docker-compose.pull.yml pull
 	@docker compose -f docker-compose.pull.yml up -d
 	@echo "BirdLense on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"

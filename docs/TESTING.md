@@ -16,18 +16,17 @@ cd app && make test-web
 
 Запускает pytest для web API в Docker (health, status, settings, feed, cameras).
 
-Если образ не обновлён после добавления pytest: `make build-dev` или пересоберите web.
+Если образ не обновлён: `make build` перед `make test-web`.
 
 ## E2E-тесты (Playwright)
 
-E2E-тесты проверяют UI и API на работающем экземпляре приложения.
+E2E проверяют UI и API на работающем экземпляре.
 
 ### Запуск
 
-1. Запустите приложение (Docker или локально):
+1. Запустите приложение:
    ```bash
-   cd app && make start-dev
-   # или make start для prod
+   cd app && make start
    ```
 
 2. Запустите E2E:
@@ -35,9 +34,9 @@ E2E-тесты проверяют UI и API на работающем экзем
    cd app && make test-e2e
    ```
 
-3. Для тестов против другого хоста (например, 192.168.1.11:8085):
+3. Против другого хоста (например, 192.168.1.11:8085):
    ```bash
-   cd app/e2e && BASE_URL=http://192.168.1.11:8085 npm test
+   cd app && E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
    ```
 
 ### Что проверяют E2E

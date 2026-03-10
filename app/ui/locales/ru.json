@@ -178,13 +178,14 @@
     "regenerateTracksSuccess": "Треков: {{generated}}, ошибок {{failed}}, пропущено {{skipped}}",
     "regenerateTracksFailed": "Ошибка перегенерации треков",
     "regenerateTimeout": "Таймаут ожидания результата",
-    "regenerateFailed": "Ошибка перегенерации"
+    "regenerateFailed": "Ошибка перегенерации",
+    "spectrogramRegenStarted": "Генерация спектрограмм запущена в фоне"
   },
   "common": {
     "cancel": "Отмена",
     "noData": "Нет данных",
     "openSource": "Open Source",
-    "mitLicense": "MIT License",
+    "license": "CC BY-NC-ND 4.0",
     "createdBy": "Автор",
     "all": "Все",
     "close": "Закрыть",

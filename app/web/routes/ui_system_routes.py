@@ -9,15 +9,11 @@ from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func
 from services.retention_service import run_retention
 from app_config.app_config import app_config
-from util import settings_check_access
+from util import settings_check_access, recordings_dir
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None}
 _regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None}
-
-def _recordings_dir():
-    base = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(__file__), '..', 'data'))
-    return os.path.join(base, 'recordings')
 
 
 IMPORT_SPECIES_NAME = "Unknown"
@@ -35,7 +31,7 @@ def register_routes(app):
                 with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
                     temp = float(f.read().strip()) / 1000.0
                 cpu_temp = round(temp, 1)
-            except:
+            except OSError:
                 cpu_temp = None
 
             # Memory information
@@ -129,13 +125,13 @@ def register_routes(app):
 
     @app.route('/api/ui/storage/stats', methods=['GET'])
     def get_storage_stats():
-        if not os.path.exists(_recordings_dir()):
+        if not os.path.exists(recordings_dir()):
             return [], 200
 
         stats = []
         # Walk through year/month/day structure
         try:
-            rec_dir = _recordings_dir()
+            rec_dir = recordings_dir()
             for year in sorted(os.listdir(rec_dir), reverse=True):
                 year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
@@ -175,12 +171,16 @@ def register_routes(app):
             if not date_str:
                 return {'error': 'Date is required'}, 400
 
-            purge_date = datetime.strptime(date_str, '%Y-%m-%d')
+            try:
+                purge_date = datetime.strptime(date_str, '%Y-%m-%d')
+            except ValueError:
+                return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+
             deleted_count = 0
             deleted_size = 0
 
             # Walk through the recordings directory
-            rec_dir = _recordings_dir()
+            rec_dir = recordings_dir()
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
@@ -257,7 +257,7 @@ def register_routes(app):
                     _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
                     return
 
-                base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                base = os.path.dirname(os.path.dirname(recordings_dir()))
                 px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
                 spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
 
@@ -343,7 +343,7 @@ def register_routes(app):
                 from track_regenerator import process_video_for_tracks
                 from services.visit_processor import VisitProcessor
 
-                base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                base = os.path.dirname(os.path.dirname(recordings_dir()))
                 lores_size = (640, 640)
 
                 if force:
@@ -422,7 +422,7 @@ def register_routes(app):
         """
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        if not os.path.exists(_recordings_dir()):
+        if not os.path.exists(recordings_dir()):
             return {'imported': 0, 'message': 'No recordings directory'}, 200
 
         species = Species.query.filter_by(name=IMPORT_SPECIES_NAME).first()
@@ -441,7 +441,7 @@ def register_routes(app):
         )
 
         try:
-            rec_dir = _recordings_dir()
+            rec_dir = recordings_dir()
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path) or not year.isdigit():
@@ -525,9 +525,16 @@ def register_routes(app):
                                 continue
 
             db.session.commit()
+
+            # Auto-start spectrogram regeneration for newly imported videos
+            if imported > 0:
+                t = threading.Thread(target=_run_regenerate_spectrograms, args=(False,), daemon=True)
+                t.start()
+
             return {
                 'imported': imported,
                 'message': f'Imported {imported} recordings',
+                'spectrogramRegenerationStarted': imported > 0,
             }, 200
         except Exception as e:
             db.session.rollback()

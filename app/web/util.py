@@ -10,6 +10,15 @@ def ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
+def recordings_dir():
+    """Path to data/recordings directory."""
+    base = os.environ.get(
+        'DATA_DIR',
+        os.path.join(os.path.dirname(__file__), '..', 'data')
+    )
+    return os.path.join(base, 'recordings')
+
+
 def settings_check_access():
     """Check if settings access is allowed (no password or session unlocked)."""
     from flask import session
