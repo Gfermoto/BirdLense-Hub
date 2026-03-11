@@ -38,12 +38,20 @@
 
 ## Модели (`app/processor/models/`)
 
-| Путь | Роль |
-|------|------|
-| `detection/weights/best.pt` | Бинарный детектор (PyTorch) |
-| `classification/weights/best.pt` | Классификатор видов (PyTorch) |
-| `detection/nabirds_yolo11n_binary/` | Binary NCNN (ARM) |
-| `classification/nabirds_yolo11n_cls/` | Classification NCNN (ARM) |
+| Путь | Роль | Версия | Дообучено на |
+|------|------|--------|--------------|
+| `detection/weights/best.pt` | Бинарный детектор (PyTorch) | YOLO11n | NABirds + COCO birds + OIDv4 squirrel |
+| `classification/weights/best.pt` | Классификатор видов (PyTorch) | YOLO11n-cls | NABirds (~400 видов, **в основном североамериканские**) |
+| `detection/nabirds_yolo11n_binary/` | Binary NCNN (ARM) | — | — |
+| `classification/nabirds_yolo11n_cls/` | Classification NCNN (ARM) | — | — |
+
+**Пайплайн:** pretrain на открытых датасетах (NABirds, birds-525, Birdsnap, CUB-200, iNaturalist) → fine-tune на записях BirdLense. См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+
+---
+
+## Дообучение на открытых датасетах
+
+См. **[FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md)** — оборудование, датасеты (NABirds, Hugging Face, iNaturalist), пайплайн объединения и дообучения.
 
 ---
 

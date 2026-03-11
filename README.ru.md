@@ -10,6 +10,15 @@
 
 **Исследовательский инструмент:** сбор датасетов из записей, скрипты обучения YOLO (NABirds, COCO), ноутбуки дообучения моделей. См. [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
 
+### Модели
+
+| Компонент | Версия | Дообучено на | Примечание |
+|-----------|--------|--------------|------------|
+| **Детектор** | YOLO11n (Ultralytics) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
+| **Классификатор** | YOLO11n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** |
+
+**Пайплайн обучения:** 1) **Pretrain** на открытых датасетах (NABirds, birds-525-species, Birdsnap, CUB-200, iNaturalist) → 2) **Fine-tune** на записях BirdLense с кормушек. См. [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+
 <details>
 <summary>📷 Скриншоты</summary>
 <br>

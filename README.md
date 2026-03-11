@@ -10,6 +10,15 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 
 **Research tool:** dataset collection from live recordings, YOLO training scripts (NABirds, COCO), model fine-tuning notebooks. See [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
 
+### Model info
+
+| Component | Version | Trained on | Note |
+|-----------|---------|------------|------|
+| **Detector** | YOLO11n (Ultralytics) | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel |
+| **Classifier** | YOLO11n-cls | NABirds (~400 species) | **Mainly North American birds** |
+
+**Training pipeline:** 1) **Pretrain** on open datasets (NABirds, birds-525-species, Birdsnap, CUB-200, iNaturalist) → 2) **Fine-tune** on BirdLense recordings from feeders. See [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+
 <details>
 <summary>📷 Screenshots</summary>
 <br>
