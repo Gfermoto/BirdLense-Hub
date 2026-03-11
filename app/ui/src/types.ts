@@ -103,6 +103,7 @@ export interface Settings {
     max_record_seconds: number; // Max recording duration in seconds
     max_inactive_seconds: number; // Max inactivity before stopping recording
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
+    min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.03 = more detections
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
   };

@@ -126,8 +126,11 @@ class MQTTEventAggregator:
         max_events: int = 500,
         on_frigate_motion=None,
         frigate_label_exclude=None,
+        client_id: str | None = None,
     ):
-        """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog)."""
+        """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
+        client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor."""
+        self.client_id = client_id or os.environ.get("MQTT_CLIENT_ID", "birdlense_aggregator")
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
@@ -208,7 +211,7 @@ class MQTTEventAggregator:
             try:
                 self._client = mqtt.Client(
                     callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-                    client_id="birdlense_aggregator",
+                    client_id=self.client_id,
                 )
                 if self.username:
                     self._client.username_pw_set(self.username, self.password)

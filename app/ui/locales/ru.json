@@ -141,6 +141,8 @@
     "inactiveSeconds": "Секунд без активности",
     "minTrackDuration": "Мин. длительность трека (сек)",
     "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. 1 — больше треков, 2 — меньше ложных",
+    "minConfidenceToProcess": "Мин. confidence трека",
+    "minConfidenceToProcessHelp": "Треки с меньшей уверенностью отбрасываются. 0.03 — больше детекций, 0.10 — строже",
     "spectrogramDetail": "Детализация спектрограммы",
     "birdFamilies": "Семейства птиц",
     "resolution": "Разрешение записи",

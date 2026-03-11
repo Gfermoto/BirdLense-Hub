@@ -53,6 +53,8 @@ def _build_detection_pipeline(app_config):
         max_record_seconds=app_config.get('processor.max_record_seconds'),
         max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
         min_track_duration=app_config.get('processor.min_track_duration', 1),
+        min_confidence_to_process=app_config.get(
+            'processor.min_confidence_to_process'),
     )
     return frame_processor, decision_maker
 

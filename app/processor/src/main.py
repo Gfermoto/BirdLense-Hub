@@ -178,6 +178,9 @@ def main():
             from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator
             frigate_detector = FrigateMotionFromAggregator(None, frigate_camera_filter, frigate_label_filter)
             on_frigate_motion = frigate_detector.get_on_frigate_motion_tuple()
+        mqtt_client_id = None
+        if args.input:
+            mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
         mqtt_aggregator = MQTTEventAggregator(
             broker=mqtt_broker,
             port=app_config.get('mqtt.port', 1883),
@@ -188,6 +191,7 @@ def main():
             password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
             on_frigate_motion=on_frigate_motion,
             frigate_label_exclude=list(frigate_label_exclude),
+            client_id=mqtt_client_id,
         )
         mqtt_aggregator.start()
         if use_frigate_from_aggregator:
@@ -251,6 +255,8 @@ def main():
         max_record_seconds=app_config.get('processor.max_record_seconds'),
         max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
         min_track_duration=app_config.get('processor.min_track_duration', 1),
+        min_confidence_to_process=app_config.get(
+            'processor.min_confidence_to_process'),
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
@@ -311,7 +317,7 @@ def main():
             getattr(motion_detector, 'get_triggered_camera', lambda: None)()
             or default_camera_id
         )
-        if app_config.get('video.source') == 'go2rtc':
+        if not args.input and app_config.get('video.source') == 'go2rtc':
             media_source = get_media_source(camera_id)
 
         # Configure video sources
@@ -334,8 +340,11 @@ def main():
                 frame = media_source.capture()
                 if frame is None:
                     break
+                # VideoFileSource: use video timestamp for correct track duration
+                frame_time = getattr(media_source, 'get_frame_time', lambda: None)()
                 with fps_tracker:
-                    has_detections = frame_processor.run(frame)
+                    has_detections = frame_processor.run(
+                        frame, frame_time=frame_time)
 
                 # Decision making
                 decision_maker.update_has_detections(has_detections)
@@ -370,14 +379,6 @@ def main():
             video_detections = decision_maker.get_results(
                 frame_processor.tracks)
             yolo_passed_count = len(video_detections)
-            if yolo_tracks_count > 0:
-                logging.info(
-                    f"ByteTrack: {yolo_tracks_count} tracks, {yolo_passed_count} passed "
-                    f"min_track_duration (species with frames)")
-            elif mqtt_events:
-                logging.warning(
-                    f"ByteTrack: 0 YOLO tracks but {len(mqtt_events)} MQTT events. "
-                    "YOLO не детектирует — треки будут пустые (только вид из Frigate).")
             species_mapping = app_config.get('detection.species_mapping') or {}
             merge_window = app_config.get('detection.merge_window_seconds', 5)
             dedup_window = app_config.get('detection.dedup_window_seconds', 45)
@@ -385,6 +386,21 @@ def main():
             if mqtt_aggregator:
                 mqtt_events = mqtt_aggregator.get_events_in_window(
                     start_time, end_time, merge_window)
+            if yolo_tracks_count > 0:
+                min_dur = app_config.get('processor.min_track_duration', 1)
+                logging.info(
+                    f"ByteTrack: {yolo_tracks_count} tracks, {yolo_passed_count} passed "
+                    f"min_track_duration={min_dur}s (species with frames)")
+                if yolo_passed_count == 0 and yolo_tracks_count > 0:
+                    for tid, t in frame_processor.tracks.items():
+                        dur = t.get('end_time', 0) - t.get('start_time', 0)
+                        preds = len(t.get('preds', []))
+                        logging.info(
+                            f"  track {tid}: duration={dur:.2f}s, preds={preds}")
+            elif mqtt_events:
+                logging.warning(
+                    f"ByteTrack: 0 YOLO tracks but {len(mqtt_events)} MQTT events. "
+                    "YOLO не детектирует — треки будут пустые (только вид из Frigate).")
             # Merge YOLO + MQTT (Frigate, BirdNET-Pi/Go)
             audio_detections, spectrogram_path = [], None
             px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
@@ -433,6 +449,9 @@ def main():
                 shutil.rmtree(output_path_physical)
         except Exception as e:
             logging.error(e)
+
+        if args.input:
+            break
 
     # Close all media sources (multi-camera cache)
     if app_config.get('video.source') == 'go2rtc':

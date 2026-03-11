@@ -141,6 +141,8 @@
     "inactiveSeconds": "Seconds without activity",
     "minTrackDuration": "Min track duration (sec)",
     "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives",
+    "minConfidenceToProcess": "Min track confidence",
+    "minConfidenceToProcessHelp": "Tracks with lower confidence are discarded. 0.03 = more detections, 0.10 = stricter",
     "spectrogramDetail": "Spectrogram detail",
     "birdFamilies": "Bird families",
     "resolution": "Recording resolution",
