@@ -199,6 +199,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
     [progress, filteredDetections],
   );
 
+  // При смене видео без спектрограммы — сброс на video, иначе SpectrogramPlayer получит неверный URL
+  useEffect(() => {
+    if (!video.spectrogram_path && view === 'audio') {
+      setView('video');
+    }
+  }, [video?.id, video?.spectrogram_path, view]);
+
   const startHideTimer = useCallback(() => {
     if (timeoutRef.current) {
       window.clearTimeout(timeoutRef.current);
@@ -453,13 +460,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
             display: view === 'audio' ? 'block' : 'none',
           }}
         >
-          <SpectrogramPlayer
-            audioRef={videoRef}
-            playing={playing}
-            imageUrl={`${BASE_URL}/${video.spectrogram_path}`}
-            detections={filteredDetections}
-            key={view}
-          />
+          {video.spectrogram_path && (
+            <SpectrogramPlayer
+              audioRef={videoRef}
+              playing={playing}
+              imageUrl={`${BASE_URL}/${video.spectrogram_path}`}
+              detections={filteredDetections}
+              key={view}
+            />
+          )}
         </Box>
       </Box>
 

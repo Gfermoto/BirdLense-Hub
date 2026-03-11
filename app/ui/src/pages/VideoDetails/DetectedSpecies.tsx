@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
-import { BASE_URL } from '../../api/api';
+import { resolveImageUrl } from '../../api/api';
 
 interface GroupedSpecies {
   species_id: number;
@@ -94,7 +94,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <CardMedia
                     component="img"
                     alt={group.species_name}
-                    image={`${BASE_URL}/${group.image_url}`}
+                    image={resolveImageUrl(group.image_url)}
                     sx={{
                       width: '100%',
                       height: '100%',

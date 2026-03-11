@@ -1,6 +1,8 @@
 import logging
-import requests
 import os
+import time
+
+import requests
 
 
 class API():
@@ -21,20 +23,34 @@ class API():
         return headers
 
     def _send_request(self, method, endpoint, json_data):
-        """ Helper function to send HTTP requests and handle errors """
+        """Helper function to send HTTP requests with timeout and retry on 5xx."""
         url = f"{self.api_url_base}/{endpoint}"
-        try:
-            response = requests.request(
-                method, url, json=json_data, headers=self._headers()
-            )
-
-            # Raise an error if the response status code is not 200 or 201
-            response.raise_for_status()
-
-            return response
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"API request failed for {url}: {e}")
-            raise  # Re-raise the exception after logging it
+        timeout = 30
+        max_retries = 3
+        last_exc = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.request(
+                    method,
+                    url,
+                    json=json_data,
+                    headers=self._headers(),
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as e:
+                last_exc = e
+                self.logger.warning(
+                    f"API request failed for {url} (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                resp = getattr(e, "response", None)
+                if resp is not None and 400 <= resp.status_code < 500:
+                    break
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+        self.logger.error(f"API request failed for {url}: {last_exc}")
+        raise last_exc
 
     def notify_motion(self):
         # No need for try/except here since _send_request handles errors

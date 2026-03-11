@@ -1,5 +1,5 @@
 """
-BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты для AI-агентов.
+BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты.
 Запуск: python birdlense_mcp.py [--transport stdio|http] [--port 8001]
 В контейнере: entrypoint запускает при mcp.enabled=true с transport=http.
 Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
@@ -85,7 +85,7 @@ def main() -> None:
         "--transport",
         choices=["stdio", "http"],
         default="stdio",
-        help="Transport: stdio (default, for Cursor/Claude) or http (for container)",
+        help="Transport: stdio (default) or http (for container)",
     )
     parser.add_argument("--port", type=int, default=8001, help="Port for HTTP transport")
     parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport")

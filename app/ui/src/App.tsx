@@ -1,22 +1,31 @@
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
-import { TimelinePage } from './pages/Timeline';
-import { FoodManagement } from './pages/FoodManagement';
-import { BirdDirectory } from './pages/BirdDirectory';
-import { Settings } from './pages/Settings';
-import { Overview } from './pages/Overview';
-import { LivePage } from './pages/Live';
-import { VideoDetails } from './pages/VideoDetails';
-import SpeciesSummary from './pages/SpeciesSummary';
-import { System } from './pages/System';
+
+const Overview = lazy(() => import('./pages/Overview'));
+const TimelinePage = lazy(() => import('./pages/Timeline'));
+const VideoDetails = lazy(() =>
+  import('./pages/VideoDetails').then((m) => ({ default: m.VideoDetails })),
+);
+const FoodManagement = lazy(() =>
+  import('./pages/FoodManagement').then((m) => ({ default: m.FoodManagement })),
+);
+const BirdDirectory = lazy(() =>
+  import('./pages/BirdDirectory').then((m) => ({ default: m.BirdDirectory })),
+);
+const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.LivePage })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
+const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
 
 const theme = createTheme({
   palette: {
@@ -127,17 +136,25 @@ function App() {
             <Navigation />
             <Box component="main" sx={{ flexGrow: 1, pb: 4 }}>
               <Container maxWidth="xl">
-                <Routes>
-                  <Route path="/" element={<Overview />} />
-                  <Route path="/timeline" element={<TimelinePage />} />
-                  <Route path="/videos/:id" element={<VideoDetails />} />
-                  <Route path="/food" element={<FoodManagement />} />
-                  <Route path="/species" element={<BirdDirectory />} />
-                  <Route path="/live" element={<LivePage />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/species/:id" element={<SpeciesSummary />} />
-                  <Route path="/system" element={<System />} />
-                </Routes>
+                <Suspense
+                  fallback={
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                      <CircularProgress />
+                    </Box>
+                  }
+                >
+                  <Routes>
+                    <Route path="/" element={<Overview />} />
+                    <Route path="/timeline" element={<TimelinePage />} />
+                    <Route path="/videos/:id" element={<VideoDetails />} />
+                    <Route path="/food" element={<FoodManagement />} />
+                    <Route path="/species" element={<BirdDirectory />} />
+                    <Route path="/live" element={<LivePage />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/species/:id" element={<SpeciesSummary />} />
+                    <Route path="/system" element={<System />} />
+                  </Routes>
+                </Suspense>
               </Container>
             </Box>
             <Footer />

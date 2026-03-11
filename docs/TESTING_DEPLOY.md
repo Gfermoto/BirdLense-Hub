@@ -2,6 +2,8 @@
 
 Проверка работоспособности распознавания **без птиц** (например, после ночного деплоя).
 
+> **Важно:** распознавание могло ломаться из‑за `PROCESSOR_SECRET` (токен не подставлялся в `.env`). Исправление в deploy.sh — проверка обязательна после деплоя (см. раздел «403 (PROCESSOR_SECRET)»).
+
 ---
 
 ## 1. Сразу после деплоя (перед сном)
@@ -33,6 +35,8 @@ ssh birdlense "tail -100 /root/BirdLense/app/data/processor.log"
 ### 403 (PROCESSOR_SECRET)
 
 Если в логах есть `API request failed ... 403` — процессор не проходит проверку API.
+
+**Проверка:** на сервере `cat app/.env | grep PROCESSOR_SECRET` — должно быть `PROCESSOR_SECRET=hex...` (32 символа), а не `PROCESSOR_SECRET=${PROCESSOR_SECRET}`. Если буквально — баг в deploy.sh (исправлено: двойные кавычки при записи).
 
 ---
 
@@ -161,9 +165,10 @@ curl -s http://IP:8085/api/ui/status
 ## 6. Минимальный чеклист перед сном
 
 1. `curl http://IP:8085/api/ui/status` → `processor: ok`, `mqtt: ok` (если motion.source: frigate)
-2. System → Логи процессора → последние 50 строк без ошибок
-3. `./scripts/test-deploy-recognition.sh` → новая запись в UI (проверка YOLO)
-4. При Frigate: `mosquitto_pub` тестового события → в логах `Frigate trigger: ... -> recording`
+2. **PROCESSOR_SECRET:** `ssh birdlense "grep PROCESSOR_SECRET app/.env"` → hex-значение, не `${PROCESSOR_SECRET}`. **DEPLOY_URL** в deploy.local.sh — URL сервера (не localhost), иначе health check FAIL.
+3. System → Логи процессора → последние 50 строк без ошибок, нет 403
+4. `./scripts/test-deploy-recognition.sh` → новая запись в UI (проверка YOLO)
+5. При Frigate: `mosquitto_pub` тестового события → в логах `Frigate trigger: ... -> recording`
 
 Если всё зелёное — можно оставлять на ночь.
 

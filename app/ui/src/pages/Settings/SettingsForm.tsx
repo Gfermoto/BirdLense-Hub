@@ -646,6 +646,90 @@ export const SettingsForm = ({
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.link_preview_large">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          disabled={!notificationsEnabled}
+                        />
+                      }
+                      label={t('settings.telegramLinkPreviewLarge')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.use_custom_emoji">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          disabled={!notificationsEnabled}
+                        />
+                      }
+                      label={t('settings.telegramUseCustomEmoji')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <form.Subscribe
+                selector={(state) => state.values.notifications?.use_custom_emoji}
+              >
+                {(useCustomEmoji) =>
+                  useCustomEmoji ? (
+                    <>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="notifications.custom_emoji_id_bird">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              label={t('settings.telegramCustomEmojiBird')}
+                              helperText={t('settings.telegramCustomEmojiHint')}
+                              disabled={!notificationsEnabled}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="notifications.custom_emoji_id_chipmunk">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              label={t('settings.telegramCustomEmojiChipmunk')}
+                              helperText={t('settings.telegramCustomEmojiHint')}
+                              disabled={!notificationsEnabled}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="notifications.custom_emoji_id_open_live">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              label={t('settings.telegramCustomEmojiOpenLive')}
+                              helperText={t('settings.telegramCustomEmojiHint')}
+                              disabled={!notificationsEnabled}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                    </>
+                  ) : null
+                }
+              </form.Subscribe>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="notifications.paid_media_view_star_count">
                   {(field) => (
                     <TextField

@@ -1,5 +1,9 @@
-import yaml
+import logging
 import os
+
+import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class AppConfig:
@@ -15,14 +19,20 @@ class AppConfig:
                 f"Default configuration file {self.default_config_file} not found."
             )
 
-        with open(self.default_config_file, 'r') as file:
-            default_config = yaml.safe_load(file) or {}
+        try:
+            with open(self.default_config_file, 'r') as file:
+                default_config = yaml.safe_load(file) or {}
+        except yaml.YAMLError as e:
+            logger.error("Invalid YAML in %s: %s", self.default_config_file, e)
+            default_config = {}
 
-        # Load user config if it exists
         user_config = {}
         if os.path.exists(self.user_config_file):
-            with open(self.user_config_file, 'r') as file:
-                user_config = yaml.safe_load(file) or {}
+            try:
+                with open(self.user_config_file, 'r') as file:
+                    user_config = yaml.safe_load(file) or {}
+            except yaml.YAMLError as e:
+                logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
 
         # Merge configs (user_config overrides default_config)
         return self.merge_dicts(default_config, user_config)

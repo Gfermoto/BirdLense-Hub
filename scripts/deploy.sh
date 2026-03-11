@@ -13,10 +13,13 @@ HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
+  echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://192.168.1.11:8085)"
+fi
 
-# 0. Удаление старых контейнеров (nginx, processor, web)
-echo "0. Остановка старых контейнеров..."
-ssh "${HOST}" "docker stop birdlense_nginx birdlense_processor birdlense_web 2>/dev/null || true; docker rm birdlense_nginx birdlense_processor birdlense_web 2>/dev/null || true"
+# 0. Остановка текущего контейнера (один контейнер birdlense)
+echo "0. Остановка контейнера..."
+ssh "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
 
 # 1. Синхронизация кода
 # БЕЗ app/data (recordings, db). БЕЗ app_config/user_config.yaml (настройки на сервере)
@@ -36,11 +39,15 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
 fi
 if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере..."
+  # Копируем .env.example если .env отсутствует (первый деплой)
+  ssh "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
+    [ ! -f ${REMOTE_DIR}/app/.env ] && cp ${REMOTE_DIR}/app/.env.example ${REMOTE_DIR}/app/.env 2>/dev/null || true"
+  # Безопасная запись: printf экранирует спецсимволы в секретах
   ssh "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
     (grep -v '^MCP_TOKEN=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
      grep -v '^PROCESSOR_SECRET=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
-     [ -n '${MCP_TOKEN:-}' ] && echo 'MCP_TOKEN=${MCP_TOKEN}'; \
-     echo 'PROCESSOR_SECRET=${PROCESSOR_SECRET}') > ${REMOTE_DIR}/app/.env.new && \
+     [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN}\"; \
+     printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
 

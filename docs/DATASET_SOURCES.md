@@ -37,33 +37,11 @@ ds = load_dataset("randall-lab/cub200", split="train", trust_remote_code=True)
 
 ## 2. Hugging Face для сообщества BirdLense Hub
 
-### Плюсы
-- Бесплатно для публичных датасетов
-- Версионирование (git)
-- `datasets` — удобная загрузка
-- Поиск по тегам (birds, object-detection, yolo)
-- Dataset card (README) — описание, лицензия, цитирование
+**Репозиторий:** [gfermoto/birdlense-annotations](https://huggingface.co/datasets/gfermoto/birdlense-annotations)
 
-### Структура для YOLO
-```
-birdlense-community/
-  train/images/
-  train/labels/
-  val/images/
-  val/labels/
-  data.yaml
-  README.md  # Dataset card
-```
+Подробное руководство: [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) — создание, установка, загрузка, Dataset card.
 
-### Загрузка
-- **Web:** drag-and-drop в Files and versions
-- **CLI:** `huggingface-cli upload org/birdlense-detections ./export/`
-- **Python:** `huggingface_hub.upload_file()`
-
-### Пример организации
-- Репозиторий: `birdlense/community-detections` или `Gfermoto/birdlense-labeled`
-- Версии: v1, v2 при накоплении данных
-- Лицензия: CC BY 4.0 (для науки)
+**Плюсы:** бесплатно, версионирование (git), `load_dataset()`, поиск по тегам. Лицензия: CC BY 4.0 или CC BY-NC-ND (по выбору).
 
 ---
 
@@ -121,7 +99,7 @@ birdlense-community/
 ### Workflow
 1. Участники размечают локально
 2. Экспорт в YOLO: `export_birdlense_to_yolo.py`
-3. Загрузка на HF: `huggingface-cli upload` или скрипт
+3. Загрузка на HF: [gfermoto/birdlense-annotations](https://huggingface.co/datasets/gfermoto/birdlense-annotations) — см. [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md)
 4. Для статьи: экспорт → Zenodo → DOI в Methods
 
 ---
@@ -130,4 +108,4 @@ birdlense-community/
 
 **Внешние:** [Hugging Face](https://huggingface.co/datasets) · [Zenodo](https://zenodo.org) · [iNaturalist API](https://www.inaturalist.org/pages/api+recommended+practices) · [NABirds](https://dl.allaboutbirds.org/nabirds) · [CUB-200-2011](https://www.vision.caltech.edu/datasets/cub_200_2011/)
 
-**См. также:** [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md)
+**См. также:** [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md)

@@ -782,6 +782,16 @@ components:
               type: string
             base_url:
               type: string
+            link_preview_large:
+              type: boolean
+            use_custom_emoji:
+              type: boolean
+            custom_emoji_id_bird:
+              type: string
+            custom_emoji_id_chipmunk:
+              type: string
+            custom_emoji_id_open_live:
+              type: string
         processor:
           type: object
           properties:

@@ -49,9 +49,9 @@ UI: http://localhost:8085
 
 Записи не видны? System → «Сканировать и импортировать».
 
-## MCP (AI-агенты)
+## MCP
 
-Настройки → раздел 8. Подключение Cursor: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
+Настройки → раздел 8. Подключение: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
 
 ## Деплой
 
