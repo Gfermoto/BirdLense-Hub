@@ -149,17 +149,46 @@ export const fetchSettingsRequiresPassword = async (): Promise<boolean> => {
   return response.data?.requires === true;
 };
 
-export const verifySettingsPassword = async (password: string): Promise<boolean> => {
-  if (useMockData) return true;
+export type CheckAccessResult =
+  | { unlocked: true }
+  | { unlocked: false; error?: 'network' };
+
+export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
+  if (useMockData) return { unlocked: true };
+  try {
+    const response = await axios.get(`${BASE_API_URL}/settings/check-access`, {
+      withCredentials: true,
+    });
+    return response.data?.unlocked === true
+      ? { unlocked: true }
+      : { unlocked: false };
+  } catch (e: unknown) {
+    if (axios.isAxiosError(e) && e.response?.status === 403) {
+      return { unlocked: false };
+    }
+    return { unlocked: false, error: 'network' };
+  }
+};
+
+export type VerifyPasswordResult =
+  | { ok: true }
+  | { ok: false; error: 'wrong_password' | 'server_error' };
+
+export const verifySettingsPassword = async (
+  password: string,
+): Promise<VerifyPasswordResult> => {
+  if (useMockData) return { ok: true };
   try {
     const response = await axios.post(
       `${BASE_API_URL}/settings/verify-password`,
       { password },
       { withCredentials: true },
     );
-    return response.data?.ok === true;
-  } catch {
-    return false;
+    return response.data?.ok === true ? { ok: true } : { ok: false, error: 'wrong_password' };
+  } catch (e: unknown) {
+    return axios.isAxiosError(e) && e.response?.status === 401
+      ? { ok: false, error: 'wrong_password' }
+      : { ok: false, error: 'server_error' };
   }
 };
 

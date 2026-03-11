@@ -484,6 +484,13 @@ def register_routes(app):
     def settings_requires_password():
         return {'requires': _settings_requires_password()}, 200
 
+    @app.route('/api/ui/settings/check-access', methods=['GET'])
+    def settings_check_access_route():
+        """Lightweight check: 200 if session unlocked, 403 if password required."""
+        if settings_check_access():
+            return {'unlocked': True}, 200
+        return {'error': 'Password required'}, 403
+
     @app.route('/api/ui/settings/verify-password', methods=['POST'])
     def settings_verify_password():
         data = request.json or {}

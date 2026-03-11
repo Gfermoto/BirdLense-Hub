@@ -8,15 +8,15 @@ import Container from '@mui/material/Container';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import { SettingsForm } from './SettingsForm';
-import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import {
   fetchBirdDirectory,
   fetchSettings,
-  fetchSettingsRequiresPassword,
   updateSettings,
   restartProcessor,
 } from '../../api/api';
 import { Settings as SettingsType, Species } from '../../types';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
 
 const useAllBirdsQuery = (select?: (species: Species[]) => any) => {
   return useQuery({
@@ -31,12 +31,7 @@ export const Settings: React.FC = () => {
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [restartMessage, setRestartMessage] = useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
-  const [unlocked, setUnlocked] = useState(false);
-
-  const { data: requiresPassword, isLoading: isLoadingRequires } = useQuery({
-    queryKey: ['settings-requires-password'],
-    queryFn: fetchSettingsRequiresPassword,
-  });
+  const { requiresPassword, unlocked } = useProtectedArea();
 
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['settings'],
@@ -69,76 +64,52 @@ export const Settings: React.FC = () => {
     },
   });
 
-  const showPasswordDialog = requiresPassword && !unlocked;
-  const isLoading = isLoadingRequires || isLoadingSettings || isLoadingAllSpecies;
-
-  if (isLoadingRequires)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
-
-  if (showPasswordDialog) {
-    return (
-      <Container maxWidth="md" sx={{ pb: 5 }}>
-        <Typography variant="h4" gutterBottom>
-          {t('settings.updateTitle')}
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          {t('settings.passwordRequired')}
-        </Typography>
-        <SettingsPasswordDialog
-          open
-          onSuccess={() => setUnlocked(true)}
-        />
-      </Container>
-    );
-  }
-
-  if (isLoading || isLoadingAllSpecies)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+  const isLoading = isLoadingSettings || isLoadingAllSpecies;
 
   return (
-    <Container maxWidth="md" sx={{ pb: 5 }}>
-      <Typography variant="h4" gutterBottom>
-        {t('settings.updateTitle')}
-      </Typography>
-      <Alert severity="info" sx={{ mb: 3 }}>
-        {t('settings.restartInfo')}
-      </Alert>
-      {restartMessage && (
-        <Alert
-          severity={restartMessage.type}
-          sx={{ mb: 2 }}
-          onClose={() => setRestartMessage(null)}
-        >
-          {restartMessage.apiMessage || t(restartMessage.textKey)}
-        </Alert>
+    <ProtectedRoute title={t('settings.updateTitle')}>
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Container maxWidth="md" sx={{ pb: 5 }}>
+          <Typography variant="h4" gutterBottom>
+            {t('settings.updateTitle')}
+          </Typography>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            {t('settings.restartInfo')}
+          </Alert>
+          {restartMessage && (
+            <Alert
+              severity={restartMessage.type}
+              sx={{ mb: 2 }}
+              onClose={() => setRestartMessage(null)}
+            >
+              {restartMessage.apiMessage || t(restartMessage.textKey)}
+            </Alert>
+          )}
+          <SettingsForm
+            currentSettings={settings as SettingsType}
+            observedSpecies={observedSpecies}
+            birdFamilies={birdFamilies}
+            onSubmit={updateMutation.mutate}
+          />
+          <Snackbar
+            open={showSuccessAlert}
+            autoHideDuration={6000}
+            onClose={() => setShowSuccessAlert(false)}
+          >
+            <Alert
+              onClose={() => setShowSuccessAlert(false)}
+              severity="success"
+              sx={{ width: '100%' }}
+            >
+              {t('settings.savedRestarting')}
+            </Alert>
+          </Snackbar>
+        </Container>
       )}
-      <SettingsForm
-        currentSettings={settings as SettingsType}
-        observedSpecies={observedSpecies}
-        birdFamilies={birdFamilies}
-        onSubmit={updateMutation.mutate}
-      />
-      <Snackbar
-        open={showSuccessAlert}
-        autoHideDuration={6000}
-        onClose={() => setShowSuccessAlert(false)}
-      >
-        <Alert
-          onClose={() => setShowSuccessAlert(false)}
-          severity="success"
-          sx={{ width: '100%' }}
-        >
-          {t('settings.savedRestarting')}
-        </Alert>
-      </Snackbar>
-    </Container>
+    </ProtectedRoute>
   );
 };

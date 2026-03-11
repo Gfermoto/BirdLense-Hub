@@ -5,6 +5,7 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
 import { TimelinePage } from './pages/Timeline';
@@ -115,6 +116,7 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ProtectedAreaProvider>
           <Box
             sx={{
               display: 'flex',
@@ -140,6 +142,7 @@ function App() {
             </Box>
             <Footer />
           </Box>
+          </ProtectedAreaProvider>
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />
       </ThemeProvider>
