@@ -12,9 +12,11 @@ import { verifySettingsPassword } from '../api/api';
 export const SettingsPasswordDialog = ({
   open,
   onSuccess,
+  onClose,
 }: {
   open: boolean;
   onSuccess: () => void;
+  onClose?: () => void;
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -24,19 +26,27 @@ export const SettingsPasswordDialog = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const ok = await verifySettingsPassword(password);
-    if (ok) {
+    const result = await verifySettingsPassword(password);
+    if (result.ok) {
       setPassword('');
       onSuccess();
     } else {
-      setError(t('settings.passwordError'));
+      setError(
+        result.error === 'server_error'
+          ? t('settings.passwordServerError')
+          : t('settings.passwordError'),
+      );
     }
   };
 
   const handleClose = () => {
     setPassword('');
     setError('');
-    navigate('/');
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/');
+    }
   };
 
   return (

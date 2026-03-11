@@ -53,6 +53,8 @@
     "passwordLabel": "Password",
     "passwordSubmit": "Enter",
     "passwordError": "Incorrect password",
+    "passwordServerError": "Server error. Please try again later.",
+    "accessErrorNetwork": "Network unavailable. Check your connection.",
     "passwordRequired": "Enter password to access settings.",
     "settingsPassword": "Settings password",
     "settingsPasswordPlaceholder": "Leave empty for no password",

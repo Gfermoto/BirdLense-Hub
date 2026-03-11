@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import AppBar from '@mui/material/AppBar';
@@ -12,13 +12,14 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import MUILink from '@mui/material/Link';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Divider from '@mui/material/Divider';
 import { keyframes } from '@mui/system';
 import { StatusIndicator } from './StatusIndicator';
+import { useProtectedArea } from '../contexts/ProtectedAreaContext';
+import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 
 // Pulse animation for the live indicator
 const pulse = keyframes`
@@ -66,18 +67,63 @@ const activeNavPillStyles = {
   fontWeight: 600,
 };
 
+type PendingAction =
+  | { type: 'openMenu' }
+  | { type: 'navigate'; path: string };
+
 export function Navigation() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname.split('?')[0];
+  const { requiresPassword, unlocked, setUnlocked } = useProtectedArea();
+  const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
     React.useState<null | HTMLElement>(null);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     React.useState<null | HTMLElement>(null);
+  const [showPasswordDialog, setShowPasswordDialog] =
+    React.useState(false);
+  const [pendingAction, setPendingAction] =
+    React.useState<PendingAction | null>(null);
 
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
+
+  const handlePasswordSuccess = () => {
+    setUnlocked(true);
+    setShowPasswordDialog(false);
+    if (pendingAction) {
+      if (pendingAction.type === 'openMenu' && gearButtonRef.current) {
+        setSettingsMenuAnchor(gearButtonRef.current);
+      } else if (pendingAction.type === 'navigate') {
+        navigate(pendingAction.path);
+        setMobileMenuAnchor(null);
+      }
+      setPendingAction(null);
+    }
+  };
+
+  const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (requiresPassword && !unlocked) {
+      setPendingAction({ type: 'openMenu' });
+      setShowPasswordDialog(true);
+    } else {
+      setSettingsMenuAnchor(e.currentTarget);
+    }
+  };
+
+  const handleProtectedNav = (path: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (requiresPassword && !unlocked) {
+      setPendingAction({ type: 'navigate', path });
+      setShowPasswordDialog(true);
+    } else {
+      navigate(path);
+      setMobileMenuAnchor(null);
+    }
+  };
 
   return (
     <AppBar position="sticky" color="primary" sx={{ mb: 3 }}>
@@ -175,18 +221,14 @@ export function Navigation() {
               {/* Settings Section */}
               <Divider />
               <MenuItem
-                onClick={handleMobileMenuClose}
-                component={Link}
-                to="/settings"
+                onClick={(e) => handleProtectedNav('/settings', e)}
                 selected={currentPath === '/settings'}
               >
                 <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
                 {t('nav.settings')}
               </MenuItem>
               <MenuItem
-                onClick={handleMobileMenuClose}
-                component={Link}
-                to="/system"
+                onClick={(e) => handleProtectedNav('/system', e)}
                 selected={currentPath === '/system'}
               >
                 {t('nav.system')}
@@ -293,8 +335,9 @@ export function Navigation() {
 
             {/* Settings Icon */}
             <IconButton
+              ref={gearButtonRef}
               color="inherit"
-              onClick={(e) => setSettingsMenuAnchor(e.currentTarget)}
+              onClick={handleGearClick}
               aria-label="settings"
               aria-controls="settings-menu"
               aria-expanded={Boolean(settingsMenuAnchor)}
@@ -345,6 +388,14 @@ export function Navigation() {
           </Menu>
         </Toolbar>
       </Container>
+      <SettingsPasswordDialog
+        open={showPasswordDialog}
+        onSuccess={handlePasswordSuccess}
+        onClose={() => {
+          setShowPasswordDialog(false);
+          setPendingAction(null);
+        }}
+      />
     </AppBar>
   );
 }

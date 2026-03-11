@@ -53,6 +53,8 @@
     "passwordLabel": "Пароль",
     "passwordSubmit": "Войти",
     "passwordError": "Неверный пароль",
+    "passwordServerError": "Ошибка сервера. Попробуйте позже.",
+    "accessErrorNetwork": "Сеть недоступна. Проверьте подключение.",
     "passwordRequired": "Для доступа к настройкам введите пароль.",
     "settingsPassword": "Пароль настройки",
     "settingsPasswordPlaceholder": "Оставьте пустым — без пароля",
