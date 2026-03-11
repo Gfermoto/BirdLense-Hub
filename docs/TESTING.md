@@ -87,4 +87,4 @@ cd app/e2e && npm test -- --grep @api
 
 ---
 
-См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md).
+См. также: [TESTING_DEPLOY.md](./TESTING_DEPLOY.md), [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md).

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import timedelta, datetime, timezone
@@ -251,16 +252,124 @@ def update_species_info_from_wiki(sp):
     return bool(image_url or description)
 
 
-def notify(message, link="live", tags=None):
-    if app_config.get('general.enable_notifications'):
-        requests.post("http://ntfy/birdlense",
-                      data=message.encode(
-                          'utf-8'),
-                      headers={
-                          "Title": "BirdLense Hub",
-                          "Click": f"http://birdlense.local/{link}",
-                          "Tags": tags
-                      })
+def _telegram_send_message(token, chat_id, text, link=None, **kwargs):
+    """Build and send Telegram message with HTML, keyboard, options."""
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML',
+        'disable_notification': app_config.get(
+            'notifications.disable_notification', False),
+        'protect_content': app_config.get(
+            'notifications.protect_content', False),
+        'link_preview_options': {'is_disabled': True},
+    }
+    thread_id = app_config.get('notifications.message_thread_id')
+    if thread_id is not None and thread_id != '':
+        try:
+            payload['message_thread_id'] = int(thread_id)
+        except (ValueError, TypeError):
+            pass
+    if link:
+        payload['reply_markup'] = {
+            'inline_keyboard': [[{'text': 'Open Live', 'url': link}]]
+        }
+    payload.update(kwargs)
+    return requests.post(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        json=payload,
+        timeout=10,
+    )
+
+
+def notify(message, link="live", tags=None, image_path=None):
+    """Send notification via Telegram. Requires token and chat_id in config."""
+    if not app_config.get('general.enable_notifications'):
+        return
+    token = (app_config.get('notifications.telegram_bot_token') or '').strip()
+    chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
+    if not token or not chat_id:
+        return
+    base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
+    link_url = f"{base_url}/{link}" if base_url else None
+    text = message
+    if tags:
+        emoji = '🐿️' if tags == 'chipmunk' else '🐦'
+        text = f"{emoji} {message}"
+    try:
+        if image_path and os.path.exists(image_path):
+            view_stars = app_config.get('notifications.paid_media_view_star_count')
+            forward_stars = app_config.get('notifications.paid_media_forward_star_count')
+            try:
+                view_stars = int(view_stars) if view_stars else 0
+            except (ValueError, TypeError):
+                view_stars = 0
+            try:
+                forward_stars = int(forward_stars) if forward_stars else 0
+            except (ValueError, TypeError):
+                forward_stars = 0
+            view_stars = max(0, min(25000, view_stars))
+            forward_stars = max(0, min(25000, forward_stars))
+
+            # protect_content: при бесплатном просмотре — запретить пересылку, если forward_stars > 0
+            # (Telegram не поддерживает отдельную плату за пересылку)
+            protect = app_config.get('notifications.protect_content', False)
+            if view_stars == 0 and forward_stars > 0:
+                protect = True
+
+            payload = {
+                'chat_id': chat_id,
+                'caption': text,
+                'parse_mode': 'HTML',
+                'disable_notification': app_config.get(
+                    'notifications.disable_notification', False),
+                'protect_content': protect,
+            }
+            thread_id = app_config.get('notifications.message_thread_id')
+            if thread_id not in (None, ''):
+                try:
+                    payload['message_thread_id'] = int(thread_id)
+                except (ValueError, TypeError):
+                    pass
+            if link_url:
+                payload['reply_markup'] = {
+                    'inline_keyboard': [[
+                        {'text': 'Open Live', 'url': link_url}
+                    ]]
+                }
+
+            if view_stars > 0:
+                payload['star_count'] = view_stars
+                payload['media'] = json.dumps([
+                    {'type': 'photo', 'media': 'attach://photo'}
+                ])
+                with open(image_path, 'rb') as f:
+                    r = requests.post(
+                        f"https://api.telegram.org/bot{token}/sendPaidMedia",
+                        data=payload,
+                        files={'photo': f},
+                        timeout=15,
+                    )
+            else:
+                with open(image_path, 'rb') as f:
+                    r = requests.post(
+                        f"https://api.telegram.org/bot{token}/sendPhoto",
+                        data=payload,
+                        files={'photo': f},
+                        timeout=15,
+                    )
+            try:
+                os.remove(image_path)
+            except OSError:
+                pass
+        else:
+            r = _telegram_send_message(
+                token, chat_id, text, link=link_url)
+        if not r.ok:
+            logging.warning(
+                "Telegram notify failed: %s %s", r.status_code, r.text[:200])
+    except requests.RequestException as e:
+        logging.warning("Telegram notify error: %s", e)
 
 
 def filter_feeder_species(species_names):

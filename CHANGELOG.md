@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Telegram-уведомления** — вместо ntfy: бот отправляет сообщения в канал или чат. Настройки: токен бота, chat_id, base_url для ссылок.
+- **Расширения Telegram** — parse_mode HTML, кнопка «Open Live», тихие сообщения (disable_notification), protect_content, message_thread_id для топиков, link_preview отключён.
+- **sendPhoto** — при `processor.save_images: true` отправляется фото детекции в Telegram.
+- **sendPaidMedia** — раздельные настройки: Stars за просмотр (0–25000) и за пересылку/копирование (при бесплатном просмотре: 0=разрешить, >0=запретить).
+
+### Changed
+
+- **Уведомления** — ntfy полностью заменён на Telegram Bot API.
+
+### Removed
+
+- **ntfy** — убран из nginx (порт 8081), deploy.sh, UI.
+
 ### Fixed
 
 - **Защита по паролю** — единая точка входа: пароль запрашивается при нажатии на иконку шестерёнки (настройки). После ввода пароля открывается меню «Настройки» и «Система», доступны обе страницы. Прямой переход по URL также защищён.

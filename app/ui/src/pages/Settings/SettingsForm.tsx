@@ -530,7 +530,7 @@ export const SettingsForm = ({
 
       <Divider sx={{ my: 4 }} />
 
-      {/* ========== 5. УВЕДОМЛЕНИЯ ========== */}
+      {/* ========== 5. УВЕДОМЛЕНИЯ (Telegram) ========== */}
       <Typography variant="h5" gutterBottom>
         {t('settings.section5')}
       </Typography>
@@ -541,48 +541,176 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 4 }}>
           <form.Field name="general.enable_notifications">
             {(field) => (
-              <>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.checked)}
-                    />
-                  }
-                  label={t('settings.notifications')}
-                />
-                <FormHelperText>{t('settings.excludeHint')}</FormHelperText>
-              </>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.notifications')}
+              />
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
-          <form.Subscribe selector={(state) => [state.values.general?.enable_notifications]}>
-            {([notificationsEnabled]) => (
-              <form.Field name="general.notification_excluded_species">
-                {(field) => (
-                  <FormControl fullWidth disabled={!notificationsEnabled}>
-                    <InputLabel>{t('settings.excludeSpecies')}</InputLabel>
-                    <Select
-                      multiple
-                      value={field.state.value || []}
-                      onChange={(e) => field.handleChange(e.target.value as string[])}
-                      label={t('settings.excludeSpecies')}
-                      renderValue={(selected) => selected.join(', ')}
-                    >
-                      {(observedSpecies ?? []).map((species) => (
-                        <MenuItem key={species.id} value={species.name}>
-                          <Checkbox checked={(field.state.value || []).includes(species.name)} />
-                          <ListItemText primary={species.name} secondary={t('settings.foundCount', { count: species.count })} />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              </form.Field>
-            )}
-          </form.Subscribe>
-        </Grid>
+        <form.Subscribe selector={(state) => [state.values.general?.enable_notifications]}>
+          {([notificationsEnabled]) => (
+            <>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.telegram_bot_token">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="password"
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.telegramBotToken')}
+                      helperText={t('settings.telegramBotTokenHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.telegram_chat_id">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.telegramChatId')}
+                      helperText={t('settings.telegramChatIdHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="notifications.base_url">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.notificationsBaseUrl')}
+                      helperText={t('settings.notificationsBaseUrlHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.message_thread_id">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.telegramThreadId')}
+                      helperText={t('settings.telegramThreadIdHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.disable_notification">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          disabled={!notificationsEnabled}
+                        />
+                      }
+                      label={t('settings.telegramSilent')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.protect_content">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          disabled={!notificationsEnabled}
+                        />
+                      }
+                      label={t('settings.telegramProtect')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.paid_media_view_star_count">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 25000 }}
+                      value={field.state.value ?? 0}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(0, Math.min(25000, Number(e.target.value) || 0))
+                        )
+                      }
+                      label={t('settings.paidMediaViewStars')}
+                      helperText={t('settings.paidMediaViewStarsHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.paid_media_forward_star_count">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 25000 }}
+                      value={field.state.value ?? 0}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(0, Math.min(25000, Number(e.target.value) || 0))
+                        )
+                      }
+                      label={t('settings.paidMediaForwardStars')}
+                      helperText={t('settings.paidMediaForwardStarsHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="general.notification_excluded_species">
+                  {(field) => (
+                    <FormControl fullWidth disabled={!notificationsEnabled}>
+                      <InputLabel>{t('settings.excludeSpecies')}</InputLabel>
+                      <Select
+                        multiple
+                        value={field.state.value || []}
+                        onChange={(e) => field.handleChange(e.target.value as string[])}
+                        label={t('settings.excludeSpecies')}
+                        renderValue={(selected) => selected.join(', ')}
+                      >
+                        {(observedSpecies ?? []).map((species) => (
+                          <MenuItem key={species.id} value={species.name}>
+                            <Checkbox checked={(field.state.value || []).includes(species.name)} />
+                            <ListItemText primary={species.name} secondary={t('settings.foundCount', { count: species.count })} />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
+            </>
+          )}
+        </form.Subscribe>
       </Grid>
 
       <Divider sx={{ my: 4 }} />

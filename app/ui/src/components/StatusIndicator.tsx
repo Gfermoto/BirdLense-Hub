@@ -40,12 +40,18 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
+  const motion = data.motion_source || 'opencv';
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
       <StatusDot status={data.video} label={t('commonLabels.video')} icon={VideocamOutlined} />
       <StatusDot status={data.mqtt} label={t('commonLabels.mqtt')} icon={CloudOutlined} />
       <StatusDot status={data.esphome ?? 'not_used'} label={t('commonLabels.esphome')} icon={SmartToyOutlined} />
       <StatusDot status={data.yolo} label={t('commonLabels.yolo')} icon={PsychologyOutlined} />
+      <Tooltip title={motion === 'frigate' ? t('status.motionFrigateHint') : t('status.motionOpencvHint')}>
+        <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+          {t('status.motion')}: {motion}
+        </Box>
+      </Tooltip>
     </Box>
   );
 };

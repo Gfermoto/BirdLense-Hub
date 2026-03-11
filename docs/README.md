@@ -11,7 +11,26 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
 | [CONFIGURATION.md](./CONFIGURATION.md) | `default_config.yaml`, переменные окружения |
 | [API.md](./API.md) | Эндпоинты UI, System, Processor |
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой на сервер, deploy.local.sh |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, автодеплой GitHub Actions |
+
+---
+
+## Тестирование
+
+| Документ | Описание |
+|----------|----------|
+| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
+| [TESTING_DEPLOY.md](./TESTING_DEPLOY.md) | План тестирования после деплоя, MQTT, провокация событий |
+
+---
+
+## Интеграции
+
+| Документ | Описание |
+|----------|----------|
+| [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP для Cursor и AI-агентов |
+| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, форматы сообщений |
+| [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP |
 
 ---
 
@@ -26,22 +45,11 @@
 
 ---
 
-## Интеграции
-
-| Документ | Описание |
-|----------|----------|
-| [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP для Cursor и AI-агентов |
-| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, форматы сообщений |
-| [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP |
-
----
-
 ## Прочее
 
 | Документ | Описание |
 |----------|----------|
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
-| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
 
 ---
 

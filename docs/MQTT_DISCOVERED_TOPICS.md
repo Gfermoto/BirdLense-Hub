@@ -9,9 +9,9 @@
 
 ---
 
-# Обнаруженные MQTT-топики (брокер 192.168.1.10)
+## Обнаруженные MQTT-топики
 
-Подключение к вашему брокеру показало:
+Подключение к брокеру (`mqtt.broker` в конфиге):
 
 ## BirdLense Hub — релевантные
 
@@ -75,4 +75,4 @@ mqtt:
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md).
+См. также: [CONFIGURATION.md](./CONFIGURATION.md), [TESTING_DEPLOY.md](./TESTING_DEPLOY.md).

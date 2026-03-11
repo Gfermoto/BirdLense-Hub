@@ -68,4 +68,4 @@ cp docs/mcp.json.example .cursor/mcp.json
 
 ---
 
-См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [API.md](./API.md).
+См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [API.md](./API.md), [CONFIGURATION.md](./CONFIGURATION.md).

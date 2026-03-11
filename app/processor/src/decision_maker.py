@@ -43,12 +43,21 @@ class DecisionMaker():
 
     def decide_species(self, tracks):
         if self.species_decided:
-            # already decided once
             return None
         results = self.get_results(tracks)
         if len(results) > 0:
             self.species_decided = True
             return results[0]['species_name']
+        return None
+
+    def get_first_species_result(self, tracks):
+        """Return first result dict (species_name, best_frame, ...) or None."""
+        if self.species_decided:
+            return None
+        results = self.get_results(tracks)
+        if len(results) > 0:
+            self.species_decided = True
+            return results[0]
         return None
 
     def get_results(self, tracks):

@@ -116,4 +116,4 @@ VideoSpecies
 
 ## 6. Ссылки
 
-**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [API.md](./API.md)
+**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) · [API.md](./API.md)

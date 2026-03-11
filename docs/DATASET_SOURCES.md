@@ -130,4 +130,4 @@ birdlense-community/
 
 **Внешние:** [Hugging Face](https://huggingface.co/datasets) · [Zenodo](https://zenodo.org) · [iNaturalist API](https://www.inaturalist.org/pages/api+recommended+practices) · [NABirds](https://dl.allaboutbirds.org/nabirds) · [CUB-200-2011](https://www.vision.caltech.edu/datasets/cub_200_2011/)
 
-**См. также:** [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md)
+**См. также:** [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md)

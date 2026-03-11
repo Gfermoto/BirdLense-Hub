@@ -67,6 +67,7 @@ def register_routes(app):
             'mqtt': mqtt_display,
             'esphome': esphome_display,
             'yolo': 'ok' if processor_ok else 'unknown',
+            'motion_source': motion_source,
         }
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])

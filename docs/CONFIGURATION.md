@@ -72,6 +72,7 @@
 | `source` | `opencv` \| `frigate` \| `mqtt` \| `esphome` |
 | `frigate_camera_filter` | Камеры Frigate (из cameras) или пусто — все |
 | `frigate_label_filter` | Метки Frigate для фильтра (bird, Bird) |
+| `frigate_label_exclude` | Метки для игнорирования (cat, dog — мышь как кошка) |
 | `mqtt_topic` | Топик MQTT binary sensor (Tasmota PIR) |
 | `esphome_url` | URL ESPHome |
 | `esphome_sensor_id` | ID binary_sensor в ESPHome |
@@ -130,13 +131,21 @@
 
 ---
 
-## Notifications (ntfy)
+## Notifications (Telegram)
 
 | Ключ | Описание |
 |------|----------|
-| `enabled` | Включить уведомления |
-| `excluded_species` | Виды, исключённые из уведомлений |
-| `rate_limit_per_minute` | Лимит уведомлений в минуту |
+| `general.enable_notifications` | Включить уведомления |
+| `notifications.telegram_bot_token` | Токен бота (@BotFather → /newbot) |
+| `notifications.telegram_chat_id` | ID чата или канала (например -1001234567890) |
+| `notifications.base_url` | URL Hub для ссылок (кнопка «Open Live») |
+| `notifications.message_thread_id` | ID топика в канале с форумом |
+| `notifications.disable_notification` | Тихие сообщения (без звука) |
+| `notifications.protect_content` | Запретить пересылку и сохранение |
+| `notifications.paid_media_view_star_count` | Stars за просмотр фото (0=бесплатно, 1–25000). sendPaidMedia |
+| `notifications.paid_media_forward_star_count` | При бесплатном просмотре: 0=разрешить пересылку, >0=запретить. При платном — пересылка включена. |
+| `general.notification_excluded_species` | Виды, исключённые из уведомлений |
+| `processor.save_images` | При true — отправлять фото детекции в Telegram |
 
 ## MCP
 

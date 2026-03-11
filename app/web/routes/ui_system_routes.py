@@ -1,6 +1,7 @@
 import os
 import re
 import threading
+from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request
@@ -59,6 +60,26 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/logs', methods=['GET'])
+    def get_processor_logs():
+        """Return last N lines of processor.log for remote diagnostics."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            lines = min(int(request.args.get('lines', 200)), 500)
+        except (ValueError, TypeError):
+            lines = 200
+        data_dir = os.path.dirname(recordings_dir())
+        log_path = os.path.join(data_dir, 'processor.log')
+        try:
+            if not os.path.isfile(log_path):
+                return {'lines': [], 'path': log_path}
+            with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+                tail = deque(f, maxlen=lines)
+            return {'lines': list(tail), 'path': log_path}
+        except OSError as e:
+            return {'error': str(e), 'lines': []}, 500
 
     @app.route('/api/ui/system/activity', methods=['GET'])
     def get_activity():

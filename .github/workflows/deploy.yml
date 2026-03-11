@@ -1,0 +1,49 @@
+# Автодеплой при push в main.
+# Требует: self-hosted runner на сервере BirdLense (см. scripts/setup-auto-deploy.sh)
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, birdlense]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync to deploy dir
+        run: |
+          DEPLOY_DIR="${DEPLOY_DIR:-/root/BirdLense}"
+          mkdir -p "$DEPLOY_DIR"/app/data/recordings "$DEPLOY_DIR"/app/data/db "$DEPLOY_DIR"/app/app_config
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='app/data' \
+            --exclude='app/app_config/user_config.yaml' \
+            --exclude='node_modules' \
+            --exclude='__pycache__' \
+            ./ "$DEPLOY_DIR"/
+
+      - name: Pull and restart
+        run: |
+          cd "${DEPLOY_DIR:-/root/BirdLense}/app"
+          make stop 2>/dev/null || true
+          make pull
+
+      - name: Verify
+        run: |
+          sleep 8
+          curl -sf http://127.0.0.1:8085/api/ui/health && echo " OK" || echo " FAIL"
+
+      - name: Test recognition (optional)
+        if: success()
+        continue-on-error: true
+        run: |
+          VIDEO=$(find "${DEPLOY_DIR:-/root/BirdLense}/app/data/recordings" -name "video.mp4" -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
+          [ -n "$VIDEO" ] || exit 0
+          CONTAINER_VIDEO="/app/data/recordings/${VIDEO#*recordings/}"
+          docker exec birdlense python /app/processor/src/main.py "$CONTAINER_VIDEO" --fake-motion true

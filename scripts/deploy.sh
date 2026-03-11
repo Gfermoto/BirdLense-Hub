@@ -14,9 +14,9 @@ REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 
-# 0. Удаление старых контейнеров (nginx, processor, web, ntfy)
+# 0. Удаление старых контейнеров (nginx, processor, web)
 echo "0. Остановка старых контейнеров..."
-ssh "${HOST}" "docker stop birdlense_nginx birdlense_processor birdlense_web birdlense_ntfy 2>/dev/null || true; docker rm birdlense_nginx birdlense_processor birdlense_web birdlense_ntfy 2>/dev/null || true"
+ssh "${HOST}" "docker stop birdlense_nginx birdlense_processor birdlense_web 2>/dev/null || true; docker rm birdlense_nginx birdlense_processor birdlense_web 2>/dev/null || true"
 
 # 1. Синхронизация кода
 # БЕЗ app/data (recordings, db). БЕЗ app_config/user_config.yaml (настройки на сервере)

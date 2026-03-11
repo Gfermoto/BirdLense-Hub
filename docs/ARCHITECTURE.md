@@ -60,7 +60,7 @@
 |--------|------------|
 | **Go2RTC** | Видеопотоки с IP-камер |
 | **MQTT** | Frigate events, BirdNET sightings, Tasmota relay/sensor |
-| **ntfy** | Push-уведомления (опционально) |
+| **Telegram** | Push-уведомления (опционально) |
 | **OpenWeather / Home Assistant** | Погода |
 
 ## Страницы UI
@@ -74,7 +74,7 @@
 | `/species` | Bird Directory — дерево видов |
 | `/species/:id` | Species Summary |
 | `/settings` | Настройки |
-| `/system` | System — Storage, Activity, Monitor |
+| `/system` | System — Storage, Activity, Monitor, Processor Logs |
 | `/food` | Food Management |
 
 ---

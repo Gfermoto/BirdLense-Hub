@@ -231,6 +231,16 @@ export const mockSettings: Settings = {
     enable_notifications: true,
     notification_excluded_species: [],
   },
+  notifications: {
+    telegram_bot_token: '',
+    telegram_chat_id: '',
+    base_url: '',
+    message_thread_id: '',
+    disable_notification: false,
+    protect_content: false,
+    paid_media_view_star_count: 0,
+    paid_media_forward_star_count: 0,
+  },
   processor: {
     video_width: 1280,
     video_height: 720,

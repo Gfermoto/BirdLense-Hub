@@ -38,6 +38,17 @@ export MCP_TOKEN="ваш-mcp-токен"        # опционально
 
 **Важно:** `deploy.local.sh` в .gitignore — не коммитится.
 
+## Автодеплой (GitHub Actions)
+
+Push в `main` → автодеплой. Требует self-hosted runner на сервере.
+
+```bash
+# Однократная настройка на сервере
+./scripts/setup-auto-deploy.sh
+```
+
+См. [.github/workflows/deploy.yml](../.github/workflows/deploy.yml).
+
 ## Если сервер недоступен
 
 - Соберите локально: `cd app && make build`
@@ -52,4 +63,4 @@ export MCP_TOKEN="ваш-mcp-токен"        # опционально
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [MCP_SETUP.md](./MCP_SETUP.md).
+См. также: [CONFIGURATION.md](./CONFIGURATION.md), [TESTING_DEPLOY.md](./TESTING_DEPLOY.md), [MCP_SETUP.md](./MCP_SETUP.md).
