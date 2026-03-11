@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from util import notify
 from flask import Flask
 from flask_cors import CORS
@@ -50,7 +51,7 @@ def create_app():
     routes.ui_routes.register_routes(app)
     routes.ui_system_routes.register_routes(app)
     routes.processor_routes.register_routes(app)
-    notify(f"App is UP!", tags="rocket")
+    notify(f"App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
     return app
 
 

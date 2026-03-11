@@ -5,15 +5,17 @@ import yaml
 
 def main():
     url = os.environ.get('GO2RTC_URL', '').strip()
+    config_dir = os.environ.get('APP_CONFIG_DIR', '/app/app_config')
     if not url:
-        for path in ('/app/app_config/user_config.yaml', '/app/app_config/default_config.yaml'):
+        for name in ('user_config.yaml', 'default_config.yaml'):
+            path = os.path.join(config_dir, name)
             try:
                 with open(path) as f:
                     c = yaml.safe_load(f) or {}
                 url = (c.get('video') or {}).get('go2rtc_url', '')
                 if url:
                     break
-            except Exception:
+            except (OSError, yaml.YAMLError):
                 pass
     if url:
         url = url.replace('https://', '').replace('http://', '').rstrip('/').split('/')[0]

@@ -239,7 +239,11 @@ def get_wikipedia_image_and_description(title):
 
 
 def update_species_info_from_wiki(sp):
-    """Update missing species data from Wikipedia. Returns True if updated."""
+    """Update missing species data from Wikipedia. Returns True if updated.
+
+    image_url from Wikipedia is a full URL (https://upload.wikimedia.org/...).
+    Frontend must use resolveImageUrl() to handle both full URLs and relative paths.
+    """
     if sp.image_url and sp.description:
         return False
     image_url, description = get_wikipedia_image_and_description(
@@ -252,8 +256,37 @@ def update_species_info_from_wiki(sp):
     return bool(image_url or description)
 
 
-def _telegram_send_message(token, chat_id, text, link=None, **kwargs):
+def _telegram_button_open_live(link, emoji='📺', style='primary', icon_custom_emoji_id=None):
+    """Inline button 'Open Live' with emoji and style (Bot API 9.4+).
+    icon_custom_emoji_id: optional, для Premium — кастомный эмодзи вместо Unicode.
+    """
+    btn = {'text': 'Open Live', 'url': link, 'style': style}
+    if icon_custom_emoji_id:
+        btn['icon_custom_emoji_id'] = icon_custom_emoji_id
+    else:
+        btn['text'] = f'{emoji} Open Live'
+    return btn
+
+
+def _get_button_custom_emoji_id(tags):
+    """Возвращает icon_custom_emoji_id для кнопки, если use_custom_emoji и ID задан."""
+    if not app_config.get('notifications.use_custom_emoji', False):
+        return None
+    key = 'custom_emoji_id_chipmunk' if tags == 'chipmunk' else (
+        'custom_emoji_id_bird' if tags == 'bird' else 'custom_emoji_id_open_live'
+    )
+    val = (app_config.get(f'notifications.{key}') or '').strip()
+    return val if val else None
+
+
+def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
+                          button_style='primary', button_tags=None, **kwargs):
     """Build and send Telegram message with HTML, keyboard, options."""
+    link_preview = {'is_disabled': True}
+    if link and app_config.get('notifications.link_preview_large', False):
+        link_preview = {'is_disabled': False, 'prefer_large_media': True}
+        text = f"{text}\n\n{link}"
+
     payload = {
         'chat_id': chat_id,
         'text': text,
@@ -262,7 +295,7 @@ def _telegram_send_message(token, chat_id, text, link=None, **kwargs):
             'notifications.disable_notification', False),
         'protect_content': app_config.get(
             'notifications.protect_content', False),
-        'link_preview_options': {'is_disabled': True},
+        'link_preview_options': link_preview,
     }
     thread_id = app_config.get('notifications.message_thread_id')
     if thread_id is not None and thread_id != '':
@@ -271,8 +304,10 @@ def _telegram_send_message(token, chat_id, text, link=None, **kwargs):
         except (ValueError, TypeError):
             pass
     if link:
+        custom_id = _get_button_custom_emoji_id(button_tags)
         payload['reply_markup'] = {
-            'inline_keyboard': [[{'text': 'Open Live', 'url': link}]]
+            'inline_keyboard': [[_telegram_button_open_live(
+                link, button_emoji, button_style, icon_custom_emoji_id=custom_id)]]
         }
     payload.update(kwargs)
     return requests.post(
@@ -282,8 +317,11 @@ def _telegram_send_message(token, chat_id, text, link=None, **kwargs):
     )
 
 
-def notify(message, link="live", tags=None, image_path=None):
-    """Send notification via Telegram. Requires token and chat_id in config."""
+def notify(message, link="live", tags=None, image_path=None, timestamp=None):
+    """Send notification via Telegram. Requires token and chat_id in config.
+
+    timestamp: datetime or Unix int for dynamic time <t:unix:R> (Bot API 9.5).
+    """
     if not app_config.get('general.enable_notifications'):
         return
     token = (app_config.get('notifications.telegram_bot_token') or '').strip()
@@ -293,9 +331,16 @@ def notify(message, link="live", tags=None, image_path=None):
     base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
     link_url = f"{base_url}/{link}" if base_url else None
     text = message
+    button_emoji = '📺'
+    button_tags = tags
     if tags:
-        emoji = '🐿️' if tags == 'chipmunk' else '🐦'
+        emoji = {'chipmunk': '🐿️', 'bird': '🐦', 'rocket': '🚀'}.get(tags, '🐦')
         text = f"{emoji} {message}"
+        button_emoji = emoji if tags in ('chipmunk', 'bird') else '📺'
+    if timestamp is not None:
+        unix_ts = int(timestamp.timestamp()) if hasattr(timestamp, 'timestamp') else int(timestamp)
+        # Bot API 9.5: <tg-time> — динамическое время в часовом поясе подписчика
+        text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
     try:
         if image_path and os.path.exists(image_path):
             view_stars = app_config.get('notifications.paid_media_view_star_count')
@@ -332,10 +377,11 @@ def notify(message, link="live", tags=None, image_path=None):
                 except (ValueError, TypeError):
                     pass
             if link_url:
+                custom_id = _get_button_custom_emoji_id(button_tags)
                 payload['reply_markup'] = {
-                    'inline_keyboard': [[
-                        {'text': 'Open Live', 'url': link_url}
-                    ]]
+                    'inline_keyboard': [[_telegram_button_open_live(
+                        link_url, button_emoji, 'primary',
+                        icon_custom_emoji_id=custom_id)]]
                 }
 
             if view_stars > 0:
@@ -364,7 +410,9 @@ def notify(message, link="live", tags=None, image_path=None):
                 pass
         else:
             r = _telegram_send_message(
-                token, chat_id, text, link=link_url)
+                token, chat_id, text, link=link_url,
+                button_emoji=button_emoji, button_style='primary',
+                button_tags=button_tags)
         if not r.ok:
             logging.warning(
                 "Telegram notify failed: %s %s", r.status_code, r.text[:200])

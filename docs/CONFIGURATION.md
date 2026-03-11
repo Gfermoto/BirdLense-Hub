@@ -142,10 +142,40 @@
 | `notifications.message_thread_id` | ID топика в канале с форумом |
 | `notifications.disable_notification` | Тихие сообщения (без звука) |
 | `notifications.protect_content` | Запретить пересылку и сохранение |
+| `notifications.link_preview_large` | true: большие превью ссылок (Bot API 9.4), ссылка добавляется в текст |
+| `notifications.use_custom_emoji` | true: icon_custom_emoji_id на кнопках (требует Premium у владельца бота) |
+| `notifications.custom_emoji_id_bird` | ID кастомного эмодзи для птиц (из @Stickers) |
+| `notifications.custom_emoji_id_chipmunk` | ID для белок |
+| `notifications.custom_emoji_id_open_live` | ID для кнопки Open Live |
 | `notifications.paid_media_view_star_count` | Stars за просмотр фото (0=бесплатно, 1–25000). sendPaidMedia |
 | `notifications.paid_media_forward_star_count` | При бесплатном просмотре: 0=разрешить пересылку, >0=запретить. При платном — пересылка включена. |
 | `general.notification_excluded_species` | Виды, исключённые из уведомлений |
 | `processor.save_images` | При true — отправлять фото детекции в Telegram |
+
+**Telegram Bot API 9.4/9.5:** кнопки с эмодзи и стилем (primary), динамическое время `<tg-time format="r">`, большие превью ссылок (`link_preview_large`).
+
+### Кастомные эмодзи на кнопках (Premium)
+
+Переключатель `use_custom_emoji` и поля ID управляют отображением эмодзи на кнопках в сообщениях:
+
+| Режим | Поведение |
+|-------|-----------|
+| **Выкл** (по умолчанию) | Unicode-эмодзи (🐦, 🐿️, 📺) — видны всем подписчикам |
+| **Вкл** | `icon_custom_emoji_id` (Bot API 9.4) — требует **Telegram Premium у владельца бота** |
+
+При включённом переключателе отображаются поля для ID:
+
+- `custom_emoji_id_bird` — для уведомлений о птицах
+- `custom_emoji_id_chipmunk` — для белок/мышей
+- `custom_emoji_id_open_live` — для кнопки «Open Live» (старт приложения, общие сообщения)
+
+Если ID не указан — используется обычный Unicode-эмодзи.
+
+**Как получить ID кастомного эмодзи:**
+
+1. Отправьте сообщение с нужным кастомным эмодзи в чат с ботом [@RawDataBot](https://t.me/RawDataBot) — в ответе будет `custom_emoji_id`.
+2. Либо используйте бота [@Stickers](https://t.me/Stickers) для получения ID из стикерпаков.
+3. Вставьте числовой ID (например, `5368324170671202286`) в соответствующее поле настроек.
 
 ## MCP
 

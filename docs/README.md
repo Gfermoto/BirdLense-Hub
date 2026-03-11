@@ -28,7 +28,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP для Cursor и AI-агентов |
+| [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP (Model Context Protocol) |
 | [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, форматы сообщений |
 | [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP |
 
@@ -38,9 +38,11 @@
 
 | Документ | Описание |
 |----------|----------|
-| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение, MCP |
+| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение |
 | [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (NABirds, COCO, ноутбуки) |
 | [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты на Hugging Face (Birdsnap, CUB-200), Zenodo |
+| [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) | Hugging Face Hub: создание, установка, загрузка, работа с датасетами |
+| [dataset-card-readme.md](./dataset-card-readme.md) | Шаблон Dataset card для Hugging Face (README с YAML) |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (подтвердить/исправить), куда уходят данные |
 
 ---

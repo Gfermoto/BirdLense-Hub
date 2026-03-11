@@ -141,6 +141,7 @@ class MQTTEventAggregator:
         self._client = None
         self._thread = None
         self._connected = False
+        self._stopped = False
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
         self._frigate_label_exclude = set(frigate_label_exclude or [])
 
@@ -201,27 +202,41 @@ class MQTTEventAggregator:
                 self._events.append(ev)
 
     def _run_client(self):
-        self._client = mqtt.Client(
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-            client_id="birdlense_aggregator",
-        )
-        if self.username:
-            self._client.username_pw_set(self.username, self.password)
-        self._client.on_connect = self._on_connect
-        self._client.on_disconnect = self._on_disconnect
-        self._client.on_message = self._on_message
-        self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
-        try:
-            self._client.connect(self.broker, self.port, 60)
-            self._client.subscribe(self.frigate_topic)
-            for t in self.birdnet_topics:
-                self._client.subscribe(t)
-            self._client.publish("birdlense/status", "online", qos=1, retain=True)
-            self._client.loop_forever()
-        except Exception as e:
-            logger.error(f"MQTT aggregator error: {e}")
-        finally:
-            self._connected = False
+        retry_delay = 5
+        max_retry_delay = 300
+        while True:
+            try:
+                self._client = mqtt.Client(
+                    callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+                    client_id="birdlense_aggregator",
+                )
+                if self.username:
+                    self._client.username_pw_set(self.username, self.password)
+                self._client.on_connect = self._on_connect
+                self._client.on_disconnect = self._on_disconnect
+                self._client.on_message = self._on_message
+                self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
+                self._client.connect(self.broker, self.port, 60)
+                self._client.subscribe(self.frigate_topic)
+                for t in self.birdnet_topics:
+                    self._client.subscribe(t)
+                self._client.publish("birdlense/status", "online", qos=1, retain=True)
+                retry_delay = 5
+                self._client.loop_forever()
+            except Exception as e:
+                logger.error("MQTT aggregator error: %s, reconnecting in %ds", e, retry_delay)
+            finally:
+                self._connected = False
+                if self._client:
+                    try:
+                        self._client.disconnect()
+                    except Exception:
+                        pass
+                    self._client = None
+            if self._stopped:
+                break
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, max_retry_delay)
 
     def start(self):
         if not self.broker:
@@ -285,6 +300,7 @@ class MQTTEventAggregator:
         return self._connected
 
     def stop(self):
+        self._stopped = True
         if self._client:
             self._client.disconnect()
             self._client.loop_stop()

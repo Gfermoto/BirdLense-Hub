@@ -100,10 +100,15 @@ notifications:
   message_thread_id: ""       # ID топика в канале (если канал с форумом)
   disable_notification: false # Тихие сообщения (без звука)
   protect_content: false      # Запретить пересылку и сохранение
+  link_preview_large: false  # true: большие превью ссылок (prefer_large_media), ссылка в тексте
+  use_custom_emoji: false   # true: icon_custom_emoji_id на кнопках (требует Premium у владельца бота)
+  custom_emoji_id_bird: ""  # ID кастомного эмодзи для птиц (из @Stickers или сообщения)
+  custom_emoji_id_chipmunk: ""
+  custom_emoji_id_open_live: ""
   paid_media_view_star_count: 0    # Stars за просмотр фото (0=бесплатно, 1-25000)
   paid_media_forward_star_count: 0  # Stars за пересылку/копирование (0=разрешить, >0=запретить при бесплатном просмотре)
 
-# MCP (Model Context Protocol) — AI-агенты (Cursor, Claude) могут вызывать API BirdLense Hub
+# MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
 mcp:
   enabled: false
   # Токен для доступа. Пусто — без защиты. Рекомендуется для продакшена.

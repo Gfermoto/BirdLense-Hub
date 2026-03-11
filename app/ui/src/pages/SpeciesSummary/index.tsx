@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
-import { BASE_URL } from '../../api/api';
+import { resolveImageUrl } from '../../api/api';
 
 const StatCard = ({
   icon,
@@ -136,7 +136,7 @@ const SpeciesSummaryPage = () => {
             >
               {data.species.image_url ? (
                 <img
-                  src={`${BASE_URL}/${data.species.image_url}`}
+                  src={resolveImageUrl(data.species.image_url)}
                   alt={data.species.name}
                   style={{
                     width: '100%',

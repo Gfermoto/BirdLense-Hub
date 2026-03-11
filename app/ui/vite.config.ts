@@ -14,6 +14,25 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-mui': [
+            '@mui/material',
+            '@mui/icons-material',
+            '@mui/x-charts',
+            '@emotion/react',
+            '@emotion/styled',
+          ],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-datetime': ['dayjs', '@mui/x-date-pickers', '@mui/x-date-pickers/AdapterDayjs'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     allowedHosts: ['ui'],
   },

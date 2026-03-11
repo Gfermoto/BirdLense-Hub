@@ -10,6 +10,7 @@ export interface SpeciesVisit {
   species: {
     id: number;
     name: string;
+    /** Relative path (data/images/...) or full URL (Wikipedia) — use resolveImageUrl() */
     image_url?: string;
     parent_id?: number;
   };
@@ -37,6 +38,7 @@ export interface VideoSpecies {
   confidence: number;
   source: string;
   detection_provider?: string;
+  /** Relative path or full URL — use resolveImageUrl() */
   image_url?: string;
   frames?: TrackFrame[];
 }
@@ -64,7 +66,8 @@ export interface Video {
   food: {
     id: string;
     name: string;
-    image_url: string;
+    /** Relative path (data/images/food/...) or null — use resolveImageUrl() */
+    image_url: string | null;
   }[];
 }
 
@@ -73,6 +76,7 @@ export interface BirdFood {
   name: string;
   active: boolean;
   description?: string;
+  /** Relative path (data/images/food/...) — use resolveImageUrl() */
   image_url?: string;
 }
 
@@ -133,6 +137,11 @@ export interface Settings {
     message_thread_id?: string;
     disable_notification?: boolean;
     protect_content?: boolean;
+    link_preview_large?: boolean;
+    use_custom_emoji?: boolean;
+    custom_emoji_id_bird?: string;
+    custom_emoji_id_chipmunk?: string;
+    custom_emoji_id_open_live?: string;
     paid_media_view_star_count?: number;
     paid_media_forward_star_count?: number;
   };
@@ -175,6 +184,7 @@ export interface Species {
     id: string;
   };
   created_at: string;
+  /** Relative path or full URL (Wikipedia) — use resolveImageUrl() */
   image_url: string | null;
   description: string | null;
   active: boolean;

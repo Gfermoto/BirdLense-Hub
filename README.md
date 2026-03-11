@@ -34,7 +34,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 - **UI** — React, Material UI, i18n (en/ru), mobile-friendly
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — [ntfy](https://ntfy.sh)
-- **MCP** — Model Context Protocol for AI agents (Cursor, etc.)
+- **MCP** — Model Context Protocol for external tools
 - **Research** — dataset prep (NABirds, COCO → YOLO), training notebooks, export pipeline for model fine-tuning
 
 ## Quick Start

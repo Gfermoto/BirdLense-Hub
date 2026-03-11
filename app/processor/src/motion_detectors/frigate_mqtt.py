@@ -79,6 +79,7 @@ class FrigateMQTTMotionDetector:
         self._client = None
         self._thread = None
         self._connected = False
+        self._stopped = False
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -117,25 +118,40 @@ class FrigateMQTTMotionDetector:
         self._event.set()
 
     def _run_client(self):
-        self._client = mqtt.Client(
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-            client_id="birdlense_frigate",
-        )
-        if self.username:
-            self._client.username_pw_set(self.username, self.password)
-        self._client.on_connect = self._on_connect
-        self._client.on_disconnect = self._on_disconnect
-        self._client.on_message = self._on_message
-        self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
-        try:
-            self._client.connect(self.broker, self.port, 60)
-            self._client.subscribe(self.topic)
-            self._client.publish("birdlense/status", "online", qos=1, retain=True)
-            self._client.loop_forever()
-        except Exception as e:
-            logger.error(f"Frigate MQTT error: {e}")
-        finally:
-            self._event.set()
+        retry_delay = 5
+        max_retry_delay = 300
+        while True:
+            try:
+                self._client = mqtt.Client(
+                    callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+                    client_id="birdlense_frigate",
+                )
+                if self.username:
+                    self._client.username_pw_set(self.username, self.password)
+                self._client.on_connect = self._on_connect
+                self._client.on_disconnect = self._on_disconnect
+                self._client.on_message = self._on_message
+                self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
+                self._client.connect(self.broker, self.port, 60)
+                self._client.subscribe(self.topic)
+                self._client.publish("birdlense/status", "online", qos=1, retain=True)
+                retry_delay = 5
+                self._client.loop_forever()
+            except Exception as e:
+                logger.error("Frigate MQTT error: %s, reconnecting in %ds", e, retry_delay)
+            finally:
+                self._connected = False
+                self._event.set()
+                if self._client:
+                    try:
+                        self._client.disconnect()
+                    except Exception:
+                        pass
+                    self._client = None
+            if self._stopped:
+                break
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, max_retry_delay)
 
     def start(self):
         if not self.broker:
@@ -159,6 +175,7 @@ class FrigateMQTTMotionDetector:
         return self._last_camera
 
     def stop(self):
+        self._stopped = True
         if self._client:
             self._client.disconnect()
             self._client.loop_stop()

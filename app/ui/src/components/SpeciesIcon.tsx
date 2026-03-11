@@ -3,7 +3,7 @@ import Avatar from '@mui/material/Avatar';
 import { BirdIcon } from './icons/BirdIcon';
 import { SquirrelIcon } from './icons/SquirrelIcon';
 import { isSquirrelLike } from '../util';
-import { BASE_URL } from '../api/api';
+import { resolveImageUrl } from '../api/api';
 
 interface SpeciesIconProps {
   speciesName: string;
@@ -19,7 +19,7 @@ export const SpeciesIcon: React.FC<SpeciesIconProps> = ({
   sx = {},
 }) => {
   const Icon = isSquirrelLike(speciesName) ? SquirrelIcon : BirdIcon;
-  const src = imageUrl ? `${BASE_URL}/${imageUrl}` : undefined;
+  const src = resolveImageUrl(imageUrl);
 
   return (
     <Avatar

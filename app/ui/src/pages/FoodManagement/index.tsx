@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import Avatar from '@mui/material/Avatar';
 import Info from '@mui/icons-material/Info';
-import { BASE_URL, fetchBirdFood, toggleBirdFood } from '../../api/api';
+import { resolveImageUrl, fetchBirdFood, toggleBirdFood } from '../../api/api';
 import { BirdFood } from '../../types';
 import { PageHelp } from '../../components/PageHelp';
 import { foodHelpConfig } from '../../page-help-config';
@@ -75,7 +75,7 @@ export const FoodManagement = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     {food.image_url ? (
                       <Avatar
-                        src={`${BASE_URL}/${food.image_url}`}
+                        src={resolveImageUrl(food.image_url)}
                         alt={food.name}
                         variant="rounded"
                         sx={{ width: 64, height: 64 }}

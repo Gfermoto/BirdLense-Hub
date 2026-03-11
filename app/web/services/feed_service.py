@@ -13,29 +13,43 @@ logger = logging.getLogger(__name__)
 _mqtt_client = None
 
 
+def _on_feed_disconnect(client, userdata, *args):
+    global _mqtt_client
+    _mqtt_client = None
+    logger.warning('MQTT feed client disconnected')
+
+
 def _get_mqtt_client():
     global _mqtt_client
-    if _mqtt_client is not None:
+    if _mqtt_client is not None and _mqtt_client.is_connected():
         return _mqtt_client
+    if _mqtt_client is not None:
+        try:
+            _mqtt_client.disconnect()
+        except Exception:
+            pass
+        _mqtt_client = None
     broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     if not broker:
         return None
-    _mqtt_client = mqtt.Client(
+    client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id='birdlense_feed',
     )
     username = os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username')
     password = os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password')
     if username:
-        _mqtt_client.username_pw_set(username, password)
+        client.username_pw_set(username, password)
+    client.on_disconnect = _on_feed_disconnect
     try:
         port = app_config.get('mqtt.port', 1883)
-        _mqtt_client.connect(broker, port, 60)
-        _mqtt_client.loop_start()
+        client.connect(broker, port, 60)
+        client.loop_start()
+        _mqtt_client = client
+        return client
     except Exception as e:
         logger.error('MQTT connect failed: %s', e)
         return None
-    return _mqtt_client
 
 
 def check_mqtt_connected():

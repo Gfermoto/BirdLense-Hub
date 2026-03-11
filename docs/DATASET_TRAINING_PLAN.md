@@ -2,7 +2,7 @@
 
 BirdLense Hub — **исследовательский инструмент** для орнитологии и компьютерного зрения: сбор данных с кормушки, разметка, дообучение моделей. Подходит для научных статей и экспериментов.
 
-Цель: использовать BirdLense Hub для сбора данных, разметки и дообучения моделей детекции/классификации птиц. Максимально задействовать MCP для автоматизации через AI-агентов.
+Цель: использовать BirdLense Hub для сбора данных, разметки и дообучения моделей детекции/классификации птиц. MCP позволяет автоматизировать пайплайн через внешние инструменты.
 
 ---
 
@@ -40,7 +40,7 @@ BirdLense Hub — **исследовательский инструмент** д
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  • Ручная: LabelImg, CVAT, Roboflow                                          │
 │  • Полуавто: UI BirdLense Hub — «Исправить вид» для VideoSpecies              │
-│  • MCP: AI-агент анализирует low-confidence, предлагает правки              │
+│  • MCP: инструмент анализирует low-confidence, предлагает правки            │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -65,7 +65,7 @@ BirdLense Hub — **исследовательский инструмент** д
 
 ## 3. MCP: как задействовать по максимуму
 
-MCP экспортирует OpenAPI BirdLense Hub как инструменты для AI-агентов (Cursor, Claude и др.).
+MCP экспортирует OpenAPI BirdLense Hub как инструменты для внешних клиентов.
 
 ### 3.1 Релевантные MCP-инструменты (из OpenAPI)
 
@@ -87,26 +87,26 @@ MCP экспортирует OpenAPI BirdLense Hub как инструменты
 ### 3.2 Сценарии с MCP
 
 **Сценарий A: Анализ датасета**
-- AI запрашивает `/overview`, `/species`, `/storage/stats`
-- Формирует отчёт: сколько записей, какие виды, баланс классов
-- Рекомендует: «Добавить больше Great Tit — мало примеров»
+- Запросы `/overview`, `/species`, `/storage/stats`
+- Отчёт: сколько записей, какие виды, баланс классов
+- Рекомендация: «Добавить больше Great Tit — мало примеров»
 
 **Сценарий B: Подготовка экспорта**
-- AI вызывает `/timeline` за период
+- Вызов `/timeline` за период
 - Для каждого video_id — `/videos/{id}` (frames, species)
-- Генерирует скрипт или конфиг для `export_birdlense_to_yolo.py`
+- Генерация скрипта или конфига для `export_birdlense_to_yolo.py`
 
 **Сценарий C: Коррекция разметки**
-- AI получает детекции с low confidence
-- Предлагает правку вида (например, «похоже на Blue Tit, не Great Tit»)
-- Через новый эндпоинт `PATCH /videos/{id}/species/{vs_id}` (нужно добавить)
+- Получение детекций с low confidence
+- Предложение правки вида (например, «похоже на Blue Tit, не Great Tit»)
+- Через эндпоинт `PATCH /videos/{id}/species/{vs_id}` (нужно добавить)
 
 **Сценарий D: Автоматизация обучения**
-- AI проверяет `/storage/stats` — если накопилось N записей
-- Запускает экспорт (внешний скрипт или новый API)
+- Проверка `/storage/stats` — если накопилось N записей
+- Запуск экспорта (внешний скрипт или новый API)
 - После обучения — инструкция по деплою весов
 
-### 3.3 Примеры промптов для Cursor (с MCP BirdLense Hub)
+### 3.3 Примеры запросов (MCP BirdLense Hub)
 
 - «Получи overview и storage/stats — сколько записей, какие виды чаще всего?»
 - «Дай timeline за последние 7 дней — сколько видео с детекциями?»
@@ -121,7 +121,7 @@ MCP экспортирует OpenAPI BirdLense Hub как инструменты
 | `POST /api/ui/system/export-dataset` | Запуск экспорта в YOLO (фоново) |
 | `GET /api/ui/system/export-dataset/status` | Статус экспорта |
 | `PATCH /api/ui/videos/{id}/species/{vs_id}` | Исправить вид детекции |
-| OpenAPI: описание полей `frames`, `bbox` | Чтобы AI понимал формат |
+| OpenAPI: описание полей `frames`, `bbox` | Для корректной интерпретации формата |
 
 ---
 
@@ -163,7 +163,7 @@ MCP экспортирует OpenAPI BirdLense Hub как инструменты
 ### Фаза 3: MCP-интеграция (1 день)
 - [ ] Добавить в OpenAPI описание `frames`, `bbox` для /videos
 - [ ] Новый эндпоинт коррекции вида (если нужен)
-- [ ] Примеры промптов для Cursor: «Проанализируй датасет», «Подготовь экспорт»
+- [ ] Примеры запросов: «Проанализируй датасет», «Подготовь экспорт»
 
 ### Фаза 4: Обучение (существующие ноутбуки)
 - [ ] Адаптировать `birds_train.ipynb` под путь `birdlense_export/`
@@ -215,4 +215,4 @@ nc: 15
 
 ## 7. Ссылки
 
-**См. также:** [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [CONFIGURATION.md](./CONFIGURATION.md) · [MCP_SETUP.md](./MCP_SETUP.md) · [API.md](./API.md)
+**См. также:** [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [CONFIGURATION.md](./CONFIGURATION.md) · [MCP_SETUP.md](./MCP_SETUP.md) · [API.md](./API.md)

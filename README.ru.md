@@ -34,7 +34,7 @@
 - **UI** — React, Material UI, i18n (en/ru), адаптивный
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — [ntfy](https://ntfy.sh)
-- **MCP** — Model Context Protocol для AI-агентов (Cursor и др.)
+- **MCP** — Model Context Protocol для внешних инструментов
 - **Исследования** — подготовка датасетов (NABirds, COCO → YOLO), ноутбуки обучения, экспорт для дообучения моделей
 
 ## Быстрый старт

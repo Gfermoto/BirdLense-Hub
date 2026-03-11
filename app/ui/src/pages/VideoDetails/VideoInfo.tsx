@@ -8,7 +8,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { Video } from '../../types';
 import { WeatherCard } from '../../components/WeatherCard';
-import { BASE_URL } from '../../api/api';
+import { resolveImageUrl } from '../../api/api';
 
 export const VideoInfo = ({ video }: { video: Video }) => {
   const { t } = useTranslation();
@@ -78,7 +78,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
               <Chip
                 key={f.id}
                 avatar={
-                  <Avatar alt={f.name} src={`${BASE_URL}/${f.image_url}`}>
+                  <Avatar alt={f.name} src={resolveImageUrl(f.image_url)}>
                     {f.name[0]}
                   </Avatar>
                 }

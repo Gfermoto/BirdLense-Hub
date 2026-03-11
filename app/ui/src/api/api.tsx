@@ -20,9 +20,26 @@ import {
 import axios from 'axios';
 
 const useMockData = false; // Set to false to use real API calls
-// Relative path = same origin (works with any host/IP)
-export const BASE_URL = typeof window !== 'undefined' ? '' : 'http://birdlense.local';
+// Relative path = same origin (works with any host/IP). При SSR/тестах — из env или дефолт.
+export const BASE_URL =
+  typeof window !== 'undefined'
+    ? ''
+    : (import.meta.env?.VITE_BASE_URL as string) || '';
 export const BASE_API_URL = `${BASE_URL}/api/ui`;
+
+/**
+ * Resolve image URL for display.
+ * - Absolute (http/https/data:) → as-is
+ * - Relative path (data/images/...) → BASE_URL + path
+ * Species: Wikipedia returns full URLs. Bird food: relative paths from seed.
+ */
+export const resolveImageUrl = (url: string | null | undefined): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'))
+    return url;
+  const base = BASE_URL || '';
+  return base ? `${base}/${url}` : `/${url}`;
+};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

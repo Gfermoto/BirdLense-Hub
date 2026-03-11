@@ -12,10 +12,13 @@ services:
     volumes:
       - ./data:/app/data
       - ./app_config:/app/app_config
+    env_file:
+      - .env
     environment:
       - DATA_DIR=/app/data
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}

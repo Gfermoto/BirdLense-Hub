@@ -110,7 +110,8 @@ def register_routes(app):
             lower = detection.lower()
             icon = "chipmunk" if any(s in lower for s in (
                 "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
-            notify(f"{detection} Detected", tags=icon, image_path=image_path)
+            notify(f"{detection} Detected", tags=icon, image_path=image_path,
+                  timestamp=datetime.now(timezone.utc))
         return {'message': f'Successfully received notification of {detection}'}, 200
 
     @app.route('/api/processor/notify/motion', methods=['POST'])
