@@ -17,7 +17,8 @@ class VideoFileSource:
         self.main_size = main_size
         self.lores_size = lores_size
         self.out = None
-        self.fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        # mp4v — программный кодек, работает в Docker без GPU (avc1/h264 может требовать v4l2m2m)
+        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         
         self.source_fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
         self.frame_interval = 1.0 / self.source_fps
@@ -74,7 +75,15 @@ class VideoFileSource:
             
             result_frame = frame
         
-        return cv2.resize(result_frame, self.lores_size) if result_frame is not None else None
+        res = cv2.resize(result_frame, self.lores_size) if result_frame is not None else None
+        return res
+
+    def get_frame_time(self):
+        """Video timestamp in seconds for the last frame returned by capture().
+        Use this for correct track duration when processing video files (not real-time)."""
+        if self.frame_count <= 0:
+            return 0.0
+        return (self.frame_count - 1) / self.source_fps
 
     def close(self):
         self.stop_recording()

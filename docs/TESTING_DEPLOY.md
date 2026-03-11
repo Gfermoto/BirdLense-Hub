@@ -15,7 +15,7 @@ curl -s http://192.168.1.11:8085/api/ui/health
 curl -s http://192.168.1.11:8085/api/ui/status
 ```
 
-Ожидаемо: `processor: ok`, `web: ok`, `motion_source: opencv` или `frigate`.
+Ожидаемо: `processor: ok`, `web: ok`, `motion_source: opencv` или `frigate`. При `motion_source: frigate` и `feed.source` ≠ mqtt поле `mqtt` показывает статус aggregator (ok при processor ok).
 
 ### Логи процессора
 
@@ -51,10 +51,16 @@ ssh birdlense "tail -100 /root/BirdLense/app/data/processor.log"
 ```
 
 Скрипт:
-1. Находит последнюю запись `video.mp4` в `app/data/recordings/`;
-2. Запускает процессор с `--fake-motion true`;
+1. Находит последнюю запись `video.mp4` в `app/data/recordings/` (или берёт путь по `VIDEO_ID` через API);
+2. Запускает процессор с `--fake-motion true` и `MQTT_CLIENT_ID=birdlense_aggregator_test` (избегает конфликта с основным процессором);
 3. Обрабатывает видео, запускает YOLO;
 4. При обнаружении птицы — создаёт новую запись и сохраняет в API.
+
+**Тест на конкретном видео по ID:**
+
+```bash
+VIDEO_ID=37 ./scripts/test-deploy-recognition.sh
+```
 
 ### Ручной запуск
 
@@ -78,6 +84,10 @@ docker exec birdlense python /app/processor/src/main.py "/app/$VIDEO" --fake-mot
 
 - В UI должна появиться **новая** запись (дата/время = момент запуска).
 - В логах: `Detection ... has N track frames`, `create_video` без ошибок.
+
+### Примечание
+
+Скрипт запускает процессор в том же контейнере (docker exec). При `args.input` (видеофайл) процессор не создаёт Go2RTC-стримы — конфликта портов нет. Используется отдельный MQTT client_id (`birdlense_aggregator_test`), чтобы не конфликтовать с основным процессором.
 
 ### Ограничение
 

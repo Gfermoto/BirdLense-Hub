@@ -3,7 +3,8 @@
 # Провоцирует событие — при обнаружении птицы создаёт новую запись в UI.
 #
 # Запуск: ./scripts/test-deploy-recognition.sh
-# Требует: deploy.local.sh (HOST, REMOTE_DIR) или переменные окружения
+#         VIDEO_ID=37 ./scripts/test-deploy-recognition.sh   # тест на видео 37
+# Требует: deploy.local.sh (HOST, REMOTE_DIR, DEPLOY_URL) или переменные окружения
 
 set -e
 
@@ -14,29 +15,39 @@ HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DATA_DIR="${REMOTE_DIR}/app/data"
 RECORDINGS="${DATA_DIR}/recordings"
+API_URL="${DEPLOY_URL:-http://localhost:8085}"
 
 echo "=== Тест распознавания на ${HOST} ==="
 
-# Найти последнюю запись video.mp4 (по времени модификации)
-VIDEO=$(ssh "${HOST}" "find ${RECORDINGS} -name 'video.mp4' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2")
-
-if [ -z "$VIDEO" ]; then
-  echo "Ошибка: записей не найдено в ${RECORDINGS}"
-  echo "Добавьте хотя бы одну запись с птицей перед тестом."
-  exit 1
+if [ -n "${VIDEO_ID}" ]; then
+  # Получить путь видео по ID через API
+  VIDEO_PATH=$(ssh "${HOST}" "curl -s '${API_URL}/api/ui/videos/${VIDEO_ID}'" | jq -r '.video_path // empty')
+  if [ -z "$VIDEO_PATH" ]; then
+    echo "Ошибка: видео ${VIDEO_ID} не найдено (API: ${API_URL}/api/ui/videos/${VIDEO_ID})"
+    exit 1
+  fi
+  # data/recordings/YYYY/MM/DD/HHMMSS/video.mp4 -> /app/data/recordings/...
+  CONTAINER_VIDEO="/app/${VIDEO_PATH}"
+  echo "Видео ID ${VIDEO_ID}: ${VIDEO_PATH}"
+else
+  # Найти последнюю запись video.mp4 (по времени модификации)
+  VIDEO=$(ssh "${HOST}" "find ${RECORDINGS} -name 'video.mp4' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2")
+  if [ -z "$VIDEO" ]; then
+    echo "Ошибка: записей не найдено в ${RECORDINGS}"
+    echo "Добавьте хотя бы одну запись с птицей или укажите VIDEO_ID=37"
+    exit 1
+  fi
+  CONTAINER_VIDEO="/app/data/recordings/${VIDEO#*recordings/}"
+  echo "Видео: ${VIDEO}"
 fi
 
-# Путь в контейнере (data монтируется как /app/data)
-CONTAINER_VIDEO="/app/data/recordings/${VIDEO#*recordings/}"
-
-echo "Видео: ${VIDEO}"
 echo "В контейнере: ${CONTAINER_VIDEO}"
 echo ""
-echo "Запуск процессора (--fake-motion true)..."
+echo "Запуск процессора (--fake-motion true, MQTT_CLIENT_ID=birdlense_aggregator_test)..."
 echo "При обнаружении птицы появится новая запись в UI."
 echo ""
 
-ssh "${HOST}" "docker exec birdlense python /app/processor/src/main.py '${CONTAINER_VIDEO}' --fake-motion true"
+ssh "${HOST}" "docker exec -e PYTHONPATH=/app -e MQTT_CLIENT_ID=birdlense_aggregator_test birdlense python /app/processor/src/main.py '${CONTAINER_VIDEO}' --fake-motion true"
 
 echo ""
 echo "Готово. Проверьте UI на новую запись."

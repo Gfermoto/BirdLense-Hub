@@ -4,16 +4,26 @@ from collections import Counter
 
 logger = logging.getLogger(__name__)
 
-# Minimum combined confidence to process a detection further (LLM validation, saving).
-# Below this threshold, detections are discarded as likely false positives.
-MIN_CONFIDENCE_TO_PROCESS = 0.10
+# Default min confidence; can be overridden via app_config processor.min_confidence_to_process
+DEFAULT_MIN_CONFIDENCE = 0.03
 
 
 class DecisionMaker():
-    def __init__(self,  max_record_seconds=60, max_inactive_seconds=10, min_track_duration=2):
+    def __init__(
+        self,
+        max_record_seconds=60,
+        max_inactive_seconds=10,
+        min_track_duration=2,
+        min_confidence_to_process=None,
+    ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
         self.min_track_duration = min_track_duration
+        self.min_confidence_to_process = (
+            min_confidence_to_process
+            if min_confidence_to_process is not None
+            else DEFAULT_MIN_CONFIDENCE
+        )
         self.reset()
 
     def reset(self):
@@ -82,21 +92,26 @@ class DecisionMaker():
             confidence = voting_confidence * avg_classifier_conf
             
             # Skip tracks with very low confidence - likely false positives
-            if confidence < MIN_CONFIDENCE_TO_PROCESS:
-                logger.debug(f"Skipping track {track_id} with {confidence:.0%} confidence - below threshold")
+            if confidence < self.min_confidence_to_process:
+                logger.debug(
+                    f"Skipping track {track_id} ({species_name}): confidence={confidence:.2%} < {self.min_confidence_to_process}")
                 continue
-            
+
+            dur = track['end_time'] - track['start_time']
             # Only consider species with at least min_track_duration
-            if track['end_time'] - track['start_time'] >= self.min_track_duration:
-                result.append({
-                    'track_id': track_id,
-                    'species_name': species_name,
-                    'start_time': track['start_time'],
-                    'end_time': track['end_time'],
-                    'confidence': confidence,
-                    'best_frame': track.get('best_frame'),
-                    'source': 'video',
-                    'frames': track.get('frames', [])  # Per-frame bounding box data
-                })
+            if dur < self.min_track_duration:
+                logger.debug(
+                    f"Skipping track {track_id} ({species_name}): duration={dur:.2f}s < {self.min_track_duration}s")
+                continue
+            result.append({
+                'track_id': track_id,
+                'species_name': species_name,
+                'start_time': track['start_time'],
+                'end_time': track['end_time'],
+                'confidence': confidence,
+                'best_frame': track.get('best_frame'),
+                'source': 'video',
+                'frames': track.get('frames', [])  # Per-frame bounding box data
+            })
 
         return result

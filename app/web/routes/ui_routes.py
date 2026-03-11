@@ -52,12 +52,13 @@ def register_routes(app):
         esphome_status = check_esphome_reachable()
         feed_source = app_config.get('feed.source', 'mqtt')
         motion_source = app_config.get('motion.source', 'opencv')
-        # MQTT: show real status when used for feed OR for motion (Frigate/MQTT)
-        mqtt_used = (
-            feed_source == 'mqtt'
-            or motion_source in ('frigate', 'mqtt')
-        )
-        mqtt_display = mqtt_status if mqtt_used else 'not_used'
+        # MQTT: feed uses check_mqtt_connected; motion (Frigate) uses aggregator in processor
+        if feed_source == 'mqtt':
+            mqtt_display = mqtt_status
+        elif motion_source in ('frigate', 'mqtt'):
+            mqtt_display = 'ok' if processor_ok else 'unknown'
+        else:
+            mqtt_display = 'not_used'
         # ESPHome: show real status if feed source is esphome
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
         return {
