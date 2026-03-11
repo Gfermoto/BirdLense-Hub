@@ -14,8 +14,10 @@
 
 | Компонент | Версия | Дообучено на | Примечание |
 |-----------|--------|--------------|------------|
-| **Детектор** | YOLO11n (Ultralytics) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
-| **Классификатор** | YOLO11n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** |
+| **Детектор** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
+| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** |
+
+**Планируется:** переобучение на YOLO11n (см. [UPGRADE_PLAN.md](./docs/UPGRADE_PLAN.md)).
 
 **Пайплайн обучения:** 1) **Pretrain** на открытых датасетах (NABirds, birds-525-species, Birdsnap, CUB-200, iNaturalist) → 2) **Fine-tune** на записях BirdLense с кормушек. См. [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
 

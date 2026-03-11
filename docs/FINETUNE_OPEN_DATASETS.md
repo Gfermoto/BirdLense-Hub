@@ -8,8 +8,10 @@
 
 | Компонент | Версия | Дообучено на | Ограничение |
 |-----------|--------|--------------|-------------|
-| **Детектор** | YOLO11n (Ultralytics 8.4.x) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
-| **Классификатор** | YOLO11n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейские виды (сойка, синица и т.п.) распознаются хуже |
+| **Детектор** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
+| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейские виды (сойка, синица и т.п.) распознаются хуже |
+
+**Планируется:** переобучение на YOLO11n (см. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md)).
 
 ### Двухэтапный пайплайн обучения
 
@@ -117,7 +119,7 @@ dataset/
 ### Шаг 3: Дообучение
 
 ```python
-# Загрузить ТЕКУЩУЮ модель (не yolo11n-cls.pt с нуля!)
+# Загрузить ТЕКУЩУЮ модель (не yolov8n-cls.pt с нуля!)
 model = YOLO("processor/models/classification/weights/best.pt")
 model.train(
     data="merged_dataset/",
