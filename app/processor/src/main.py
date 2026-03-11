@@ -145,6 +145,11 @@ def main():
         or [c['id'] for c in cameras]
     )
     frigate_label_filter = set(app_config.get('motion.frigate_label_filter') or app_config.get('mqtt.frigate_label_filter') or ['bird', 'Bird'])
+    frigate_label_exclude = set(
+        app_config.get('motion.frigate_label_exclude')
+        or app_config.get('mqtt.frigate_label_exclude')
+        or ['cat', 'dog']
+    )
     use_frigate_from_aggregator = (
         app_config.get('motion.source') in ('frigate', 'mqtt')
         and mqtt_broker
@@ -165,6 +170,7 @@ def main():
             username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
             password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
             on_frigate_motion=on_frigate_motion,
+            frigate_label_exclude=list(frigate_label_exclude),
         )
         mqtt_aggregator.start()
         if use_frigate_from_aggregator:

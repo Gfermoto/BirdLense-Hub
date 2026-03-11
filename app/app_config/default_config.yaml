@@ -50,6 +50,7 @@ motion:
   source: opencv
   frigate_camera_filter: []  # from cameras list; frigate/events
   frigate_label_filter: ["bird", "Bird"]
+  frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
   esphome_url: ""
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
