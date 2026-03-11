@@ -71,6 +71,8 @@
     "mqttPassword": "MQTT пароль",
     "frigateTopic": "Frigate топик",
     "frigateTopicHint": "События Frigate для слияния с YOLO",
+    "frigateLabelExclude": "Исключить метки Frigate",
+    "frigateLabelExcludeHint": "Метки, которые игнорировать (мышь как кошка/собака). Через запятую.",
     "birdnetTopic": "BirdNET топик",
     "birdnetTopicHint": "Топик, куда BirdNET публикует детекции",
     "go2rtcUrl": "Go2RTC URL",

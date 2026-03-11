@@ -71,6 +71,8 @@
     "mqttPassword": "MQTT password",
     "frigateTopic": "Frigate topic",
     "frigateTopicHint": "Frigate events for merging with YOLO",
+    "frigateLabelExclude": "Exclude Frigate labels",
+    "frigateLabelExcludeHint": "Labels to ignore (mouse misidentified as cat/dog). Comma-separated.",
     "birdnetTopic": "BirdNET topic",
     "birdnetTopicHint": "Topic where BirdNET publishes detections",
     "go2rtcUrl": "Go2RTC URL",

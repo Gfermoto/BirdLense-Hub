@@ -125,8 +125,9 @@ class MQTTEventAggregator:
         password=None,
         max_events: int = 500,
         on_frigate_motion=None,
+        frigate_label_exclude=None,
     ):
-        """on_frigate_motion: (camera_filter, label_filter, callback) — один MQTT вместо двух."""
+        """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog)."""
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
@@ -141,6 +142,7 @@ class MQTTEventAggregator:
         self._thread = None
         self._connected = False
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
+        self._frigate_label_exclude = set(frigate_label_exclude or [])
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -159,18 +161,21 @@ class MQTTEventAggregator:
         ev = None
         if msg.topic == self.frigate_topic:
             ev = _parse_frigate_event(msg.payload)
-            if ev and self._on_frigate_motion:
-                cam_f, lbl_f, cb = self._on_frigate_motion
-                camera = ev.get("camera", "")
+            if ev:
                 label = ev.get("label", "")
                 sub_label = ev.get("sub_label", "")
                 species = ev.get("species", "")
                 labels = {label, sub_label, species} if sub_label else {label, species}
-                if (not cam_f or camera in cam_f) and (lbl_f & labels):
-                    try:
-                        cb(camera, species)
-                    except Exception as e:
-                        logger.debug(f"Frigate motion callback: {e}")
+                if self._frigate_label_exclude and (labels & self._frigate_label_exclude):
+                    return
+                if self._on_frigate_motion:
+                    cam_f, lbl_f, cb = self._on_frigate_motion
+                    camera = ev.get("camera", "")
+                    if (not cam_f or camera in cam_f) and (lbl_f & labels):
+                        try:
+                            cb(camera, species)
+                        except Exception as e:
+                            logger.debug(f"Frigate motion callback: {e}")
         elif msg.topic in self.birdnet_topics:
             ev = _parse_birdnet_event(msg.payload)
         if ev:

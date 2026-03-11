@@ -864,6 +864,27 @@ export const SettingsForm = ({
               </form.Field>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="motion.frigate_label_exclude">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    value={(field.state.value || []).join(', ')}
+                    onChange={(e) =>
+                      field.handleChange(
+                        (e.target.value || '')
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                    label={t('settings.frigateLabelExclude')}
+                    placeholder="cat, dog"
+                    helperText={t('settings.frigateLabelExcludeHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.tracker">
                 {(field) => (
                   <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.objectTracker')} />

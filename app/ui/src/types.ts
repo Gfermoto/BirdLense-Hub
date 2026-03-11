@@ -144,6 +144,7 @@ export interface Settings {
     source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
+    frigate_label_exclude?: string[];
     mqtt_topic?: string;
     esphome_url?: string;
     esphome_sensor_id?: string;
