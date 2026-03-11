@@ -101,13 +101,16 @@ def register_routes(app):
     def notify_detections_route():
         if not _check_processor_secret():
             return {'error': 'Forbidden'}, 403
-        detection = request.json.get('detection')
+        data = request.json or {}
+        detection = data.get('detection')
+        image_path = data.get('image_path')
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:
             lower = detection.lower()
-            icon = "chipmunk" if any(s in lower for s in ("squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
-            notify(f"{detection} Detected", tags=icon)
+            icon = "chipmunk" if any(s in lower for s in (
+                "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
+            notify(f"{detection} Detected", tags=icon, image_path=image_path)
         return {'message': f'Successfully received notification of {detection}'}, 200
 
     @app.route('/api/processor/notify/motion', methods=['POST'])

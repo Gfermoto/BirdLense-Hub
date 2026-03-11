@@ -38,4 +38,4 @@
 
 ---
 
-См. также: [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md).
+См. также: [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md), [DEPLOYMENT.md](./DEPLOYMENT.md).

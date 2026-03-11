@@ -53,4 +53,4 @@
 
 ---
 
-**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [scripts/datasets/README.md](../scripts/datasets/README.md)
+**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [scripts/datasets/README.md](../scripts/datasets/README.md)

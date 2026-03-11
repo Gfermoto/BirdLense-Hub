@@ -40,6 +40,7 @@
 | `/system/regenerate-tracks` | POST | Регенерация треков |
 | `/system/regenerate-tracks/status` | GET | Статус регенерации треков |
 | `/system/recordings/scan` | POST | Сканирование и импорт записей |
+| `/system/logs` | GET | Логи процессора (последние N строк, ?lines=100) |
 
 ### Processor API (`/api/processor/*`)
 

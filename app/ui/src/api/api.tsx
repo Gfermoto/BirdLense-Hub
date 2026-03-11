@@ -118,7 +118,7 @@ export const fetchStatus = async (): Promise<{
 }> => {
   if (useMockData) {
     await sleep(300);
-    return { web: 'ok', processor: 'ok', video: 'ok', mqtt: 'unknown', esphome: 'not_used', yolo: 'ok' };
+    return { web: 'ok', processor: 'ok', video: 'ok', mqtt: 'unknown', esphome: 'not_used', yolo: 'ok', motion_source: 'opencv' };
   }
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;

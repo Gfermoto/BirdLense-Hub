@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemActivity } from './SystemActivity';
 import { SystemMonitor } from './SystemMonitor';
+import { ProcessorLogs } from './ProcessorLogs';
 import { Box, Divider } from '@mui/material';
 import { StorageManagement } from './StorageManagement';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -26,6 +27,12 @@ export const System: React.FC = () => {
 
         <Box>
           <StorageManagement />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box>
+          <ProcessorLogs />
         </Box>
       </Box>
     </ProtectedRoute>

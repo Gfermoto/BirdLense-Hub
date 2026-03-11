@@ -773,6 +773,15 @@ components:
               type: array
               items:
                 type: string
+        notifications:
+          type: object
+          properties:
+            telegram_bot_token:
+              type: string
+            telegram_chat_id:
+              type: string
+            base_url:
+              type: string
         processor:
           type: object
           properties:

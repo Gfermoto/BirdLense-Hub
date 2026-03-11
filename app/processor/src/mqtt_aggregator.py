@@ -167,15 +167,33 @@ class MQTTEventAggregator:
                 species = ev.get("species", "")
                 labels = {label, sub_label, species} if sub_label else {label, species}
                 if self._frigate_label_exclude and (labels & self._frigate_label_exclude):
+                    logger.debug(
+                        "Frigate event excluded (label_exclude): label=%s sub=%s",
+                        label, sub_label)
                     return
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
                     camera = ev.get("camera", "")
-                    if (not cam_f or camera in cam_f) and (lbl_f & labels):
+                    cam_lower = {c.lower() for c in cam_f} if cam_f else set()
+                    cam_ok = not cam_f or (camera.lower() in cam_lower)
+                    labels_lower = {s.lower() for s in labels}
+                    lbl_f_lower = {s.lower() for s in lbl_f}
+                    lbl_ok = bool(lbl_f_lower & labels_lower)
+                    if cam_ok and lbl_ok:
+                        logger.info(
+                            "Frigate trigger: camera=%s label=%s sub_label=%s -> recording",
+                            camera, label, sub_label)
                         try:
                             cb(camera, species)
                         except Exception as e:
-                            logger.debug(f"Frigate motion callback: {e}")
+                            logger.debug("Frigate motion callback: %s", e)
+                    else:
+                        logger.info(
+                            "Frigate event skipped (no trigger): camera=%s label=%s "
+                            "sub_label=%s | camera_filter=%s label_filter=%s",
+                            camera, label, sub_label,
+                            list(cam_f) if cam_f else "any",
+                            list(lbl_f))
         elif msg.topic in self.birdnet_topics:
             ev = _parse_birdnet_event(msg.payload)
         if ev:

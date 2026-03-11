@@ -1,11 +1,13 @@
 import threading
 import time
+import uuid
 from datetime import datetime, timezone
 import argparse
 import logging
 import os
 import shutil
 
+import cv2
 from frame_processor import FrameProcessor
 from detection_strategy import SingleStageStrategy, TwoStageStrategy
 from spectrogram import generate_spectrogram
@@ -21,14 +23,29 @@ from sources.go2rtc_stream_source import Go2RTCStreamSource
 from sources.go2rtc_stream_source import _build_stream_url
 from app_config.app_config import app_config
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Logs to the console
-    ]
-)
+# Set up logging: console + file for remote diagnostics (System page)
+def _setup_logging():
+    fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if not root.handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter(fmt))
+        root.addHandler(h)
+    data_dir = os.environ.get('DATA_DIR', 'data')
+    log_path = os.path.join(data_dir, 'processor.log')
+    try:
+        from logging.handlers import RotatingFileHandler
+        fh = RotatingFileHandler(
+            log_path, maxBytes=5 * 1024 * 1024, backupCount=2,
+            encoding='utf-8')
+        fh.setFormatter(logging.Formatter(fmt))
+        root.addHandler(fh)
+    except OSError:
+        pass
+
+
+_setup_logging()
 
 
 def get_output_path():
@@ -192,6 +209,10 @@ def main():
             logging.warning('Frigate MQTT not connected, falling back to OpenCV')
             motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
         else:
+            logging.info(
+                'Motion: Frigate (cameras=%s labels=%s)',
+                list(frigate_camera_filter) if frigate_camera_filter else 'any',
+                list(frigate_label_filter))
             motion_detector = frigate_detector
     elif app_config.get('motion.source') == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
         mqtt_topic = app_config.get('motion.mqtt_topic', '').strip()
@@ -217,6 +238,8 @@ def main():
             logging.warning('motion.source=esphome but URL/sensor empty, falling back to OpenCV')
             motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
     elif app_config.get('motion.source') == 'opencv':
+        logging.info(
+            'Motion: OpenCV (Frigate events only for merge, NOT for trigger)')
         motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
     elif app_config.get('motion.source') == 'pir':
         from motion_detectors.pir import PIRMotionDetector
@@ -316,9 +339,25 @@ def main():
 
                 # Decision making
                 decision_maker.update_has_detections(has_detections)
-                species = decision_maker.decide_species(frame_processor.tracks)
-                if species is not None:
-                    api.notify_species(species)
+                first_result = decision_maker.get_first_species_result(
+                    frame_processor.tracks)
+                if first_result is not None:
+                    species = first_result['species_name']
+                    best_frame = first_result.get('best_frame')
+                    image_path = None
+                    try:
+                        if (best_frame is not None and
+                                app_config.get('processor.save_images')):
+                            data_dir = os.environ.get('DATA_DIR', 'data')
+                            notify_dir = os.path.join(data_dir, 'notify_temp')
+                            os.makedirs(notify_dir, exist_ok=True)
+                            fname = f"{uuid.uuid4().hex}.jpg"
+                            image_path = os.path.join(notify_dir, fname)
+                            cv2.imwrite(image_path, best_frame)
+                        api.notify_species(species, image_path=image_path)
+                    except Exception as e:
+                        logging.warning(
+                            "Notify species failed (recording continues): %s", e)
                 if decision_maker.decide_stop_recording():
                     break
             fps_tracker.log_summary()

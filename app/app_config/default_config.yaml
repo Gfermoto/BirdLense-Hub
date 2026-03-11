@@ -91,11 +91,17 @@ retention:
   days: 90
   # max_gb: 50
 
-# Notifications (ntfy)
+# Notifications (Telegram)
+# TODO: корм за Stars — sendInvoice / paid broadcast для кнопки «Выдать корм»
 notifications:
-  enabled: true
-  excluded_species: []
-  rate_limit_per_minute: 5
+  telegram_bot_token: ""       # @BotFather → /newbot
+  telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
+  base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
+  message_thread_id: ""       # ID топика в канале (если канал с форумом)
+  disable_notification: false # Тихие сообщения (без звука)
+  protect_content: false      # Запретить пересылку и сохранение
+  paid_media_view_star_count: 0    # Stars за просмотр фото (0=бесплатно, 1-25000)
+  paid_media_forward_star_count: 0  # Stars за пересылку/копирование (0=разрешить, >0=запретить при бесплатном просмотре)
 
 # MCP (Model Context Protocol) — AI-агенты (Cursor, Claude) могут вызывать API BirdLense Hub
 mcp:

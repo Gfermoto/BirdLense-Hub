@@ -126,6 +126,16 @@ export interface Settings {
     frigate_topic?: string;
     birdnet_topic?: string;
   };
+  notifications?: {
+    telegram_bot_token?: string;
+    telegram_chat_id?: string;
+    base_url?: string;
+    message_thread_id?: string;
+    disable_notification?: boolean;
+    protect_content?: boolean;
+    paid_media_view_star_count?: number;
+    paid_media_forward_star_count?: number;
+  };
   weather?: {
     source?: 'openweather' | 'homeassistant';
     ha_url?: string;
