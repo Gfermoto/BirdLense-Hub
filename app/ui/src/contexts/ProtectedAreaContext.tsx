@@ -46,9 +46,12 @@ export function ProtectedAreaProvider({
     setUnlockedState(value);
   }, []);
 
-  const unlocked = requiresPassword
-    ? (unlockedState || checkResult?.unlocked === true)
-    : true;
+  const unlocked =
+    requiresPassword === false
+      ? true
+      : requiresPassword === true
+        ? (unlockedState || checkResult?.unlocked === true)
+        : false;
   const accessError =
     requiresPassword && checkResult?.unlocked === false && checkResult?.error
       ? 'network'

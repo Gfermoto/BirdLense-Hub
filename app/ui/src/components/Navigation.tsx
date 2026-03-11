@@ -76,7 +76,8 @@ export function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.split('?')[0];
-  const { requiresPassword, unlocked, setUnlocked } = useProtectedArea();
+  const { requiresPassword, unlocked, setUnlocked, isLoading } =
+    useProtectedArea();
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
@@ -105,8 +106,10 @@ export function Navigation() {
     }
   };
 
+  const needsPassword = isLoading || (requiresPassword && !unlocked);
+
   const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (requiresPassword && !unlocked) {
+    if (needsPassword) {
       setPendingAction({ type: 'openMenu' });
       setShowPasswordDialog(true);
     } else {
@@ -116,7 +119,7 @@ export function Navigation() {
 
   const handleProtectedNav = (path: string, e: React.MouseEvent) => {
     e.preventDefault();
-    if (requiresPassword && !unlocked) {
+    if (needsPassword) {
       setPendingAction({ type: 'navigate', path });
       setShowPasswordDialog(true);
     } else {
