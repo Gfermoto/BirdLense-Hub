@@ -63,4 +63,4 @@ Push в `main` → автодеплой. Требует self-hosted runner на 
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [TESTING_DEPLOY.md](./TESTING_DEPLOY.md), [MCP_SETUP.md](./MCP_SETUP.md).
+См. также: [INSTALL.md](./INSTALL.md), [CONFIGURATION.md](./CONFIGURATION.md), [TESTING_DEPLOY.md](./TESTING_DEPLOY.md), [MCP_SETUP.md](./MCP_SETUP.md).
