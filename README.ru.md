@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](./CHANGELOG.md) [English](./README.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
@@ -46,7 +46,7 @@
 - **Таймлайн** — воспроизведение видео, спектрограммы, визуализация треков, визиты видов
 - **UI** — React, Material UI, i18n (en/ru), адаптивный
 - **Погода** — OpenWeather или Home Assistant
-- **Уведомления** — [ntfy](https://ntfy.sh)
+- **Уведомления** — Telegram Bot API
 - **MCP** — Model Context Protocol для внешних инструментов
 - **Исследования** — подготовка датасетов (NABirds, COCO → YOLO), ноутбуки обучения, экспорт для дообучения моделей
 
@@ -60,7 +60,9 @@ make pull
 ```
 UI: http://localhost:8085
 
-**Деплой на сервер:** `make deploy` из корня репозитория. Подробнее: [app/README.md](./app/README.md)
+**Деплой на сервер:** `make deploy` из корня репозитория.
+
+**Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
 
 При первом запуске `make setup` создаёт `app/.env` с `PROCESSOR_SECRET` и `FLASK_SECRET_KEY` автоматически.
 

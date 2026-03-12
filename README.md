@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -60,7 +60,9 @@ make pull
 ```
 UI: http://localhost:8085
 
-**Deploy to server:** `make deploy` from repo root. Details: [app/README.md](./app/README.md)
+**Deploy to server:** `make deploy` from repo root.
+
+**Full install guide:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
 
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 

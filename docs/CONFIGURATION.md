@@ -199,4 +199,4 @@
 
 ---
 
-См. также: [ARCHITECTURE.md](./ARCHITECTURE.md), [DEPLOYMENT.md](./DEPLOYMENT.md).
+См. также: [INSTALL.md](./INSTALL.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [DEPLOYMENT.md](./DEPLOYMENT.md).

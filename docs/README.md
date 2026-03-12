@@ -4,14 +4,24 @@
 
 ---
 
+## Начало работы
+
+| Документ | Описание |
+|----------|----------|
+| [INSTALL.md](./INSTALL.md) | **Установка** — Docker, готовый образ, первый запуск |
+| [SCENARIOS.md](./SCENARIOS.md) | **Типичные сценарии** — минимальная установка, Frigate, BirdNET, Telegram, кормушка |
+| [CONFIGURATION.md](./CONFIGURATION.md) | **Настройка** — конфиг, переменные окружения, секции |
+
+---
+
 ## Система
 
 | Документ | Описание |
 |----------|----------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
-| [CONFIGURATION.md](./CONFIGURATION.md) | `default_config.yaml`, переменные окружения |
 | [API.md](./API.md) | Эндпоинты UI, System, Processor |
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, автодеплой GitHub Actions |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, автодеплой |
+| [VERSIONING.md](./VERSIONING.md) | Версионирование, CHANGELOG, политика обновлений |
 
 ---
 
@@ -20,7 +30,7 @@
 | Документ | Описание |
 |----------|----------|
 | [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
-| [TESTING_DEPLOY.md](./TESTING_DEPLOY.md) | План тестирования после деплоя, MQTT, провокация событий |
+| [TESTING_DEPLOY.md](./TESTING_DEPLOY.md) | План тестирования после деплоя |
 
 ---
 
@@ -29,8 +39,7 @@
 | Документ | Описание |
 |----------|----------|
 | [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP (Model Context Protocol) |
-| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, форматы сообщений |
-| [mcp.json.example](./mcp.json.example) | Шаблон конфига MCP |
+| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET |
 
 ---
 
@@ -38,12 +47,13 @@
 
 | Документ | Описание |
 |----------|----------|
+| [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), слияние датасетов |
+| [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Дообучение на birds-525, iNaturalist |
 | [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение |
-| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (NABirds, COCO, ноутбуки) |
-| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты на Hugging Face (Birdsnap, CUB-200), Zenodo |
-| [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) | Hugging Face Hub: создание, установка, загрузка, работа с датасетами |
-| [dataset-card-readme.md](./dataset-card-readme.md) | Шаблон Dataset card для Hugging Face (README с YAML) |
-| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (подтвердить/исправить), куда уходят данные |
+| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов |
+| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты на Hugging Face, Zenodo |
+| [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) | Hugging Face Hub |
+| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка |
 
 ---
 
@@ -58,5 +68,5 @@
 ## Правила
 
 - Новый документ — сразу добавить в таблицу выше
-- В конце документа — секция «См. также» со ссылками на связанные
-- Один источник истины: избегать дублирования, ссылаться на основной документ
+- В конце документа — секция «См. также» со ссылками
+- Один источник истины: избегать дублирования
