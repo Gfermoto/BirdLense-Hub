@@ -9,6 +9,7 @@ app/data/processor.log
 app.log
 .DS_Store
 /datasets
+scripts/datasets/.cache/
 .venv-datasets/
 
 # Настройки — не коммитить (только шаблоны в репо)

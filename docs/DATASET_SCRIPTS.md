@@ -56,6 +56,8 @@
 
 См. **[FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md)** — оборудование, датасеты (birds-525, iNaturalist Europe — для EU; NABirds, Birdsnap, CUB-200 — без EU-видов), пайплайн объединения и дообучения.
 
+**Формат имён:** [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) — `Scientific (Common)` для слияния с Frigate/BirdNET.
+
 ---
 
 ## Планируется

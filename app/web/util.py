@@ -193,14 +193,61 @@ def fetch_weather():
     return fetcher.fetch()
 
 
+def _extract_common_for_hierarchy(species_name: str) -> str:
+    """
+    Извлечь common name для поиска в иерархии.
+    "Cardinalis cardinalis (Northern Cardinal)" -> "Northern Cardinal"
+    "Northern Cardinal" -> "Northern Cardinal"
+    """
+    if not species_name or not isinstance(species_name, str):
+        return species_name or ""
+    s = species_name.strip()
+    m = re.match(r"^.+?\s*\(([^)]+)\)\s*$", s)
+    return m.group(1).strip() if m else s
+
+
+def _load_hierarchy_parent_map():
+    """Загрузить маппинг child -> parent из hierarchy_names.txt."""
+    path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
+    result = {}
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if "|" in line:
+                child, parent = line.split("|", 1)
+                result[child.strip()] = parent.strip()
+    return result
+
+
+_hierarchy_parent_map = None
+
+
+def get_parent_name_for_species(species_name: str) -> str | None:
+    """
+    Найти родительскую категорию для вида по иерархии.
+
+    Поддерживает формат "Scientific (Common)": извлекает common name для поиска.
+    Используется при создании новых видов (Frigate, BirdNET, новый YOLO).
+
+    Returns:
+        Имя родителя (например "Cardinals, Grosbeaks, and Allies") или None.
+    """
+    global _hierarchy_parent_map
+    if _hierarchy_parent_map is None:
+        _hierarchy_parent_map = _load_hierarchy_parent_map()
+    key = _extract_common_for_hierarchy(species_name)
+    return _hierarchy_parent_map.get(key) or _hierarchy_parent_map.get(species_name)
+
+
 def build_hierarchy_tree():
     species_dict = {}
     path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
-    with open(path, "r") as file:
+    with open(path, "r", encoding="utf-8") as file:
         lines = file.readlines()
     for line in lines:
-        species_name, parent_name = line.strip().split("|")
-        species_dict[species_name] = parent_name
+        if "|" in line:
+            species_name, parent_name = line.strip().split("|", 1)
+            species_dict[species_name.strip()] = parent_name.strip()
 
     # Step 1: Create a map to store child-parent relationships
     children_map = {}

@@ -2,6 +2,16 @@
 
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
+## EU birds: birds-525 + iNaturalist (формат Scientific (Common))
+
+- **download_hf_birds.py** — Hugging Face (birds-525) → YOLO cls, `--format scientific_common`
+- **download_inaturalist.py** — iNaturalist Europe API → YOLO cls
+- **species_format.py** — утилиты: format, parse, маппинг inat_bird_labels
+- **merge_classification_datasets.py** — объединить датасеты
+- **download_and_merge_all.sh** — полный пайплайн
+
+Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASET_MERGE_FORMAT.md](../docs/DATASET_MERGE_FORMAT.md).
+
 ## convert_nabirds_to_yolo.py
 
 Converts raw NABirds dataset to [Ultralytics YOLO format](https://docs.ultralytics.com/datasets/) used for training.

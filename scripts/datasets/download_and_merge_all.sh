@@ -1,5 +1,8 @@
 #!/bin/bash
-# Скачать birds-525 и iNaturalist Europe, объединить.
+# Скачать birds-525 и iNaturalist Europe, объединить в формате "Scientific (Common)".
+
+# Формат имён: Scientific_name (Common Name) — совпадает с Frigate, BirdNET.
+# См. docs/DATASET_MERGE_FORMAT.md
 
 set -e
 cd "$(dirname "$0")/../.."
@@ -18,7 +21,8 @@ echo "=== 1. birds-525-species (~18k, ~280MB) ==="
 "$VENV/bin/python" scripts/datasets/download_hf_birds.py \
   --dataset 34data/birds-525-species \
   --output "$OUT/birds_525_cls" \
-  --val-ratio 0.2
+  --val-ratio 0.2 \
+  --format scientific_common
 
 echo "=== 2. iNaturalist Europe (~2k obs, ~1 ч) ==="
 "$VENV/bin/python" scripts/datasets/download_inaturalist.py \
@@ -26,7 +30,7 @@ echo "=== 2. iNaturalist Europe (~2k obs, ~1 ч) ==="
   --max-obs 2000 \
   --val-ratio 0.2
 
-echo "=== 3. Объединение ==="
+echo "=== 3. Объединение (формат Scientific (Common)) ==="
 "$VENV/bin/python" scripts/datasets/merge_classification_datasets.py \
   --inputs "$OUT/birds_525_cls" "$OUT/inaturalist_europe_cls" \
   --output "$OUT/merged_cls" \
