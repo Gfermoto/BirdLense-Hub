@@ -123,6 +123,7 @@ def register_routes(app):
     @app.route('/api/processor/activity_log', methods=['POST'])
     def add_or_update_activity_log():
         if not _check_processor_secret():
+            app.logger.warning("activity_log: 403 Forbidden (PROCESSOR_SECRET mismatch)")
             return {'error': 'Forbidden'}, 403
         try:
             data = request.json or {}

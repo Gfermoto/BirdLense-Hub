@@ -4,12 +4,24 @@
 
 ---
 
-## 0. Текущая модель и пайплайн
+## 0. Европейские птицы: текущее положение и планы
+
+**Изначально европейских видов в модели не было.** Классификатор обучен на NABirds — в основном североамериканские птицы. Европейские виды (сойка, синица, зяблик и т.п.) распознаются хуже или не распознаются.
+
+**Сейчас выходим из положения через:**
+- **Frigate Bird Classification** — `sub_label` из MobileNet INat (iNaturalist), если включено в Frigate
+- **BirdNET** — распознавание по голосу (аудио)
+
+**Планируем:** дообучить модель на открытых датасетах с европейскими видами. Ниже — датасеты с ссылками и пояснение, какие дадут улучшение, а какие нет.
+
+---
+
+## 1. Текущая модель и пайплайн
 
 | Компонент | Версия | Дообучено на | Ограничение |
 |-----------|--------|--------------|-------------|
 | **Детектор** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
-| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейские виды (сойка, синица и т.п.) распознаются хуже |
+| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейские виды распознаются хуже |
 
 **Планируется:** переобучение на YOLO11n (см. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md)).
 
@@ -18,20 +30,22 @@
 1. **Pretrain** — дообучение на открытых датасетах. Цель: расширить охват видов, добавить европейские.
 2. **Fine-tune** — дообучение на данных BirdLense Hub (записи с кормушек, подтверждённые/исправленные пользователями). Цель: адаптация к реальным условиям (угол, освещение, кормушка).
 
-**Планируемые датасеты для pretrain:**
+### Датасеты для pretrain: европейские vs остальные
 
-| Датасет | Видов | Регион | Статус |
-|---------|-------|--------|--------|
-| NABirds | ~400 | Северная Америка | ✅ Используется |
-| 34data/birds-525-species | 525 | Частично EU | Планируется |
-| sasha/birdsnap | 500 | Северная Америка | Планируется |
-| randall-lab/cub200 | 200 | Северная Америка | Планируется |
-| iNaturalist | Тысячи | ✅ Фильтр по региону | Планируется |
-| CUB-200-2011 | 200 | Северная Америка | Планируется |
+| Датасет | Видов | Регион | Ссылка | Улучшение по EU |
+|---------|-------|--------|--------|-----------------|
+| **[34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species)** | 525 | Частично EU | [Hugging Face](https://huggingface.co/datasets/34data/birds-525-species) | ✅ Частично |
+| **iNaturalist (Europe)** | Тысячи | ✅ Европа | [API](https://api.inaturalist.org/v1/docs/), `place_id=96372` | ✅ Да |
+| NABirds | ~400 | Северная Америка | [dl.allaboutbirds.org](https://dl.allaboutbirds.org/nabirds) | ❌ Нет европейских видов |
+| [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 | Северная Америка | [Hugging Face](https://huggingface.co/datasets/sasha/birdsnap) | ❌ Нет европейских видов |
+| [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 | Северная Америка | [Hugging Face](https://huggingface.co/datasets/randall-lab/cub200) | ❌ Нет европейских видов |
+| CUB-200-2011 | 200 | Северная Америка | [Caltech](https://www.vision.caltech.edu/datasets/cub_200_2011/) | ❌ Нет европейских видов |
+
+**NABirds, Birdsnap, CUB-200** — североамериканские датасеты. Добавление их в pretrain **не даст улучшения по европейским видам**, но может усилить общую способность к классификации. Для EU-птиц приоритет: **birds-525** и **iNaturalist Europe**.
 
 ---
 
-## 1. Оборудование
+## 2. Оборудование
 
 ### Минимальные требования
 
@@ -54,9 +68,9 @@
 
 ---
 
-## 2. Открытые датасеты
+## 3. Открытые датасеты
 
-### 2.1 Уже в пайплайне BirdLense (используются для текущей модели)
+### 3.1 Уже в пайплайне BirdLense (используются для текущей модели)
 
 | Датасет | Видов | Регион | Формат | Скрипт |
 |---------|-------|--------|--------|--------|
@@ -64,24 +78,24 @@
 | **COCO birds** | 1 (bird) | — | YOLO | `download_coco_birds.py` — для binary детектора |
 | **OIDv4 squirrel** | 1 | — | YOLO | `convert_oidv4_squirrel_to_yolo.py` — для binary |
 
-### 2.2 Hugging Face — планируется для pretrain
+### 3.2 Hugging Face — для pretrain
 
 | Датасет | Видов | Изображений | Формат | Европейские виды |
 |---------|-------|--------------|--------|------------------|
-| [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) | 525 | ~18k | ImageFolder | Частично |
-| [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 | ~50k | bbox + species | Северная Америка |
-| [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 | ~12k | bbox | Северная Америка |
+| [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) | 525 | ~18k | ImageFolder | ✅ Частично |
+| [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 | ~50k | bbox + species | ❌ Северная Америка — не даст улучшения по EU |
+| [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 | ~12k | bbox | ❌ Северная Америка — не даст улучшения по EU |
 
-### 2.3 Внешние — планируется для pretrain (ручная загрузка)
+### 3.3 Внешние — для pretrain (ручная загрузка)
 
 | Датасет | Видов | Ссылка | Европейские |
 |---------|-------|--------|-------------|
-| **iNaturalist** | Тысячи | [API](https://api.inaturalist.org/v1/docs/) | ✅ Фильтр по региону |
-| **CUB-200-2011** | 200 | [Caltech](https://www.vision.caltech.edu/datasets/cub_200_2011/) | Нет |
+| **iNaturalist (Europe)** | Тысячи | [API](https://api.inaturalist.org/v1/docs/), `place_id=96372` | ✅ Да — основной источник EU-видов |
+| **CUB-200-2011** | 200 | [Caltech](https://www.vision.caltech.edu/datasets/cub_200_2011/) | ❌ Нет — не даст улучшения по EU |
 
 ---
 
-## 3. Пайплайн: подготовка → объединение → обучение
+## 4. Пайплайн: подготовка → объединение → обучение
 
 ### Шаг 1: Скачать и конвертировать датасеты
 
@@ -169,15 +183,16 @@ for item in ds:
 
 ---
 
-## 5. Оценка объёма и времени
+## 5. Оценка объёма и времени (birds-525 + iNaturalist EU)
 
 | Датасет | Размер | Время загрузки | Время обучения (A100) |
 |---------|--------|-----------------|------------------------|
 | NABirds (уже есть) | ~10 GB | — | 4–6 ч |
 | birds-525-species | ~0.5 GB | 10 мин | +1 ч |
-| Birdsnap | ~5 GB | 30 мин | +2–3 ч |
-| iNaturalist (500 видов EU) | ~2 GB | 1 ч | +1–2 ч |
-| **Итого** | ~18 GB | 2–3 ч | 8–12 ч |
+| iNaturalist Europe | ~2 GB | ~1 ч (rate limit 60/мин) | +1–2 ч |
+| **Итого (EU-ориентированный)** | ~13 GB | 2–3 ч | 6–9 ч |
+
+*Birdsnap, CUB-200 — североамериканские, не дают улучшения по европейским видам.*
 
 ---
 
@@ -187,7 +202,7 @@ for item in ds:
 - [ ] RunPod/Colab: создать pod, загрузить `birds_train_cls.ipynb`
 - [ ] Скачать NABirds (или использовать уже подготовленный `nabirds_yolo_cleaned_cls`)
 - [ ] Добавить скрипт загрузки Hugging Face (birds-525, birdsnap) — `download_hf_birds.py`
-- [ ] Добавить скрипт iNaturalist для европейских видов
+- [x] Скрипт iNaturalist для европейских видов — `download_inaturalist.py`
 - [ ] Скрипт `merge_classification_datasets.py` — объединить датасеты
 - [ ] В `birds_train_cls.ipynb`: загрузить `best.pt`, дообучить на merged dataset
 

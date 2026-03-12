@@ -321,7 +321,21 @@
   "status": {
     "motion": "Триггер",
     "motionFrigateHint": "События Frigate запускают запись",
-    "motionOpencvHint": "OpenCV запускает. Frigate — только для слияния, не для старта записи."
+    "motionOpencvHint": "OpenCV запускает. Frigate — только для слияния, не для старта записи.",
+    "videoOk": "Камеры подключены",
+    "videoUnknown": "Нет подключения к камерам",
+    "mqttOk": "MQTT подключён",
+    "mqttUnknown": "Нет подключения к MQTT",
+    "mqttNotUsed": "MQTT не используется",
+    "mqttNotConfigured": "MQTT не настроен",
+    "mqttError": "Ошибка MQTT",
+    "yoloOk": "YOLO работает",
+    "yoloUnknown": "Процессор недоступен (камеры, детекция)",
+    "esphomeOk": "ESPHome подключён",
+    "esphomeNotUsed": "ESPHome не используется",
+    "esphomeNotConfigured": "ESPHome не настроен",
+    "esphomeUnknown": "Нет подключения к ESPHome",
+    "esphomeError": "Ошибка ESPHome"
   },
   "commonLabels": {
     "date": "Дата",

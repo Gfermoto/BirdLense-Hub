@@ -36,7 +36,7 @@ def normalize_class_name(name: str) -> str:
 
 def download_birds_525(repo_id: str, output_dir: Path, val_ratio: float = 0.2):
     """34data/birds-525-species: image + labels."""
-    ds = load_dataset(repo_id, split='train', trust_remote_code=True)
+    ds = load_dataset(repo_id, split='train')
     cols = ds.column_names
 
     # Ищем колонки: image, label/labels
@@ -83,29 +83,43 @@ def download_birds_525(repo_id: str, output_dir: Path, val_ratio: float = 0.2):
     else:
         val_idx = set()
 
+    # 34data/birds-525: filename = "SPECIES NAME/001.jpg" → извлечь вид
+    def get_class_name(label):
+        if isinstance(label, int):
+            return id_to_name.get(label, str(label))
+        s = str(label)
+        if '/' in s and not s.startswith('/'):
+            s = s.split('/')[0]  # "GOLDEN BOWER BIRD/001.jpg" → "GOLDEN BOWER BIRD"
+        return s
+
     for i in tqdm(indices, desc='Saving'):
         row = ds[i]
         img = row[img_col]
         label = row[label_col]
-        if isinstance(label, int):
-            class_name = id_to_name.get(label, str(label))
-        else:
-            class_name = str(label)
-        class_name = normalize_class_name(class_name)
+        class_name = normalize_class_name(get_class_name(label))
 
         split = 'val' if i in val_idx else 'train'
         out_dir = output_dir / split / class_name
         out_dir.mkdir(parents=True, exist_ok=True)
         fname = f"{i:06d}.jpg"
         out_path = out_dir / fname
-        if hasattr(img, 'save'):
-            img.save(out_path)
-        else:
-            from PIL import Image
-            if isinstance(img, Image.Image):
+        try:
+            if hasattr(img, 'save'):
                 img.save(out_path)
             else:
-                raise SystemExit('Unknown image type: ' + str(type(img)))
+                from PIL import Image
+                import io
+                if isinstance(img, Image.Image):
+                    img.save(out_path)
+                elif isinstance(img, bytes):
+                    Image.open(io.BytesIO(img)).convert('RGB').save(out_path)
+                else:
+                    raise ValueError('Unknown image type: ' + str(type(img)))
+        except Exception as e:
+            # Пропустить повреждённые/неподдерживаемые изображения
+            if i < 3:  # Логировать только первые
+                print(f'Skip {i}: {e}')
+            continue
 
     print(f'Saved to {output_dir}')
 
@@ -114,7 +128,7 @@ def download_birdsnap(repo_id: str, output_dir: Path, val_ratio: float = 0.05):
     """sasha/birdsnap: bbox + species_id, crop по bbox."""
     import numpy as np
     from PIL import Image
-    ds = load_dataset(repo_id, split='train', trust_remote_code=True)
+    ds = load_dataset(repo_id, split='train')
     cols = ds.column_names
 
     # Birdsnap: bb_x1, bb_y1, bb_x2, bb_y2, species_id

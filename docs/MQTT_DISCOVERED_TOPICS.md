@@ -57,7 +57,9 @@ BirdLense Hub извлекает: `CommonName`, `Confidence`, `BeginTime` (дл�
 ## Формат Frigate (топик `frigate/events`)
 
 События с полями `before`, `after`, `type` (new/update/end). BirdLense Hub использует `after`:
-`camera`, `label`, `sub_label` (вид птицы), `top_score`, `frame_time` (Unix timestamp для слияния).
+`camera`, `label`, `sub_label`, `top_score`, `frame_time` (Unix timestamp для слияния).
+
+**sub_label** — вид птицы из [Frigate Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (MobileNet INat). Включается в Frigate: `classification.bird.enabled: true`. BirdLense использует `sub_label` как species при слиянии (приоритет над `label`).
 
 ## Рекомендация
 

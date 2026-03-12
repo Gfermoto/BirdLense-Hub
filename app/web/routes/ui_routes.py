@@ -1,3 +1,4 @@
+import os
 from flask import request, session
 import json as json_module
 from sqlalchemy import func, case, distinct
@@ -34,7 +35,7 @@ def register_routes(app):
         """Component status for UI indicators (Video/MQTT/YOLO)."""
         from datetime import datetime, timezone, timedelta
         from models import ActivityLog
-        # Processor heartbeat: last activity_log of type heartbeat
+        # Processor heartbeat: last activity_log of type heartbeat (процессор шлёт каждые 60 сек)
         last_heartbeat = (
             ActivityLog.query.filter_by(type='heartbeat')
             .order_by(ActivityLog.updated_at.desc())
@@ -69,6 +70,24 @@ def register_routes(app):
             'esphome': esphome_display,
             'yolo': 'ok' if processor_ok else 'unknown',
             'motion_source': motion_source,
+        }
+
+    @app.route('/api/ui/status/debug', methods=['GET'])
+    def status_debug():
+        """Диагностика: почему статус серый. Проверить после деплоя."""
+        from datetime import datetime, timezone, timedelta
+        from models import ActivityLog
+        last = ActivityLog.query.filter_by(type='heartbeat').order_by(ActivityLog.updated_at.desc()).first()
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+        return {
+            'last_heartbeat': {
+                'id': last.id if last else None,
+                'updated_at': last.updated_at.isoformat() if last and last.updated_at else None,
+                'data': last.data if last else None,
+            } if last else None,
+            'cutoff_utc': cutoff.isoformat(),
+            'processor_secret_configured': bool(os.environ.get('PROCESSOR_SECRET', '').strip()),
+            'api_url_base_configured': bool(os.environ.get('API_URL_BASE', '').strip()),
         }
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])

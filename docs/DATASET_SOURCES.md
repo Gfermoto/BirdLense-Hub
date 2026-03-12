@@ -4,25 +4,37 @@
 
 ---
 
+## 0. Европейские птицы: приоритет
+
+Текущая модель BirdLense обучена на NABirds (североамериканские виды). **Европейских видов изначально не было** — мы выходим из положения через Frigate Bird Classification и BirdNET. Планируем дообучить модель на открытых датасетах.
+
+**Для улучшения по EU-видам** приоритетны:
+- [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) — частично EU
+- **iNaturalist** — [API](https://api.inaturalist.org/v1/docs/), фильтр `place_id=96372` (Europe)
+
+**NABirds, Birdsnap, CUB-200** — североамериканские. **Не дадут улучшения по европейским видам.** См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+
+---
+
 ## 1. Датасеты птиц (аналоги NABirds)
 
 ### На Hugging Face
 
 | Датасет | Видов | Изображений | Особенности |
 |---------|-------|-------------|-------------|
-| [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 | ~50k | Северная Америка, bbox, part labels (клюв, крылья) |
+| [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) | 525 | ~18k | Частично EU — приоритет для pretrain |
+| [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 | ~50k | Северная Америка — не даст улучшения по EU |
 | [chriamue/bird-species-dataset](https://huggingface.co/datasets/chriamue/bird-species-dataset) | — | — | Классификация видов |
-| [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) | 525 | ~90k | Kaggle, 224×224 JPG |
-| [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 | ~12k | CUB-200-2011, bbox, атрибуты |
+| [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 | ~12k | CUB-200-2011, bbox — не даст улучшения по EU |
 | [cassiekang/cub200_dataset](https://huggingface.co/datasets/cassiekang/cub200_dataset) | 200 | ~12k | CUB + текстовые описания |
 
 ### Классические (вне HF)
 
 | Датасет | Видов | Описание |
 |---------|-------|----------|
-| **NABirds** | 400 (700 категорий) | [dl.allaboutbirds.org](https://dl.allaboutbirds.org/nabirds), Cornell Lab, citizen science |
-| **CUB-200-2011** | 200 | [Caltech](https://www.vision.caltech.edu/datasets/cub_200_2011/), 15 part markers, 312 атрибутов |
-| **iNaturalist** | Тысячи | [inaturalist.org](https://www.inaturalist.org) — API, фильтр `iconic_taxa[]=Aves` |
+| **iNaturalist** | Тысячи | [API](https://api.inaturalist.org/v1/docs/) — фильтр по региону (Europe), основной источник EU-видов |
+| **NABirds** | 400 (700 категорий) | [dl.allaboutbirds.org](https://dl.allaboutbirds.org/nabirds), Cornell Lab — не даст улучшения по EU |
+| **CUB-200-2011** | 200 | [Caltech](https://www.vision.caltech.edu/datasets/cub_200_2011/) — не даст улучшения по EU |
 
 ### Загрузка с Hugging Face
 

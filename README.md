@@ -15,11 +15,13 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
 | **Detector** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel |
-| **Classifier** | YOLOv8n-cls | NABirds (~400 species) | **Mainly North American birds** |
+| **Classifier** | YOLOv8n-cls | NABirds (~400 species) | **Mainly North American birds** — European species not included |
+
+**European birds:** not in the original model. We use Frigate Bird Classification + BirdNET for now; plan to fine-tune on [birds-525](https://huggingface.co/datasets/34data/birds-525-species) and [iNaturalist Europe](https://api.inaturalist.org/v1/docs/).
 
 **Planned:** retrain on YOLO11n (see [UPGRADE_PLAN.md](./docs/UPGRADE_PLAN.md)).
 
-**Training pipeline:** 1) **Pretrain** on open datasets (NABirds, birds-525-species, Birdsnap, CUB-200, iNaturalist) → 2) **Fine-tune** on BirdLense recordings from feeders. See [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+**Training pipeline:** 1) **Pretrain** on open datasets (birds-525, iNaturalist Europe for EU; NABirds, Birdsnap, CUB-200 — no EU species) → 2) **Fine-tune** on BirdLense recordings. See [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
 
 <details>
 <summary>📷 Screenshots</summary>

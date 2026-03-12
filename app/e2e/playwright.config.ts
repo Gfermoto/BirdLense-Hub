@@ -4,9 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
  * E2E tests for BirdLense Hub.
  * Run against a running instance (e.g. docker compose up).
  *
- * BASE_URL: http://localhost:8080 (default) or http://192.168.1.11:8085
+ * BASE_URL: http://localhost:8085 (default) or http://192.168.1.11:8085
  */
-const BASE_URL = process.env.BASE_URL || process.env.E2E_BASE_URL || 'http://localhost:80';
+const BASE_URL = process.env.BASE_URL || process.env.E2E_BASE_URL || 'http://localhost:8085';
 
 export default defineConfig({
   testDir: './tests',

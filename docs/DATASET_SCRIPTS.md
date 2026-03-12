@@ -48,13 +48,13 @@
 
 **Текущее:** YOLOv8n, Ultralytics 8.4.21. **Планируется:** переобучение на YOLO11n.
 
-**Пайплайн:** pretrain на открытых датасетах (NABirds, birds-525, Birdsnap, CUB-200, iNaturalist) → fine-tune на записях BirdLense. См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+**Пайплайн:** pretrain на открытых датасетах → fine-tune на записях BirdLense. Для европейских видов приоритет: **birds-525** и **iNaturalist Europe**. NABirds, Birdsnap, CUB-200 — североамериканские, не дают улучшения по EU. См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
 
 ---
 
 ## Дообучение на открытых датасетах
 
-См. **[FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md)** — оборудование, датасеты (NABirds, Hugging Face, iNaturalist), пайплайн объединения и дообучения.
+См. **[FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md)** — оборудование, датасеты (birds-525, iNaturalist Europe — для EU; NABirds, Birdsnap, CUB-200 — без EU-видов), пайплайн объединения и дообучения.
 
 ---
 

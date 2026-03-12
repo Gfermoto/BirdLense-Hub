@@ -36,11 +36,19 @@
 7. **Спектрограмма** → FFmpeg → `spectrogram_200.jpg`
 8. **API** → processor отправляет POST `/api/processor/videos` с детекциями
 
+### Видео: Frigate (опционально)
+
+1. **Frigate** → публикует в MQTT `frigate/events` (детекция + Bird Classification)
+2. **Bird Classification** — `classification.bird.enabled: true` в Frigate, добавляет `sub_label` с видом (INat)
+3. **Processor** парсит `sub_label` и использует как species при слиянии
+
 ### Аудио (BirdNET)
 
 1. **BirdNET-Pi/Go** (внешний) → публикует в MQTT топик `birdnet`
 2. **Processor** (MQTTEventAggregator) подписан на топик
 3. Слияние с детекциями YOLO по времени (merge_window)
+
+**Европейские птицы:** YOLO-классификатор обучен на NABirds (североамериканские). Frigate Bird Classification (INat) и BirdNET компенсируют отсутствие EU-видов. Планируем дообучить на birds-525 и iNaturalist Europe — см. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
 
 ### UI
 

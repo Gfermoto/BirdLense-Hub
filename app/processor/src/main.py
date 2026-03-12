@@ -74,11 +74,16 @@ def _check_restart_flag():
 
 
 def heartbeat():
-    api = API()
+    """Отправляет heartbeat в API каждые 60 сек. При ошибке — логирует и повторяет (не падает)."""
     id = None
+    api = None
     while True:
-        # Send heartbeat first so status shows ok before exit on restart flag
-        id = api.activity_log(type='heartbeat', data={"status": "up"}, id=id)
+        try:
+            if api is None:
+                api = API()
+            id = api.activity_log(type='heartbeat', data={"status": "up"}, id=id)
+        except Exception as e:
+            logging.error("Heartbeat failed: %s (will retry in 60s)", e)
         _check_restart_flag()
         time.sleep(60)
 
@@ -119,7 +124,10 @@ def main():
         hb_id = None
         while True:
             _check_restart_flag()
-            hb_id = api.activity_log(type='heartbeat', data={'status': 'waiting_cameras'}, id=hb_id)
+            try:
+                hb_id = api.activity_log(type='heartbeat', data={'status': 'waiting_cameras'}, id=hb_id)
+            except Exception as e:
+                logging.error("Heartbeat (waiting_cameras) failed: %s", e)
             time.sleep(60)
     default_camera_id = cameras[0]['id']
     media_sources_cache = {}

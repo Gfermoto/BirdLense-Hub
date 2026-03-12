@@ -8,23 +8,39 @@ import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
+const STATUS_KEYS: Record<string, Record<string, string>> = {
+  video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoUnknown' },
+  mqtt: { ok: 'status.mqttOk', unknown: 'status.mqttUnknown', not_used: 'status.mqttNotUsed', not_configured: 'status.mqttNotConfigured', error: 'status.mqttError', offline: 'status.mqttUnknown' },
+  esphome: { ok: 'status.esphomeOk', not_used: 'status.esphomeNotUsed', not_configured: 'status.esphomeNotConfigured', unknown: 'status.esphomeUnknown', error: 'status.esphomeError', offline: 'status.esphomeUnknown' },
+  yolo: { ok: 'status.yoloOk', unknown: 'status.yoloUnknown', offline: 'status.yoloUnknown', error: 'status.yoloUnknown' },
+};
+
 const StatusDot = ({
   status,
-  label,
+  component,
   icon: Icon,
+  t,
 }: {
   status: string;
-  label: string;
+  component: 'video' | 'mqtt' | 'esphome' | 'yolo';
   icon: React.ElementType;
+  t: (key: string) => string;
 }) => {
+  const keys = STATUS_KEYS[component];
+  const tipKey = keys?.[status] ?? keys?.unknown ?? `status.${component}Unknown`;
+  const tooltip = t(tipKey);
+
   const color =
     status === 'ok'
       ? 'success.main'
       : status === 'offline' || status === 'error'
-        ? 'error.main'
-        : 'grey.500';
+        ? '#f87171'
+        : status === 'not_used'
+          ? 'rgba(255, 255, 255, 0.5)'
+          : 'rgba(251, 191, 36, 0.9)';
+
   return (
-    <Tooltip title={`${label}: ${status}`}>
+    <Tooltip title={tooltip}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <Icon sx={{ fontSize: 18, color }} />
       </Box>
@@ -43,10 +59,10 @@ export const StatusIndicator = () => {
   const motion = data.motion_source || 'opencv';
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-      <StatusDot status={data.video} label={t('commonLabels.video')} icon={VideocamOutlined} />
-      <StatusDot status={data.mqtt} label={t('commonLabels.mqtt')} icon={CloudOutlined} />
-      <StatusDot status={data.esphome ?? 'not_used'} label={t('commonLabels.esphome')} icon={SmartToyOutlined} />
-      <StatusDot status={data.yolo} label={t('commonLabels.yolo')} icon={PsychologyOutlined} />
+      <StatusDot status={data.video} component="video" icon={VideocamOutlined} t={t} />
+      <StatusDot status={data.mqtt} component="mqtt" icon={CloudOutlined} t={t} />
+      <StatusDot status={data.esphome ?? 'not_used'} component="esphome" icon={SmartToyOutlined} t={t} />
+      <StatusDot status={data.yolo} component="yolo" icon={PsychologyOutlined} t={t} />
       <Tooltip title={motion === 'frigate' ? t('status.motionFrigateHint') : t('status.motionOpencvHint')}>
         <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
           {t('status.motion')}: {motion}
