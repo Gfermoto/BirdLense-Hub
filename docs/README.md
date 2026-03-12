@@ -47,6 +47,7 @@
 
 | Документ | Описание |
 |----------|----------|
+| [COLAB_TRAINING.md](./COLAB_TRAINING.md) | **Пошаговая инструкция** — дообучение в Google Colab Free |
 | [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), слияние датасетов |
 | [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Дообучение на birds-525, iNaturalist |
 | [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение |
