@@ -76,8 +76,13 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     train_out = output / 'train'
     val_out = output / 'val'
-    train_out.mkdir(exist_ok=True)
-    val_out.mkdir(exist_ok=True)
+    # Очистить выход — иначе остаются старые папки, YOLO падает (requires N classes)
+    for d in (train_out, val_out):
+        if d.exists():
+            for sub in d.iterdir():
+                if sub.is_dir():
+                    shutil.rmtree(sub)
+        d.mkdir(exist_ok=True)
 
     # Собрать все изображения по классам
     train_by_class = collect_images_by_class(input_dirs, 'train')
@@ -95,6 +100,7 @@ def main():
         else:
             shutil.copy2(src, dst)
     total_train, total_val = 0, 0
+    kept_classes = 0
 
     for class_name in sorted(all_classes):
         train_imgs = train_by_class.get(class_name, [])
@@ -104,17 +110,22 @@ def main():
         if not all_imgs:
             continue
 
-        (train_out / class_name).mkdir(exist_ok=True)
-        (val_out / class_name).mkdir(exist_ok=True)
-
-        # Если val пустой — сделать split
-        if not val_imgs and len(all_imgs) >= 2:
+        # Если train или val пустой — сделать split (YOLO требует классы в обоих сплитах)
+        if (not train_imgs or not val_imgs) and len(all_imgs) >= 2:
             np.random.seed(42)
             idx = np.random.permutation(len(all_imgs))
             n_val = max(1, int(len(all_imgs) * args.val_ratio))
             val_idx = set(idx[:n_val])
             train_imgs = [all_imgs[i] for i in range(len(all_imgs)) if i not in val_idx]
             val_imgs = [all_imgs[i] for i in val_idx]
+
+        # Пропустить классы без изображений в обоих сплитах (YOLO не поддерживает)
+        if not train_imgs or not val_imgs:
+            continue
+
+        kept_classes += 1
+        (train_out / class_name).mkdir(exist_ok=True)
+        (val_out / class_name).mkdir(exist_ok=True)
 
         used = set()
         for p in train_imgs:
@@ -136,7 +147,10 @@ def main():
                 do_copy(p, dst)
             total_val += 1
 
-    print(f'Merged {len(all_classes)} classes: {total_train} train, {total_val} val')
+    skipped = len(all_classes) - kept_classes
+    if skipped:
+        print(f'Skipped {skipped} classes (no images in both train and val)')
+    print(f'Merged {kept_classes} classes: {total_train} train, {total_val} val')
     print(f'Output: {output}')
 
 
