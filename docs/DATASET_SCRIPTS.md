@@ -42,6 +42,7 @@
 |------|------|--------|--------------|
 | `detection/weights/best.pt` | Бинарный детектор (PyTorch) | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel |
 | `classification/weights/best.pt` | Классификатор видов (PyTorch) | YOLOv8n-cls | NABirds (~400 видов, **в основном североамериканские**) |
+| `classification/weights/best_US.pt` | Резервная копия US-модели (NABirds) | — | Перед заменой на EU: `cp best_US.pt best.pt` |
 | `detection/nabirds_yolov8n_ncnn_model/` | Single-stage NCNN (fallback) | YOLOv8n | — |
 | `detection/nabirds_yolo11n_binary/` | Binary NCNN (эксперимент) | YOLO11n | — |
 | `classification/nabirds_yolo11n_cls/` | Classification NCNN (эксперимент) | YOLO11n-cls | — |

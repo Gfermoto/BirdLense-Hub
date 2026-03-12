@@ -4,6 +4,22 @@
 
 ---
 
+## Что обучаем и зачем
+
+**Текущая модель** (`best.pt`) обучена на **NABirds** — ~400 видов, в основном **североамериканские** птицы. Для кормушек в Европе она распознаёт многие виды плохо или не распознаёт вовсе.
+
+**Новая модель (EU):** обучаем классификатор на **европейских** видах:
+- **birds-525** (Hugging Face) — 525 видов птиц в формате Scientific (Common)
+- **iNaturalist Europe** — наблюдения из Европы (place_id: Europe)
+
+После merge получается ~490 видов (классы с изображениями в обоих сплитах). Больше, чем в текущей US-модели (~400), и все — релевантные для Европы.
+
+Формат имён `Scientific (Common)` совпадает с Frigate и BirdNET — упрощает слияние детекций.
+
+**Резервная копия:** перед заменой создана копия `best_US.pt` — старая модель (NA). Чтобы вернуть US-модель: `cp best_US.pt best.pt`.
+
+---
+
 ## Что понадобится
 
 - Аккаунт Google (Gmail)
@@ -138,8 +154,23 @@ else:
             DATASET_DIR = p
             break
     train_path = os.path.join(DATASET_DIR, "train")
+    val_path = os.path.join(DATASET_DIR, "val")
     if os.path.exists(train_path):
-        n_classes = len(os.listdir(train_path))
+        # Исправить датасет: YOLO требует одинаковое число классов в train и val
+        def has_images(p):
+            return any(f.lower().endswith(('.jpg','.jpeg','.png','.webp')) for f in os.listdir(p))
+        train_classes = {d for d in os.listdir(train_path) if os.path.isdir(os.path.join(train_path, d)) and has_images(os.path.join(train_path, d))}
+        val_classes = {d for d in os.listdir(val_path) if os.path.isdir(os.path.join(val_path, d)) and has_images(os.path.join(val_path, d))} if os.path.exists(val_path) else set()
+        valid = train_classes & val_classes
+        for c in list(os.listdir(train_path)):
+            if c not in valid and os.path.isdir(os.path.join(train_path, c)):
+                shutil.rmtree(os.path.join(train_path, c), ignore_errors=True)
+        for c in list(os.listdir(val_path)) if os.path.exists(val_path) else []:
+            if c not in valid and os.path.isdir(os.path.join(val_path, c)):
+                shutil.rmtree(os.path.join(val_path, c), ignore_errors=True)
+        n_classes = len(valid)
+        if len(train_classes) != n_classes or len(val_classes) != n_classes:
+            print(f"⚠️ Удалены классы без изображений в обоих сплитах. Осталось: {n_classes}")
         print(f"✅ Датасет распакован: {DATASET_DIR}, классов: {n_classes}")
     else:
         print("⚠️ Проверьте структуру: должны быть папки train/ и val/ с подпапками по классам")
@@ -161,6 +192,8 @@ print("✅ Ultralytics установлен")
 ### Ячейка 4: Обучение
 
 **Параметры для T4 (15 GB):** `batch=64` — если будет ошибка памяти, уменьшите до 32.
+
+**Время:** ~2.5 мин на эпоху → 150 эпох ≈ 6–7 ч. Colab Free может отключиться — используйте resume (см. выше).
 
 **Важно:** замените `BirdLense_Training` на имя вашей папки в Drive.
 
@@ -251,8 +284,9 @@ Colab отключает через ~12 часов. Если обучение н
 1. Скачайте `best.pt` из Google Drive
 2. Скопируйте в BirdLense:
    ```
-   best.pt → app/processor/models/classification/nabirds_yolo11n_cls/weights/best.pt
+   best.pt → app/processor/models/classification/weights/best.pt
    ```
+   (заменит текущую модель; старая сохранена как `best_US.pt` в той же папке)
 3. Конвертация в NCNN (если используется NCNN в production):
    - См. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) или скрипты экспорта Ultralytics
 4. Деплой: `make deploy`
@@ -289,6 +323,7 @@ Colab отключает через ~12 часов. Если обучение н
 - [ ] Ячейки 1–5 выполнены по порядку
 - [ ] `best.pt` скачан из Drive
 - [ ] Модель скопирована в BirdLense и задеплоена
+- [ ] Резервная копия US: `best_US.pt` уже в `classification/weights/` (создана заранее)
 
 ---
 

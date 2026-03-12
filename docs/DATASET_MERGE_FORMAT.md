@@ -46,6 +46,8 @@ python scripts/datasets/merge_classification_datasets.py \
 
 Имена папок сохраняются как есть (`Scientific (Common)`), если уже в формате.
 
+**YOLO:** классы без изображений в обоих сплитах (train и val) пропускаются — иначе обучение падает с ошибкой «requires N classes».
+
 ### 3. Полный пайплайн
 
 ```bash
