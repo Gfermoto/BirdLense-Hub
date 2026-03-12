@@ -1,6 +1,5 @@
 import threading
 import time
-import uuid
 from datetime import datetime, timezone
 import argparse
 import logging
@@ -356,25 +355,8 @@ def main():
 
                 # Decision making
                 decision_maker.update_has_detections(has_detections)
-                first_result = decision_maker.get_first_species_result(
-                    frame_processor.tracks)
-                if first_result is not None:
-                    species = first_result['species_name']
-                    best_frame = first_result.get('best_frame')
-                    image_path = None
-                    try:
-                        if (best_frame is not None and
-                                app_config.get('processor.save_images')):
-                            data_dir = os.environ.get('DATA_DIR', 'data')
-                            notify_dir = os.path.join(data_dir, 'notify_temp')
-                            os.makedirs(notify_dir, exist_ok=True)
-                            fname = f"{uuid.uuid4().hex}.jpg"
-                            image_path = os.path.join(notify_dir, fname)
-                            cv2.imwrite(image_path, best_frame)
-                        api.notify_species(species, image_path=image_path)
-                    except Exception as e:
-                        logging.warning(
-                            "Notify species failed (recording continues): %s", e)
+                decision_maker.get_first_species_result(
+                    frame_processor.tracks)  # для decide_stop_recording
                 if decision_maker.decide_stop_recording():
                     break
             fps_tracker.log_summary()
@@ -452,6 +434,16 @@ def main():
             if len(video_detections) > 0:
                 api.create_video(video_detections, audio_detections, start_time,
                                  end_time, video_path_for_api, spectrogram_path)
+                # Уведомления — после merge (Frigate/YOLO), без фото, превью по ссылке
+                seen = set()
+                for d in video_detections:
+                    sn = d.get('species_name') or d.get('species') or ''
+                    if sn and sn not in seen:
+                        seen.add(sn)
+                        try:
+                            api.notify_species(sn, image_path=None)
+                        except Exception as e:
+                            logging.warning("Notify species failed: %s", e)
             else:
                 # no detections, delete folder
                 shutil.rmtree(output_path_physical)
