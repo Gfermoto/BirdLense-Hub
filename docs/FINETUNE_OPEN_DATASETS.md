@@ -101,14 +101,14 @@
 
 ```
 scripts/datasets/
-├── 1_nabirds.py                    # NABirds → YOLO (уже есть)
-├── download_hf_birds.py           # НОВЫЙ: Hugging Face → YOLO cls
-│   # --dataset 34data/birds-525-species --output birds_525_cls
-│   # --dataset sasha/birdsnap --output birdsnap_cls
-├── merge_classification_datasets.py  # Объединить датасеты в один
-│   # --inputs nabirds_cls birds_525_cls --output merged_cls
-└── merge_all_cls.py               # НОВЫЙ: объединить в один dataset/
+├── download_hf_birds.py           # Hugging Face → YOLO cls (--format scientific_common)
+├── download_inaturalist.py       # iNaturalist Europe → YOLO cls (формат Scientific (Common))
+├── species_format.py             # Утилиты: format, parse, маппинг inat
+├── merge_classification_datasets.py  # Объединить датасеты
+└── download_and_merge_all.sh     # Полный пайплайн
 ```
+
+**Формат имён:** `Scientific_name (Common Name)` — совпадает с Frigate. См. [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md).
 
 **Формат YOLO classification** (ожидает Ultralytics):
 ```

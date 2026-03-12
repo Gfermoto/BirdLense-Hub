@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
 import json
 from models import Video, Species, VideoSpecies, SpeciesVisit
-from util import update_species_info_from_wiki
+from util import update_species_info_from_wiki, get_parent_name_for_species
 
 
 def _ensure_utc(dt: datetime) -> datetime:
@@ -184,6 +184,7 @@ class VisitProcessor:
         """
         Get species by name, or create if unknown (Frigate/YOLO/BirdNET).
         Maps generic 'bird' -> 'Bird'. Creates new species under Birds category.
+        Для формата "Scientific (Common)" ищет родителя по common name в иерархии.
         """
         if not name or not isinstance(name, str):
             return None
@@ -198,6 +199,12 @@ class VisitProcessor:
             return species
         birds = Species.query.filter_by(name='Birds').first()
         parent_id = birds.id if birds else None
+        # Для "Scientific (Common)" — найти родителя по иерархии
+        parent_name = get_parent_name_for_species(normalized)
+        if parent_name:
+            parent_species = Species.query.filter_by(name=parent_name).first()
+            if parent_species:
+                parent_id = parent_species.id
         species = Species(name=normalized, parent_id=parent_id, active=False)
         self.db.session.add(species)
         self.db.session.flush()

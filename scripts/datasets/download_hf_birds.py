@@ -7,10 +7,12 @@
   - sasha/birdsnap (нужен bbox для crop)
 
 Формат выхода: output_dir/train/Class_Name/img.jpg, output_dir/val/Class_Name/
+С --format scientific_common: Scientific_name_Common_Name (совпадает с Frigate).
 
 Использование:
     pip install datasets huggingface_hub
     python download_hf_birds.py --dataset 34data/birds-525-species --output birds_525_cls
+    python download_hf_birds.py --dataset 34data/birds-525-species --output birds_525_cls --format scientific_common
 """  # noqa: E501
 
 import argparse
@@ -23,6 +25,11 @@ except ImportError:
 
 from tqdm import tqdm
 
+try:
+    from species_format import common_to_scientific_format, load_inat_mapping
+except ImportError:
+    common_to_scientific_format = load_inat_mapping = None
+
 
 def normalize_class_name(name: str) -> str:
     """Привести имя класса к формату папки."""
@@ -34,7 +41,7 @@ def normalize_class_name(name: str) -> str:
     return s or 'unknown'
 
 
-def download_birds_525(repo_id: str, output_dir: Path, val_ratio: float = 0.2):
+def download_birds_525(repo_id: str, output_dir: Path, val_ratio: float = 0.2, use_scientific_common: bool = False):
     """34data/birds-525-species: image + labels."""
     ds = load_dataset(repo_id, split='train')
     cols = ds.column_names
@@ -92,11 +99,20 @@ def download_birds_525(repo_id: str, output_dir: Path, val_ratio: float = 0.2):
             s = s.split('/')[0]  # "GOLDEN BOWER BIRD/001.jpg" → "GOLDEN BOWER BIRD"
         return s
 
+    mapping = None
+    if use_scientific_common and load_inat_mapping:
+        cache_dir = output_dir.parent / ".cache" if output_dir.parent else Path(".cache")
+        mapping = load_inat_mapping(cache_dir)
+
     for i in tqdm(indices, desc='Saving'):
         row = ds[i]
         img = row[img_col]
         label = row[label_col]
-        class_name = normalize_class_name(get_class_name(label))
+        raw_name = get_class_name(label)
+        if use_scientific_common and common_to_scientific_format and mapping:
+            class_name = common_to_scientific_format(raw_name, mapping)  # "Scientific (Common)"
+        else:
+            class_name = normalize_class_name(raw_name)
 
         split = 'val' if i in val_idx else 'train'
         out_dir = output_dir / split / class_name
@@ -209,15 +225,18 @@ def main():
     parser.add_argument('--output', default='birds_hf_cls',
                         help='Output directory')
     parser.add_argument('--val-ratio', type=float, default=0.2)
+    parser.add_argument('--format', choices=['raw', 'scientific_common'], default='scientific_common',
+                        help='Class names: raw (as in dataset) or scientific_common (Scientific (Common))')
     args = parser.parse_args()
 
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    use_scientific_common = args.format == 'scientific_common'
 
     if 'birdsnap' in args.dataset.lower():
         download_birdsnap(args.dataset, output, args.val_ratio)
     else:
-        download_birds_525(args.dataset, output, args.val_ratio)
+        download_birds_525(args.dataset, output, args.val_ratio, use_scientific_common)
 
 
 if __name__ == '__main__':

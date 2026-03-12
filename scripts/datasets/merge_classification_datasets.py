@@ -23,9 +23,15 @@ from collections import defaultdict
 import numpy as np
 
 
-def normalize_class_name(name: str) -> str:
-    """Привести имя класса к формату папки: пробелы -> _, убрать спецсимволы."""
+def normalize_class_name(name: str, preserve_scientific_common: bool = True) -> str:
+    """
+    Привести имя класса к формату папки.
+    Если имя уже в формате "Scientific (Common)" — сохраняем как есть (совпадение с Frigate).
+    Иначе — пробелы -> _, убрать спецсимволы.
+    """
     s = str(name).strip()
+    if preserve_scientific_common and ' (' in s and s.endswith(')'):
+        return s  # "Cardinalis cardinalis (Northern Cardinal)"
     s = re.sub(r'[/\\:*?"<>|]', '_', s)
     s = s.replace(' ', '_').replace('-', '_')
     s = re.sub(r'_+', '_', s).strip('_')

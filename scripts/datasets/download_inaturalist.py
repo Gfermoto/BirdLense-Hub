@@ -2,7 +2,8 @@
 """
 Скачать птиц Европы с iNaturalist API в формат YOLO classification.
 
-Формат выхода: output_dir/train/Species_Name/img.jpg
+Формат выхода: output_dir/train/Scientific_Common/img.jpg
+Имена классов: "Scientific_name (Common Name)" — совпадает с Frigate, BirdNET.
 
 Использование:
     pip install requests tqdm Pillow
@@ -10,27 +11,19 @@
 """
 
 import argparse
-import re
 import time
 from pathlib import Path
 
 import requests
 from tqdm import tqdm
 
+from species_format import format_scientific_common
+
 # Europe place_id (incl. Canary, Svalbard)
 EUROPE_PLACE_ID = 96372
 AVES_TAXON_ID = 3
 API = "https://api.inaturalist.org/v1/observations"
 RATE_LIMIT = 1.1  # сек между запросами (60/мин)
-
-
-def normalize_class_name(name: str) -> str:
-    """Привести имя вида к формату папки."""
-    s = str(name).strip()
-    s = re.sub(r'[/\\:*?"<>|]', '_', s)
-    s = s.replace(' ', '_').replace('-', '_')
-    s = re.sub(r'_+', '_', s).strip('_')
-    return s or 'unknown'
 
 
 def fetch_observations(page: int = 1, per_page: int = 200) -> dict:
@@ -85,12 +78,15 @@ def main():
             taxon = obs.get('taxon')
             if not taxon:
                 continue
-            species = taxon.get('name') or obs.get('species_guess', 'unknown')
+            scientific = taxon.get('name') or obs.get('species_guess', '')
+            common = taxon.get('preferred_common_name') or taxon.get('english_common_name') or ''
             photos = obs.get('photos', [])
             if not photos:
                 continue
 
-            class_name = normalize_class_name(species)
+            # Формат "Scientific (Common)" — совпадает с Frigate
+            species_display = format_scientific_common(scientific, common or scientific)
+            class_name = species_display  # папка = полное имя (Linux допускает пробелы и скобки)
             seen_species.add(class_name)
             split = 'val' if random.random() < args.val_ratio else 'train'
             out_dir = output / split / class_name
