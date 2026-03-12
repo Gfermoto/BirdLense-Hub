@@ -321,7 +321,21 @@
   "status": {
     "motion": "Motion",
     "motionFrigateHint": "Frigate events trigger recording",
-    "motionOpencvHint": "OpenCV triggers. Frigate events only for merge, not for trigger."
+    "motionOpencvHint": "OpenCV triggers. Frigate events only for merge, not for trigger.",
+    "videoOk": "Cameras connected",
+    "videoUnknown": "No camera connection",
+    "mqttOk": "MQTT connected",
+    "mqttUnknown": "No MQTT connection",
+    "mqttNotUsed": "MQTT not used",
+    "mqttNotConfigured": "MQTT not configured",
+    "mqttError": "MQTT error",
+    "yoloOk": "YOLO running",
+    "yoloUnknown": "Processor unavailable (cameras, detection)",
+    "esphomeOk": "ESPHome connected",
+    "esphomeNotUsed": "ESPHome not used",
+    "esphomeNotConfigured": "ESPHome not configured",
+    "esphomeUnknown": "No ESPHome connection",
+    "esphomeError": "ESPHome error"
   },
   "commonLabels": {
     "date": "Date",

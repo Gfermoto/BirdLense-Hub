@@ -38,6 +38,20 @@ ssh birdlense "tail -100 /root/BirdLense/app/data/processor.log"
 
 **Проверка:** на сервере `cat app/.env | grep PROCESSOR_SECRET` — должно быть `PROCESSOR_SECRET=hex...` (32 символа), а не `PROCESSOR_SECRET=${PROCESSOR_SECRET}`. Если буквально — баг в deploy.sh (исправлено: двойные кавычки при записи).
 
+### Серые иконки (Video, MQTT, YOLO)
+
+Если статус серый при работающем подключении — heartbeat не доходит до API.
+
+**Диагностика:**
+```bash
+curl -s http://YOUR_IP:8085/api/ui/status/debug
+```
+
+- `last_heartbeat: null` — процессор не шлёт heartbeat (проверить логи: `Heartbeat failed`, `403`)
+- `last_heartbeat.updated_at` старый — процессор упал или heartbeat не проходит
+- `processor_secret_configured: false` — PROCESSOR_SECRET не задан в контейнере
+- `activity_log: 403 Forbidden` в логах — несовпадение PROCESSOR_SECRET
+
 ---
 
 ## 2. Провокация события (тест полного пайплайна)

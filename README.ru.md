@@ -15,11 +15,13 @@
 | Компонент | Версия | Дообучено на | Примечание |
 |-----------|--------|--------------|------------|
 | **Детектор** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
-| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** |
+| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейских видов изначально не было |
+
+**Европейские птицы:** пока используем Frigate Bird Classification + BirdNET; планируем дообучить на [birds-525](https://huggingface.co/datasets/34data/birds-525-species) и [iNaturalist Europe](https://api.inaturalist.org/v1/docs/).
 
 **Планируется:** переобучение на YOLO11n (см. [UPGRADE_PLAN.md](./docs/UPGRADE_PLAN.md)).
 
-**Пайплайн обучения:** 1) **Pretrain** на открытых датасетах (NABirds, birds-525-species, Birdsnap, CUB-200, iNaturalist) → 2) **Fine-tune** на записях BirdLense с кормушек. См. [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+**Пайплайн обучения:** 1) **Pretrain** на открытых датасетах (birds-525, iNaturalist Europe — для EU; NABirds, Birdsnap, CUB-200 — без EU-видов) → 2) **Fine-tune** на записях BirdLense. См. [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
 
 <details>
 <summary>📷 Скриншоты</summary>

@@ -9,6 +9,7 @@ app/data/processor.log
 app.log
 .DS_Store
 /datasets
+.venv-datasets/
 
 # Настройки — не коммитить (только шаблоны в репо)
 user_config.yaml

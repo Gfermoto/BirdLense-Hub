@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_frigate_event(payload):
-    """Parse Frigate event: before/after, type (new/update/end). Uses after for final state."""
+    """Parse Frigate event: before/after, type (new/update/end). Uses after for final state.
+
+    sub_label: species from Frigate Bird Classification (MobileNet INat), when enabled.
+    See https://docs.frigate.video/configuration/bird_classification/
+    """
     try:
         data = json.loads(payload.decode())
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -25,6 +29,7 @@ def _parse_frigate_event(payload):
     before = data.get("before") or {}
     camera = after.get("camera") or before.get("camera", "")
     label = after.get("label") or before.get("label", "")
+    # sub_label = bird species from Frigate Bird Classification (INat model)
     sub_label_raw = after.get("sub_label") or before.get("sub_label")
     sub_label = ""
     if isinstance(sub_label_raw, str):
@@ -44,7 +49,7 @@ def _parse_frigate_event(payload):
         timestamp = datetime.now(timezone.utc).isoformat()
     return {
         "source": "frigate",
-        "species": sub_label or label or "unknown",
+        "species": sub_label or label or "unknown",  # prefer sub_label (species) over label (bird)
         "label": label,
         "sub_label": sub_label,
         "confidence": float(score),

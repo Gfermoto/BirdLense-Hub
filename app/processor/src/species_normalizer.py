@@ -35,6 +35,7 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
     YOLO primary; MQTT boosts confidence or adds species if not in YOLO.
+    Frigate: species from sub_label (Bird Classification, INat) when enabled.
     Returns list in API format: species_name, start_time, end_time, confidence, source, track_id, frames.
     """
     from datetime import datetime, timezone
