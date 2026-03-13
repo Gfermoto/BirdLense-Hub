@@ -29,15 +29,13 @@ ssh birdlense "echo 'MCP_TOKEN=ваш-токен' >> /root/BirdLense/app/.env"
 
 ## 3. Добавить MCP-сервер с заголовком Authorization
 
-Скопируйте шаблон и заполните:
+Создайте `.cursor/mcp.json`:
 
 ```bash
 mkdir -p .cursor
-cp docs/mcp.json.example .cursor/mcp.json
-# Отредактируйте .cursor/mcp.json: url и Authorization
 ```
 
-Или создайте `.cursor/mcp.json` вручную:
+Содержимое `.cursor/mcp.json`:
 
 ```json
 {
@@ -45,7 +43,7 @@ cp docs/mcp.json.example .cursor/mcp.json
     "birdlense": {
       "url": "http://192.168.1.11:8085/mcp",
       "headers": {
-        "Authorization": "Bearer ваш-секретный-токен"
+        "Authorization": "Bearer YOUR_MCP_TOKEN_HERE"
       }
     }
   }
@@ -54,7 +52,7 @@ cp docs/mcp.json.example .cursor/mcp.json
 
 Замените:
 - `192.168.1.11:8085` — IP и порт вашего BirdLense Hub
-- `ваш-секретный-токен` — тот же токен, что в MCP_TOKEN на сервере
+- `YOUR_MCP_TOKEN_HERE` — тот же токен, что в MCP_TOKEN на сервере
 
 **Важно:** `.cursor/` в .gitignore — токен не попадёт в репозиторий.
 

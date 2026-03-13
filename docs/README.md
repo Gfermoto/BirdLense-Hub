@@ -29,8 +29,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты |
-| [TESTING_DEPLOY.md](./TESTING_DEPLOY.md) | План тестирования после деплоя |
+| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты + проверка после деплоя |
 
 ---
 
@@ -57,8 +56,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [ROADMAP.md](./ROADMAP.md) | План развития (HA autodiscovery, датасет из лучших кадров) |
-| [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
+| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды (Ultralytics, React), фичи (HA, датасет) |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 
 ---
