@@ -21,7 +21,7 @@
 
 1. Frigate с включённым [Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (`classification.bird.enabled: true`).
 2. MQTT: Frigate публикует в `frigate/events` с `sub_label`.
-3. BirdLense: Настройки → MQTT — broker, топик Frigate.
+3. BirdLense: Настройки → MQTT — broker, топик Frigate. **Motion source: Frigate** (триггер записи по событиям Frigate).
 4. Слияние: YOLO + Frigate автоматически. Один результат на вид, max confidence.
 
 **Результат:** Eurasian Jay вместо Mourning Dove, если Frigate распознал сойку.
@@ -68,7 +68,7 @@
 
 ## Сценарий 6: Деплой на домашний сервер
 
-**Цель:** BirdLense на отдельной машине (Raspberry Pi, NUC, сервер).
+**Цель:** BirdLense на отдельной машине (NUC, x86-сервер). Требуется x86/amd64 — ARM (Raspberry Pi) не поддерживается.
 
 1. `cp scripts/deploy.local.sh.example scripts/deploy.local.sh`
 2. В deploy.local.sh: `DEPLOY_HOST`, `DEPLOY_URL`, `PROCESSOR_SECRET`

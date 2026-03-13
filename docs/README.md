@@ -56,7 +56,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды (Ultralytics, React), фичи (HA, датасет) |
+| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи (HA, датасет), новые предложения |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 
 ---
