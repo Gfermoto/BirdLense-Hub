@@ -193,7 +193,7 @@ print("✅ Ultralytics установлен")
 
 **Параметры для T4 (15 GB):** `batch=64` — если будет ошибка памяти, уменьшите до 32.
 
-**Время:** ~2.5 мин на эпоху → 150 эпох ≈ 6–7 ч. Colab Free может отключиться — используйте resume (см. выше).
+**Время:** ~2.5 мин/эпоху на GPU → 150 эпох ≈ 6–7 ч, 200 ≈ 8–9 ч, 250 ≈ 10–11 ч. На CPU — в 10–20 раз дольше. Colab Free может отключиться — используйте resume (см. выше).
 
 **Важно:** замените `BirdLense_Training` на имя вашей папки в Drive.
 
@@ -215,24 +215,29 @@ PROJECT_NAME = "birds_eu_cls_v1"
 os.makedirs(PROJECT_ROOT, exist_ok=True)
 ckpt_path = os.path.join(PROJECT_ROOT, PROJECT_NAME, "weights", "last.pt")
 
+# device=0 — GPU, device='cpu' — CPU (если GPU недоступен). batch меньше на CPU
+DEVICE = 0 if __import__('torch').cuda.is_available() else 'cpu'
+BATCH = 64 if DEVICE != 'cpu' else 16
+EPOCHS = 150  # 150 — минимум, 200 — норма, 250 — максимум. Для дообучения до 250: измените и запустите resume
+
 if os.path.exists(ckpt_path):
     print("🔄 Продолжение с чекпоинта...")
     model = YOLO(ckpt_path)
-    model.train(resume=True)
+    model.train(resume=True, device=DEVICE, epochs=EPOCHS)
 else:
     print("🆕 Начало обучения с нуля...")
     model = YOLO("yolo11n-cls.pt")
     model.train(
         data=DATASET_DIR,
-        epochs=150,           # 150 эпох — укладывается в сессию. Для 200 — используйте resume
+        epochs=EPOCHS,        # 150 — минимум, 200 — норма, 250 — максимум
         imgsz=224,
-        batch=64,              # T4: 64. Если OOM — уменьшите до 32
+        batch=BATCH,          # T4: 64. CPU: 16. Если OOM — уменьшите
         patience=30,
         project=PROJECT_ROOT,
         name=PROJECT_NAME,
         exist_ok=True,
-        device=0,              # GPU
-        workers=2,             # Colab: 2 workers достаточно
+        device=DEVICE,        # 0=GPU, 'cpu'=CPU
+        workers=2,            # Colab: 2 workers достаточно
     )
 ```
 
@@ -271,9 +276,9 @@ else:
 
 Colab отключает через ~12 часов. Если обучение не закончилось:
 
-1. Запустите ячейки 1–3 (подключение Drive, распаковка, ultralytics)
-2. В ячейке 4 код автоматически найдёт `last.pt` и продолжит с него
-3. Запустите ячейку 4 — обучение продолжится
+1. **Запустите ячейки 1–4 по порядку.** При новой сессии `/content` очищается — датасет исчезает. Ячейка 2 (распаковка) обязательна, иначе «no training images found».
+2. В ячейке 4 код автоматически найдёт `last.pt` в Drive и продолжит с него
+3. Обучение продолжится с последней эпохи
 
 Чекпоинты сохраняются в `Drive/BirdLense_Training/runs/birds_eu_cls_v1/weights/`.
 
@@ -293,7 +298,70 @@ Colab отключает через ~12 часов. Если обучение н
 
 ---
 
-## Часть 7: Частые проблемы
+## Часть 8: Fine-tune — добавить новые виды (сойка, синицы, воробьи, поползень)
+
+Дообучение **без обучения с нуля**: загружаем `best.pt` и дообучаем на старых + новых классах.
+
+### 8.1 Подготовка датасета с новыми видами
+
+Формат папок — `Scientific (Common)` (как в merged_cls):
+
+```
+datasets/new_species_cls/
+├── train/
+│   ├── Garrulus glandarius (Eurasian Jay)/     # сойка
+│   ├── Parus major (Great Tit)/                # большая синица
+│   ├── Cyanistes caeruleus (Eurasian Blue Tit)/# лазоревка
+│   ├── Passer domesticus (House Sparrow)/      # домовый воробей
+│   ├── Sitta europaea (Eurasian Nuthatch)/     # поползень
+│   └── ...
+└── val/
+    └── (те же классы, 20% изображений)
+```
+
+Соберите фото (свои с кормушки, iNaturalist, Google Images) — минимум 20–30 на вид в train и 5+ в val. Если вид уже есть в merged_cls — merge добавит к нему новые изображения.
+
+### 8.2 Объединение с основным датасетом
+
+```bash
+python scripts/datasets/merge_classification_datasets.py \
+  --inputs datasets/merged_cls datasets/new_species_cls \
+  --output datasets/merged_cls_extended \
+  --val-ratio 0.2
+```
+
+### 8.3 Дообучение в Colab
+
+В ячейке 4 **замените** код: загружайте `best.pt` (не `yolo11n-cls.pt`), датасет — `merged_cls_extended`, меньше эпох, ниже LR:
+
+```python
+from ultralytics import YOLO
+import os
+
+# Загрузить обученную модель (не с нуля!)
+BEST_PT = "/content/drive/MyDrive/BirdLense_Training/best.pt"  # или runs/.../weights/best.pt
+DATASET_DIR = "/content/datasets/merged_cls_extended"  # старые + новые виды
+
+model = YOLO(BEST_PT)
+model.train(
+    data=DATASET_DIR,
+    epochs=30,            # Fine-tune — меньше эпох
+    imgsz=224,
+    batch=64,
+    lr0=0.001,           # Ниже LR для дообучения
+    patience=10,
+    project="/content/drive/MyDrive/BirdLense_Training/runs",
+    name="birds_eu_cls_finetune",
+    exist_ok=True,
+    device=0,            # или 'cpu'
+)
+```
+
+Сначала распакуйте `merged_cls_extended.zip` (или соберите датасет в Colab). Результат — `best.pt` с расширенным набором видов.
+
+---
+
+## Часть 9: Частые проблемы
 
 ### «Не удалось подключить GPU»
 
@@ -309,9 +377,11 @@ Colab отключает через ~12 часов. Если обучение н
 - Проверьте имя папки в Drive и `DRIVE_FOLDER`
 - Проверьте, что ZIP загружен полностью (без ошибок)
 
-### Сессия отключилась
+### Сессия отключилась / GPU отключили / «no training images found»
 
-- Запустите заново ячейки 1–4. Код подхватит `last.pt` и продолжит обучение
+- Colab Free может отключить GPU или runtime в любой момент — лимиты динамические ([FAQ](https://research.google.com/colaboratory/faq.html#usage-limits))
+- `/content` очищается при новой сессии — датасет нужно распаковать заново
+- Запустите ячейки 1–4 по порядку (включая ячейку 2 — распаковку). Код подхватит `last.pt` и продолжит обучение
 
 ---
 
