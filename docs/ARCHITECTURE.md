@@ -33,7 +33,7 @@
 4. **YOLO** — детекция птиц в кадре
 5. **ByteTrack** — трекинг
 6. **Запись** → `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`
-7. **Спектрограмма** → FFmpeg → `spectrogram_200.jpg`
+7. **Спектрограмма** → FFmpeg (аудио) + librosa (mel) → `spectrogram_200.jpg`
 8. **API** → processor отправляет POST `/api/processor/videos` с детекциями
 
 ### Видео: Frigate (опционально)
