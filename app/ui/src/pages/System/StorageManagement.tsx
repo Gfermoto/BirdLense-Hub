@@ -161,10 +161,11 @@ export const StorageManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       setTimeout(() => setSuccess(null), 8000);
     },
-    onError: (err) => {
-      setError(
-        err instanceof Error ? err.message : t('storage.regenerateFailed'),
-      );
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || (err instanceof Error ? err.message : t('storage.regenerateFailed'));
+      setError(msg);
     },
   });
 

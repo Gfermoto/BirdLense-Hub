@@ -393,11 +393,15 @@ def main():
                     "YOLO не детектирует — треки будут пустые (только вид из Frigate).")
             # Merge YOLO + MQTT (Frigate, BirdNET-Pi/Go)
             audio_detections, spectrogram_path = [], None
-            px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
-            spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
-            spectrogram_output = os.path.join(output_path_physical, spectrogram_filename)
-            if generate_spectrogram(video_output, spectrogram_output, px_per_sec):
-                spectrogram_path = f"{output_path_logical.rsplit('/', 1)[0]}/{spectrogram_filename}"
+            has_birdnet_event = any(ev.get('source') == 'birdnet' for ev in mqtt_events)
+            if has_birdnet_event:
+                px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
+                spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
+                spectrogram_output = os.path.join(output_path_physical, spectrogram_filename)
+                if generate_spectrogram(video_output, spectrogram_output, px_per_sec):
+                    spectrogram_path = f"{output_path_logical.rsplit('/', 1)[0]}/{spectrogram_filename}"
+                else:
+                    logging.warning("Spectrogram generation failed (BirdNET event present)")
             video_list = []
             for d in video_detections:
                 sn = normalize(
