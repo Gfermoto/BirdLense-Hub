@@ -200,10 +200,12 @@ README.md в корне репозитория — описание датасе
 
 ---
 
-## 7. Репозиторий BirdLense
+## 7. Репозитории BirdLense
 
 | Репозиторий | Назначение |
 |-------------|------------|
+| [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged) | EU-датасет (birds-525 + iNaturalist, ~491 вид) |
+| [gfermoto/birdlense-birds-eu](https://huggingface.co/models/gfermoto/birdlense-birds-eu) | Веса EU-модели (best.pt) |
 | [gfermoto/birdlense-annotations](https://huggingface.co/datasets/gfermoto/birdlense-annotations) | Датасет разметки (YOLO) |
 
 ---
