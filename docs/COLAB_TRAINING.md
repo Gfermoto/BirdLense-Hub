@@ -183,7 +183,8 @@ else:
 ### Ячейка 3: Установка Ultralytics
 
 ```python
-!pip install -q ultralytics
+# Важно: 8.3.203+ исправляет ошибку GradScaler при resume
+!pip install -q -U ultralytics
 print("✅ Ultralytics установлен")
 ```
 
@@ -223,7 +224,8 @@ EPOCHS = 150  # 150 — минимум, 200 — норма, 250 — максим
 if os.path.exists(ckpt_path):
     print("🔄 Продолжение с чекпоинта...")
     model = YOLO(ckpt_path)
-    model.train(resume=True, device=DEVICE, epochs=EPOCHS)
+    # amp=False — если ошибка "GradScaler state dict is empty" (старый чекпоинт без AMP)
+    model.train(resume=True, device=DEVICE, epochs=EPOCHS, amp=False)
 else:
     print("🆕 Начало обучения с нуля...")
     model = YOLO("yolo11n-cls.pt")
@@ -411,6 +413,23 @@ model.train(
 - Colab Free может отключить GPU или runtime в любой момент — лимиты динамические ([FAQ](https://research.google.com/colaboratory/faq.html#usage-limits))
 - `/content` очищается при новой сессии — датасет нужно распаковать заново
 - Запустите ячейки 1–4 по порядку (включая ячейку 2 — распаковку). Код подхватит `last.pt` и продолжит обучение
+
+### «GradScaler state dict is empty» при resume
+
+Ошибка возникает, если чекпоинт сохранён без AMP (или старой версией ultralytics). Решения (по порядку):
+
+1. **Патч чекпоинта** — удалить пустой scaler (часто помогает):
+   ```python
+   import torch, shutil
+   ckpt_path = "/content/drive/MyDrive/BirdLense_Training/runs/birds_eu_cls_v1/weights/last.pt"
+   ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+   if "scaler" in ckpt and (ckpt["scaler"] is None or len(ckpt.get("scaler", {})) == 0):
+       shutil.copy(ckpt_path, ckpt_path + ".backup")
+       del ckpt["scaler"]
+       torch.save(ckpt, ckpt_path)
+   ```
+2. **Обновить ultralytics:** `!pip install -U ultralytics` (8.3.203+ корректно обрабатывает старые чекпоинты)
+3. **Отключить AMP при resume:** `model.train(resume=True, ..., amp=False)` — уже добавлено в пример выше
 
 ---
 
