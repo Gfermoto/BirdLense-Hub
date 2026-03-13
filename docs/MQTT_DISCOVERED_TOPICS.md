@@ -77,4 +77,4 @@ mqtt:
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [TESTING_DEPLOY.md](./TESTING_DEPLOY.md).
+См. также: [CONFIGURATION.md](./CONFIGURATION.md), [TESTING.md](./TESTING.md).

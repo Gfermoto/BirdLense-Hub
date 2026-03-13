@@ -352,7 +352,7 @@ model.train(
    ```
    (заменит текущую модель; US — резерв в `best_US.pt`)
 3. Конвертация в NCNN (если используется NCNN в production):
-   - См. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) или скрипты экспорта Ultralytics
+   - См. [ROADMAP.md](./ROADMAP.md) или скрипты экспорта Ultralytics
 4. Деплой: `make deploy`
 
 ---
