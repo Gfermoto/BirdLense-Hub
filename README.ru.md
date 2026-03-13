@@ -8,7 +8,7 @@
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
-**Исследовательский инструмент:** сбор датасетов из записей, скрипты обучения YOLO (NABirds, COCO), ноутбуки дообучения моделей. См. [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
+**Исследовательский инструмент:** сбор датасетов из записей, скрипты обучения YOLO (NABirds, COCO), ноутбуки дообучения моделей. См. [docs/DATASETS.md](./docs/DATASETS.md), [docs/TRAINING.md](./docs/TRAINING.md).
 
 ### Модели
 
@@ -19,11 +19,11 @@
 | **Детектор** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel — **не меняется** при EU-обучении |
 | **Классификатор** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) или birds-525 + iNaturalist (≈490) | US или EU |
 
-**Текущая модель:** US (NABirds). Европейские птицы — через Frigate + BirdNET.
+**Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
-**EU-модель:** классификатор обучается на двух датасетах после объединения (birds-525 + iNaturalist Europe) → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Обучение: [COLAB_TRAINING.md](./docs/COLAB_TRAINING.md). Старый классификатор заменяется новым `best.pt`, детектор не меняется.
+**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Пайплайн обучения:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+**Пайплайн обучения:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [DATASETS.md](./docs/DATASETS.md).
 
 <details>
 <summary>📷 Скриншоты</summary>
@@ -82,7 +82,7 @@ UI: http://localhost:8085
 | [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP, **план датасетов и обучения** |
 | [scripts/](./scripts) | Деплой, **датасеты** (NABirds/COCO→YOLO), **обучение** (ноутбуки) |
 
-**Скрипты для исследований:** `scripts/datasets/` — конвертация датасетов; `scripts/birds_train*.ipynb` — обучение моделей. Полный список: [docs/DATASET_SCRIPTS.md](./docs/DATASET_SCRIPTS.md).
+**Скрипты для исследований:** `scripts/datasets/` — конвертация датасетов; `scripts/birds_train*.ipynb` — обучение моделей. Полный список: [docs/DATASETS.md](./docs/DATASETS.md).
 
 ## Команды
 

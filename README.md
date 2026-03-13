@@ -8,7 +8,7 @@
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
-**Research tool:** dataset collection from live recordings, YOLO training scripts (NABirds, COCO), model fine-tuning notebooks. See [docs/DATASET_TRAINING_PLAN.md](./docs/DATASET_TRAINING_PLAN.md).
+**Research tool:** dataset collection from live recordings, YOLO training scripts (NABirds, COCO), model fine-tuning notebooks. See [docs/DATASETS.md](./docs/DATASETS.md), [docs/TRAINING.md](./docs/TRAINING.md).
 
 ### Model info
 
@@ -19,11 +19,11 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 | **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — **не меняется** при EU-обучении |
 | **Classifier** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) или birds-525 + iNaturalist (≈490) | US или EU |
 
-**Текущая модель:** US (NABirds). European birds — через Frigate + BirdNET.
+**Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
 
-**EU-модель:** классификатор обучается на двух датасетах после объединения (birds-525 + iNaturalist Europe) → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Обучение: [COLAB_TRAINING.md](./docs/COLAB_TRAINING.md). Старый классификатор заменяется новым `best.pt`, детектор не меняется.
+**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Training pipeline:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+**Training pipeline:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [DATASETS.md](./docs/DATASETS.md).
 
 <details>
 <summary>📷 Screenshots</summary>
@@ -82,7 +82,7 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 | [docs/](./docs) | Architecture, config, API, deployment, MCP, **dataset & training plan** |
 | [scripts/](./scripts) | Deploy, **datasets** (NABirds/COCO→YOLO), **training** notebooks |
 
-**Research scripts:** `scripts/datasets/` — dataset conversion; `scripts/birds_train*.ipynb` — model training. Full inventory: [docs/DATASET_SCRIPTS.md](./docs/DATASET_SCRIPTS.md).
+**Research scripts:** `scripts/datasets/` — dataset conversion; `scripts/birds_train*.ipynb` — model training. Full inventory: [docs/DATASETS.md](./docs/DATASETS.md).
 
 ## Commands
 

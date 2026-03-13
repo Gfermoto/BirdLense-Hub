@@ -123,11 +123,11 @@
 | `species_mapping` | Маппинг названий видов |
 
 **Источники видов:**
-- **YOLO** — видео, классификация (EU: birds-525 + iNaturalist ~490 видов, или US: NABirds ~400)
+- **YOLO** — видео, классификация (EU: birds-525 + iNaturalist ~491 вид — активна в `best.pt`)
 - **Frigate** — видео, `sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (MobileNet INat)
 - **BirdNET** — аудио, распознавание по голосу
 
-**EU-модель:** [COLAB_TRAINING.md](./COLAB_TRAINING.md). US — резерв в best_US.pt.
+**EU-модель:** активна в `best.pt`. US — резерв в `best_US.pt`. Обучение: [TRAINING.md](./TRAINING.md).
 
 ## Retention
 

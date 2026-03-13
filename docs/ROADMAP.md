@@ -105,7 +105,7 @@ birdlense_dataset_20260315.zip
 
 ## См. также
 
-- [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) — пайплайн сбора и обучения
+- [DATASETS.md](./DATASETS.md) — пайплайн сбора и обучения
 - [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) — подтверждение/исправление в UI
 - [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) — текущие MQTT-топики
 - [CONFIGURATION.md](./CONFIGURATION.md) — конфиг processor, MQTT

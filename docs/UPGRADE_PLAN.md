@@ -19,7 +19,7 @@
 | # | Действие | Сложность | Риск |
 |---|----------|-----------|------|
 | 4 | Добавить `ultralytics` в processor/requirements.txt с версией | Низкая | Нет |
-| 5 | EU-классификатор на YOLO11n-cls | В процессе | [COLAB_TRAINING.md](./COLAB_TRAINING.md) |
+| 5 | EU-классификатор на YOLO11n-cls | ✅ Выполнено | [TRAINING.md](./TRAINING.md) |
 | 6 | Апгрейд React 19 (Vite 6 выполнен) | Средняя | Средний |
 
 ---
@@ -31,9 +31,9 @@
 | **Ultralytics** | 8.4.21 (Docker base) | 8.4.21 |
 | **Архитектура** | YOLOv8n | YOLO11n (переобучение) |
 | **Детектор** | nabirds_yolov8n, NABirds+COCO+OIDv4 | — |
-| **Классификатор** | YOLOv8n-cls (US) / YOLO11n-cls (EU) | NABirds / birds-525 + iNaturalist |
+| **Классификатор** | YOLO11n-cls (EU активна) / YOLOv8n-cls (US резерв) | birds-525 + iNaturalist / NABirds |
 
-EU-модель: [COLAB_TRAINING.md](./COLAB_TRAINING.md).
+EU-модель активна в `best.pt`. Обучение: [TRAINING.md](./TRAINING.md).
 
 ---
 

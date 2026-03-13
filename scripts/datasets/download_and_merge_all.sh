@@ -2,7 +2,7 @@
 # Скачать birds-525 и iNaturalist Europe, объединить в формате "Scientific (Common)".
 
 # Формат имён: Scientific_name (Common Name) — совпадает с Frigate, BirdNET.
-# См. docs/DATASET_MERGE_FORMAT.md
+# См. docs/DATASETS.md
 
 set -e
 cd "$(dirname "$0")/../.."

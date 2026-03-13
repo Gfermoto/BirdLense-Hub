@@ -1,14 +1,14 @@
-# Дообучение в Google Colab Free — пошаговая инструкция
+# Обучение EU-модели в Google Colab
 
-Полная инструкция для тех, кто никогда не использовал Colab. Обучение классификатора птиц на GPU T4 бесплатно.
+Пошаговая инструкция: классификатор птиц на GPU T4 бесплатно. Датасеты и скрипты: [DATASETS.md](./DATASETS.md).
 
 ---
 
 ## Что обучаем и зачем
 
-**Текущая модель** (`best.pt`) обучена на **NABirds** — датасет с ~400 видами, в основном **североамериканские** птицы. Для кормушек в Европе она распознаёт многие виды плохо или не распознаёт вовсе.
+**Текущая модель** (`best.pt`) — **EU** (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
-**Новая модель (EU):** обучаем классификатор на **европейских** видах:
+**Обучение EU-модели** (для обновления или fine-tune): классификатор на **европейских** видах:
 - **birds-525** (Hugging Face) — 525 видов птиц в формате Scientific (Common)
 - **iNaturalist Europe** — наблюдения из Европы (place_id: Europe)
 
@@ -16,14 +16,14 @@
 
 Формат имён `Scientific (Common)` совпадает с Frigate и BirdNET — упрощает слияние детекций.
 
-**Резервная копия:** перед заменой создана копия `best_US.pt` — старая модель (NA). Чтобы вернуть US-модель: `cp best_US.pt best.pt`.
+**Резервная копия:** US-модель в `best_US.pt`. Вернуть US: `cp best_US.pt best.pt`. Активировать EU: `cp best_EU.pt best.pt` (или скопировать скачанный файл как `best.pt`).
 
 ---
 
 ## Что понадобится
 
 - Аккаунт Google (Gmail)
-- Датасет `merged_cls` на вашем компьютере (см. [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md))
+- Датасет `merged_cls` (см. [DATASETS.md](./DATASETS.md))
 - ~2–3 GB свободного места в Google Drive
 
 ---
@@ -219,7 +219,7 @@ ckpt_path = os.path.join(PROJECT_ROOT, PROJECT_NAME, "weights", "last.pt")
 # device=0 — GPU, device='cpu' — CPU (если GPU недоступен). batch меньше на CPU
 DEVICE = 0 if __import__('torch').cuda.is_available() else 'cpu'
 BATCH = 64 if DEVICE != 'cpu' else 16
-EPOCHS = 100  # 80–100 достаточно (плато к 50–60). Подробнее: [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md)
+EPOCHS = 100  # 80–100 достаточно (плато к 50–60). См. секцию «Эпохи» ниже
 
 if os.path.exists(ckpt_path):
     print("🔄 Продолжение с чекпоинта...")
@@ -286,7 +286,7 @@ Colab отключает через ~12 часов. Если обучение н
 
 ### Обучение завершено, но хочу ещё эпох
 
-**Важно:** для merged_cls плато достигается к 50–60 эпохам. `best.pt` уже сохранён на лучшей эпохе — **добавлять эпохи не нужно**, используйте `best.pt` как есть. См. [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md).
+**Важно:** для merged_cls плато достигается к 50–60 эпохам. `best.pt` уже сохранён на лучшей эпохе — **добавлять эпохи не нужно**, используйте `best.pt` как есть.
 
 Если всё же нужно дообучить (другой датасет, эксперимент) и появилась ошибка *«training to N epochs is finished, nothing to resume»* — дообучайте **без** `resume=True`, с **низким LR** (`lr0=0.0001`):
 
@@ -343,12 +343,14 @@ model.train(
 
 ## Часть 6: Использование обученной модели в BirdLense
 
-1. Скачайте `best.pt` из Google Drive
+1. Скачайте `best.pt`:
+   - **Google Drive** — из папки BirdLense_Training (или `best_EU.pt` → переименуйте в `best.pt`)
+   - **Hugging Face** — [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) → Files → best.pt → Download
 2. Скопируйте в BirdLense:
    ```
    best.pt → app/processor/models/classification/weights/best.pt
    ```
-   (заменит текущую модель; старая сохранена как `best_US.pt` в той же папке)
+   (заменит текущую модель; US — резерв в `best_US.pt`)
 3. Конвертация в NCNN (если используется NCNN в production):
    - См. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) или скрипты экспорта Ultralytics
 4. Деплой: `make deploy`
@@ -442,7 +444,7 @@ model.train(
 
 ### «training to N epochs is finished, nothing to resume»
 
-Обучение уже завершено (все эпохи пройдены). Чтобы добавить эпохи (например, 150→200), используйте дообучение **без** `resume` — см. «Обучение завершено, но хочу ещё эпох» в Части 5.
+Обучение уже завершено (все эпохи пройдены). Для merged_cls добавлять эпохи не нужно (плато к 50–60). Если нужно — см. «Обучение завершено, но хочу ещё эпох» в Части 5.
 
 ### «GradScaler state dict is empty» при resume
 
@@ -469,10 +471,16 @@ model.train(
 - [ ] ZIP загружен в Google Drive
 - [ ] Colab: Среда выполнения → T4 GPU
 - [ ] Ячейки 1–5 выполнены по порядку
-- [ ] `best.pt` скачан из Drive
-- [ ] Модель скопирована в BirdLense и задеплоена
-- [ ] Резервная копия US: `best_US.pt` уже в `classification/weights/` (создана заранее)
+- [ ] `best.pt` скачан из Drive (или `best_EU.pt` → `best.pt`)
+- [ ] Модель скопирована в `classification/weights/best.pt` и задеплоена
+- [ ] Резерв US: `best_US.pt` в `classification/weights/`
 
 ---
 
-См. также: [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md), [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md).
+## Эпохи (80–100 достаточно)
+
+По эмпирике merged_cls: плато к **50–60 эпохам**, top1 ~85.3%. 80–100 эпох хватает (~3–4 ч на T4). 150+ — лишнее время. Переобучать с нуля не нужно, если есть `best.pt`.
+
+---
+
+См. также: [DATASETS.md](./DATASETS.md), [HUGGINGFACE.md](./HUGGINGFACE.md).
