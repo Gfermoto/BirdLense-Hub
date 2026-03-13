@@ -186,4 +186,33 @@ with zipfile.ZipFile(path) as z:
 
 ---
 
+## Загрузка весов модели (best.pt)
+
+После обучения EU-модели в Colab веса можно выложить на Hugging Face.
+
+### Создать репозиторий Model
+
+1. [huggingface.co/new](https://huggingface.co/new) → **Model**
+2. **Model name:** `birdlense-birds-eu` (или `birds-eu-yolo`)
+3. **Create repository**
+
+### Загрузить best.pt
+
+```bash
+huggingface-cli login
+huggingface-cli upload gfermoto/birdlense-birds-eu best.pt . --commit-message "Add best.pt — YOLO11n-cls, EU birds (~491 species), trained on birds-eu-merged"
+```
+
+### Model card (README)
+
+В репозитории → **Model card** → **Edit**. Укажите: архитектура (YOLO11n-cls), датасет ([gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged)), метрики.
+
+### Скачать в BirdLense
+
+```bash
+huggingface-cli download gfermoto/birdlense-birds-eu best.pt --local-dir app/processor/models/classification/weights
+```
+
+---
+
 См. также: [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md), [COLAB_TRAINING.md](./COLAB_TRAINING.md).

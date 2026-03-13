@@ -12,16 +12,18 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 
 ### Model info
 
+Два компонента: **детектор** (птица/белка в кадре) и **классификатор** (вид птицы).
+
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
-| **Detector** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel |
-| **Classifier** | YOLOv8n-cls | NABirds (~400 species) | **Mainly North American birds** — European species not included |
+| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — **не меняется** при EU-обучении |
+| **Classifier** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) или birds-525 + iNaturalist (≈490) | US или EU |
 
-**European birds:** not in the original model. We use Frigate Bird Classification + BirdNET for now; plan to fine-tune on [birds-525](https://huggingface.co/datasets/34data/birds-525-species) and [iNaturalist Europe](https://api.inaturalist.org/v1/docs/).
+**Текущая модель:** US (NABirds). European birds — через Frigate + BirdNET.
 
-**Planned:** retrain on YOLO11n (see [UPGRADE_PLAN.md](./docs/UPGRADE_PLAN.md)).
+**EU-модель:** классификатор обучается на двух датасетах после объединения (birds-525 + iNaturalist Europe) → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Обучение: [COLAB_TRAINING.md](./docs/COLAB_TRAINING.md). Старый классификатор заменяется новым `best.pt`, детектор не меняется.
 
-**Training pipeline:** 1) **Pretrain** on open datasets (birds-525, iNaturalist Europe for EU; NABirds, Birdsnap, CUB-200 — no EU species) → 2) **Fine-tune** on BirdLense recordings. See [docs/FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
+**Training pipeline:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [FINETUNE_OPEN_DATASETS.md](./docs/FINETUNE_OPEN_DATASETS.md).
 
 <details>
 <summary>📷 Screenshots</summary>
@@ -128,6 +130,7 @@ CC BY-NC-ND 4.0 — see [LICENSE](LICENSE).
 - [BirdLense](https://github.com/AleksandrRogachev94/BirdLense) by Aleksandr Rogachev — inspired the creation of this project
 - [Ultralytics YOLO](https://github.com/ultralytics/ultralytics)
 - [BirdNET-Analyzer](https://github.com/kahst/BirdNET-Analyzer)
-- [NABirds](https://dl.allaboutbirds.org/nabirds)
+- [NABirds](https://dl.allaboutbirds.org/nabirds), [COCO](https://cocodataset.org/), [Open Images](https://storage.googleapis.com/openimages/web/index.html) (OIDv4 squirrel) — detector
+- [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species), [iNaturalist](https://www.inaturalist.org/) (Europe) — classifier (merged)
 - [Material-UI](https://mui.com/)
 - [OpenWeatherMap](https://openweathermap.org/)
