@@ -48,7 +48,7 @@
 2. **Processor** (MQTTEventAggregator) подписан на топик
 3. Слияние с детекциями YOLO по времени (merge_window)
 
-**Европейские птицы:** YOLO-классификатор обучен на NABirds (североамериканские). Frigate Bird Classification (INat) и BirdNET компенсируют отсутствие EU-видов. Слияние: один результат на вид (max confidence). Планируем дообучить на birds-525 и iNaturalist Europe — см. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+**Европейские птицы:** EU-модель (YOLO11n-cls, ~490 видов) — [COLAB_TRAINING.md](./COLAB_TRAINING.md). US-модель (NABirds) — резерв в best_US.pt. Frigate + BirdNET — дополнение. Слияние: один результат на вид (max confidence).
 
 ### UI
 

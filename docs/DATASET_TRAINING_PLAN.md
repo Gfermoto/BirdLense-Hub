@@ -46,18 +46,17 @@ BirdLense Hub — **исследовательский инструмент** д
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  ЭТАП 4: Обучение / дообучение                                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  • birds_train.ipynb — детектор (binary или multi-class)                     │
-│  • birds_train_cls.ipynb — классификатор                                     │
-│  • Дообучение: model.train(data='birdlense_export/data.yaml', epochs=50)      │
-│  • RunPod / Colab / локально (GPU)                                           │
+│  • [COLAB_TRAINING.md](./COLAB_TRAINING.md) — EU-классификатор (Colab Free)  │
+│  • birds_train_cls.ipynb — RunPod (альтернатива)                             │
+│  • birds_train.ipynb — детектор (binary)                                     │
+│  • Fine-tune: COLAB_TRAINING.md, Часть 8 — добавить виды                     │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  ЭТАП 5: Деплой новых весов                                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  • Копировать best.pt в processor/models/detection/weights/                   │
-│  • Копировать best.pt в processor/models/classification/weights/             │
-│  • Перезапуск processor                                                      │
+│  • best.pt → processor/models/classification/weights/                       │
+│  • make deploy (см. [DEPLOYMENT.md](./DEPLOYMENT.md))                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

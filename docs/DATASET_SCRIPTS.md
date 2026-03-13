@@ -6,6 +6,19 @@
 
 ## Подготовка датасетов (`scripts/datasets/`)
 
+### EU-классификатор (birds-525 + iNaturalist)
+
+| Скрипт | Назначение |
+|--------|------------|
+| `download_hf_birds.py` | Hugging Face → YOLO cls (--format scientific_common) |
+| `download_inaturalist.py` | iNaturalist Europe → YOLO cls |
+| `merge_classification_datasets.py` | Объединить датасеты (формат Scientific (Common)) |
+| `download_and_merge_all.sh` | Полный пайплайн: birds-525 + iNaturalist → merged_cls |
+
+**Инструкция:** [COLAB_TRAINING.md](./COLAB_TRAINING.md) · [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md)
+
+### Детектор, NABirds (legacy)
+
 | Скрипт | Команда | Зависимости |
 |--------|---------|-------------|
 | NABirds → YOLO | `python convert_nabirds_to_yolo.py` | NABirds в `./nabirds/` |
@@ -41,30 +54,20 @@
 | Путь | Роль | Версия | Дообучено на |
 |------|------|--------|--------------|
 | `detection/weights/best.pt` | Бинарный детектор (PyTorch) | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel |
-| `classification/weights/best.pt` | Классификатор видов (PyTorch) | YOLOv8n-cls | NABirds (~400 видов, **в основном североамериканские**) |
-| `classification/weights/best_US.pt` | Резервная копия US-модели (NABirds) | — | Перед заменой на EU: `cp best_US.pt best.pt` |
+| `classification/weights/best.pt` | Классификатор (PyTorch) | YOLO11n-cls | EU: birds-525 + iNaturalist (~490 видов). Или US: NABirds (~400) |
+| `classification/weights/best_US.pt` | Резервная копия US-модели (NABirds) | — | `cp best_US.pt best.pt` — вернуть US |
 | `detection/nabirds_yolov8n_ncnn_model/` | Single-stage NCNN (fallback) | YOLOv8n | — |
 | `detection/nabirds_yolo11n_binary/` | Binary NCNN (эксперимент) | YOLO11n | — |
 | `classification/nabirds_yolo11n_cls/` | Classification NCNN (эксперимент) | YOLO11n-cls | — |
 
-**Текущее:** YOLOv8n, Ultralytics 8.4.21. **Планируется:** переобучение на YOLO11n.
-
-**Пайплайн:** pretrain на открытых датасетах → fine-tune на записях BirdLense. Для европейских видов приоритет: **birds-525** и **iNaturalist Europe**. NABirds, Birdsnap, CUB-200 — североамериканские, не дают улучшения по EU. См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
-
----
-
-## Дообучение на открытых датасетах
-
-См. **[FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md)** — оборудование, датасеты (birds-525, iNaturalist Europe — для EU; NABirds, Birdsnap, CUB-200 — без EU-видов), пайплайн объединения и дообучения.
-
-**Формат имён:** [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) — `Scientific (Common)` для слияния с Frigate/BirdNET.
+**Текущее:** Ultralytics 8.4.21. EU-модель — YOLO11n-cls, обучение: [COLAB_TRAINING.md](./COLAB_TRAINING.md).
 
 ---
 
 ## Планируется
 
-- `export_birdlense_to_yolo.py` — экспорт записей BirdLense Hub в YOLO-формат (см. [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md)).
+- `export_birdlense_to_yolo.py` — экспорт записей BirdLense в YOLO (см. [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md))
 
 ---
 
-**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) · [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) · [scripts/datasets/README.md](../scripts/datasets/README.md)
+**См. также:** [COLAB_TRAINING.md](./COLAB_TRAINING.md) · [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) · [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) · [scripts/datasets/README.md](../scripts/datasets/README.md)

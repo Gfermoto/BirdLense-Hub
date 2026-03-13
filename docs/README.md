@@ -47,14 +47,15 @@
 
 | Документ | Описание |
 |----------|----------|
-| [COLAB_TRAINING.md](./COLAB_TRAINING.md) | **Пошаговая инструкция** — дообучение в Google Colab Free |
-| [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), слияние датасетов |
-| [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Дообучение на birds-525, iNaturalist |
-| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → разметка → обучение |
-| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов |
-| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Датасеты на Hugging Face, Zenodo |
+| [COLAB_TRAINING.md](./COLAB_TRAINING.md) | **EU-модель** — пошаговая инструкция (Colab Free, fine-tune) |
+| [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), merge датасетов |
+| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (download_hf_birds, merge и др.) |
+| [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Датасеты, оборудование, чек-лист |
+| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → обучение |
+| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Ссылки на датасеты (HF, Zenodo) |
+| [DATASET_UPLOAD_HF.md](./DATASET_UPLOAD_HF.md) | Загрузка merged_cls на Hugging Face |
 | [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) | Hugging Face Hub |
-| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка |
+| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 
 ---
 
@@ -62,6 +63,7 @@
 
 | Документ | Описание |
 |----------|----------|
+| [ROADMAP.md](./ROADMAP.md) | План развития (HA autodiscovery, датасет из лучших кадров) |
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
 
 ---
