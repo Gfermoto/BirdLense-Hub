@@ -41,7 +41,7 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `min_track_duration` | Мин. длительность трека (сек) |
-| `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме |
+| `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
 | `save_images` | Сохранять кадры детекций |

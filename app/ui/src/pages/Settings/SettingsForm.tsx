@@ -1088,6 +1088,7 @@ export const SettingsForm = ({
                     value={field.state.value ?? 200}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
                     label={t('settings.spectrogramDetail')}
+                    helperText={t('settings.spectrogramDetailHelp')}
                   />
                 )}
               </form.Field>

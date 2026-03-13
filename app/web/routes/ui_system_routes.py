@@ -327,10 +327,19 @@ def register_routes(app):
         """
         Start spectrogram regeneration in background. Returns immediately.
         Processes videos without spectrograms (or all if force=true).
+        Only available when BirdNET is configured (MQTT broker + birdnet_topic).
         Poll GET .../status to get result.
         """
         if not settings_check_access():
             return {'error': 'Password required'}, 403
+        mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
+        birdnet_configured = bool(
+            mqtt_broker and (app_config.get('mqtt.birdnet_topic') or '').strip()
+        )
+        if not birdnet_configured:
+            return {
+                'error': 'Spectrogram regeneration requires BirdNET (MQTT broker + birdnet_topic)',
+            }, 400
         force = (request.json or {}).get('force', False)
         t = threading.Thread(target=_run_regenerate_spectrograms, args=(force,), daemon=True)
         t.start()
