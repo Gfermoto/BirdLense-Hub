@@ -194,7 +194,7 @@ print("✅ Ultralytics установлен")
 
 **Параметры для T4 (15 GB):** `batch=64` — если будет ошибка памяти, уменьшите до 32.
 
-**Время:** ~2.5 мин/эпоху на GPU → 150 эпох ≈ 6–7 ч, 200 ≈ 8–9 ч, 250 ≈ 10–11 ч. На CPU — в 10–20 раз дольше. Colab Free может отключиться — используйте resume (см. выше).
+**Время:** ~2.5 мин/эпоху на GPU → 100 эпох ≈ 4 ч (рекомендуется), 150 ≈ 6–7 ч. На CPU — в 10–20 раз дольше. Colab Free может отключиться — используйте resume (см. выше).
 
 **Важно:** замените `BirdLense_Training` на имя вашей папки в Drive.
 
@@ -219,7 +219,7 @@ ckpt_path = os.path.join(PROJECT_ROOT, PROJECT_NAME, "weights", "last.pt")
 # device=0 — GPU, device='cpu' — CPU (если GPU недоступен). batch меньше на CPU
 DEVICE = 0 if __import__('torch').cuda.is_available() else 'cpu'
 BATCH = 64 if DEVICE != 'cpu' else 16
-EPOCHS = 150  # 150 — минимум, 200 — норма, 250 — максимум. Для дообучения до 250: измените и запустите resume
+EPOCHS = 100  # 80–100 достаточно (плато к 50–60). Подробнее: [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md)
 
 if os.path.exists(ckpt_path):
     print("🔄 Продолжение с чекпоинта...")
@@ -231,7 +231,7 @@ else:
     model = YOLO("yolo11n-cls.pt")
     model.train(
         data=DATASET_DIR,
-        epochs=EPOCHS,        # 150 — минимум, 200 — норма, 250 — максимум
+        epochs=EPOCHS,        # 80–100 достаточно для merged_cls
         imgsz=224,
         batch=BATCH,          # T4: 64. CPU: 16. Если OOM — уменьшите
         patience=30,
@@ -283,6 +283,32 @@ Colab отключает через ~12 часов. Если обучение н
 3. Обучение продолжится с последней эпохи
 
 Чекпоинты сохраняются в `Drive/BirdLense_Training/runs/birds_eu_cls_v1/weights/`.
+
+### Обучение завершено, но хочу ещё эпох
+
+**Важно:** для merged_cls плато достигается к 50–60 эпохам. `best.pt` уже сохранён на лучшей эпохе — **добавлять эпохи не нужно**, используйте `best.pt` как есть. См. [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md).
+
+Если всё же нужно дообучить (другой датасет, эксперимент) и появилась ошибка *«training to N epochs is finished, nothing to resume»* — дообучайте **без** `resume=True`, с **низким LR** (`lr0=0.0001`):
+
+```python
+model = YOLO(".../last.pt")
+model.train(
+    data=DATASET_DIR,
+    epochs=50,
+    lr0=0.0001,       # обязательно низкий LR, иначе метрики ухудшатся
+    imgsz=224,
+    batch=64,
+    patience=15,
+    project=".../runs",
+    name="birds_eu_cls_v1_cont",
+    exist_ok=True,
+    device=0,
+    workers=2,
+    amp=False,
+)
+```
+
+Результат: `birds_eu_cls_v1_200ep/weights/best.pt`.
 
 ---
 
@@ -413,6 +439,10 @@ model.train(
 - Colab Free может отключить GPU или runtime в любой момент — лимиты динамические ([FAQ](https://research.google.com/colaboratory/faq.html#usage-limits))
 - `/content` очищается при новой сессии — датасет нужно распаковать заново
 - Запустите ячейки 1–4 по порядку (включая ячейку 2 — распаковку). Код подхватит `last.pt` и продолжит обучение
+
+### «training to N epochs is finished, nothing to resume»
+
+Обучение уже завершено (все эпохи пройдены). Чтобы добавить эпохи (например, 150→200), используйте дообучение **без** `resume` — см. «Обучение завершено, но хочу ещё эпох» в Части 5.
 
 ### «GradScaler state dict is empty» при resume
 
