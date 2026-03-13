@@ -48,6 +48,7 @@
 | Документ | Описание |
 |----------|----------|
 | [COLAB_TRAINING.md](./COLAB_TRAINING.md) | **EU-модель** — пошаговая инструкция (Colab Free, fine-tune) |
+| [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md) | 150 / 200 / 250 эпох — анализ для YOLO11n-cls + merged_cls |
 | [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), merge датасетов |
 | [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (download_hf_birds, merge и др.) |
 | [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Датасеты, оборудование, чек-лист |
