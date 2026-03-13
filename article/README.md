@@ -10,4 +10,4 @@
 
 ## Связь с проектом
 
-BirdLense Hub — исследовательский инструмент. См. [docs/DATASET_TRAINING_PLAN.md](../docs/DATASET_TRAINING_PLAN.md), [docs/DATASET_SOURCES.md](../docs/DATASET_SOURCES.md).
+BirdLense Hub — исследовательский инструмент. См. [docs/DATASETS.md](../docs/DATASETS.md), [docs/TRAINING.md](../docs/TRAINING.md).

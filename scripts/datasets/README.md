@@ -10,7 +10,7 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **merge_classification_datasets.py** — объединить датасеты
 - **download_and_merge_all.sh** — полный пайплайн
 
-Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASET_MERGE_FORMAT.md](../docs/DATASET_MERGE_FORMAT.md).
+Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASETS.md](../docs/DATASETS.md).
 
 ## convert_nabirds_to_yolo.py
 

@@ -47,16 +47,9 @@
 
 | Документ | Описание |
 |----------|----------|
-| [COLAB_TRAINING.md](./COLAB_TRAINING.md) | **EU-модель** — пошаговая инструкция (Colab Free, fine-tune) |
-| [EPOCHS_ANALYSIS.md](./EPOCHS_ANALYSIS.md) | 150 / 200 / 250 эпох — анализ для YOLO11n-cls + merged_cls |
-| [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) | Формат Scientific (Common), merge датасетов |
-| [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) | Справочник скриптов (download_hf_birds, merge и др.) |
-| [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md) | Датасеты, оборудование, чек-лист |
-| [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) | Пайплайн: сбор → экспорт → обучение |
-| [DATASET_SOURCES.md](./DATASET_SOURCES.md) | Ссылки на датасеты (HF, Zenodo) |
-| [DATASET_UPLOAD_HF.md](./DATASET_UPLOAD_HF.md) | Загрузка merged_cls на Hugging Face |
-| [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) | Hugging Face Hub |
-| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
+| [TRAINING.md](./TRAINING.md) | **EU-модель** — обучение в Colab Free (пошагово) |
+| [DATASETS.md](./DATASETS.md) | Форматы, скрипты, источники, модели |
+| [HUGGINGFACE.md](./HUGGINGFACE.md) | Загрузка датасета и модели на HF |
 
 ---
 
@@ -66,6 +59,7 @@
 |----------|----------|
 | [ROADMAP.md](./ROADMAP.md) | План развития (HA autodiscovery, датасет из лучших кадров) |
 | [UPGRADE_PLAN.md](./UPGRADE_PLAN.md) | План апгрейда (Ultralytics, зависимости) |
+| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 
 ---
 

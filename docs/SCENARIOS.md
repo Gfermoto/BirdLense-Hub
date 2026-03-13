@@ -11,7 +11,7 @@
 5. Настройки → Камеры: добавить stream name.
 6. Триггер: OpenCV motion (по умолчанию).
 
-**Результат:** Записи при движении, YOLO-классификация (NABirds — в основном североамериканские виды).
+**Результат:** Записи при движении, YOLO-классификация (EU: birds-525 + iNaturalist, ~491 вид).
 
 ---
 
@@ -87,7 +87,7 @@
 3. Merge: `merge_classification_datasets.py` — объединение в формате Scientific (Common).
 4. Обучение: `scripts/birds_train*.ipynb` — fine-tuning.
 
-Подробнее: [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md), [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md).
+Подробнее: [DATASETS.md](./DATASETS.md).
 
 ---
 

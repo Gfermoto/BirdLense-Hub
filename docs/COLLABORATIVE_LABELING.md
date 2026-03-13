@@ -83,7 +83,7 @@ VideoSpecies
 - **Hugging Face** — итеративные обновления, `load_dataset()`, удобно для ML
 - **Zenodo** — снапшоты с DOI для цитирования в статьях
 - Лицензия: CC BY или CC BY-SA для научного использования
-- Подробнее: [DATASET_SOURCES.md](./DATASET_SOURCES.md)
+- Подробнее: [DATASETS.md](./DATASETS.md)
 
 ---
 
@@ -116,4 +116,4 @@ VideoSpecies
 
 ## 6. Ссылки
 
-**См. также:** [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) · [DATASET_SOURCES.md](./DATASET_SOURCES.md) · [HUGGINGFACE_HUB.md](./HUGGINGFACE_HUB.md) · [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) · [API.md](./API.md)
+**См. также:** [DATASETS.md](./DATASETS.md) · [HUGGINGFACE.md](./HUGGINGFACE.md) · [API.md](./API.md)

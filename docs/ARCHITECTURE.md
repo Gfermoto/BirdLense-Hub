@@ -48,7 +48,7 @@
 2. **Processor** (MQTTEventAggregator) подписан на топик
 3. Слияние с детекциями YOLO по времени (merge_window)
 
-**Европейские птицы:** EU-модель (YOLO11n-cls, ~490 видов) — [COLAB_TRAINING.md](./COLAB_TRAINING.md). US-модель (NABirds) — резерв в best_US.pt. Frigate + BirdNET — дополнение. Слияние: один результат на вид (max confidence).
+**Европейские птицы:** EU-модель (YOLO11n-cls, ~491 вид) активна в `best.pt`. US (NABirds) — резерв в `best_US.pt`. Frigate + BirdNET — дополнение. Слияние: один результат на вид (max confidence).
 
 ### UI
 
