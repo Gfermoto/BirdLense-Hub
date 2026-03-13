@@ -1,29 +1,26 @@
 # Дообучение модели на открытых датасетах
 
-Руководство: как дообучить имеющийся классификатор BirdLense на всех доступных открытых датасетах.
+Справочник по датасетам и оборудованию. **Пошаговая инструкция:** [COLAB_TRAINING.md](./COLAB_TRAINING.md) — обучение EU-модели в Google Colab Free.
 
 ---
 
-## 0. Европейские птицы: текущее положение и планы
+## 0. Европейские птицы: текущее положение
 
-**Изначально европейских видов в модели не было.** Классификатор обучен на NABirds — в основном североамериканские птицы. Европейские виды (сойка, синица, зяблик и т.п.) распознаются хуже или не распознаются.
+**US-модель** (`best_US.pt`): NABirds, ~400 видов, североамериканские. Европейские виды распознаются хуже.
 
-**Сейчас выходим из положения через:**
-- **Frigate Bird Classification** — `sub_label` из MobileNet INat (iNaturalist), если включено в Frigate
-- **BirdNET** — распознавание по голосу (аудио)
+**EU-модель** (в процессе): birds-525 + iNaturalist Europe, ~490 видов. Формат `Scientific (Common)` — совпадает с Frigate/BirdNET. Инструкция: [COLAB_TRAINING.md](./COLAB_TRAINING.md).
 
-**Планируем:** дообучить модель на открытых датасетах с европейскими видами. Ниже — датасеты с ссылками и пояснение, какие дадут улучшение, а какие нет.
+**Пока EU не готова:** Frigate Bird Classification (INat) и BirdNET компенсируют отсутствие EU-видов в YOLO.
 
 ---
 
-## 1. Текущая модель и пайплайн
+## 1. Текущие модели и пайплайн
 
-| Компонент | Версия | Дообучено на | Ограничение |
-|-----------|--------|--------------|-------------|
-| **Детектор** | YOLOv8n (Ultralytics 8.4.21) | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel |
-| **Классификатор** | YOLOv8n-cls | NABirds (~400 видов) | **В основном североамериканские птицы** — европейские виды распознаются хуже |
-
-**Планируется:** переобучение на YOLO11n (см. [UPGRADE_PLAN.md](./UPGRADE_PLAN.md)).
+| Компонент | Версия | Дообучено на |
+|-----------|--------|--------------|
+| **Детектор** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel (бинарный bird/squirrel) |
+| **Классификатор US** | YOLOv8n-cls | NABirds (~400 видов, североамериканские) |
+| **Классификатор EU** | YOLO11n-cls | birds-525 + iNaturalist Europe (~490 видов) — см. [COLAB_TRAINING.md](./COLAB_TRAINING.md) |
 
 ### Двухэтапный пайплайн обучения
 
@@ -64,7 +61,7 @@
 | **Локально** | Своя видеокарта | — | Полный контроль, без лимитов |
 | **Vast.ai** | Разные | Часто дешевле RunPod | Spot-цены |
 
-**Рекомендация:** RunPod — в `birds_train_cls.ipynb` уже есть конфиг (batch=256, workers=6). Загрузка датасета ~10 GB, обучение 200 эпох — ориентировочно 4–8 часов на A100.
+**Рекомендация:** [COLAB_TRAINING.md](./COLAB_TRAINING.md) — Colab Free, T4 GPU. Альтернатива: RunPod (`birds_train_cls.ipynb`, batch=256) — 4–8 ч на A100.
 
 ---
 
@@ -150,40 +147,7 @@ model.train(
 
 ---
 
-## 4. Скрипты для добавления
-
-### 4.1 Загрузка 34data/birds-525-species (Hugging Face)
-
-```python
-# scripts/datasets/download_hf_birds_525.py
-from datasets import load_dataset
-from pathlib import Path
-
-ds = load_dataset("34data/birds-525-species", split="train")
-out = Path("datasets/birds_525_cls")
-for item in ds:
-    label = item["labels"]  # или как в датасете
-    (out / "train" / label).mkdir(parents=True, exist_ok=True)
-    item["image"].save(out / "train" / label / f"{item['id']}.jpg")
-```
-
-### 4.2 iNaturalist (европейские птицы)
-
-```python
-# API: GET https://api.inaturalist.org/v1/observations
-# Параметры: taxon_id=3 (Aves), place_id=... (Europe), quality_grade=research
-# Скачать изображения по observation_photos
-```
-
-Документация: [iNaturalist API](https://api.inaturalist.org/v1/docs/)
-
-### 4.3 Birdsnap (bbox → crops)
-
-Аналогично `convert_yolo_det_to_cls.py`: есть bbox в `images.txt`, вырезать crops и сохранить в `train/Species_Name/`.
-
----
-
-## 5. Оценка объёма и времени (birds-525 + iNaturalist EU)
+## 4. Оценка объёма и времени (birds-525 + iNaturalist EU)
 
 | Датасет | Размер | Время загрузки | Время обучения (A100) |
 |---------|--------|-----------------|------------------------|
@@ -196,31 +160,24 @@ for item in ds:
 
 ---
 
-## 6. Чек-лист
+## 5. Чек-лист
 
-**Pretrain (открытые датасеты):**
-- [ ] RunPod/Colab: создать pod, загрузить `birds_train_cls.ipynb`
-- [ ] Скачать NABirds (или использовать уже подготовленный `nabirds_yolo_cleaned_cls`)
-- [ ] Добавить скрипт загрузки Hugging Face (birds-525, birdsnap) — `download_hf_birds.py`
-- [x] Скрипт iNaturalist для европейских видов — `download_inaturalist.py`
-- [ ] Скрипт `merge_classification_datasets.py` — объединить датасеты
-- [ ] В `birds_train_cls.ipynb`: загрузить `best.pt`, дообучить на merged dataset
+**EU-модель (основной способ):**
+- [x] `download_hf_birds.py`, `download_inaturalist.py`, `merge_classification_datasets.py`
+- [x] `download_and_merge_all.sh` — полный пайплайн
+- [ ] [COLAB_TRAINING.md](./COLAB_TRAINING.md) — обучение в Colab, деплой best.pt
 
-**Fine-tune (данные BirdLense):**
-- [ ] Реализовать `export_birdlense_to_yolo.py` — экспорт записей в YOLO
-- [ ] Собрать подтверждённые/исправленные детекции с кормушек
-- [ ] Дообучить pretrain-модель на данных BirdLense (меньше эпох, ниже LR)
+**Fine-tune (добавить виды):**
+- [ ] COLAB_TRAINING.md, Часть 7 — merge new_species_cls + merged_cls, дообучение на best.pt
 
-**Деплой:**
-- [ ] Экспорт: `best.pt` → `processor/models/classification/weights/`
-- [ ] Деплой и проверка
+**Планируется:**
+- [ ] `export_birdlense_to_yolo.py` — экспорт записей BirdLense в YOLO
 
 ---
 
-## 7. Ссылки
+## 6. Ссылки
 
-- [DATASET_TRAINING_PLAN.md](./DATASET_TRAINING_PLAN.md) — общий план
-- [DATASET_SOURCES.md](./DATASET_SOURCES.md) — источники
+- [COLAB_TRAINING.md](./COLAB_TRAINING.md) — пошаговая инструкция EU-модели
+- [DATASET_MERGE_FORMAT.md](./DATASET_MERGE_FORMAT.md) — формат Scientific (Common)
 - [DATASET_SCRIPTS.md](./DATASET_SCRIPTS.md) — скрипты
-- [RunPod](https://runpod.io) — GPU cloud
-- [iNaturalist API](https://api.inaturalist.org/v1/docs/)
+- [DATASET_SOURCES.md](./DATASET_SOURCES.md) — источники

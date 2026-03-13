@@ -4,15 +4,11 @@
 
 ---
 
-## 0. Европейские птицы: приоритет
+## 0. Европейские птицы
 
-Текущая модель BirdLense обучена на NABirds (североамериканские виды). **Европейских видов изначально не было** — мы выходим из положения через Frigate Bird Classification и BirdNET. Планируем дообучить модель на открытых датасетах.
+**EU-модель:** birds-525 + iNaturalist Europe, ~490 видов. Инструкция: [COLAB_TRAINING.md](./COLAB_TRAINING.md).
 
-**Для улучшения по EU-видам** приоритетны:
-- [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species) — частично EU
-- **iNaturalist** — [API](https://api.inaturalist.org/v1/docs/), фильтр `place_id=96372` (Europe)
-
-**NABirds, Birdsnap, CUB-200** — североамериканские. **Не дадут улучшения по европейским видам.** См. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+**Приоритетные датасеты для EU:** [34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species), [iNaturalist API](https://api.inaturalist.org/v1/docs/) (place_id=96372). NABirds, Birdsnap, CUB-200 — североамериканские, не дают улучшения по EU.
 
 ---
 

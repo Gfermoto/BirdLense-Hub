@@ -123,11 +123,11 @@
 | `species_mapping` | Маппинг названий видов |
 
 **Источники видов:**
-- **YOLO** — видео, классификация (NABirds, в основном североамериканские)
-- **Frigate** — видео, `sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (MobileNet INat), если включено в Frigate
+- **YOLO** — видео, классификация (EU: birds-525 + iNaturalist ~490 видов, или US: NABirds ~400)
+- **Frigate** — видео, `sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (MobileNet INat)
 - **BirdNET** — аудио, распознавание по голосу
 
-**Европейские птицы:** изначально в модели не было. Пока используем Frigate + BirdNET. Планируем дообучить на [birds-525](https://huggingface.co/datasets/34data/birds-525-species) и [iNaturalist Europe](https://api.inaturalist.org/v1/docs/) — см. [FINETUNE_OPEN_DATASETS.md](./FINETUNE_OPEN_DATASETS.md).
+**EU-модель:** [COLAB_TRAINING.md](./COLAB_TRAINING.md). US — резерв в best_US.pt.
 
 ## Retention
 
