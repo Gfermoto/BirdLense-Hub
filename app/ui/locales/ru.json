@@ -171,6 +171,8 @@
     "weatherHaTokenPlaceholder": "Пусто — HA_TOKEN в env",
     "weatherHaTokenHint": "Env HA_TOKEN приоритетнее.",
     "openWeatherApiKey": "OpenWeather API Key",
+    "xenoCantoApiKey": "Ключ Xeno-canto API",
+    "xenoCantoApiKeyHint": "Для воспроизведения птичьих песен на странице вида. Получить ключ: xeno-canto.org/account",
     "objectTracker": "Object Tracker",
     "zip": "ZIP",
     "zipFetchFailed": "Не удалось получить координаты. Проверьте почтовый индекс.",
@@ -319,7 +321,8 @@
     "sightings": "наблюдений",
     "errorLoad": "Ошибка загрузки данных.",
     "recentVisits": "Недавние визиты",
-    "total": "Всего"
+    "total": "Всего",
+    "playSong": "Воспроизвести песню (Xeno-canto)"
   },
   "timelineStats": {
     "uniqueSpecies": "Уникальных видов",

@@ -171,6 +171,8 @@
     "weatherHaTokenPlaceholder": "Empty — use HA_TOKEN env",
     "weatherHaTokenHint": "Env HA_TOKEN overrides.",
     "openWeatherApiKey": "OpenWeather API Key",
+    "xenoCantoApiKey": "Xeno-canto API Key",
+    "xenoCantoApiKeyHint": "For bird song playback on species pages. Get key at xeno-canto.org/account",
     "objectTracker": "Object Tracker",
     "zip": "ZIP",
     "zipFetchFailed": "Failed to fetch coordinates. Please check the ZIP code.",
@@ -319,7 +321,8 @@
     "sightings": "sightings",
     "errorLoad": "Error loading data.",
     "recentVisits": "Recent Visits",
-    "total": "Total"
+    "total": "Total",
+    "playSong": "Play bird song (Xeno-canto)"
   },
   "timelineStats": {
     "uniqueSpecies": "Unique Species",

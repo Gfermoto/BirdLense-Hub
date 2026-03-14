@@ -272,6 +272,26 @@ class TestReportPdf:
         assert r.status_code == 400
 
 
+class TestSpeciesXenoCanto:
+    def test_xeno_canto_404_for_unknown_species(self, client):
+        r = client.get('/api/ui/species/999999/xeno-canto')
+        assert r.status_code == 404
+
+    def test_xeno_canto_returns_recordings_or_empty(self, client):
+        # Depends on seed data - get first species from /species
+        species_r = client.get('/api/ui/species')
+        assert species_r.status_code == 200
+        species_list = species_r.json
+        if species_list:
+            sid = species_list[0]['id']
+            r = client.get(f'/api/ui/species/{sid}/xeno-canto')
+            assert r.status_code == 200
+            assert 'recordings' in r.json
+            assert 'species_name' in r.json
+            assert 'xeno_canto_search_url' in r.json
+            assert isinstance(r.json['recordings'], list)
+
+
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):
         r = client.get('/api/ui/unknowns')

@@ -12,6 +12,7 @@ from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
+from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
 
 
 
@@ -846,6 +847,23 @@ def register_routes(app):
             return {"message": "Processor restart requested"}, 200
         except Exception as e:
             return {"error": str(e)}, 500
+
+    @app.route('/api/ui/species/<int:species_id>/xeno-canto', methods=['GET'])
+    def get_species_xeno_canto(species_id):
+        """Fetch bird song recordings from Xeno-canto for species."""
+        from urllib.parse import quote
+
+        species = Species.query.get(species_id)
+        if not species:
+            return {'error': 'Species not found'}, 404
+        recordings = fetch_recordings(species.name, limit=5)
+        term = _search_term_from_species_name(species.name) or species.name
+        search_url = f"https://xeno-canto.org/explore?query={quote(term)}" if term else None
+        return {
+            'recordings': recordings,
+            'species_name': species.name,
+            'xeno_canto_search_url': search_url,
+        }, 200
 
     @app.route('/api/ui/species/<int:species_id>/summary', methods=['GET'])
     def get_species_summary(species_id):

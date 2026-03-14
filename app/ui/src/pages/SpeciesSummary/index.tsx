@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -19,12 +24,94 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import { CircularProgress } from '@mui/material';
 import { SpeciesSummary } from '../../types';
-import { fetchSpeciesSummary } from '../../api/api';
+import { fetchSpeciesSummary, fetchXenoCantoRecordings } from '../../api/api';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { resolveImageUrl } from '../../api/api';
+
+const BirdSongButton = ({
+  speciesId,
+  playingRecording,
+  setPlayingRecording,
+  audioRef,
+}: {
+  speciesId: number;
+  playingRecording: string | null;
+  setPlayingRecording: (url: string | null) => void;
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
+}) => {
+  const { t } = useTranslation();
+  const [recordings, setRecordings] = useState<{ file: string; en?: string; type?: string }[]>([]);
+  const [searchUrl, setSearchUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handlePlay = async () => {
+    if (playingRecording) {
+      audioRef.current?.pause();
+      setPlayingRecording(null);
+      return;
+    }
+    if (recordings.length === 0 && !searchUrl) {
+      setLoading(true);
+      try {
+        const res = await fetchXenoCantoRecordings(speciesId);
+        setRecordings(res.recordings);
+        setSearchUrl(res.xeno_canto_search_url ?? null);
+        if (res.recordings.length > 0) {
+          const url = res.recordings[0].file;
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audio.onended = () => setPlayingRecording(null);
+          audio.play().catch(() => setPlayingRecording(null));
+          setPlayingRecording(url);
+        } else if (res.xeno_canto_search_url) {
+          window.open(res.xeno_canto_search_url, '_blank');
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    } else if (recordings.length > 0) {
+      const url = recordings[0].file;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setPlayingRecording(null);
+      audio.play().catch(() => setPlayingRecording(null));
+      setPlayingRecording(url);
+    } else if (searchUrl) {
+      window.open(searchUrl, '_blank');
+    }
+  };
+
+  return (
+    <Tooltip title={t('speciesSummary.playSong')}>
+      <span>
+        <IconButton
+          color="primary"
+          onClick={handlePlay}
+          disabled={loading}
+          aria-label={t('speciesSummary.playSong')}
+          sx={{
+            bgcolor: playingRecording ? 'primary.main' : 'action.hover',
+            color: playingRecording ? 'primary.contrastText' : 'primary.main',
+            '&:hover': {
+              bgcolor: playingRecording ? 'primary.dark' : 'action.selected',
+            },
+          }}
+        >
+          {playingRecording ? (
+            <StopIcon fontSize="small" />
+          ) : (
+            <PlayArrowIcon fontSize="small" />
+          )}
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+};
 
 const StatCard = ({
   icon,
@@ -55,11 +142,19 @@ const SpeciesSummaryPage = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const speciesId = id ? +id : undefined;
+  const [playingRecording, setPlayingRecording] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data, isLoading, error } = useQuery<SpeciesSummary>({
     queryKey: ['speciesSummary', speciesId],
     queryFn: () => fetchSpeciesSummary(speciesId as number),
   });
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
 
   if (isLoading)
     return (
@@ -151,9 +246,17 @@ const SpeciesSummaryPage = () => {
             </Box>
           </Grid>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Typography variant="h4" gutterBottom color="primary">
-              {data.species.name}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+              <Typography variant="h4" color="primary">
+                {data.species.name}
+              </Typography>
+              <BirdSongButton
+                speciesId={speciesId as number}
+                playingRecording={playingRecording}
+                setPlayingRecording={setPlayingRecording}
+                audioRef={audioRef}
+              />
+            </Box>
             <Typography
               variant="body1"
               color="text.secondary"
