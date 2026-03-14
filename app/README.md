@@ -32,7 +32,7 @@ UI: http://localhost:8085
 | `make pull` | Скачать и запустить готовый образ |
 | `make stop` | Остановка |
 | `make logs` | Логи |
-| `make deploy` | Деплой на 192.168.1.11 |
+| `make deploy` | Деплой на сервер (см. scripts/deploy.local.sh) |
 
 ## Конфигурация
 
@@ -60,7 +60,7 @@ cd BirdLense
 make deploy
 ```
 
-Синхронизирует код на 192.168.1.11, **не трогает** data на сервере.
+Синхронизирует код на сервер (см. scripts/deploy.local.sh.example), **не трогает** data на сервере.
 
 ## Требования
 

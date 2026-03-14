@@ -40,6 +40,11 @@ test.describe('API endpoints @api', () => {
   });
 
   test('GET /api/ui/settings returns settings', async ({ request }) => {
+    const reqRes = await request.get('/api/ui/settings/requires-password');
+    const { requires } = await reqRes.json();
+    if (requires && !process.env.E2E_SETTINGS_PASSWORD) {
+      test.skip(true, 'Settings require password — set E2E_SETTINGS_PASSWORD for full test');
+    }
     await ensureSettingsUnlocked(request);
     const res = await request.get('/api/ui/settings');
     expect(res.ok()).toBeTruthy();

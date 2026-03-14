@@ -1,9 +1,22 @@
+import copy
 import logging
 import os
 
 import yaml
 
 logger = logging.getLogger(__name__)
+
+# Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
+SENSITIVE_KEYS = frozenset({
+    'general.settings_password',
+    'notifications.telegram_bot_token',
+    'mqtt.password',
+    'video.go2rtc_password',
+    'weather.ha_token',
+    'secrets.openweather_api_key',
+    'mcp.token',
+})
+MASK_PLACEHOLDER = '***'
 
 
 class AppConfig:
@@ -46,6 +59,62 @@ class AppConfig:
             else:
                 base[key] = value
         return base
+
+    @staticmethod
+    def _mask_value(val):
+        """Маскирует непустое значение."""
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return val
+        return MASK_PLACEHOLDER
+
+    @staticmethod
+    def _get_nested(d, path):
+        """Получить значение по пути 'a.b.c'."""
+        for k in path.split('.'):
+            d = (d or {}).get(k)
+        return d
+
+    @staticmethod
+    def _set_nested(d, path, value):
+        """Установить значение по пути 'a.b.c'."""
+        keys = path.split('.')
+        for k in keys[:-1]:
+            d = d.setdefault(k, {})
+        d[keys[-1]] = value
+
+    @classmethod
+    def mask_config_for_api(cls, config):
+        """Возвращает копию конфига с замаскированными секретами."""
+        out = copy.deepcopy(config)
+        for path in SENSITIVE_KEYS:
+            val = cls._get_nested(out, path)
+            if val is not None:
+                cls._set_nested(out, path, cls._mask_value(val))
+        return out
+
+    @classmethod
+    def filter_sensitive_placeholders(cls, updates):
+        """Не перезаписывать секреты placeholder'ами (***) или пустой строкой."""
+        out = copy.deepcopy(updates)
+        for path in SENSITIVE_KEYS:
+            val = cls._get_nested(out, path)
+            if val is None:
+                continue
+            if isinstance(val, str) and (val.strip() == MASK_PLACEHOLDER or not val.strip()):
+                cls._remove_nested(out, path)
+        return out
+
+    @staticmethod
+    def _remove_nested(d, path):
+        """Удалить ключ по пути 'a.b.c' из updates."""
+        keys = path.split('.')
+        parent = d
+        for k in keys[:-1]:
+            parent = parent.get(k)
+            if parent is None:
+                return
+        if isinstance(parent, dict) and keys[-1] in parent:
+            del parent[keys[-1]]
 
     def get(self, key, default=None):
         keys = key.split('.')

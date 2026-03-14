@@ -529,7 +529,7 @@ def register_routes(app):
     def get_settings():
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        return app_config.config, 200
+        return app_config.mask_config_for_api(app_config.config), 200
 
     @app.route('/api/ui/settings', methods=['PATCH'])
     def update_settings():
@@ -549,6 +549,9 @@ def register_routes(app):
                     if (c.get('stream_name') or '').strip()
                 ]
 
+            # Не перезаписывать секреты placeholder'ами (***)
+            updates = app_config.filter_sensitive_placeholders(updates)
+
             # Recursively merge the updates into the current configuration
             app_config.config = app_config.merge_dicts(
                 app_config.config, updates)
@@ -556,8 +559,8 @@ def register_routes(app):
             # Save the updated configuration back to the user config file
             app_config.save()
 
-            # Return the updated configuration
-            return app_config.config
+            # Return the updated configuration (masked)
+            return app_config.mask_config_for_api(app_config.config)
 
         except Exception as e:
             return {"error": str(e)}, 500

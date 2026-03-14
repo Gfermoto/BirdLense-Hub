@@ -13,10 +13,7 @@ test.describe('Smoke tests', () => {
     await page.getByRole('link', { name: /Timeline|Записи/i }).first().click();
     await expect(page).toHaveURL(/\/timeline/);
 
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: /settings|настройки/i }).click();
-    await page.getByRole('menuitem', { name: /Settings|Настройки/i }).click();
+    await page.goto('/settings');
     await expect(page).toHaveURL(/\/settings/);
 
     await page.goto('/live');

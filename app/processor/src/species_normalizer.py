@@ -11,10 +11,11 @@ def _extract_common_for_merge(s: str) -> str:
     Извлечь common name для сравнения при слиянии.
     "Cardinalis cardinalis (Northern Cardinal)" -> "Northern Cardinal"
     "Northern Cardinal" -> "Northern Cardinal"
+    "Great_Tit" / "Parus major (Great Tit)" -> "great tit"
     """
     if not s or not isinstance(s, str):
         return ""
-    s = s.strip()
+    s = s.strip().replace("_", " ").replace("-", " ")
     m = re.match(r"^.+?\s*\(([^)]+)\)\s*$", s)
     return m.group(1).strip().lower() if m else s.lower()
 
@@ -50,11 +51,11 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
     Один результат на вид: max confidence, объединённый интервал времени.
-    YOLO primary; MQTT boosts confidence или добавляет вид, если не в YOLO.
+    dedup_window_seconds: детекции одного вида с разрывом > N сек считаются разными визитами.
     """
     from datetime import datetime, timezone
 
-    by_key = {}  # canonical_key -> detection
+    by_key = {}  # (canonical_key, visit_id) -> detection; visit_id различает визиты с большим разрывом
     video_duration = (video_end - video_start).total_seconds() if video_end and video_start else 0
 
     def _canonical_key(s):
@@ -69,16 +70,33 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         if new_best_frame is not None and new_conf >= old_conf:
             existing["best_frame"] = new_best_frame
 
-    for d in yolo_detections:
+    # YOLO: сортируем по start_time, объединяем по виду с учётом dedup_window
+    sorted_yolo = sorted(
+        yolo_detections,
+        key=lambda d: d.get("start_time", 0),
+    )
+    for d in sorted_yolo:
         species = d.get("species_name") or d.get("species") or d.get("name", "unknown")
         key = _canonical_key(species)
         conf = d.get("confidence", 0)
         start = d.get("start_time", 0)
         end = d.get("end_time", video_duration)
-        if key in by_key:
-            _merge_into(by_key[key], conf, start, end, d.get("best_frame"))
+
+        # Ищем существующую детекцию того же вида, где (start - existing_end) <= dedup_window
+        merged = None
+        for k, det in list(by_key.items()):
+            if k[0] != key:
+                continue
+            existing_end = det.get("end_time", 0)
+            if start - existing_end <= dedup_window_seconds:
+                merged = det
+                break
+
+        if merged is not None:
+            _merge_into(merged, conf, start, end, d.get("best_frame"))
         else:
-            by_key[key] = {
+            visit_id = sum(1 for k in by_key if k[0] == key)
+            by_key[(key, visit_id)] = {
                 "species_name": species,
                 "species": species,
                 "start_time": start,
@@ -90,19 +108,21 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
                 "frames": d.get("frames"),
             }
             if "best_frame" in d:
-                by_key[key]["best_frame"] = d["best_frame"]
+                by_key[(key, visit_id)]["best_frame"] = d["best_frame"]
 
     for ev in mqtt_events:
         species = ev.get("species", "unknown")
         conf = ev.get("confidence", 0)
         key = _canonical_key(species)
-        if key in by_key:
-            _merge_into(by_key[key], conf, 0, video_duration)
+        # Ищем любую существующую детекцию того же вида (YOLO) и мержим
+        merged = next((det for k, det in by_key.items() if k[0] == key), None)
+        if merged is not None:
+            _merge_into(merged, conf, 0, video_duration)
             continue
         provider = ev.get("source", "mqtt")
         if provider == "birdnet":
             provider = "birdnet_mqtt"
-        by_key[key] = {
+        by_key[(key, -1)] = {
             "species_name": species,
             "species": species,
             "start_time": 0,
