@@ -1055,6 +1055,18 @@ export const SettingsForm = ({
             {t('settings.advancedDesc')}
             </Typography>
           <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="secrets.xeno_canto_api_key">
+                {(field) => (
+                  <PasswordField
+                    value={field.state.value ?? ''}
+                    onChange={(v) => field.handleChange(v)}
+                    label={t('settings.xenoCantoApiKey')}
+                    helperText={t('settings.xenoCantoApiKeyHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.max_record_seconds">
                 {(field) => (

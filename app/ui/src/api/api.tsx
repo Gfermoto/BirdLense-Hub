@@ -258,6 +258,28 @@ export const fetchSpeciesSummary = async (
   return response.data;
 };
 
+export interface XenoCantoRecording {
+  id: number | string;
+  file: string;
+  en?: string;
+  type?: string;
+  rec?: string;
+  cnt?: string;
+}
+
+export const fetchXenoCantoRecordings = async (
+  speciesId: number,
+): Promise<{
+  recordings: XenoCantoRecording[];
+  species_name: string;
+  xeno_canto_search_url: string | null;
+}> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/species/${speciesId}/xeno-canto`,
+  );
+  return response.data;
+};
+
 export interface UnknownDetection {
   id: number;
   video_id: number;

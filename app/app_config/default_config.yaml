@@ -132,5 +132,6 @@ mcp:
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""
+  xeno_canto_api_key: ""  # Xeno-canto API v3 key for bird song playback (xeno-canto.org/account)
   latitude: "39.8283"
   longitude: "-98.5795"

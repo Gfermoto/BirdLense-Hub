@@ -14,6 +14,7 @@ SENSITIVE_KEYS = frozenset({
     'video.go2rtc_password',
     'weather.ha_token',
     'secrets.openweather_api_key',
+    'secrets.xeno_canto_api_key',
     'mcp.token',
 })
 MASK_PLACEHOLDER = '***'
