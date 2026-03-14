@@ -129,6 +129,13 @@ mcp:
   # API URL для MCP-клиента. В контейнере: http://127.0.0.1:8000/api/ui
   # api_url: ""  # пусто = авто (127.0.0.1:8000 в Docker, иначе из env BIRDLENSE_API_URL)
 
+# eBird export — для формата eBird Record (импорт в eBird.org)
+ebird:
+  country: "US"       # 2-char code (US, RU, etc.)
+  state: ""           # 1–3 chars (NY, CA, etc.)
+  location_name: "BirdLense Feeder"
+  protocol: "Stationary"  # Stationary | Traveling | Incidental | Historical
+
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""

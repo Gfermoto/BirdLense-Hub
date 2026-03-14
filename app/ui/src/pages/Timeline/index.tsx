@@ -138,7 +138,7 @@ export function TimelinePage() {
     );
   };
 
-  const handleExport = async (format: 'csv' | 'json') => {
+  const handleExport = async (format: 'csv' | 'json' | 'ebird') => {
     if (!dateTime) return;
     setExportAnchor(null);
     setExporting(true);
@@ -260,6 +260,7 @@ export function TimelinePage() {
         >
           <MenuItem onClick={() => handleExport('csv')}>{t('timeline.exportCsv')}</MenuItem>
           <MenuItem onClick={() => handleExport('json')}>{t('timeline.exportJson')}</MenuItem>
+          <MenuItem onClick={() => handleExport('ebird')}>{t('timeline.exportEbird')}</MenuItem>
         </Menu>
       </Box>
 

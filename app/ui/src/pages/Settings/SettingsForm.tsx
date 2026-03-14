@@ -1067,6 +1067,48 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('settings.ebirdSection')}</Typography>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="ebird.country">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    value={field.state.value ?? ''}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    label={t('settings.ebirdCountry')}
+                    placeholder="US"
+                    helperText={t('settings.ebirdCountryHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="ebird.state">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    value={field.state.value ?? ''}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    label={t('settings.ebirdState')}
+                    placeholder="NY"
+                    helperText={t('settings.ebirdStateHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="ebird.location_name">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    value={field.state.value ?? ''}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    label={t('settings.ebirdLocation')}
+                    helperText={t('settings.ebirdLocationHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.max_record_seconds">
                 {(field) => (

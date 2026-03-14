@@ -43,11 +43,11 @@ export const fetchTimeline = async (
   return response.data;
 };
 
-/** Export timeline as CSV or JSON. Triggers download. */
+/** Export timeline as CSV, JSON, or eBird format. Triggers download. */
 export const exportTimeline = async (
   startTime: Dayjs,
   endTime: Dayjs,
-  format: 'csv' | 'json',
+  format: 'csv' | 'json' | 'ebird',
 ): Promise<void> => {
   const params = new URLSearchParams({
     start_time: String(startTime.unix()),
@@ -61,8 +61,8 @@ export const exportTimeline = async (
     throw new Error(err.error || res.statusText);
   }
   const blob = await res.blob();
-  const ext = format === 'csv' ? 'csv' : 'json';
-  const filename = `birdlense_timeline.${ext}`;
+  const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
+  const filename = format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;

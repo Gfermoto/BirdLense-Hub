@@ -155,6 +155,12 @@ export interface Settings {
     ha_entity_id?: string;
     ha_token?: string;
   };
+  ebird?: {
+    country?: string;
+    state?: string;
+    location_name?: string;
+    protocol?: string;
+  };
   feed?: {
     source?: string;
     duration_seconds?: number;
