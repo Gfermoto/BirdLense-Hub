@@ -112,6 +112,8 @@
     "relaySeconds": "Секунд работы реле",
     "relaySecondsHint": "Длительность включения при нажатии «Выдать корм»",
     "notifications": "Уведомления в Telegram",
+    "webhookUrl": "Webhook URL",
+    "webhookUrlHint": "POST при каждой детекции (IFTTT, Zapier). JSON: species, confidence, time, source",
     "excludeSpecies": "Исключить из уведомлений",
     "telegramBotToken": "Токен бота Telegram",
     "telegramBotTokenHint": "@BotFather → /newbot",
@@ -193,7 +195,17 @@
     "errorLoad": "Ошибка загрузки данных.",
     "export": "Экспорт",
     "exportCsv": "Экспорт CSV",
-    "exportJson": "Экспорт JSON"
+    "exportJson": "Экспорт JSON",
+    "timeOfDay": "Время суток",
+    "timeAllDay": "Весь день",
+    "timeMorning": "Утро (6–10)",
+    "timeDay": "День (10–14)",
+    "timeAfternoon": "День (14–18)",
+    "timeEvening": "Вечер (18–22)"
+  },
+  "pwa": {
+    "installPrompt": "Добавить BirdLense Hub на главный экран",
+    "install": "Установить"
   },
   "storage": {
     "deleted": "Удалено {{count}} файлов ({{size}})",

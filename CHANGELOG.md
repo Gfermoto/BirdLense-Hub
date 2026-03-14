@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Playback speed (0.5x, 2x)** — кнопки в видеоплеере для замедления/ускорения просмотра.
 - **Виджет «Последняя птица»** — блок на Overview с последней детекцией дня (время и вид).
 - **CSV/JSON экспорт** — кнопка экспорта в Timeline: скачать визиты за выбранный период в CSV или JSON.
+- **Фильтр по времени суток** — в Timeline: Утро (6–10), День, Вечер (18–22).
+- **Webhook** — POST при каждой детекции на настраиваемый URL (Настройки). JSON: species, confidence, time, source.
+- **PWA** — vite-plugin-pwa: service worker, offline cache, install prompt «Добавить на главный экран».
 
 ---
 

@@ -46,21 +46,40 @@ function useSpeciesList(visits: SpeciesVisit[] | undefined) {
     : [];
 }
 
+type TimeOfDay = 'all' | 'morning' | 'day' | 'afternoon' | 'evening';
+
+const TIME_RANGES: Record<Exclude<TimeOfDay, 'all'>, [number, number]> = {
+  morning: [6, 10],   // 6–10
+  day: [10, 14],     // 10–14
+  afternoon: [14, 18], // 14–18
+  evening: [18, 22],  // 18–22
+};
+
+function visitInTimeRange(visit: SpeciesVisit, range: [number, number]): boolean {
+  const hour = dayjs(visit.start_time).hour();
+  return hour >= range[0] && hour < range[1];
+}
+
 function useFilteredVisits(
   visits: SpeciesVisit[] | undefined,
   selectedSpeciesIds: number[],
+  timeOfDay: TimeOfDay,
 ) {
-  return visits?.filter(
-    (visit) =>
+  return visits?.filter((visit) => {
+    const speciesMatch =
       selectedSpeciesIds.length === 0 ||
-      selectedSpeciesIds.includes(visit.species.id),
-  );
+      selectedSpeciesIds.includes(visit.species.id);
+    const timeMatch =
+      timeOfDay === 'all' || visitInTimeRange(visit, TIME_RANGES[timeOfDay]);
+    return speciesMatch && timeMatch;
+  });
 }
 
 export function TimelinePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const [dateTime, setDateTime] = useState<Dayjs | null>(() => {
@@ -108,7 +127,7 @@ export function TimelinePage() {
   }, [searchParams, visits]);
 
   const speciesList = useSpeciesList(visits);
-  const filteredVisits = useFilteredVisits(visits, selectedSpeciesIds);
+  const filteredVisits = useFilteredVisits(visits, selectedSpeciesIds, timeOfDay);
 
   const handleSpeciesChange = (event: { target: { value: any } }) => {
     const value = event.target.value;
@@ -179,6 +198,21 @@ export function TimelinePage() {
             views={['year', 'month', 'day', 'hours']}
           />
         </LocalizationProvider>
+        <FormControl sx={{ minWidth: 140 }}>
+          <InputLabel id="timeofday-label">{t('timeline.timeOfDay')}</InputLabel>
+          <Select
+            labelId="timeofday-label"
+            value={timeOfDay}
+            onChange={(e) => setTimeOfDay(e.target.value as TimeOfDay)}
+            label={t('timeline.timeOfDay')}
+          >
+            <MenuItem value="all">{t('timeline.timeAllDay')}</MenuItem>
+            <MenuItem value="morning">{t('timeline.timeMorning')}</MenuItem>
+            <MenuItem value="day">{t('timeline.timeDay')}</MenuItem>
+            <MenuItem value="afternoon">{t('timeline.timeAfternoon')}</MenuItem>
+            <MenuItem value="evening">{t('timeline.timeEvening')}</MenuItem>
+          </Select>
+        </FormControl>
         <FormControl>
           <InputLabel id="species-select-label">{t('timeline.species')}</InputLabel>
           <Select
