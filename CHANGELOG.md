@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **eBird export** — экспорт списка видов в формате eBird Record для импорта в eBird.org. Кнопка «Экспорт для eBird» в Timeline. Настройки: Настройки → Расширенные (страна, регион, локация).
+- **Confidence по виду** — пороги `min_confidence` по видам. Редкие виды — ниже порог. Конфиг `processor.species_confidence_overrides: {"Species Name": 0.05}`. Настройки → Processor.
 
 ---
 

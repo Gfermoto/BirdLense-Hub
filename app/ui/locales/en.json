@@ -151,6 +151,8 @@
     "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives (default)",
     "minConfidenceToProcess": "Min track confidence",
     "minConfidenceToProcessHelp": "Tracks with lower confidence are discarded. 0.03 = more detections, 0.10 = stricter (default)",
+    "speciesConfidenceOverrides": "Per-species thresholds",
+    "speciesConfidenceOverridesHint": "Species Name: 0.05 per line. Lower threshold for rare species.",
     "unknownConfidenceThreshold": "Unknowns threshold",
     "unknownConfidenceThresholdHelp": "Detections with confidence below this (0–1) appear in «Unknowns» for manual review. 0.5 = default.",
     "spectrogramDetail": "Spectrogram detail",

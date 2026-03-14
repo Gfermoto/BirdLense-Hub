@@ -46,6 +46,7 @@
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `min_track_duration` | Мин. длительность трека (сек). По умолчанию 2 — меньше ложных срабатываний |
 | `min_confidence_to_process` | Мин. confidence трека (0.10 по умолчанию). 0.03 — больше детекций, 0.10 — строже |
+| `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
 | `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |

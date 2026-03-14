@@ -10,8 +10,8 @@
 |-------|---------------|-----------|
 | **curl/API** | Health, status, cameras на 192.168.1.11:8085 | ✅ |
 | **Path traversal** | `curl --path-as-is` на сервере | ✅ 403 |
-| **Web unit тесты** | pytest в Docker | ✅ 7/7 |
-| **Processor unit тесты** | unittest в Docker | ✅ 7/7 |
+| **Web unit тесты** | pytest в Docker | ✅ 36 passed |
+| **Processor unit тесты** | unittest в Docker | ✅ 8 passed |
 | **E2E тесты** | Playwright против 192.168.1.11 (E2E_SETTINGS_PASSWORD) | ✅ 14/14 |
 | **EU-модель** | verify-eu-model.sh (491 класс, best.pt) | ✅ |
 | **SSH** | 192.168.1.11 | ✅ Деплой успешен |
@@ -47,8 +47,8 @@
 ## 3. Unit тесты
 
 ```
-web/tests:     7 passed
-processor/tests: 7 passed
+web/tests:     36 passed
+processor/tests: 8 passed
 ```
 
 ---
@@ -91,8 +91,8 @@ cd app && make test && make test-web
 |-----------|--------|
 | API (сервер) | ✅ |
 | Path traversal (сервер) | ✅ 403 |
-| Web тесты | ✅ 7/7 |
-| Processor тесты | ✅ 7/7 |
+| Web тесты | ✅ 36 passed |
+| Processor тесты | ✅ 8 passed |
 | E2E (против сервера) | ✅ 14/14 |
 | EU-модель | ✅ 491 класс |
 | Деплой | ✅ |

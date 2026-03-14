@@ -92,5 +92,44 @@ class TestDecisionMaker(unittest.TestCase):
         # Voting: 0.6. Avg Conf: (2.7 + 1.5)/6 = 0.7. Result: 0.42
         self.assertAlmostEqual(results[0]['confidence'], 0.42)
 
+    def test_species_confidence_overrides(self):
+        """
+        Test case: species_confidence_overrides lowers threshold for specific species.
+        """
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.10,
+            species_confidence_overrides={"Rare Bird": 0.03},
+        )
+        # Rare Bird with 0.05 confidence: passes (0.05 >= 0.03)
+        tracks_rare = {
+            1: {
+                'start_time': time.time(),
+                'end_time': time.time() + 1,
+                'preds': [('Rare Bird', 0.05)] * 10,
+                'best_frame': None,
+            }
+        }
+        results = dm.get_results(tracks_rare)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['species_name'], 'Rare Bird')
+
+        # Common Bird with 0.05 confidence: filtered (0.05 < 0.10)
+        dm2 = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.10,
+            species_confidence_overrides={"Rare Bird": 0.03},
+        )
+        tracks_common = {
+            1: {
+                'start_time': time.time(),
+                'end_time': time.time() + 1,
+                'preds': [('Common Bird', 0.05)] * 10,
+                'best_frame': None,
+            }
+        }
+        results2 = dm2.get_results(tracks_common)
+        self.assertEqual(len(results2), 0)
+
 if __name__ == '__main__':
     unittest.main()
