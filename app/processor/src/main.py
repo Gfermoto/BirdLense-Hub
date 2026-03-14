@@ -109,12 +109,10 @@ def main():
     lores_size = (640, 640)
 
     # Build camera map — только из video.cameras, без default
+    from app_config.cameras import get_valid_cameras, cameras_for_processor
     cameras_config = app_config.get('video.cameras') or []
-    valid = [c for c in cameras_config if (c.get('stream_name') or '').strip()]
-    cameras = [
-        {'id': c.get('id') or c.get('stream_name', ''), 'stream_name': c.get('stream_name', c.get('id', ''))}
-        for c in valid
-    ]
+    valid = get_valid_cameras(cameras_config)
+    cameras = cameras_for_processor(valid)
     go2rtc_url = (os.environ.get('GO2RTC_URL') or app_config.get('video.go2rtc_url') or '').strip()
     if not go2rtc_url:
         logging.warning('video.go2rtc_url не задан. Укажите в Настройках: http://IP:1984')

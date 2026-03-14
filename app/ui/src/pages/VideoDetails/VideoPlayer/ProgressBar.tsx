@@ -1,10 +1,17 @@
 import React, { useRef, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { VideoSpecies } from '../../../types';
 import { labelToUniqueHexColor } from '../../../util';
+
+const providerToKey: Record<string, string> = {
+  yolo: 'detectionProviderYolo',
+  frigate: 'detectionProviderFrigate',
+  birdnet_mqtt: 'detectionProviderBirdnetMqtt',
+};
 
 interface ProgressBarProps {
   duration: number;
@@ -19,6 +26,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   onSeek,
   detections,
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const progressBarRef = useRef<HTMLDivElement | null>(null);
 
@@ -124,9 +132,21 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
               <Tooltip
                 key={`${layerIdx}-${index}`}
                 slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
-                title={`${detection.species.species_name} (${formatTime(
-                  detection.species.start_time,
-                )} - ${formatTime(detection.species.end_time)})`}
+                title={
+                  <>
+                    {detection.species.species_name} ({formatTime(
+                      detection.species.start_time,
+                    )} – {formatTime(detection.species.end_time)})
+                    {detection.species.detection_provider && (
+                      <>
+                        <br />
+                        {t('video.detectionSource')}:{' '}
+                        {t(providerToKey[detection.species.detection_provider]) ||
+                          detection.species.detection_provider}
+                      </>
+                    )}
+                  </>
+                }
               >
                 <Box
                   sx={{

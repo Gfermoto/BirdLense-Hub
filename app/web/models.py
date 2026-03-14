@@ -30,7 +30,7 @@ class VideoSpecies(db.Model):
     source: Mapped[str] = mapped_column(
         String, nullable=False)  # video or audio
     detection_provider: Mapped[str] = mapped_column(
-        String, nullable=True)  # yolo, frigate, birdnet_mqtt, birdnet_local
+        String, nullable=True)  # yolo, frigate, birdnet_mqtt, legacy
     track_id: Mapped[int] = mapped_column(
         Integer, nullable=True)  # ByteTrack ID for stable identification
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization

@@ -1,15 +1,5 @@
 import { Dayjs } from 'dayjs';
 import {
-  mockBirdDirectory,
-  mockBirdFood,
-  mockTimeline,
-  mockOverviewData,
-  mockSettings,
-  mockSpeciesSummary,
-  mockVideo,
-  mockWeather,
-} from './mocks';
-import {
   BirdFood,
   SpeciesVisit,
   Settings,
@@ -19,7 +9,6 @@ import {
 } from '../types';
 import axios from 'axios';
 
-const useMockData = false; // Set to false to use real API calls
 // Relative path = same origin (works with any host/IP). При SSR/тестах — из env или дефолт.
 export const BASE_URL =
   typeof window !== 'undefined'
@@ -41,86 +30,47 @@ export const resolveImageUrl = (url: string | null | undefined): string | undefi
   return base ? `${base}/${url}` : `/${url}`;
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const fetchTimeline = async (
   startTime: Dayjs,
   endTime: Dayjs,
 ): Promise<SpeciesVisit[]> => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockTimeline;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/timeline`, {
-      params: {
-        start_time: startTime.unix(),
-        end_time: endTime.unix(),
-      },
-    });
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/timeline`, {
+    params: {
+      start_time: startTime.unix(),
+      end_time: endTime.unix(),
+    },
+  });
+  return response.data;
 };
 
 export const fetchWeather = async () => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockWeather;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/weather`);
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/weather`);
+  return response.data;
 };
 
 export const fetchVideo = async (id: string) => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockVideo;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
+  return response.data;
 };
 
 export const fetchBirdFood = async (): Promise<BirdFood[]> => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockBirdFood;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/birdfood`);
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/birdfood`);
+  return response.data;
 };
 
 export const toggleBirdFood = async (id: number) => {
-  if (useMockData) {
-    await sleep(1000);
-    const food = mockBirdFood.find((item) => item.id === id);
-    if (food) food.active = !food.active;
-    return food;
-  } else {
-    const response = await axios.patch(`${BASE_API_URL}/birdfood/${id}/toggle`);
-    return response.data;
-  }
+  const response = await axios.patch(`${BASE_API_URL}/birdfood/${id}/toggle`);
+  return response.data;
 };
 
 export const addBirdFood = async (newFood: Partial<BirdFood>) => {
-  if (useMockData) {
-    await sleep(1000);
-    mockBirdFood.unshift({ id: 10, active: true, ...newFood } as BirdFood);
-    return newFood;
-  } else {
-    const response = await axios.post(`${BASE_API_URL}/birdfood`, newFood);
-    return response.data;
-  }
+  const response = await axios.post(`${BASE_API_URL}/birdfood`, newFood);
+  return response.data;
 };
 
 export const fetchCameras = async (): Promise<
   { id: string; name: string; stream_url: string }[]
 > => {
-  if (useMockData) {
-    await sleep(200);
-    return [{ id: 'bird_cam', name: 'Bird Cam', stream_url: '/go2rtc/stream.html?src=bird_cam' }];
-  }
   const response = await axios.get(`${BASE_API_URL}/cameras`);
   return response.data.cameras || [];
 };
@@ -133,19 +83,11 @@ export const fetchStatus = async (): Promise<{
   esphome?: string;
   yolo: string;
 }> => {
-  if (useMockData) {
-    await sleep(300);
-    return { web: 'ok', processor: 'ok', video: 'ok', mqtt: 'unknown', esphome: 'not_used', yolo: 'ok', motion_source: 'opencv' };
-  }
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;
 };
 
 export const dispenseFeed = async (): Promise<{ success: boolean; message?: string }> => {
-  if (useMockData) {
-    await sleep(500);
-    return { success: true, message: 'Feed dispensed' };
-  }
   try {
     const response = await axios.post(`${BASE_API_URL}/feed/dispense`);
     return { success: true, message: response.data?.message };
@@ -159,7 +101,6 @@ export const dispenseFeed = async (): Promise<{ success: boolean; message?: stri
 };
 
 export const fetchSettingsRequiresPassword = async (): Promise<boolean> => {
-  if (useMockData) return false;
   const response = await axios.get(`${BASE_API_URL}/settings/requires-password`, {
     withCredentials: true,
   });
@@ -171,7 +112,6 @@ export type CheckAccessResult =
   | { unlocked: false; error?: 'network' };
 
 export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
-  if (useMockData) return { unlocked: true };
   try {
     const response = await axios.get(`${BASE_API_URL}/settings/check-access`, {
       withCredentials: true,
@@ -194,7 +134,6 @@ export type VerifyPasswordResult =
 export const verifySettingsPassword = async (
   password: string,
 ): Promise<VerifyPasswordResult> => {
-  if (useMockData) return { ok: true };
   try {
     const response = await axios.post(
       `${BASE_API_URL}/settings/verify-password`,
@@ -210,34 +149,20 @@ export const verifySettingsPassword = async (
 };
 
 export const fetchSettings = async () => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockSettings;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/settings`, {
-      withCredentials: true,
-    });
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/settings`, {
+    withCredentials: true,
+  });
+  return response.data;
 };
 
 export const updateSettings = async (settings: Settings) => {
-  if (useMockData) {
-    await sleep(1000);
-    return settings;
-  } else {
-    const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
-      withCredentials: true,
-    });
-    return response.data;
-  }
+  const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
+    withCredentials: true,
+  });
+  return response.data;
 };
 
 export const restartProcessor = async (): Promise<{ success: boolean; message?: string }> => {
-  if (useMockData) {
-    await sleep(500);
-    return { success: true, message: 'Restart requested' };
-  }
   try {
     const response = await axios.post(`${BASE_API_URL}/restart-processor`, {}, {
       withCredentials: true,
@@ -255,74 +180,52 @@ export const restartProcessor = async (): Promise<{ success: boolean; message?: 
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {
-  if (useMockData) {
-    await sleep(1000);
-    return { lat: '40.7128', lon: '-74.0060' }; // Mock coordinates
-  } else {
-    const response = await axios.get(
-      'https://nominatim.openstreetmap.org/search',
-      {
-        params: {
-          format: 'json',
-          postalcode: zip,
-          countrycodes: 'ru,us,de,gb',
-        },
+  const response = await axios.get(
+    'https://nominatim.openstreetmap.org/search',
+    {
+      params: {
+        format: 'json',
+        postalcode: zip,
+        countrycodes: 'ru,us,de,gb',
       },
-    );
-    const data = response.data;
+    },
+  );
+  const data = response.data;
 
-    if (data && data.length > 0) {
-      return {
-        lat: data[0].lat,
-        lon: data[0].lon,
-      };
-    } else {
-      throw new Error('Invalid ZIP code or no data found.');
-    }
+  if (data && data.length > 0) {
+    return {
+      lat: data[0].lat,
+      lon: data[0].lon,
+    };
+  } else {
+    throw new Error('Invalid ZIP code or no data found.');
   }
 };
 
 export const fetchBirdDirectory = async (): Promise<Species[]> => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockBirdDirectory;
-  } else {
-    const response = await axios.get(`${BASE_API_URL}/species`);
-    return response.data;
-  }
+  const response = await axios.get(`${BASE_API_URL}/species`);
+  return response.data;
 };
 
 export const fetchOverviewData = async (
   date: string,
 ): Promise<OverviewData> => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockOverviewData;
-  } else {
-    // Create local day boundaries and convert to UTC timestamps
-    const localStart = new Date(date + 'T00:00:00');
-    const localEnd = new Date(date + 'T23:59:59.999');
-    const response = await axios.get(`${BASE_API_URL}/overview`, {
-      params: {
-        start_time: Math.floor(localStart.getTime() / 1000),
-        end_time: Math.floor(localEnd.getTime() / 1000),
-      },
-    });
-    return response.data;
-  }
+  const localStart = new Date(date + 'T00:00:00');
+  const localEnd = new Date(date + 'T23:59:59.999');
+  const response = await axios.get(`${BASE_API_URL}/overview`, {
+    params: {
+      start_time: Math.floor(localStart.getTime() / 1000),
+      end_time: Math.floor(localEnd.getTime() / 1000),
+    },
+  });
+  return response.data;
 };
 
 export const fetchSpeciesSummary = async (
   speciesId: number,
 ): Promise<SpeciesSummary> => {
-  if (useMockData) {
-    await sleep(1000);
-    return mockSpeciesSummary;
-  } else {
-    const response = await axios.get(
-      `${BASE_API_URL}/species/${speciesId}/summary`,
-    );
-    return response.data;
-  }
+  const response = await axios.get(
+    `${BASE_API_URL}/species/${speciesId}/summary`,
+  );
+  return response.data;
 };
-

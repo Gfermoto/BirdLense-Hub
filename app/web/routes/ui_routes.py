@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
 from util import fetch_weather, update_species_info_from_wiki, ensure_utc, settings_check_access
 from app_config.app_config import app_config
+from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 
 
@@ -19,16 +20,8 @@ def register_routes(app):
     def list_cameras():
         """List cameras — только из video.cameras, добавлять по одной. Без default."""
         cameras_config = app_config.get('video.cameras') or []
-        valid = [c for c in cameras_config if (c.get('stream_name') or '').strip()]
-        cameras = [
-            {
-                'id': c.get('id') or c.get('stream_name', ''),
-                'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
-                'stream_url': f'/go2rtc/stream.html?src={valid[i].get("stream_name", c.get("stream_name", ""))}',
-            }
-            for i, c in enumerate(valid)
-        ]
-        return {'cameras': cameras}
+        valid = get_valid_cameras(cameras_config)
+        return {'cameras': cameras_for_api(valid)}
 
     @app.route('/api/ui/status', methods=['GET'])
     def component_status():
@@ -317,7 +310,7 @@ def register_routes(app):
             SpeciesVisit.start_time <= end_of_day
         ).first()
 
-        # Detection count by provider (yolo, frigate, birdnet_mqtt, birdnet_local)
+        # Detection count by provider (yolo, frigate, birdnet_mqtt)
         provider_query = (
             db.session.query(
                 VideoSpecies.detection_provider,

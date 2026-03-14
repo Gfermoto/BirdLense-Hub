@@ -1,16 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-/** Unlock settings if password dialog is shown. */
-async function unlockSettingsIfNeeded(page: any) {
-  const dialog = page.getByRole('dialog');
-  const pw = process.env.E2E_SETTINGS_PASSWORD || '';
-  const visible = await dialog.isVisible().catch(() => false);
-  if (visible && pw) {
-    await dialog.locator('input[type="password"]').fill(pw);
-    await dialog.getByRole('button', { name: /Enter|Войти|Submit|Отправить/i }).click();
-    await expect(dialog).not.toBeVisible({ timeout: 10000 });
-  }
-}
+import { unlockSettingsIfNeeded } from '../helpers/settings';
 
 test.describe('Settings page', () => {
   test.beforeEach(async ({ page, request }) => {

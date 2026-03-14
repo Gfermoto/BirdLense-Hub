@@ -256,6 +256,11 @@
     "speciesInVideo": "Species in This Video",
     "detection": "detection",
     "detections": "detections",
+    "detectionProviderYolo": "YOLO",
+    "detectionProviderFrigate": "Frigate",
+    "detectionProviderBirdnetMqtt": "BirdNET",
+    "detectionSource": "Source",
+    "timelineHint": "Colored bars = species. Hover to see source: YOLO, Frigate, or BirdNET.",
     "confidence": "Confidence",
     "learnMore": "Learn More"
   },
