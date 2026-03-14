@@ -44,8 +44,9 @@ def fetch_recordings(species_name: str, limit: int = 5) -> list[dict]:
         or (app_config.get("secrets.xeno_canto_api_key") or "").strip()
         or DEFAULT_KEY
     )
-    # API v3 query format: en:"common name"
-    query = f'en:"{term}"'
+    # API v3 query format: en:"common name" — экранируем " в term
+    safe_term = term.replace('"', '\\"')
+    query = f'en:"{safe_term}"'
 
     try:
         r = requests.get(

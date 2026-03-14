@@ -1,6 +1,7 @@
 import os
 import csv
 import io
+from urllib.parse import quote
 from flask import request, session, Response
 import json as json_module
 from sqlalchemy import func, case, distinct
@@ -851,8 +852,6 @@ def register_routes(app):
     @app.route('/api/ui/species/<int:species_id>/xeno-canto', methods=['GET'])
     def get_species_xeno_canto(species_id):
         """Fetch bird song recordings from Xeno-canto for species."""
-        from urllib.parse import quote
-
         species = Species.query.get(species_id)
         if not species:
             return {'error': 'Species not found'}, 404

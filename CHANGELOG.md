@@ -8,12 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.1.3] - 2026-03-15
+
 ### Added
 
 - **Prometheus метрики** — эндпоинт `GET /metrics` в формате Prometheus: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`. Для Grafana и дашбордов.
 - **«Неизвестные»** — страница `/unknowns` со списком детекций с низкой confidence (< порога). Ручная проверка и исправление вида. Порог настраивается в Настройках → Расширенные или в конфиге `ui.unknown_confidence_threshold` (по умолчанию 0.5).
 - **PDF-отчёт** — месячный отчёт: N видов, топ-5, графики. Кнопка «PDF-отчёт» на Overview. API: `GET /api/ui/report/pdf?month=YYYY-MM`.
-- **Bird song player (Xeno-canto)** — кнопка «Воспроизвести песню» на странице вида. API: `GET /api/ui/species/:id/xeno-canto`.
+- **Bird song player (Xeno-canto)** — кнопка «Воспроизвести песню» на странице вида. API v3, ключ в Настройки → Расширенные. Fallback: ссылка на поиск xeno-canto.org при отсутствии ключа. API: `GET /api/ui/species/:id/xeno-canto`.
 
 ---
 
@@ -132,6 +136,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.3]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.0

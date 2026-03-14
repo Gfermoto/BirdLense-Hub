@@ -1,5 +1,7 @@
 # API BirdLense Hub
 
+**Версия:** 0.1.3
+
 Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
 
 ## Группы эндпоинтов
