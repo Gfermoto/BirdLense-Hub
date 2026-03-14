@@ -112,6 +112,8 @@
     "relaySeconds": "Relay duration (seconds)",
     "relaySecondsHint": "Duration when pressing «Dispense Feed»",
     "notifications": "Telegram notifications",
+    "webhookUrl": "Webhook URL",
+    "webhookUrlHint": "POST on each detection (IFTTT, Zapier). JSON: species, confidence, time, source",
     "excludeSpecies": "Exclude from notifications",
     "telegramBotToken": "Telegram bot token",
     "telegramBotTokenHint": "@BotFather → /newbot",
@@ -193,7 +195,17 @@
     "errorLoad": "Error loading data.",
     "export": "Export",
     "exportCsv": "Export CSV",
-    "exportJson": "Export JSON"
+    "exportJson": "Export JSON",
+    "timeOfDay": "Time of day",
+    "timeAllDay": "All day",
+    "timeMorning": "Morning (6–10)",
+    "timeDay": "Midday (10–14)",
+    "timeAfternoon": "Afternoon (14–18)",
+    "timeEvening": "Evening (18–22)"
+  },
+  "pwa": {
+    "installPrompt": "Add BirdLense Hub to your home screen",
+    "install": "Install"
   },
   "storage": {
     "deleted": "Deleted {{count}} files ({{size}})",

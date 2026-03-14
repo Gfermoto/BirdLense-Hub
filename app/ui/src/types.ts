@@ -176,6 +176,9 @@ export interface Settings {
     token?: string;
     api_url?: string;
   };
+  webhook?: {
+    url?: string;  // POST при детекции (IFTTT, Zapier)
+  };
 }
 
 export interface Species {

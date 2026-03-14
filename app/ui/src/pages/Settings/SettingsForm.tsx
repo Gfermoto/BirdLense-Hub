@@ -23,6 +23,7 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { PasswordField } from '../../components/PasswordField';
 
 type CameraRow = { stream_name?: string; name?: string };
 
@@ -210,11 +211,9 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mqtt.password">
             {(field) => (
-              <TextField
-                fullWidth
-                type="password"
+              <PasswordField
                 value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={(v) => field.handleChange(v)}
                 label={t('settings.mqttPassword')}
               />
             )}
@@ -248,6 +247,20 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="general.birdnet_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.birdnetUrl')}
+                placeholder="http://birdnet.local"
+                helperText={t('settings.birdnetUrlHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
         <Grid size={{ xs: 12 }}>
           <form.Field name="video.go2rtc_url">
             {(field) => (
@@ -272,7 +285,7 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="video.go2rtc_password">
             {(field) => (
-              <TextField fullWidth type="password" value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.go2rtcPassword')} />
+              <PasswordField value={field.state.value ?? ''} onChange={(v) => field.handleChange(v)} label={t('settings.go2rtcPassword')} />
             )}
           </form.Field>
         </Grid>
@@ -559,11 +572,9 @@ export const SettingsForm = ({
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="notifications.telegram_bot_token">
                   {(field) => (
-                    <TextField
-                      fullWidth
-                      type="password"
+                    <PasswordField
                       value={field.state.value ?? ''}
-                      onChange={(e) => field.handleChange(e.target.value)}
+                      onChange={(v) => field.handleChange(v)}
                       label={t('settings.telegramBotToken')}
                       helperText={t('settings.telegramBotTokenHint')}
                       disabled={!notificationsEnabled}
@@ -657,6 +668,22 @@ export const SettingsForm = ({
                         />
                       }
                       label={t('settings.telegramLinkPreviewLarge')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.send_photo">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? true}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          disabled={!notificationsEnabled}
+                        />
+                      }
+                      label={t('settings.telegramSendPhoto')}
                     />
                   )}
                 </form.Field>
@@ -795,6 +822,20 @@ export const SettingsForm = ({
             </>
           )}
         </form.Subscribe>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="webhook.url">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.webhookUrl')}
+                helperText={t('settings.webhookUrlHint')}
+                placeholder="https://maker.ifttt.com/trigger/bird_detected/with/key/xxx"
+              />
+            )}
+          </form.Field>
+        </Grid>
       </Grid>
 
       <Divider sx={{ my: 4 }} />
@@ -832,11 +873,9 @@ export const SettingsForm = ({
                   <Grid size={{ xs: 12 }}>
                     <form.Field name="secrets.openweather_api_key">
                       {(field) => (
-                        <TextField
-                          fullWidth
-                          type="password"
+                        <PasswordField
                           value={field.state.value ?? ''}
-                          onChange={(e) => field.handleChange(e.target.value)}
+                          onChange={(v) => field.handleChange(v)}
                           label={t('settings.openWeatherApiKey')}
                           helperText={t('settings.weatherHint')}
                         />
@@ -921,11 +960,9 @@ export const SettingsForm = ({
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <form.Field name="weather.ha_token">
                       {(field) => (
-                        <TextField
-                          fullWidth
-                          type="password"
+                        <PasswordField
                           value={field.state.value ?? ''}
-                          onChange={(e) => field.handleChange(e.target.value)}
+                          onChange={(v) => field.handleChange(v)}
                           label={t('settings.weatherHaToken')}
                           placeholder={t('settings.weatherHaTokenPlaceholder')}
                           helperText={t('settings.weatherHaTokenHint')}
@@ -953,11 +990,9 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="general.settings_password">
             {(field) => (
-              <TextField
-                fullWidth
-                type="password"
+              <PasswordField
                 value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={(v) => field.handleChange(v)}
                 label={t('settings.settingsPassword')}
                 placeholder={t('settings.settingsPasswordPlaceholder')}
                 helperText={t('settings.settingsPasswordHint')}
@@ -998,11 +1033,9 @@ export const SettingsForm = ({
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mcp.token">
             {(field) => (
-              <TextField
-                fullWidth
-                type="password"
+              <PasswordField
                 value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={(v) => field.handleChange(v)}
                 label={t('settings.mcpToken')}
                 placeholder={t('settings.mcpTokenPlaceholder')}
                 helperText={t('settings.mcpTokenHint')}
@@ -1054,7 +1087,7 @@ export const SettingsForm = ({
                   <TextField
                     fullWidth
                     type="number"
-                    value={field.state.value ?? 1}
+                    value={field.state.value ?? 2}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
                     label={t('settings.minTrackDuration')}
                     helperText={t('settings.minTrackDurationHelp')}
@@ -1069,7 +1102,7 @@ export const SettingsForm = ({
                     fullWidth
                     type="number"
                     inputProps={{ min: 0, max: 1, step: 0.01 }}
-                    value={field.state.value ?? 0.03}
+                    value={field.state.value ?? 0.10}
                     onChange={(e) =>
                       field.handleChange(Number(e.target.value) || undefined)
                     }

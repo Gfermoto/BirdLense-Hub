@@ -4,6 +4,8 @@ general:
   # Пароль для доступа к настройкам. Пусто — без пароля.
   # Хранится в открытом виде. Для продакшена рассмотрите хеширование.
   settings_password: ""
+  # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
+  birdnet_url: ""
 
 # Video/Audio processor settings
 processor:
@@ -102,12 +104,17 @@ notifications:
   disable_notification: false # Тихие сообщения (без звука)
   protect_content: false      # Запретить пересылку и сохранение
   link_preview_large: false  # true: большие превью ссылок (prefer_large_media), ссылка в тексте
+  send_photo: true           # false: только текст, без фото (даже при processor.save_images)
   use_custom_emoji: false   # true: icon_custom_emoji_id на кнопках (требует Premium у владельца бота)
   custom_emoji_id_bird: ""  # ID кастомного эмодзи для птиц (из @Stickers или сообщения)
   custom_emoji_id_chipmunk: ""
   custom_emoji_id_open_live: ""
   paid_media_view_star_count: 0    # Stars за просмотр фото (0=бесплатно, 1-25000)
   paid_media_forward_star_count: 0  # Stars за пересылку/копирование (0=разрешить, >0=запретить при бесплатном просмотре)
+
+# Webhook: POST при каждой детекции (IFTTT, Zapier, свои скрипты)
+webhook:
+  url: ""  # например https://maker.ifttt.com/trigger/bird_detected/with/key/xxx
 
 # MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
 mcp:

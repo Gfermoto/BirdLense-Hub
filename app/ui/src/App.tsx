@@ -10,6 +10,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
+import { InstallPrompt } from './components/InstallPrompt';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
@@ -158,6 +159,7 @@ function App() {
               </Container>
             </Box>
             <Footer />
+            <InstallPrompt />
           </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>

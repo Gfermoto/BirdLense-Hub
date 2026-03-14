@@ -1,15 +1,38 @@
 import json
 import os
 import re
+import threading
 from flask import request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from models import ActivityLog, db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
+import requests
 
 # Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
 VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+
+
+def _fire_webhook(url: str, species_list: list, start_time: datetime, logger):
+    """POST each detection to webhook URL. Runs in thread, logs errors."""
+    for sp in species_list:
+        try:
+            species_name = sp.get('species_name') or sp.get('species') or sp.get('name') or 'unknown'
+            confidence = float(sp.get('confidence') or 0)
+            det_start = float(sp.get('start_time') or 0)
+            detection_time = start_time + timedelta(seconds=det_start)
+            if detection_time.tzinfo is None:
+                detection_time = detection_time.replace(tzinfo=timezone.utc)
+            payload = {
+                'species': species_name,
+                'confidence': round(confidence, 4),
+                'time': detection_time.isoformat(),
+                'source': sp.get('source', 'video'),
+            }
+            requests.post(url, json=payload, timeout=5)
+        except Exception as e:
+            logger.warning("Webhook POST failed: %s", e)
 
 
 def _check_processor_secret():
@@ -65,6 +88,15 @@ def register_routes(app):
 
             # Save everything
             db.session.commit()
+
+            # Webhook: POST each detection (fire-and-forget)
+            webhook_url = (app_config.get('webhook.url') or '').strip()
+            if webhook_url and species_list:
+                threading.Thread(
+                    target=_fire_webhook,
+                    args=(webhook_url, species_list, start_time, app.logger),
+                    daemon=True,
+                ).start()
 
             return {'message': 'Video and associated data inserted successfully.'}, 201
 
