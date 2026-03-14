@@ -10,6 +10,7 @@
     "system": "System"
   },
   "overview": {
+    "lastBird": "Last bird today",
     "errorLoad": "Error loading data. Check that the API is available.",
     "checkApi": "Check: open /api/ui/health in browser — should return {status: ok}.",
     "bySource": "By detection source",
@@ -75,6 +76,8 @@
     "frigateLabelExcludeHint": "Labels to ignore (mouse misidentified as cat/dog). Comma-separated.",
     "birdnetTopic": "BirdNET topic",
     "birdnetTopicHint": "Topic where BirdNET publishes detections",
+    "birdnetUrl": "BirdNET installation URL",
+    "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "go2rtcUrl": "Go2RTC URL",
     "go2rtcUrlHint": "Host: http://IP:1984",
     "go2rtcUser": "Go2RTC login",
@@ -121,11 +124,12 @@
     "telegramSilent": "Silent notifications (no sound)",
     "telegramProtect": "Disable forwarding and saving",
     "telegramLinkPreviewLarge": "Large link previews (Bot API 9.4)",
+    "telegramSendPhoto": "Send detection photo",
     "telegramUseCustomEmoji": "Custom emoji on buttons (Premium)",
     "telegramCustomEmojiBird": "Emoji ID for birds",
     "telegramCustomEmojiChipmunk": "Emoji ID for chipmunks",
     "telegramCustomEmojiOpenLive": "Emoji ID for Open Live",
-    "telegramCustomEmojiHint": "From @Stickers or message with custom emoji",
+    "telegramCustomEmojiHint": "See docs/TELEGRAM_CUSTOM_EMOJI.md — @RawDataBot or getUpdates",
     "paidMediaViewStars": "Stars for viewing photo",
     "paidMediaViewStarsHint": "0 — free. 1–25000 — paid view (sendPaidMedia).",
     "paidMediaForwardStars": "Stars for forward/copy",
@@ -140,9 +144,9 @@
     "maxRecordSeconds": "Max recording seconds",
     "inactiveSeconds": "Seconds without activity",
     "minTrackDuration": "Min track duration (sec)",
-    "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives",
+    "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives (default)",
     "minConfidenceToProcess": "Min track confidence",
-    "minConfidenceToProcessHelp": "Tracks with lower confidence are discarded. 0.03 = more detections, 0.10 = stricter",
+    "minConfidenceToProcessHelp": "Tracks with lower confidence are discarded. 0.03 = more detections, 0.10 = stricter (default)",
     "spectrogramDetail": "Spectrogram detail",
     "spectrogramDetailHelp": "Pixels per second (when BirdNET event arrives)",
     "birdFamilies": "Bird families",
@@ -186,7 +190,10 @@
     "scanHint": "(System → Storage Management)",
     "selectDateTime": "Select Date & Time",
     "species": "Species",
-    "errorLoad": "Error loading data."
+    "errorLoad": "Error loading data.",
+    "export": "Export",
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON"
   },
   "storage": {
     "deleted": "Deleted {{count}} files ({{size}})",
@@ -221,7 +228,7 @@
   "common": {
     "cancel": "Cancel",
     "noData": "No data available",
-    "openSource": "Open Source",
+    "dockerImage": "Docker",
     "license": "CC BY-NC-ND 4.0",
     "createdBy": "Created by",
     "all": "All",

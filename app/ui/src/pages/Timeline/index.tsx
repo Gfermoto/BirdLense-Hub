@@ -7,20 +7,24 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import DownloadIcon from '@mui/icons-material/Download';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTimeline } from '../../api/api';
+import { fetchTimeline, exportTimeline } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
@@ -57,6 +61,8 @@ export function TimelinePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
+  const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
+  const [exporting, setExporting] = useState(false);
   const [dateTime, setDateTime] = useState<Dayjs | null>(() => {
     const paramDateTime = searchParams.get('date');
     return paramDateTime ? dayjs(paramDateTime) : dayjs();
@@ -111,6 +117,24 @@ export function TimelinePage() {
         ? value.split(',').map(Number)
         : value.map(Number),
     );
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!dateTime) return;
+    setExportAnchor(null);
+    setExporting(true);
+    try {
+      const isTimeSelected = dateTime.hour() !== 0 || dateTime.minute() !== 0;
+      await exportTimeline(
+        dateTime.startOf(isTimeSelected ? 'hour' : 'date'),
+        dateTime.endOf(isTimeSelected ? 'hour' : 'date'),
+        format,
+      );
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (isLoading)
@@ -182,6 +206,27 @@ export function TimelinePage() {
             ))}
           </Select>
         </FormControl>
+        <Tooltip title={t('timeline.export')}>
+          <span>
+            <IconButton
+              onClick={(e) => setExportAnchor(e.currentTarget)}
+              disabled={exporting}
+              aria-label={t('timeline.export')}
+            >
+              <DownloadIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Menu
+          anchorEl={exportAnchor}
+          open={!!exportAnchor}
+          onClose={() => setExportAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => handleExport('csv')}>{t('timeline.exportCsv')}</MenuItem>
+          <MenuItem onClick={() => handleExport('json')}>{t('timeline.exportJson')}</MenuItem>
+        </Menu>
       </Box>
 
       <TimelineStats visits={filteredVisits as SpeciesVisit[]} />

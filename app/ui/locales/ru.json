@@ -10,6 +10,7 @@
     "system": "Система"
   },
   "overview": {
+    "lastBird": "Последняя птица сегодня",
     "errorLoad": "Ошибка загрузки данных. Проверьте, что API доступен.",
     "checkApi": "Проверка: откройте /api/ui/health в браузере — должен вернуть {status: ok}.",
     "bySource": "По источникам распознавания",
@@ -75,6 +76,8 @@
     "frigateLabelExcludeHint": "Метки, которые игнорировать (мышь как кошка/собака). Через запятую.",
     "birdnetTopic": "BirdNET топик",
     "birdnetTopicHint": "Топик, куда BirdNET публикует детекции",
+    "birdnetUrl": "Ссылка на BirdNET",
+    "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "go2rtcUrl": "Go2RTC URL",
     "go2rtcUrlHint": "Хост: http://IP:1984",
     "go2rtcUser": "Go2RTC логин",
@@ -121,11 +124,12 @@
     "telegramSilent": "Тихие сообщения (без звука)",
     "telegramProtect": "Запретить пересылку и сохранение",
     "telegramLinkPreviewLarge": "Большие превью ссылок (Bot API 9.4)",
+    "telegramSendPhoto": "Отправлять фото детекции",
     "telegramUseCustomEmoji": "Кастомные эмодзи на кнопках (Premium)",
     "telegramCustomEmojiBird": "ID эмодзи для птиц",
     "telegramCustomEmojiChipmunk": "ID эмодзи для белок",
     "telegramCustomEmojiOpenLive": "ID эмодзи для Open Live",
-    "telegramCustomEmojiHint": "Из @Stickers или сообщения с кастомным эмодзи",
+    "telegramCustomEmojiHint": "См. docs/TELEGRAM_CUSTOM_EMOJI.md — @RawDataBot или getUpdates",
     "paidMediaViewStars": "Stars за просмотр фото",
     "paidMediaViewStarsHint": "0 — бесплатно. 1–25000 — платный просмотр (sendPaidMedia).",
     "paidMediaForwardStars": "Stars за пересылку/копирование",
@@ -140,9 +144,9 @@
     "maxRecordSeconds": "Макс. секунд записи",
     "inactiveSeconds": "Секунд без активности",
     "minTrackDuration": "Мин. длительность трека (сек)",
-    "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. 1 — больше треков, 2 — меньше ложных",
+    "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. 1 — больше треков, 2 — меньше ложных (по умолчанию)",
     "minConfidenceToProcess": "Мин. confidence трека",
-    "minConfidenceToProcessHelp": "Треки с меньшей уверенностью отбрасываются. 0.03 — больше детекций, 0.10 — строже",
+    "minConfidenceToProcessHelp": "Треки с меньшей уверенностью отбрасываются. 0.03 — больше детекций, 0.10 — строже (по умолчанию)",
     "spectrogramDetail": "Детализация спектрограммы",
     "spectrogramDetailHelp": "Пикселей на секунду (когда приходит событие BirdNET)",
     "birdFamilies": "Семейства птиц",
@@ -186,7 +190,10 @@
     "scanHint": "(Система → Управление хранилищем)",
     "selectDateTime": "Выбрать дату и время",
     "species": "Вид",
-    "errorLoad": "Ошибка загрузки данных."
+    "errorLoad": "Ошибка загрузки данных.",
+    "export": "Экспорт",
+    "exportCsv": "Экспорт CSV",
+    "exportJson": "Экспорт JSON"
   },
   "storage": {
     "deleted": "Удалено {{count}} файлов ({{size}})",
@@ -221,7 +228,7 @@
   "common": {
     "cancel": "Отмена",
     "noData": "Нет данных",
-    "openSource": "Open Source",
+    "dockerImage": "Docker",
     "license": "CC BY-NC-ND 4.0",
     "createdBy": "Автор",
     "all": "Все",
