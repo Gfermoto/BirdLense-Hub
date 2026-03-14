@@ -2,6 +2,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "timeline": "Timeline",
+    "unknowns": "Unknowns",
     "food": "Food Management",
     "species": "Bird Directory",
     "live": "Live",
@@ -149,6 +150,8 @@
     "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. 1 = more tracks, 2 = fewer false positives (default)",
     "minConfidenceToProcess": "Min track confidence",
     "minConfidenceToProcessHelp": "Tracks with lower confidence are discarded. 0.03 = more detections, 0.10 = stricter (default)",
+    "unknownConfidenceThreshold": "Unknowns threshold",
+    "unknownConfidenceThresholdHelp": "Detections with confidence below this (0–1) appear in «Unknowns» for manual review. 0.5 = default.",
     "spectrogramDetail": "Spectrogram detail",
     "spectrogramDetailHelp": "Pixels per second (when BirdNET event arrives)",
     "birdFamilies": "Bird families",
@@ -250,7 +253,18 @@
     "loading": "Loading...",
     "clickForHelp": "Click for help",
     "appName": "BirdLense Hub",
-    "na": "N/A"
+    "na": "N/A",
+    "help": "Help"
+  },
+  "unknowns": {
+    "title": "Unknowns",
+    "intro": "Detections with low confidence for manual review. Correct the species or open the video to verify.",
+    "viewVideo": "View video",
+    "correctSpecies": "Correct species",
+    "apply": "Apply",
+    "empty": "No low-confidence detections for the selected period.",
+    "count": "{{count}} detection(s) to review",
+    "passwordRequired": "Enter settings password to correct species."
   },
   "species": {
     "searchPlaceholder": "Search species...",
@@ -428,6 +442,16 @@
         { "title": "Detection Counts", "content": "Numbers displayed on the right indicate:\n- Total detections for each species\n- Aggregated counts for family groups\n- Both audio and video detections are included\n- Counts update automatically as new birds are detected" },
         { "title": "Species Information", "content": "Clicking on a species name provides:\n- Detailed species information\n- Visit history and patterns\n- Audio and video detection statistics\n- Preferred foods based on your feeder data" },
         { "title": "Taxonomy Structure", "content": "The hierarchical organization helps understand:\n- Bird family relationships\n- Species classifications\n- Common groupings of similar birds\n- Distinction between different age/sex variations of the same species" }
+      ]
+    },
+    "unknowns": {
+      "title": "Unknowns",
+      "description": "Review and correct low-confidence detections. Detections with confidence below the threshold (configurable in Settings) appear here for manual verification.",
+      "details": [
+        { "title": "Purpose", "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics." },
+        { "title": "Threshold", "content": "The confidence threshold is set in Settings → Advanced (\"Unknowns threshold\"). Default 0.5 means detections below 50% appear here." },
+        { "title": "Correcting Species", "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured." },
+        { "title": "View Video", "content": "Click \"View video\" to open the recording and verify the detection visually before correcting." }
       ]
     },
     "videoDetails": {

@@ -27,6 +27,7 @@ const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.Liv
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
 const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
+const UnknownsPage = lazy(() => import('./pages/Unknowns').then((m) => ({ default: m.UnknownsPage })));
 
 const theme = createTheme({
   palette: {
@@ -153,6 +154,7 @@ function App() {
                     <Route path="/live" element={<LivePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/species/:id" element={<SpeciesSummary />} />
+                    <Route path="/unknowns" element={<UnknownsPage />} />
                     <Route path="/system" element={<System />} />
                   </Routes>
                 </Suspense>

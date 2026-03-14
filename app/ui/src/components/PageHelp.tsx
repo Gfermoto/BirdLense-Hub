@@ -25,7 +25,7 @@ export interface PageHelpProps {
 }
 
 export interface PageHelpConfig {
-  configKey: 'overview' | 'food' | 'timeline' | 'birdDir' | 'videoDetails';
+  configKey: 'overview' | 'food' | 'timeline' | 'birdDir' | 'videoDetails' | 'unknowns';
   dialogMaxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
