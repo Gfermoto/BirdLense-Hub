@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Button from '@mui/material/Button';
+import DownloadIcon from '@mui/icons-material/Download';
 import dayjs, { Dayjs } from 'dayjs';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
@@ -10,7 +12,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData, fetchWeather } from '../../api/api';
+import { fetchOverviewData, fetchWeather, downloadReportPdf } from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -35,6 +37,7 @@ const formatHour = (hour: number) => {
 export const Overview = () => {
   const { t } = useTranslation();
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const {
     data: overviewData,
@@ -90,15 +93,35 @@ export const Overview = () => {
           <PageHelp {...overviewHelpConfig} />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <DatePicker
-              label={t('commonLabels.date')}
-              value={selectedDay}
-              onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
-              disableFuture
-              format="YYYY-MM-DD"
-            />
-          </LocalizationProvider>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label={t('commonLabels.date')}
+                value={selectedDay}
+                onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
+                disableFuture
+                format="YYYY-MM-DD"
+              />
+            </LocalizationProvider>
+            <Button
+              variant="outlined"
+              size="medium"
+              startIcon={<DownloadIcon />}
+              disabled={downloadingPdf}
+              onClick={async () => {
+                setDownloadingPdf(true);
+                try {
+                  await downloadReportPdf(selectedDay.format('YYYY-MM'));
+                } catch (err) {
+                  console.error('PDF download failed:', err);
+                } finally {
+                  setDownloadingPdf(false);
+                }
+              }}
+            >
+              {downloadingPdf ? '...' : t('overview.downloadPdf')}
+            </Button>
+          </Box>
         </Grid>
       </Grid>
 

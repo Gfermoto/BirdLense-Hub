@@ -286,6 +286,22 @@ export const fetchUnknowns = async (
   return response.data;
 };
 
+/** Download monthly PDF report. month: YYYY-MM */
+export const downloadReportPdf = async (month: string): Promise<void> => {
+  const url = `${BASE_API_URL}/report/pdf?month=${encodeURIComponent(month)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `birdlense_report_${month.replace('-', '')}.pdf`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 export const updateDetectionSpecies = async (
   detectionId: number,
   speciesId: number,

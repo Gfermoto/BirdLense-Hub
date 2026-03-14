@@ -255,6 +255,23 @@ class TestStatusDebug:
         assert 'last_heartbeat' in data or 'cutoff_utc' in data
 
 
+class TestReportPdf:
+    def test_report_requires_params(self, client):
+        r = client.get('/api/ui/report/pdf')
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+    def test_report_month_returns_pdf(self, client):
+        r = client.get('/api/ui/report/pdf', query_string={'month': '2026-03'})
+        assert r.status_code == 200
+        assert 'application/pdf' in (r.content_type or '')
+        assert r.data[:4] == b'%PDF'
+
+    def test_report_rejects_invalid_month(self, client):
+        r = client.get('/api/ui/report/pdf', query_string={'month': 'invalid'})
+        assert r.status_code == 400
+
+
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):
         r = client.get('/api/ui/unknowns')

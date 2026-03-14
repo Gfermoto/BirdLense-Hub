@@ -24,7 +24,8 @@
     "visitsLastHour": "Visits (Last Hour)",
     "meanDuration": "Mean Visit Duration",
     "busiestHour": "Busiest Hour",
-    "recordingTime": "Recording Time"
+    "recordingTime": "Recording Time",
+    "downloadPdf": "PDF report"
   },
   "settings": {
     "section1": "1. Connection",
