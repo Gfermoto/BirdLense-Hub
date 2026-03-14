@@ -43,5 +43,8 @@ app/.coverage
 # Cursor IDE
 .cursor/
 
+# Артефакты (curl -c, debug)
+**/-X
+
 # Обученные модели (веса и артефакты обучения)
 app/processor/models/

@@ -472,6 +472,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
         </Box>
       </Box>
 
+      {filteredDetections.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          {t('video.timelineHint')}
+        </Typography>
+      )}
       <ProgressBar
         duration={duration}
         progress={progress}

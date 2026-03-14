@@ -79,7 +79,7 @@ class VisitProcessor:
             end_time=detection_end,
             confidence=confidence,
             source='audio',
-            detection_provider=detection_provider or 'birdnet_local',
+            detection_provider=detection_provider or 'birdnet_mqtt',
             created_at=detection_time,
             species_visit=visit,
             video=video

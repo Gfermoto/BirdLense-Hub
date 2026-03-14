@@ -114,6 +114,19 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   {group.detections.length} {group.detections.length > 1 ? t('video.detections') : t('video.detection')} •{' '}
                   {Math.round(group.totalDuration)}s
                 </Typography>
+                {(() => {
+                  const providers = [...new Set(group.detections.map((d) => d.detection_provider).filter(Boolean))];
+                  const providerLabels: Record<string, string> = {
+                    yolo: t('video.detectionProviderYolo'),
+                    frigate: t('video.detectionProviderFrigate'),
+                    birdnet_mqtt: t('video.detectionProviderBirdnetMqtt'),
+                  };
+                  return providers.length > 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {t('video.detectionSource')}: {providers.map((p) => providerLabels[p] || p).join(', ')}
+                    </Typography>
+                  ) : null;
+                })()}
                 <Typography variant="body2" color="text.secondary">
                   {t('video.confidence')}: {group.confidenceRange}
                 </Typography>

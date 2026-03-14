@@ -4,6 +4,8 @@
 
 Значения по умолчанию в `app/app_config/default_config.yaml`. Пользовательский конфиг переопределяет их (merge).
 
+**Приоритет настроек:** переменные окружения > `user_config.yaml` > `default_config.yaml`. Например, `GO2RTC_URL` в env переопределяет `video.go2rtc_url` в YAML.
+
 ## Переменные окружения
 
 | Переменная | Описание |
@@ -116,6 +118,8 @@
 ---
 
 ## Detection (слияние YOLO + Frigate + BirdNET)
+
+Кто распознал каждый вид — см. [DETECTION_SOURCES.md](./DETECTION_SOURCES.md).
 
 | Ключ | Описание |
 |------|----------|

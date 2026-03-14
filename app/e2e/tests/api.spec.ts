@@ -1,17 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-/** Verify settings password if required. Call before settings tests. */
-async function ensureSettingsUnlocked(request: any) {
-  const reqRes = await request.get('/api/ui/settings/requires-password');
-  const { requires } = await reqRes.json();
-  if (!requires) return;
-  const pw = process.env.E2E_SETTINGS_PASSWORD || '';
-  if (!pw) return;
-  const verifyRes = await request.post('/api/ui/settings/verify-password', {
-    data: { password: pw },
-  });
-  expect(verifyRes.ok(), 'verify-password should succeed').toBeTruthy();
-}
+import { ensureSettingsUnlocked } from '../helpers/settings';
 
 test.describe('API endpoints @api', () => {
   test('GET /api/ui/health returns ok', async ({ request }) => {

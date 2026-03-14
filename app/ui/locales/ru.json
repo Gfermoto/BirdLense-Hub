@@ -256,6 +256,11 @@
     "speciesInVideo": "Виды в этом видео",
     "detection": "обнаружение",
     "detections": "обнаружений",
+    "detectionProviderYolo": "YOLO",
+    "detectionProviderFrigate": "Frigate",
+    "detectionProviderBirdnetMqtt": "BirdNET",
+    "detectionSource": "Источник",
+    "timelineHint": "Полосы = виды. Наведите курсор — источник: YOLO, Frigate или BirdNET.",
     "confidence": "Уверенность",
     "learnMore": "Подробнее"
   },
