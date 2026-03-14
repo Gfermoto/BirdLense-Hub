@@ -257,3 +257,43 @@ export const fetchSpeciesSummary = async (
   );
   return response.data;
 };
+
+export interface UnknownDetection {
+  id: number;
+  video_id: number;
+  species_id: number;
+  species_name: string;
+  confidence: number;
+  start_time: string;
+  end_time: string;
+  source: string;
+  detection_provider?: string;
+  image_url?: string;
+}
+
+export const fetchUnknowns = async (
+  startTime: Dayjs,
+  endTime: Dayjs,
+  limit = 100,
+): Promise<UnknownDetection[]> => {
+  const response = await axios.get(`${BASE_API_URL}/unknowns`, {
+    params: {
+      start_time: startTime.unix(),
+      end_time: endTime.unix(),
+      limit,
+    },
+  });
+  return response.data;
+};
+
+export const updateDetectionSpecies = async (
+  detectionId: number,
+  speciesId: number,
+): Promise<{ message: string; species_id: number }> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    { species_id: speciesId },
+    { withCredentials: true },
+  );
+  return response.data;
+};

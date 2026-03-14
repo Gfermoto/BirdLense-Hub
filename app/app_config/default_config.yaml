@@ -116,6 +116,10 @@ notifications:
 webhook:
   url: ""  # например https://maker.ifttt.com/trigger/bird_detected/with/key/xxx
 
+# UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
+ui:
+  unknown_confidence_threshold: 0.5  # 0.0–1.0; детекции с confidence < порога попадают в «Неизвестные»
+
 # MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
 mcp:
   enabled: false

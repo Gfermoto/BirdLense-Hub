@@ -179,6 +179,9 @@ export interface Settings {
   webhook?: {
     url?: string;  // POST при детекции (IFTTT, Zapier)
   };
+  ui?: {
+    unknown_confidence_threshold?: number;  // 0–1; детекции ниже попадают в «Неизвестные»
+  };
 }
 
 export interface Species {

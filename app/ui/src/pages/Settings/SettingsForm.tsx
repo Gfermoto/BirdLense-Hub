@@ -1113,6 +1113,23 @@ export const SettingsForm = ({
               </form.Field>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="ui.unknown_confidence_threshold">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 1, step: 0.01 }}
+                    value={field.state.value ?? 0.5}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || undefined)
+                    }
+                    label={t('settings.unknownConfidenceThreshold')}
+                    helperText={t('settings.unknownConfidenceThresholdHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.spectrogram_px_per_sec">
                 {(field) => (
                   <TextField

@@ -6,6 +6,8 @@
 
 **Приоритет настроек:** переменные окружения > `user_config.yaml` > `default_config.yaml`. Например, `GO2RTC_URL` в env переопределяет `video.go2rtc_url` в YAML.
 
+**Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
+
 ## Переменные окружения
 
 | Переменная | Описание |
@@ -189,12 +191,39 @@
 2. Либо используйте бота [@Stickers](https://t.me/Stickers) для получения ID из стикерпаков.
 3. Вставьте числовой ID (например, `5368324170671202286`) в соответствующее поле настроек.
 
+## UI
+
+| Ключ | Описание | Где настраивать |
+|------|----------|-----------------|
+| `unknown_confidence_threshold` | Порог (0–1) для списка «Неизвестные»: детекции с confidence ниже попадают на страницу для ручной проверки. По умолчанию 0.5 | Настройки → Расширенные |
+
+---
+
 ## MCP
 
 | Ключ | Описание |
 |------|----------|
 | `enabled` | Включить MCP-сервер |
 | `token` | Токен доступа (или MCP_TOKEN в env) |
+
+---
+
+## Prometheus / Grafana
+
+Эндпоинт `GET /metrics` отдаёт метрики в формате Prometheus. Конфигурации в BirdLense не требуется.
+
+**Prometheus** — в `prometheus.yml` добавьте scrape job:
+```yaml
+scrape_configs:
+  - job_name: 'birdlense'
+    static_configs:
+      - targets: ['birdlense:8080']  # или IP:порт вашего Hub
+    metrics_path: /metrics
+```
+
+**Метрики:** `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
+
+**Grafana** — добавьте Prometheus как datasource, создайте дашборд с панелями по этим метрикам.
 
 ---
 

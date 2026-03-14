@@ -24,3 +24,8 @@ export const videoDetailsHelpConfig: PageHelpConfig = {
   configKey: 'videoDetails',
   dialogMaxWidth: 'md',
 } as const;
+
+export const unknownsHelpConfig: PageHelpConfig = {
+  configKey: 'unknowns',
+  dialogMaxWidth: 'md',
+} as const;

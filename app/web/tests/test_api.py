@@ -253,3 +253,30 @@ class TestStatusDebug:
         assert r.status_code == 200
         data = r.json
         assert 'last_heartbeat' in data or 'cutoff_utc' in data
+
+
+class TestUnknowns:
+    def test_unknowns_requires_params(self, client):
+        r = client.get('/api/ui/unknowns')
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+    def test_unknowns_returns_list(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/unknowns',
+            query_string={'start_time': ts - 86400, 'end_time': ts}
+        )
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+
+    def test_unknowns_rejects_interval_over_one_day(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/unknowns',
+            query_string={
+                'start_time': ts - 86400 * 2,
+                'end_time': ts
+            }
+        )
+        assert r.status_code == 400

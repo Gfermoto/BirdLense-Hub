@@ -10,6 +10,7 @@ from util import fetch_weather, update_species_info_from_wiki, ensure_utc, setti
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
+from services.visit_processor import VisitProcessor
 
 
 
@@ -561,6 +562,117 @@ def register_routes(app):
             mimetype='text/csv',
             headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.csv'}
         )
+
+    @app.route('/api/ui/unknowns', methods=['GET'])
+    def get_unknowns():
+        """List of low-confidence detections for manual review."""
+        start_time = request.args.get('start_time')
+        end_time = request.args.get('end_time')
+        limit = request.args.get('limit', 100, type=int)
+        limit = min(max(limit, 1), 500)
+
+        if not start_time or not end_time:
+            return {'error': 'Both start_time and end_time are required'}, 400
+
+        try:
+            start_dt = datetime.fromtimestamp(int(start_time), timezone.utc).replace(tzinfo=None)
+            end_dt = datetime.fromtimestamp(int(end_time), timezone.utc).replace(tzinfo=None)
+        except ValueError:
+            return {'error': 'Invalid datetime format'}, 400
+
+        if end_dt - start_dt > timedelta(days=1):
+            return {'error': 'Interval must not exceed 1 day'}, 400
+
+        threshold = float(app_config.get('ui.unknown_confidence_threshold') or 0.5)
+        threshold = max(0.0, min(1.0, threshold))
+
+        rows = (
+            db.session.query(VideoSpecies)
+            .join(Video)
+            .join(Species)
+            .filter(
+                Video.start_time >= start_dt,
+                Video.start_time <= end_dt,
+                VideoSpecies.confidence < threshold,
+            )
+            .order_by(VideoSpecies.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        result = []
+        for vs in rows:
+            video_start = ensure_utc(vs.video.start_time)
+            det_time = video_start + timedelta(seconds=vs.start_time)
+            result.append({
+                'id': vs.id,
+                'video_id': vs.video_id,
+                'species_id': vs.species_id,
+                'species_name': vs.species.name,
+                'confidence': round(vs.confidence, 4),
+                'start_time': det_time.astimezone(timezone.utc).isoformat(),
+                'end_time': (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
+                'source': vs.source,
+                'detection_provider': vs.detection_provider,
+                'image_url': vs.species.image_url,
+            })
+
+        return result
+
+    @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
+    def update_detection_species(detection_id):
+        """Correct species for a low-confidence detection."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+
+        data = request.json or {}
+        species_id = data.get('species_id')
+        if species_id is None:
+            return {'error': 'species_id is required'}, 400
+
+        vs = VideoSpecies.query.get(detection_id)
+        if not vs:
+            return {'error': 'Detection not found'}, 404
+
+        species = Species.query.get(species_id)
+        if not species:
+            return {'error': 'Species not found'}, 404
+
+        old_visit = vs.species_visit
+        old_species_id = vs.species_id
+
+        if vs.species_id == species_id:
+            return {'message': 'Species unchanged'}, 200
+
+        vs.species_id = species_id
+        vs.species_visit_id = None
+
+        vp = VisitProcessor(db, app.logger)
+        video_start = ensure_utc(vs.video.start_time)
+        detection_time = video_start + timedelta(seconds=vs.start_time)
+        new_visit, _ = vp._get_or_create_visit(species, detection_time)
+        new_visit.end_time = max(
+            new_visit.end_time,
+            video_start + timedelta(seconds=vs.end_time)
+        )
+        vs.species_visit_id = new_visit.id
+        vs.species_visit = new_visit
+
+        db.session.flush()
+
+        if old_visit:
+            remaining = [v for v in old_visit.video_species if v.id != detection_id]
+            if remaining:
+                vp._update_simultaneous_count(old_visit, remaining)
+            else:
+                db.session.delete(old_visit)
+
+        new_video_detections = [v for v in new_visit.video_species if v.source == 'video']
+        if new_video_detections:
+            vp._update_simultaneous_count(new_visit, new_video_detections)
+
+        db.session.commit()
+        return {'message': 'Species updated', 'species_id': species_id}, 200
 
     @app.route('/api/ui/species', methods=['GET'])
     def get_all_species():

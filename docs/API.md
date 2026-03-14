@@ -12,7 +12,8 @@
 | `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo) |
 | `/cameras` | GET | Список камер |
 | `/weather` | GET | Погода |
-| `/timeline` | GET | Визиты по периоду |
+| `/timeline` | GET | Визиты по периоду (params: start_time, end_time) |
+| `/timeline/export` | GET | Экспорт визитов в CSV или JSON (params: start_time, end_time, format) |
 | `/videos/:id` | GET | Детали видео |
 | `/overview` | GET | Данные для Overview |
 | `/species` | GET | Список видов |
@@ -23,8 +24,19 @@
 | `/settings` | GET/PATCH | Настройки |
 | `/settings/requires-password` | GET | Проверка, требуется ли пароль |
 | `/settings/verify-password` | POST | Разблокировка настроек |
+| `/settings/check-access` | GET | Проверка разблокировки (200/403) |
+| `/unknowns` | GET | Детекции с низкой confidence для ручной проверки (params: start_time, end_time, limit) |
+| `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
 | `/species/:id/summary` | GET | Сводка по виду |
 | `/restart-processor` | POST | Перезапуск processor |
+
+### Prometheus
+
+| Эндпоинт | Метод | Описание |
+|----------|-------|----------|
+| `/metrics` | GET | Метрики в формате Prometheus: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total` |
+
+См. [CONFIGURATION.md](./CONFIGURATION.md) — раздел Prometheus / Grafana.
 
 ### System API (`/api/ui/system/*`)
 
