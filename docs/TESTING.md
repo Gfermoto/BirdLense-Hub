@@ -58,12 +58,12 @@ E2E проверяют UI и API на работающем экземпляре.
    cd app && make test-e2e
    ```
 
-3. Против другого хоста (например, 192.168.1.11:8085):
+3. Против сервера (192.168.1.11:8085):
    ```bash
-   cd app && E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
+   cd app && BASE_URL=http://192.168.1.11:8085 make test-e2e
    ```
 
-4. **Пароль обязателен**, если включена защита настроек (`general.settings_password`). Без него тесты Settings и `GET /api/ui/settings` падают.
+4. **Пароль** — если включена защита настроек (`general.settings_password`), задайте `E2E_SETTINGS_PASSWORD=xxx` для полного прогона. Без него тесты Settings и `GET /api/ui/settings` пропускаются (skip).
 
 **Что проверяют E2E:**
 

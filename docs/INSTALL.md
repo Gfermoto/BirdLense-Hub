@@ -71,4 +71,4 @@ make deploy
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [SCENARIOS.md](./SCENARIOS.md), [DEPLOYMENT.md](./DEPLOYMENT.md).
+См. также: [CONFIGURATION.md](./CONFIGURATION.md), [SCENARIOS.md](./SCENARIOS.md), [DEPLOYMENT.md](./DEPLOYMENT.md), [SECURITY.md](./SECURITY.md).

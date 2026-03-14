@@ -4,16 +4,16 @@
 
 # SSH: добавьте в ~/.ssh/config:
 #   Host birdlense
-#     HostName 185.218.111.196
+#     HostName YOUR_SERVER_IP
 #     Port 2222
 #     User root
-# (пароль — вручную при первом ssh, или настройте ключ: ssh-copy-id -p 2222 root@185.218.111.196)
+# (пароль — вручную при первом ssh, или настройте ключ: ssh-copy-id -p 2222 root@YOUR_SERVER_IP)
 
 export DEPLOY_HOST="birdlense"           # хост из ~/.ssh/config
 # DEPLOY_URL — ОБЯЗАТЕЛЬНО для удалённого деплоя! Health check идёт с локальной машины.
-export DEPLOY_URL="http://185.218.111.196:8085"
+export DEPLOY_URL="http://YOUR_HOST:8085"
 
 # На сервере создайте app/.env или задайте здесь (попадут в app/.env при деплое):
-#   CORS_ORIGINS=http://185.218.111.196:8085
+#   CORS_ORIGINS=http://YOUR_HOST:8085
 #   MCP_TOKEN=ваш-токен-для-mcp
 #   PROCESSOR_SECRET — генерируется при деплое, добавьте сюда для сохранения

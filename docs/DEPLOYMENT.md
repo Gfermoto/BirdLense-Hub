@@ -7,7 +7,7 @@ cd BirdLense
 make deploy
 ```
 
-Деплой выполняется на сервер из `.cursor/rules/deploy.mdc` (по умолчанию 192.168.1.11).
+Деплой выполняется на сервер из `scripts/deploy.local.sh` (см. `deploy.local.sh.example`).
 
 ## Требования
 
@@ -21,7 +21,7 @@ make deploy
    - `app/data` — записи и БД
    - `app/app_config/user_config.yaml` — настройки на сервере
    - `scripts/deploy.local.sh` — локальные секреты
-3. **Записывает** секреты в `app/.env` (PROCESSOR_SECRET, MCP_TOKEN)
+3. **Записывает** секреты в `app/.env` (PROCESSOR_SECRET, MCP_TOKEN). При повреждении `.env` (>1 MB) файл заменяется на `.env.example`
 4. **Собирает** и **запускает** контейнер
 
 ## Локальные настройки
@@ -31,7 +31,7 @@ make deploy
 ```bash
 export DEPLOY_HOST="birdlense"           # или IP
 export DEPLOY_REMOTE_DIR="/root/BirdLense"
-export DEPLOY_URL="http://192.168.1.11:8085"
+export DEPLOY_URL="http://YOUR_HOST:8085"
 export PROCESSOR_SECRET="ваш-секрет-16+"
 export MCP_TOKEN="ваш-mcp-токен"        # опционально
 ```
@@ -57,7 +57,7 @@ Push в `main` → автодеплой. Требует self-hosted runner на 
 
 ## После деплоя
 
-- UI: `DEPLOY_URL` (например http://192.168.1.11:8085)
+- UI: `DEPLOY_URL` (например http://YOUR_HOST:8085)
 - Записи не видны? System → «Сканировать и импортировать»
 - CORS: при доступе с другого домена добавьте в `app/.env` на сервере: `CORS_ORIGINS=http://ваш-домен`
 

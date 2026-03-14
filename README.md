@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -48,7 +48,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 - **Timeline** — video playback, spectrograms, track visualization, species visits
 - **UI** — React, Material UI, i18n (en/ru), mobile-friendly
 - **Weather** — OpenWeather or Home Assistant
-- **Notifications** — [ntfy](https://ntfy.sh)
+- **Notifications** — Telegram Bot API
 - **MCP** — Model Context Protocol for external tools
 - **Research** — dataset prep (NABirds, COCO → YOLO), training notebooks, export pipeline for model fine-tuning
 

@@ -2,7 +2,7 @@
 
 Конфиг: `app/app_config/user_config.yaml`
 
-Значения по умолчанию в `default_config.yaml`. Пользовательский конфиг переопределяет их (merge).
+Значения по умолчанию в `app/app_config/default_config.yaml`. Пользовательский конфиг переопределяет их (merge).
 
 ## Переменные окружения
 
@@ -40,7 +40,8 @@
 | `tracker` | Конфиг трекера (bytetrack.yaml) |
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
-| `min_track_duration` | Мин. длительность трека (сек) |
+| `min_track_duration` | Мин. длительность трека (сек). По умолчанию 2 — меньше ложных срабатываний |
+| `min_confidence_to_process` | Мин. confidence трека (0.10 по умолчанию). 0.03 — больше детекций, 0.10 — строже |
 | `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
@@ -118,8 +119,8 @@
 
 | Ключ | Описание |
 |------|----------|
-| `merge_window_seconds` | Окно слияния детекций по времени |
-| `dedup_window_seconds` | Окно дедупликации |
+| `merge_window_seconds` | Окно слияния MQTT-событий по времени (5 сек) |
+| `dedup_window_seconds` | Детекции одного вида с разрывом > N сек считаются разными визитами (45 сек) |
 | `species_mapping` | Маппинг названий видов |
 
 **Источники видов:**

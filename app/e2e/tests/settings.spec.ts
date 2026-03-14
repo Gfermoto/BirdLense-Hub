@@ -4,15 +4,21 @@ import { test, expect } from '@playwright/test';
 async function unlockSettingsIfNeeded(page: any) {
   const dialog = page.getByRole('dialog');
   const pw = process.env.E2E_SETTINGS_PASSWORD || '';
-  if (await dialog.isVisible().catch(() => false) && pw) {
+  const visible = await dialog.isVisible().catch(() => false);
+  if (visible && pw) {
     await dialog.locator('input[type="password"]').fill(pw);
-    await dialog.getByRole('button', { name: /Enter|Войти/i }).click();
-    await expect(dialog).not.toBeVisible({ timeout: 5000 });
+    await dialog.getByRole('button', { name: /Enter|Войти|Submit|Отправить/i }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
   }
 }
 
 test.describe('Settings page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    const reqRes = await request.get('/api/ui/settings/requires-password');
+    const { requires } = await reqRes.json();
+    if (requires && !process.env.E2E_SETTINGS_PASSWORD) {
+      test.skip(true, 'Set E2E_SETTINGS_PASSWORD for server with password');
+    }
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
     await unlockSettingsIfNeeded(page);
