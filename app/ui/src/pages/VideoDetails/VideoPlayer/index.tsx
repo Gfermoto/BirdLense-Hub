@@ -161,6 +161,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
   const [showTracks, setShowTracks] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  const SPEED_OPTIONS = [0.5, 1, 2] as const;
 
   const { playing, progress, handleProgress, handleSeek, togglePlayPause } =
     useVideoControl(videoRef);
@@ -205,6 +208,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
       setView('video');
     }
   }, [video?.id, video?.spectrogram_path, view]);
+
+  // Reset speed when switching video
+  useEffect(() => {
+    setPlaybackRate(1);
+  }, [video?.id]);
+
+  // Apply playback rate to video element
+  useEffect(() => {
+    const el = videoRef.current;
+    if (el) el.playbackRate = playbackRate;
+  }, [playbackRate]);
 
   const startHideTimer = useCallback(() => {
     if (timeoutRef.current) {
@@ -409,27 +423,62 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
           </IconButton>
         )}
 
-        {/* Fullscreen Button */}
+        {/* Playback speed + Fullscreen */}
         {view === 'video' && (!playing || showControls) && (
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFullscreen();
-            }}
+          <Box
             sx={{
               position: 'absolute',
               bottom: 8,
               right: 8,
-              backgroundColor: 'rgba(0,0,0,0.3)', // Consistent with other overlays
-              color: 'white',
-              '&:hover': {
-                backgroundColor: 'rgba(0,0,0,0.5)',
-              },
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
               zIndex: 1,
             }}
           >
-            <FullscreenIcon />
-          </IconButton>
+            {SPEED_OPTIONS.map((speed) => (
+              <Typography
+                key={speed}
+                component="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlaybackRate(speed);
+                }}
+                sx={{
+                  minWidth: 36,
+                  py: 0.5,
+                  px: 1,
+                  fontSize: '0.75rem',
+                  fontWeight: playbackRate === speed ? 600 : 400,
+                  color: 'white',
+                  bgcolor: playbackRate === speed ? 'rgba(16, 185, 129, 0.5)' : 'rgba(0,0,0,0.3)',
+                  border: 'none',
+                  borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: playbackRate === speed ? 'rgba(16, 185, 129, 0.6)' : 'rgba(0,0,0,0.5)',
+                  },
+                }}
+              >
+                {speed}x
+              </Typography>
+            ))}
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFullscreen();
+              }}
+              sx={{
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                },
+              }}
+            >
+              <FullscreenIcon />
+            </IconButton>
+          </Box>
         )}
 
         <Box

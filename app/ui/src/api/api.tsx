@@ -43,6 +43,33 @@ export const fetchTimeline = async (
   return response.data;
 };
 
+/** Export timeline as CSV or JSON. Triggers download. */
+export const exportTimeline = async (
+  startTime: Dayjs,
+  endTime: Dayjs,
+  format: 'csv' | 'json',
+): Promise<void> => {
+  const params = new URLSearchParams({
+    start_time: String(startTime.unix()),
+    end_time: String(endTime.unix()),
+    format,
+  });
+  const url = `${BASE_API_URL}/timeline/export?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const ext = format === 'csv' ? 'csv' : 'json';
+  const filename = `birdlense_timeline.${ext}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 export const fetchWeather = async () => {
   const response = await axios.get(`${BASE_API_URL}/weather`);
   return response.data;
@@ -82,6 +109,7 @@ export const fetchStatus = async (): Promise<{
   mqtt: string;
   esphome?: string;
   yolo: string;
+  birdnet_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;

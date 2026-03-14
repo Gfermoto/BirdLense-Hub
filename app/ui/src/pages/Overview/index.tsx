@@ -103,6 +103,32 @@ export const Overview = () => {
       </Grid>
 
       <Grid container spacing={2} sx={{ minHeight: '300px' }}>
+        {/* Last bird widget */}
+        {overviewData?.lastDetection && (
+          <Grid size={{ xs: 12 }}>
+            <Paper
+              sx={{
+                p: 2,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              }}
+            >
+              <BirdIcon size={40} />
+              <Box>
+                <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
+                  {t('overview.lastBird')}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {dayjs(overviewData.lastDetection.start_time).format('HH:mm')} — {overviewData.lastDetection.species_name}
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        )}
+
         {/* Stats Cards */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Grid container spacing={2}>

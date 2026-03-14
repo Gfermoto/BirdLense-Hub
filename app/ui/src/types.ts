@@ -94,9 +94,10 @@ export interface BirdTaxonomy {
 
 export interface Settings {
   general: {
-    enable_notifications: boolean; // Whether to enable notifications or not
-    notification_excluded_species: string[]; // list of species to exclude from notifications
-    settings_password?: string; // Password to access settings; empty = no password
+    enable_notifications: boolean;
+    notification_excluded_species: string[];
+    settings_password?: string;
+    birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
@@ -139,6 +140,7 @@ export interface Settings {
     disable_notification?: boolean;
     protect_content?: boolean;
     link_preview_large?: boolean;
+    send_photo?: boolean;
     use_custom_emoji?: boolean;
     custom_emoji_id_bird?: string;
     custom_emoji_id_chipmunk?: string;
@@ -209,10 +211,16 @@ export interface OverviewStats {
   detectionByProvider?: Record<string, number>;
 }
 
+export interface OverviewLastDetection {
+  species_name: string;
+  start_time: string; // ISO datetime
+}
+
 export interface OverviewData {
   topSpecies: OverviewTopSpecies[];
   stats: OverviewStats;
   hourlyTemperature: (number | null)[]; // 24 values, avg temp per hour (°C)
+  lastDetection?: OverviewLastDetection | null;
 }
 
 export interface DetectionCounts {

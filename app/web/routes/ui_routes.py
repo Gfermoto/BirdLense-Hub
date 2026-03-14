@@ -1,5 +1,7 @@
 import os
-from flask import request, session
+import csv
+import io
+from flask import request, session, Response
 import json as json_module
 from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
@@ -55,6 +57,7 @@ def register_routes(app):
             mqtt_display = 'not_used'
         # ESPHome: show real status if feed source is esphome
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
+        birdnet_url = (app_config.get('general.birdnet_url') or '').strip()
         return {
             'web': 'ok',
             'processor': 'ok' if processor_ok else 'offline',
@@ -63,6 +66,7 @@ def register_routes(app):
             'esphome': esphome_display,
             'yolo': 'ok' if processor_ok else 'unknown',
             'motion_source': motion_source,
+            'birdnet_url': birdnet_url or None,
         }
 
     @app.route('/api/ui/status/debug', methods=['GET'])
@@ -358,10 +362,30 @@ def register_routes(app):
         for hour, avg_temp in hourly_temp_query:
             hourly_temperature[int(hour)] = round(avg_temp, 1) if avg_temp else None
 
+        # Last detection of the day (for "Последняя птица" widget)
+        last_visit = (
+            db.session.query(SpeciesVisit, Species.name)
+            .join(Species, SpeciesVisit.species_id == Species.id)
+            .filter(
+                SpeciesVisit.start_time >= start_of_day,
+                SpeciesVisit.start_time <= end_of_day
+            )
+            .order_by(SpeciesVisit.start_time.desc())
+            .first()
+        )
+        last_detection = None
+        if last_visit:
+            visit, species_name = last_visit
+            last_detection = {
+                'species_name': species_name,
+                'start_time': visit.start_time.isoformat() if visit.start_time else None,
+            }
+
         return {
             'topSpecies': top_species,
             'stats': stats,
-            'hourlyTemperature': hourly_temperature
+            'hourlyTemperature': hourly_temperature,
+            'lastDetection': last_detection,
         }, 200
 
     @app.route('/api/ui/timeline', methods=['GET'])
@@ -442,6 +466,81 @@ def register_routes(app):
             })
 
         return response
+
+    @app.route('/api/ui/timeline/export', methods=['GET'])
+    def export_timeline():
+        """Export timeline data as CSV or JSON. Same params as /api/ui/timeline."""
+        start_time = request.args.get('start_time')
+        end_time = request.args.get('end_time')
+        fmt = request.args.get('format', 'json').lower()
+
+        if not start_time or not end_time:
+            return {'error': 'Both start_time and end_time are required'}, 400
+        if fmt not in ('csv', 'json'):
+            return {'error': 'format must be csv or json'}, 400
+
+        try:
+            start_dt = datetime.fromtimestamp(int(start_time), timezone.utc).replace(tzinfo=None)
+            end_dt = datetime.fromtimestamp(int(end_time), timezone.utc).replace(tzinfo=None)
+        except ValueError:
+            return {'error': 'Invalid datetime format'}, 400
+
+        if end_dt - start_dt > timedelta(days=1):
+            return {'error': 'Interval must not exceed 1 day'}, 400
+
+        visits = (
+            db.session.query(SpeciesVisit)
+            .join(Species)
+            .join(VideoSpecies)
+            .join(Video)
+            .filter(
+                SpeciesVisit.end_time >= start_dt,
+                SpeciesVisit.start_time <= end_dt
+            )
+            .order_by(SpeciesVisit.start_time.desc())
+            .all()
+        )
+
+        rows = []
+        for visit in visits:
+            video = visit.video_species[0].video if visit.video_species else None
+            duration = (visit.end_time - visit.start_time).total_seconds() if visit.end_time and visit.start_time else 0
+            rows.append({
+                'id': visit.id,
+                'species_name': visit.species.name,
+                'start_time': visit.start_time.astimezone(timezone.utc).isoformat(),
+                'end_time': visit.end_time.astimezone(timezone.utc).isoformat(),
+                'duration_sec': round(duration),
+                'max_simultaneous': visit.max_simultaneous,
+                'detection_count': len(visit.video_species),
+                'temp': video.weather_temp if video else None,
+                'clouds': video.weather_clouds if video else None,
+            })
+
+        if fmt == 'json':
+            body = json_module.dumps(rows, ensure_ascii=False, indent=2)
+            return Response(
+                body,
+                mimetype='application/json',
+                headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.json'}
+            )
+
+        # CSV
+        if not rows:
+            output = io.StringIO()
+            w = csv.writer(output)
+            w.writerow(['id', 'species_name', 'start_time', 'end_time', 'duration_sec', 'max_simultaneous', 'detection_count', 'temp', 'clouds'])
+        else:
+            output = io.StringIO()
+            w = csv.writer(output)
+            w.writerow(rows[0].keys())
+            for r in rows:
+                w.writerow(r.values())
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.csv'}
+        )
 
     @app.route('/api/ui/species', methods=['GET'])
     def get_all_species():
