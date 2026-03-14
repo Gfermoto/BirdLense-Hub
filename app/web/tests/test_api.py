@@ -1,5 +1,139 @@
 """API integration tests for web service."""
+from datetime import datetime, timezone
+
 import pytest
+
+
+class TestMetrics:
+    """Prometheus /metrics endpoint."""
+
+    def test_metrics_returns_prometheus_format(self, client):
+        r = client.get('/metrics')
+        assert r.status_code == 200
+        assert 'text/plain' in (r.content_type or '')
+        body = r.get_data(as_text=True)
+        assert 'birdlense_detections_total' in body
+        assert 'birdlense_species_count' in body
+        assert 'birdlense_videos_total' in body
+        assert '# HELP' in body
+        assert '# TYPE' in body
+
+    def test_metrics_values_are_numeric(self, client):
+        r = client.get('/metrics')
+        assert r.status_code == 200
+        body = r.get_data(as_text=True)
+        for line in body.split('\n'):
+            if line and not line.startswith('#'):
+                parts = line.split()
+                assert len(parts) >= 2
+                assert parts[1].isdigit()
+
+
+class TestTimelineExport:
+    """Timeline export CSV/JSON."""
+
+    def test_export_requires_params(self, client):
+        r = client.get('/api/ui/timeline/export')
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+    def test_export_requires_format(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline/export',
+            query_string={'start_time': ts, 'end_time': ts, 'format': 'xml'}
+        )
+        assert r.status_code == 400
+        assert 'format' in r.json.get('error', '').lower()
+
+    def test_export_json_returns_array(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline/export',
+            query_string={'start_time': ts, 'end_time': ts, 'format': 'json'}
+        )
+        assert r.status_code == 200
+        assert r.headers.get('Content-Disposition', '').endswith('birdlense_timeline.json')
+        import json
+        data = json.loads(r.get_data(as_text=True))
+        assert isinstance(data, list)
+
+    def test_export_csv_returns_text(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline/export',
+            query_string={'start_time': ts, 'end_time': ts, 'format': 'csv'}
+        )
+        assert r.status_code == 200
+        assert r.headers.get('Content-Disposition', '').endswith('birdlense_timeline.csv')
+        body = r.get_data(as_text=True)
+        assert 'id' in body or 'species_name' in body
+
+    def test_export_rejects_interval_over_one_day(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline/export',
+            query_string={
+                'start_time': ts - 86400 * 2,
+                'end_time': ts,
+                'format': 'json'
+            }
+        )
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+
+class TestTimeline:
+    """Timeline API."""
+
+    def test_timeline_requires_params(self, client):
+        r = client.get('/api/ui/timeline')
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+    def test_timeline_returns_list(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={'start_time': ts - 86400, 'end_time': ts}
+        )
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+
+    def test_timeline_rejects_interval_over_one_day(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={
+                'start_time': ts - 86400 * 2,
+                'end_time': ts
+            }
+        )
+        assert r.status_code == 400
+
+
+class TestOverview:
+    """Overview API with lastDetection."""
+
+    def test_overview_returns_last_detection_key(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        start = ts - 86400  # 1 day ago
+        r = client.get(
+            '/api/ui/overview',
+            query_string={'start_time': start, 'end_time': ts}
+        )
+        assert r.status_code == 200
+        data = r.json
+        assert 'lastDetection' in data
+        assert 'topSpecies' in data
+        assert 'stats' in data
+
+    def test_overview_rejects_invalid_timestamp(self, client):
+        r = client.get(
+            '/api/ui/overview',
+            query_string={'start_time': 'invalid', 'end_time': '123'}
+        )
+        assert r.status_code == 400
 
 
 class TestHealth:
@@ -60,3 +194,62 @@ class TestCameras:
         assert r.status_code == 200
         assert 'cameras' in r.json
         assert isinstance(r.json['cameras'], list)
+
+
+class TestWeather:
+    def test_weather_returns_dict(self, client):
+        r = client.get('/api/ui/weather')
+        assert r.status_code == 200
+        assert isinstance(r.json, dict)
+
+
+class TestVideos:
+    def test_videos_not_found_returns_404(self, client):
+        r = client.get('/api/ui/videos/999999')
+        assert r.status_code == 404
+        assert 'error' in r.json
+
+
+class TestBirdfood:
+    def test_birdfood_get_returns_list(self, client):
+        r = client.get('/api/ui/birdfood')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+
+
+class TestSpecies:
+    def test_species_returns_list(self, client):
+        r = client.get('/api/ui/species')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+
+
+class TestBirdFamilies:
+    def test_bird_families_returns_list(self, client):
+        r = client.get('/api/ui/bird_families')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+
+
+class TestSettingsEndpoints:
+    def test_settings_requires_password_returns_bool(self, client):
+        r = client.get('/api/ui/settings/requires-password')
+        assert r.status_code == 200
+        assert 'requires' in r.json
+        assert isinstance(r.json['requires'], bool)
+
+    def test_settings_check_access_returns_status(self, client):
+        r = client.get('/api/ui/settings/check-access')
+        assert r.status_code in (200, 403)
+        if r.status_code == 200:
+            assert 'unlocked' in r.json
+        else:
+            assert 'error' in r.json
+
+
+class TestStatusDebug:
+    def test_status_debug_returns_diagnostics(self, client):
+        r = client.get('/api/ui/status/debug')
+        assert r.status_code == 200
+        data = r.json
+        assert 'last_heartbeat' in data or 'cutoff_utc' in data

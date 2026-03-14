@@ -784,6 +784,8 @@ components:
               type: string
             link_preview_large:
               type: boolean
+            send_photo:
+              type: boolean
             use_custom_emoji:
               type: boolean
             custom_emoji_id_bird:

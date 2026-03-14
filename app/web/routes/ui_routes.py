@@ -14,6 +14,26 @@ from services.feed_service import dispense_feed, check_mqtt_connected, check_esp
 
 
 def register_routes(app):
+    @app.route('/metrics', methods=['GET'])
+    def prometheus_metrics():
+        """Prometheus exposition format for Grafana/dashboards."""
+        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+        lines = [
+            '# HELP birdlense_detections_total Total number of bird detections',
+            '# TYPE birdlense_detections_total counter',
+            f'birdlense_detections_total {detections}',
+            '# HELP birdlense_species_count Number of unique species detected',
+            '# TYPE birdlense_species_count gauge',
+            f'birdlense_species_count {species_count}',
+            '# HELP birdlense_videos_total Total number of recorded videos',
+            '# TYPE birdlense_videos_total counter',
+            f'birdlense_videos_total {videos_count}',
+        ]
+        body = '\n'.join(lines) + '\n'
+        return Response(body, mimetype='text/plain; charset=utf-8')
+
     @app.route('/api/ui/health', methods=['GET'])
     def health():
         return {'status': 'ok'}

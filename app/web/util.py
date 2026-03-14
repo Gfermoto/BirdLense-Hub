@@ -389,7 +389,8 @@ def notify(message, link="live", tags=None, image_path=None, timestamp=None):
         # Bot API 9.5: <tg-time> — динамическое время в часовом поясе подписчика
         text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
     try:
-        if image_path and os.path.exists(image_path):
+        send_photo = app_config.get('notifications.send_photo', True)
+        if send_photo and image_path and os.path.exists(image_path):
             view_stars = app_config.get('notifications.paid_media_view_star_count')
             forward_stars = app_config.get('notifications.paid_media_forward_star_count')
             try:
