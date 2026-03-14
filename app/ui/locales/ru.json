@@ -24,7 +24,8 @@
     "visitsLastHour": "Визитов (последний час)",
     "meanDuration": "Средняя длительность",
     "busiestHour": "Пиковый час",
-    "recordingTime": "Время записи"
+    "recordingTime": "Время записи",
+    "downloadPdf": "PDF-отчёт"
   },
   "settings": {
     "section1": "1. Подключение",

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Prometheus метрики** — эндпоинт `GET /metrics` в формате Prometheus: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`. Для Grafana и дашбордов.
 - **«Неизвестные»** — страница `/unknowns` со списком детекций с низкой confidence (< порога). Ручная проверка и исправление вида. Порог настраивается в Настройках → Расширенные или в конфиге `ui.unknown_confidence_threshold` (по умолчанию 0.5).
+- **PDF-отчёт** — месячный отчёт: N видов, топ-5, графики. Кнопка «PDF-отчёт» на Overview. API: `GET /api/ui/report/pdf?month=YYYY-MM`.
 
 ---
 

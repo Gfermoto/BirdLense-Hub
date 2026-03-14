@@ -11,6 +11,7 @@ from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
 from services.visit_processor import VisitProcessor
+from services.report_service import get_monthly_report_data, build_monthly_report
 
 
 
@@ -561,6 +562,46 @@ def register_routes(app):
             output.getvalue(),
             mimetype='text/csv',
             headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.csv'}
+        )
+
+    @app.route('/api/ui/report/pdf', methods=['GET'])
+    def report_pdf():
+        """Monthly PDF report: N species, top 5, stats, chart."""
+        month_param = request.args.get('month')  # YYYY-MM
+        start_param = request.args.get('start_time')
+        end_param = request.args.get('end_time')
+
+        if month_param:
+            try:
+                year, month = map(int, month_param.split('-'))
+                start_dt = datetime(year, month, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None)
+                if month == 12:
+                    end_dt = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+                else:
+                    end_dt = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+                month_label = start_dt.strftime('%B %Y')
+            except (ValueError, IndexError):
+                return {'error': 'Invalid month format. Use YYYY-MM'}, 400
+        elif start_param and end_param:
+            try:
+                start_dt = datetime.fromtimestamp(int(start_param), timezone.utc).replace(tzinfo=None)
+                end_dt = datetime.fromtimestamp(int(end_param), timezone.utc).replace(tzinfo=None)
+                if end_dt - start_dt > timedelta(days=93):
+                    return {'error': 'Interval must not exceed 3 months'}, 400
+                month_label = f"{start_dt.strftime('%Y-%m-%d')} — {end_dt.strftime('%Y-%m-%d')}"
+            except ValueError:
+                return {'error': 'Invalid datetime format'}, 400
+        else:
+            return {'error': 'Provide month=YYYY-MM or start_time and end_time'}, 400
+
+        top_species, stats = get_monthly_report_data(db.session, start_dt, end_dt)
+        pdf_bytes = build_monthly_report(start_dt, end_dt, top_species, stats, month_label)
+
+        filename = f"birdlense_report_{start_dt.strftime('%Y%m')}.pdf"
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
         )
 
     @app.route('/api/ui/unknowns', methods=['GET'])
