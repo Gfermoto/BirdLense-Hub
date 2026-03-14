@@ -11,7 +11,8 @@
 | **Path traversal** | `curl --path-as-is` на сервере | ✅ 403 |
 | **Web unit тесты** | pytest в Docker | ✅ 7/7 |
 | **Processor unit тесты** | unittest в Docker | ✅ 7/7 |
-| **E2E тесты** | Playwright против 192.168.1.11 | ✅ 9/14 (5 skip — нужен пароль) |
+| **E2E тесты** | Playwright против 192.168.1.11 (E2E_SETTINGS_PASSWORD) | ✅ 14/14 |
+| **EU-модель** | verify-eu-model.sh (491 класс, best.pt) | ✅ |
 | **SSH** | 192.168.1.11 | ✅ Деплой успешен |
 
 ---
@@ -53,13 +54,11 @@ processor/tests: 7 passed
 
 ## 4. E2E тесты (Playwright против 192.168.1.11)
 
-**Команда:** `BASE_URL=http://192.168.1.11:8085 npm test`
+**Команда:** `BASE_URL=http://192.168.1.11:8085 E2E_SETTINGS_PASSWORD=xxx npm test`
 
-**Результат:** 9 passed, 5 skipped
+**Результат:** 14 passed (полный прогон с паролем)
 
-**Успешные:** API health, status, cameras, timeline, live, species, navigation links, Settings page loads.
-
-**Пропущены (требуется E2E_SETTINGS_PASSWORD):** Settings form tests, GET /api/ui/settings.
+**Без пароля:** 9 passed, 5 skipped (Settings form tests, GET /api/ui/settings).
 
 ---
 
@@ -68,17 +67,31 @@ processor/tests: 7 passed
 - **SSH:** Доступен
 - **Контейнер:** birdlense запущен
 - **UI:** http://192.168.1.11:8085
-- **Исправление:** Добавлен SSH keepalive в deploy.sh (ServerAliveInterval) — устраняет «Broken pipe» при длительной сборке
+- **deploy.sh:** rsync (автоустановка на сервере), повторы при сбое (SYNC_RETRIES=3, BUILD_RETRIES=2), SSH keepalive
 
 ---
 
-## 6. Итог
+## 6. Полный тест установки
+
+```bash
+# 1. API + path traversal + E2E (с паролем для Settings)
+BASE_URL=http://192.168.1.11:8085 E2E_SETTINGS_PASSWORD=xxx ./scripts/verify-release.sh
+
+# 2. EU-модель на сервере
+./scripts/verify-eu-model.sh
+
+# 3. Unit тесты (Docker)
+cd app && make test && make test-web
+```
+
+## 7. Итог
 
 | Компонент | Статус |
 |-----------|--------|
 | API (сервер) | ✅ |
 | Path traversal (сервер) | ✅ 403 |
-| Web тесты | ✅ |
-| Processor тесты | ✅ |
-| E2E (против сервера) | ✅ 9 pass, 5 skip |
+| Web тесты | ✅ 7/7 |
+| Processor тесты | ✅ 7/7 |
+| E2E (против сервера) | ✅ 14/14 |
+| EU-модель | ✅ 491 класс |
 | Деплой | ✅ |

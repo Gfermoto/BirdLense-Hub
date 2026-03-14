@@ -2,6 +2,7 @@
 # Деплой BirdLense Hub
 # Локальные настройки (IP, URL) — в scripts/deploy.local.sh (не коммитить)
 # Критично: НЕ перезаписываем data и app_config на сервере
+# Сам следит и исправляет: rsync на сервере, повтор при сбоях
 
 set -e
 
@@ -12,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
+SYNC_RETRIES="${SYNC_RETRIES:-3}"
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 SSH_OPTS="-o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
@@ -23,15 +25,34 @@ fi
 echo "0. Остановка контейнера..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
 
-# 1. Синхронизация кода
+# 0.5. Убедиться, что rsync есть на сервере (для надёжной синхронизации)
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  if ! ssh ${SSH_OPTS} "${HOST}" "which rsync" 2>/dev/null; then
+    echo "0.5. Установка rsync на сервере..."
+    ssh ${SSH_OPTS} "${HOST}" "apt-get update -qq && apt-get install -y rsync"
+  fi
+fi
+
+# 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
 # БЕЗ app/data (recordings, db). БЕЗ app_config/user_config.yaml (настройки на сервере)
 echo "1. Синхронизация кода..."
 cd "$(dirname "$0")/.."
-tar --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.env' \
-    --exclude='app/data' \
-    --exclude='app/app_config/user_config.yaml' \
-    --exclude='scripts/deploy.local.sh' \
-    -czf - . | ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR} && cd ${REMOTE_DIR} && tar -xzf -"
+RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
+sync_ok=0
+for attempt in $(seq 1 ${SYNC_RETRIES}); do
+  if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
+    rsync -a --delete ${RSYNC_EXCLUDES} ./ "${REMOTE_DIR}/" && sync_ok=1 && break
+  else
+    rsync -avz --delete -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
+  fi
+  echo "  Попытка ${attempt}/${SYNC_RETRIES} не удалась, повтор через 5 сек..."
+  sleep 5
+done
+if [[ $sync_ok -eq 0 ]]; then
+  echo "Ошибка: синхронизация не удалась после ${SYNC_RETRIES} попыток"
+  exit 1
+fi
 
 # 1.5 Секреты в app/.env
 # PROCESSOR_SECRET — всегда задаём (генерируем при отсутствии)
@@ -56,9 +77,22 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ]; then
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
 
-# 2. Сборка и запуск
+# 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."
-ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && make stop 2>/dev/null; make build && make start"
+BUILD_RETRIES="${BUILD_RETRIES:-2}"
+build_ok=0
+for attempt in $(seq 1 ${BUILD_RETRIES}); do
+  if ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && make stop 2>/dev/null; make build && make start"; then
+    build_ok=1
+    break
+  fi
+  echo "  Сборка/запуск попытка ${attempt}/${BUILD_RETRIES} не удалась, повтор через 10 сек..."
+  sleep 10
+done
+if [[ $build_ok -eq 0 ]]; then
+  echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
+  exit 1
+fi
 
 # 3. Проверка после деплоя
 echo ""
