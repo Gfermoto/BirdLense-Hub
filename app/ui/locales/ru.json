@@ -151,6 +151,8 @@
     "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. 1 — больше треков, 2 — меньше ложных (по умолчанию)",
     "minConfidenceToProcess": "Мин. confidence трека",
     "minConfidenceToProcessHelp": "Треки с меньшей уверенностью отбрасываются. 0.03 — больше детекций, 0.10 — строже (по умолчанию)",
+    "speciesConfidenceOverrides": "Пороги по видам",
+    "speciesConfidenceOverridesHint": "Вид: 0.05 — по строке. Ниже порог для редких видов.",
     "unknownConfidenceThreshold": "Порог «Неизвестные»",
     "unknownConfidenceThresholdHelp": "Детекции с confidence ниже этого (0–1) попадают в «Неизвестные» для ручной проверки. 0.5 — по умолчанию.",
     "spectrogramDetail": "Детализация спектрограммы",

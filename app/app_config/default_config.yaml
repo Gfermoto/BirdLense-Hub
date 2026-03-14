@@ -14,6 +14,8 @@ processor:
   max_inactive_seconds: 10
   min_track_duration: 2  # сек; треки короче отбрасываются. 1 — больше треков, 2 — меньше ложных
   min_confidence_to_process: 0.10  # мин. confidence трека (voting × classifier). 0.03 — больше детекций, 0.10 — строже
+  # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
+  species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []

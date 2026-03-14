@@ -1170,6 +1170,40 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="processor.species_confidence_overrides">
+                {(field) => {
+                  const val = field.state.value;
+                  const str = val && typeof val === 'object' && !Array.isArray(val)
+                    ? Object.entries(val).map(([k, v]) => `${k}: ${v}`).join('\n')
+                    : '';
+                  return (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      value={str}
+                      onChange={(e) => {
+                        const lines = e.target.value.split('\n').filter(Boolean);
+                        const obj: Record<string, number> = {};
+                        for (const line of lines) {
+                          const idx = line.indexOf(':');
+                          if (idx > 0) {
+                            const k = line.slice(0, idx).trim();
+                            const v = parseFloat(line.slice(idx + 1).trim());
+                            if (!isNaN(v) && v >= 0 && v <= 1) obj[k] = v;
+                          }
+                        }
+                        field.handleChange(Object.keys(obj).length ? obj : {});
+                      }}
+                      label={t('settings.speciesConfidenceOverrides')}
+                      placeholder="Pileated Woodpecker: 0.05"
+                      helperText={t('settings.speciesConfidenceOverridesHint')}
+                    />
+                  );
+                }}
+              </form.Field>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="ui.unknown_confidence_threshold">
                 {(field) => (

@@ -15,6 +15,7 @@ class DecisionMaker():
         max_inactive_seconds=10,
         min_track_duration=2,
         min_confidence_to_process=None,
+        species_confidence_overrides=None,
     ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
@@ -24,7 +25,14 @@ class DecisionMaker():
             if min_confidence_to_process is not None
             else DEFAULT_MIN_CONFIDENCE
         )
+        self.species_confidence_overrides = species_confidence_overrides or {}
         self.reset()
+
+    def _get_threshold_for_species(self, species_name):
+        """Return min confidence threshold for species. Override or default."""
+        return self.species_confidence_overrides.get(
+            species_name, self.min_confidence_to_process
+        )
 
     def reset(self):
         self.stop_recording_decided = False
@@ -92,9 +100,10 @@ class DecisionMaker():
             confidence = voting_confidence * avg_classifier_conf
             
             # Skip tracks with very low confidence - likely false positives
-            if confidence < self.min_confidence_to_process:
+            threshold = self._get_threshold_for_species(species_name)
+            if confidence < threshold:
                 logger.debug(
-                    f"Skipping track {track_id} ({species_name}): confidence={confidence:.2%} < {self.min_confidence_to_process}")
+                    f"Skipping track {track_id} ({species_name}): confidence={confidence:.2%} < {threshold}")
                 continue
 
             dur = track['end_time'] - track['start_time']

@@ -262,6 +262,8 @@ def main():
         min_track_duration=app_config.get('processor.min_track_duration', 1),
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
+        species_confidence_overrides=app_config.get(
+            'processor.species_confidence_overrides') or {},
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
