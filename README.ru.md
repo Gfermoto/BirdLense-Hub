@@ -8,7 +8,7 @@
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
-**Исследовательский инструмент:** сбор датасетов из записей, скрипты обучения YOLO (NABirds, COCO), ноутбуки дообучения моделей. См. [docs/DATASETS.md](./docs/DATASETS.md), [docs/TRAINING.md](./docs/TRAINING.md).
+**Распространение:** Проприетарное. Исходный код недоступен. Бесплатно только Docker-образ — см. Быстрый старт.
 
 ### Модели
 
@@ -23,7 +23,7 @@
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Пайплайн обучения:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [DATASETS.md](./docs/DATASETS.md).
+**Модели:** EU-классификатор (birds-525 + iNaturalist). См. [docs/HUGGINGFACE.md](./docs/HUGGINGFACE.md).
 
 <details>
 <summary>📷 Скриншоты</summary>
@@ -50,19 +50,16 @@
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — Telegram Bot API
 - **MCP** — Model Context Protocol для внешних инструментов
-- **Исследования** — подготовка датасетов (NABirds, COCO → YOLO), ноутбуки обучения, экспорт для дообучения моделей
+- **Исследования** — сбор датасетов, дообучение моделей (см. docs)
 
 ## Быстрый старт
 
-**Локально (Docker):**
+**Docker (бесплатный образ):**
 ```bash
-git clone https://github.com/Gfermoto/BirdLense-Hub.git
-cd BirdLense-Hub/app
-make pull
+docker pull ghcr.io/gfermoto/birdlense-hub:latest
+# или docker-compose — см. docs/INSTALL.md
 ```
 UI: http://localhost:8085
-
-**Деплой на сервер:** `make deploy` из корня репозитория.
 
 **Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
 
@@ -79,10 +76,8 @@ UI: http://localhost:8085
 | Путь | Описание |
 |------|----------|
 | [app/](./app) | Приложение (UI, API, processor) — один контейнер |
-| [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP, **план датасетов и обучения** |
-| [scripts/](./scripts) | Деплой, **датасеты** (NABirds/COCO→YOLO), **обучение** (ноутбуки) |
-
-**Скрипты для исследований:** `scripts/datasets/` — конвертация датасетов; `scripts/birds_train*.ipynb` — обучение моделей. Полный список: [docs/DATASETS.md](./docs/DATASETS.md).
+| [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP |
+| [scripts/](./scripts) | Деплой, проверка |
 
 ## Команды
 
@@ -123,7 +118,7 @@ UI: http://localhost:8085
 
 ## Лицензия
 
-CC BY-NC-ND 4.0 — см. [LICENSE](LICENSE).
+Docker-образ: CC BY-NC-ND 4.0 — использование и распространение только в некоммерческих целях. Без производных. См. [LICENSE](LICENSE).
 
 ## Благодарности
 

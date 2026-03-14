@@ -5,8 +5,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
+import { PasswordField } from './PasswordField';
 import { verifySettingsPassword } from '../api/api';
 
 export const SettingsPasswordDialog = ({
@@ -54,16 +54,13 @@ export const SettingsPasswordDialog = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle>{t('settings.passwordTitle')}</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            type="password"
-            label={t('settings.passwordLabel')}
+          <PasswordField
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={!!error}
+            onChange={setPassword}
+            label={t('settings.passwordLabel')}
             helperText={error}
-            sx={{ mt: 1 }}
+            error={!!error}
+            autoFocus
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

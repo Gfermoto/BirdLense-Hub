@@ -8,7 +8,7 @@
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
-**Research tool:** dataset collection from live recordings, YOLO training scripts (NABirds, COCO), model fine-tuning notebooks. See [docs/DATASETS.md](./docs/DATASETS.md), [docs/TRAINING.md](./docs/TRAINING.md).
+**Distribution:** Proprietary. Source code is not available. Free Docker image only — see Quick Start.
 
 ### Model info
 
@@ -23,7 +23,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Training pipeline:** 1) Обучить классификатор на [birds-525 + iNaturalist Europe](https://huggingface.co/datasets/gfermoto/birds-eu-merged) → 2) (опционально) Fine-tune на своих записях (новые виды). См. [DATASETS.md](./docs/DATASETS.md).
+**Models:** EU classifier (birds-525 + iNaturalist). See [docs/HUGGINGFACE.md](./docs/HUGGINGFACE.md) for model info.
 
 <details>
 <summary>📷 Screenshots</summary>
@@ -50,21 +50,18 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
 - **MCP** — Model Context Protocol for external tools
-- **Research** — dataset prep (NABirds, COCO → YOLO), training notebooks, export pipeline for model fine-tuning
+- **Research** — dataset collection, model fine-tuning (see docs)
 
 ## Quick Start
 
-**Local (Docker):**
+**Docker (free image):**
 ```bash
-git clone https://github.com/Gfermoto/BirdLense-Hub.git
-cd BirdLense-Hub/app
-make pull
+docker pull ghcr.io/gfermoto/birdlense-hub:latest
+# or use docker-compose — see docs/INSTALL.md
 ```
 UI: http://localhost:8085
 
-**Deploy to server:** `make deploy` from repo root.
-
-**Full install guide:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
+**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
 
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 
@@ -79,10 +76,8 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 | Path | Description |
 |------|-------------|
 | [app/](./app) | Application (UI, API, processor) — single container |
-| [docs/](./docs) | Architecture, config, API, deployment, MCP, **dataset & training plan** |
-| [scripts/](./scripts) | Deploy, **datasets** (NABirds/COCO→YOLO), **training** notebooks |
-
-**Research scripts:** `scripts/datasets/` — dataset conversion; `scripts/birds_train*.ipynb` — model training. Full inventory: [docs/DATASETS.md](./docs/DATASETS.md).
+| [docs/](./docs) | Architecture, config, API, deployment, MCP |
+| [scripts/](./scripts) | Deploy, verification |
 
 ## Commands
 
@@ -123,7 +118,7 @@ Secrets are auto-generated on first `make start` or `make pull`. See `app/.env.e
 
 ## License
 
-CC BY-NC-ND 4.0 — see [LICENSE](LICENSE).
+Docker image: CC BY-NC-ND 4.0 — use and share for non-commercial purposes only. No derivatives. See [LICENSE](LICENSE).
 
 ## Acknowledgments
 

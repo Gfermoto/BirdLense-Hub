@@ -91,7 +91,7 @@
 | PDF-отчёт                              | Месячный отчёт: N видов, топ-5, графики — скачать PDF                                         | Средняя   | Нет     |
 | Bird song player (Xeno-canto)          | Кнопка «Воспроизвести песню» на карточке вида — аудио из Xeno-canto API                       | Средняя   | Нет     |
 | eBird export                           | Экспорт списка видов в формат eBird для загрузки в приложение                                 | Средняя   | Нет     |
-| Grafana/Prometheus метрики             | Эндпоинт `/metrics` — detections_count, species_count для дашбордов                           | Средняя   | Нет     |
+| ✅ Grafana/Prometheus метрики         | Эндпоинт `/metrics` — detections_count, species_count для дашбордов                           | Средняя   | Нет     |
 | Confidence по виду                     | Разные пороги min_confidence для разных видов (редкие — ниже)                                 | Средняя   | Низкий  |
 | Сравнение записей side-by-side         | Два видео рядом (один вид, разные дни) для анализа поведения                                  | Средняя   | Нет     |
 | Экспорт в iNaturalist                  | Кнопка «Отправить в iNaturalist» — crop + вид для citizen science                             | Средняя   | Нет     |

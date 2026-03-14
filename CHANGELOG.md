@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Prometheus метрики** — эндпоинт `GET /metrics` в формате Prometheus: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`. Для Grafana и дашбордов.
+
+---
+
+## [0.1.2] - 2026-03-14
+
+### Added
+
 - **Playback speed (0.5x, 2x)** — кнопки в видеоплеере для замедления/ускорения просмотра.
 - **Виджет «Последняя птица»** — блок на Overview с последней детекцией дня (время и вид).
 - **CSV/JSON экспорт** — кнопка экспорта в Timeline: скачать визиты за выбранный период в CSV или JSON.
@@ -121,6 +129,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.0
 [0.1.0-beta.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.0-beta.2
