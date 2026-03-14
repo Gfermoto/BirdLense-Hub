@@ -14,6 +14,7 @@ from services.feed_service import dispense_feed, check_mqtt_connected, check_esp
 from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
+from services.ebird_export_service import build_ebird_csv
 
 
 
@@ -500,8 +501,8 @@ def register_routes(app):
 
         if not start_time or not end_time:
             return {'error': 'Both start_time and end_time are required'}, 400
-        if fmt not in ('csv', 'json'):
-            return {'error': 'format must be csv or json'}, 400
+        if fmt not in ('csv', 'json', 'ebird'):
+            return {'error': 'format must be csv, json, or ebird'}, 400
 
         try:
             start_dt = datetime.fromtimestamp(int(start_time), timezone.utc).replace(tzinfo=None)
@@ -540,6 +541,22 @@ def register_routes(app):
                 'temp': video.weather_temp if video else None,
                 'clouds': video.weather_clouds if video else None,
             })
+
+        if fmt == 'ebird':
+            # Unique species per period (one row per species for eBird checklist)
+            seen = set()
+            ebird_rows = []
+            for r in rows:
+                name = r.get('species_name', '')
+                if name and name not in seen:
+                    seen.add(name)
+                    ebird_rows.append(r)
+            body = build_ebird_csv(ebird_rows, start_dt, end_dt)
+            return Response(
+                body,
+                mimetype='text/csv',
+                headers={'Content-Disposition': 'attachment; filename=birdlense_ebird.csv'}
+            )
 
         if fmt == 'json':
             body = json_module.dumps(rows, ensure_ascii=False, indent=2)

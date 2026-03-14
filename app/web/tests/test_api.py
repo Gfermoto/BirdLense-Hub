@@ -69,6 +69,16 @@ class TestTimelineExport:
         body = r.get_data(as_text=True)
         assert 'id' in body or 'species_name' in body
 
+    def test_export_ebird_returns_csv(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline/export',
+            query_string={'start_time': ts, 'end_time': ts, 'format': 'ebird'}
+        )
+        assert r.status_code == 200
+        assert r.headers.get('Content-Disposition', '').endswith('birdlense_ebird.csv')
+        assert 'text/csv' in (r.content_type or '')
+
     def test_export_rejects_interval_over_one_day(self, client):
         ts = int(datetime.now(timezone.utc).timestamp())
         r = client.get(

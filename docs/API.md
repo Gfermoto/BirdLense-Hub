@@ -15,7 +15,7 @@
 | `/cameras` | GET | Список камер |
 | `/weather` | GET | Погода |
 | `/timeline` | GET | Визиты по периоду (params: start_time, end_time) |
-| `/timeline/export` | GET | Экспорт визитов в CSV или JSON (params: start_time, end_time, format) |
+| `/timeline/export` | GET | Экспорт визитов в CSV, JSON или eBird (params: start_time, end_time, format=csv\|json\|ebird) |
 | `/videos/:id` | GET | Детали видео |
 | `/overview` | GET | Данные для Overview |
 | `/species` | GET | Список видов |
