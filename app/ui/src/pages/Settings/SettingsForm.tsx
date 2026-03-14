@@ -1067,34 +1067,38 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
-            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('settings.ebirdSection')}</Typography>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <form.Field name="ebird.country">
-                {(field) => (
-                  <TextField
-                    fullWidth
-                    value={field.state.value ?? ''}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    label={t('settings.ebirdCountry')}
-                    placeholder="US"
-                    helperText={t('settings.ebirdCountryHint')}
-                  />
-                )}
-              </form.Field>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <form.Field name="ebird.state">
-                {(field) => (
-                  <TextField
-                    fullWidth
-                    value={field.state.value ?? ''}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    label={t('settings.ebirdState')}
-                    placeholder="NY"
-                    helperText={t('settings.ebirdStateHint')}
-                  />
-                )}
-              </form.Field>
+            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {t('settings.ebirdSection')}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <form.Field name="ebird.country">
+                  {(field) => (
+                    <TextField
+                      sx={{ minWidth: 100, flex: 1 }}
+                      size="small"
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.ebirdCountry')}
+                      placeholder="US"
+                      helperText={t('settings.ebirdCountryHint')}
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="ebird.state">
+                  {(field) => (
+                    <TextField
+                      sx={{ minWidth: 100, flex: 1 }}
+                      size="small"
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.ebirdState')}
+                      placeholder="NY"
+                      helperText={t('settings.ebirdStateHint')}
+                    />
+                  )}
+                </form.Field>
+              </Box>
             </Grid>
             <Grid size={{ xs: 12 }}>
               <form.Field name="ebird.location_name">
