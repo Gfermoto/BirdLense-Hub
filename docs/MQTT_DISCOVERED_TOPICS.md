@@ -23,6 +23,12 @@
 | `birdnet/status` | Статус BirdNET (offline/online) | — |
 | `birdnet/soundlevel` | Уровень звука BirdNET-Go | — |
 | `birdlense/status` | Статус BirdLense Hub (online) | — |
+| `birdlense/detections` | Детекции (JSON) для HA automations | `mqtt.publish_topic` |
+| `homeassistant/sensor/birdlense_*/config` | HA MQTT Autodiscovery configs | `mqtt.ha_discovery` |
+| `birdlense/sensor/last_species/state` | Последний вид (HA) | — |
+| `birdlense/sensor/last_confidence/state` | Последний confidence (HA) | — |
+| `birdlense/sensor/last_detection_time/state` | Время последней детекции (HA) | — |
+| `birdlense/binary_sensor/bird_detected/state` | Птица у кормушки ON/OFF (HA) | — |
 
 ## Формат BirdNET (топик `birdnet`)
 

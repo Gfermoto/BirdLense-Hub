@@ -78,6 +78,8 @@
     "frigateLabelExcludeHint": "Метки, которые игнорировать (мышь как кошка/собака). Через запятую.",
     "birdnetTopic": "BirdNET топик",
     "birdnetTopicHint": "Топик, куда BirdNET публикует детекции",
+    "mqttHaDiscovery": "Home Assistant MQTT Autodiscovery",
+    "mqttHaDiscoveryHint": "Публиковать config для автообнаружения HA (Last Species, Bird at Feeder и др.)",
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "go2rtcUrl": "Go2RTC URL",

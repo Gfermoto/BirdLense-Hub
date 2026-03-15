@@ -302,6 +302,35 @@ class TestSpeciesXenoCanto:
             assert isinstance(r.json['recordings'], list)
 
 
+class TestPush:
+    """Web Push endpoints."""
+
+    def test_push_vapid_returns_503_when_notifications_disabled(self, client):
+        """vapid-public returns 503 when enable_notifications is False."""
+        r = client.get('/api/ui/push/vapid-public')
+        assert r.status_code == 503
+        assert 'error' in r.json
+
+    def test_push_subscribe_rejects_empty_or_invalid(self, client):
+        """Subscribe returns 400 when notifications disabled or payload invalid."""
+        r = client.post(
+            '/api/ui/push/subscribe',
+            json={},
+            content_type='application/json',
+        )
+        assert r.status_code == 400
+        err = r.json.get('error', '').lower()
+        assert 'notifications' in err or 'subscription' in err
+
+    def test_push_subscribe_requires_keys(self, client):
+        r = client.post(
+            '/api/ui/push/subscribe',
+            json={'subscription': {'endpoint': 'https://example.com/push'}},
+            content_type='application/json',
+        )
+        assert r.status_code == 400
+
+
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):
         r = client.get('/api/ui/unknowns')

@@ -45,21 +45,17 @@
 
 ## Часть 2: Фичи и улучшения
 
-### 1. Home Assistant — MQTT Autodiscovery
+### 1. ✅ Home Assistant — MQTT Autodiscovery (выполнено)
 
 **Цель:** BirdLense Hub публикует сущности через MQTT так, чтобы HA автоматически их обнаружил.
 
-**Текущее:** Публикует в `birdlense/detections`. HA не обнаруживает автоматически — нужна ручная настройка MQTT sensor.
+**Реализовано:** При `mqtt.ha_discovery=true` (по умолчанию) при подключении к MQTT публикуются config в `homeassistant/<component>/birdlense_<id>/config`:
+- `sensor.birdlense_last_species` — последний вид
+- `sensor.birdlense_last_confidence` — последний confidence
+- `sensor.birdlense_last_detection_time` — время последней детекции
+- `binary_sensor.birdlense_bird_detected` — птица у кормушки (ON при детекции, off_delay 5 мин)
 
-**Что сделать:**
-
-1. **MQTT Discovery** — публиковать config в `homeassistant/<component>/birdlense_<id>/config`:
-  - `homeassistant/sensor/birdlense_last_species/config` — последний вид
-  - `homeassistant/sensor/birdlense_last_confidence/config`
-  - `homeassistant/binary_sensor/birdlense_bird_detected/config` — птица у кормушки
-  - `homeassistant/sensor/birdlense_last_detection_time/config`
-2. **State topics** — обновлять state в топиках, на которые ссылается config.
-3. **Device** — объединить в один device «BirdLense Hub».
+State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected/state`. Device «BirdLense Hub» с configuration_url из `notifications.base_url`.
 
 ### 2. Датасет из лучших кадров — экспорт архивом
 
