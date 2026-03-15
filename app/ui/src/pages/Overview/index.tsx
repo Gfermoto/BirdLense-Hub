@@ -145,7 +145,10 @@ export const Overview = () => {
                   {t('overview.lastBird')}
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {dayjs(overviewData.lastDetection.start_time).format('HH:mm')} — {overviewData.lastDetection.species_name}
+                  {dayjs(overviewData.lastDetection.start_time).format('HH:mm')} —{' '}
+                  {overviewData.lastDetection.species_name === 'Bird'
+                    ? t('overview.lastBirdUnknown')
+                    : overviewData.lastDetection.species_name}
                 </Typography>
               </Box>
             </Paper>

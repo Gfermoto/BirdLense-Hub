@@ -3,12 +3,64 @@ import logging
 import os
 from datetime import timedelta, datetime, timezone
 
+# Вид «Bird» / «bird» — птица без определения вида, всегда неопределённый объект
+GENERIC_BIRD_SPECIES = 'Bird'
+
 
 def ensure_utc(dt: datetime) -> datetime:
     """Ensure datetime is timezone-aware (UTC). SQLite returns naive datetimes."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def parse_utc_timestamp(param) -> datetime:
+    """Parse Unix timestamp to naive UTC datetime for DB queries. Raises ValueError on invalid input."""
+    return datetime.fromtimestamp(int(param), timezone.utc).replace(tzinfo=None)
+
+
+def get_primary_video_for_visit(visit) -> object | None:
+    """First video for a SpeciesVisit (for weather, path). Returns None if no video_species."""
+    if not visit or not getattr(visit, 'video_species', None):
+        return None
+    vs_list = visit.video_species
+    return vs_list[0].video if vs_list else None
+
+
+def format_visit_for_timeline(visit) -> dict:
+    """Format SpeciesVisit to timeline API format (detections, weather, species)."""
+    video = get_primary_video_for_visit(visit)
+    detections = []
+    for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
+        video_start = ensure_utc(vs.video.start_time)
+        det = {
+            'id': vs.id,
+            'video_id': vs.video_id,
+            'start_time': (video_start + timedelta(seconds=vs.start_time)).astimezone(timezone.utc).isoformat(),
+            'end_time': (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
+            'confidence': vs.confidence,
+            'source': vs.source,
+        }
+        if vs.detection_provider:
+            det['detection_provider'] = vs.detection_provider
+        detections.append(det)
+    return {
+        'id': visit.id,
+        'start_time': ensure_utc(visit.start_time).isoformat(),
+        'end_time': ensure_utc(visit.end_time).isoformat(),
+        'max_simultaneous': visit.max_simultaneous,
+        'weather': {
+            'temp': video.weather_temp if video else None,
+            'clouds': video.weather_clouds if video else None,
+        } if video else None,
+        'species': {
+            'id': visit.species.id,
+            'name': visit.species.name,
+            'image_url': visit.species.image_url,
+            'parent_id': visit.species.parent_id,
+        },
+        'detections': detections,
+    }
 
 
 def recordings_dir():

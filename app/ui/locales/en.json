@@ -12,6 +12,7 @@
   },
   "overview": {
     "lastBird": "Last bird today",
+    "lastBirdUnknown": "Bird (species unknown)",
     "errorLoad": "Error loading data. Check that the API is available.",
     "checkApi": "Check: open /api/ui/health in browser — should return {status: ok}.",
     "bySource": "By detection source",

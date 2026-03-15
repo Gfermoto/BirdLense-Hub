@@ -3,7 +3,10 @@ Species name normalization: Frigate/BirdNET/YOLO → canonical (IOC/eBird style)
 
 Поддерживает формат "Scientific (Common)" для слияния детекций.
 """
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_common_for_merge(s: str) -> str:
@@ -47,16 +50,33 @@ def _to_title_case(s: str) -> str:
     return " ".join(p.capitalize() for p in parts if p)
 
 
+def _event_offset_seconds(ev, video_start):
+    """Смещение MQTT-события от начала видео (сек). None если нет timestamp."""
+    from datetime import datetime, timezone
+    ts_str = ev.get("timestamp")
+    if not ts_str:
+        return None
+    try:
+        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return (ts - video_start).total_seconds()
+    except (ValueError, TypeError):
+        return None
+
+
 def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge_window_seconds=5, dedup_window_seconds=45):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
     Один результат на вид: max confidence, объединённый интервал времени.
     dedup_window_seconds: детекции одного вида с разрывом > N сек считаются разными визитами.
+    MQTT: используем timestamp события (не растягиваем на всё видео).
     """
     from datetime import datetime, timezone
 
     by_key = {}  # (canonical_key, visit_id) -> detection; visit_id различает визиты с большим разрывом
     video_duration = (video_end - video_start).total_seconds() if video_end and video_start else 0
+    mqtt_half_window = merge_window_seconds / 2  # окно вокруг MQTT-события
 
     def _canonical_key(s):
         return _extract_common_for_merge(s) or (s or "").lower()
@@ -94,6 +114,7 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
 
         if merged is not None:
             _merge_into(merged, conf, start, end, d.get("best_frame"))
+            logger.debug("merge: YOLO %s into existing", species)
         else:
             visit_id = sum(1 for k in by_key if k[0] == key)
             by_key[(key, visit_id)] = {
@@ -114,10 +135,18 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         species = ev.get("species", "unknown")
         conf = ev.get("confidence", 0)
         key = _canonical_key(species)
-        # Ищем любую существующую детекцию того же вида (YOLO) и мержим
+        offset = _event_offset_seconds(ev, video_start)
+        if offset is not None:
+            ev_start = max(0, offset - mqtt_half_window)
+            ev_end = min(video_duration, offset + mqtt_half_window)
+        else:
+            ev_start, ev_end = 0, video_duration
+
+        # Ищем существующую детекцию того же вида (YOLO) и мержим
         merged = next((det for k, det in by_key.items() if k[0] == key), None)
         if merged is not None:
-            _merge_into(merged, conf, 0, video_duration)
+            _merge_into(merged, conf, ev_start, ev_end)
+            logger.debug("merge: MQTT %s into YOLO (offset=%.1fs)", species, offset if offset is not None else -1)
             continue
         provider = ev.get("source", "mqtt")
         if provider == "birdnet":
@@ -125,12 +154,13 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         by_key[(key, -1)] = {
             "species_name": species,
             "species": species,
-            "start_time": 0,
-            "end_time": video_duration,
+            "start_time": ev_start,
+            "end_time": ev_end,
             "confidence": conf,
             "source": "video",
             "detection_provider": provider,
         }
+        logger.debug("merge: MQTT %s new (offset=%.1fs)", species, offset if offset is not None else -1)
 
     # Сортировка по start_time (раньше появившиеся — первыми)
     return sorted(by_key.values(), key=lambda x: x.get("start_time", 0))

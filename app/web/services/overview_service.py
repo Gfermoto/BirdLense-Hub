@@ -1,0 +1,161 @@
+"""Overview data aggregation for /api/ui/overview."""
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import func, case, distinct
+
+from models import Video, Species, SpeciesVisit, VideoSpecies
+from util import ensure_utc, GENERIC_BIRD_SPECIES
+
+
+def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> dict:
+    """Build overview payload: topSpecies, stats, hourlyTemperature, lastDetection."""
+    exclude_bird = Species.name != GENERIC_BIRD_SPECIES
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Top species
+    top_species_query = session.query(
+        Species.id.label('id'),
+        Species.name.label('name'),
+        *[
+            func.sum(
+                case(
+                    (func.strftime('%H', SpeciesVisit.start_time) == str(h).zfill(2),
+                     SpeciesVisit.max_simultaneous),
+                    else_=0
+                )
+            ).label(f'detection_hour_{h}')
+            for h in range(24)
+        ]
+    ).join(SpeciesVisit, SpeciesVisit.species_id == Species.id).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+        exclude_bird,
+    ).group_by(Species.id, Species.name).order_by(
+        func.sum(SpeciesVisit.max_simultaneous).desc()
+    ).limit(10)
+
+    top_species = [
+        {
+            'id': s.id,
+            'name': s.name,
+            'detections': [getattr(s, f'detection_hour_{h}', 0) or 0 for h in range(24)],
+        }
+        for s in top_species_query
+    ]
+
+    # Busiest hour
+    busiest = session.query(
+        func.strftime('%H', SpeciesVisit.start_time).label('hour'),
+        func.sum(SpeciesVisit.max_simultaneous).label('visit_count'),
+    ).join(Species, SpeciesVisit.species_id == Species.id).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+        exclude_bird,
+    ).group_by('hour').order_by(
+        func.sum(SpeciesVisit.max_simultaneous).desc()
+    ).first()
+
+    # Stats
+    stats_q = session.query(
+        func.count(distinct(SpeciesVisit.species_id)).label('uniqueSpecies'),
+        func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
+        func.sum(
+            case(
+                (SpeciesVisit.start_time >= now_utc - timedelta(hours=1),
+                 SpeciesVisit.max_simultaneous),
+                else_=0
+            )
+        ).label('lastHourDetections'),
+        func.avg(
+            func.strftime('%s', SpeciesVisit.end_time) -
+            func.strftime('%s', SpeciesVisit.start_time)
+        ).label('avgVisitDuration'),
+    ).join(Species, SpeciesVisit.species_id == Species.id).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+        exclude_bird,
+    ).first()
+
+    # Source duration
+    dur_q = session.query(
+        func.sum(
+            case(
+                (VideoSpecies.source == 'video',
+                 VideoSpecies.end_time - VideoSpecies.start_time),
+                else_=0
+            )
+        ).label('video_duration'),
+        func.sum(
+            case(
+                (VideoSpecies.source == 'audio',
+                 VideoSpecies.end_time - VideoSpecies.start_time),
+                else_=0
+            )
+        ).label('audio_duration'),
+    ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).join(
+        Species, SpeciesVisit.species_id == Species.id
+    ).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+        exclude_bird,
+    ).first()
+
+    # Provider counts
+    prov_q = session.query(
+        VideoSpecies.detection_provider,
+        func.sum(SpeciesVisit.max_simultaneous).label('count'),
+    ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).join(
+        Species, SpeciesVisit.species_id == Species.id
+    ).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+        exclude_bird,
+    ).group_by(VideoSpecies.detection_provider).all()
+
+    stats = {
+        'uniqueSpecies': stats_q.uniqueSpecies or 0,
+        'totalDetections': stats_q.totalDetections or 0,
+        'lastHourDetections': stats_q.lastHourDetections or 0,
+        'busiestHour': int(busiest.hour) if busiest else 0,
+        'avgVisitDuration': round(stats_q.avgVisitDuration or 0),
+        'videoDuration': round(dur_q.video_duration or 0),
+        'audioDuration': round(dur_q.audio_duration or 0),
+        'detectionByProvider': {(p or 'legacy'): int(c) for p, c in prov_q},
+    }
+
+    # Hourly temperature
+    temp_q = session.query(
+        func.strftime('%H', Video.start_time).label('hour'),
+        func.avg(Video.weather_temp).label('avg_temp'),
+    ).filter(
+        Video.start_time >= start_of_day,
+        Video.start_time <= end_of_day,
+        Video.weather_temp.isnot(None),
+    ).group_by('hour').all()
+
+    hourly_temperature = [None] * 24
+    for h, avg in temp_q:
+        hourly_temperature[int(h)] = round(avg, 1) if avg else None
+
+    # Last detection
+    last_row = session.query(SpeciesVisit, Species.name).join(
+        Species, SpeciesVisit.species_id == Species.id
+    ).filter(
+        SpeciesVisit.start_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+    ).order_by(SpeciesVisit.end_time.desc()).first()
+
+    last_detection = None
+    if last_row:
+        visit, species_name = last_row
+        et = ensure_utc(visit.end_time) if visit.end_time else None
+        last_detection = {
+            'species_name': species_name,
+            'start_time': et.isoformat() if et else None,
+        }
+
+    return {
+        'topSpecies': top_species,
+        'stats': stats,
+        'hourlyTemperature': hourly_temperature,
+        'lastDetection': last_detection,
+    }

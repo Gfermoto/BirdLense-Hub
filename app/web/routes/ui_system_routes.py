@@ -15,9 +15,13 @@ from util import settings_check_access, recordings_dir
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None}
 _regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None}
+_regenerate_lock = threading.Lock()
+_regenerate_tracks_lock = threading.Lock()
 
 
 IMPORT_SPECIES_NAME = "Unknown"
+LOG_LINES_DEFAULT = 200
+LOG_LINES_MAX = 500
 
 
 def register_routes(app):
@@ -67,9 +71,9 @@ def register_routes(app):
         if not settings_check_access():
             return {'error': 'Password required'}, 403
         try:
-            lines = min(int(request.args.get('lines', 200)), 500)
+            lines = min(int(request.args.get('lines', LOG_LINES_DEFAULT)), LOG_LINES_MAX)
         except (ValueError, TypeError):
-            lines = 200
+            lines = LOG_LINES_DEFAULT
         data_dir = os.path.dirname(recordings_dir())
         log_path = os.path.join(data_dir, 'processor.log')
         try:
@@ -83,7 +87,7 @@ def register_routes(app):
 
     @app.route('/api/ui/system/activity', methods=['GET'])
     def get_activity():
-        month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+        month = request.args.get('month', datetime.now(timezone.utc).strftime('%Y-%m'))
         start_date = datetime.strptime(month, '%Y-%m')
         end_date = (start_date.replace(day=1) +
                     timedelta(days=32)).replace(day=1)
@@ -179,7 +183,8 @@ def register_routes(app):
         if not settings_check_access():
             return {'error': 'Password required'}, 403
         try:
-            date_str = request.json.get('date')
+            data = request.json or {}
+            date_str = data.get('date')
             if not date_str:
                 return {'error': 'Date is required'}, 400
 
@@ -340,6 +345,9 @@ def register_routes(app):
             return {
                 'error': 'Spectrogram regeneration requires BirdNET (MQTT broker + birdnet_topic)',
             }, 400
+        with _regenerate_lock:
+            if _regenerate_status['status'] == 'running':
+                return {'error': 'Regeneration already in progress', 'status': _regenerate_status}, 409
         force = (request.json or {}).get('force', False)
         t = threading.Thread(target=_run_regenerate_spectrograms, args=(force,), daemon=True)
         t.start()
@@ -379,7 +387,8 @@ def register_routes(app):
                 failed = 0
                 skipped = 0
 
-                visit_processor = VisitProcessor(db, app.logger)
+                visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 45)
+                visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
 
                 for video in videos:
                     if not video.video_path:
@@ -425,6 +434,9 @@ def register_routes(app):
         """Start track regeneration in background. Processes videos without tracks (or all if force)."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
+        with _regenerate_tracks_lock:
+            if _regenerate_tracks_status['status'] == 'running':
+                return {'error': 'Track regeneration already in progress', 'status': _regenerate_tracks_status}, 409
         force = (request.json or {}).get('force', False)
         t = threading.Thread(target=_run_regenerate_tracks, args=(force,), daemon=True)
         t.start()
@@ -547,15 +559,19 @@ def register_routes(app):
 
             db.session.commit()
 
-            # Auto-start spectrogram regeneration for newly imported videos
+            # Auto-start spectrogram regeneration for newly imported videos (если не запущена)
+            spectrogram_started = False
             if imported > 0:
-                t = threading.Thread(target=_run_regenerate_spectrograms, args=(False,), daemon=True)
-                t.start()
+                with _regenerate_lock:
+                    if _regenerate_status['status'] != 'running':
+                        t = threading.Thread(target=_run_regenerate_spectrograms, args=(False,), daemon=True)
+                        t.start()
+                        spectrogram_started = True
 
             return {
                 'imported': imported,
                 'message': f'Imported {imported} recordings',
-                'spectrogramRegenerationStarted': imported > 0,
+                'spectrogramRegenerationStarted': spectrogram_started,
             }, 200
         except Exception as e:
             db.session.rollback()

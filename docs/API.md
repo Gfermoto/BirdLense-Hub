@@ -1,6 +1,6 @@
 # API BirdLense Hub
 
-**Версия:** 0.1.4
+**Версия:** 0.1.5
 
 Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
 
@@ -11,7 +11,7 @@
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
 | `/health` | GET | Проверка доступности |
-| `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo) |
+| `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo). Значения: ok, error, not_configured, not_used, unknown |
 | `/cameras` | GET | Список камер |
 | `/weather` | GET | Погода |
 | `/timeline` | GET | Визиты по периоду (params: start_time, end_time) |
@@ -30,6 +30,9 @@
 | `/unknowns` | GET | Детекции с низкой confidence для ручной проверки (params: start_time, end_time, limit) |
 | `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
 | `/detections/:id/crop` | GET | Кадр из видео для экспорта в iNaturalist. Возвращает JPEG |
+| `/dataset/export` | GET | Экспорт датасета (ZIP: train/val + dataset_info.json). Требует пароль |
+| `/push/vapid-public` | GET | Публичный ключ VAPID для Web Push подписки |
+| `/push/subscribe` | POST | Регистрация Web Push подписки (body: `{subscription}`) |
 | `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
 | `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
 | `/species/:id/summary` | GET | Сводка по виду |
