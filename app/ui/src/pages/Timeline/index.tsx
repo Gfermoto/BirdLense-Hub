@@ -20,7 +20,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -46,33 +46,42 @@ function useSpeciesList(visits: SpeciesVisit[] | undefined) {
     : [];
 }
 
-type TimeOfDay = 'all' | 'morning' | 'day' | 'afternoon' | 'evening';
+type TimeOfDay = 'all' | 'night' | 'morning' | 'day' | 'afternoon' | 'evening';
 
 const TIME_RANGES: Record<Exclude<TimeOfDay, 'all'>, [number, number]> = {
-  morning: [6, 10],   // 6–10
+  night: [22, 6],    // 22–06 (через полночь)
+  morning: [6, 10],  // 6–10
   day: [10, 14],     // 10–14
   afternoon: [14, 18], // 14–18
   evening: [18, 22],  // 18–22
 };
 
-function visitInTimeRange(visit: SpeciesVisit, range: [number, number]): boolean {
-  const hour = dayjs(visit.start_time).hour();
-  return hour >= range[0] && hour < range[1];
+/** Возвращает start/end для API по дате и времени суток. */
+function getTimeRange(date: Dayjs, timeOfDay: TimeOfDay): { start: Dayjs; end: Dayjs } {
+  const startOfDay = date.startOf('date');
+  if (timeOfDay === 'all') {
+    return { start: startOfDay, end: date.endOf('date') };
+  }
+  const [startHour, endHour] = TIME_RANGES[timeOfDay];
+  if (timeOfDay === 'night') {
+    return {
+      start: startOfDay.hour(startHour).minute(0).second(0).millisecond(0),
+      end: startOfDay.add(1, 'day').hour(endHour).minute(0).second(0).millisecond(0).subtract(1, 'millisecond'),
+    };
+  }
+  return {
+    start: startOfDay.hour(startHour).minute(0).second(0).millisecond(0),
+    end: startOfDay.hour(endHour).minute(0).second(0).millisecond(0).subtract(1, 'millisecond'),
+  };
 }
 
 function useFilteredVisits(
   visits: SpeciesVisit[] | undefined,
   selectedSpeciesIds: number[],
-  timeOfDay: TimeOfDay,
 ) {
-  return visits?.filter((visit) => {
-    const speciesMatch =
-      selectedSpeciesIds.length === 0 ||
-      selectedSpeciesIds.includes(visit.species.id);
-    const timeMatch =
-      timeOfDay === 'all' || visitInTimeRange(visit, TIME_RANGES[timeOfDay]);
-    return speciesMatch && timeMatch;
-  });
+  return visits?.filter((visit) =>
+    selectedSpeciesIds.length === 0 || selectedSpeciesIds.includes(visit.species.id),
+  );
 }
 
 export function TimelinePage() {
@@ -82,9 +91,9 @@ export function TimelinePage() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
-  const [dateTime, setDateTime] = useState<Dayjs | null>(() => {
-    const paramDateTime = searchParams.get('date');
-    return paramDateTime ? dayjs(paramDateTime) : dayjs();
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => {
+    const paramDate = searchParams.get('date');
+    return paramDate ? dayjs(paramDate).startOf('date') : dayjs();
   });
 
   const {
@@ -92,16 +101,13 @@ export function TimelinePage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['speciesVisits', dateTime],
+    queryKey: ['speciesVisits', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
     queryFn: () => {
-      if (!dateTime) return [];
-      const isTimeSelected = dateTime.hour() !== 0 || dateTime.minute() !== 0;
-      return fetchTimeline(
-        dateTime.startOf(isTimeSelected ? 'hour' : 'date'),
-        dateTime.endOf(isTimeSelected ? 'hour' : 'date'),
-      );
+      if (!selectedDate) return [];
+      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      return fetchTimeline(start, end);
     },
-    enabled: !!dateTime,
+    enabled: !!selectedDate,
   });
 
   useEffect(() => {
@@ -127,7 +133,7 @@ export function TimelinePage() {
   }, [searchParams, visits]);
 
   const speciesList = useSpeciesList(visits);
-  const filteredVisits = useFilteredVisits(visits, selectedSpeciesIds, timeOfDay);
+  const filteredVisits = useFilteredVisits(visits, selectedSpeciesIds);
 
   const handleSpeciesChange = (event: { target: { value: any } }) => {
     const value = event.target.value;
@@ -139,16 +145,12 @@ export function TimelinePage() {
   };
 
   const handleExport = async (format: 'csv' | 'json' | 'ebird') => {
-    if (!dateTime) return;
+    if (!selectedDate) return;
     setExportAnchor(null);
     setExporting(true);
     try {
-      const isTimeSelected = dateTime.hour() !== 0 || dateTime.minute() !== 0;
-      await exportTimeline(
-        dateTime.startOf(isTimeSelected ? 'hour' : 'date'),
-        dateTime.endOf(isTimeSelected ? 'hour' : 'date'),
-        format,
-      );
+      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      await exportTimeline(start, end, format);
     } catch (err) {
       console.error('Export failed:', err);
     } finally {
@@ -190,15 +192,14 @@ export function TimelinePage() {
         sx={{ '& > :not(style)': { m: 1, mb: 4, width: '25ch' } }}
       >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DateTimePicker
-            label={t('timeline.selectDateTime')}
-            value={dateTime}
-            onChange={(newValue) => setDateTime(newValue)}
-            maxDateTime={dayjs()}
-            views={['year', 'month', 'day', 'hours']}
+          <DatePicker
+            label={t('timeline.selectDate')}
+            value={selectedDate}
+            onChange={(newValue) => setSelectedDate(newValue)}
+            maxDate={dayjs()}
           />
         </LocalizationProvider>
-        <FormControl sx={{ minWidth: 140 }}>
+        <FormControl sx={{ minWidth: 160 }}>
           <InputLabel id="timeofday-label">{t('timeline.timeOfDay')}</InputLabel>
           <Select
             labelId="timeofday-label"
@@ -207,6 +208,7 @@ export function TimelinePage() {
             label={t('timeline.timeOfDay')}
           >
             <MenuItem value="all">{t('timeline.timeAllDay')}</MenuItem>
+            <MenuItem value="night">{t('timeline.timeNight')}</MenuItem>
             <MenuItem value="morning">{t('timeline.timeMorning')}</MenuItem>
             <MenuItem value="day">{t('timeline.timeDay')}</MenuItem>
             <MenuItem value="afternoon">{t('timeline.timeAfternoon')}</MenuItem>
