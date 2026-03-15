@@ -329,6 +329,24 @@ export const SettingsForm = ({
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.ha_discovery">
+            {(field) => (
+              <>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.state.value ?? true}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  }
+                  label={t('settings.mqttHaDiscovery')}
+                />
+                <FormHelperText>{t('settings.mqttHaDiscoveryHint')}</FormHelperText>
+              </>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="general.birdnet_url">
             {(field) => (
               <TextField

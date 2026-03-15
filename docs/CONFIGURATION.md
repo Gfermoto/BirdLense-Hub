@@ -94,6 +94,7 @@
 | `frigate_topic` | Топик событий Frigate |
 | `birdnet_topic` | Топик BirdNET |
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
+| `ha_discovery` | Home Assistant MQTT Autodiscovery — публикация config для автообнаружения сущностей (Last Species, Bird at Feeder и др.). По умолчанию true. |
 
 ---
 

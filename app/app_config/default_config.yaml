@@ -67,6 +67,8 @@ mqtt:
   frigate_topic: "frigate/events"
   birdnet_topic: "birdnet"  # BirdNET-Go/Pi публикует сюда
   publish_topic: "birdlense/detections"
+  # Home Assistant MQTT Autodiscovery — публикация config и state для автообнаружения
+  ha_discovery: true
 
 # Detection merging (YOLO + Frigate + BirdNET)
 detection:

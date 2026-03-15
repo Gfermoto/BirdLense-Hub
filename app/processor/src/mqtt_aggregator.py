@@ -1,6 +1,7 @@
 """
 MQTT event aggregator: subscribes to Frigate and BirdNET, stores events for merging,
 publishes to birdlense/detections for HA.
+Supports Home Assistant MQTT Autodiscovery when ha_discovery=true.
 """
 import json
 import logging
@@ -13,6 +14,12 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
+
+# HA Discovery state topics (we publish state here)
+HA_TOPIC_LAST_SPECIES = "birdlense/sensor/last_species/state"
+HA_TOPIC_LAST_CONFIDENCE = "birdlense/sensor/last_confidence/state"
+HA_TOPIC_LAST_TIME = "birdlense/sensor/last_detection_time/state"
+HA_TOPIC_BIRD_DETECTED = "birdlense/binary_sensor/bird_detected/state"
 
 
 def _parse_frigate_event(payload):
@@ -132,9 +139,13 @@ class MQTTEventAggregator:
         on_frigate_motion=None,
         frigate_label_exclude=None,
         client_id: str | None = None,
+        ha_discovery: bool = True,
+        base_url: str = "",
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
-        client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor."""
+        client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
+        ha_discovery: publish Home Assistant MQTT Autodiscovery configs on connect.
+        base_url: URL for device configuration_url (e.g. http://birdlense.local:8085)."""
         self.client_id = client_id or os.environ.get("MQTT_CLIENT_ID", "birdlense_aggregator")
         self.broker = broker
         self.port = port
@@ -152,14 +163,97 @@ class MQTTEventAggregator:
         self._stopped = False
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
         self._frigate_label_exclude = set(frigate_label_exclude or [])
+        self.ha_discovery = ha_discovery
+        self.base_url = (base_url or "").strip().rstrip("/")
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
             self._connected = True
             logger.info("MQTT aggregator connected")
+            if self.ha_discovery:
+                self._publish_ha_discovery()
         else:
             self._connected = False
             logger.warning(f"MQTT aggregator connect failed: {reason_code}")
+
+    def _publish_ha_discovery(self):
+        """Publish Home Assistant MQTT Autodiscovery configs."""
+        if not self._client or not self._connected:
+            return
+        prefix = "homeassistant"
+        device = {
+            "identifiers": ["birdlense_hub"],
+            "name": "BirdLense Hub",
+            "manufacturer": "BirdLense",
+            "model": "Hub",
+        }
+        if self.base_url:
+            device["configuration_url"] = self.base_url
+        try:
+            # sensor: last_species
+            cfg = {
+                "name": "Last Species",
+                "state_topic": HA_TOPIC_LAST_SPECIES,
+                "unique_id": "birdlense_last_species",
+                "device": device,
+                "availability": [{"topic": "birdlense/status"}],
+            }
+            self._client.publish(
+                f"{prefix}/sensor/birdlense_last_species/config",
+                json.dumps(cfg),
+                qos=1,
+                retain=True,
+            )
+            # sensor: last_confidence
+            cfg = {
+                "name": "Last Confidence",
+                "state_topic": HA_TOPIC_LAST_CONFIDENCE,
+                "unique_id": "birdlense_last_confidence",
+                "device": device,
+                "availability": [{"topic": "birdlense/status"}],
+            }
+            self._client.publish(
+                f"{prefix}/sensor/birdlense_last_confidence/config",
+                json.dumps(cfg),
+                qos=1,
+                retain=True,
+            )
+            # sensor: last_detection_time
+            cfg = {
+                "name": "Last Detection Time",
+                "state_topic": HA_TOPIC_LAST_TIME,
+                "unique_id": "birdlense_last_detection_time",
+                "device": device,
+                "availability": [{"topic": "birdlense/status"}],
+            }
+            self._client.publish(
+                f"{prefix}/sensor/birdlense_last_detection_time/config",
+                json.dumps(cfg),
+                qos=1,
+                retain=True,
+            )
+            # binary_sensor: bird_detected (off_delay: 300 = OFF 5 min after last ON)
+            cfg = {
+                "name": "Bird at Feeder",
+                "state_topic": HA_TOPIC_BIRD_DETECTED,
+                "payload_on": "ON",
+                "payload_off": "OFF",
+                "off_delay": 300,
+                "unique_id": "birdlense_bird_detected",
+                "device": device,
+                "availability": [{"topic": "birdlense/status"}],
+            }
+            self._client.publish(
+                f"{prefix}/binary_sensor/birdlense_bird_detected/config",
+                json.dumps(cfg),
+                qos=1,
+                retain=True,
+            )
+            # Initial state: bird_detected OFF
+            self._client.publish(HA_TOPIC_BIRD_DETECTED, "OFF", qos=1, retain=True)
+            logger.info("Home Assistant MQTT Autodiscovery configs published")
+        except Exception as e:
+            logger.warning("HA discovery publish failed: %s", e)
 
     def _on_disconnect(self, client, userdata, *args):
         self._connected = False
@@ -274,14 +368,16 @@ class MQTTEventAggregator:
             return result
 
     def publish_detection(self, species, confidence, source="yolo", start_time=None, end_time=None):
-        """Publish detection to birdlense/detections for HA automations."""
+        """Publish detection to birdlense/detections and HA discovery state topics."""
         if not self._client or not self._connected:
             return
+        ts = start_time or datetime.now(timezone.utc)
+        ts_iso = ts.isoformat()
         payload = {
             "species": species,
             "confidence": confidence,
             "source": source,
-            "timestamp": (start_time or datetime.now(timezone.utc)).isoformat(),
+            "timestamp": ts_iso,
         }
         if end_time:
             payload["end_time"] = end_time.isoformat()
@@ -291,8 +387,13 @@ class MQTTEventAggregator:
                 json.dumps(payload),
                 qos=1,
             )
+            if self.ha_discovery:
+                self._client.publish(HA_TOPIC_LAST_SPECIES, str(species), qos=1, retain=True)
+                self._client.publish(HA_TOPIC_LAST_CONFIDENCE, f"{float(confidence):.2f}", qos=1, retain=True)
+                self._client.publish(HA_TOPIC_LAST_TIME, ts_iso, qos=1, retain=True)
+                self._client.publish(HA_TOPIC_BIRD_DETECTED, "ON", qos=1)
         except Exception as e:
-            logger.warning(f"MQTT publish failed: {e}")
+            logger.warning("MQTT publish failed: %s", e)
 
     def publish_detections(self, detections, start_time, end_time):
         """Publish all detections from a video session."""

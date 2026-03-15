@@ -197,6 +197,8 @@ def main():
             on_frigate_motion=on_frigate_motion,
             frigate_label_exclude=list(frigate_label_exclude),
             client_id=mqtt_client_id,
+            ha_discovery=app_config.get('mqtt.ha_discovery', True),
+            base_url=app_config.get('notifications.base_url', ''),
         )
         mqtt_aggregator.start()
         if use_frigate_from_aggregator:
