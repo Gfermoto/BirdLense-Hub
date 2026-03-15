@@ -7,6 +7,25 @@ from datetime import timedelta, datetime, timezone
 GENERIC_BIRD_SPECIES = 'Bird'
 
 
+def _data_dir() -> str:
+    """Base data directory (recordings, saved images, etc.)."""
+    return os.environ.get('DATA_DIR') or os.path.join(
+        os.path.dirname(__file__), '..', 'data'
+    )
+
+
+def _is_safe_image_path(path: str) -> bool:
+    """Path traversal check: path must be under DATA_DIR and exist as file."""
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
+        return False
+    base = os.path.realpath(_data_dir())
+    try:
+        full = os.path.realpath(path)
+        return full.startswith(base) and os.path.isfile(full)
+    except (OSError, ValueError):
+        return False
+
+
 def ensure_utc(dt: datetime) -> datetime:
     """Ensure datetime is timezone-aware (UTC). SQLite returns naive datetimes."""
     if dt.tzinfo is None:
@@ -369,7 +388,10 @@ def get_wikipedia_image_and_description(title):
         headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
         response = requests.get(url, timeout=10, headers=headers)
         data = response.json()
-        page = list(data.get("query", {}).get("pages", {}).values())[0]
+        pages = list((data.get("query") or {}).get("pages") or {}).values()
+        if not pages:
+            return None, None
+        page = pages[0]
         image_url = page.get("thumbnail", {}).get("source")
         description = re.sub(r'<[^>]*>', '', page.get("extract", "")).strip() or None
         return image_url, description
@@ -491,7 +513,7 @@ def notify(message, link="live", tags=None, image_path=None, timestamp=None):
         text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
     try:
         send_photo = app_config.get('notifications.send_photo', True)
-        if send_photo and image_path and os.path.exists(image_path):
+        if send_photo and image_path and _is_safe_image_path(image_path):
             view_stars = app_config.get('notifications.paid_media_view_star_count')
             forward_stars = app_config.get('notifications.paid_media_forward_star_count')
             try:
