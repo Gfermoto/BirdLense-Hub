@@ -88,7 +88,10 @@ def register_routes(app):
     @app.route('/api/ui/system/activity', methods=['GET'])
     def get_activity():
         month = request.args.get('month', datetime.now(timezone.utc).strftime('%Y-%m'))
-        start_date = datetime.strptime(month, '%Y-%m')
+        try:
+            start_date = datetime.strptime(month, '%Y-%m')
+        except ValueError:
+            return {'error': 'Invalid month format, use YYYY-MM'}, 400
         end_date = (start_date.replace(day=1) +
                     timedelta(days=32)).replace(day=1)
 

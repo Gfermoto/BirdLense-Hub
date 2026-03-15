@@ -1,7 +1,13 @@
+import logging
 import os
 
 # Secret key for Flask session (settings unlock)
-SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'birdlense-settings-session')
+_SECRET_KEY = os.environ.get('FLASK_SECRET_KEY')
+if not _SECRET_KEY:
+    logging.warning(
+        'FLASK_SECRET_KEY not set — using default. Set it in production to prevent session forgery.'
+    )
+    _SECRET_KEY = 'birdlense-settings-session'
 
 
 class Config:
@@ -13,4 +19,4 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URL', f'sqlite:///{db_path}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = SECRET_KEY
+    SECRET_KEY = _SECRET_KEY
