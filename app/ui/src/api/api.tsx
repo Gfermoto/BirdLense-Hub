@@ -160,7 +160,9 @@ export const fetchStatus = async (): Promise<{
 
 export const dispenseFeed = async (): Promise<{ success: boolean; message?: string }> => {
   try {
-    const response = await axios.post(`${BASE_API_URL}/feed/dispense`);
+    const response = await axios.post(`${BASE_API_URL}/feed/dispense`, {}, {
+      withCredentials: true,
+    });
     return { success: true, message: response.data?.message };
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } };
@@ -171,15 +173,23 @@ export const dispenseFeed = async (): Promise<{ success: boolean; message?: stri
   }
 };
 
-export const fetchSettingsRequiresPassword = async (): Promise<boolean> => {
+export type RequiresPasswordResult = {
+  requires: boolean;
+  has_contributor_tier?: boolean;
+};
+
+export const fetchSettingsRequiresPassword = async (): Promise<RequiresPasswordResult> => {
   const response = await axios.get(`${BASE_API_URL}/settings/requires-password`, {
     withCredentials: true,
   });
-  return response.data?.requires === true;
+  return {
+    requires: response.data?.requires === true,
+    has_contributor_tier: response.data?.has_contributor_tier === true,
+  };
 };
 
 export type CheckAccessResult =
-  | { unlocked: true }
+  | { unlocked: true; role?: 'admin' | 'contributor' }
   | { unlocked: false; error?: 'network' };
 
 export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
@@ -187,9 +197,10 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
     const response = await axios.get(`${BASE_API_URL}/settings/check-access`, {
       withCredentials: true,
     });
-    return response.data?.unlocked === true
-      ? { unlocked: true }
-      : { unlocked: false };
+    if (response.data?.unlocked === true) {
+      return { unlocked: true, role: response.data?.role || 'admin' };
+    }
+    return { unlocked: false };
   } catch (e: unknown) {
     if (axios.isAxiosError(e) && e.response?.status === 403) {
       return { unlocked: false };
@@ -199,7 +210,7 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
 };
 
 export type VerifyPasswordResult =
-  | { ok: true }
+  | { ok: true; role?: 'admin' | 'contributor' }
   | { ok: false; error: 'wrong_password' | 'server_error' };
 
 export const verifySettingsPassword = async (
@@ -211,7 +222,10 @@ export const verifySettingsPassword = async (
       { password },
       { withCredentials: true },
     );
-    return response.data?.ok === true ? { ok: true } : { ok: false, error: 'wrong_password' };
+    if (response.data?.ok === true) {
+      return { ok: true, role: response.data?.role || 'admin' };
+    }
+    return { ok: false, error: 'wrong_password' };
   } catch (e: unknown) {
     return axios.isAxiosError(e) && e.response?.status === 401
       ? { ok: false, error: 'wrong_password' }
@@ -308,6 +322,12 @@ export const fetchCoordinatesByZip = async (
 
 export const fetchBirdDirectory = async (): Promise<Species[]> => {
   const response = await axios.get(`${BASE_API_URL}/species`);
+  return response.data;
+};
+
+/** Lightweight: only species with count > 0 (for Settings exclude list). */
+export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: string; count: number }>> => {
+  const response = await axios.get(`${BASE_API_URL}/species/observed`);
   return response.data;
 };
 

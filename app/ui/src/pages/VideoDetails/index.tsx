@@ -40,7 +40,7 @@ export const VideoDetails = () => {
         {/* Video Player Column */}
         <Grid size={{ xs: 12, lg: 8 }}>
           <VideoPlayer video={video as Video} />
-          <DetectedSpecies species={(video as Video).species} />
+          <DetectedSpecies species={(video as Video).species} videoId={(video as Video).id} />
         </Grid>
         {/* Video Info Column */}
         <Grid size={{ xs: 12, lg: 4 }}>

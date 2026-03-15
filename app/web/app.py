@@ -29,6 +29,11 @@ def create_app():
         "http://127.0.0.1:5173",
         "http://birdlense.local",
         "http://birdlense.local:80",
+        "http://localhost:8085",
+        "http://127.0.0.1:8085",
+        "http://192.168.1.11:8085",
+        "https://birdlense.eyera.info",
+        "http://birdlense.eyera.info",
     ]
     extra = os.environ.get("CORS_ORIGINS", "")
     if extra:

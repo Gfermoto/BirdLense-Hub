@@ -21,14 +21,14 @@ export function ProtectedRoute({ children, title }: ProtectedRouteProps) {
   const { t } = useTranslation();
   const {
     requiresPassword,
-    unlocked,
+    isAdmin,
     setUnlocked,
     isLoading,
     accessError,
   } = useProtectedArea();
 
-  const showPasswordDialog = requiresPassword && !unlocked;
-  const showNetworkError = accessError === 'network' && !unlocked;
+  const showPasswordDialog = requiresPassword && !isAdmin;
+  const showNetworkError = accessError === 'network' && !isAdmin;
 
   if (isLoading) {
     return (
@@ -60,7 +60,11 @@ export function ProtectedRoute({ children, title }: ProtectedRouteProps) {
         <Typography color="text.secondary" sx={{ mb: 3 }}>
           {t('settings.passwordRequired')}
         </Typography>
-        <SettingsPasswordDialog open onSuccess={() => setUnlocked(true)} />
+        <SettingsPasswordDialog
+          open
+          requireAdmin
+          onSuccess={(role) => setUnlocked(true, role || 'admin')}
+        />
       </Container>
     );
   }

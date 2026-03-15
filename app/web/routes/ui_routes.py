@@ -7,7 +7,13 @@ import json as json_module
 from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
-from util import fetch_weather, update_species_info_from_wiki, ensure_utc, settings_check_access
+from util import (
+    fetch_weather,
+    update_species_info_from_wiki,
+    ensure_utc,
+    settings_check_access,
+    contributor_or_admin_access,
+)
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
@@ -156,6 +162,8 @@ def register_routes(app):
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])
     def feed_dispense():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         success, message = dispense_feed()
         if success:
             return {'message': message}, 200
@@ -726,6 +734,8 @@ def register_routes(app):
     @app.route('/api/ui/detections/<int:detection_id>/crop', methods=['GET'])
     def get_detection_crop(detection_id):
         """Extract a frame from video for iNaturalist export. Returns JPEG."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
         vs = VideoSpecies.query.get(detection_id)
         if not vs:
             return {'error': 'Detection not found'}, 404
@@ -750,7 +760,7 @@ def register_routes(app):
     @app.route('/api/ui/dataset/export', methods=['GET'])
     def export_dataset():
         """Export dataset crops as ZIP (train/val + dataset_info.json)."""
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         zip_bytes, err = build_dataset_zip()
         if err:
@@ -765,7 +775,7 @@ def register_routes(app):
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):
         """Correct species for a low-confidence detection."""
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
 
         data = request.json or {}
@@ -856,6 +866,20 @@ def register_routes(app):
             for species in species_list
         ]
 
+    @app.route('/api/ui/species/observed', methods=['GET'])
+    def get_observed_species():
+        """Lightweight: only species with count > 0 (for Settings exclude list)."""
+        subq = db.session.query(
+            SpeciesVisit.species_id,
+            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label('count')
+        ).group_by(SpeciesVisit.species_id).having(
+            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0) > 0
+        ).subquery()
+        rows = db.session.query(Species, subq.c.count).join(
+            subq, Species.id == subq.c.species_id
+        ).order_by(Species.name.asc()).all()
+        return [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
+
     @app.route('/api/ui/bird_families', methods=['GET'])
     def get_bird_families():
         """Get all bird families (categories one level below 'Birds')"""
@@ -876,31 +900,50 @@ def register_routes(app):
             return {"error": "Failed to fetch bird families"}, 500
 
     def _settings_requires_password():
-        pw = app_config.get('general.settings_password') or ''
-        return bool(pw.strip())
+        admin_pw = (app_config.get('general.settings_password') or '').strip()
+        contrib_pw = (app_config.get('general.contributor_password') or '').strip()
+        return bool(admin_pw or contrib_pw)
+
+    def _has_contributor_tier():
+        return bool((app_config.get('general.contributor_password') or '').strip())
 
     @app.route('/api/ui/settings/requires-password', methods=['GET'])
     def settings_requires_password():
-        return {'requires': _settings_requires_password()}, 200
+        return {
+            'requires': _settings_requires_password(),
+            'has_contributor_tier': _has_contributor_tier(),
+        }, 200
 
     @app.route('/api/ui/settings/check-access', methods=['GET'])
     def settings_check_access_route():
         """Lightweight check: 200 if session unlocked, 403 if password required."""
         if settings_check_access():
-            return {'unlocked': True}, 200
+            return {'unlocked': True, 'role': 'admin'}, 200
+        if contributor_or_admin_access():
+            return {'unlocked': True, 'role': 'contributor'}, 200
         return {'error': 'Password required'}, 403
 
     @app.route('/api/ui/settings/verify-password', methods=['POST'])
     def settings_verify_password():
         data = request.json or {}
         pw = (data.get('password') or '').strip()
-        expected = (app_config.get('general.settings_password') or '').strip()
-        if not expected:
-            return {'ok': True}, 200
-        if pw == expected:
+        admin_pw = (app_config.get('general.settings_password') or '').strip()
+        contrib_pw = (app_config.get('general.contributor_password') or '').strip()
+        if not admin_pw and not contrib_pw:
+            session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
-            return {'ok': True}, 200
+            return {'ok': True, 'role': 'admin'}, 200
+        if pw == admin_pw:
+            session['access_role'] = 'admin'
+            session['settings_unlocked'] = True
+            session.permanent = True
+            return {'ok': True, 'role': 'admin'}, 200
+        if contrib_pw and pw == contrib_pw:
+            session['access_role'] = 'contributor'
+            session['settings_unlocked'] = False
+            session.permanent = True
+            return {'ok': True, 'role': 'contributor'}, 200
         return {'ok': False}, 401
 
     @app.route('/api/ui/settings', methods=['GET'])

@@ -24,7 +24,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTimeline, exportTimeline } from '../../api/api';
+import { fetchTimeline, exportTimeline, exportDataset } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
@@ -158,6 +158,18 @@ export function TimelinePage() {
     }
   };
 
+  const handleExportDataset = async () => {
+    setExportAnchor(null);
+    setExporting(true);
+    try {
+      await exportDataset();
+    } catch (err) {
+      console.error('Dataset export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (isLoading)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -263,6 +275,7 @@ export function TimelinePage() {
           <MenuItem onClick={() => handleExport('csv')}>{t('timeline.exportCsv')}</MenuItem>
           <MenuItem onClick={() => handleExport('json')}>{t('timeline.exportJson')}</MenuItem>
           <MenuItem onClick={() => handleExport('ebird')}>{t('timeline.exportEbird')}</MenuItem>
+          <MenuItem onClick={() => handleExportDataset()}>{t('storage.exportDataset')}</MenuItem>
         </Menu>
       </Box>
 

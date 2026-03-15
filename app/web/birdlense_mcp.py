@@ -52,8 +52,9 @@ def get_api_base_url() -> str:
 
 def create_mcp_server() -> FastMCP:
     api_url = get_api_base_url()
-    client = httpx.AsyncClient(base_url=api_url, timeout=30.0)
     token = get_mcp_token()
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    client = httpx.AsyncClient(base_url=api_url, headers=headers, timeout=30.0)
 
     mcp_kwargs = dict(
         openapi_spec=birdlense_spec,

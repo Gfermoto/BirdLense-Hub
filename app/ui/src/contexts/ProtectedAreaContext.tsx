@@ -5,7 +5,7 @@ import React, {
   useState,
   useMemo,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchSettingsRequiresPassword,
   checkSettingsAccess,
@@ -13,10 +13,14 @@ import {
 
 interface ProtectedAreaContextValue {
   requiresPassword: boolean;
+  hasContributorTier: boolean;
   unlocked: boolean;
-  setUnlocked: (value: boolean) => void;
+  role: 'admin' | 'contributor' | null;
+  setUnlocked: (value: boolean, role?: 'admin' | 'contributor') => void;
   isLoading: boolean;
   accessError: 'network' | null;
+  canEdit: boolean;
+  isAdmin: boolean;
 }
 
 const ProtectedAreaContext = createContext<ProtectedAreaContextValue | null>(
@@ -29,11 +33,20 @@ export function ProtectedAreaProvider({
   children: React.ReactNode;
 }) {
   const [unlockedState, setUnlockedState] = useState(false);
+  const [roleState, setRoleState] = useState<'admin' | 'contributor' | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data: requiresPassword, isLoading: isLoadingRequires } = useQuery({
+  const { data: requiresResult, isLoading: isLoadingRequires, isError: requiresError } = useQuery({
     queryKey: ['settings-requires-password'],
     queryFn: fetchSettingsRequiresPassword,
+    retry: 1,
   });
+
+  // При ошибке или отсутствии ответа — считаем пароль нужен (показываем диалог)
+  const requiresPassword =
+    requiresResult?.requires === true ||
+    (!!requiresError || (requiresResult === undefined && !isLoadingRequires));
+  const hasContributorTier = requiresResult?.has_contributor_tier === true;
 
   const { data: checkResult, isLoading: isLoadingAccess } = useQuery({
     queryKey: ['settings-check-access'],
@@ -42,16 +55,27 @@ export function ProtectedAreaProvider({
     retry: false,
   });
 
-  const setUnlocked = useCallback((value: boolean) => {
+  const setUnlocked = useCallback((value: boolean, role?: 'admin' | 'contributor') => {
     setUnlockedState(value);
-  }, []);
+    setRoleState(value && role ? role : null);
+    if (value) {
+      queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    }
+  }, [queryClient]);
+
+  const role =
+    checkResult?.unlocked && 'role' in checkResult
+      ? (checkResult.role || 'admin')
+      : roleState;
 
   const unlocked =
-    requiresPassword === false
-      ? true
-      : requiresPassword === true
-        ? (unlockedState || checkResult?.unlocked === true)
-        : false;
+    !requiresPassword ||
+    (requiresPassword && (checkResult?.unlocked === true || unlockedState));
+
+  const canEdit = unlocked && (role === 'admin' || role === 'contributor' || !hasContributorTier);
+  const isAdmin = unlocked && (role === 'admin' || !hasContributorTier);
+
   const accessError =
     requiresPassword && checkResult?.unlocked === false && checkResult?.error
       ? 'network'
@@ -62,12 +86,26 @@ export function ProtectedAreaProvider({
   const value = useMemo<ProtectedAreaContextValue>(
     () => ({
       requiresPassword: !!requiresPassword,
+      hasContributorTier,
       unlocked,
+      role: unlocked ? (role || 'admin') : null,
       setUnlocked,
       isLoading,
       accessError,
+      canEdit,
+      isAdmin,
     }),
-    [requiresPassword, unlocked, setUnlocked, isLoading, accessError],
+    [
+      requiresPassword,
+      hasContributorTier,
+      unlocked,
+      role,
+      setUnlocked,
+      isLoading,
+      accessError,
+      canEdit,
+      isAdmin,
+    ],
   );
 
   return (

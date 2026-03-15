@@ -13,10 +13,12 @@ export const SettingsPasswordDialog = ({
   open,
   onSuccess,
   onClose,
+  requireAdmin = false,
 }: {
   open: boolean;
-  onSuccess: () => void;
+  onSuccess: (role?: 'admin' | 'contributor') => void;
   onClose?: () => void;
+  requireAdmin?: boolean;
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -28,8 +30,12 @@ export const SettingsPasswordDialog = ({
     setError('');
     const result = await verifySettingsPassword(password);
     if (result.ok) {
+      if (requireAdmin && result.role === 'contributor') {
+        setError(t('settings.adminRequired'));
+        return;
+      }
       setPassword('');
-      onSuccess();
+      onSuccess(result.role);
     } else {
       setError(
         result.error === 'server_error'

@@ -1,9 +1,11 @@
 general:
   enable_notifications: false
   notification_excluded_species: []
-  # Пароль для доступа к настройкам. Пусто — без пароля.
+  # Пароль для доступа к настройкам (Admin). Пусто — без пароля.
   # Хранится в открытом виде. Для продакшена рассмотрите хеширование.
   settings_password: ""
+  # Пароль помощника (Contributor): коррекция видов, отчёты, iNaturalist. Пусто — один пароль на всё.
+  contributor_password: ""
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
 

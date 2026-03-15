@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
@@ -11,13 +12,26 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Share from '@mui/icons-material/Share';
+import EditIcon from '@mui/icons-material/Edit';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import { Link } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
-import { resolveImageUrl, downloadDetectionCropForINaturalist } from '../../api/api';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
+import {
+  resolveImageUrl,
+  downloadDetectionCropForINaturalist,
+  updateDetectionSpecies,
+  fetchBirdDirectory,
+} from '../../api/api';
 
 interface GroupedSpecies {
   species_id: number;
@@ -75,12 +89,53 @@ const INaturalistButton = ({
 
 interface DetectedSpeciesProps {
   species: VideoSpecies[];
+  videoId?: string | number;
 }
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species,
+  videoId,
 }) => {
   const { t } = useTranslation();
+  const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
+  const queryClient = useQueryClient();
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+
+  const { data: speciesList = [] } = useQuery({
+    queryKey: ['species'],
+    queryFn: () => fetchBirdDirectory(),
+  });
+
+  const correctMutation = useMutation({
+    mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
+      updateDetectionSpecies(detectionId, speciesId),
+    onSuccess: () => {
+      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+    },
+  });
+
+  const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
+  const [correctError, setCorrectError] = useState<string | null>(null);
+
+  const handleCorrectGroup = async (group: GroupedSpecies) => {
+    if (selectedSpeciesId === '' || selectedSpeciesId === group.species_id) return;
+    setCorrectError(null);
+    const ids = group.detections.filter((d) => d.id).map((d) => d.id!);
+    try {
+      for (const id of ids) {
+        await correctMutation.mutateAsync({ detectionId: id, speciesId: selectedSpeciesId as number });
+      }
+      setEditingGroupKey(null);
+      setSelectedSpeciesId('');
+    } catch (err) {
+      setCorrectError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   // Group species by species_id and calculate stats
   const groupedSpecies = species
     .filter((s) => s.source === 'video')
@@ -115,10 +170,36 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   }
 
   return (
+    <>
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
         {t('video.speciesInVideo')}
       </Typography>
+      {!canEdit && requiresPassword && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {t('unknowns.passwordRequired')}{' '}
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setShowUnlockDialog(true)}
+            sx={{ mr: 1 }}
+          >
+            {t('settings.passwordSubmit')}
+          </Button>
+          <Link to="/settings" style={{ fontWeight: 600 }}>
+            {t('nav.settings')}
+          </Link>
+        </Alert>
+      )}
+      <SettingsPasswordDialog
+        open={showUnlockDialog}
+        onSuccess={(role) => {
+          setUnlocked(true, role || 'admin');
+          setShowUnlockDialog(false);
+          queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+        }}
+        onClose={() => setShowUnlockDialog(false)}
+      />
       <Grid container spacing={2}>
         {groupedSpecies.map((group) => (
           <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.species_id}>
@@ -181,7 +262,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   {t('video.confidence')}: {group.confidenceRange}
                 </Typography>
               </CardContent>
-              <CardActions sx={{ pt: 0 }}>
+              <CardActions sx={{ pt: 0, flexWrap: 'wrap', gap: 0.5 }}>
                 <Button
                   size="small"
                   component={Link}
@@ -200,11 +281,67 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                     />
                   ) : null;
                 })()}
+                {editingGroupKey === String(group.species_id) ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '1 1 100%', mt: 0.5 }}>
+                      <FormControl size="small" sx={{ minWidth: 160 }} disabled={!canEdit}>
+                        <InputLabel>{t('unknowns.correctSpecies')}</InputLabel>
+                        <Select
+                          value={selectedSpeciesId}
+                          label={t('unknowns.correctSpecies')}
+                          onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
+                        >
+                          {speciesList.map((s) => (
+                            <MenuItem key={s.id} value={s.id}>
+                              {s.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={selectedSpeciesId === '' || selectedSpeciesId === group.species_id || correctMutation.isPending || !canEdit}
+                        onClick={() => handleCorrectGroup(group)}
+                      >
+                        {correctMutation.isPending ? '...' : t('unknowns.apply')}
+                      </Button>
+                      <Button size="small" onClick={() => { setEditingGroupKey(null); setSelectedSpeciesId(''); }}>
+                        {t('common.cancel')}
+                      </Button>
+                    </Box>
+                ) : (
+                    <Tooltip title={!canEdit ? t('unknowns.passwordRequired') : t('unknowns.correctSpecies')}>
+                      <span>
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon fontSize="small" />}
+                          onClick={() => {
+                            setEditingGroupKey(String(group.species_id));
+                            setSelectedSpeciesId(group.species_id);
+                          }}
+                          disabled={!canEdit}
+                        >
+                          {t('unknowns.correctSpecies')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                )}
               </CardActions>
             </Card>
           </Grid>
         ))}
       </Grid>
     </Box>
+    <Snackbar
+      open={!!correctError}
+      autoHideDuration={6000}
+      onClose={() => setCorrectError(null)}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert severity="error" onClose={() => setCorrectError(null)}>
+        {correctError}
+      </Alert>
+    </Snackbar>
+    </>
   );
 };
