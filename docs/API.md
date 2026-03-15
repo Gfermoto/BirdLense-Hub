@@ -1,6 +1,6 @@
 # API BirdLense Hub
 
-**Версия:** 0.1.3
+**Версия:** 0.1.4
 
 Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
 
@@ -29,6 +29,7 @@
 | `/settings/check-access` | GET | Проверка разблокировки (200/403) |
 | `/unknowns` | GET | Детекции с низкой confidence для ручной проверки (params: start_time, end_time, limit) |
 | `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
+| `/detections/:id/crop` | GET | Кадр из видео для экспорта в iNaturalist. Возвращает JPEG |
 | `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
 | `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
 | `/species/:id/summary` | GET | Сводка по виду |

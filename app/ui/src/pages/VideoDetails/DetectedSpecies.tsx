@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
@@ -8,11 +8,16 @@ import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Share from '@mui/icons-material/Share';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { Link } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
-import { resolveImageUrl } from '../../api/api';
+import { resolveImageUrl, downloadDetectionCropForINaturalist } from '../../api/api';
 
 interface GroupedSpecies {
   species_id: number;
@@ -22,6 +27,51 @@ interface GroupedSpecies {
   confidenceRange: string;
   totalDuration: number;
 }
+
+const INaturalistButton = ({
+  detectionId,
+  speciesName,
+}: {
+  detectionId: number;
+  speciesName: string;
+}) => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const handleClick = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await downloadDetectionCropForINaturalist(detectionId, speciesName);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+      console.error('iNaturalist export failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <>
+      <Tooltip title={t('common.iNaturalist')}>
+        <span>
+          <IconButton size="small" onClick={handleClick} disabled={loading} aria-label={t('common.iNaturalist')}>
+            <Share fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Snackbar
+        open={!!errorMsg}
+        autoHideDuration={6000}
+        onClose={() => setErrorMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+};
 
 interface DetectedSpeciesProps {
   species: VideoSpecies[];
@@ -139,6 +189,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                 >
                   {t('video.learnMore')}
                 </Button>
+                {(() => {
+                  const bestDet = group.detections
+                    .filter((d) => d.source === 'video' && d.id)
+                    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+                  return bestDet ? (
+                    <INaturalistButton
+                      detectionId={bestDet.id!}
+                      speciesName={group.species_name}
+                    />
+                  ) : null;
+                })()}
               </CardActions>
             </Card>
           </Grid>

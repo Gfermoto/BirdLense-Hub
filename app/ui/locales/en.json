@@ -269,7 +269,8 @@
     "clickForHelp": "Click for help",
     "appName": "BirdLense Hub",
     "na": "N/A",
-    "help": "Help"
+    "help": "Help",
+    "iNaturalist": "Share to iNaturalist"
   },
   "unknowns": {
     "title": "Unknowns",
