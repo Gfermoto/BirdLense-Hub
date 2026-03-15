@@ -80,6 +80,29 @@ export const fetchVideo = async (id: string) => {
   return response.data;
 };
 
+/** Download detection crop for iNaturalist. Opens iNaturalist upload in new tab. */
+export const downloadDetectionCropForINaturalist = async (
+  detectionId: number,
+  speciesName: string,
+): Promise<void> => {
+  const res = await fetch(`${BASE_API_URL}/detections/${detectionId}/crop`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const disp = res.headers.get('Content-Disposition');
+  const filename =
+    disp?.match(/filename="?([^";\n]+)"?/)?.[1] ||
+    `${speciesName.replace(/\s+/g, '_')}.jpg`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  window.open('https://www.inaturalist.org/observations/upload', '_blank', 'noopener');
+};
+
 export const fetchBirdFood = async (): Promise<BirdFood[]> => {
   const response = await axios.get(`${BASE_API_URL}/birdfood`);
   return response.data;

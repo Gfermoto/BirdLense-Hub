@@ -15,6 +15,7 @@ export interface SpeciesVisit {
     parent_id?: number;
   };
   detections: {
+    id?: number;
     video_id: number;
     start_time: string;
     end_time: string;
@@ -30,6 +31,7 @@ export interface TrackFrame {
 }
 
 export interface VideoSpecies {
+  id?: number;
   species_id: number;
   species_name: string;
   track_id?: number;

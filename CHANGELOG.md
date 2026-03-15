@@ -8,10 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.1.4] - 2026-03-15
+
 ### Added
 
 - **eBird export** — экспорт списка видов в формате eBird Record для импорта в eBird.org. Кнопка «Экспорт для eBird» в Timeline. Настройки: Настройки → Расширенные (страна, регион, локация).
 - **Confidence по виду** — пороги `min_confidence` по видам. Редкие виды — ниже порог. Конфиг `processor.species_confidence_overrides: {"Species Name": 0.05}`. Настройки → Processor.
+- **Экспорт в iNaturalist** — кнопка «Отправить в iNaturalist» на карточке детекции (Timeline) и на странице видео. Скачивает кадр из видео и открывает inaturalist.org/observations/upload. API: `GET /api/ui/detections/:id/crop`.
+
+### Changed
+
+- **Timeline** — выбор даты + время суток вместо дата+час. DatePicker без прокрутки по часам. Добавлена Ночь (22–06) для ночных птиц.
 
 ---
 
@@ -141,6 +150,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.4
 [0.1.3]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.1

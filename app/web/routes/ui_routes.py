@@ -15,6 +15,7 @@ from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
 from services.ebird_export_service import build_ebird_csv
+from services.detection_crop_service import extract_detection_frame, crop_filename
 
 
 
@@ -142,6 +143,7 @@ def register_routes(app):
 
         def build_species_data(vs):
             data = {
+                'id': vs.id,
                 'species_id': vs.species.id,
                 'species_name': vs.species.name,
                 'start_time': vs.start_time,
@@ -462,6 +464,7 @@ def register_routes(app):
             for video_species in sorted_video_species:
                 video_start_time = video_species.video.start_time
                 det = {
+                    'id': video_species.id,
                     'video_id': video_species.video_id,
                     'start_time': (video_start_time + timedelta(seconds=video_species.start_time)).astimezone(timezone.utc).isoformat(),
                     'end_time': (video_start_time + timedelta(seconds=video_species.end_time)).astimezone(timezone.utc).isoformat(),
@@ -678,6 +681,30 @@ def register_routes(app):
             })
 
         return result
+
+    @app.route('/api/ui/detections/<int:detection_id>/crop', methods=['GET'])
+    def get_detection_crop(detection_id):
+        """Extract a frame from video for iNaturalist export. Returns JPEG."""
+        vs = VideoSpecies.query.get(detection_id)
+        if not vs:
+            return {'error': 'Detection not found'}, 404
+        if vs.source != 'video':
+            return {'error': 'Crop only for video detections'}, 400
+        video = vs.video
+        if not video:
+            return {'error': 'Video not found'}, 404
+        offset = vs.start_time + (vs.end_time - vs.start_time) / 2
+        jpeg_bytes = extract_detection_frame(video.video_path, offset)
+        if not jpeg_bytes:
+            return {'error': 'Failed to extract frame'}, 500
+        video_start = ensure_utc(video.start_time)
+        det_time = video_start + timedelta(seconds=vs.start_time)
+        filename = crop_filename(vs.species.name, det_time.isoformat())
+        return Response(
+            jpeg_bytes,
+            mimetype='image/jpeg',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
 
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):
@@ -1008,6 +1035,7 @@ def register_routes(app):
             for video_species in sorted_video_species:
                 video_start_time = video_species.video.start_time
                 det = {
+                    'id': video_species.id,
                     'video_id': video_species.video_id,
                     'start_time': (video_start_time + timedelta(seconds=video_species.start_time)).astimezone(timezone.utc).isoformat(),
                     'end_time': (video_start_time + timedelta(seconds=video_species.end_time)).astimezone(timezone.utc).isoformat(),

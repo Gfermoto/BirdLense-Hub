@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { SpeciesVisit } from '../types';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -17,19 +17,46 @@ import CalendarToday from '@mui/icons-material/CalendarToday';
 import Groups from '@mui/icons-material/Groups';
 import VideoCall from '@mui/icons-material/VideoCall';
 import Mic from '@mui/icons-material/Mic';
+import Share from '@mui/icons-material/Share';
+import Tooltip from '@mui/material/Tooltip';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next';
+import { downloadDetectionCropForINaturalist } from '../api/api';
 
 const DetectionItem = ({
   detection,
+  speciesName,
   onClick,
   isLastInGroup,
 }: {
   detection: SpeciesVisit['detections'][0];
+  speciesName: string;
   onClick: () => void;
   isLastInGroup: boolean;
 }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleINaturalist = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!detection.id || detection.source !== 'video') return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await downloadDetectionCropForINaturalist(detection.id, speciesName);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      console.error('iNaturalist export failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box>
@@ -77,8 +104,33 @@ const DetectionItem = ({
             )}
             s
           </Typography>
+          {detection.source === 'video' && detection.id && (
+            <Tooltip title={t('common.iNaturalist')}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleINaturalist}
+                  disabled={loading}
+                  sx={{ p: 0.5 }}
+                  aria-label={t('common.iNaturalist')}
+                >
+                  <Share fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
         </Box>
       </CardActionArea>
+      <Snackbar
+        open={!!errorMsg}
+        autoHideDuration={6000}
+        onClose={() => setErrorMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </Alert>
+      </Snackbar>
       {isLastInGroup && <Box mx={1.5} my={1} />}
     </Box>
   );
@@ -225,6 +277,7 @@ export const VisitCard = ({
                     <DetectionItem
                       key={`${detection.video_id}-${index}`}
                       detection={detection}
+                      speciesName={visit.species.name}
                       onClick={() => navigate(`/videos/${detection.video_id}`)}
                       isLastInGroup={index === group.length - 1}
                     />

@@ -269,7 +269,8 @@
     "clickForHelp": "Нажмите для справки",
     "appName": "BirdLense Hub",
     "na": "н/д",
-    "help": "Справка"
+    "help": "Справка",
+    "iNaturalist": "Отправить в iNaturalist"
   },
   "unknowns": {
     "title": "Неизвестные",
