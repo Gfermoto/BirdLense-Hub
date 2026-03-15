@@ -18,7 +18,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import RouteIcon from '@mui/icons-material/Route';
-import { BASE_API_URL } from '../../api/api';
+import DownloadIcon from '@mui/icons-material/Download';
+import { BASE_API_URL, exportDataset } from '../../api/api';
 
 interface StorageStats {
   date: string;
@@ -66,6 +67,7 @@ export const StorageManagement = () => {
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | null>(null);
+  const [exportingDataset, setExportingDataset] = useState(false);
 
   const {
     data: storageStats,
@@ -339,6 +341,24 @@ export const StorageManagement = () => {
                 startIcon={<RouteIcon />}
               >
                 {regenerateTracksMutation.isPending ? t('storage.regenerating') : t('storage.regenerateTracks')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={exportingDataset}
+                onClick={async () => {
+                  setExportingDataset(true);
+                  setError(null);
+                  try {
+                    await exportDataset();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : t('storage.datasetExportFailed'));
+                  } finally {
+                    setExportingDataset(false);
+                  }
+                }}
+                startIcon={<DownloadIcon />}
+              >
+                {exportingDataset ? t('storage.exporting') : t('storage.exportDataset')}
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
                 {t('storage.scanHint')}

@@ -98,7 +98,7 @@ def register_routes(app):
                     daemon=True,
                 ).start()
 
-            return {'message': 'Video and associated data inserted successfully.'}, 201
+            return {'message': 'Video and associated data inserted successfully.', 'video_id': video.id}, 201
 
         except Exception as e:
             db.session.rollback()

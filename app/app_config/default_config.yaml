@@ -25,6 +25,9 @@ processor:
     - "Woodpeckers"
     - "Squirrel"
   save_images: false
+  # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
+  save_dataset_crops: false
+  dataset_min_confidence: 0.5
   detection_strategy: "two_stage"
   models:
     # x86/amd64: use .pt (PyTorch). ARM: use best_ncnn_model

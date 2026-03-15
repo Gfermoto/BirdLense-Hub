@@ -80,6 +80,26 @@ export const fetchVideo = async (id: string) => {
   return response.data;
 };
 
+/** Export dataset crops as ZIP. Requires settings access. */
+export const exportDataset = async (): Promise<void> => {
+  const res = await fetch(`${BASE_API_URL}/dataset/export`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition');
+  const match = cd?.match(/filename="?([^";\n]+)"?/);
+  const filename = match?.[1] || 'birdlense_dataset.zip';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 /** Download detection crop for iNaturalist. Opens iNaturalist upload in new tab. */
 export const downloadDetectionCropForINaturalist = async (
   detectionId: number,

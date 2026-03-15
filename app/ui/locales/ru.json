@@ -164,6 +164,10 @@
     "unknownConfidenceThresholdHelp": "Детекции с confidence ниже этого (0–1) попадают в «Неизвестные» для ручной проверки. 0.5 — по умолчанию.",
     "spectrogramDetail": "Детализация спектрограммы",
     "spectrogramDetailHelp": "Пикселей на секунду (когда приходит событие BirdNET)",
+    "saveDatasetCrops": "Сохранять датасет для дообучения",
+    "saveDatasetCropsHelp": "Лучшие кадры в data/dataset/train/<Вид>. Экспорт — Система → Управление хранилищем",
+    "datasetMinConfidence": "Мин. confidence для датасета",
+    "datasetMinConfidenceHelp": "0.0–1.0. Кадры с меньшей уверенностью не сохраняются",
     "birdFamilies": "Семейства птиц",
     "resolution": "Разрешение записи",
     "resolutionHint": "Размер кадра при захвате и записи видео. Влияет на качество записи и нагрузку.",
@@ -260,7 +264,10 @@
     "regenerateTracksFailed": "Ошибка перегенерации треков",
     "regenerateTimeout": "Таймаут ожидания результата",
     "regenerateFailed": "Ошибка перегенерации",
-    "spectrogramRegenStarted": "Генерация спектрограмм запущена в фоне"
+    "spectrogramRegenStarted": "Генерация спектрограмм запущена в фоне",
+    "exportDataset": "Экспорт датасета",
+    "exporting": "Экспорт...",
+    "datasetExportFailed": "Ошибка экспорта датасета"
   },
   "common": {
     "cancel": "Отмена",

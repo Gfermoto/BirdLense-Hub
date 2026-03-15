@@ -1392,6 +1392,41 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.save_dataset_crops">
+                {(field) => (
+                  <FormControl fullWidth>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={!!field.state.value}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.saveDatasetCrops')}
+                    />
+                    <FormHelperText>{t('settings.saveDatasetCropsHelp')}</FormHelperText>
+                  </FormControl>
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.dataset_min_confidence">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 1, step: 0.01 }}
+                    value={field.state.value ?? 0.5}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || undefined)
+                    }
+                    label={t('settings.datasetMinConfidence')}
+                    helperText={t('settings.datasetMinConfidenceHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
             <Grid size={{ xs: 12 }}>
               <form.Field name="video.video_width">
                 {(widthField) => (

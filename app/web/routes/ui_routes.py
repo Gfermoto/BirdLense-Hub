@@ -17,6 +17,7 @@ from services.xeno_canto_service import fetch_recordings, _search_term_from_spec
 from services.ebird_export_service import build_ebird_csv
 from services.detection_crop_service import extract_detection_frame, crop_filename
 from services.web_push_service import get_vapid_public_key
+from services.dataset_export_service import build_dataset_zip, move_crop_on_species_correction
 
 
 
@@ -746,6 +747,21 @@ def register_routes(app):
             headers={'Content-Disposition': f'attachment; filename="{filename}"'}
         )
 
+    @app.route('/api/ui/dataset/export', methods=['GET'])
+    def export_dataset():
+        """Export dataset crops as ZIP (train/val + dataset_info.json)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        zip_bytes, err = build_dataset_zip()
+        if err:
+            return {'error': err}, 404
+        filename = f'birdlense_dataset_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")}Z.zip'
+        return Response(
+            zip_bytes,
+            mimetype='application/zip',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):
         """Correct species for a low-confidence detection."""
@@ -767,6 +783,7 @@ def register_routes(app):
 
         old_visit = vs.species_visit
         old_species_id = vs.species_id
+        old_species_name = vs.species.name
 
         if vs.species_id == species_id:
             return {'message': 'Species unchanged'}, 200
@@ -799,6 +816,16 @@ def register_routes(app):
             vp._update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
+
+        # Move dataset crop to new species dir when user corrects species
+        if vs.source == 'video':
+            move_crop_on_species_correction(
+                video_id=vs.video_id,
+                track_id=vs.track_id,
+                old_species_name=old_species_name,
+                new_species_name=species.name,
+            )
+
         return {'message': 'Species updated', 'species_id': species_id}, 200
 
     @app.route('/api/ui/species', methods=['GET'])
