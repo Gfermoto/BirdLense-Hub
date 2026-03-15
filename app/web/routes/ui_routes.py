@@ -6,7 +6,7 @@ from flask import request, session, Response
 import json as json_module
 from sqlalchemy import func, case, distinct
 from datetime import datetime, timezone, timedelta
-from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, video_bird_food_association
+from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
 from util import fetch_weather, update_species_info_from_wiki, ensure_utc, settings_check_access
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
@@ -16,6 +16,7 @@ from services.report_service import get_monthly_report_data, build_monthly_repor
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
 from services.ebird_export_service import build_ebird_csv
 from services.detection_crop_service import extract_detection_frame, crop_filename
+from services.web_push_service import get_vapid_public_key
 
 
 
@@ -43,6 +44,45 @@ def register_routes(app):
     @app.route('/api/ui/health', methods=['GET'])
     def health():
         return {'status': 'ok'}
+
+    @app.route('/api/ui/push/vapid-public', methods=['GET'])
+    def push_vapid_public():
+        """Public VAPID key for Web Push subscription."""
+        key = get_vapid_public_key()
+        if not key:
+            return {'error': 'Web Push not available'}, 503
+        return {'vapid_public_key': key}, 200
+
+    @app.route('/api/ui/push/subscribe', methods=['POST'])
+    def push_subscribe():
+        """Register a Web Push subscription. Requires web_push.enabled and general.enable_notifications."""
+        if not app_config.get('general.enable_notifications'):
+            return {'error': 'Notifications disabled'}, 400
+        data = request.json or {}
+        sub = data.get('subscription')
+        if not sub or not isinstance(sub, dict):
+            return {'error': 'subscription required'}, 400
+        endpoint = (sub.get('endpoint') or '').strip()
+        keys = sub.get('keys') or {}
+        p256dh = (keys.get('p256dh') or keys.get('p256dh') or '').strip()
+        auth = (keys.get('auth') or '').strip()
+        if not endpoint or not p256dh or not auth:
+            return {'error': 'subscription.endpoint and subscription.keys (p256dh, auth) required'}, 400
+        # Enable web_push when first subscription is added
+        app_config.set('web_push.enabled', True)
+        app_config.save()
+        existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
+        if existing:
+            existing.p256dh = p256dh
+            existing.auth = auth
+            existing.user_agent = (request.headers.get('User-Agent') or '')[:512]
+            db.session.commit()
+            return {'message': 'Subscription updated'}, 200
+        ps = PushSubscription(endpoint=endpoint, p256dh=p256dh, auth=auth,
+                              user_agent=(request.headers.get('User-Agent') or '')[:512])
+        db.session.add(ps)
+        db.session.commit()
+        return {'message': 'Subscribed'}, 201
 
     @app.route('/api/ui/cameras', methods=['GET'])
     def list_cameras():

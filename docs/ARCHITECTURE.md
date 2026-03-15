@@ -53,9 +53,10 @@
 ### UI
 
 1. **React SPA** → `index.html`, static assets
-2. **API** → `/api/ui/*` (health, status, timeline, videos, settings, birdfood и др.)
-3. **Видео** → `/data/recordings/...` (nginx alias)
-4. **Live** → `/processor/live` (MJPEG от processor) или `/go2rtc/stream.html`
+2. **API** → `/api/ui/*` (health, status, timeline, timeline/export, videos, unknowns, detections/:id/crop, report/pdf, species/:id/xeno-canto, settings, birdfood и др.)
+3. **Метрики** → `GET /metrics` (Prometheus)
+4. **Видео** → `/data/recordings/...` (nginx alias)
+5. **Live** → `/processor/live` (MJPEG от processor) или `/go2rtc/stream.html`
 
 ## База данных
 
@@ -75,12 +76,13 @@
 
 | Путь | Описание |
 |------|----------|
-| `/` | Overview — статистика, графики |
-| `/timeline` | Timeline — записи по дням |
-| `/videos/:id` | VideoDetails — плеер, детекции, спектрограмма |
+| `/` | Overview — статистика, графики, виджет «Последняя птица», PDF-отчёт |
+| `/timeline` | Timeline — записи (дата + время суток: Утро, День, Вечер, Ночь), экспорт CSV/JSON/eBird, iNaturalist |
+| `/unknowns` | Неизвестные — детекции с низкой confidence для ручной проверки |
+| `/videos/:id` | VideoDetails — плеер (0.5x, 2x), детекции, спектрограмма, iNaturalist |
 | `/live` | Live — поток с камер |
 | `/species` | Bird Directory — дерево видов |
-| `/species/:id` | Species Summary |
+| `/species/:id` | Species Summary — Xeno-canto (песни птиц) |
 | `/settings` | Настройки |
 | `/system` | System — Storage, Activity, Monitor, Processor Logs |
 | `/food` | Food Management |

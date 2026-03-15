@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 SENSITIVE_KEYS = frozenset({
     'general.settings_password',
     'notifications.telegram_bot_token',
+    'web_push.vapid_private_key',
     'mqtt.password',
     'video.go2rtc_password',
     'weather.ha_token',

@@ -1,0 +1,99 @@
+"""Web Push notifications — отправка push в браузер при детекциях."""
+import json
+import logging
+from typing import Optional
+
+from app_config.app_config import app_config
+from models import db, PushSubscription
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_vapid_keys() -> tuple[str, str]:
+    """Генерирует и сохраняет VAPID ключи, если их нет."""
+    pub = (app_config.get('web_push.vapid_public_key') or '').strip()
+    priv = (app_config.get('web_push.vapid_private_key') or '').strip()
+    if pub and priv:
+        return pub, priv
+    try:
+        from vapid import Vapid
+        vapid = Vapid()
+        vapid.generate_keys()
+        priv = vapid.private_key
+        pub = vapid.public_key
+        app_config.set('web_push.vapid_public_key', pub)
+        app_config.set('web_push.vapid_private_key', priv)
+        app_config.save()
+        return pub, priv
+    except Exception as e:
+        logger.warning("Web Push: failed to generate VAPID keys: %s", e)
+        raise
+
+
+def get_vapid_public_key() -> Optional[str]:
+    """Возвращает публичный VAPID ключ для подписки клиента."""
+    if not app_config.get('general.enable_notifications'):
+        return None
+    try:
+        pub, _ = _ensure_vapid_keys()
+        return pub
+    except Exception:
+        return None
+
+
+def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -> int:
+    """
+    Отправляет push всем подписчикам. Возвращает количество успешно отправленных.
+    """
+    if not app_config.get('general.enable_notifications'):
+        return 0
+    if not app_config.get('web_push.enabled', False):
+        return 0
+    subs = PushSubscription.query.all()
+    if not subs:
+        return 0
+    try:
+        pub, priv = _ensure_vapid_keys()
+    except Exception:
+        return 0
+    base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
+    url = f"{base_url}/{link}" if base_url else None
+    payload = {
+        'title': 'BirdLense',
+        'body': message,
+        'tag': tag or 'detection',
+        'url': url or '/',
+    }
+    payload_json = json.dumps(payload)
+    sent = 0
+    expired = []
+    try:
+        from pywebpush import webpush, WebPushException
+        for sub in subs:
+            try:
+                subscription_info = {
+                    'endpoint': sub.endpoint,
+                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                }
+                webpush(
+                    subscription_info=subscription_info,
+                    data=payload_json,
+                    vapid_private_key=priv,
+                    vapid_claims={'sub': 'mailto:birdlense@local'},
+                )
+                sent += 1
+            except WebPushException as e:
+                if e.response and e.response.status_code in (404, 410):
+                    expired.append(sub.id)
+                else:
+                    logger.warning("Web Push failed for %s: %s", sub.endpoint[:50], e)
+            except Exception as e:
+                logger.warning("Web Push error for subscription: %s", e)
+    except ImportError:
+        logger.warning("pywebpush not installed, skipping Web Push")
+        return 0
+    for sub_id in expired:
+        PushSubscription.query.filter_by(id=sub_id).delete()
+    if expired:
+        db.session.commit()
+    return sent

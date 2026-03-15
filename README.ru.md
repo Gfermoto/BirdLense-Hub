@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](./CHANGELOG.md) [English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](./CHANGELOG.md) [English](./README.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
@@ -41,16 +41,32 @@
 
 ## Возможности
 
+### Основное
 - **Видео** — поток с IP-камер через [Go2RTC](https://github.com/AlexxIT/Go2RTC), оверлеи детекций в реальном времени
 - **Детекция птиц** — кастомный YOLO + ByteTrack, двухэтапная стратегия (бинарный детектор + классификатор видов)
 - **Аудио** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) через MQTT (BirdNET-Pi/Go)
 - **Триггеры** — OpenCV motion, события Frigate, MQTT binary, ESPHome
-- **Таймлайн** — воспроизведение видео, спектрограммы, визуализация треков, визиты видов
-- **UI** — React, Material UI, i18n (en/ru), адаптивный
+- **Таймлайн** — дата + время суток (Утро, День, Вечер, Ночь 22–06), воспроизведение видео, спектрограммы, визиты видов
+- **UI** — React, Material UI, i18n (en/ru), адаптивный, PWA (установка на экран, офлайн)
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — Telegram Bot API
 - **MCP** — Model Context Protocol для внешних инструментов
-- **Исследования** — сбор датасетов, дообучение моделей (см. docs)
+
+### Аналитика и экспорт
+- **CSV/JSON** — скачать визиты для анализа в Excel/Python
+- **eBird** — формат чеклиста для импорта в eBird.org
+- **PDF-отчёт** — месячная сводка: виды, топ-5, графики
+- **Prometheus** — метрики `/metrics` для Grafana
+
+### Гражданская наука
+- **iNaturalist** — экспорт в один клик: кадр из видео → inaturalist.org/observations/upload
+- **Неизвестные** — детекции с низкой уверенностью для ручной проверки
+
+### Интеграции
+- **Webhook** — POST при каждой детекции (IFTTT, Zapier)
+- **Песни птиц** — Xeno-canto на странице вида
+- **Confidence по виду** — ниже порог для редких птиц
+- **Исследования** — сбор датасетов, дообучение (см. [docs](./docs))
 
 ## Быстрый старт
 
@@ -61,7 +77,7 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
+**Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
 
 При первом запуске `make setup` создаёт `app/.env` с `PROCESSOR_SECRET` и `FLASK_SECRET_KEY` автоматически.
 

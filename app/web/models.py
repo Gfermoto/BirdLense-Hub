@@ -146,6 +146,19 @@ class ActivityLog(db.Model):
     )
 
 
+class PushSubscription(db.Model):
+    """Web Push subscription for browser notifications."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(String(2048), nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(512), nullable=False)
+    auth: Mapped[str] = mapped_column(String(256), nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index('ix_pushsubscription_endpoint', 'endpoint'),)
+
+
 class SpeciesVisit(db.Model):
     """Represents a continuous period when a species species was present, groups video and audio detections"""
     id: Mapped[int] = mapped_column(primary_key=True)

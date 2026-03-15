@@ -1,5 +1,7 @@
 # Установка BirdLense Hub
 
+BirdLense Hub — мониторинг кормушки: детекция птиц по видео и аудио, записи, аналитика, экспорт в eBird и iNaturalist. Работает в Docker на x86.
+
 ## Требования
 
 | Компонент | Описание |
@@ -19,6 +21,8 @@ make pull
 Образ: `ghcr.io/gfermoto/birdlense-hub:latest`
 
 UI: http://localhost:8085
+
+**После установки:** Timeline (записи), Overview (статистика), Live (поток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные» (низкая confidence), iNaturalist (кадр из видео).
 
 ## Вариант 2: Сборка из исходников
 
