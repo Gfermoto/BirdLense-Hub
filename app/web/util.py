@@ -365,12 +365,20 @@ def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
 
 
 def notify(message, link="live", tags=None, image_path=None, timestamp=None):
-    """Send notification via Telegram. Requires token and chat_id in config.
+    """Send notification via Telegram and/or Web Push. Requires token+chat_id or Web Push subscribers.
 
     timestamp: datetime or Unix int for dynamic time <t:unix:R> (Bot API 9.5).
     """
     if not app_config.get('general.enable_notifications'):
         return
+    # Web Push (параллельно с Telegram)
+    try:
+        from services.web_push_service import send_web_push
+        icon = "chipmunk" if tags and any(s in (tags or "").lower() for s in (
+            "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
+        send_web_push(message, link=link, tag=icon)
+    except Exception as e:
+        logging.warning("Web Push notify error: %s", e)
     token = (app_config.get('notifications.telegram_bot_token') or '').strip()
     chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
     if not token or not chat_id:

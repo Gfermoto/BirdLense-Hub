@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import { Settings, Species } from '../../types';
-import { fetchCoordinatesByZip } from '../../api/api';
+import { fetchCoordinatesByZip, fetchVapidPublicKey, subscribePush } from '../../api/api';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -26,6 +26,87 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { PasswordField } from '../../components/PasswordField';
 
 type CameraRow = { stream_name?: string; name?: string };
+
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'idle' | 'loading' | 'subscribed' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
+  const handleSubscribe = async () => {
+    if (!notificationsEnabled) return;
+    if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
+      setErrorMsg(t('settings.webPushUnsupported'));
+      setStatus('error');
+      return;
+    }
+    if (typeof window !== 'undefined' && !window.isSecureContext && !window.location.hostname.includes('localhost')) {
+      setErrorMsg(t('settings.webPushUnsupported'));
+      setStatus('error');
+      return;
+    }
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        setErrorMsg('Permission denied');
+        setStatus('error');
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const vapidKey = await fetchVapidPublicKey();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      await subscribePush(sub);
+      setStatus('subscribed');
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Failed');
+      setStatus('error');
+    }
+  };
+
+  const supported = typeof window !== 'undefined' && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator;
+  const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost');
+
+  if (!supported || !isSecure) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        {t('settings.webPushUnsupported')}
+      </Typography>
+    );
+  }
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {t('settings.webPushDesc')}
+      </Typography>
+      <Button
+        variant="outlined"
+        onClick={handleSubscribe}
+        disabled={!notificationsEnabled || status === 'loading'}
+      >
+        {status === 'loading' ? '...' : status === 'subscribed' ? t('settings.webPushSubscribed') : t('settings.webPushSubscribe')}
+      </Button>
+      {errorMsg && (
+        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+          {errorMsg}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 function CamerasListField({
   value,
@@ -836,6 +917,13 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
+        <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
+          {(notificationsEnabled) => (
+            <Grid size={{ xs: 12 }}>
+              <WebPushSubscribeButton notificationsEnabled={!!notificationsEnabled} />
+            </Grid>
+          )}
+        </form.Subscribe>
       </Grid>
 
       <Divider sx={{ my: 4 }} />

@@ -18,6 +18,7 @@
 
 | Документ | Описание |
 |----------|----------|
+| [FEATURES.md](./FEATURES.md) | **Полный список возможностей** — для разработчиков |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
 | [API.md](./API.md) | Эндпоинты UI, System, Processor |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, автодеплой |

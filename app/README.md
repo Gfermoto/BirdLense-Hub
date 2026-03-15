@@ -2,6 +2,8 @@
 
 Один контейнер. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
 
+**Возможности:** Timeline (дата + время суток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные», iNaturalist, Xeno-canto, Prometheus. См. [docs/FEATURES.md](../docs/FEATURES.md).
+
 ## Запуск
 
 ### Вариант 1: Готовый образ (рекомендуется)

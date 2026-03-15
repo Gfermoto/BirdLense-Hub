@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -41,16 +41,32 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 
 ## Features
 
+### Core
 - **Live video** — streaming from IP cameras via [Go2RTC](https://github.com/AlexxIT/Go2RTC), real-time detection overlays
 - **Bird detection** — custom YOLO + ByteTrack tracking, two-stage strategy (binary detector + species classifier)
 - **Audio** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) sightings via MQTT (BirdNET-Pi/Go)
 - **Triggers** — OpenCV motion, Frigate events, MQTT binary, ESPHome
-- **Timeline** — video playback, spectrograms, track visualization, species visits
-- **UI** — React, Material UI, i18n (en/ru), mobile-friendly
+- **Timeline** — date + time-of-day filter (Morning, Day, Evening, Night 22–06), video playback, spectrograms, track visualization
+- **UI** — React, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
 - **MCP** — Model Context Protocol for external tools
-- **Research** — dataset collection, model fine-tuning (see docs)
+
+### Analytics & Export
+- **CSV/JSON export** — download visits for analysis in Excel/Python
+- **eBird export** — checklist format for import into eBird.org
+- **PDF report** — monthly summary: species count, top-5, charts
+- **Prometheus metrics** — `/metrics` for Grafana dashboards
+
+### Citizen Science
+- **iNaturalist** — one-click export: download crop from video, open inaturalist.org/observations/upload
+- **Unknowns** — low-confidence detections for manual review and correction
+
+### Integrations
+- **Webhook** — POST on each detection (IFTTT, Zapier)
+- **Bird song player** — Xeno-canto recordings on species page
+- **Confidence per species** — lower threshold for rare birds
+- **Research** — dataset collection, model fine-tuning (see [docs](./docs))
 
 ## Quick Start
 
@@ -61,7 +77,7 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md)
+**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 
