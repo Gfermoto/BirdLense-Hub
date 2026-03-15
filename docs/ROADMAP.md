@@ -57,18 +57,16 @@
 
 State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected/state`. Device «BirdLense Hub» с configuration_url из `notifications.base_url`.
 
-### 2. Датасет из лучших кадров — экспорт архивом
+### 2. ✅ Датасет из лучших кадров — экспорт архивом (выполнено)
 
 **Цель:** Лучшие картинки (best_frame) сохраняются в формате YOLO classification, пользователь может скачать архивом для дообучения.
 
-**Текущее:** `best_frame` хранится в памяти, передаётся в API. `save_images` — debug-кадры в `data/test/`, не по видам.
+**Реализовано:**
 
-**Что сделать:**
-
-1. **Сохранение best_frame на диск** — путь `data/dataset/train/<Species_Name>/<video_id>_<track_id>_<frame>.jpg`, формат `Scientific (Common)`, фильтр confidence >= 0.5. Опция `processor.save_dataset_crops: true`.
-2. **Подтверждение/коррекция** — при исправлении вида в UI переместить файл или пометить в метаданных.
-3. **API экспорта** — `GET /api/ui/dataset/export` → `birdlense_dataset_YYYYMMDD.zip` со структурой `train/ClassName/*.jpg`, `val/`, `dataset_info.json`.
-4. **Разметка** — использовать `species` из VideoSpecies (подтверждённый или исправленный).
+1. **Сохранение best_frame на диск** — путь `data/dataset/train/<Species_Name>/<video_id>_<track_id>_<idx>.jpg`, формат `Scientific (Common)`, фильтр `processor.dataset_min_confidence` (по умолчанию 0.5). Опция `processor.save_dataset_crops: true` в Настройки → Processor.
+2. **Коррекция вида** — при исправлении вида в Unknowns/VideoDetails файл перемещается в директорию нового вида.
+3. **API экспорта** — `GET /api/ui/dataset/export` → ZIP со структурой `train/ClassName/*.jpg`, `val/` (если есть), `dataset_info.json`. Кнопка «Экспорт датасета» в Система → Управление хранилищем.
+4. **Разметка** — используется `species` из VideoSpecies (подтверждённый или исправленный).
 
 ### 3. Новые предложения
 

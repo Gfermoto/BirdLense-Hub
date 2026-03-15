@@ -17,6 +17,7 @@ from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
 from fps_tracker import FPSTracker
 from api import API
+from dataset_saver import save_dataset_crops
 from sources.video_file_source import VideoFileSource
 from sources.go2rtc_stream_source import Go2RTCStreamSource
 from sources.go2rtc_stream_source import _build_stream_url
@@ -438,8 +439,14 @@ def main():
                     f'No detections after merge. YOLO tracks: {len(frame_processor.tracks)}, '
                     f'MQTT events in window: {len(mqtt_events)}')
             if len(video_detections) > 0:
-                api.create_video(video_detections, audio_detections, start_time,
-                                 end_time, video_path_for_api, spectrogram_path)
+                resp = api.create_video(video_detections, audio_detections, start_time,
+                                        end_time, video_path_for_api, spectrogram_path)
+                video_id = resp.get('video_id') if isinstance(resp, dict) else None
+                if (video_id is not None and app_config.get('processor.save_dataset_crops')
+                        and video_detections):
+                    data_dir = os.environ.get('DATA_DIR', 'data')
+                    min_conf = float(app_config.get('processor.dataset_min_confidence', 0.5))
+                    save_dataset_crops(video_detections, video_id, data_dir, min_confidence=min_conf)
                 # Уведомления — после merge (Frigate/YOLO), без фото, превью по ссылке
                 seen = set()
                 for d in video_detections:

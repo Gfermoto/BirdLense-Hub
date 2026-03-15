@@ -164,6 +164,10 @@
     "unknownConfidenceThresholdHelp": "Detections with confidence below this (0–1) appear in «Unknowns» for manual review. 0.5 = default.",
     "spectrogramDetail": "Spectrogram detail",
     "spectrogramDetailHelp": "Pixels per second (when BirdNET event arrives)",
+    "saveDatasetCrops": "Save dataset for fine-tuning",
+    "saveDatasetCropsHelp": "Best frames to data/dataset/train/<Species>. Export — System → Storage Management",
+    "datasetMinConfidence": "Min confidence for dataset",
+    "datasetMinConfidenceHelp": "0.0–1.0. Frames with lower confidence are not saved",
     "birdFamilies": "Bird families",
     "resolution": "Recording resolution",
     "resolutionHint": "Frame size for capture and recording. Affects quality and load.",
@@ -260,7 +264,10 @@
     "regenerateTracksFailed": "Failed to regenerate tracks",
     "regenerateTimeout": "Timeout waiting for result",
     "regenerateFailed": "Failed to regenerate spectrograms",
-    "spectrogramRegenStarted": "Spectrogram regeneration started in background"
+    "spectrogramRegenStarted": "Spectrogram regeneration started in background",
+    "exportDataset": "Export dataset",
+    "exporting": "Exporting...",
+    "datasetExportFailed": "Dataset export failed"
   },
   "common": {
     "cancel": "Cancel",

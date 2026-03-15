@@ -33,6 +33,7 @@
 | **PDF-отчёт** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
 | **Prometheus** | `GET /metrics` | 0.1.3 |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
+| **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + dataset_info.json | 0.1.5 |
 
 ---
 
@@ -48,6 +49,7 @@
 | **Источник детекции** | YOLO / Frigate / BirdNET в карточках |
 | **Xeno-canto** | Песни птиц на странице вида |
 | **Confidence по виду** | `processor.species_confidence_overrides` |
+| **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
 
 ---
 
@@ -84,6 +86,7 @@
 | GET | `/api/ui/unknowns` | Низкая confidence |
 | PATCH | `/api/ui/detections/:id` | Исправить вид |
 | GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
+| GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
 | GET | `/api/ui/report/pdf` | PDF-отчёт |
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
 | GET | `/metrics` | Prometheus |
