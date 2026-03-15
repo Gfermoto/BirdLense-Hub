@@ -1,6 +1,8 @@
 import copy
 import logging
 import os
+import shutil
+from datetime import datetime
 
 import yaml
 
@@ -9,6 +11,7 @@ logger = logging.getLogger(__name__)
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset({
     'general.settings_password',
+    'general.contributor_password',
     'notifications.telegram_bot_token',
     'web_push.vapid_private_key',
     'mqtt.password',
@@ -136,6 +139,12 @@ class AppConfig:
 
     def save(self, filename=None):
         save_file = filename or self.user_config_file
+        if os.path.exists(save_file):
+            bak = f'{save_file}.bak'
+            try:
+                shutil.copy2(save_file, bak)
+            except OSError as e:
+                logger.warning('Could not create backup %s: %s', bak, e)
         with open(save_file, 'w') as file:
             yaml.safe_dump(self.config, file)
 

@@ -182,9 +182,20 @@ class TestStatus:
 class TestSettings:
     def test_settings_get_returns_config(self, client):
         r = client.get('/api/ui/settings')
+        # 200 без пароля или с сессией; 403 если пароль задан и сессии нет
+        assert r.status_code in (200, 403)
+        if r.status_code == 200:
+            assert isinstance(r.json, dict)
+
+    def test_settings_with_mcp_token(self, app, client):
+        """MCP token в Authorization даёт доступ к settings без сессии."""
+        from app_config.app_config import app_config
+        token = (app_config.get('mcp.token') or '').strip()
+        if not token:
+            pytest.skip('mcp.token not configured')
+        r = client.get('/api/ui/settings', headers={'Authorization': f'Bearer {token}'})
         assert r.status_code == 200
-        data = r.json
-        assert isinstance(data, dict)
+        assert isinstance(r.json, dict)
 
 
 class TestFeed:
@@ -232,6 +243,13 @@ class TestSpecies:
         r = client.get('/api/ui/species')
         assert r.status_code == 200
         assert isinstance(r.json, list)
+
+    def test_species_observed_returns_list(self, client):
+        r = client.get('/api/ui/species/observed')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+        for item in r.json:
+            assert 'id' in item and 'name' in item and 'count' in item
 
 
 class TestBirdFamilies:

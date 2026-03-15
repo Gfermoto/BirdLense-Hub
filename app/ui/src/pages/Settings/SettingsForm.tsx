@@ -9,7 +9,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
-import { Settings, Species } from '../../types';
+import { Settings } from '../../types';
 import { fetchCoordinatesByZip, fetchVapidPublicKey, subscribePush } from '../../api/api';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
@@ -196,13 +196,11 @@ function CamerasListField({
 
 export const SettingsForm = ({
   currentSettings,
-  birdFamilies,
   observedSpecies,
   onSubmit,
 }: {
   currentSettings: Settings;
-  birdFamilies: Partial<Species>[];
-  observedSpecies: Species[];
+  observedSpecies: Array<{ id: number; name: string; count: number }>;
   onSubmit: (settings: Settings) => void;
 }) => {
   const { t } = useTranslation();
@@ -1106,6 +1104,19 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="general.contributor_password">
+            {(field) => (
+              <PasswordField
+                value={field.state.value ?? ''}
+                onChange={(v) => field.handleChange(v)}
+                label={t('settings.contributorPassword')}
+                placeholder={t('settings.contributorPasswordPlaceholder')}
+                helperText={t('settings.contributorPasswordHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
       </Grid>
 
       <Divider sx={{ my: 4 }} />
@@ -1366,29 +1377,6 @@ export const SettingsForm = ({
               <form.Field name="processor.tracker">
                 {(field) => (
                   <TextField fullWidth value={field.state.value ?? ''} onChange={(e) => field.handleChange(e.target.value)} label={t('settings.objectTracker')} />
-                )}
-              </form.Field>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <form.Field name="processor.included_bird_families">
-                {(field) => (
-                  <FormControl fullWidth>
-                    <InputLabel>{t('settings.birdFamilies')}</InputLabel>
-                    <Select
-                      multiple
-                      value={field.state.value || []}
-                      onChange={(e) => field.handleChange(e.target.value as string[])}
-                      label={t('settings.birdFamilies')}
-                      renderValue={(selected) => selected.join(', ')}
-                    >
-                      {(birdFamilies ?? []).map((family) => (
-                        <MenuItem key={family.id} value={family.name}>
-                          <Checkbox checked={(field.state.value || []).includes(family.name as string)} />
-                          <ListItemText primary={family.name} />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
                 )}
               </form.Field>
             </Grid>

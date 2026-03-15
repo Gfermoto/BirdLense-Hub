@@ -31,6 +31,7 @@ import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { PageHelp } from '../../components/PageHelp';
 import { unknownsHelpConfig } from '../../page-help-config';
+import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 
 function UnknownCard({
   detection,
@@ -121,32 +122,37 @@ function UnknownCard({
               <Typography variant="caption">{t('unknowns.viewVideo')}</Typography>
             </Box>
           </CardActionArea>
-          {canEdit && (
-            <Box display="flex" flexDirection="column" gap={1} minWidth={200}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>{t('unknowns.correctSpecies')}</InputLabel>
-                <Select
-                  value={selectedSpeciesId}
-                  label={t('unknowns.correctSpecies')}
-                  onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
-                >
-                  {speciesList.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Button
-                variant="contained"
-                size="small"
-                disabled={selectedSpeciesId === '' || correcting}
-                onClick={handleCorrect}
+          <Box display="flex" flexDirection="column" gap={1} minWidth={200}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>{t('unknowns.correctSpecies')}</InputLabel>
+              <Select
+                value={selectedSpeciesId}
+                label={t('unknowns.correctSpecies')}
+                onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
+                disabled={!canEdit}
               >
-                {correcting ? '...' : t('unknowns.apply')}
-              </Button>
-            </Box>
-          )}
+                {speciesList.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={selectedSpeciesId === '' || correcting || !canEdit}
+              onClick={handleCorrect}
+              title={!canEdit ? t('unknowns.passwordRequired') : undefined}
+            >
+              {correcting ? '...' : t('unknowns.apply')}
+            </Button>
+            {!canEdit && (
+              <Typography variant="caption" color="text.secondary">
+                {t('unknowns.passwordRequired')}
+              </Typography>
+            )}
+          </Box>
         </Box>
       </CardContent>
     </Card>
@@ -156,8 +162,8 @@ function UnknownCard({
 export function UnknownsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { requiresPassword, unlocked } = useProtectedArea();
-  const canEdit = !requiresPassword || unlocked;
+  const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
   const [dateTime, setDateTime] = useState<Dayjs | null>(() => dayjs());
 
@@ -221,11 +227,31 @@ export function UnknownsPage() {
         </LocalizationProvider>
       </Box>
 
-      {!canEdit && (
+      {!canEdit && requiresPassword && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {t('unknowns.passwordRequired')}
+          {t('unknowns.passwordRequired')}{' '}
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setShowUnlockDialog(true)}
+            sx={{ mr: 1 }}
+          >
+            {t('settings.passwordSubmit')}
+          </Button>
+          <Link to="/settings" style={{ fontWeight: 600 }}>
+            {t('nav.settings')}
+          </Link>
         </Alert>
       )}
+      <SettingsPasswordDialog
+        open={showUnlockDialog}
+        onSuccess={(role) => {
+          setUnlocked(true, role || 'admin');
+          setShowUnlockDialog(false);
+          queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+        }}
+        onClose={() => setShowUnlockDialog(false)}
+      />
 
       {unknowns?.length === 0 ? (
         <Alert severity="info">{t('unknowns.empty')}</Alert>
