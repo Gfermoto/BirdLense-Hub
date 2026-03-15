@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 INATURALIST_UPLOAD_URL = "https://www.inaturalist.org/observations/upload"
 
+# Path traversal: only allow DB format data/recordings/YYYY/MM/DD/timestamp/video.mp4
+VIDEO_PATH_SAFE_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+
 
 def _app_base_for_video_path():
     """Base dir for video_path from DB (data/recordings/YYYY/MM/DD/...). Returns app root."""
@@ -30,6 +33,9 @@ def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
     offset_sec: seconds from video start
     Returns JPEG bytes or None on failure.
     """
+    if not video_path or not VIDEO_PATH_SAFE_RE.match(video_path):
+        logger.warning("Rejected invalid video_path format")
+        return None
     base = _app_base_for_video_path()
     full_path = os.path.join(base, video_path) if not os.path.isabs(video_path) else video_path
     if not os.path.isfile(full_path):

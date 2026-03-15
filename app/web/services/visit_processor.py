@@ -100,7 +100,7 @@ class VisitProcessor:
         for det in detections:
             species = self._get_or_create_species(det['species_name'])
             if not species:
-                self.logger.warn(f'Could not create species "{det["species_name"]}"')
+                self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue
 
             # Update species info from Wikipedia

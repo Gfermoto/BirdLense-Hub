@@ -82,8 +82,9 @@ def register_routes(app):
             active_bird_foods = BirdFood.query.filter_by(active=True).all()
             video.food.extend(active_bird_foods)
 
-            # Process all detections
-            visit_processor = VisitProcessor(db, app.logger)
+            # Process all detections (visit_timeout = dedup_window для согласованности)
+            visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 45)
+            visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
             visit_processor.process_detections(video, species_list)
 
             # Save everything

@@ -8,7 +8,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.1.5] - 2026-03-15
+
 ### Added
+
+- **lastDetection по end_time** — виджет «Последняя птица» показывает последнее по времени наблюдение (order_by end_time), не первое.
+- **Bird = неопределённый объект** — «Bird»/«bird» без вида не считается в overview (топ, статистика), всегда в Unknowns.
+- **MQTT merge по timestamp** — MQTT-события используют реальное время (не растягивают на всё видео).
+- **Унификация окон merge** — visit_timeout = dedup_window_seconds (45 сек по умолчанию).
+
+### Fixed
+
+- **Code review fixes** — `datetime.now()` → UTC в Overview и activity; `logger.warn` → `logger.warning`; `request.json or {}` в purge_storage; валидация `species_id` (int).
+- **Race при регенерации** — блокировка повторного запуска (409 если уже running).
+- **Path traversal** — проверка формата video_path в detection_crop_service.
+
+### Refactored
+
+- **parse_utc_timestamp** — утилита для парсинга timestamp.
+- **get_primary_video_for_visit**, **format_visit_for_timeline** — хелперы для timeline.
+- **overview_service** — вынос логики Overview в сервис.
+- **species_summary_service** — вынос логики species summary в сервис.
+- **Константы** — LOG_LINES_DEFAULT/MAX, UNKNOWNS_LIMIT_MAX.
+- **API.md** — добавлены dataset/export, push/*, статус unknown.
+
+### Added (ранее)
 
 - **Роли доступа** — два пароля: `settings_password` (Admin), `contributor_password` (помощник). Contributor: коррекция видов, iNaturalist, отчёты, экспорт датасета. Admin: кормушка, настройки, система. Документ [ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md).
 - **Датасет из лучших кадров** — сохранение best_frame в `data/dataset/train/<Species>/` для экспорта и дообучения. Конфиг `processor.save_dataset_crops: true`, `processor.dataset_min_confidence` (по умолчанию 0.5). API `GET /api/ui/dataset/export` — ZIP с train/val и dataset_info.json. Кнопка «Экспорт датасета» в Система → Управление хранилищем. При коррекции вида в Unknowns/VideoDetails файл перемещается в директорию нового вида.
@@ -160,6 +186,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.5
 [0.1.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.4
 [0.1.3]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.2
