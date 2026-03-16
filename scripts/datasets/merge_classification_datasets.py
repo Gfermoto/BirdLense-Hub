@@ -22,24 +22,51 @@ from collections import defaultdict
 
 import numpy as np
 
+# Канонический формат проекта = Common name (Eurasian Jay, Great Tit и т.д.)
+# Загружаем маппинг variant -> canonical из app
+def _load_canonical_mapping():
+    try:
+        import sys
+        app_path = Path(__file__).resolve().parents[2] / 'app'
+        if str(app_path) not in sys.path:
+            sys.path.insert(0, str(app_path))
+        from web.util import load_species_canonical_mapping
+        return load_species_canonical_mapping()
+    except Exception:
+        return {}
 
-def normalize_class_name(name: str, preserve_scientific_common: bool = True) -> str:
+_CANONICAL_MAPPING = _load_canonical_mapping()
+
+
+def normalize_class_name(name: str, preserve_scientific_common: bool = True,
+                         mapping: dict | None = None) -> str:
     """
-    Привести имя класса к формату папки.
-    Если имя уже в формате "Scientific (Common)" — сохраняем как есть (совпадение с Frigate).
-    Иначе — пробелы -> _, убрать спецсимволы.
+    Привести имя класса к каноническому (Common name для проекта).
+    mapping: variant -> canonical (напр. "Garrulus glandarius (Eurasian Jay)" -> "Eurasian Jay").
+    Все варианты одного вида сливаются в одну папку.
     """
     s = str(name).strip()
-    if preserve_scientific_common and ' (' in s and s.endswith(')'):
-        return s  # "Cardinalis cardinalis (Northern Cardinal)"
+    if not s:
+        return 'unknown'
+    # Нормализовать в canonical (Common name)
+    if mapping and s in mapping:
+        s = mapping[s]
+    elif mapping:
+        key = s.lower().replace('_', ' ')
+        for k, v in mapping.items():
+            if k.lower().replace('_', ' ') == key:
+                s = v
+                break
     s = re.sub(r'[/\\:*?"<>|]', '_', s)
     s = s.replace(' ', '_').replace('-', '_')
     s = re.sub(r'_+', '_', s).strip('_')
     return s or 'unknown'
 
 
-def collect_images_by_class(input_dirs: list[Path], split: str) -> dict[str, list[Path]]:
+def collect_images_by_class(input_dirs: list[Path], split: str,
+                           mapping: dict | None = None) -> dict[str, list[Path]]:
     """Собрать пути к изображениям по классам из нескольких датасетов."""
+    mapping = mapping or _INAT_MAPPING
     by_class = defaultdict(list)
     for inp in input_dirs:
         split_dir = inp / split
@@ -48,7 +75,7 @@ def collect_images_by_class(input_dirs: list[Path], split: str) -> dict[str, lis
         for class_dir in split_dir.iterdir():
             if not class_dir.is_dir():
                 continue
-            class_name = normalize_class_name(class_dir.name)
+            class_name = normalize_class_name(class_dir.name, mapping=mapping)
             for ext in ('*.jpg', '*.jpeg', '*.png', '*.webp'):
                 for p in class_dir.glob(ext):
                     by_class[class_name].append(p)
@@ -84,9 +111,9 @@ def main():
                     shutil.rmtree(sub)
         d.mkdir(exist_ok=True)
 
-    # Собрать все изображения по классам
-    train_by_class = collect_images_by_class(input_dirs, 'train')
-    val_by_class = collect_images_by_class(input_dirs, 'val')
+    # Собрать все изображения по классам (нормализация в canonical = Common name)
+    train_by_class = collect_images_by_class(input_dirs, 'train', mapping=_CANONICAL_MAPPING)
+    val_by_class = collect_images_by_class(input_dirs, 'val', mapping=_CANONICAL_MAPPING)
 
     # Объединить классы из train и val
     all_classes = set(train_by_class) | set(val_by_class)

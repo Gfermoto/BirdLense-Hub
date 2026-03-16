@@ -2,9 +2,10 @@
   "nav": {
     "dashboard": "Dashboard",
     "timeline": "Timeline",
+    "migrationCalendar": "Migration",
     "unknowns": "Unknowns",
-    "food": "Food Management",
-    "species": "Bird Directory",
+    "food": "Food",
+    "species": "Species",
     "live": "Live",
     "liveView": "Live View",
     "settings": "Settings",
@@ -274,7 +275,16 @@
     "spectrogramRegenStarted": "Spectrogram regeneration started in background",
     "exportDataset": "Export dataset",
     "exporting": "Exporting...",
-    "datasetExportFailed": "Dataset export failed"
+    "datasetExportFailed": "Dataset export failed",
+    "mergeDuplicateSpecies": "Merge duplicate species",
+    "cleanOrphanedVisits": "Fix counters",
+    "cleanOrphanedVisitsHint": "Removes orphaned visits and syncs data. Fixes incorrect counts in calendar and directory after corrections.",
+    "cleanOrphanedVisitsConfirm": "Remove orphaned visits and sync species_id? This will fix counts in calendar and directory.",
+    "cleanOrphanedVisitsSuccess": "Removed {{orphaned}} visits, synced {{synced}} detections",
+    "mergeSpeciesConfirm": "Merge duplicate species (e.g. Garrulus glandarius (Eurasian Jay) → Eurasian Jay)? This updates the database.",
+    "merging": "Merging…",
+    "mergeSpeciesSuccess": "Merged {{count}} duplicate species into canonical names",
+    "mergeSpeciesFailed": "Failed to merge duplicate species"
   },
   "common": {
     "retry": "Retry",
@@ -285,6 +295,8 @@
     "createdBy": "Created by",
     "all": "All",
     "close": "Close",
+    "delete": "Delete",
+    "deleting": "Deleting…",
     "error": "Error",
     "success": "Success",
     "loading": "Loading...",
@@ -294,6 +306,16 @@
     "help": "Help",
     "iNaturalist": "Share to iNaturalist"
   },
+  "migrationCalendar": {
+    "title": "Migration Calendar",
+    "description": "When each species typically appears at your feeder — based on your historical data.",
+    "species": "Species",
+    "startYear": "From year",
+    "endYear": "To year",
+    "allYears": "All years",
+    "noData": "No data yet. Record some bird visits to see monthly patterns.",
+    "errorLoad": "Error loading migration calendar."
+  },
   "unknowns": {
     "title": "Unknowns",
     "intro": "Detections with low confidence for manual review. Correct the species or open the video to verify.",
@@ -302,7 +324,8 @@
     "apply": "Apply",
     "empty": "No low-confidence detections for the selected period.",
     "count": "{{count}} detection(s) to review",
-    "passwordRequired": "Enter settings password to correct species."
+    "passwordRequired": "Enter settings password to correct species.",
+    "corrected": "Species corrected"
   },
   "species": {
     "searchPlaceholder": "Search species...",
@@ -329,6 +352,8 @@
     "speed": "Playback speed",
     "spectrogram": "Spectrogram",
     "speciesInVideo": "Species in This Video",
+    "mergeAllToSpecies": "Apply to all in video",
+    "mergeAllHint": "Different neural networks or interruptions created multiple cards — select the correct species and merge all detections.",
     "detection": "detection",
     "detections": "detections",
     "detectionProviderYolo": "YOLO",
@@ -337,7 +362,8 @@
     "detectionSource": "Source",
     "timelineHint": "Colored bars = species. Hover to see source: YOLO, Frigate, or BirdNET.",
     "confidence": "Confidence",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "correctedInVideos": "Species corrected in {{count}} videos"
   },
   "feed": {
     "feederControl": "Feeder Control",
@@ -370,6 +396,9 @@
   },
   "videoInfo": {
     "downloadVideo": "Download video",
+    "deleteRecording": "Delete recording",
+    "deleteConfirmTitle": "Delete this recording?",
+    "deleteConfirmText": "The video file and all associated data will be permanently deleted. This cannot be undone.",
     "favorite": "Favorite",
     "recordingInfo": "Recording Info",
     "start": "Start",
@@ -496,6 +525,15 @@
         { "title": "Threshold", "content": "The confidence threshold is set in Settings → Advanced (\"Unknowns threshold\"). Default 0.5 means detections below 50% appear here." },
         { "title": "Correcting Species", "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured." },
         { "title": "View Video", "content": "Click \"View video\" to open the recording and verify the detection visually before correcting." }
+      ]
+    },
+    "migrationCalendar": {
+      "title": "Migration Calendar",
+      "description": "Historical pattern of species activity by month. Shows when each species typically appears at your feeder based on your recorded data.",
+      "details": [
+        { "title": "Monthly Pattern", "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month." },
+        { "title": "Data Source", "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern." },
+        { "title": "Species Link", "content": "Click a species name to open its detail page with full statistics and visit history." }
       ]
     },
     "videoDetails": {

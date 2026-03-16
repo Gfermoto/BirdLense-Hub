@@ -77,9 +77,44 @@ mqtt:
 
 # Detection merging (YOLO + Frigate + BirdNET)
 detection:
-  merge_window_seconds: 5
-  dedup_window_seconds: 45
-  species_mapping: {}
+  merge_window_seconds: 8
+  dedup_window_seconds: 60
+  # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
+  one_per_species: true
+  # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
+  source_priority: ["yolo", "frigate", "birdnet"]
+  # Минимальный confidence для сохранения (0.05 = 5%). Детекции ниже — не сохраняются (отсекает 4% и т.п.)
+  min_confidence_to_store: 0.05
+  # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
+  species_mapping:
+    "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
+    "Eurasian_Jay": "Eurasian Jay"
+    "Parus major (Great Tit)": "Great Tit"
+    "Great_Tit": "Great Tit"
+    "Cyanistes caeruleus (Eurasian Blue Tit)": "Eurasian Blue Tit"
+    "Eurasian_Blue_Tit": "Eurasian Blue Tit"
+    "Parus ater (Coal Tit)": "Coal Tit"
+    "Passer domesticus (House Sparrow)": "House Sparrow"
+    "Sitta europaea (Eurasian Nuthatch)": "Eurasian Nuthatch"
+    "Fringilla coelebs (Common Chaffinch)": "Common Chaffinch"
+    "Erithacus rubecula (European Robin)": "European Robin"
+    "Carduelis carduelis (European Goldfinch)": "European Goldfinch"
+    "Dendrocopos major (Great Spotted Woodpecker)": "Great Spotted Woodpecker"
+    "Columba palumbus (Common Wood Pigeon)": "Common Wood Pigeon"
+    "Streptopelia decaocto (Eurasian Collared-Dove)": "Eurasian Collared-Dove"
+    "Pica pica (Eurasian Magpie)": "Eurasian Magpie"
+    "Corvus corone (Carrion Crow)": "Carrion Crow"
+    "Corvus frugilegus (Rook)": "Rook"
+    "Turdus merula (Common Blackbird)": "Common Blackbird"
+    "Aegithalos caudatus (Long-tailed Tit)": "Long-tailed Tit"
+    "Poecile palustris (Marsh Tit)": "Marsh Tit"
+    "Poecile montanus (Willow Tit)": "Willow Tit"
+    "Certhia familiaris (Eurasian Treecreeper)": "Eurasian Treecreeper"
+    "Pyrrhula pyrrhula (Eurasian Bullfinch)": "Eurasian Bullfinch"
+    "Chloris chloris (European Greenfinch)": "European Greenfinch"
+    "Linaria cannabina (Common Linnet)": "Common Linnet"
+    "Fringilla montifringilla (Brambling)": "Brambling"
+    "Sturnus vulgaris (Common Starling)": "Common Starling"
 
 # Feeder control: mqtt (Tasmota) | esphome. Relay on for duration_seconds.
 # esphome_type: switch (turn_on/turn_off) | button (press — если реле управляется кнопкой/скриптом)

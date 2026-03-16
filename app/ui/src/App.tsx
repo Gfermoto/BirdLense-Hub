@@ -27,6 +27,9 @@ const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.Liv
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
 const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
+const MigrationCalendar = lazy(() =>
+  import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
+);
 const UnknownsPage = lazy(() => import('./pages/Unknowns').then((m) => ({ default: m.UnknownsPage })));
 
 const theme = createTheme({
@@ -148,6 +151,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Overview />} />
                     <Route path="/timeline" element={<TimelinePage />} />
+                    <Route path="/migration-calendar" element={<MigrationCalendar />} />
                     <Route path="/videos/:id" element={<VideoDetails />} />
                     <Route path="/food" element={<FoodManagement />} />
                     <Route path="/species" element={<BirdDirectory />} />

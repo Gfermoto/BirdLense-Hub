@@ -1,0 +1,79 @@
+# Маппинг вариантов имён -> каноническое (Common name для проекта).
+# Формат: variant|canonical
+# Все варианты одного вида сливаются в canonical.
+# Используется: миграция дубликатов, species_mapping, merge датасетов.
+
+Garrulus glandarius (Eurasian Jay)|Eurasian Jay
+Eurasian Jay|Eurasian Jay
+
+Parus major (Great Tit)|Great Tit
+Great Tit|Great Tit
+
+Cyanistes caeruleus (Eurasian Blue Tit)|Eurasian Blue Tit
+Eurasian Blue Tit|Eurasian Blue Tit
+
+Parus ater (Coal Tit)|Coal Tit
+Coal Tit|Coal Tit
+
+Passer domesticus (House Sparrow)|House Sparrow
+House Sparrow|House Sparrow
+
+Sitta europaea (Eurasian Nuthatch)|Eurasian Nuthatch
+Eurasian Nuthatch|Eurasian Nuthatch
+
+Fringilla coelebs (Common Chaffinch)|Common Chaffinch
+Common Chaffinch|Common Chaffinch
+
+Erithacus rubecula (European Robin)|European Robin
+European Robin|European Robin
+
+Carduelis carduelis (European Goldfinch)|European Goldfinch
+European Goldfinch|European Goldfinch
+
+Dendrocopos major (Great Spotted Woodpecker)|Great Spotted Woodpecker
+Great Spotted Woodpecker|Great Spotted Woodpecker
+
+Columba palumbus (Common Wood Pigeon)|Common Wood Pigeon
+Common Wood Pigeon|Common Wood Pigeon
+
+Streptopelia decaocto (Eurasian Collared-Dove)|Eurasian Collared-Dove
+Eurasian Collared-Dove|Eurasian Collared-Dove
+
+Pica pica (Eurasian Magpie)|Eurasian Magpie
+Eurasian Magpie|Eurasian Magpie
+
+Corvus corone (Carrion Crow)|Carrion Crow
+Carrion Crow|Carrion Crow
+
+Corvus frugilegus (Rook)|Rook
+Rook|Rook
+
+Turdus merula (Common Blackbird)|Common Blackbird
+Common Blackbird|Common Blackbird
+
+Aegithalos caudatus (Long-tailed Tit)|Long-tailed Tit
+Long-tailed Tit|Long-tailed Tit
+
+Poecile palustris (Marsh Tit)|Marsh Tit
+Marsh Tit|Marsh Tit
+
+Poecile montanus (Willow Tit)|Willow Tit
+Willow Tit|Willow Tit
+
+Certhia familiaris (Eurasian Treecreeper)|Eurasian Treecreeper
+Eurasian Treecreeper|Eurasian Treecreeper
+
+Pyrrhula pyrrhula (Eurasian Bullfinch)|Eurasian Bullfinch
+Eurasian Bullfinch|Eurasian Bullfinch
+
+Chloris chloris (European Greenfinch)|European Greenfinch
+European Greenfinch|European Greenfinch
+
+Linaria cannabina (Common Linnet)|Common Linnet
+Common Linnet|Common Linnet
+
+Fringilla montifringilla (Brambling)|Brambling
+Brambling|Brambling
+
+Sturnus vulgaris (Common Starling)|Common Starling
+Common Starling|Common Starling

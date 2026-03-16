@@ -61,8 +61,11 @@ def register_routes(app):
             return {'error': 'Invalid datetime format'}, 400
 
         # Validate required data
-        species_list = data.get('species', [])
-        if not species_list:
+        species_list = data.get('species', []) or []
+        # Отсечь детекции с низким confidence (4% и т.п.)
+        min_conf = float(app_config.get('detection.min_confidence_to_store') or 0.05)
+        species_list = [s for s in species_list if float(s.get('confidence') or 0) >= min_conf]
+        if not species_list and not data.get('species'):
             return {'error': 'Missing species'}, 400
 
         video_path = (data.get('video_path') or '').strip()
@@ -86,7 +89,7 @@ def register_routes(app):
             video.food.extend(active_bird_foods)
 
             # Process all detections (visit_timeout = dedup_window для согласованности)
-            visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 45)
+            visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
             visit_processor.process_detections(video, species_list)
 
@@ -147,6 +150,14 @@ def register_routes(app):
         data = request.json or {}
         detection = data.get('detection')
         image_path = data.get('image_path')
+        image_base64 = data.get('image_base64')
+        image_bytes = None
+        if image_base64:
+            try:
+                import base64
+                image_bytes = base64.b64decode(image_base64)
+            except Exception as e:
+                app.logger.warning("Failed to decode image_base64 for notify: %s", e)
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:
@@ -154,7 +165,7 @@ def register_routes(app):
             icon = "chipmunk" if any(s in lower for s in (
                 "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
             notify(f"{detection} Detected", tags=icon, image_path=image_path,
-                  timestamp=datetime.now(timezone.utc))
+                  image_bytes=image_bytes, timestamp=datetime.now(timezone.utc))
         return {'message': f'Successfully received notification of {detection}'}, 200
 
     @app.route('/api/processor/notify/motion', methods=['POST'])

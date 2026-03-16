@@ -34,6 +34,7 @@
 | `/push/vapid-public` | GET | Публичный ключ VAPID для Web Push подписки |
 | `/push/subscribe` | POST | Регистрация Web Push подписки (body: `{subscription}`) |
 | `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
+| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу (species, month_labels, monthly_counts) |
 | `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
 | `/species/:id/summary` | GET | Сводка по виду |
 | `/restart-processor` | POST | Перезапуск processor |

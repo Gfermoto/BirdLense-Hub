@@ -86,6 +86,18 @@ export const fetchVideo = async (id: string) => {
   return response.data;
 };
 
+/** Delete video recording. Requires contributor or admin access. */
+export const deleteVideo = async (id: number): Promise<void> => {
+  const res = await fetch(`${BASE_API_URL}/videos/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+};
+
 /** Export dataset crops as ZIP. Requires settings access. */
 export const exportDataset = async (): Promise<void> => {
   const res = await fetch(`${BASE_API_URL}/dataset/export`, {
@@ -337,6 +349,27 @@ export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: 
   return response.data;
 };
 
+export interface MigrationCalendarData {
+  species: Array<{
+    id: number;
+    name: string;
+    image_url: string | null;
+    monthly_counts: number[];
+    total: number;
+  }>;
+  month_labels: string[];
+}
+
+export const fetchMigrationCalendar = async (params?: {
+  start_year?: number;
+  end_year?: number;
+}): Promise<MigrationCalendarData> => {
+  const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
+    params: params || {},
+  });
+  return response.data;
+};
+
 export const fetchOverviewData = async (
   date: string,
 ): Promise<OverviewData> => {
@@ -429,9 +462,21 @@ export const downloadReportPdf = async (month: string): Promise<void> => {
 export const updateDetectionSpecies = async (
   detectionId: number,
   speciesId: number,
-): Promise<{ message: string; species_id: number }> => {
+): Promise<{ message: string; species_id: number; updated_count?: number }> => {
   const response = await axios.patch(
     `${BASE_API_URL}/detections/${detectionId}`,
+    { species_id: speciesId },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const mergeVideoSpecies = async (
+  videoId: string | number,
+  speciesId: number,
+): Promise<{ message: string; species_id: number; updated_count: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/videos/${videoId}/merge-species`,
     { species_id: speciesId },
     { withCredentials: true },
   );

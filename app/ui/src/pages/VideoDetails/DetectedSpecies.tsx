@@ -24,12 +24,12 @@ import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
-import { useQueryClient } from '@tanstack/react-query';
 import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import {
   resolveImageUrl,
   downloadDetectionCropForINaturalist,
   updateDetectionSpecies,
+  mergeVideoSpecies,
   fetchBirdDirectory,
 } from '../../api/api';
 
@@ -110,28 +110,67 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
       updateDetectionSpecies(detectionId, speciesId),
-    onSuccess: () => {
+    onSuccess: (data) => {
       if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['species'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      if (data?.updated_count && data.updated_count > 1) {
+        setCorrectSuccess(t('video.correctedInVideos', { count: data.updated_count }));
+      }
+    },
+  });
+
+  const mergeMutation = useMutation({
+    mutationFn: (speciesId: number) => mergeVideoSpecies(videoId!, speciesId),
+    onSuccess: (data) => {
+      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['species'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      setCorrectSuccess(data?.message ?? t('unknowns.corrected'));
     },
   });
 
   const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
+  const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
   const [correctError, setCorrectError] = useState<string | null>(null);
+  const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '' || selectedSpeciesId === group.species_id) return;
     setCorrectError(null);
-    const ids = group.detections.filter((d) => d.id).map((d) => d.id!);
+    const bestDet = group.detections
+      .filter((d) => d.source === 'video' && d.id)
+      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+    if (!bestDet?.id) return;
     try {
-      for (const id of ids) {
-        await correctMutation.mutateAsync({ detectionId: id, speciesId: selectedSpeciesId as number });
-      }
+      await correctMutation.mutateAsync({
+        detectionId: bestDet.id,
+        speciesId: selectedSpeciesId as number,
+      });
       setEditingGroupKey(null);
       setSelectedSpeciesId('');
+    } catch (err) {
+      setCorrectError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleMergeAll = async () => {
+    if (mergeSpeciesId === '' || !videoId) return;
+    setCorrectError(null);
+    try {
+      await mergeMutation.mutateAsync(mergeSpeciesId as number);
+      setMergeSpeciesId('');
     } catch (err) {
       setCorrectError(err instanceof Error ? err.message : String(err));
     }
@@ -205,6 +244,46 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         }}
         onClose={() => setShowUnlockDialog(false)}
       />
+      {groupedSpecies.length >= 2 && videoId && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: 'action.hover',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            {t('video.mergeAllHint')}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <FormControl size="small" sx={{ minWidth: 200 }} disabled={!canEdit}>
+              <InputLabel>{t('video.mergeAllToSpecies')}</InputLabel>
+              <Select
+                value={mergeSpeciesId}
+                label={t('video.mergeAllToSpecies')}
+                onChange={(e) => setMergeSpeciesId(e.target.value as number | '')}
+              >
+                {speciesList.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={mergeSpeciesId === '' || mergeMutation.isPending || !canEdit}
+              onClick={handleMergeAll}
+            >
+              {mergeMutation.isPending ? '...' : t('unknowns.apply')}
+            </Button>
+          </Box>
+        </Box>
+      )}
       <Grid container spacing={2}>
         {groupedSpecies.map((group) => (
           <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.species_id}>
@@ -345,6 +424,16 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     >
       <Alert severity="error" onClose={() => setCorrectError(null)}>
         {correctError}
+      </Alert>
+    </Snackbar>
+    <Snackbar
+      open={!!correctSuccess}
+      autoHideDuration={4000}
+      onClose={() => setCorrectSuccess(null)}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
+        {correctSuccess}
       </Alert>
     </Snackbar>
     </>

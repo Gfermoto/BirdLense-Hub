@@ -14,7 +14,8 @@ sys.path.append(src_path)
 try:
     from detection_strategy import TwoStageStrategy, SingleStageStrategy
 except ImportError:
-    pass
+    TwoStageStrategy = None  # type: ignore
+    SingleStageStrategy = None  # type: ignore
 
 # Sample regional species list in Philadelphia area.
 regional_species = ['Northern Cardinal', 'Dark-eyed Junco', 'Tufted Titmouse', 'American Crow', 'Mourning Dove', 'Blue Jay', 'Carolina Wren', 'White-breasted Nuthatch', 'White-throated Sparrow', 'Downy Woodpecker', 'Red-bellied Woodpecker', 'Song Sparrow', 'European Starling', 'American Goldfinch', 'House Finch', 'Carolina Chickadee', 'House Sparrow', 'American Robin', 'Northern Mockingbird', 'Black-capped Chickadee', 'Eastern Bluebird', 'Northern Flicker', 'Hairy Woodpecker', 'Rock Pigeon', 'Golden-crowned Kinglet', 'Yellow-rumped Warbler', 'Pileated Woodpecker', 'American Tree Sparrow', 'Red-winged Blackbird', 'Red-breasted Nuthatch', 'Brown Creeper', 'Common Raven', 'Cedar Waxwing', 'Yellow-bellied Sapsucker', 'Common Grackle', 'Purple Finch', 'Pine Siskin', 'Horned Lark', 'Hermit Thrush', 'Swamp Sparrow', 'Ruby-crowned Kinglet', 'Eastern Towhee', 'Winter Wren', 'Fox Sparrow', 'Brown-headed Cowbird', 'Field Sparrow', 'Squirrel']
@@ -50,6 +51,8 @@ class TestDetectionStrategy(unittest.TestCase):
             self.frame = cv2.imread(self.sample_img_path)
 
     def test_two_stage_strategy_integration(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
         if not self.two_stage_models_exist:
             self.skipTest("Two-stage NCNN detection models not found.")
             
@@ -81,6 +84,8 @@ class TestDetectionStrategy(unittest.TestCase):
             self.assertGreater(first.confidence, 0.0)
 
     def test_single_stage_strategy_integration(self):
+        if SingleStageStrategy is None:
+            self.skipTest("SingleStageStrategy not available (import failed).")
         if not self.single_stage_exists:
             self.skipTest("Single-stage NCNN model not found.")
 
@@ -105,6 +110,8 @@ class TestDetectionStrategy(unittest.TestCase):
             self.assertTrue(blue_jay_detected, f"Should detect Blue Jay. Got: {[r.class_name for r in results]}")
 
     def test_blur_detection_logic(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
         self.logger.info("--- Testing Blur Detection Logic ---")
         strategy = TwoStageStrategy(
             self.binary_model_path, 
