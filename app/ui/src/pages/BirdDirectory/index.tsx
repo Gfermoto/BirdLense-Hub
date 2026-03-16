@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBirdDirectory } from '../../api/api';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
@@ -144,6 +145,7 @@ export const BirdDirectory = () => {
     data: rawData,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['bird-directory'],
     queryFn: fetchBirdDirectory,
@@ -189,7 +191,15 @@ export const BirdDirectory = () => {
       </Box>
     );
   }
-  if (error) return <div>{t('species.errorLoad')}</div>;
+  if (error)
+    return (
+      <Box sx={{ p: 2 }}>
+        <Box component="span" sx={{ color: 'error.main' }}>{t('species.errorLoad')}</Box>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
+          {t('common.retry')}
+        </Button>
+      </Box>
+    );
 
   return (
     <>

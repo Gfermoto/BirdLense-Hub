@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { fetchVideo } from '../../api/api';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Video } from '../../types';
@@ -20,6 +21,7 @@ export const VideoDetails = () => {
     data: video,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['video', params.id],
     queryFn: () => fetchVideo(params.id as string),
@@ -31,7 +33,15 @@ export const VideoDetails = () => {
         <CircularProgress />
       </Box>
     );
-  if (error) return <div>{t('errors.loadSightings')}</div>;
+  if (error || !video)
+    return (
+      <Box sx={{ p: 2 }}>
+        <Box component="span" sx={{ color: 'error.main' }}>{t('errors.loadSightings')}</Box>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
+          {t('common.retry')}
+        </Button>
+      </Box>
+    );
 
   return (
     <>

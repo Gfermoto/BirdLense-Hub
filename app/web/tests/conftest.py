@@ -7,6 +7,10 @@ import pytest
 # Set test DB before any app imports
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 
+# Prevent MQTT/ESPHome connection attempts (would hang or fail in CI)
+os.environ.pop('MQTT_BROKER', None)
+os.environ.pop('ESPHOME_FEEDER_URL', None)
+
 # Add project root to path (app/ on host, or /app in Docker)
 _app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _app_root not in sys.path:

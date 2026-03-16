@@ -43,13 +43,14 @@ export const Overview = () => {
     data: overviewData,
     isLoading: isLoadingSightings,
     error: errorSightings,
+    refetch: refetchOverview,
   } = useQuery({
     queryKey: ['overview', selectedDay?.format('YYYY-MM-DD')],
     queryFn: () => fetchOverviewData(selectedDay?.format('YYYY-MM-DD') || ''),
     enabled: !!selectedDay,
   });
 
-  const { data: weather, error: errorWeather } = useQuery({
+  const { data: weather, error: errorWeather, refetch: refetchWeather } = useQuery({
     queryKey: ['weather'],
     queryFn: () => fetchWeather(),
   });
@@ -69,6 +70,9 @@ export const Overview = () => {
           {err?.message || String(errorSightings || errorWeather)}
         </Typography>
         <Typography variant="body2" sx={{ mt: 2 }}>{t('overview.checkApi')}</Typography>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => { refetchOverview(); refetchWeather(); }}>
+          {t('common.retry')}
+        </Button>
       </Box>
     );
   }
@@ -145,7 +149,10 @@ export const Overview = () => {
                   {t('overview.lastBird')}
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {dayjs(overviewData.lastDetection.start_time).format('HH:mm')} —{' '}
+                  {(dayjs(overviewData.lastDetection.start_time ?? undefined).isValid()
+                    ? dayjs(overviewData.lastDetection.start_time).format('HH:mm')
+                    : '—')}{' '}
+                  —{' '}
                   {overviewData.lastDetection.species_name === 'Bird'
                     ? t('overview.lastBirdUnknown')
                     : overviewData.lastDetection.species_name}

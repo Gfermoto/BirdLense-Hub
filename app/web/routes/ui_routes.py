@@ -1,4 +1,5 @@
 import os
+import secrets
 import csv
 import io
 from urllib.parse import quote
@@ -741,12 +742,12 @@ def register_routes(app):
             session['settings_unlocked'] = True
             session.permanent = True
             return {'ok': True, 'role': 'admin'}, 200
-        if pw == admin_pw:
+        if secrets.compare_digest(pw, admin_pw):
             session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
             return {'ok': True, 'role': 'admin'}, 200
-        if contrib_pw and pw == contrib_pw:
+        if contrib_pw and secrets.compare_digest(pw, contrib_pw):
             session['access_role'] = 'contributor'
             session['settings_unlocked'] = False
             session.permanent = True
@@ -791,7 +792,8 @@ def register_routes(app):
             return app_config.mask_config_for_api(app_config.config)
 
         except Exception as e:
-            return {"error": str(e)}, 500
+            app.logger.exception('Update settings failed')
+            return {"error": "Failed to save settings"}, 500
 
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():
@@ -808,7 +810,8 @@ def register_routes(app):
                 f.write('1')
             return {"message": "Processor restart requested"}, 200
         except Exception as e:
-            return {"error": str(e)}, 500
+            app.logger.exception('Restart processor failed')
+            return {"error": "Failed to restart processor"}, 500
 
     @app.route('/api/ui/species/<int:species_id>/xeno-canto', methods=['GET'])
     def get_species_xeno_canto(species_id):

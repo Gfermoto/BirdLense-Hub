@@ -16,16 +16,22 @@ export const BASE_URL =
     : (import.meta.env?.VITE_BASE_URL as string) || '';
 export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
+axios.defaults.timeout = 30000;
+
 /**
  * Resolve image URL for display.
- * - Absolute (http/https/data:) → as-is
+ * - Absolute (http/https) → as-is
+ * - data:image/* only (block data:text/html etc. for XSS)
  * - Relative path (data/images/...) → BASE_URL + path
  * Species: Wikipedia returns full URLs. Bird food: relative paths from seed.
  */
 export const resolveImageUrl = (url: string | null | undefined): string | undefined => {
   if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'))
-    return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('data:')) {
+    const m = url.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i);
+    return m ? url : undefined;
+  }
   const base = BASE_URL || '';
   return base ? `${base}/${url}` : `/${url}`;
 };

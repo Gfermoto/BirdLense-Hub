@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import secrets
 from datetime import timedelta, datetime, timezone
 
 # Вид «Bird» / «bird» — птица без определения вида, всегда неопределённый объект
@@ -35,7 +36,12 @@ def ensure_utc(dt: datetime) -> datetime:
 
 def parse_utc_timestamp(param) -> datetime:
     """Parse Unix timestamp to naive UTC datetime for DB queries. Raises ValueError on invalid input."""
-    return datetime.fromtimestamp(int(param), timezone.utc).replace(tzinfo=None)
+    if param is None:
+        raise ValueError('Timestamp is required')
+    ts = int(param)
+    if not (0 <= ts <= 2147483647):  # Unix timestamp range 1970–2038
+        raise ValueError('Timestamp out of range')
+    return datetime.fromtimestamp(ts, timezone.utc).replace(tzinfo=None)
 
 
 def get_primary_video_for_visit(visit) -> object | None:
@@ -113,8 +119,10 @@ def settings_check_access():
     mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
     if mcp_token:
         auth = request.headers.get('Authorization') or ''
-        if auth.startswith('Bearer ') and auth[7:].strip() == mcp_token:
-            return True
+        if auth.startswith('Bearer '):
+            token = auth[7:].strip()
+            if secrets.compare_digest(token, mcp_token):
+                return True
 
     if not admin_pw and not contrib_pw:
         return True

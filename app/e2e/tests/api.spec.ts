@@ -20,8 +20,8 @@ test.describe('API endpoints @api', () => {
     expect(body).toHaveProperty('mqtt');
     expect(body).toHaveProperty('esphome');
     expect(body).toHaveProperty('yolo');
-    // mqtt/esphome: ok | error | not_configured | not_used
-    const validMqtt = ['ok', 'error', 'not_configured', 'not_used'];
+    // mqtt/esphome: ok | error | not_configured | not_used | unknown (timeout)
+    const validMqtt = ['ok', 'error', 'not_configured', 'not_used', 'unknown'];
     const validEsp = ['ok', 'error', 'not_configured', 'not_used'];
     expect(validMqtt).toContain(body.mqtt);
     expect(validEsp).toContain(body.esphome);

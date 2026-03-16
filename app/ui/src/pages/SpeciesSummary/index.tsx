@@ -145,7 +145,7 @@ const SpeciesSummaryPage = () => {
   const [playingRecording, setPlayingRecording] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { data, isLoading, error } = useQuery<SpeciesSummary>({
+  const { data, isLoading, error, refetch } = useQuery<SpeciesSummary>({
     queryKey: ['speciesSummary', speciesId],
     queryFn: () => fetchSpeciesSummary(speciesId as number),
   });
@@ -162,7 +162,15 @@ const SpeciesSummaryPage = () => {
         <CircularProgress />
       </Box>
     );
-  if (error || !data) return <div>{t('speciesSummary.errorLoad')}</div>;
+  if (error || !data)
+    return (
+      <Box sx={{ p: 2 }}>
+        <Box component="span" sx={{ color: 'error.main' }}>{t('speciesSummary.errorLoad')}</Box>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
+          {t('common.retry')}
+        </Button>
+      </Box>
+    );
 
   const hours = Array.from(
     { length: 24 },

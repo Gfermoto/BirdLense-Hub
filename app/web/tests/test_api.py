@@ -161,7 +161,7 @@ class TestStatus:
         assert data['web'] == 'ok'
         assert data['processor'] in ('ok', 'offline')
         assert data['video'] in ('ok', 'unknown')
-        assert data['mqtt'] in ('ok', 'error', 'not_configured', 'not_used')
+        assert data['mqtt'] in ('ok', 'error', 'not_configured', 'not_used', 'unknown')
         assert data['esphome'] in ('ok', 'error', 'not_configured', 'not_used')
         assert data['yolo'] in ('ok', 'unknown')
 
@@ -169,8 +169,8 @@ class TestStatus:
         """MQTT status is real when feed.source=mqtt, else not_used."""
         r = client.get('/api/ui/status')
         assert r.status_code == 200
-        # Without MQTT broker configured, mqtt is either not_configured or not_used
-        assert r.json['mqtt'] in ('ok', 'error', 'not_configured', 'not_used')
+        # Without MQTT broker configured, mqtt is not_configured, not_used, or unknown (timeout)
+        assert r.json['mqtt'] in ('ok', 'error', 'not_configured', 'not_used', 'unknown')
 
     def test_status_esphome_reflects_feed_source(self, client):
         """ESPHome status is real when feed.source=esphome, else not_used."""
@@ -199,13 +199,13 @@ class TestSettings:
 
 
 class TestFeed:
-    def test_feed_dispense_returns_200_or_500(self, client):
-        """Feed dispense route exists; may fail if MQTT/ESPHome not configured."""
+    def test_feed_dispense_returns_200_or_403_or_500(self, client):
+        """Feed dispense route exists; 403 if password required, 500 if MQTT/ESPHome not configured."""
         r = client.post('/api/ui/feed/dispense')
-        assert r.status_code in (200, 500)
+        assert r.status_code in (200, 403, 500)
         if r.status_code == 200:
             assert 'message' in r.json
-        else:
+        elif r.status_code in (403, 500):
             assert 'error' in r.json
 
 

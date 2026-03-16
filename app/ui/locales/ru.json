@@ -277,6 +277,7 @@
     "datasetExportFailed": "Ошибка экспорта датасета"
   },
   "common": {
+    "retry": "Повторить",
     "cancel": "Отмена",
     "noData": "Нет данных",
     "dockerImage": "Docker",
@@ -322,6 +323,10 @@
   },
   "video": {
     "video": "Видео",
+    "play": "Воспроизвести",
+    "pause": "Пауза",
+    "fullscreen": "Полный экран",
+    "speed": "Скорость воспроизведения",
     "spectrogram": "Спектрограмма",
     "speciesInVideo": "Виды в этом видео",
     "detection": "обнаружение",
