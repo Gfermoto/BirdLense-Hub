@@ -35,6 +35,9 @@ class VideoSpecies(db.Model):
         Integer, nullable=True)  # ByteTrack ID for stable identification
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
+    # True if user corrected species — track regen must not overwrite
+    manually_corrected: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default="0")
     video: Mapped["Video"] = relationship(back_populates="video_species")
     species: Mapped["Species"] = relationship(back_populates="video_species")
     species_visit: Mapped["SpeciesVisit"] = relationship(
