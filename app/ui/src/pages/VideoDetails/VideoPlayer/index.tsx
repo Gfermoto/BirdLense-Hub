@@ -29,18 +29,13 @@ import { SpeciesIcon } from '../../../components/SpeciesIcon';
 interface ViewToggleProps {
   view: 'video' | 'audio';
   onChange: (view: 'video' | 'audio') => void;
-  audioDisabled: boolean;
 }
 
 interface VideoPlayerProps {
   video: Video;
 }
 
-const ViewToggle: React.FC<ViewToggleProps> = ({
-  view,
-  onChange,
-  audioDisabled,
-}) => {
+const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
   const { t } = useTranslation();
   return (
   <Box
@@ -75,7 +70,6 @@ const ViewToggle: React.FC<ViewToggleProps> = ({
       <Tab
         label={t('video.spectrogram')}
         value="audio"
-        disabled={audioDisabled}
         sx={{ py: 0.5, px: 2 }}
       />
     </Tabs>
@@ -337,13 +331,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
         onMouseMove={handleMouseMove}
         onTouchStart={handleTouch}
       >
-        {/* Overlay Tabs */}
-        {showControls && (
-          <ViewToggle
-            view={view}
-            onChange={setView}
-            audioDisabled={!video.spectrogram_path}
-          />
+        {/* Overlay Tabs — только если есть спектрограмма (BirdNET при записи) */}
+        {showControls && video.spectrogram_path && (
+          <ViewToggle view={view} onChange={setView} />
         )}
 
         {/* Tracks Toggle - show only when track data exists */}
