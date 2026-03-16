@@ -6,9 +6,12 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
+import LinearProgress from '@mui/material/LinearProgress';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -21,7 +24,7 @@ import RouteIcon from '@mui/icons-material/Route';
 import DownloadIcon from '@mui/icons-material/Download';
 import MergeTypeIcon from '@mui/icons-material/MergeType';
 import BuildIcon from '@mui/icons-material/Build';
-import { BASE_API_URL, exportDataset } from '../../api/api';
+import { BASE_API_URL, exportDataset, retroExportDataset } from '../../api/api';
 
 interface StorageStats {
   date: string;
@@ -67,6 +70,13 @@ interface CleanOrphanedResponse {
   message: string;
 }
 
+interface RetroExportResponse {
+  saved: number;
+  skipped: number;
+  skipped_no_bbox?: number;
+  errors: string[];
+}
+
 const formatBytes = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
   if (bytes === 0) return '0 B';
@@ -81,8 +91,9 @@ export const StorageManagement = () => {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | MergeSpeciesResponse | CleanOrphanedResponse | null>(null);
+  const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | MergeSpeciesResponse | CleanOrphanedResponse | RetroExportResponse | null>(null);
   const [exportingDataset, setExportingDataset] = useState(false);
+  const [retroExporting, setRetroExporting] = useState(false);
 
   const {
     data: storageStats,
@@ -126,27 +137,51 @@ export const StorageManagement = () => {
     },
   });
 
+  const [spectrogramProgress, setSpectrogramProgress] = useState<{ processed: number; total: number } | null>(null);
+  const [tracksProgress, setTracksProgress] = useState<{ processed: number; total: number } | null>(null);
+
   const pollRegenerateStatus = useCallback(async (): Promise<RegenerateSpectrogramsResponse | null> => {
-    const { data } = await axios.get<{ status: string; result: RegenerateSpectrogramsResponse | null; error: string | null }>(
-      `${BASE_API_URL}/system/regenerate-spectrograms/status`,
-    );
+    const { data } = await axios.get<{
+      status: string;
+      result: RegenerateSpectrogramsResponse | null;
+      error: string | null;
+      progress?: { processed: number; total: number };
+    }>(`${BASE_API_URL}/system/regenerate-spectrograms/status`);
+    if (data.progress && data.progress.total > 0) {
+      setSpectrogramProgress({ processed: data.progress.processed, total: data.progress.total });
+    }
     if (data.status === 'done' && data.result) {
+      setSpectrogramProgress(null);
       return data.result;
     }
     if (data.status === 'done' && data.error) {
+      setSpectrogramProgress(null);
       throw new Error(data.error);
     }
     return null;
   }, []);
+  const [operationsPeriod, setOperationsPeriod] = useState<{ start: Dayjs; end: Dayjs }>(() => ({
+    start: dayjs().subtract(1, 'week'),
+    end: dayjs(),
+  }));
+  const [onlyManuallyCorrected, setOnlyManuallyCorrected] = useState(false);
 
   const pollRegenerateTracksStatus = useCallback(async (): Promise<RegenerateSpectrogramsResponse | null> => {
-    const { data } = await axios.get<{ status: string; result: RegenerateSpectrogramsResponse | null; error: string | null }>(
-      `${BASE_API_URL}/system/regenerate-tracks/status`,
-    );
+    const { data } = await axios.get<{
+      status: string;
+      result: RegenerateSpectrogramsResponse | null;
+      error: string | null;
+      progress?: { processed: number; total: number; generated: number; failed: number; skipped: number };
+    }>(`${BASE_API_URL}/system/regenerate-tracks/status`);
+    if (data.progress && data.progress.total > 0) {
+      setTracksProgress({ processed: data.progress.processed, total: data.progress.total });
+    }
     if (data.status === 'done' && data.result) {
+      setTracksProgress(null);
       return data.result;
     }
     if (data.status === 'done' && data.error) {
+      setTracksProgress(null);
       throw new Error(data.error);
     }
     return null;
@@ -155,11 +190,11 @@ export const StorageManagement = () => {
   const regenerateMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
-    { force?: boolean }
+    { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
       await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {});
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 600; i++) {
         await new Promise((r) => setTimeout(r, 2000));
         const result = await pollRegenerateStatus();
         if (result) return result;
@@ -167,6 +202,7 @@ export const StorageManagement = () => {
       throw new Error(t('storage.regenerateTimeout'));
     },
     onSuccess: (data) => {
+      setSpectrogramProgress(null);
       setSuccess({
         message: data.message || '',
         generated: data.generated,
@@ -179,6 +215,7 @@ export const StorageManagement = () => {
       setTimeout(() => setSuccess(null), 8000);
     },
     onError: (err: unknown) => {
+      setSpectrogramProgress(null);
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data
           ?.error || (err instanceof Error ? err.message : t('storage.regenerateFailed'));
@@ -189,11 +226,12 @@ export const StorageManagement = () => {
   const regenerateTracksMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
-    { force?: boolean }
+    { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
       await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {});
-      for (let i = 0; i < 180; i++) {
+      // Poll up to 60 min (1800 * 2s) — много видео = долго
+      for (let i = 0; i < 1800; i++) {
         await new Promise((r) => setTimeout(r, 2000));
         const result = await pollRegenerateTracksStatus();
         if (result) return result;
@@ -201,11 +239,13 @@ export const StorageManagement = () => {
       throw new Error(t('storage.regenerateTimeout'));
     },
     onSuccess: (data) => {
+      setTracksProgress(null);
       setSuccess({
         message: data.message || '',
         generated: data.generated,
         failed: data.failed,
         skipped: data.skipped,
+        frames_updated: data.frames_updated,
         tracks: true,
       });
       refetch();
@@ -214,6 +254,7 @@ export const StorageManagement = () => {
       setTimeout(() => setSuccess(null), 8000);
     },
     onError: (err) => {
+      setTracksProgress(null);
       setError(
         err instanceof Error ? err.message : t('storage.regenerateTracksFailed'),
       );
@@ -314,6 +355,7 @@ export const StorageManagement = () => {
     storageStats?.reduce((acc, stat) => acc + stat.fileCount, 0) || 0;
 
   return (
+    <>
     <Box sx={{ pb: 2 }}>
       <Typography variant="h5" gutterBottom>
         {t('storage.title')}
@@ -326,6 +368,38 @@ export const StorageManagement = () => {
         </Alert>
       )}
 
+      {(spectrogramProgress || tracksProgress) && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <AlertTitle>
+            {spectrogramProgress
+              ? t('storage.regeneratingSpectrograms')
+              : t('storage.regeneratingTracks')}
+          </AlertTitle>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            {spectrogramProgress
+              ? t('storage.regeneratingProgress', spectrogramProgress)
+              : tracksProgress
+                ? t('storage.regeneratingProgress', tracksProgress)
+                : ''}
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={
+              spectrogramProgress
+                ? (spectrogramProgress.total > 0
+                    ? (spectrogramProgress.processed / spectrogramProgress.total) * 100
+                    : 0)
+                : tracksProgress
+                  ? (tracksProgress.total > 0
+                      ? (tracksProgress.processed / tracksProgress.total) * 100
+                      : 0)
+                  : 0
+            }
+            sx={{ height: 8, borderRadius: 1 }}
+          />
+        </Alert>
+      )}
+
       {success && (
         <Alert
           severity="success"
@@ -333,7 +407,18 @@ export const StorageManagement = () => {
           onClose={() => setSuccess(null)}
         >
           <AlertTitle>{t('common.success')}</AlertTitle>
-          {'orphaned' in success
+          {'saved' in success && 'skipped' in success
+            ? (success as RetroExportResponse).skipped_no_bbox != null
+              ? t('storage.retroExportSuccessWithNoBbox', {
+                  saved: (success as RetroExportResponse).saved,
+                  skipped: (success as RetroExportResponse).skipped,
+                  skipped_no_bbox: (success as RetroExportResponse).skipped_no_bbox,
+                })
+              : t('storage.retroExportSuccess', {
+                  saved: (success as RetroExportResponse).saved,
+                  skipped: (success as RetroExportResponse).skipped,
+                })
+            : 'orphaned' in success
             ? t('storage.cleanOrphanedVisitsSuccess', {
                 orphaned: (success as CleanOrphanedResponse).orphaned,
                 synced: (success as CleanOrphanedResponse).synced,
@@ -342,11 +427,18 @@ export const StorageManagement = () => {
             ? t('storage.mergeSpeciesSuccess', { count: (success as MergeSpeciesResponse).merged })
             : 'generated' in success
             ? ('tracks' in success && success.tracks
-                ? t('storage.regenerateTracksSuccess', {
-                    generated: success.generated,
-                    failed: success.failed,
-                    skipped: success.skipped,
-                  })
+                ? ('frames_updated' in success && success.frames_updated
+                    ? t('storage.regenerateTracksSuccessWithFrames', {
+                        generated: success.generated,
+                        failed: success.failed,
+                        skipped: success.skipped,
+                        frames_updated: success.frames_updated,
+                      })
+                    : t('storage.regenerateTracksSuccess', {
+                        generated: success.generated,
+                        failed: success.failed,
+                        skipped: success.skipped,
+                      }))
                 : t('storage.regenerateSuccess', {
                     generated: success.generated,
                     failed: success.failed,
@@ -381,6 +473,38 @@ export const StorageManagement = () => {
             <Typography variant="h6" gutterBottom>
               {t('storage.recordings')}
             </Typography>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }} flexWrap="wrap">
+              <Typography variant="body2" color="text.secondary">
+                {t('storage.operationsPeriod')}:
+              </Typography>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label={t('storage.periodFrom')}
+                  value={operationsPeriod.start}
+                  onChange={(v) => v && setOperationsPeriod((p) => ({ ...p, start: v }))}
+                  maxDate={operationsPeriod.end}
+                  slotProps={{ textField: { size: 'small', sx: { width: 140 } } }}
+                />
+                <DatePicker
+                  label={t('storage.periodTo')}
+                  value={operationsPeriod.end}
+                  onChange={(v) => v && setOperationsPeriod((p) => ({ ...p, end: v }))}
+                  minDate={operationsPeriod.start}
+                  maxDate={dayjs()}
+                  slotProps={{ textField: { size: 'small', sx: { width: 140 } } }}
+                />
+              </LocalizationProvider>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={onlyManuallyCorrected}
+                    onChange={(e) => setOnlyManuallyCorrected(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={t('storage.onlyManuallyCorrected')}
+              />
+            </Stack>
             <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
               <Button
                 variant="outlined"
@@ -393,7 +517,12 @@ export const StorageManagement = () => {
               <Button
                 variant="outlined"
                 disabled={regenerateMutation.isPending}
-                onClick={() => regenerateMutation.mutate({})}
+                onClick={() =>
+                  regenerateMutation.mutate({
+                    start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                    end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                  })
+                }
                 startIcon={<GraphicEqIcon />}
               >
                 {regenerateMutation.isPending ? t('storage.regenerating') : t('storage.regenerateSpectrograms')}
@@ -401,10 +530,19 @@ export const StorageManagement = () => {
               <Button
                 variant="outlined"
                 disabled={regenerateTracksMutation.isPending}
-                onClick={() => regenerateTracksMutation.mutate({})}
+                onClick={() =>
+                  regenerateTracksMutation.mutate({
+                    start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                    end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                  })
+                }
                 startIcon={<RouteIcon />}
               >
-                {regenerateTracksMutation.isPending ? t('storage.regenerating') : t('storage.regenerateTracks')}
+                {regenerateTracksMutation.isPending
+                  ? (tracksProgress
+                      ? t('storage.regeneratingProgress', tracksProgress)
+                      : t('storage.regenerating'))
+                  : t('storage.regenerateTracks')}
               </Button>
               <Button
                 variant="outlined"
@@ -413,7 +551,11 @@ export const StorageManagement = () => {
                   setExportingDataset(true);
                   setError(null);
                   try {
-                    await exportDataset();
+                    await exportDataset({
+                      start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                      end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                      only_manually_corrected: onlyManuallyCorrected,
+                    });
                   } catch (e) {
                     setError(e instanceof Error ? e.message : t('storage.datasetExportFailed'));
                   } finally {
@@ -423,6 +565,35 @@ export const StorageManagement = () => {
                 startIcon={<DownloadIcon />}
               >
                 {exportingDataset ? t('storage.exporting') : t('storage.exportDataset')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={retroExporting}
+                onClick={async () => {
+                  setRetroExporting(true);
+                  setError(null);
+                  setSuccess(null);
+                  try {
+                    const result = await retroExportDataset(
+                      0,
+                      {
+                        start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                        end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                      },
+                      onlyManuallyCorrected,
+                    );
+                    setSuccess(result);
+                    refetch();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : t('storage.retroExportFailed'));
+                  } finally {
+                    setRetroExporting(false);
+                  }
+                }}
+                startIcon={<FolderOpenIcon />}
+                title={t('storage.retroExportHint')}
+              >
+                {retroExporting ? t('storage.retroExporting') : t('storage.retroExport')}
               </Button>
               <Button
                 variant="outlined"
@@ -523,5 +694,7 @@ export const StorageManagement = () => {
         </Paper>
       </Stack>
     </Box>
+
+    </>
   );
 };

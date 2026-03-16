@@ -52,6 +52,14 @@ def create_app():
             db.session.commit()
         except Exception:
             db.session.rollback()
+        # Add manually_corrected column if missing (migration)
+        try:
+            db.session.execute(text(
+                "ALTER TABLE video_species ADD COLUMN manually_corrected INTEGER DEFAULT 0"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         seed()
     routes.ui_routes.register_routes(app)
     routes.ui_system_routes.register_routes(app)

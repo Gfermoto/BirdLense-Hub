@@ -55,6 +55,69 @@ def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
         return None
 
 
+def _bbox_for_offset(frames_json: str | None, offset_sec: float) -> list[float] | None:
+    """
+    Find bbox from frames JSON closest to offset_sec.
+    frames: [{t: float, bbox: [x1,y1,x2,y2]}, ...] — bbox normalized 0–1.
+    Returns [x1,y1,x2,y2] or None.
+    """
+    if not frames_json or not frames_json.strip():
+        return None
+    try:
+        import json
+        frames = json.loads(frames_json)
+        if not frames or not isinstance(frames, list):
+            return None
+        # Find frame with t closest to offset_sec
+        best = None
+        best_diff = float('inf')
+        for f in frames:
+            if not isinstance(f, dict) or 'bbox' not in f:
+                continue
+            t = f.get('t', 0)
+            diff = abs(t - offset_sec)
+            if diff < best_diff:
+                best_diff = diff
+                best = f.get('bbox')
+        return best if best and len(best) == 4 else None
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def extract_detection_frame_cropped(
+    video_path: str, offset_sec: float, bbox_norm: list[float] | None
+) -> bytes | None:
+    """
+    Extract frame and crop by normalized bbox [x1,y1,x2,y2] (0–1).
+    If bbox_norm is None, returns full frame.
+    """
+    jpeg_bytes = extract_detection_frame(video_path, offset_sec)
+    if not jpeg_bytes or not bbox_norm or len(bbox_norm) != 4:
+        return jpeg_bytes
+    try:
+        import cv2
+        import numpy as np
+        arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return jpeg_bytes
+        h, w = img.shape[:2]
+        x1 = int(bbox_norm[0] * w)
+        y1 = int(bbox_norm[1] * h)
+        x2 = int(bbox_norm[2] * w)
+        y2 = int(bbox_norm[3] * h)
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+        if x2 <= x1 or y2 <= y1:
+            return jpeg_bytes
+        crop = img[y1:y2, x1:x2]
+        ok, buf = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        return buf.tobytes() if ok and buf is not None else jpeg_bytes
+    except Exception as e:
+        logger.warning("Crop failed, using full frame: %s", e)
+        return jpeg_bytes
+
+
 def crop_filename(species_name: str, start_time_str: str) -> str:
     """Generate filename for iNaturalist: Species_Name_YYYY-MM-DD_HHMMSS.jpg"""
     # start_time_str is ISO like "2024-03-15T14:32:00+00:00"

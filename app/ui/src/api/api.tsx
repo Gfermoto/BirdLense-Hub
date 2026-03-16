@@ -99,8 +99,17 @@ export const deleteVideo = async (id: number): Promise<void> => {
 };
 
 /** Export dataset crops as ZIP. Requires settings access. */
-export const exportDataset = async (): Promise<void> => {
-  const res = await fetch(`${BASE_API_URL}/dataset/export`, {
+export const exportDataset = async (params?: {
+  start_date?: string;
+  end_date?: string;
+  only_manually_corrected?: boolean;
+}): Promise<void> => {
+  const q = new URLSearchParams();
+  if (params?.start_date) q.set('start_date', params.start_date);
+  if (params?.end_date) q.set('end_date', params.end_date);
+  if (params?.only_manually_corrected) q.set('only_manually_corrected', '1');
+  const url = `${BASE_API_URL}/dataset/export${q.toString() ? `?${q}` : ''}`;
+  const res = await fetch(url, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -116,6 +125,34 @@ export const exportDataset = async (): Promise<void> => {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+};
+
+/** Retro-export: extract crops from all video detections into dataset. */
+export const retroExportDataset = async (
+  minConfidence = 0,
+  period?: { start_date?: string; end_date?: string },
+  onlyManuallyCorrected = false,
+): Promise<{
+  saved: number;
+  skipped: number;
+  skipped_no_bbox?: number;
+  errors: string[];
+}> => {
+  const body: Record<string, unknown> = { min_confidence: minConfidence };
+  if (period?.start_date) body.start_date = period.start_date;
+  if (period?.end_date) body.end_date = period.end_date;
+  if (onlyManuallyCorrected) body.only_manually_corrected = true;
+  const res = await fetch(`${BASE_API_URL}/dataset/retro-export`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
 };
 
 /** Download detection crop for iNaturalist. Opens iNaturalist upload in new tab. */

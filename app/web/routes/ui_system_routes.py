@@ -13,8 +13,8 @@ from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
 
 # Last spectrogram regeneration result (for status polling)
-_regenerate_status = {'status': 'idle', 'result': None, 'error': None}
-_regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None}
+_regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
 _regenerate_lock = threading.Lock()
 _regenerate_tracks_lock = threading.Lock()
 
@@ -266,10 +266,13 @@ def register_routes(app):
             app.logger.exception('Retention failed')
             return {'error': 'Failed to run retention'}, 500
 
-    def _run_regenerate_spectrograms(force: bool):
+    def _run_regenerate_spectrograms(force: bool, start_date: str | None, end_date: str | None):
         """Background task: regenerate spectrograms. Uses own app context and db session."""
         global _regenerate_status
-        _regenerate_status = {'status': 'running', 'result': None, 'error': None}
+        _regenerate_status = {
+            'status': 'running', 'result': None, 'error': None,
+            'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
+        }
         try:
             with app.app_context():
                 try:
@@ -278,7 +281,7 @@ def register_routes(app):
                     from spectrogram import generate_spectrogram
                 except ImportError as e:
                     app.logger.exception('Spectrogram import failed')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
                     return
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
@@ -290,7 +293,24 @@ def register_routes(app):
                     query = query.filter(
                         (Video.spectrogram_path == None) | (Video.spectrogram_path == '')
                     )
-                videos = query.all()
+                if start_date:
+                    try:
+                        dt_start = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                        query = query.filter(Video.start_time >= dt_start)
+                    except ValueError:
+                        pass
+                if end_date:
+                    try:
+                        dt_end = datetime.strptime(end_date, '%Y-%m-%d').replace(
+                            tzinfo=timezone.utc
+                        ) + timedelta(days=1)
+                        query = query.filter(Video.start_time < dt_end)
+                    except ValueError:
+                        pass
+                videos = query.order_by(Video.start_time.asc()).all()
+
+                total = len(videos)
+                _regenerate_status['progress']['total'] = total
 
                 generated = 0
                 failed = 0
@@ -299,10 +319,18 @@ def register_routes(app):
                 for video in videos:
                     if not video.video_path:
                         skipped += 1
+                        _regenerate_status['progress'].update(
+                            processed=generated + failed + skipped,
+                            generated=generated, failed=failed, skipped=skipped,
+                        )
                         continue
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
+                        _regenerate_status['progress'].update(
+                            processed=generated + failed + skipped,
+                            generated=generated, failed=failed, skipped=skipped,
+                        )
                         continue
                     out_dir = os.path.dirname(full_video)
                     out_path = os.path.join(out_dir, spectrogram_filename)
@@ -316,6 +344,11 @@ def register_routes(app):
                     else:
                         failed += 1
 
+                    _regenerate_status['progress'].update(
+                        processed=generated + failed + skipped,
+                        generated=generated, failed=failed, skipped=skipped,
+                    )
+
                 try:
                     db.session.commit()
                     app.logger.info(
@@ -325,14 +358,15 @@ def register_routes(app):
                         'status': 'done',
                         'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
                         'error': None,
+                        'progress': None,
                     }
                 except Exception as e:
                     db.session.rollback()
                     app.logger.exception(f'Spectrogram commit failed: {e}')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
         except Exception:
             app.logger.exception('Regenerate spectrograms failed')
-            _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
+            _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
 
     @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
     def regenerate_spectrograms():
@@ -355,8 +389,15 @@ def register_routes(app):
         with _regenerate_lock:
             if _regenerate_status['status'] == 'running':
                 return {'error': 'Regeneration already in progress', 'status': _regenerate_status}, 409
-        force = (request.json or {}).get('force', False)
-        t = threading.Thread(target=_run_regenerate_spectrograms, args=(force,), daemon=True)
+        data = request.json or {}
+        force = data.get('force', False)
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        t = threading.Thread(
+            target=_run_regenerate_spectrograms,
+            args=(force, start_date, end_date),
+            daemon=True,
+        )
         t.start()
         return {
             'message': 'Regeneration started in background.',
@@ -368,13 +409,19 @@ def register_routes(app):
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
         return _regenerate_status, 200
 
-    def _run_regenerate_tracks(force: bool):
-        """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks."""
+    def _run_regenerate_tracks(force: bool, start_date: str | None, end_date: str | None):
+        """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks.
+        start_date, end_date: YYYY-MM-DD — период. None = все.
+        """
         global _regenerate_tracks_status
-        _regenerate_tracks_status = {'status': 'running', 'result': None, 'error': None}
+        _regenerate_tracks_status = {
+            'status': 'running', 'result': None, 'error': None,
+            'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
+        }
         try:
             with app.app_context():
                 import sys
+                from datetime import datetime, timezone, timedelta
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
                 from track_regenerator import process_video_for_tracks
                 from services.visit_processor import VisitProcessor
@@ -383,16 +430,36 @@ def register_routes(app):
                 lores_size = (640, 640)
 
                 if force:
-                    videos = Video.query.all()
+                    q = Video.query
                 else:
                     from sqlalchemy import or_
-                    videos = Video.query.join(VideoSpecies).filter(
+                    q = Video.query.join(VideoSpecies).filter(
                         or_(VideoSpecies.frames.is_(None), VideoSpecies.frames == '')
-                    ).distinct().all()
+                    ).distinct()
+
+                if start_date:
+                    try:
+                        dt_start = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                        q = q.filter(Video.start_time >= dt_start)
+                    except ValueError:
+                        app.logger.warning('Invalid start_date %s, ignoring', start_date)
+                if end_date:
+                    try:
+                        dt_end = datetime.strptime(end_date, '%Y-%m-%d').replace(
+                            tzinfo=timezone.utc
+                        ) + timedelta(days=1)
+                        q = q.filter(Video.start_time < dt_end)
+                    except ValueError:
+                        app.logger.warning('Invalid end_date %s, ignoring', end_date)
+
+                videos = q.order_by(Video.start_time.asc()).all()
+                total = len(videos)
+                _regenerate_tracks_status['progress']['total'] = total
 
                 generated = 0
                 failed = 0
                 skipped = 0
+                frames_updated = 0  # videos with manually_corrected: only frames updated
 
                 visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
@@ -400,10 +467,18 @@ def register_routes(app):
                 for video in videos:
                     if not video.video_path:
                         skipped += 1
+                        _regenerate_tracks_status['progress'].update(
+                            processed=generated + failed + skipped,
+                            generated=generated, failed=failed, skipped=skipped,
+                        )
                         continue
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
+                        _regenerate_tracks_status['progress'].update(
+                            processed=generated + failed + skipped,
+                            generated=generated, failed=failed, skipped=skipped,
+                        )
                         continue
 
                     try:
@@ -412,29 +487,73 @@ def register_routes(app):
                         )
                         if not detections:
                             skipped += 1
+                            _regenerate_tracks_status['progress'].update(
+                                processed=generated + failed + skipped,
+                                generated=generated, failed=failed, skipped=skipped,
+                            )
                             continue
 
-                        VideoSpecies.query.filter_by(video_id=video.id).delete()
-                        visit_processor.process_detections(video, detections)
-                        generated += 1
+                        manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
+                        if manual_vs:
+                            # Только обновить frames (bbox) — виды не трогаем
+                            import json
+                            used_det_indices = set()
+                            for vs in sorted(manual_vs, key=lambda x: x.start_time):
+                                best_idx = None
+                                best_overlap = 0.0
+                                for i, d in enumerate(detections):
+                                    if i in used_det_indices:
+                                        continue
+                                    overlap = min(vs.end_time, d['end_time']) - max(vs.start_time, d['start_time'])
+                                    if overlap > best_overlap and overlap > 0.3:
+                                        best_overlap = overlap
+                                        best_idx = i
+                                if best_idx is not None and detections[best_idx].get('frames'):
+                                    vs.frames = json.dumps(detections[best_idx]['frames'])
+                                    used_det_indices.add(best_idx)
+                            db.session.flush()
+                            # Удалить не-manual, добавить новые детекции (не matched)
+                            to_delete = [vs for vs in video.video_species if not vs.manually_corrected]
+                            for vs in to_delete:
+                                db.session.delete(vs)
+                            unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
+                            if unmatched:
+                                visit_processor.process_detections(video, unmatched)
+                            frames_updated += 1
+                        else:
+                            VideoSpecies.query.filter_by(video_id=video.id).delete()
+                            visit_processor.process_detections(video, detections)
+                            generated += 1
                         db.session.commit()
                     except Exception as e:
                         db.session.rollback()
                         app.logger.exception(f'Track regen failed {video.video_path}: {e}')
                         failed += 1
 
+                    _regenerate_tracks_status['progress'].update(
+                        processed=generated + failed + skipped,
+                        generated=generated, failed=failed, skipped=skipped,
+                    )
+
                 app.logger.info(
-                    f'Tracks: generated={generated}, failed={failed}, skipped={skipped}'
+                    f'Tracks: generated={generated}, frames_updated={frames_updated}, failed={failed}, skipped={skipped}'
                 )
+                result = {'generated': generated, 'failed': failed, 'skipped': skipped}
+                if frames_updated:
+                    result['frames_updated'] = frames_updated
                 _regenerate_tracks_status = {
                     'status': 'done',
-                    'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
+                    'result': result,
                     'error': None,
+                    'progress': None,
                 }
         except Exception:
             db.session.rollback()
             app.logger.exception('Regenerate tracks failed')
-            _regenerate_tracks_status = {'status': 'done', 'result': None, 'error': 'Track regeneration failed'}
+            _regenerate_tracks_status = {
+                'status': 'done', 'result': None, 'error': 'Track regeneration failed',
+                'progress': None,
+            }
 
     @app.route('/api/ui/system/regenerate-tracks', methods=['POST'])
     def regenerate_tracks():
@@ -444,8 +563,15 @@ def register_routes(app):
         with _regenerate_tracks_lock:
             if _regenerate_tracks_status['status'] == 'running':
                 return {'error': 'Track regeneration already in progress', 'status': _regenerate_tracks_status}, 409
-        force = (request.json or {}).get('force', False)
-        t = threading.Thread(target=_run_regenerate_tracks, args=(force,), daemon=True)
+        data = request.json or {}
+        force = data.get('force', False)
+        start_date = data.get('start_date')  # YYYY-MM-DD or None
+        end_date = data.get('end_date')  # YYYY-MM-DD or None
+        t = threading.Thread(
+            target=_run_regenerate_tracks,
+            args=(force, start_date, end_date),
+            daemon=True,
+        )
         t.start()
         return {'message': 'Track regeneration started.', 'started': True}, 202
 

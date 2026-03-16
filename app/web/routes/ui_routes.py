@@ -32,7 +32,11 @@ from services.xeno_canto_service import fetch_recordings, _search_term_from_spec
 from services.ebird_export_service import build_ebird_csv
 from services.detection_crop_service import extract_detection_frame, crop_filename
 from services.web_push_service import get_vapid_public_key
-from services.dataset_export_service import build_dataset_zip, move_crop_on_species_correction
+from services.dataset_export_service import (
+    build_dataset_zip,
+    move_crop_on_species_correction,
+    extract_and_save_crop_for_detection,
+)
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
 from services.migration_calendar_service import get_migration_calendar
@@ -658,10 +662,19 @@ def register_routes(app):
 
     @app.route('/api/ui/dataset/export', methods=['GET'])
     def export_dataset():
-        """Export dataset crops as ZIP (train/val + dataset_info.json)."""
+        """Export dataset crops as ZIP (train/val + dataset_info.json).
+        Query params: start_date, end_date (YYYY-MM-DD), only_manually_corrected (bool).
+        """
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
-        zip_bytes, err = build_dataset_zip()
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        only_manually_corrected = request.args.get('only_manually_corrected', '').lower() in ('1', 'true', 'yes')
+        zip_bytes, err = build_dataset_zip(
+            start_date=start_date,
+            end_date=end_date,
+            only_manually_corrected=only_manually_corrected,
+        )
         if err:
             return {'error': err}, 404
         filename = f'birdlense_dataset_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")}Z.zip'
@@ -670,6 +683,25 @@ def register_routes(app):
             mimetype='application/zip',
             headers={'Content-Disposition': f'attachment; filename="{filename}"'}
         )
+
+    @app.route('/api/ui/dataset/retro-export', methods=['POST'])
+    def retro_export_dataset():
+        """Ретроэкспорт: извлечь кадры из видео-детекций в датасет."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+        from services.dataset_export_service import retro_export_all_video_detections
+        data = request.json or {}
+        min_conf = float(data.get('min_confidence', 0))
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        only_manually_corrected = bool(data.get('only_manually_corrected', False))
+        result = retro_export_all_video_detections(
+            min_confidence=min_conf,
+            start_date=start_date,
+            end_date=end_date,
+            only_manually_corrected=only_manually_corrected,
+        )
+        return result, 200
 
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):
@@ -724,6 +756,7 @@ def register_routes(app):
             v.species_id = species_id
             v.species_visit_id = new_visit.id
             v.species_visit = new_visit
+            v.manually_corrected = True
             v_start = ensure_utc(v.video.start_time) + timedelta(seconds=v.start_time)
             v_end = ensure_utc(v.video.start_time) + timedelta(seconds=v.end_time)
             new_visit.end_time = max(new_visit.end_time, v_end)
@@ -744,15 +777,18 @@ def register_routes(app):
 
         db.session.commit()
 
-        # Move dataset crops to new species dir when user corrects species
+        # Move dataset crops to new species dir when user corrects species.
+        # If no file to move (processor didn't save), retro-export: extract from video.
         for v in to_update:
             if v.source == 'video':
-                move_crop_on_species_correction(
+                moved = move_crop_on_species_correction(
                     video_id=v.video_id,
                     track_id=v.track_id,
                     old_species_name=old_species_name,
                     new_species_name=species.name,
                 )
+                if not moved:
+                    extract_and_save_crop_for_detection(v, species.name)
 
         updated_count = len(to_update)
         return {
@@ -808,17 +844,20 @@ def register_routes(app):
             vs.species_id = species_id
             vs.species_visit_id = new_visit.id
             vs.species_visit = new_visit
+            vs.manually_corrected = True
             v_start = video_start + timedelta(seconds=vs.start_time)
             v_end = video_start + timedelta(seconds=vs.end_time)
             new_visit.end_time = max(new_visit.end_time, v_end)
             new_visit.start_time = min(new_visit.start_time, v_start)
             if vs.source == 'video':
-                move_crop_on_species_correction(
+                moved = move_crop_on_species_correction(
                     video_id=vs.video_id,
                     track_id=vs.track_id,
                     old_species_name=old_species_name,
                     new_species_name=species.name,
                 )
+                if not moved:
+                    extract_and_save_crop_for_detection(vs, species.name)
 
         db.session.flush()
         for ov in old_visits:
