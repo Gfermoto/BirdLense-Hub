@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.6] - 2026-03-16
+
+### Added
+
+- **Кнопка «Скачать видео»** — только для админа и помощника (contributor_or_admin_access), после ввода пароля.
+- **TG-превью best frame** — в уведомлениях Telegram отправляется фото лучшего кадра детекции.
+
+### Changed
+
+- **Секреты в production** — FLASK_SECRET_KEY, PROCESSOR_SECRET, BIRDLENSE_ENV задаются через deploy.local.sh и записываются в app/.env на сервере.
+- **deploy.sh** — запись секретов без дубликатов (grep -v -E).
+
+### Security
+
+- **image_path** — валидация _is_safe_image_path перед отправкой в Telegram.
+
+---
+
 ## [0.1.5] - 2026-03-15
 
 ### Added
