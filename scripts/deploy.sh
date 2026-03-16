@@ -60,19 +60,18 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
   PROCESSOR_SECRET=$(openssl rand -hex 16)
   echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
 fi
-if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ]; then
+if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере..."
-  # Копируем .env.example если .env отсутствует или повреждён (>1MB)
   ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
     SIZE=\$(stat -c%s ${REMOTE_DIR}/app/.env 2>/dev/null || echo 0); \
     if [ ! -f ${REMOTE_DIR}/app/.env ] || [ \"\$SIZE\" -gt 1048576 ]; then \
       cp ${REMOTE_DIR}/app/.env.example ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
     fi"
-  # Безопасная запись: printf экранирует спецсимволы в секретах
   ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
-    (grep -v '^MCP_TOKEN=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
-     grep -v '^PROCESSOR_SECRET=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
+    (grep -v -E '^(MCP_TOKEN|PROCESSOR_SECRET|FLASK_SECRET_KEY|BIRDLENSE_ENV)=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
      [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN}\"; \
+     [ -n \"${FLASK_SECRET_KEY:-}\" ] && printf 'FLASK_SECRET_KEY=%s\n' \"${FLASK_SECRET_KEY}\"; \
+     [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV}\"; \
      printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi

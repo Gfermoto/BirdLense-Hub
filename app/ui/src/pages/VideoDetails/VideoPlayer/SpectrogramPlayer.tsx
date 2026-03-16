@@ -102,10 +102,11 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
   }, [drawSpectrogram]);
 
   useEffect(() => {
-    // Load spectrogram image
+    let cancelled = false;
     const image = new Image();
     image.src = imageUrl;
     image.onload = () => {
+      if (cancelled) return;
       imageRef.current = image;
       if (canvasRef.current) {
         canvasRef.current.height = image.height;
@@ -114,6 +115,8 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
     };
 
     return () => {
+      cancelled = true;
+      imageRef.current = null;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;

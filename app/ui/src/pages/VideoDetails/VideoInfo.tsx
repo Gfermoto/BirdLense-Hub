@@ -4,14 +4,20 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DownloadIcon from '@mui/icons-material/Download';
 import { Video } from '../../types';
 import { WeatherCard } from '../../components/WeatherCard';
 import { resolveImageUrl } from '../../api/api';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { BASE_API_URL } from '../../api/api';
 
 export const VideoInfo = ({ video }: { video: Video }) => {
   const { t } = useTranslation();
+  const { unlocked } = useProtectedArea();
+  const downloadUrl = unlocked ? `${BASE_API_URL}/videos/${video.id}/download` : null;
   const { processor_version, start_time, end_time, favorite, weather, food } =
     video;
 
@@ -27,6 +33,20 @@ export const VideoInfo = ({ video }: { video: Video }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Download video — только для админа и помощника */}
+      {downloadUrl && (
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          href={downloadUrl}
+          download
+          fullWidth
+          sx={{ py: 1.5 }}
+        >
+          {t('videoInfo.downloadVideo')}
+        </Button>
+      )}
+
       {/* Favorite Badge */}
       {favorite && (
         <Chip

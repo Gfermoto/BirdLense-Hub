@@ -2,7 +2,35 @@ import json
 import logging
 import os
 import secrets
+import threading
+import time
 from datetime import timedelta, datetime, timezone
+
+# Rate limit for verify-password: 5 failed attempts per 60 sec per IP
+_verify_password_attempts: dict = {}
+_verify_password_lock = threading.Lock()
+VERIFY_PASSWORD_LIMIT = 5
+VERIFY_PASSWORD_WINDOW = 60
+
+
+def _check_verify_password_rate_limit(ip: str) -> bool:
+    """Return True if under limit, False if rate limited (too many failed attempts)."""
+    with _verify_password_lock:
+        now = time.monotonic()
+        if ip not in _verify_password_attempts:
+            return True
+        attempts = [t for t in _verify_password_attempts[ip] if now - t < VERIFY_PASSWORD_WINDOW]
+        _verify_password_attempts[ip] = attempts
+        return len(attempts) < VERIFY_PASSWORD_LIMIT
+
+
+def _record_verify_password_failure(ip: str) -> None:
+    """Record a failed verify-password attempt for rate limiting."""
+    with _verify_password_lock:
+        now = time.monotonic()
+        if ip not in _verify_password_attempts:
+            _verify_password_attempts[ip] = []
+        _verify_password_attempts[ip].append(now)
 
 # Вид «Bird» / «bird» — птица без определения вида, всегда неопределённый объект
 GENERIC_BIRD_SPECIES = 'Bird'
