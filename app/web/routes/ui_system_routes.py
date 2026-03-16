@@ -71,7 +71,8 @@ def register_routes(app):
         if not settings_check_access():
             return {'error': 'Password required'}, 403
         try:
-            lines = min(int(request.args.get('lines', LOG_LINES_DEFAULT)), LOG_LINES_MAX)
+            raw = request.args.get('lines', LOG_LINES_DEFAULT)
+            lines = max(1, min(int(raw), LOG_LINES_MAX))
         except (ValueError, TypeError):
             lines = LOG_LINES_DEFAULT
         data_dir = os.path.dirname(recordings_dir())
@@ -83,13 +84,16 @@ def register_routes(app):
                 tail = deque(f, maxlen=lines)
             return {'lines': list(tail), 'path': log_path}
         except OSError as e:
-            return {'error': str(e), 'lines': []}, 500
+            app.logger.exception('Get processor logs failed')
+            return {'error': 'Failed to read logs', 'lines': []}, 500
 
     @app.route('/api/ui/system/activity', methods=['GET'])
     def get_activity():
         month = request.args.get('month', datetime.now(timezone.utc).strftime('%Y-%m'))
         try:
             start_date = datetime.strptime(month, '%Y-%m')
+            if not (2020 <= start_date.year <= 2030 and 1 <= start_date.month <= 12):
+                raise ValueError('Year or month out of range')
         except ValueError:
             return {'error': 'Invalid month format, use YYYY-MM'}, 400
         end_date = (start_date.replace(day=1) +
@@ -243,8 +247,8 @@ def register_routes(app):
             }, 200
 
         except Exception as e:
-            app.logger.error(f"Error during purge: {str(e)}")
-            return {'error': str(e)}, 500
+            app.logger.exception('Purge storage failed')
+            return {'error': 'Failed to purge storage'}, 500
 
     @app.route('/api/ui/system/retention', methods=['POST'])
     def trigger_retention():
@@ -259,8 +263,8 @@ def register_routes(app):
                 'deletedSize': size,
             }, 200
         except Exception as e:
-            app.logger.error(f"Retention failed: {e}")
-            return {'error': str(e)}, 500
+            app.logger.exception('Retention failed')
+            return {'error': 'Failed to run retention'}, 500
 
     def _run_regenerate_spectrograms(force: bool):
         """Background task: regenerate spectrograms. Uses own app context and db session."""
@@ -273,8 +277,8 @@ def register_routes(app):
                     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
                     from spectrogram import generate_spectrogram
                 except ImportError as e:
-                    app.logger.error(f'Spectrogram import failed: {e}')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
+                    app.logger.exception('Spectrogram import failed')
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
                     return
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
@@ -325,10 +329,10 @@ def register_routes(app):
                 except Exception as e:
                     db.session.rollback()
                     app.logger.exception(f'Spectrogram commit failed: {e}')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
-        except Exception as e:
-            app.logger.exception(f'Regenerate spectrograms failed: {e}')
-            _regenerate_status = {'status': 'done', 'result': None, 'error': str(e)}
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
+        except Exception:
+            app.logger.exception('Regenerate spectrograms failed')
+            _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed'}
 
     @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
     def regenerate_spectrograms():
@@ -427,10 +431,10 @@ def register_routes(app):
                     'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
                     'error': None,
                 }
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            app.logger.exception(f'Regenerate tracks failed: {e}')
-            _regenerate_tracks_status = {'status': 'done', 'result': None, 'error': str(e)}
+            app.logger.exception('Regenerate tracks failed')
+            _regenerate_tracks_status = {'status': 'done', 'result': None, 'error': 'Track regeneration failed'}
 
     @app.route('/api/ui/system/regenerate-tracks', methods=['POST'])
     def regenerate_tracks():
@@ -578,5 +582,5 @@ def register_routes(app):
             }, 200
         except Exception as e:
             db.session.rollback()
-            app.logger.exception(f'Scan recordings failed: {e}')
-            return {'error': str(e)}, 500
+            app.logger.exception('Scan recordings failed')
+            return {'error': 'Failed to scan recordings'}, 500

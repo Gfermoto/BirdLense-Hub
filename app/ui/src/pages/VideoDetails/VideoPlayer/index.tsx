@@ -396,6 +396,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
 
         {(!playing || showControls) && (
           <IconButton
+            aria-label={playing ? t('video.pause') : t('video.play')}
             onClick={(e) => {
               e.stopPropagation();
               togglePlayPause();
@@ -407,6 +408,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
               transform: 'translate(-50%, -50%)',
               backgroundColor: 'rgba(0,0,0,0.3)',
               color: 'white',
+              minWidth: 44,
+              minHeight: 44,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
                 backgroundColor: 'rgba(0,0,0,0.5)',
@@ -440,12 +443,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
               <Typography
                 key={speed}
                 component="button"
+                role="button"
+                aria-label={`${t('video.speed')} ${speed}x`}
+                aria-pressed={playbackRate === speed}
                 onClick={(e) => {
                   e.stopPropagation();
                   setPlaybackRate(speed);
                 }}
                 sx={{
-                  minWidth: 36,
+                  minWidth: 44,
+                  minHeight: 44,
                   py: 0.5,
                   px: 1,
                   fontSize: '0.75rem',
@@ -464,6 +471,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
               </Typography>
             ))}
             <IconButton
+              aria-label={t('video.fullscreen')}
               onClick={(e) => {
                 e.stopPropagation();
                 handleFullscreen();
@@ -471,6 +479,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
               sx={{
                 backgroundColor: 'rgba(0,0,0,0.3)',
                 color: 'white',
+                minWidth: 44,
+                minHeight: 44,
                 '&:hover': {
                   backgroundColor: 'rgba(0,0,0,0.5)',
                 },

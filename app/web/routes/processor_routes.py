@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import secrets
 import threading
 from flask import request
 from datetime import datetime, timezone, timedelta
@@ -40,7 +41,8 @@ def _check_processor_secret():
     secret = os.environ.get('PROCESSOR_SECRET', '').strip()
     if not secret:
         return True
-    return request.headers.get('X-Processor-Token') == secret
+    token = request.headers.get('X-Processor-Token') or ''
+    return secrets.compare_digest(token, secret)
 
 
 def register_routes(app):
@@ -54,8 +56,8 @@ def register_routes(app):
         try:
             start_time = datetime.fromisoformat(data.get('start_time'))
             end_time = datetime.fromisoformat(data.get('end_time'))
-        except (ValueError, TypeError) as e:
-            return {'error': f'Invalid datetime format: {e}'}, 400
+        except (ValueError, TypeError):
+            return {'error': 'Invalid datetime format'}, 400
 
         # Validate required data
         species_list = data.get('species', [])

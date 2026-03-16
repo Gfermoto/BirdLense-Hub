@@ -93,10 +93,11 @@ interface DetectedSpeciesProps {
 }
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
-  species,
+  species = [],
   videoId,
 }) => {
   const { t } = useTranslation();
+  const safeSpecies = species ?? [];
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const queryClient = useQueryClient();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -137,7 +138,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   };
 
   // Group species by species_id and calculate stats
-  const groupedSpecies = species
+  const groupedSpecies = safeSpecies
     .filter((s) => s.source === 'video')
     .reduce((groups: GroupedSpecies[], sp) => {
       let group = groups.find((g) => g.species_id === sp.species_id);
@@ -160,6 +161,10 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   // Calculate confidence range for each group
   groupedSpecies.forEach((group) => {
     const confidences = group.detections.map((d) => d.confidence * 100);
+    if (confidences.length === 0) {
+      group.confidenceRange = '—';
+      return;
+    }
     const min = Math.min(...confidences).toFixed(0);
     const max = Math.max(...confidences).toFixed(0);
     group.confidenceRange = min === max ? `${min}%` : `${min}% - ${max}%`;

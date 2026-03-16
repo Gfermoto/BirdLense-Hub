@@ -237,6 +237,13 @@ export function Navigation() {
               >
                 {t('nav.system')}
               </MenuItem>
+
+              {/* Mobile: Status + Language */}
+              <Divider />
+              <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <StatusIndicator />
+                <LanguageSwitcher />
+              </Box>
             </Menu>
           </Box>
 
@@ -326,7 +333,7 @@ export function Navigation() {
                 },
               }}
             >
-              Live
+              {t('nav.liveView')}
             </Button>
 
             {/* Component Status */}

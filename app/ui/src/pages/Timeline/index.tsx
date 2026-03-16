@@ -34,12 +34,10 @@ import { timelineHelpConfig } from '../../page-help-config';
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
     ? visits.reduce((acc: Partial<Species>[], visit) => {
-        if (
-          !acc.some(
-            (existingSpecies) => existingSpecies.name === visit.species.name,
-          )
-        ) {
-          acc.push(visit.species);
+        const sp = visit.species;
+        if (!sp?.name) return acc;
+        if (!acc.some((existing) => existing.name === sp.name)) {
+          acc.push(sp);
         }
         return acc;
       }, [])
@@ -100,6 +98,7 @@ export function TimelinePage() {
     data: visits,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['speciesVisits', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
     queryFn: () => {
@@ -176,7 +175,15 @@ export function TimelinePage() {
         <CircularProgress />
       </Box>
     );
-  if (error) return <div>{t('timeline.errorLoad')}</div>;
+  if (error)
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">{t('timeline.errorLoad')}</Typography>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
+          {t('common.retry')}
+        </Button>
+      </Box>
+    );
 
   return (
     <>
