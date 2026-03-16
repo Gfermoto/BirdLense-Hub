@@ -162,5 +162,27 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         }
         logger.debug("merge: MQTT %s new (offset=%.1fs)", species, offset if offset is not None else -1)
 
+    # Bird = unknown когда один; при наличии любого другого вида — убрать Bird (предпочесть другой)
+    # При удалении Bird переносим frames/best_frame в оставшиеся детекции, иначе теряются треки
+    bird_key = _canonical_key("Bird")
+    result_list = list(by_key.values())
+    bird_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) == bird_key]
+    other_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) != bird_key]
+    if bird_dets and other_dets:
+        # Переносим frames/best_frame от Bird в детекции без треков (например, только MQTT)
+        for other in other_dets:
+            if not (other.get("frames") or other.get("best_frame")):
+                for bird_d in bird_dets:
+                    if bird_d.get("frames") or bird_d.get("best_frame"):
+                        other["frames"] = bird_d.get("frames") or other.get("frames")
+                        if bird_d.get("best_frame") is not None:
+                            other["best_frame"] = bird_d.get("best_frame")
+                        if bird_d.get("track_id") is not None:
+                            other["track_id"] = bird_d.get("track_id")
+                        logger.debug("merge: transferred frames from Bird to %s", other.get("species_name"))
+                        break
+        result_list = other_dets
+        logger.debug("merge: dropped Bird (other species present), kept %d", len(result_list))
+
     # Сортировка по start_time (раньше появившиеся — первыми)
-    return sorted(by_key.values(), key=lambda x: x.get("start_time", 0))
+    return sorted(result_list, key=lambda x: x.get("start_time", 0))
