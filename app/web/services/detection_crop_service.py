@@ -12,15 +12,6 @@ INATURALIST_UPLOAD_URL = "https://www.inaturalist.org/observations/upload"
 VIDEO_PATH_SAFE_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
 
 
-def _app_base_for_video_path():
-    """Base dir for video_path from DB (data/recordings/YYYY/MM/DD/...). Returns app root."""
-    data_dir = os.environ.get(
-        'DATA_DIR',
-        os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data')
-    )
-    return os.path.dirname(data_dir)
-
-
 def _safe_filename(name: str) -> str:
     """Replace unsafe chars for filename."""
     return re.sub(r'[^\w\s\-\(\)]', '_', name).strip().replace(' ', '_')
@@ -36,9 +27,9 @@ def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
     if not video_path or not VIDEO_PATH_SAFE_RE.match(video_path):
         logger.warning("Rejected invalid video_path format")
         return None
-    base = _app_base_for_video_path()
-    full_path = os.path.join(base, video_path) if not os.path.isabs(video_path) else video_path
-    if not os.path.isfile(full_path):
+    from util import full_path_for_video
+    full_path = full_path_for_video(video_path)
+    if not full_path or not os.path.isfile(full_path):
         logger.warning(f"Video not found: {full_path}")
         return None
     try:

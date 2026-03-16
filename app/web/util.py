@@ -125,6 +125,19 @@ def recordings_dir():
     return os.path.join(base, 'recordings')
 
 
+def full_path_for_video(video_path: str) -> str | None:
+    """Полный путь к файлу/папке по video_path из БД (data/recordings/YYYY/MM/DD/...)."""
+    if not video_path or not isinstance(video_path, str):
+        return None
+    data_dir = os.environ.get(
+        'DATA_DIR',
+        os.path.join(os.path.dirname(__file__), '..', 'data')
+    )
+    # video_path = "data/recordings/...", DATA_DIR = ".../data" -> base = parent of data
+    app_base = os.path.dirname(data_dir)
+    return os.path.normpath(os.path.join(app_base, video_path))
+
+
 def _get_session_role():
     """Return 'admin' | 'contributor' | None from session."""
     from flask import session
@@ -367,6 +380,34 @@ def _load_hierarchy_parent_map():
     return result
 
 
+def load_species_canonical_mapping():
+    """
+    Загрузить маппинг variant -> canonical из species_canonical_mapping.txt.
+    Возвращает dict: variant_name -> canonical_name (Common).
+    """
+    path = os.path.join(os.path.dirname(__file__), "seed", "species_canonical_mapping.txt")
+    result = {}
+    if not os.path.isfile(path):
+        return result
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "|" not in line:
+                continue
+            variant, canonical = line.split("|", 1)
+            result[variant.strip()] = canonical.strip()
+    return result
+
+
+def normalize_species_to_canonical(name: str, mapping: dict | None = None) -> str:
+    """
+    Нормализовать имя вида в каноническое (Common name).
+    mapping: variant -> canonical. Если None — загружается из seed.
+    """
+    mapping = mapping or load_species_canonical_mapping()
+    return mapping.get(name, name)
+
+
 _hierarchy_parent_map = None
 
 
@@ -441,12 +482,20 @@ def update_species_info_from_wiki(sp):
 
     image_url from Wikipedia is a full URL (https://upload.wikimedia.org/...).
     Frontend must use resolveImageUrl() to handle both full URLs and relative paths.
+    Prefer common name for lookup (Eurasian Jay) — Wikipedia often has image on common-name page.
     """
     if sp.image_url and sp.description:
         return False
-    image_url, description = get_wikipedia_image_and_description(
-        re.sub(r'\(.*\)', '', sp.name).strip()
-    )
+    # Try common name first (Garrulus glandarius (Eurasian Jay) -> Eurasian Jay)
+    search_title = _extract_common_for_hierarchy(sp.name) or sp.name
+    image_url, description = get_wikipedia_image_and_description(search_title)
+    if not image_url and search_title != sp.name:
+        # Fallback to scientific name
+        scientific = re.sub(r'\(.*\)', '', sp.name).strip()
+        if scientific:
+            image_url, desc2 = get_wikipedia_image_and_description(scientific)
+            if desc2 and not description:
+                description = desc2
     if image_url and not sp.image_url:
         sp.image_url = image_url
     if description and not sp.description:
@@ -515,9 +564,11 @@ def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
     )
 
 
-def notify(message, link="live", tags=None, image_path=None, timestamp=None):
+def notify(message, link="live", tags=None, image_path=None, image_bytes=None, timestamp=None):
     """Send notification via Telegram and/or Web Push. Requires token+chat_id or Web Push subscribers.
 
+    image_path: path to image file (must pass _is_safe_image_path when used).
+    image_bytes: raw JPEG bytes (alternative to image_path, preferred when processor sends base64).
     timestamp: datetime or Unix int for dynamic time <t:unix:R> (Bot API 9.5).
     """
     if not app_config.get('general.enable_notifications'):
@@ -549,7 +600,18 @@ def notify(message, link="live", tags=None, image_path=None, timestamp=None):
         text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
     try:
         send_photo = app_config.get('notifications.send_photo', True)
-        if send_photo and image_path and _is_safe_image_path(image_path):
+        # Prefer image_bytes (from processor base64) — не зависит от общего файлового пространства
+        image_to_send = None
+        if send_photo and image_bytes and isinstance(image_bytes, bytes) and len(image_bytes) > 0:
+            image_to_send = image_bytes
+        elif send_photo and image_path and _is_safe_image_path(image_path):
+            try:
+                with open(image_path, 'rb') as f:
+                    image_to_send = f.read()
+            except OSError as e:
+                logging.warning("Cannot read image for Telegram: %s", e)
+                image_to_send = None
+        if image_to_send:
             view_stars = app_config.get('notifications.paid_media_view_star_count')
             forward_stars = app_config.get('notifications.paid_media_forward_star_count')
             try:
@@ -596,25 +658,24 @@ def notify(message, link="live", tags=None, image_path=None, timestamp=None):
                 payload['media'] = json.dumps([
                     {'type': 'photo', 'media': 'attach://photo'}
                 ])
-                with open(image_path, 'rb') as f:
-                    r = requests.post(
-                        f"https://api.telegram.org/bot{token}/sendPaidMedia",
-                        data=payload,
-                        files={'photo': f},
-                        timeout=15,
-                    )
+                r = requests.post(
+                    f"https://api.telegram.org/bot{token}/sendPaidMedia",
+                    data=payload,
+                    files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                    timeout=15,
+                )
             else:
-                with open(image_path, 'rb') as f:
-                    r = requests.post(
-                        f"https://api.telegram.org/bot{token}/sendPhoto",
-                        data=payload,
-                        files={'photo': f},
-                        timeout=15,
-                    )
-            try:
-                os.remove(image_path)
-            except OSError:
-                pass
+                r = requests.post(
+                    f"https://api.telegram.org/bot{token}/sendPhoto",
+                    data=payload,
+                    files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                    timeout=15,
+                )
+            if image_path and os.path.isfile(image_path):
+                try:
+                    os.remove(image_path)
+                except OSError:
+                    pass
         else:
             r = _telegram_send_message(
                 token, chat_id, text, link=link_url,

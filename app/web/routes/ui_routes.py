@@ -1,4 +1,5 @@
 import os
+import shutil
 import secrets
 import csv
 import io
@@ -34,6 +35,7 @@ from services.web_push_service import get_vapid_public_key
 from services.dataset_export_service import build_dataset_zip, move_crop_on_species_correction
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
+from services.migration_calendar_service import get_migration_calendar
 
 UNKNOWNS_LIMIT_MAX = 500
 
@@ -249,6 +251,55 @@ def register_routes(app):
         }
         return video_json, 200
 
+    @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
+    def delete_video(video_id):
+        """Удалить запись (видео, файл, связанные данные). Только для админа и помощника."""
+        if not contributor_or_admin_access():
+            return {'error': 'Access denied'}, 403
+        video = Video.query.get(video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+        try:
+            from models import VideoSpecies, SpeciesVisit
+            from util import full_path_for_video
+            from services.detection_crop_service import VIDEO_PATH_SAFE_RE
+
+            visit_ids = [vs.species_visit_id for vs in video.video_species if vs.species_visit_id]
+            visits_to_delete = []
+            for vid in visit_ids:
+                if not vid:
+                    continue
+                other = VideoSpecies.query.filter(
+                    VideoSpecies.species_visit_id == vid,
+                    VideoSpecies.video_id != video_id,
+                ).first()
+                if not other:
+                    visits_to_delete.append(vid)
+            for vs in list(video.video_species):
+                db.session.delete(vs)
+            for vid in visits_to_delete:
+                visit = SpeciesVisit.query.get(vid)
+                if visit:
+                    db.session.delete(visit)
+
+            # Удаление папки с видео (единый путь через full_path_for_video)
+            if video.video_path and VIDEO_PATH_SAFE_RE.match(video.video_path):
+                dir_path = full_path_for_video(os.path.dirname(video.video_path))
+                if dir_path and os.path.isdir(dir_path):
+                    try:
+                        shutil.rmtree(dir_path)
+                        app.logger.info(f"Deleted recording dir: {dir_path}")
+                    except OSError as e:
+                        app.logger.warning(f"Could not delete dir {dir_path}: {e}")
+
+            db.session.delete(video)
+            db.session.commit()
+            return {'message': 'Video deleted'}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception(f'Delete video {video_id} failed: {e}')
+            return {'error': str(e)}, 500
+
     @app.route('/api/ui/videos/<int:video_id>/download', methods=['GET'])
     def download_video(video_id):
         """Скачать видео. Только для админа и помощника (contributor_or_admin_access)."""
@@ -259,13 +310,11 @@ def register_routes(app):
             return {'error': 'Video not found'}, 404
         from flask import send_file
         from services.detection_crop_service import VIDEO_PATH_SAFE_RE
+        from util import full_path_for_video
         if not VIDEO_PATH_SAFE_RE.match(video.video_path):
             return {'error': 'Invalid video path'}, 400
-        base = os.environ.get('DATA_DIR') or os.path.join(
-            os.path.dirname(__file__), '..', '..', 'data')
-        app_base = os.path.dirname(base)
-        full_path = os.path.join(app_base, video.video_path)
-        if not os.path.isfile(full_path):
+        full_path = full_path_for_video(video.video_path)
+        if not full_path or not os.path.isfile(full_path):
             return {'error': 'Video file not found'}, 404
         # Имя файла: birdlense_YYYY-MM-DD_HHMMSS.mp4
         from datetime import datetime
@@ -336,6 +385,14 @@ def register_routes(app):
             return {"error": "Invalid timestamp format."}, 400
 
         data = get_overview_data(db.session, start_of_day, end_of_day)
+        return data, 200
+
+    @app.route('/api/ui/migration-calendar', methods=['GET'])
+    def get_migration_calendar_route():
+        """Species activity by month — historical pattern for migration calendar."""
+        start_year = request.args.get('start_year', type=int)
+        end_year = request.args.get('end_year', type=int)
+        data = get_migration_calendar(db.session, start_year=start_year, end_year=end_year)
         return data, 200
 
     @app.route('/api/ui/timeline', methods=['GET'])
@@ -644,29 +701,42 @@ def register_routes(app):
         if vs.species_id == species_id:
             return {'message': 'Species unchanged'}, 200
 
-        vs.species_id = species_id
-        vs.species_visit_id = None
+        # Обновить одним действием:
+        # 1) все дубликаты этого вида в ЭТОМ видео (старые записи)
+        # 2) все детекции того же visit в других видео
+        to_update_set = set()
+        for v in vs.video.video_species:
+            if v.species_id == old_species_id:
+                to_update_set.add(v)
+        if old_visit:
+            for v in old_visit.video_species:
+                to_update_set.add(v)
+        to_update = list(to_update_set)
+        old_visits = {v.species_visit for v in to_update if v.species_visit}
 
-        visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 45)
+        visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
         vp = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
         video_start = ensure_utc(vs.video.start_time)
         detection_time = video_start + timedelta(seconds=vs.start_time)
         new_visit, _ = vp._get_or_create_visit(species, detection_time)
-        new_visit.end_time = max(
-            new_visit.end_time,
-            video_start + timedelta(seconds=vs.end_time)
-        )
-        vs.species_visit_id = new_visit.id
-        vs.species_visit = new_visit
+
+        for v in to_update:
+            v.species_id = species_id
+            v.species_visit_id = new_visit.id
+            v.species_visit = new_visit
+            v_start = ensure_utc(v.video.start_time) + timedelta(seconds=v.start_time)
+            v_end = ensure_utc(v.video.start_time) + timedelta(seconds=v.end_time)
+            new_visit.end_time = max(new_visit.end_time, v_end)
+            new_visit.start_time = min(new_visit.start_time, v_start)
 
         db.session.flush()
 
-        if old_visit:
-            remaining = [v for v in old_visit.video_species if v.id != detection_id]
-            if remaining:
-                vp._update_simultaneous_count(old_visit, remaining)
-            else:
-                db.session.delete(old_visit)
+        # Удалить старые visits, оставшиеся без детекций
+        for ov in old_visits:
+            if ov:
+                remaining = [x for x in ov.video_species if x not in to_update]
+                if not remaining:
+                    db.session.delete(ov)
 
         new_video_detections = [v for v in new_visit.video_species if v.source == 'video']
         if new_video_detections:
@@ -674,16 +744,100 @@ def register_routes(app):
 
         db.session.commit()
 
-        # Move dataset crop to new species dir when user corrects species
-        if vs.source == 'video':
-            move_crop_on_species_correction(
-                video_id=vs.video_id,
-                track_id=vs.track_id,
-                old_species_name=old_species_name,
-                new_species_name=species.name,
-            )
+        # Move dataset crops to new species dir when user corrects species
+        for v in to_update:
+            if v.source == 'video':
+                move_crop_on_species_correction(
+                    video_id=v.video_id,
+                    track_id=v.track_id,
+                    old_species_name=old_species_name,
+                    new_species_name=species.name,
+                )
 
-        return {'message': 'Species updated', 'species_id': species_id}, 200
+        updated_count = len(to_update)
+        return {
+            'message': 'Species updated' + (f' ({updated_count} videos)' if updated_count > 1 else ''),
+            'species_id': species_id,
+            'updated_count': updated_count,
+        }, 200
+
+    @app.route('/api/ui/videos/<int:video_id>/merge-species', methods=['POST'])
+    def merge_video_species(video_id):
+        """Объединить все детекции в видео в один вид. Удобно, когда разные нейросети
+        или прерывания дали несколько карточек — выбрать правильный вид и применить ко всем."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+
+        video = Video.query.get(video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+
+        data = request.json or {}
+        species_id = data.get('species_id')
+        if species_id is None:
+            return {'error': 'species_id is required'}, 400
+        try:
+            species_id = int(species_id)
+        except (TypeError, ValueError):
+            return {'error': 'species_id must be an integer'}, 400
+
+        species = Species.query.get(species_id)
+        if not species:
+            return {'error': 'Species not found'}, 404
+
+        to_update = [vs for vs in video.video_species]
+        if not to_update:
+            return {'message': 'No detections to merge', 'updated_count': 0}, 200
+
+        # Все уже этого вида — нечего делать
+        if all(vs.species_id == species_id for vs in to_update):
+            return {'message': 'All detections already this species', 'updated_count': 0}, 200
+
+        old_visits = {vs.species_visit for vs in to_update if vs.species_visit}
+        visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
+        vp = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
+        video_start = ensure_utc(video.start_time)
+
+        # Создать один визит для целевого вида
+        first_start = min(vs.start_time for vs in to_update)
+        detection_time = video_start + timedelta(seconds=first_start)
+        new_visit, _ = vp._get_or_create_visit(species, detection_time)
+
+        for vs in to_update:
+            old_species_name = vs.species.name
+            vs.species_id = species_id
+            vs.species_visit_id = new_visit.id
+            vs.species_visit = new_visit
+            v_start = video_start + timedelta(seconds=vs.start_time)
+            v_end = video_start + timedelta(seconds=vs.end_time)
+            new_visit.end_time = max(new_visit.end_time, v_end)
+            new_visit.start_time = min(new_visit.start_time, v_start)
+            if vs.source == 'video':
+                move_crop_on_species_correction(
+                    video_id=vs.video_id,
+                    track_id=vs.track_id,
+                    old_species_name=old_species_name,
+                    new_species_name=species.name,
+                )
+
+        db.session.flush()
+        for ov in old_visits:
+            if ov and ov.id != new_visit.id:
+                remaining = [x for x in ov.video_species if x not in to_update]
+                if not remaining:
+                    db.session.delete(ov)
+
+        new_video_detections = [v for v in new_visit.video_species if v.source == 'video']
+        if new_video_detections:
+            vp._update_simultaneous_count(new_visit, new_video_detections)
+
+        db.session.commit()
+        updated_count = len(to_update)
+        return {
+            'message': f'All {updated_count} detections merged to {species.name}',
+            'species_id': species_id,
+            'updated_count': updated_count,
+        }, 200
 
     @app.route('/api/ui/species', methods=['GET'])
     def get_all_species():

@@ -19,6 +19,8 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import RouteIcon from '@mui/icons-material/Route';
 import DownloadIcon from '@mui/icons-material/Download';
+import MergeTypeIcon from '@mui/icons-material/MergeType';
+import BuildIcon from '@mui/icons-material/Build';
 import { BASE_API_URL, exportDataset } from '../../api/api';
 
 interface StorageStats {
@@ -53,6 +55,18 @@ interface RegenerateSpectrogramsResponse {
   message: string;
 }
 
+interface MergeSpeciesResponse {
+  merged: number;
+  details?: string[];
+  message: string;
+}
+
+interface CleanOrphanedResponse {
+  orphaned: number;
+  synced: number;
+  message: string;
+}
+
 const formatBytes = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
   if (bytes === 0) return '0 B';
@@ -67,7 +81,7 @@ export const StorageManagement = () => {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | null>(null);
+  const [success, setSuccess] = useState<PurgeResponse | RegenerateSpectrogramsResponse | MergeSpeciesResponse | CleanOrphanedResponse | null>(null);
   const [exportingDataset, setExportingDataset] = useState(false);
 
   const {
@@ -229,6 +243,48 @@ export const StorageManagement = () => {
     },
   });
 
+  const mergeSpeciesMutation = useMutation<MergeSpeciesResponse, Error, void>({
+    mutationFn: async () => {
+      const { data } = await axios.post<MergeSpeciesResponse>(
+        `${BASE_API_URL}/system/merge-duplicate-species`,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      setSuccess(data);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      setTimeout(() => setSuccess(null), 6000);
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : t('storage.mergeSpeciesFailed'));
+    },
+  });
+
+  const cleanOrphanedMutation = useMutation<CleanOrphanedResponse, Error, void>({
+    mutationFn: async () => {
+      const { data } = await axios.post<CleanOrphanedResponse>(
+        `${BASE_API_URL}/system/clean-orphaned-visits`,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      setSuccess(data);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      setTimeout(() => setSuccess(null), 6000);
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : t('storage.mergeSpeciesFailed'));
+    },
+  });
+
   const handlePurge = (): void => {
     if (!selectedDate) return;
 
@@ -277,7 +333,14 @@ export const StorageManagement = () => {
           onClose={() => setSuccess(null)}
         >
           <AlertTitle>{t('common.success')}</AlertTitle>
-          {'generated' in success
+          {'orphaned' in success
+            ? t('storage.cleanOrphanedVisitsSuccess', {
+                orphaned: (success as CleanOrphanedResponse).orphaned,
+                synced: (success as CleanOrphanedResponse).synced,
+              })
+            : 'merged' in success
+            ? t('storage.mergeSpeciesSuccess', { count: (success as MergeSpeciesResponse).merged })
+            : 'generated' in success
             ? ('tracks' in success && success.tracks
                 ? t('storage.regenerateTracksSuccess', {
                     generated: success.generated,
@@ -360,6 +423,33 @@ export const StorageManagement = () => {
                 startIcon={<DownloadIcon />}
               >
                 {exportingDataset ? t('storage.exporting') : t('storage.exportDataset')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={cleanOrphanedMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
+                    setError(null);
+                    cleanOrphanedMutation.mutate();
+                  }
+                }}
+                startIcon={<BuildIcon />}
+                title={t('storage.cleanOrphanedVisitsHint')}
+              >
+                {cleanOrphanedMutation.isPending ? t('storage.merging') : t('storage.cleanOrphanedVisits')}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={mergeSpeciesMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(t('storage.mergeSpeciesConfirm'))) {
+                    setError(null);
+                    mergeSpeciesMutation.mutate();
+                  }
+                }}
+                startIcon={<MergeTypeIcon />}
+              >
+                {mergeSpeciesMutation.isPending ? t('storage.merging') : t('storage.mergeDuplicateSpecies')}
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
                 {t('storage.scanHint')}

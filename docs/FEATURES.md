@@ -47,6 +47,7 @@
 | **Виджет «Последняя птица»** | На Overview |
 | **PWA** | Install prompt, offline cache |
 | **Источник детекции** | YOLO / Frigate / BirdNET в карточках |
+| **Календарь миграций** | `/migration-calendar` — таблица визитов по виду и месяцу (Jan–Dec), интенсивность по данным |
 | **Xeno-canto** | Песни птиц на странице вида |
 | **Confidence по виду** | `processor.species_confidence_overrides` |
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
@@ -89,6 +90,7 @@
 | GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
 | GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |
 | GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
+| GET | `/api/ui/migration-calendar` | Агрегация визитов по виду и месяцу для календаря миграций |
 | GET | `/api/ui/report/pdf` | PDF-отчёт |
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
 | GET | `/metrics` | Prometheus |

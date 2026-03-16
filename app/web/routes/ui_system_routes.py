@@ -7,7 +7,7 @@ import psutil
 from flask import request
 import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
-from sqlalchemy import func
+from sqlalchemy import func, select, exists
 from services.retention_service import run_retention
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
@@ -394,7 +394,7 @@ def register_routes(app):
                 failed = 0
                 skipped = 0
 
-                visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 45)
+                visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
 
                 for video in videos:
@@ -584,3 +584,87 @@ def register_routes(app):
             db.session.rollback()
             app.logger.exception('Scan recordings failed')
             return {'error': 'Failed to scan recordings'}, 500
+
+    @app.route('/api/ui/system/clean-orphaned-visits', methods=['POST'])
+    def clean_orphaned_visits():
+        """
+        Удалить осиротевшие SpeciesVisit (без VideoSpecies) и синхронизировать
+        VideoSpecies.species_id с visit.species_id. Исправляет некорректные счётчики
+        в календаре миграций и каталоге после старых коррекций.
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            orphaned = 0
+            synced = 0
+            # 1. Удалить SpeciesVisit без VideoSpecies (осиротевшие)
+            has_vs = exists().where(VideoSpecies.species_visit_id == SpeciesVisit.id)
+            orphan_visits = SpeciesVisit.query.filter(~has_vs).all()
+            for sv in orphan_visits:
+                db.session.delete(sv)
+                orphaned += 1
+            db.session.flush()
+            # 2. Синхронизировать VideoSpecies.species_id с visit.species_id
+            for vs in VideoSpecies.query.filter(VideoSpecies.species_visit_id.isnot(None)).all():
+                if vs.species_visit and vs.species_id != vs.species_visit.species_id:
+                    vs.species_id = vs.species_visit.species_id
+                    synced += 1
+            db.session.commit()
+            return {
+                'orphaned': orphaned,
+                'synced': synced,
+                'message': f'Removed {orphaned} orphaned visits, synced {synced} detections',
+            }, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Clean orphaned visits failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/merge-duplicate-species', methods=['POST'])
+    def merge_duplicate_species():
+        """
+        Объединить дубликаты видов (Garrulus glandarius (Eurasian Jay) -> Eurasian Jay).
+        Использует species_canonical_mapping.txt. Сопоставление без учёта регистра.
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            from util import load_species_canonical_mapping
+            mapping = load_species_canonical_mapping()
+            if not mapping:
+                return {'merged': 0, 'message': 'No species_canonical_mapping.txt'}, 200
+            # variant_lower -> canonical (для сопоставления без учёта регистра)
+            variant_to_canonical = {}
+            for variant, canonical in mapping.items():
+                variant_to_canonical[variant] = canonical
+                variant_to_canonical[variant.lower().strip()] = canonical
+            canonical_to_species = {}  # canonical -> [Species]
+            for sp in Species.query.all():
+                canonical = variant_to_canonical.get(sp.name) or variant_to_canonical.get(sp.name.lower().strip())
+                if canonical:
+                    canonical_to_species.setdefault(canonical, []).append(sp)
+            merged = 0
+            details = []
+            for canonical, species_list in canonical_to_species.items():
+                if len(species_list) <= 1:
+                    continue
+                target = next((s for s in species_list if s.name == canonical), species_list[0])
+                for other in [s for s in species_list if s.id != target.id]:
+                    vs_count = VideoSpecies.query.filter_by(species_id=other.id).update(
+                        {'species_id': target.id}
+                    )
+                    sv_count = SpeciesVisit.query.filter_by(species_id=other.id).update(
+                        {'species_id': target.id}
+                    )
+                    Species.query.filter_by(parent_id=other.id).update({'parent_id': target.id})
+                    if target.name != canonical:
+                        target.name = canonical
+                    details.append(f"{other.name} -> {canonical}")
+                    db.session.delete(other)
+                    merged += 1
+            db.session.commit()
+            return {'merged': merged, 'details': details, 'message': f'Merged {merged} duplicate species'}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Merge duplicate species failed: %s', e)
+            return {'error': str(e)}, 500

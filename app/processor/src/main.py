@@ -375,6 +375,8 @@ def main():
             species_mapping = app_config.get('detection.species_mapping') or {}
             merge_window = app_config.get('detection.merge_window_seconds', 5)
             dedup_window = app_config.get('detection.dedup_window_seconds', 45)
+            one_per_species = app_config.get('detection.one_per_species', True)
+            source_priority = app_config.get('detection.source_priority') or ["yolo", "frigate", "birdnet"]
             mqtt_events = []
             if mqtt_aggregator:
                 mqtt_events = mqtt_aggregator.get_events_in_window(
@@ -416,7 +418,12 @@ def main():
                 })
             video_detections = merge_detections(
                 video_list, mqtt_events, start_time, end_time,
-                merge_window, dedup_window)
+                merge_window, dedup_window, one_per_species=one_per_species,
+                source_priority=source_priority)
+
+            # Отсечь детекции с низким confidence (4% и т.п.)
+            min_conf_store = float(app_config.get('detection.min_confidence_to_store') or 0.05)
+            video_detections = [d for d in video_detections if float(d.get('confidence') or 0) >= min_conf_store]
 
             # Log track/frames info for debugging
             for i, d in enumerate(video_detections):
@@ -448,28 +455,26 @@ def main():
                     min_conf = float(app_config.get('processor.dataset_min_confidence', 0.5))
                     save_dataset_crops(video_detections, video_id, data_dir, min_confidence=min_conf)
                 # Уведомления — после merge, с превью best_frame в TG
+                # Отправляем image_base64 (надёжнее, чем путь — не зависит от общего FS)
                 seen = set()
                 for d in video_detections:
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
-                        image_path = None
+                        image_base64 = None
                         bf = d.get('best_frame')
                         if bf is not None:
                             try:
+                                import base64
                                 import numpy as np
-                                data_dir = os.environ.get('DATA_DIR', 'data')
-                                notify_dir = os.path.join(data_dir, '.notify_temp')
-                                os.makedirs(notify_dir, exist_ok=True)
-                                ts = int(time.time() * 1000)
-                                path = os.path.join(notify_dir, f'notify_{ts}.jpg')
                                 if isinstance(bf, np.ndarray):
-                                    cv2.imwrite(path, bf)
-                                    image_path = os.path.abspath(path)
+                                    ok, buf = cv2.imencode('.jpg', bf)
+                                    if ok and buf is not None:
+                                        image_base64 = base64.b64encode(buf.tobytes()).decode('ascii')
                             except Exception as e:
-                                logging.warning("Save best_frame for notify failed: %s", e)
+                                logging.warning("Encode best_frame for notify failed: %s", e)
                         try:
-                            api.notify_species(sn, image_path=image_path)
+                            api.notify_species(sn, image_base64=image_base64)
                         except Exception as e:
                             logging.warning("Notify species failed: %s", e)
             else:

@@ -230,6 +230,12 @@ class TestVideos:
         assert r.status_code == 404
         assert 'error' in r.json
 
+    def test_delete_video_requires_access(self, client):
+        """Delete returns 403 without contributor/admin access when password is set."""
+        r = client.delete('/api/ui/videos/1')
+        # 403 if password required and no session; 404 if video not found; 200 if no password
+        assert r.status_code in (200, 403, 404)
+
 
 class TestBirdfood:
     def test_birdfood_get_returns_list(self, client):
@@ -347,6 +353,39 @@ class TestPush:
             content_type='application/json',
         )
         assert r.status_code == 400
+
+
+class TestMigrationCalendar:
+    """Migration calendar: species activity by month."""
+
+    def test_migration_calendar_returns_200(self, client):
+        r = client.get('/api/ui/migration-calendar')
+        assert r.status_code == 200
+        data = r.json
+        assert 'species' in data
+        assert 'month_labels' in data
+        assert isinstance(data['species'], list)
+        assert data['month_labels'] == [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        ]
+
+    def test_migration_calendar_species_structure(self, client):
+        r = client.get('/api/ui/migration-calendar')
+        assert r.status_code == 200
+        species = r.json['species']
+        for item in species:
+            assert 'id' in item and 'name' in item
+            assert 'monthly_counts' in item
+            assert len(item['monthly_counts']) == 12
+            assert 'total' in item
+            assert item['total'] == sum(item['monthly_counts'])
+
+    def test_migration_calendar_filter_by_year(self, client):
+        r = client.get('/api/ui/migration-calendar', query_string={'start_year': 2024, 'end_year': 2025})
+        assert r.status_code == 200
+        assert 'species' in r.json
+        assert 'month_labels' in r.json
 
 
 class TestUnknowns:

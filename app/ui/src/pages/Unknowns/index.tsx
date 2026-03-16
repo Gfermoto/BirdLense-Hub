@@ -20,6 +20,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
+import Snackbar from '@mui/material/Snackbar';
 import {
   fetchUnknowns,
   fetchBirdDirectory,
@@ -185,16 +186,39 @@ export function UnknownsPage() {
     queryFn: () => fetchBirdDirectory(),
   });
 
+  const [correctError, setCorrectError] = useState<string | null>(null);
+  const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
+
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
       updateDetectionSpecies(detectionId, speciesId),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['species'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      const msg = data?.updated_count && data.updated_count > 1
+        ? t('video.correctedInVideos', { count: data.updated_count })
+        : t('unknowns.corrected');
+      setCorrectSuccess(msg);
+    },
+    onError: (err: Error) => {
+      setCorrectError(err.message || t('errors.loadSightings'));
     },
   });
 
-  const handleCorrect = (detectionId: number, speciesId: number) =>
-    correctMutation.mutateAsync({ detectionId, speciesId });
+  const handleCorrect = async (detectionId: number, speciesId: number) => {
+    setCorrectError(null);
+    try {
+      await correctMutation.mutateAsync({ detectionId, speciesId });
+    } catch {
+      // onError уже устанавливает correctError
+    }
+  };
 
   if (isLoading)
     return (
@@ -270,6 +294,26 @@ export function UnknownsPage() {
           canEdit={canEdit}
         />
       ))}
+      <Snackbar
+        open={!!correctError}
+        autoHideDuration={6000}
+        onClose={() => setCorrectError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setCorrectError(null)}>
+          {correctError}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!correctSuccess}
+        autoHideDuration={4000}
+        onClose={() => setCorrectSuccess(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
+          {correctSuccess}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

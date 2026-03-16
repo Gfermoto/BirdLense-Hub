@@ -1,23 +1,48 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import DownloadIcon from '@mui/icons-material/Download';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { Video } from '../../types';
 import { WeatherCard } from '../../components/WeatherCard';
-import { resolveImageUrl } from '../../api/api';
+import { resolveImageUrl, deleteVideo } from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { BASE_API_URL } from '../../api/api';
 
 export const VideoInfo = ({ video }: { video: Video }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { unlocked } = useProtectedArea();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const downloadUrl = unlocked ? `${BASE_API_URL}/videos/${video.id}/download` : null;
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteVideo(video.id),
+    onSuccess: () => {
+      setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      navigate('/');
+    },
+  });
   const { processor_version, start_time, end_time, favorite, weather, food } =
     video;
 
@@ -33,19 +58,54 @@ export const VideoInfo = ({ video }: { video: Video }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* Download video — только для админа и помощника */}
-      {downloadUrl && (
-        <Button
-          variant="contained"
-          startIcon={<DownloadIcon />}
-          href={downloadUrl}
-          download
-          fullWidth
-          sx={{ py: 1.5 }}
-        >
-          {t('videoInfo.downloadVideo')}
-        </Button>
+      {/* Download / Delete — только для админа и помощника */}
+      {unlocked && (
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+          {downloadUrl && (
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              href={downloadUrl}
+              download
+              fullWidth
+              sx={{ py: 1.5 }}
+            >
+              {t('videoInfo.downloadVideo')}
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            fullWidth
+            sx={{ py: 1.5 }}
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleteMutation.isPending}
+          >
+            {t('videoInfo.deleteRecording')}
+          </Button>
+        </Box>
       )}
+
+      <Dialog open={deleteDialogOpen} onClose={() => !deleteMutation.isPending && setDeleteDialogOpen(false)}>
+        <DialogTitle>{t('videoInfo.deleteConfirmTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t('videoInfo.deleteConfirmText')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? t('common.deleting') : t('common.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Favorite Badge */}
       {favorite && (

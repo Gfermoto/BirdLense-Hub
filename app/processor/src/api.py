@@ -56,9 +56,11 @@ class API():
         # No need for try/except here since _send_request handles errors
         self._send_request('POST', 'notify/motion', {})
 
-    def notify_species(self, species, image_path=None):
+    def notify_species(self, species, image_path=None, image_base64=None):
         payload = {'detection': species}
-        if image_path:
+        if image_base64:
+            payload['image_base64'] = image_base64
+        elif image_path:
             payload['image_path'] = image_path
         self._send_request('POST', 'notify/detections', payload)
 

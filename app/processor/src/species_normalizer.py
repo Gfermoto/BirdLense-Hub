@@ -65,36 +65,53 @@ def _event_offset_seconds(ev, video_start):
         return None
 
 
-def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge_window_seconds=5, dedup_window_seconds=45):
+def merge_detections(
+    yolo_detections,
+    mqtt_events,
+    video_start,
+    video_end,
+    merge_window_seconds=5,
+    dedup_window_seconds=45,
+    one_per_species=True,
+    source_priority=None,
+):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
     Один результат на вид: max confidence, объединённый интервал времени.
     dedup_window_seconds: детекции одного вида с разрывом > N сек считаются разными визитами.
-    MQTT: используем timestamp события (не растягиваем на всё видео).
+    one_per_species: если True — гарантированно один результат на вид (объединяем все дубликаты).
+    source_priority: при конфликте (разные виды в одном окне) — первый в списке выше приоритет.
     """
     from datetime import datetime, timezone
 
-    by_key = {}  # (canonical_key, visit_id) -> detection; visit_id различает визиты с большим разрывом
+    source_priority = source_priority or ["yolo", "frigate", "birdnet"]
+    priority_map = {p: i for i, p in enumerate(source_priority)}
+
+    def _provider_rank(provider):
+        p = (provider or "").lower()
+        if p == "birdnet_mqtt":
+            p = "birdnet"
+        return priority_map.get(p, 999)
+
+    by_key = {}  # (canonical_key, visit_id) -> detection
     video_duration = (video_end - video_start).total_seconds() if video_end and video_start else 0
-    mqtt_half_window = merge_window_seconds / 2  # окно вокруг MQTT-события
+    mqtt_half_window = merge_window_seconds / 2
 
     def _canonical_key(s):
         return _extract_common_for_merge(s) or (s or "").lower()
 
-    def _merge_into(existing, new_conf, new_start, new_end, new_best_frame=None):
-        """Объединить: max confidence, min start, max end."""
+    def _merge_into(existing, new_conf, new_start, new_end, new_best_frame=None, new_frames=None):
         old_conf = existing.get("confidence", 0)
         existing["confidence"] = max(old_conf, new_conf)
         existing["start_time"] = min(existing.get("start_time", 0), new_start)
         existing["end_time"] = max(existing.get("end_time", 0), new_end)
         if new_best_frame is not None and new_conf >= old_conf:
             existing["best_frame"] = new_best_frame
+        if new_frames and not existing.get("frames"):
+            existing["frames"] = new_frames
 
-    # YOLO: сортируем по start_time, объединяем по виду с учётом dedup_window
-    sorted_yolo = sorted(
-        yolo_detections,
-        key=lambda d: d.get("start_time", 0),
-    )
+    # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
+    sorted_yolo = sorted(yolo_detections, key=lambda d: d.get("start_time", 0))
     for d in sorted_yolo:
         species = d.get("species_name") or d.get("species") or d.get("name", "unknown")
         key = _canonical_key(species)
@@ -102,19 +119,21 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         start = d.get("start_time", 0)
         end = d.get("end_time", video_duration)
 
-        # Ищем существующую детекцию того же вида, где (start - existing_end) <= dedup_window
-        merged = None
+        # Ищем детекцию с наименьшим разрывом (start - existing_end), где разрыв <= dedup_window
+        best = None
+        best_gap = float("inf")
         for k, det in list(by_key.items()):
             if k[0] != key:
                 continue
             existing_end = det.get("end_time", 0)
-            if start - existing_end <= dedup_window_seconds:
-                merged = det
-                break
+            gap = start - existing_end
+            if gap <= dedup_window_seconds and gap < best_gap:
+                best_gap = gap
+                best = det
 
-        if merged is not None:
-            _merge_into(merged, conf, start, end, d.get("best_frame"))
-            logger.debug("merge: YOLO %s into existing", species)
+        if best is not None:
+            _merge_into(best, conf, start, end, d.get("best_frame"), d.get("frames"))
+            logger.debug("merge: YOLO %s into existing (gap=%.1fs)", species, best_gap)
         else:
             visit_id = sum(1 for k in by_key if k[0] == key)
             by_key[(key, visit_id)] = {
@@ -131,6 +150,7 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
             if "best_frame" in d:
                 by_key[(key, visit_id)]["best_frame"] = d["best_frame"]
 
+    # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
     for ev in mqtt_events:
         species = ev.get("species", "unknown")
         conf = ev.get("confidence", 0)
@@ -142,8 +162,27 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         else:
             ev_start, ev_end = 0, video_duration
 
-        # Ищем существующую детекцию того же вида (YOLO) и мержим
-        merged = next((det for k, det in by_key.items() if k[0] == key), None)
+        # Ищем детекцию того же вида с наибольшим перекрытием
+        merged = None
+        best_overlap = -1
+        for k, det in by_key.items():
+            if k[0] != key:
+                continue
+            es, ee = det.get("start_time", 0), det.get("end_time", 0)
+            overlap = min(ee, ev_end) - max(es, ev_start)
+            if overlap > best_overlap or (overlap >= 0 and merged is None):
+                best_overlap = overlap
+                merged = det
+        if merged is None:
+            # Нет перекрытия — проверяем близость по времени
+            for k, det in by_key.items():
+                if k[0] != key:
+                    continue
+                es, ee = det.get("start_time", 0), det.get("end_time", 0)
+                if ev_end >= es - dedup_window_seconds and ev_start <= ee + dedup_window_seconds:
+                    merged = det
+                    break
+
         if merged is not None:
             _merge_into(merged, conf, ev_start, ev_end)
             logger.debug("merge: MQTT %s into YOLO (offset=%.1fs)", species, offset if offset is not None else -1)
@@ -162,14 +201,12 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
         }
         logger.debug("merge: MQTT %s new (offset=%.1fs)", species, offset if offset is not None else -1)
 
-    # Bird = unknown когда один; при наличии любого другого вида — убрать Bird (предпочесть другой)
-    # При удалении Bird переносим frames/best_frame в оставшиеся детекции, иначе теряются треки
+    # Bird: при наличии другого вида — убрать Bird, перенести frames
     bird_key = _canonical_key("Bird")
     result_list = list(by_key.values())
     bird_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) == bird_key]
     other_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) != bird_key]
     if bird_dets and other_dets:
-        # Переносим frames/best_frame от Bird в детекции без треков (например, только MQTT)
         for other in other_dets:
             if not (other.get("frames") or other.get("best_frame")):
                 for bird_d in bird_dets:
@@ -182,7 +219,62 @@ def merge_detections(yolo_detections, mqtt_events, video_start, video_end, merge
                         logger.debug("merge: transferred frames from Bird to %s", other.get("species_name"))
                         break
         result_list = other_dets
-        logger.debug("merge: dropped Bird (other species present), kept %d", len(result_list))
 
-    # Сортировка по start_time (раньше появившиеся — первыми)
+    # Финальное объединение: один результат на вид (устраняет дубликаты)
+    if one_per_species and len(result_list) > 1:
+        by_canonical = {}
+        for d in result_list:
+            key = _canonical_key(d.get("species_name", ""))
+            if key not in by_canonical:
+                by_canonical[key] = dict(d)
+            else:
+                existing = by_canonical[key]
+                _merge_into(
+                    existing,
+                    d.get("confidence", 0),
+                    d.get("start_time", 0),
+                    d.get("end_time", 0),
+                    d.get("best_frame"),
+                    d.get("frames"),
+                )
+                # Сохраняем имя с frames (YOLO) приоритетнее
+                if d.get("frames") or d.get("best_frame"):
+                    existing["species_name"] = d.get("species_name", existing["species_name"])
+                    existing["species"] = existing["species_name"]
+        result_list = list(by_canonical.values())
+        logger.debug("merge: collapsed to %d species (one per species)", len(result_list))
+
+    # Конфликт: разные виды в одном временном окне — оставляем по source_priority
+    conflict_overlap_sec = 3
+    if len(result_list) > 1 and source_priority:
+        to_remove = set()
+        for i, a in enumerate(result_list):
+            if i in to_remove:
+                continue
+            sa, ea = a.get("start_time", 0), a.get("end_time", 0)
+            key_a = _canonical_key(a.get("species_name", ""))
+            rank_a = _provider_rank(a.get("detection_provider"))
+            for j, b in enumerate(result_list):
+                if j <= i or j in to_remove:
+                    continue
+                key_b = _canonical_key(b.get("species_name", ""))
+                if key_a == key_b:
+                    continue
+                sb, eb = b.get("start_time", 0), b.get("end_time", 0)
+                overlap = min(ea, eb) - max(sa, sb)
+                if overlap >= conflict_overlap_sec:
+                    rank_b = _provider_rank(b.get("detection_provider"))
+                    if rank_a < rank_b:
+                        to_remove.add(j)
+                        logger.debug(
+                            "merge: conflict %s vs %s (overlap=%.1fs), keeping %s (higher priority)",
+                            a.get("species_name"), b.get("species_name"), overlap, a.get("species_name"))
+                    else:
+                        to_remove.add(i)
+                        logger.debug(
+                            "merge: conflict %s vs %s (overlap=%.1fs), keeping %s (higher priority)",
+                            a.get("species_name"), b.get("species_name"), overlap, b.get("species_name"))
+                        break
+        result_list = [d for i, d in enumerate(result_list) if i not in to_remove]
+
     return sorted(result_list, key=lambda x: x.get("start_time", 0))
