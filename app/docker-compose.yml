@@ -19,6 +19,7 @@ services:
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
+      - BIRDLENSE_ENV=${BIRDLENSE_ENV:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}

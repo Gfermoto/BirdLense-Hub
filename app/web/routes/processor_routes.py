@@ -37,11 +37,12 @@ def _fire_webhook(url: str, species_list: list, start_time: datetime, logger):
 
 
 def _check_processor_secret():
-    """Return True if request is from processor (has valid secret) or secret is not configured."""
+    """Return True if request is from processor (has valid secret). In production, empty secret blocks access."""
     secret = os.environ.get('PROCESSOR_SECRET', '').strip()
-    if not secret:
-        return True
     token = request.headers.get('X-Processor-Token') or ''
+    if not secret:
+        is_prod = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('BIRDLENSE_ENV') == 'production'
+        return not is_prod  # Allow when secret not configured only in dev
     return secrets.compare_digest(token, secret)
 
 
@@ -114,6 +115,13 @@ def register_routes(app):
         if not _check_processor_secret():
             return {'error': 'Forbidden'}, 403
         active_names = request.json or []
+        if not isinstance(active_names, list):
+            return {'error': 'active_names must be a list'}, 400
+        if len(active_names) > 500:
+            return {'error': 'Too many species (max 500)'}, 400
+        for name in active_names:
+            if not isinstance(name, str) or len(name) > 100:
+                return {'error': 'Invalid species name'}, 400
         if not active_names:
             return {"message": "success", "active_feeder_names": []}, 200
         active_feeder_names = filter_feeder_species(active_names)
@@ -165,6 +173,8 @@ def register_routes(app):
             activity_type = data.get('type')
             raw_data = data.get('data')
             activity_data = json.dumps(raw_data) if raw_data is not None else '{}'
+            if len(activity_data) > 65536:
+                return {'error': 'Activity data too large (max 64 KB)'}, 400
             activity_id = data.get('id')
             if activity_id is not None:
                 activity_id = int(activity_id)

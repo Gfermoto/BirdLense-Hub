@@ -369,6 +369,7 @@
     "totalDuration": "Total Duration"
   },
   "videoInfo": {
+    "downloadVideo": "Download video",
     "favorite": "Favorite",
     "recordingInfo": "Recording Info",
     "start": "Start",

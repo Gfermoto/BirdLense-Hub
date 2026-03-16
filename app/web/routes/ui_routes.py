@@ -6,6 +6,7 @@ from urllib.parse import quote
 from flask import request, session, Response
 import json as json_module
 from sqlalchemy import func, case, distinct, or_
+from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
 from util import (
@@ -18,6 +19,8 @@ from util import (
     settings_check_access,
     contributor_or_admin_access,
     GENERIC_BIRD_SPECIES,
+    _check_verify_password_rate_limit,
+    _record_verify_password_failure,
 )
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
@@ -246,6 +249,35 @@ def register_routes(app):
         }
         return video_json, 200
 
+    @app.route('/api/ui/videos/<int:video_id>/download', methods=['GET'])
+    def download_video(video_id):
+        """Скачать видео. Только для админа и помощника (contributor_or_admin_access)."""
+        if not contributor_or_admin_access():
+            return {'error': 'Access denied'}, 403
+        video = Video.query.get(video_id)
+        if not video or not video.video_path:
+            return {'error': 'Video not found'}, 404
+        from flask import send_file
+        from services.detection_crop_service import VIDEO_PATH_SAFE_RE
+        if not VIDEO_PATH_SAFE_RE.match(video.video_path):
+            return {'error': 'Invalid video path'}, 400
+        base = os.environ.get('DATA_DIR') or os.path.join(
+            os.path.dirname(__file__), '..', '..', 'data')
+        app_base = os.path.dirname(base)
+        full_path = os.path.join(app_base, video.video_path)
+        if not os.path.isfile(full_path):
+            return {'error': 'Video file not found'}, 404
+        # Имя файла: birdlense_YYYY-MM-DD_HHMMSS.mp4
+        from datetime import datetime
+        ts = video.start_time.strftime('%Y-%m-%d_%H%M%S') if video.start_time else 'video'
+        filename = f'birdlense_{ts}.mp4'
+        return send_file(
+            full_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='video/mp4',
+        )
+
     @app.route('/api/ui/birdfood', methods=['POST'])
     def add_birdfood():
         data = request.json
@@ -325,14 +357,17 @@ def register_routes(app):
         if end_time - start_time > timedelta(days=1):
             return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
 
-        # Query SpeciesVisit records within the interval
+        # Query SpeciesVisit records within the interval (eager load to avoid N+1)
         visits = (
             db.session.query(SpeciesVisit)
             .join(Species)
             .join(VideoSpecies)
             .join(Video)
+            .options(
+                joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+                joinedload(SpeciesVisit.species),
+            )
             .filter(
-                # Use overlap logic
                 SpeciesVisit.end_time >= start_time,
                 SpeciesVisit.start_time <= end_time
             )
@@ -366,6 +401,10 @@ def register_routes(app):
 
         visits = (
             db.session.query(SpeciesVisit)
+            .options(
+                joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+                joinedload(SpeciesVisit.species),
+            )
             .join(Species)
             .join(VideoSpecies)
             .join(Video)
@@ -733,6 +772,9 @@ def register_routes(app):
 
     @app.route('/api/ui/settings/verify-password', methods=['POST'])
     def settings_verify_password():
+        ip = request.remote_addr or 'unknown'
+        if not _check_verify_password_rate_limit(ip):
+            return {'ok': False, 'error': 'Too many attempts'}, 429
         data = request.json or {}
         pw = (data.get('password') or '').strip()
         admin_pw = (app_config.get('general.settings_password') or '').strip()
@@ -752,6 +794,7 @@ def register_routes(app):
             session['settings_unlocked'] = False
             session.permanent = True
             return {'ok': True, 'role': 'contributor'}, 200
+        _record_verify_password_failure(ip)
         return {'ok': False}, 401
 
     @app.route('/api/ui/settings', methods=['GET'])

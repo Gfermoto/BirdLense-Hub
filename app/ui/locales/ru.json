@@ -369,6 +369,7 @@
     "totalDuration": "Общая длительность"
   },
   "videoInfo": {
+    "downloadVideo": "Скачать видео",
     "favorite": "Избранное",
     "recordingInfo": "Информация о записи",
     "start": "Начало",

@@ -3,7 +3,16 @@ import os
 
 # Secret key for Flask session (settings unlock)
 _SECRET_KEY = os.environ.get('FLASK_SECRET_KEY')
+_is_production = (
+    os.environ.get('FLASK_ENV') == 'production'
+    or os.environ.get('BIRDLENSE_ENV') == 'production'
+)
 if not _SECRET_KEY:
+    if _is_production:
+        raise RuntimeError(
+            'FLASK_SECRET_KEY is required in production. '
+            'Set it in app/.env or environment.'
+        )
     logging.warning(
         'FLASK_SECRET_KEY not set — using default. Set it in production to prevent session forgery.'
     )

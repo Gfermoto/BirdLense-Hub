@@ -447,14 +447,29 @@ def main():
                     data_dir = os.environ.get('DATA_DIR', 'data')
                     min_conf = float(app_config.get('processor.dataset_min_confidence', 0.5))
                     save_dataset_crops(video_detections, video_id, data_dir, min_confidence=min_conf)
-                # Уведомления — после merge (Frigate/YOLO), без фото, превью по ссылке
+                # Уведомления — после merge, с превью best_frame в TG
                 seen = set()
                 for d in video_detections:
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
+                        image_path = None
+                        bf = d.get('best_frame')
+                        if bf is not None:
+                            try:
+                                import numpy as np
+                                data_dir = os.environ.get('DATA_DIR', 'data')
+                                notify_dir = os.path.join(data_dir, '.notify_temp')
+                                os.makedirs(notify_dir, exist_ok=True)
+                                ts = int(time.time() * 1000)
+                                path = os.path.join(notify_dir, f'notify_{ts}.jpg')
+                                if isinstance(bf, np.ndarray):
+                                    cv2.imwrite(path, bf)
+                                    image_path = os.path.abspath(path)
+                            except Exception as e:
+                                logging.warning("Save best_frame for notify failed: %s", e)
                         try:
-                            api.notify_species(sn, image_path=None)
+                            api.notify_species(sn, image_path=image_path)
                         except Exception as e:
                             logging.warning("Notify species failed: %s", e)
             else:
