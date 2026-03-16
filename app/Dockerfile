@@ -1,13 +1,12 @@
 # BirdLense Hub — один контейнер: UI + API + processor
 # Подключается к внешним: Go2RTC (Frigate), MQTT (BirdNET, Frigate)
 
-# Stage 1: UI
+# Stage 1: UI (использует pre-built dist если есть — обход ETIMEDOUT на сервере)
 FROM node:22-alpine AS ui
 WORKDIR /ui
-COPY ui/package*.json ./
-RUN npm install
 COPY ui/ ./
-RUN npm run build
+# Если dist уже собран локально — пропускаем npm (сервер может не достать registry)
+RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legacy-peer-deps && npm run build)
 
 # Stage 2: всё в одном
 FROM ultralytics/ultralytics:8.4.21

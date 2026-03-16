@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.5-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.1.6-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -47,7 +47,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 - **Audio** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) sightings via MQTT (BirdNET-Pi/Go)
 - **Triggers** — OpenCV motion, Frigate events, MQTT binary, ESPHome
 - **Timeline** — date + time-of-day filter (Morning, Day, Evening, Night 22–06), video playback, spectrograms, track visualization
-- **UI** — React, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
+- **UI** — React 19, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
 - **MCP** — Model Context Protocol for external tools
@@ -123,14 +123,15 @@ From `app/`:
 
 ## Security
 
-For production, set in `app/.env`:
+For production, set in `app/.env` (or via `deploy.local.sh` when deploying):
 
 | Variable | Purpose |
 |----------|---------|
 | `FLASK_SECRET_KEY` | Flask session (settings protection) |
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token` header) |
+| `BIRDLENSE_ENV` | `production` — строгая проверка секретов |
 
-Secrets are auto-generated on first `make start` or `make pull`. See `app/.env.example`.
+Secrets are auto-generated on first `make start` or `make pull`. See `app/.env.example`. Deploy script writes them to server `app/.env`.
 
 ## License
 

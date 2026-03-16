@@ -18,7 +18,7 @@
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
 | **Критичный** | API без аутентификации по умолчанию. Эндпоинты `/api/ui/*` доступны без проверки. | Добавить обязательную аутентификацию для продакшена (API key, JWT или reverse proxy с auth). |
-| **Критичный** | `PROCESSOR_SECRET` не задан — Processor API открыт. В `processor_routes.py`: `if not secret: return True`. | Всегда задавать `PROCESSOR_SECRET` в продакшене (`make setup` генерирует, deploy.sh передаёт). |
+| ~~**Критичный**~~ **Исправлено** | `PROCESSOR_SECRET` не задан — Processor API открыт. | В production блокирует при пустом. Deploy записывает в `.env`. |
 | **Критичный** | MCP без аутентификации при пустом `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
 | **Высокий** | Пароль настроек (`settings_password`) опционален. При пустом — доступ к настройкам и системным операциям не защищён. | Требовать пароль в продакшене. |
 | **Высокий** | Сессия настроек: `session.permanent = True`, нет таймаута. | Добавить таймаут сессии (15–30 мин). |
@@ -30,7 +30,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Критичный** | `FLASK_SECRET_KEY` по умолчанию `'birdlense-settings-session'` в `config.py`. | `make setup` уже заменяет на случайный; при прямом запуске без setup — риск. |
+| ~~**Критичный**~~ **Исправлено** | `FLASK_SECRET_KEY` по умолчанию. | В `BIRDLENSE_ENV=production` требуется env, иначе RuntimeError. Deploy записывает в `.env`. |
 | ~~**Критичный**~~ **Исправлено** | `GET /api/ui/settings` возвращал полный конфиг с секретами. | Секреты маскируются (`***`), placeholder при сохранении не перезаписывает реальное значение. |
 | **Высокий** | `user_config.yaml` хранит секреты в открытом виде: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `weather.ha_token`, `settings_password`, `mcp.token`. | Хранить в env или секрет-менеджере; не писать в YAML. |
 | **Высокий** | OpenAPI описывает `telegram_bot_token`, `secrets.openweather_api_key` в схеме Settings. | Добавить `x-sensitive: true`, не отдавать в примерах. |
@@ -118,13 +118,13 @@
 
 ## Быстрые шаги для продакшена
 
-1. **Задать секреты:** `PROCESSOR_SECRET`, `MCP_TOKEN`, `FLASK_SECRET_KEY` (случайные).
+1. ~~**Задать секреты**~~ ✅ Deploy через `deploy.local.sh` записывает `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV=production`.
 2. **Пароль настроек:** задать `general.settings_password`.
-3. **Path traversal:** исправить nginx для `/data/` (проксирование через приложение или `internal`).
+3. ~~**Path traversal**~~ ✅ Nginx: блокировка `\.\.`, `%2e%2e`. `image_path` в notify: `_is_safe_image_path`.
 4. **Ограничить доступ** к `/data/recordings/` (auth или IP).
-5. **Rate limiting** на API.
+5. **Rate limiting** на API (verify-password: 5 failed/60 sec per IP).
 6. **Docker:** запускать контейнер от непривилегированного пользователя.
-7. **Маскировать секреты** в `GET /api/ui/settings`.
+7. ~~**Маскировать секреты**~~ ✅ `GET /api/ui/settings` возвращает `***` для чувствительных полей.
 
 ---
 
