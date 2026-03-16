@@ -17,15 +17,12 @@
 | 4   | EU-классификатор YOLO11n-cls (birds-525 + iNaturalist)                            | ✅ [TRAINING.md](./TRAINING.md) |
 | 5   | Vite 6                                                                            | ✅                              |
 | 6   | ultralytics в processor/requirements.txt (pin 8.4.21)                             | ✅                              |
+| 7   | Апгрейд React 19                                                                   | ✅ 16.03.2026 [REACT_19_MIGRATION.md](./REACT_19_MIGRATION.md) |
 
 
 ### Дальнейшие шаги
 
-
-| #   | Действие         | Сложность | Риск    |
-| --- | ---------------- | --------- | ------- |
-| 7   | Апгрейд React 19 | Средняя   | Средний |
-
+— нет запланированных
 
 ### Текущий стек
 
@@ -37,7 +34,7 @@
 | **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей |
 | **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                             |
 | **US-модель**   | `best_US.pt` — NABirds (резерв)                                                            |
-| **React**       | 18.3.1                                                                                     |
+| **React**       | 19.2.4                                                                                     |
 | **Vite**        | 6.4.1                                                                                      |
 
 

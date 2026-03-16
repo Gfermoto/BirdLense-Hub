@@ -13,16 +13,18 @@ make deploy
 
 - SSH-доступ к серверу (`ssh birdlense` или `DEPLOY_HOST` в deploy.local.sh)
 - Docker на сервере
+- Локально: Node.js для сборки UI (npm run build)
 
 ## Что делает деплой
 
 1. **Останавливает** старые контейнеры (если есть)
-2. **Синхронизирует** код (tar по SSH), исключая:
+2. **Собирает UI локально** — `npm run build` в `app/ui` (обход ETIMEDOUT npm на сервере)
+3. **Синхронизирует** код (rsync), исключая:
    - `app/data` — записи и БД
    - `app/app_config/user_config.yaml` — настройки на сервере
    - `scripts/deploy.local.sh` — локальные секреты
-3. **Записывает** секреты в `app/.env` (PROCESSOR_SECRET, MCP_TOKEN). При повреждении `.env` (>1 MB) файл заменяется на `.env.example`
-4. **Собирает** и **запускает** контейнер
+4. **Записывает** секреты в `app/.env` на сервере: PROCESSOR_SECRET, FLASK_SECRET_KEY, BIRDLENSE_ENV, MCP_TOKEN
+5. **Собирает** Docker (использует pre-built UI) и **запускает** контейнер
 
 ## Локальные настройки
 
@@ -31,12 +33,14 @@ make deploy
 ```bash
 export DEPLOY_HOST="birdlense"           # или IP
 export DEPLOY_REMOTE_DIR="/root/BirdLense"
-export DEPLOY_URL="http://YOUR_HOST:8085"
+export DEPLOY_URL="https://birdlense.example.com"
+export BIRDLENSE_ENV="production"
+export FLASK_SECRET_KEY="случайная-строка-32+"
 export PROCESSOR_SECRET="ваш-секрет-16+"
 export MCP_TOKEN="ваш-mcp-токен"        # опционально
 ```
 
-**Важно:** `deploy.local.sh` в .gitignore — не коммитится.
+**Важно:** `deploy.local.sh` в .gitignore — не коммитится. Секреты не попадают в репозиторий.
 
 ## Автодеплой (GitHub Actions)
 

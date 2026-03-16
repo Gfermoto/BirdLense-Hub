@@ -21,8 +21,18 @@
 | [FEATURES.md](./FEATURES.md) | **Полный список возможностей** — для разработчиков |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
 | [API.md](./API.md) | Эндпоинты UI, System, Processor |
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, автодеплой |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, секреты, pre-built UI |
 | [VERSIONING.md](./VERSIONING.md) | Версионирование, CHANGELOG, политика обновлений |
+
+---
+
+## Безопасность и доступ
+
+| Документ | Описание |
+|----------|----------|
+| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Роли: Admin, Contributor, пароли настроек |
+| [SECURITY.md](./SECURITY.md) | Анализ рисков, рекомендации для продакшена |
+| [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) | Восстановление доступа при потере пароля |
 
 ---
 
@@ -39,7 +49,8 @@
 | Документ | Описание |
 |----------|----------|
 | [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP (Model Context Protocol) |
-| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET |
+| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, HA Autodiscovery |
+| [TELEGRAM_CUSTOM_EMOJI.md](./TELEGRAM_CUSTOM_EMOJI.md) | Кастомные эмодзи в Telegram-уведомлениях |
 
 ---
 
@@ -53,12 +64,14 @@
 
 ---
 
-## Прочее
+## Разработка
 
 | Документ | Описание |
 |----------|----------|
-| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи (HA, датасет), новые предложения |
+| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи |
+| [REACT_19_MIGRATION.md](./REACT_19_MIGRATION.md) | Миграция на React 19 (выполнено) |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
+| [DETECTION_SOURCES.md](./DETECTION_SOURCES.md) | Источники детекций: YOLO, Frigate, BirdNET |
 
 ---
 

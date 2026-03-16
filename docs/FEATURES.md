@@ -18,7 +18,7 @@
 | **Overview** | Статистика, графики активности |
 | **Species** | Дерево видов, сводка по виду |
 | **Погода** | OpenWeather, Home Assistant |
-| **Telegram** | Уведомления при детекции |
+| **Telegram** | Уведомления при детекции, превью best frame в фото |
 | **Кормушка** | Реле (MQTT/ESPHome) при детекции |
 | **MCP** | Model Context Protocol для внешних инструментов |
 
@@ -50,6 +50,7 @@
 | **Xeno-canto** | Песни птиц на странице вида |
 | **Confidence по виду** | `processor.species_confidence_overrides` |
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
+| **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
 
 ---
 
@@ -86,6 +87,7 @@
 | GET | `/api/ui/unknowns` | Низкая confidence |
 | PATCH | `/api/ui/detections/:id` | Исправить вид |
 | GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
+| GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |
 | GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
 | GET | `/api/ui/report/pdf` | PDF-отчёт |
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |

@@ -33,10 +33,14 @@ if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
   fi
 fi
 
+# 0.9. Сборка UI локально (обход ETIMEDOUT npm на сервере)
+echo "0.9. Сборка UI локально..."
+cd "$(dirname "$0")/.."
+(cd app/ui && npm run build) || { echo "Ошибка: сборка UI не удалась"; exit 1; }
+
 # 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
 # БЕЗ app/data (recordings, db). БЕЗ app_config/user_config.yaml (настройки на сервере)
 echo "1. Синхронизация кода..."
-cd "$(dirname "$0")/.."
 RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
 sync_ok=0
