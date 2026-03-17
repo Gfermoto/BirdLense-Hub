@@ -39,6 +39,11 @@ class FrigateMotionFromAggregator:
         if not self._connected:
             time.sleep(1)
             return False
+        # Pending event from during recording — check before clear()
+        if self._event.is_set():
+            self._event.clear()
+            logger.info(f"Frigate motion (pending): camera={self._last_camera}")
+            return True
         self._event.clear()
         self._last_camera = None
         self._event.wait(timeout=300)

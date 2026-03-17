@@ -238,6 +238,12 @@ export function Navigation() {
               >
                 {t('nav.system')}
               </MenuItem>
+              <MenuItem
+                onClick={(e) => handleProtectedNav('/library', e)}
+                selected={currentPath === '/library'}
+              >
+                {t('nav.library')}
+              </MenuItem>
 
               {/* Mobile: Status + Language */}
               <Divider />
@@ -396,6 +402,14 @@ export function Navigation() {
               selected={currentPath === '/system'}
             >
               {t('nav.system')}
+            </MenuItem>
+            <MenuItem
+              component={Link}
+              to="/library"
+              onClick={handleSettingsMenuClose}
+              selected={currentPath === '/library'}
+            >
+              {t('nav.library')}
             </MenuItem>
           </Menu>
         </Toolbar>

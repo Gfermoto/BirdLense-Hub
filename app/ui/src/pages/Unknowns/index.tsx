@@ -25,6 +25,7 @@ import {
   fetchUnknowns,
   fetchBirdDirectory,
   updateDetectionSpecies,
+  confirmDetection,
   resolveImageUrl,
   type UnknownDetection,
 } from '../../api/api';
@@ -38,16 +39,19 @@ function UnknownCard({
   detection,
   speciesList,
   onCorrect,
+  onConfirm,
   canEdit,
 }: {
   detection: UnknownDetection;
   speciesList: { id: number; name: string }[];
   onCorrect: (detectionId: number, speciesId: number) => void;
+  onConfirm: (detectionId: number) => void;
   canEdit: boolean;
 }) {
   const { t } = useTranslation();
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [correcting, setCorrecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const handleCorrect = async () => {
     if (selectedSpeciesId === '' || correcting) return;
@@ -57,6 +61,16 @@ function UnknownCard({
       setSelectedSpeciesId('');
     } finally {
       setCorrecting(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirm(detection.id);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -148,6 +162,15 @@ function UnknownCard({
             >
               {correcting ? '...' : t('unknowns.apply')}
             </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={confirming || !canEdit}
+              onClick={handleConfirm}
+              title={!canEdit ? t('unknowns.passwordRequired') : t('unknowns.confirmCorrectHelp')}
+            >
+              {confirming ? '...' : t('unknowns.confirmCorrect')}
+            </Button>
             {!canEdit && (
               <Typography variant="caption" color="text.secondary">
                 {t('unknowns.passwordRequired')}
@@ -166,7 +189,7 @@ export function UnknownsPage() {
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
-  const [dateTime, setDateTime] = useState<Dayjs | null>(() => dayjs());
+  const [dateTime, setDateTime] = useState<Dayjs | null>(() => dayjs().startOf('date'));
 
   const { data: unknowns, isLoading, error } = useQuery({
     queryKey: ['unknowns', dateTime],
@@ -176,6 +199,7 @@ export function UnknownsPage() {
       return fetchUnknowns(
         dateTime.startOf(isTimeSelected ? 'hour' : 'date'),
         dateTime.endOf(isTimeSelected ? 'hour' : 'date'),
+        500,
       );
     },
     enabled: !!dateTime,
@@ -211,10 +235,34 @@ export function UnknownsPage() {
     },
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: (detectionId: number) => confirmDetection(detectionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      setCorrectSuccess(t('unknowns.corrected'));
+    },
+    onError: (err: Error) => {
+      setCorrectError(err.message || t('errors.loadSightings'));
+    },
+  });
+
   const handleCorrect = async (detectionId: number, speciesId: number) => {
     setCorrectError(null);
     try {
       await correctMutation.mutateAsync({ detectionId, speciesId });
+    } catch {
+      // onError уже устанавливает correctError
+    }
+  };
+
+  const handleConfirm = async (detectionId: number) => {
+    setCorrectError(null);
+    try {
+      await confirmMutation.mutateAsync(detectionId);
     } catch {
       // onError уже устанавливает correctError
     }
@@ -280,9 +328,16 @@ export function UnknownsPage() {
       {unknowns?.length === 0 ? (
         <Alert severity="info">{t('unknowns.empty')}</Alert>
       ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('unknowns.count', { count: unknowns?.length ?? 0 })}
-        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            {t('unknowns.count', { count: unknowns?.length ?? 0 })}
+          </Typography>
+          {unknowns?.length === 500 && (
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              {t('unknowns.limitReached')}
+            </Typography>
+          )}
+        </Box>
       )}
 
       {unknowns?.map((d) => (
@@ -291,6 +346,7 @@ export function UnknownsPage() {
           detection={d}
           speciesList={speciesList}
           onCorrect={handleCorrect}
+          onConfirm={handleConfirm}
           canEdit={canEdit}
         />
       ))}

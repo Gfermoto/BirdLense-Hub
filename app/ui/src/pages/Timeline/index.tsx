@@ -91,7 +91,7 @@ export function TimelinePage() {
   const [exporting, setExporting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => {
     const paramDate = searchParams.get('date');
-    return paramDate ? dayjs(paramDate).startOf('date') : dayjs();
+    return paramDate ? dayjs(paramDate).startOf('date') : dayjs().startOf('date');
   });
 
   const {
@@ -195,7 +195,7 @@ export function TimelinePage() {
         {t('timeline.noRecords')}{' '}
         <Button
           component={Link}
-          to="/system#recordings"
+          to="/library#recordings"
           size="small"
           startIcon={<FolderOpenIcon />}
           sx={{ verticalAlign: 'baseline' }}
