@@ -1,6 +1,6 @@
 # API BirdLense Hub
 
-**Версия:** 0.1.5
+**Версия:** 0.1.9
 
 Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
 
@@ -27,7 +27,8 @@
 | `/settings/requires-password` | GET | Проверка, требуется ли пароль |
 | `/settings/verify-password` | POST | Разблокировка настроек |
 | `/settings/check-access` | GET | Проверка разблокировки (200/403) |
-| `/unknowns` | GET | Детекции с низкой confidence для ручной проверки (params: start_time, end_time, limit) |
+| `/unknowns` | GET | Детекции с низкой confidence (params: start_time, end_time, limit) |
+| `/region-comparison` | GET | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
 | `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
 | `/detections/:id/crop` | GET | Кадр из видео для экспорта в iNaturalist. Возвращает JPEG |
 | `/dataset/export` | GET | Экспорт датасета (ZIP: train/val + dataset_info.json). Требует пароль |
