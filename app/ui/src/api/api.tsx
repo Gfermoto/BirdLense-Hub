@@ -88,7 +88,7 @@ export const fetchRegionComparison = async (): Promise<{
   regionTopCount: number;
   matchCount: number;
   matchedSpecies: string[];
-  regionTopSample: string[];
+  regionTop: string[];
 } | null> => {
   try {
     const res = await axios.get(`${BASE_API_URL}/region-comparison`);

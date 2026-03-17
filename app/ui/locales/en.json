@@ -46,6 +46,8 @@
     "downloadPdf": "PDF report",
     "regionComparison": "Region Comparison",
     "regionComparisonDesc": "You have {{userCount}} species. {{matchCount}} of them are in the region's top {{regionTop}}.",
+    "regionComparisonMatched": "Your species in region top:",
+    "regionComparisonTopList": "Region top:",
     "regionComparisonHint": "Based on eBird data for the last 30 days. Region: {{region}}.",
     "regionComparisonConfigure": "Add eBird API key in Settings → Advanced for regional comparison.",
     "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings."

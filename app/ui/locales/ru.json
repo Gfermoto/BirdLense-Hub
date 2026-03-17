@@ -46,6 +46,8 @@
     "downloadPdf": "PDF-отчёт",
     "regionComparison": "Сравнение с регионом",
     "regionComparisonDesc": "У вас {{userCount}} видов. В топ-{{regionTop}} региона — {{matchCount}} из них.",
+    "regionComparisonMatched": "Ваши виды в топе региона:",
+    "regionComparisonTopList": "Топ региона:",
     "regionComparisonHint": "По данным eBird за последние 30 дней. Регион: {{region}}.",
     "regionComparisonConfigure": "Укажите ключ eBird API в Настройках → Расширенные для сравнения с регионом.",
     "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках."
