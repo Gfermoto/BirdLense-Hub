@@ -58,7 +58,7 @@ export function ProtectedRoute({ children, title }: ProtectedRouteProps) {
           {title}
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          {t('settings.passwordRequired')}
+          {t('protected.passwordRequired')}
         </Typography>
         <SettingsPasswordDialog
           open

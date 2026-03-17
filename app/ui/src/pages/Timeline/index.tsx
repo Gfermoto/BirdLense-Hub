@@ -31,6 +31,7 @@ import ListItemText from '@mui/material/ListItemText';
 import { PageHelp } from '../../components/PageHelp';
 import { timelineHelpConfig } from '../../page-help-config';
 import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -56,6 +57,7 @@ function useFilteredVisits(
 
 export function TimelinePage() {
   const { t } = useTranslation();
+  const { canEdit } = useProtectedArea();
   const [searchParams] = useSearchParams();
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
@@ -233,11 +235,11 @@ export function TimelinePage() {
             ))}
           </Select>
         </FormControl>
-        <Tooltip title={t('timeline.export')}>
+        <Tooltip title={!canEdit ? t('common.loginRequiredForExport') : t('timeline.export')}>
           <span>
             <IconButton
               onClick={(e) => setExportAnchor(e.currentTarget)}
-              disabled={exporting}
+              disabled={exporting || !canEdit}
               aria-label={t('timeline.export')}
             >
               <DownloadIcon />
