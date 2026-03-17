@@ -16,7 +16,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Divider from '@mui/material/Divider';
-import { keyframes } from '@mui/system';
+import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
