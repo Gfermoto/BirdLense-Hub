@@ -14,6 +14,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.8] - 2026-03-17
+
+### Added
+
+- **Unknowns — подсказка про выбор часа** — при выборе времени (не 00:00) показываются только детекции за выбранный час.
+- **E2E smoke-тесты** — Overview, Timeline, Unknowns, System.
+
+### Changed
+
+- **Unknowns** — убрано дублирование заголовка и описания (остаётся только PageHelp).
+- **PDF-отчёт** — брендинг BirdLense Hub, шапка/футер на каждой странице, Executive Summary, секция «About this report».
+- **Зависимости** — @mui/system для сборки, keyframes из @emotion/react.
+
+---
+
 ## [0.1.7] - 2026-03-16
 
 ### Added
@@ -228,6 +243,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.8]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.8
+[0.1.7]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.7
+[0.1.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.6
 [0.1.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.5
 [0.1.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.4
 [0.1.3]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.3
