@@ -66,7 +66,7 @@ def normalize_class_name(name: str, preserve_scientific_common: bool = True,
 def collect_images_by_class(input_dirs: list[Path], split: str,
                            mapping: dict | None = None) -> dict[str, list[Path]]:
     """Собрать пути к изображениям по классам из нескольких датасетов."""
-    mapping = mapping or _INAT_MAPPING
+    mapping = mapping or _CANONICAL_MAPPING
     by_class = defaultdict(list)
     for inp in input_dirs:
         split_dir = inp / split

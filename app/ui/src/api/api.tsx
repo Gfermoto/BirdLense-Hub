@@ -132,21 +132,48 @@ export const retroExportDataset = async (
   minConfidence = 0,
   period?: { start_date?: string; end_date?: string },
   onlyManuallyCorrected = false,
+  rebuild = false,
 ): Promise<{
   saved: number;
   skipped: number;
   skipped_no_bbox?: number;
+  deleted?: number;
   errors: string[];
 }> => {
   const body: Record<string, unknown> = { min_confidence: minConfidence };
   if (period?.start_date) body.start_date = period.start_date;
   if (period?.end_date) body.end_date = period.end_date;
   if (onlyManuallyCorrected) body.only_manually_corrected = true;
+  if (rebuild) body.rebuild = true;
   const res = await fetch(`${BASE_API_URL}/dataset/retro-export`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+};
+
+/** Clean dataset: remove suspected full-frame and/or orphaned files. */
+export const cleanDataset = async (params?: {
+  dry_run?: boolean;
+  remove_fullframe?: boolean;
+  remove_orphaned?: boolean;
+}): Promise<{
+  deleted_fullframe: number;
+  deleted_orphaned: number;
+  errors: string[];
+  dry_run: boolean;
+}> => {
+  const res = await fetch(`${BASE_API_URL}/dataset/clean`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params || {}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -503,6 +530,18 @@ export const updateDetectionSpecies = async (
   const response = await axios.patch(
     `${BASE_API_URL}/detections/${detectionId}`,
     { species_id: speciesId },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+/** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
+export const confirmDetection = async (
+  detectionId: number,
+): Promise<{ message: string; updated_count: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/detections/${detectionId}/confirm`,
+    {},
     { withCredentials: true },
   );
   return response.data;

@@ -495,14 +495,19 @@ def register_routes(app):
 
                         manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                         if manual_vs:
-                            # Только обновить frames (bbox) — виды не трогаем
+                            # Только обновить frames (bbox) — виды не трогаем.
+                            # Критично: сопоставлять только при совпадении вида, иначе кадр от другой птицы.
                             import json
                             used_det_indices = set()
                             for vs in sorted(manual_vs, key=lambda x: x.start_time):
                                 best_idx = None
                                 best_overlap = 0.0
+                                vs_species_name = vs.species.name if vs.species else None
                                 for i, d in enumerate(detections):
                                     if i in used_det_indices:
+                                        continue
+                                    # Только если вид совпадает — иначе присвоим кадр от другой птицы
+                                    if vs_species_name and d.get('species_name') != vs_species_name:
                                         continue
                                     overlap = min(vs.end_time, d['end_time']) - max(vs.start_time, d['start_time'])
                                     if overlap > best_overlap and overlap > 0.3:
@@ -730,9 +735,16 @@ def register_routes(app):
                 db.session.delete(sv)
                 orphaned += 1
             db.session.flush()
-            # 2. Синхронизировать VideoSpecies.species_id с visit.species_id
+            # 2. Синхронизировать VideoSpecies.species_id с visit.species_id.
+            # НЕ перезаписывать manually_corrected — там вид задан пользователем.
             for vs in VideoSpecies.query.filter(VideoSpecies.species_visit_id.isnot(None)).all():
-                if vs.species_visit and vs.species_id != vs.species_visit.species_id:
+                if not vs.species_visit or vs.species_id == vs.species_visit.species_id:
+                    continue
+                if vs.manually_corrected:
+                    # Вид задан пользователем — обновить visit, а не vs
+                    vs.species_visit.species_id = vs.species_id
+                    synced += 1
+                else:
                     vs.species_id = vs.species_visit.species_id
                     synced += 1
             db.session.commit()

@@ -1,0 +1,12 @@
+# Локальная разработка: скопируйте в docker-compose.override.yml
+# cp docker-compose.override.example.yml docker-compose.override.yml
+#
+# docker-compose автоматически подхватывает override.yml при up/build
+
+services:
+  birdlense:
+    environment:
+      - BIRDLENSE_ENV=development
+    # Порт (если 8085 занят):
+    # ports:
+    #   - "8086:8080"

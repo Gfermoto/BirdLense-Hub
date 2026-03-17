@@ -6,9 +6,64 @@ import logging
 import os
 import re
 import shutil
+import struct
 import zipfile
 from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
+
+# Full-frame heuristic: bird crops typically < 0.5 MP and aspect ratio not 16:9/4:3
+MIN_PIXELS_FULLFRAME = 480_000  # 800×600
+ASPECT_16_9 = 16 / 9
+ASPECT_4_3 = 4 / 3
+ASPECT_TOLERANCE = 0.15  # ±15%
+
+
+def _get_image_dimensions(path: str) -> tuple[int, int] | None:
+    """Read image dimensions from file (JPEG/PNG) without full decode. Returns (width, height)."""
+    try:
+        with open(path, 'rb') as f:
+            header = f.read(64 * 1024)
+    except OSError:
+        return None
+    if len(header) < 24:
+        return None
+    # JPEG: find SOF0 (0xFF 0xC0), skip 5 bytes, then height(2) width(2) big-endian
+    if header[:2] == b'\xff\xd8':
+        i = 2
+        while i < len(header) - 9:
+            if header[i] == 0xFF and header[i + 1] == 0xC0:
+                h, w = struct.unpack('>HH', header[i + 5 : i + 9])
+                return (w, h)
+            if header[i] != 0xFF:
+                i += 1
+                continue
+            marker = header[i + 1]
+            i += 2
+            if i + 2 <= len(header):
+                length = struct.unpack('>H', header[i : i + 2])[0]
+                i += 2 + length
+            else:
+                break
+        return None
+    # PNG: 8 sig + 4 len + 4 "IHDR" + 4 width + 4 height
+    if header[:8] == b'\x89PNG\r\n\x1a\n' and len(header) >= 24:
+        w, h = struct.unpack('>II', header[16:24])
+        return (w, h)
+    return None
+
+
+def _is_likely_fullframe(width: int, height: int) -> bool:
+    """True if dimensions suggest full video frame (16:9 or 4:3, large)."""
+    if width <= 0 or height <= 0:
+        return False
+    pixels = width * height
+    if pixels < MIN_PIXELS_FULLFRAME:
+        return False
+    aspect = width / height
+    return (
+        abs(aspect - ASPECT_16_9) < ASPECT_TOLERANCE
+        or abs(aspect - ASPECT_4_3) < ASPECT_TOLERANCE
+    )
 
 
 def _sanitize_dirname(name: str) -> str:
@@ -90,6 +145,7 @@ def build_dataset_zip(
         'train': {},
         'val': {},
         'total_images': 0,
+        'excluded_fullframe': 0,
     }
 
     buf = io.BytesIO()
@@ -127,6 +183,11 @@ def build_dataset_zip(
                             except (ValueError, IndexError):
                                 continue
                     src = os.path.join(class_dir, fname)
+                    dims = _get_image_dimensions(src)
+                    if dims and _is_likely_fullframe(dims[0], dims[1]):
+                        info['excluded_fullframe'] += 1
+                        logger.debug('Exclude full-frame from export: %s', src)
+                        continue
                     arcname = f'{split}/{class_name}/{fname}'
                     try:
                         zf.write(src, arcname)
@@ -138,10 +199,10 @@ def build_dataset_zip(
                     info['total_images'] += count
 
         if info['total_images'] == 0:
-            return None, (
-                'No images in dataset. '
-                'Enable "Save dataset crops" and record videos.'
-            )
+            msg = 'No images in dataset. Enable "Save dataset crops" and record videos.'
+            if info.get('excluded_fullframe', 0) > 0:
+                msg += f' Excluded {info["excluded_fullframe"]} suspected full-frame images.'
+            return None, msg
 
         zf.writestr(
             'dataset_info.json',
@@ -235,17 +296,129 @@ def extract_and_save_crop_for_detection(vs, species_name: str, require_bbox: boo
         return False
 
 
+def clean_dataset(
+    dry_run: bool = False,
+    remove_fullframe: bool = True,
+    remove_orphaned: bool = False,
+) -> dict:
+    """
+    Очистить датасет: удалить подозрительные full-frame и/или осиротевшие файлы.
+    remove_fullframe: по эвристике (размер + aspect 16:9/4:3).
+    remove_orphaned: файлы без соответствующего VideoSpecies (осторожно — processor-файлы).
+    dry_run: только подсчёт, не удалять.
+    Returns {deleted_fullframe, deleted_orphaned, errors, dry_run}.
+    """
+    data_dir = _data_dir()
+    train_dir = os.path.join(data_dir, 'dataset', 'train')
+    if not os.path.isdir(train_dir):
+        return {'deleted_fullframe': 0, 'deleted_orphaned': 0, 'errors': [], 'dry_run': dry_run}
+
+    deleted_fullframe = 0
+    deleted_orphaned = 0
+    errors = []
+
+    valid_tracks: set[tuple[int, int]] | None = None
+    if remove_orphaned:
+        from models import VideoSpecies
+        rows = VideoSpecies.query.filter(
+            VideoSpecies.source == 'video',
+        ).with_entities(VideoSpecies.video_id, VideoSpecies.track_id).all()
+        valid_tracks = {(r[0], r[1] or 0) for r in rows}
+
+    for class_name in os.listdir(train_dir):
+        class_dir = os.path.join(train_dir, class_name)
+        if not os.path.isdir(class_dir):
+            continue
+        for fname in os.listdir(class_dir):
+            if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+                continue
+            path = os.path.join(class_dir, fname)
+            parts = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
+            if len(parts) >= 2:
+                try:
+                    vid, tid = int(parts[0]), int(parts[1])
+                    if remove_orphaned and valid_tracks is not None and (vid, tid) not in valid_tracks:
+                        if not dry_run:
+                            try:
+                                os.remove(path)
+                                deleted_orphaned += 1
+                                logger.info('Clean: deleted orphaned %s', path)
+                            except OSError as e:
+                                errors.append(f'{path}: {e}')
+                        else:
+                            deleted_orphaned += 1
+                        continue
+                except (ValueError, IndexError):
+                    pass
+            if remove_fullframe:
+                dims = _get_image_dimensions(path)
+                if dims and _is_likely_fullframe(dims[0], dims[1]):
+                    if not dry_run:
+                        try:
+                            os.remove(path)
+                            deleted_fullframe += 1
+                            logger.info('Clean: deleted full-frame %s', path)
+                        except OSError as e:
+                            errors.append(f'{path}: {e}')
+                    else:
+                        deleted_fullframe += 1
+
+    return {
+        'deleted_fullframe': deleted_fullframe,
+        'deleted_orphaned': deleted_orphaned,
+        'errors': errors,
+        'dry_run': dry_run,
+    }
+
+
+def _delete_dataset_crops_for_video_ids(video_ids: set[int]) -> int:
+    """
+    Удалить из train/ все файлы, относящиеся к указанным video_id.
+    Формат имени: video_id_track_id_*.jpg
+    Returns count of deleted files.
+    """
+    data_dir = _data_dir()
+    train_dir = os.path.join(data_dir, 'dataset', 'train')
+    if not os.path.isdir(train_dir):
+        return 0
+    deleted = 0
+    for class_name in os.listdir(train_dir):
+        class_dir = os.path.join(train_dir, class_name)
+        if not os.path.isdir(class_dir):
+            continue
+        for fname in os.listdir(class_dir):
+            if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+                continue
+            parts = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
+            if len(parts) >= 1:
+                try:
+                    vid = int(parts[0])
+                    if vid in video_ids:
+                        path = os.path.join(class_dir, fname)
+                        try:
+                            os.remove(path)
+                            deleted += 1
+                            logger.info('Rebuild: deleted %s', path)
+                        except OSError as e:
+                            logger.warning('Failed to delete %s: %s', path, e)
+                except (ValueError, IndexError):
+                    pass
+    return deleted
+
+
 def retro_export_all_video_detections(
     min_confidence: float = 0.0,
     start_date: str | None = None,
     end_date: str | None = None,
     only_manually_corrected: bool = False,
+    rebuild: bool = False,
 ) -> dict:
     """
     Массовый ретроэкспорт: извлечь кадры из видео-детекций в БД и сохранить в датасет.
     start_date, end_date: YYYY-MM-DD — период. None = все.
     only_manually_corrected: только вручную исправленные — гарантированно правильные виды.
-    Returns {saved: int, skipped: int, skipped_no_bbox: int, errors: list}.
+    rebuild: если True — удалить crops за период и заново извлечь только кропы (гарантированно без full-frame).
+    Returns {saved, skipped, skipped_no_bbox, errors, deleted?}.
     """
     from datetime import datetime, timezone, timedelta
     from models import VideoSpecies, Video
@@ -255,6 +428,12 @@ def retro_export_all_video_detections(
     skipped = 0
     skipped_no_bbox = 0
     errors = []
+    deleted = 0
+
+    video_ids_in_period = _video_ids_in_period(start_date, end_date)
+    if rebuild and video_ids_in_period:
+        deleted = _delete_dataset_crops_for_video_ids(video_ids_in_period)
+        logger.info('Rebuild: deleted %d files for period', deleted)
 
     q = (
         VideoSpecies.query.filter(VideoSpecies.source == 'video')
@@ -298,9 +477,15 @@ def retro_export_all_video_detections(
         if os.path.isfile(out_path):
             skipped += 1
             continue
+        if not rebuild and os.path.isfile(out_path):
+            skipped += 1
+            continue
         if extract_and_save_crop_for_detection(vs, vs.species.name, require_bbox=True):
             saved += 1
         else:
             errors.append(f"video_id={vs.video_id} vs_id={vs.id}")
 
-    return {'saved': saved, 'skipped': skipped, 'skipped_no_bbox': skipped_no_bbox, 'errors': errors}
+    result = {'saved': saved, 'skipped': skipped, 'skipped_no_bbox': skipped_no_bbox, 'errors': errors}
+    if rebuild:
+        result['deleted'] = deleted
+    return result

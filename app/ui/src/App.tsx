@@ -27,6 +27,7 @@ const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.Liv
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
 const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
+const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
 );
@@ -160,6 +161,7 @@ function App() {
                     <Route path="/species/:id" element={<SpeciesSummary />} />
                     <Route path="/unknowns" element={<UnknownsPage />} />
                     <Route path="/system" element={<System />} />
+                    <Route path="/library" element={<Library />} />
                   </Routes>
                 </Suspense>
               </Container>

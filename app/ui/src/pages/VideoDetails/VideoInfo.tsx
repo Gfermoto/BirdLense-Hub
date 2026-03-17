@@ -35,6 +35,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
     mutationFn: () => deleteVideo(video.id),
     onSuccess: () => {
       setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });

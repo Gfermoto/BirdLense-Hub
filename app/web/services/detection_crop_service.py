@@ -89,18 +89,18 @@ def extract_detection_frame_cropped(
 ) -> bytes | None:
     """
     Extract frame and crop by normalized bbox [x1,y1,x2,y2] (0–1).
-    If bbox_norm is None, returns full frame.
+    If bbox_norm is None or invalid, returns None (never full frame — dataset must contain only crops).
     """
     jpeg_bytes = extract_detection_frame(video_path, offset_sec)
     if not jpeg_bytes or not bbox_norm or len(bbox_norm) != 4:
-        return jpeg_bytes
+        return None
     try:
         import cv2
         import numpy as np
         arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
-            return jpeg_bytes
+            return None
         h, w = img.shape[:2]
         x1 = int(bbox_norm[0] * w)
         y1 = int(bbox_norm[1] * h)
@@ -109,13 +109,13 @@ def extract_detection_frame_cropped(
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(w, x2), min(h, y2)
         if x2 <= x1 or y2 <= y1:
-            return jpeg_bytes
+            return None
         crop = img[y1:y2, x1:x2]
         ok, buf = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        return buf.tobytes() if ok and buf is not None else jpeg_bytes
+        return buf.tobytes() if ok and buf is not None else None
     except Exception as e:
-        logger.warning("Crop failed, using full frame: %s", e)
-        return jpeg_bytes
+        logger.warning("Crop failed, skipping (no full-frame fallback): %s", e)
+        return None
 
 
 def crop_filename(species_name: str, start_time_str: str) -> str:

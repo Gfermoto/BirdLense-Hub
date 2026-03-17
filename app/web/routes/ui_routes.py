@@ -36,6 +36,7 @@ from services.dataset_export_service import (
     build_dataset_zip,
     move_crop_on_species_correction,
     extract_and_save_crop_for_detection,
+    clean_dataset,
 )
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
@@ -597,7 +598,8 @@ def register_routes(app):
         threshold = float(app_config.get('ui.unknown_confidence_threshold') or 0.5)
         threshold = max(0.0, min(1.0, threshold))
 
-        # Bird без вида — всегда неопределённый объект, показываем в Unknowns
+        # Bird без вида или низкий confidence — показываем в Unknowns.
+        # Исключаем manually_corrected: пользователь уже проверил/исправил — убираем из списка.
         rows = (
             db.session.query(VideoSpecies)
             .join(Video)
@@ -605,6 +607,7 @@ def register_routes(app):
             .filter(
                 Video.start_time >= start_dt,
                 Video.start_time <= end_dt,
+                VideoSpecies.manually_corrected == False,
                 or_(
                     VideoSpecies.confidence < threshold,
                     Species.name == GENERIC_BIRD_SPECIES,
@@ -686,7 +689,9 @@ def register_routes(app):
 
     @app.route('/api/ui/dataset/retro-export', methods=['POST'])
     def retro_export_dataset():
-        """Ретроэкспорт: извлечь кадры из видео-детекций в датасет."""
+        """Ретроэкспорт: извлечь кадры из видео-детекций в датасет.
+        rebuild: удалить crops за период и заново извлечь (гарантированно только кропы).
+        """
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         from services.dataset_export_service import retro_export_all_video_detections
@@ -695,13 +700,51 @@ def register_routes(app):
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         only_manually_corrected = bool(data.get('only_manually_corrected', False))
+        rebuild = bool(data.get('rebuild', False))
+        if rebuild and (not start_date or not end_date):
+            return {'error': 'rebuild requires start_date and end_date'}, 400
         result = retro_export_all_video_detections(
             min_confidence=min_conf,
             start_date=start_date,
             end_date=end_date,
             only_manually_corrected=only_manually_corrected,
+            rebuild=rebuild,
         )
         return result, 200
+
+    @app.route('/api/ui/dataset/clean', methods=['POST'])
+    def clean_dataset_route():
+        """Очистить датасет: удалить full-frame по эвристике и/или осиротевшие файлы."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+        data = request.json or {}
+        dry_run = bool(data.get('dry_run', False))
+        remove_fullframe = data.get('remove_fullframe', True)
+        remove_orphaned = data.get('remove_orphaned', False)
+        result = clean_dataset(
+            dry_run=dry_run,
+            remove_fullframe=remove_fullframe,
+            remove_orphaned=remove_orphaned,
+        )
+        return result, 200
+
+    @app.route('/api/ui/detections/<int:detection_id>/confirm', methods=['POST'])
+    def confirm_detection(detection_id):
+        """Подтвердить вид: пометить как проверенный (manually_corrected=True), убрать из Unknowns."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+
+        vs = VideoSpecies.query.get(detection_id)
+        if not vs:
+            return {'error': 'Detection not found'}, 404
+
+        # Все детекции того же visit — подтверждаем вместе
+        to_confirm = list(vs.species_visit.video_species) if vs.species_visit else [vs]
+        for v in to_confirm:
+            v.manually_corrected = True
+        db.session.commit()
+
+        return {'message': 'Confirmed', 'updated_count': len(to_confirm)}, 200
 
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):

@@ -348,10 +348,16 @@ class MQTTEventAggregator:
         self._thread.start()
         time.sleep(0.5)
 
-    def get_events_in_window(self, start_time, end_time, window_seconds=5):
-        """Return MQTT events within [start - window, end + window]."""
+    def get_events_in_window(
+        self, start_time, end_time, window_seconds=5, lookback_seconds=None
+    ):
+        """Return MQTT events within [start - lookback, end + window].
+
+        lookback_seconds: if set, overrides window for low bound (для pending trigger).
+        """
         from datetime import timedelta
-        low = start_time - timedelta(seconds=window_seconds)
+        lookback = lookback_seconds if lookback_seconds is not None else window_seconds
+        low = start_time - timedelta(seconds=lookback)
         high = end_time + timedelta(seconds=window_seconds)
         with self._lock:
             result = []

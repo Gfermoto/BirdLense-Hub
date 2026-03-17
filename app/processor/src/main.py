@@ -379,8 +379,19 @@ def main():
             source_priority = app_config.get('detection.source_priority') or ["yolo", "frigate", "birdnet"]
             mqtt_events = []
             if mqtt_aggregator:
+                lookback = merge_window
+                if yolo_tracks_count == 0:
+                    triggered_cam = getattr(
+                        motion_detector, 'get_triggered_camera', lambda: None
+                    )()
+                    if triggered_cam:
+                        # Pending trigger: событие было до start_time, расширяем lookback
+                        lookback = max(merge_window, 60)
+                        logging.info(
+                            "Frigate trigger, 0 YOLO: extended MQTT lookback to %ds",
+                            lookback)
                 mqtt_events = mqtt_aggregator.get_events_in_window(
-                    start_time, end_time, merge_window)
+                    start_time, end_time, merge_window, lookback_seconds=lookback)
             if yolo_tracks_count > 0:
                 min_dur = app_config.get('processor.min_track_duration', 1)
                 logging.info(

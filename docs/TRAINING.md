@@ -418,6 +418,79 @@ model.train(
 
 Сначала распакуйте `merged_cls_extended.zip` (или соберите датасет в Colab). Результат — `best.pt` с расширенным набором видов.
 
+### 7.4 Дообучение на BirdLense экспорте (birdlense_ready)
+
+**Структура в Google Drive:**
+
+```
+BirdLense_Annotations/
+├── birdlense_ready.zip   # Датасет (train/val)
+└── best.pt               # Текущая модель
+```
+
+**Colab — ячейки для дообучения:**
+
+```python
+# Ячейка 1: Подключить Drive
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```python
+# Ячейка 2: Распаковка (zip содержит datasets/birdlense_ready/)
+import os
+DRIVE_FOLDER = "BirdLense_Annotations"
+ZIP_NAME = "birdlense_ready.zip"
+DRIVE_PATH = f"/content/drive/MyDrive/{DRIVE_FOLDER}"
+ZIP_PATH = os.path.join(DRIVE_PATH, ZIP_NAME)
+
+!unzip -q -o "{ZIP_PATH}" -d /content/
+# Путь после распаковки: /content/datasets/birdlense_ready/
+DATASET_DIR = "/content/datasets/birdlense_ready"
+if not os.path.exists(os.path.join(DATASET_DIR, "train")):
+    DATASET_DIR = "/content/birdlense_ready"  # если zip пересобран с другой структурой
+print(f"Датасет: {DATASET_DIR}")
+```
+
+```python
+# Ячейка 3: Ultralytics
+!pip install -q -U ultralytics
+```
+
+```python
+# Ячейка 4: Дообучение
+from ultralytics import YOLO
+
+BEST_PT = f"/content/drive/MyDrive/BirdLense_Annotations/best.pt"
+DATASET_DIR = "/content/datasets/birdlense_ready"  # путь после unzip (zip содержит datasets/birdlense_ready/)
+
+model = YOLO(BEST_PT)
+model.train(
+    data=DATASET_DIR,
+    epochs=30,
+    imgsz=224,
+    batch=64,
+    lr0=0.001,
+    patience=10,
+    project=f"/content/drive/MyDrive/BirdLense_Annotations/runs",
+    name="birds_finetune",
+    exist_ok=True,
+    device=0,
+    workers=2,
+)
+```
+
+```python
+# Ячейка 5: Сохранить best.pt
+import shutil
+best = "/content/drive/MyDrive/BirdLense_Annotations/runs/birds_finetune/weights/best.pt"
+if os.path.exists(best):
+    shutil.copy(best, "/content/drive/MyDrive/BirdLense_Annotations/best_finetuned.pt")
+    print("✅ best_finetuned.pt сохранён в Drive")
+```
+
+**После обучения:** скачайте `best_finetuned.pt` → скопируйте в `app/processor/models/classification/weights/best.pt` → `make deploy`.
+
 ---
 
 ## Часть 8: Частые проблемы
