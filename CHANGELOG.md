@@ -14,6 +14,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.9] - 2026-03-17
+
+### Added
+
+- **Карточка «Сравнение с регионом»** — показ списков видов: ваши виды в топе региона и полный топ региона по eBird.
+
+### Changed
+
+- **Unknowns** — выбор даты и времени суток как в Записях (DatePicker + Утро/День/Вечер/Ночь вместо прокрутки по часам).
+- **timeUtils** — общий `getTimeRange` для Timeline и Unknowns.
+
+---
+
 ## [0.1.8] - 2026-03-17
 
 ### Added
@@ -243,6 +256,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.9]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.9
 [0.1.8]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.8
 [0.1.7]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.7
 [0.1.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.6
