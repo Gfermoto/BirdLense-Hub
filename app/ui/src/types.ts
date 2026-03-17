@@ -100,6 +100,7 @@ export interface Settings {
     notification_excluded_species: string[];
     settings_password?: string;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
+    donate_url?: string; // Donation page (Ko-fi, etc.); empty = no button
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"

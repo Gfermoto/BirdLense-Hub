@@ -34,6 +34,9 @@
 | `enable_notifications` | Включить уведомления (глобально) |
 | `settings_password` | Пароль для доступа к настройкам. Пусто — без пароля |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
+| `donate_url` | Ссылка на страницу пожертвований. Пусто — кнопка-заглушка. |
+
+**Платформы для РФ:** [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru). За рубежом: Ko-fi, Buy Me a Coffee, GitHub Sponsors.
 
 ---
 
