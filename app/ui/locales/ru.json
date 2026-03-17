@@ -43,7 +43,12 @@
     "meanDuration": "Средняя длительность",
     "busiestHour": "Пиковый час",
     "recordingTime": "Время записи",
-    "downloadPdf": "PDF-отчёт"
+    "downloadPdf": "PDF-отчёт",
+    "regionComparison": "Сравнение с регионом",
+    "regionComparisonDesc": "У вас {{userCount}} видов. В топ-{{regionTop}} региона — {{matchCount}} из них.",
+    "regionComparisonHint": "По данным eBird за последние 30 дней. Регион: {{region}}.",
+    "regionComparisonConfigure": "Укажите ключ eBird API в Настройках → Расширенные для сравнения с регионом.",
+    "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках."
   },
   "settings": {
     "section1": "1. Подключение",
@@ -210,11 +215,13 @@
     "openWeatherApiKey": "OpenWeather API Key",
     "xenoCantoApiKey": "Ключ Xeno-canto API",
     "xenoCantoApiKeyHint": "Для воспроизведения птичьих песен на странице вида. Получить ключ: xeno-canto.org/account",
+    "ebirdApiKey": "Ключ eBird API",
+    "ebirdApiKeyHint": "Для сравнения с регионом (будущая фича). Получить: ebird.org/api/keygen",
     "ebirdSection": "Экспорт eBird",
     "ebirdCountry": "Страна",
     "ebirdCountryHint": "US, RU",
     "ebirdState": "Регион",
-    "ebirdStateHint": "NY, МО",
+    "ebirdStateHint": "NY, CA, MOS (Московская обл.)",
     "ebirdLocation": "Название локации",
     "ebirdLocationHint": "Напр. BirdLense Feeder",
     "objectTracker": "Object Tracker",

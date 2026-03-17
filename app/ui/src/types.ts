@@ -114,6 +114,7 @@ export interface Settings {
   secrets: {
     openweather_api_key: string; // API key for OpenWeather
     xeno_canto_api_key?: string; // API key for Xeno-canto bird song playback
+    ebird_api_key?: string; // API key for eBird regional comparison
     latitude: string; // Latitude as a string, e.g., "YOUR_LATITUDE_HERE"
     longitude: string; // Longitude as a string, e.g., "YOUR_LONGITUDE_HERE"
     zip?: string;

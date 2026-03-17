@@ -74,7 +74,7 @@
 | `ui` | `unknown_confidence_threshold` |
 | `webhook` | `url` |
 | `ebird` | `country`, `state`, `location_name` |
-| `secrets` | `xeno_canto_api_key` |
+| `secrets` | `xeno_canto_api_key`, `ebird_api_key` |
 
 ---
 

@@ -41,6 +41,7 @@ from services.dataset_export_service import (
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
 from services.migration_calendar_service import get_migration_calendar
+from services.ebird_region_service import get_region_comparison
 
 UNKNOWNS_LIMIT_MAX = 500
 
@@ -391,6 +392,22 @@ def register_routes(app):
 
         data = get_overview_data(db.session, start_of_day, end_of_day)
         return data, 200
+
+    @app.route('/api/ui/region-comparison', methods=['GET'])
+    def get_region_comparison_route():
+        """Compare user's observed species with eBird region top. Requires secrets.ebird_api_key."""
+        from app_config.app_config import app_config
+        app_config.reload()  # подхватить ключ после сохранения в настройках
+        observed = (
+            db.session.query(Species.name)
+            .join(SpeciesVisit, SpeciesVisit.species_id == Species.id)
+            .filter(Species.name != GENERIC_BIRD_SPECIES)
+            .distinct()
+            .all()
+        )
+        user_names = [r[0] for r in observed]
+        result = get_region_comparison(user_names)
+        return result if result is not None else {}, 200
 
     @app.route('/api/ui/migration-calendar', methods=['GET'])
     def get_migration_calendar_route():

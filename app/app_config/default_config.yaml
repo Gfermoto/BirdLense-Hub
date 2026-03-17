@@ -182,7 +182,7 @@ mcp:
 # eBird export — для формата eBird Record (импорт в eBird.org)
 ebird:
   country: "US"       # 2-char code (US, RU, etc.)
-  state: ""           # 1–3 chars (NY, CA, etc.)
+  state: ""           # 1–3 chars (NY, CA, MOS для Московской обл., etc.)
   location_name: "BirdLense Feeder"
   protocol: "Stationary"  # Stationary | Traveling | Incidental | Historical
 
@@ -190,5 +190,6 @@ ebird:
 secrets:
   openweather_api_key: ""
   xeno_canto_api_key: ""  # Xeno-canto API v3 key for bird song playback (xeno-canto.org/account)
+  ebird_api_key: ""       # eBird API key for regional comparison (ebird.org/api/keygen)
   latitude: "39.8283"
   longitude: "-98.5795"

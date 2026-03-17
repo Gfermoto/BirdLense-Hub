@@ -232,12 +232,15 @@ Push-уведомления в браузере (дополнение или а�
 
 | Ключ | Описание |
 |------|----------|
-| `country` | Код страны (2 символа: US, RU и т.д.) |
-| `state` | Регион (1–3 символа: NY, CA) |
-| `location_name` | Название локации для чеклиста |
-| `protocol` | Stationary \| Traveling \| Incidental \| Historical |
+| `ebird.country` | Код страны (2 символа: US, RU и т.д.) |
+| `ebird.state` | Регион (1–3 символа: NY, CA, MOS для Московской обл.) |
+| `ebird.location_name` | Название локации для чеклиста |
+| `ebird.protocol` | Stationary \| Traveling \| Incidental \| Historical |
+| `secrets.ebird_api_key` | Ключ eBird API для сравнения с регионом (будущая фича). Получить: [ebird.org/api/keygen](https://ebird.org/api/keygen) |
 
-Настройки → Расширенные. Используется при экспорте «Экспорт для eBird» в Timeline.
+Настройки → Расширенные. Экспорт «Экспорт для eBird» в Timeline не требует API ключа. Ключ нужен для фичи «Сравнение с регионом».
+
+**Россия, Московская область:** `ebird.country=RU`, `ebird.state=MOS` (или `MO`). Регион для API: RU-MOS.
 
 ---
 
@@ -271,7 +274,14 @@ scrape_configs:
 
 ## Secrets
 
-Координаты и ключи. Рекомендуется хранить в env: `OPENWEATHER_API_KEY`, `secrets.latitude`, `secrets.longitude`.
+Координаты и ключи. Настройки → Расширенные. Рекомендуется env: `OPENWEATHER_API_KEY`.
+
+| Ключ | Описание |
+|------|----------|
+| `openweather_api_key` | OpenWeather API для виджета погоды |
+| `xeno_canto_api_key` | Xeno-canto API для воспроизведения птичьих песен (xeno-canto.org/account) |
+| `ebird_api_key` | eBird API для сравнения с регионом (ebird.org/api/keygen) |
+| `latitude`, `longitude` | Координаты для погоды и eBird |
 
 ---
 
