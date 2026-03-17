@@ -29,4 +29,24 @@ test.describe('Smoke tests', () => {
     await page.goto('/live', { waitUntil: 'networkidle' });
     await expect(page.getByRole('heading', { name: /Live/i })).toBeVisible({ timeout: 15000 });
   });
+
+  test('Overview page loads', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/Overview|Обзор/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Timeline page loads', async ({ page }) => {
+    await page.goto('/timeline', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/Timeline|Записи|Select/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Unknowns page loads', async ({ page }) => {
+    await page.goto('/unknowns', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/Unknown|Неизвестн/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('System page loads', async ({ page }) => {
+    await page.goto('/system', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/System|Система/i).first()).toBeVisible({ timeout: 15000 });
+  });
 });

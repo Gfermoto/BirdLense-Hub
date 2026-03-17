@@ -279,14 +279,6 @@ export function UnknownsPage() {
   return (
     <>
       <PageHelp {...unknownsHelpConfig} />
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <Typography variant="h5" fontWeight={600}>
-          {t('unknowns.title')}
-        </Typography>
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('unknowns.intro')}
-      </Typography>
       <Box sx={{ mb: 3 }}>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DateTimePicker

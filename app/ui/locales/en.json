@@ -370,6 +370,7 @@
     "empty": "No low-confidence detections for the selected period. Try another day or hour. Bird species always appears here for verification.",
     "count": "{{count}} detection(s) to review",
     "limitReached": "Showing up to 500 records. Select a specific hour for precise search.",
+    "hourHint": "When selecting a time (not 00:00), only detections for that hour are shown.",
     "passwordRequired": "Enter settings password to correct species.",
     "corrected": "Species corrected"
   },
