@@ -10,17 +10,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DetectionResult:
-    """
-    Represents a single detection.
-    
-    Attributes:
-        track_id: Unique integer ID for the tracked object.
-        class_name: The detected class name (species).
-        confidence: Confidence score of the detection (0.0 to 1.0).
-        bbox: Normalized bounding box coordinates [x1, y1, x2, y2].
-        blur_variance: Laplacian variance of the crop (higher = sharper).
-        crop: BGR image crop of the detected object.
-    """
+    """Одна детекция: track_id, вид, confidence, bbox, crop (опционально)."""
     track_id: int
     class_name: str
     confidence: float
@@ -36,16 +26,7 @@ class DetectionStrategy(ABC):
         self.max_blur_checks = max_blur_checks
 
     def is_blurry(self, image: np.ndarray) -> Tuple[bool, float]:
-        """
-        Check if the image is blurry using the variance of the Laplacian.
-        
-        Args:
-            image: BGR image crop
-            
-        Returns:
-            Tuple of (is_blurry: bool, variance: float).
-            Higher variance means sharper image.
-        """
+        """Лапласиан: выше variance — резче. (is_blur, variance)."""
         if image is None or image.size == 0:
             return True, 0.0
         
@@ -67,28 +48,13 @@ class DetectionStrategy(ABC):
 
 
     def is_valid_detection(self, bbox: List[float], conf: float, min_confidence: float) -> bool:
-        """
-        Check if detection center is not too close to edges and confidence is sufficient.
-        
-        Args:
-            bbox: Normalized bounding box [x1, y1, x2, y2]
-            conf: Detection confidence
-            min_confidence: Minimum required confidence
-        """
+        """Центр не у краёв, confidence >= min."""
         x1, y1, x2, y2 = bbox
-
-        # Calculate center point
         center_x = (x1 + x2) / 2
         center_y = (y1 + y2) / 2
-
-        # Check if center is too close to any edge
-        if (center_x < self.min_center_dist or  # Too close to left
-            center_x > (1 - self.min_center_dist) or  # Too close to right
-            center_y < self.min_center_dist or  # Too close to top
-                center_y > (1 - self.min_center_dist)):  # Too close to bottom
+        if (center_x < self.min_center_dist or center_x > (1 - self.min_center_dist) or
+                center_y < self.min_center_dist or center_y > (1 - self.min_center_dist)):
             return False
-
-        # Skip if confidence is too low
         if conf < min_confidence:
             return False
 
@@ -153,8 +119,6 @@ class SingleStageStrategy(DetectionStrategy):
                 
             crop = frame[y1:y2, x1:x2].copy()
             is_blur, blur_variance = self.is_blurry(crop)
-            
-            # Skip blurry detections (same as TwoStageStrategy)
             if is_blur:
                 continue
 
@@ -204,25 +168,11 @@ class TwoStageStrategy(DetectionStrategy):
         self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), verbose=False)
 
     def _normalize_class_name(self, name: str) -> str:
-        """
-        Normalize a classifier model class name to standard display format.
-        
-        Converts model-specific formatting (underscores, _OR_) to 
-        human-readable format (spaces, /).
-        
-        Args:
-            name: Raw class name from the model (e.g., "Blue_Jay", "Winter_OR_juvenile")
-            
-        Returns:
-            Normalized name (e.g., "Blue Jay", "Winter/juvenile")
-        """
+        """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
         return name.replace('_OR_', '/').replace('_', ' ')
 
     def _classify_crop(self, crop: np.ndarray) -> Tuple[Optional[str], float]:
-        """
-        Run classification on a crop, manually filtering for regional species if configured since ultralytics classifier ignores 'classes' arg.
-        Returns: (species_name, confidence)
-        """
+        """Классификация кропа. (species_name, confidence)."""
         result_cls = self.classifier_model(crop, verbose=False)
         
         if not result_cls or not result_cls[0].probs:
@@ -244,21 +194,7 @@ class TwoStageStrategy(DetectionStrategy):
         return self._normalize_class_name(result_cls[0].names[top1_idx]), probs.top1conf.item()
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
-        """
-        Two-stage detection: binary detection followed by species classification.
-        
-        Flow:
-        1. Binary Detection: Detect "bird" vs "not bird" using fast model.
-        2. Validity Filter (cheap): Drop detections that are too close to edges,
-           too small, or low confidence. These are likely noise or partial birds.
-        3. Round-Robin Classification (one per frame): To limit compute, we classify
-           only ONE bird per frame, rotating through valid detections.
-        4. Blur Check (before classification): Skip classification if the selected
-           crop is blurry (motion blur, out of focus). Try up to 3 candidates.
-        5. Build Results: Return all valid detections. Only the classified one
-           has a species name; others have class_name=None (tracked but not yet classified).
-        """
-        # 1. Binary Detection
+        """Binary detect → фильтр валидности → round-robin классификация одного бокса на кадр."""
         results = self.binary_model.track(
             frame, persist=True, conf=min_confidence, verbose=False, imgsz=320, tracker=tracker_config)
             
@@ -274,22 +210,17 @@ class TwoStageStrategy(DetectionStrategy):
 
         h, w, _ = frame.shape
 
-        # 2. Collect all valid boxes first
         valid_boxes = []
         for track_id, conf, bbox_norm, bbox_abs in zip(track_ids, confidences, xyxyn, xyxy):
-            # Check validity BEFORE classification to save compute
             if not self.is_valid_detection(bbox_norm, conf, min_confidence):
                 continue
 
             x1, y1, x2, y2 = map(int, bbox_abs)
-            # Clamp
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(w, x2), min(h, y2)
              
             if x2 <= x1 or y2 <= y1:
                 continue
-            
-            # Check minimum size
             box_w = x2 - x1
             box_h = y2 - y1
             if box_w < self.min_box_size_px or box_h < self.min_box_size_px:
@@ -304,11 +235,7 @@ class TwoStageStrategy(DetectionStrategy):
         
         if not valid_boxes:
             return []
-        
-        # Sort by track_id for consistent ordering
         valid_boxes.sort(key=lambda b: b['track_id'])
-        
-        # 3. Round-robin selection - find first non-blurry box to classify
         start_idx = self._classification_index % len(valid_boxes)
         self._classification_index += 1
         
@@ -326,8 +253,16 @@ class TwoStageStrategy(DetectionStrategy):
                     'blur_variance': variance
                 }
                 break
-        
-        # 4. Build results - only classified box has species_name and crop
+        if classified is None and valid_boxes:
+            box = valid_boxes[start_idx % len(valid_boxes)]
+            x1, y1, x2, y2 = box['crop_coords']
+            crop = frame[y1:y2, x1:x2]
+            _, variance = self.is_blurry(crop)
+            classified = {
+                'track_id': box['track_id'],
+                'crop': crop.copy(),
+                'blur_variance': variance
+            }
         detection_results = []
         for box in valid_boxes:
             species_name = None
@@ -337,7 +272,6 @@ class TwoStageStrategy(DetectionStrategy):
             
             if classified and box['track_id'] == classified['track_id']:
                 species_name, cls_conf = self._classify_crop(classified['crop'])
-                # Combined confidence: P(species) = P(is_bird) × P(species|is_bird)
                 combined_conf = box['conf'] * cls_conf
 
                 crop = classified['crop']

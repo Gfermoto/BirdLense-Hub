@@ -44,7 +44,7 @@ def _data_dir() -> str:
 
 
 def _is_safe_image_path(path: str) -> bool:
-    """Path traversal check: path must be under DATA_DIR and exist as file."""
+    """Путь под DATA_DIR, файл существует. Защита от path traversal."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return False
     base = os.path.realpath(_data_dir())
@@ -126,14 +126,13 @@ def recordings_dir():
 
 
 def full_path_for_video(video_path: str) -> str | None:
-    """Полный путь к файлу/папке по video_path из БД (data/recordings/YYYY/MM/DD/...)."""
-    if not video_path or not isinstance(video_path, str):
+    """Полный путь по video_path из БД (data/recordings/YYYY/MM/DD/...)."""
+    if not video_path:
         return None
     data_dir = os.environ.get(
         'DATA_DIR',
         os.path.join(os.path.dirname(__file__), '..', 'data')
     )
-    # video_path = "data/recordings/...", DATA_DIR = ".../data" -> base = parent of data
     app_base = os.path.dirname(data_dir)
     return os.path.normpath(os.path.join(app_base, video_path))
 
@@ -228,9 +227,6 @@ class WeatherFetcher:
         return datetime.now() - self.last_fetched < self.cache_duration
 
     def _fetch_weather_data(self, params=None, retries=3, backoff_factor=2):
-        """
-        Fetches weather data from the API with retry logic.
-        """
         params = params or self.default_params
         if not params.get('appid'):
             return {}
@@ -243,7 +239,7 @@ class WeatherFetcher:
         for attempt in range(retries):
             try:
                 response = requests.get(self.api_url, params=params)
-                response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+                response.raise_for_status()
                 data = response.json()
                 return {
                     'weather_main': data['weather'][0]['main'],
@@ -264,9 +260,6 @@ class WeatherFetcher:
                     return {}
 
     def fetch(self):
-        """
-        Returns cached weather data if valid, otherwise fetches new data.
-        """
         if self._is_cache_valid():
             return self.cached_data
         new_data = self._fetch_weather_data()
@@ -412,15 +405,7 @@ _hierarchy_parent_map = None
 
 
 def get_parent_name_for_species(species_name: str) -> str | None:
-    """
-    Найти родительскую категорию для вида по иерархии.
-
-    Поддерживает формат "Scientific (Common)": извлекает common name для поиска.
-    Используется при создании новых видов (Frigate, BirdNET, новый YOLO).
-
-    Returns:
-        Имя родителя (например "Cardinals, Grosbeaks, and Allies") или None.
-    """
+    """Родительская категория для вида по иерархии (Frigate/BirdNET/YOLO)."""
     global _hierarchy_parent_map
     if _hierarchy_parent_map is None:
         _hierarchy_parent_map = _load_hierarchy_parent_map()
@@ -438,23 +423,16 @@ def build_hierarchy_tree():
             species_name, parent_name = line.strip().split("|", 1)
             species_dict[species_name.strip()] = parent_name.strip()
 
-    # Step 1: Create a map to store child-parent relationships
     children_map = {}
     for child, parent in species_dict.items():
-        if parent not in children_map:
-            children_map[parent] = []
-        children_map[parent].append(child)
+        children_map.setdefault(parent, []).append(child)
 
-    # Step 2: Define a recursive function to build the tree
     def build_tree_from_parent(parent):
         if parent not in children_map:
             return {}
         return {child: build_tree_from_parent(child) for child in children_map[parent]}
 
-    # Find the root nodes (those which are parents but not children)
     root_nodes = set(species_dict.values()) - set(species_dict.keys())
-
-    # Build the tree for each root node
     return {root: build_tree_from_parent(root) for root in root_nodes}
 
 
@@ -631,14 +609,19 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
             if view_stars == 0 and forward_stars > 0:
                 protect = True
 
+            caption = text
+            if link_url and app_config.get('notifications.link_preview_large', False):
+                caption = f"{text}\n\n{link_url}"
             payload = {
                 'chat_id': chat_id,
-                'caption': text,
+                'caption': caption,
                 'parse_mode': 'HTML',
                 'disable_notification': app_config.get(
                     'notifications.disable_notification', False),
                 'protect_content': protect,
             }
+            if link_url and app_config.get('notifications.link_preview_large', False):
+                payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
             thread_id = app_config.get('notifications.message_thread_id')
             if thread_id not in (None, ''):
                 try:
@@ -689,21 +672,12 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
 
 
 def filter_feeder_species(species_names):
-    """
-    Filter out species that are unlikely to visit bird feeders based on their family categories.
-    Uses configuration to determine which bird families to include.
-    """
-    # Get included families from config
+    """Фильтр по семействам из processor.included_bird_families."""
     included_families = app_config.get('processor.included_bird_families', [])
-
-    # Early return if no inclusion
     if not included_families:
         return species_names
 
-    # Fetch all species in one query
     all_species = Species.query.all()
-
-    # Build parent-child relationships map
     children_by_parent = {}
     name_to_species = {}
     for species in all_species:
@@ -711,12 +685,10 @@ def filter_feeder_species(species_names):
             species.parent_id, set()).add(species.name)
         name_to_species[species.name] = species
 
-    # Find the Birds category
     birds_category = name_to_species.get('Birds')
     if not birds_category:
         return species_names
 
-    # Get all descendants of included families
     included_species = set()
 
     def add_descendants(parent_name):
@@ -728,11 +700,9 @@ def filter_feeder_species(species_names):
         for child in children:
             add_descendants(child)
 
-    # Process each included family
     for family in included_families:
         if family in children_by_parent.get(birds_category.id, set()):
             add_descendants(family)
             included_species.add(family)
 
-    # Filter out included species
     return [name for name in species_names if name in included_species]

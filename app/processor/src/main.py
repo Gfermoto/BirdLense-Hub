@@ -484,6 +484,10 @@ def main():
                                         image_base64 = base64.b64encode(buf.tobytes()).decode('ascii')
                             except Exception as e:
                                 logging.warning("Encode best_frame for notify failed: %s", e)
+                        if image_base64 is None and bf is None:
+                            logging.info(
+                                "Notify %s without photo: no best_frame (source=%s)",
+                                sn, d.get('detection_provider', 'unknown'))
                         try:
                             api.notify_species(sn, image_base64=image_base64)
                         except Exception as e:

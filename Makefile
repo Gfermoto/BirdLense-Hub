@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config
+.PHONY: deploy build start stop logs restore-config docs
 
 deploy:
 	@./scripts/deploy.sh
@@ -9,3 +9,6 @@ restore-config:
 
 build start stop logs:
 	@$(MAKE) -C app $@
+
+docs:
+	@$(MAKE) -C app docs

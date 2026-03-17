@@ -8,12 +8,6 @@ class LightLevelDetector:
     """Simple detector for checking if there's enough light for processing."""
 
     def __init__(self, min_brightness=25, min_contrast=20, sample_rate=8):
-        """
-        Args:
-            min_brightness: Minimum average brightness (0-255)
-            min_contrast: Minimum contrast (standard deviation of brightness)
-            sample_rate: Sample every Nth pixel for performance
-        """
         self.min_brightness = min_brightness
         self.min_contrast = min_contrast
         self.sample_rate = sample_rate
@@ -21,27 +15,13 @@ class LightLevelDetector:
         self.logger = logging.getLogger(__name__)
 
     def has_sufficient_light(self, frame):
-        """
-        Check if frame has sufficient lighting for processing.
-        Args:
-            frame: BGR format numpy array from camera
-        Returns:
-            bool: True if lighting conditions are good enough for processing
-        """
         try:
-            # Convert to grayscale using sampling for better performance
             gray = cv2.cvtColor(
                 frame[::self.sample_rate, ::self.sample_rate], cv2.COLOR_BGR2GRAY)
-
-            # Fast mean calculation
             mean_brightness = gray.mean()
-
-            # Early return if brightness is too low
             if mean_brightness < self.min_brightness:
                 self._log_conditions(mean_brightness)
                 return False
-
-            # Calculate contrast only if needed
             contrast = gray.std()
             is_sufficient = contrast >= self.min_contrast
 

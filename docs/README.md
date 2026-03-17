@@ -68,10 +68,19 @@
 
 | Документ | Описание |
 |----------|----------|
+| [AUTODOC.md](./AUTODOC.md) | Автодокументация (pdoc, TypeDoc, interrogate) |
+| [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальная сборка и тестирование (make local) |
 | [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи |
-| [REACT_19_MIGRATION.md](./REACT_19_MIGRATION.md) | Миграция на React 19 (выполнено) |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 | [DETECTION_SOURCES.md](./DETECTION_SOURCES.md) | Источники детекций: YOLO, Frigate, BirdNET |
+
+---
+
+## Архив
+
+| Документ | Описание |
+|----------|----------|
+| [archive/README.md](./archive/README.md) | Завершённые ревью, мозговые штурмы, troubleshooting |
 
 ---
 
