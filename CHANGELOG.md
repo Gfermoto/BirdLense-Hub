@@ -8,9 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+---
 
-- **Ретроэкспорт в датасет** — при коррекции вида (Unknowns, VideoDetails) кадр извлекается из видео и сохраняется в датасет, даже если процессор не сохранял его при записи. Кнопка «Ретроэкспорт в датасет» в Система → Управление хранилищем — массовое извлечение кадров из всех видео-детекций.
+## [0.1.10] - 2026-03-17
+
+### Changed
+
+- **Overview** — grid вместо flex для Feed+Chart (стабильный layout при логине).
+- **FeedCard** — подсказка «Кнопка доступна администратору. Волонтёры могут помочь с видами» вместо «Введите пароль настроек».
+- **ProtectedRoute** — универсальное сообщение «Введите пароль администратора для доступа к этому разделу» для Settings, System, Library.
+
+### Security
+
+- **Ограничения для не залогиненных** — PDF-отчёт, экспорт (CSV/JSON/eBird/Dataset), изменение корма в кормушке доступны только после входа (admin или contributor для экспорта; admin для корма).
 
 ---
 
@@ -256,6 +266,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.1.10]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.10
 [0.1.9]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.9
 [0.1.8]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.8
 [0.1.7]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.7

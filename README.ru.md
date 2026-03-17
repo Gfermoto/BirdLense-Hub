@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.9-blue.svg)](./CHANGELOG.md) [English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.1.10-blue.svg)](./CHANGELOG.md) [English](./README.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
