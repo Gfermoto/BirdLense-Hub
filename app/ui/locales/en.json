@@ -1,4 +1,7 @@
 {
+  "protected": {
+    "passwordRequired": "Enter admin password to access this section."
+  },
   "nav": {
     "dashboard": "Dashboard",
     "timeline": "Timeline",
@@ -341,6 +344,7 @@
     "mergeSpeciesFailed": "Failed to merge duplicate species"
   },
   "common": {
+    "loginRequiredForExport": "Sign in to export data and reports",
     "retry": "Retry",
     "cancel": "Cancel",
     "noData": "No data available",
@@ -430,7 +434,8 @@
     "feedDispensed": "Feed dispensed",
     "lastDispense": "Last dispense",
     "donate": "Donate",
-    "donatePlaceholder": "Donate (set URL in Settings)"
+    "donatePlaceholder": "Donate (set URL in Settings)",
+    "adminOnly": "Button available to admin. Volunteers can help with species — contact us."
   },
   "speciesSummary": {
     "totalDetectionStats": "Total Detection Stats",
@@ -490,7 +495,8 @@
     "food": "Food",
     "description": "Description",
     "active": "Active",
-    "noDescription": "No description available"
+    "noDescription": "No description available",
+    "loginRequired": "Sign in to change food in the feeder"
   },
   "status": {
     "motion": "Motion",

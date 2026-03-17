@@ -27,6 +27,8 @@ import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { BirdIcon } from '../../components/icons/BirdIcon';
 import { PageHelp } from '../../components/PageHelp';
 import { overviewHelpConfig } from '../../page-help-config';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import Tooltip from '@mui/material/Tooltip';
 
 const formatHour = (hour: number) => {
   const date = new Date();
@@ -36,6 +38,7 @@ const formatHour = (hour: number) => {
 
 export const Overview = () => {
   const { t } = useTranslation();
+  const { canEdit } = useProtectedArea();
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -114,24 +117,29 @@ export const Overview = () => {
                 format="YYYY-MM-DD"
               />
             </LocalizationProvider>
-            <Button
-              variant="outlined"
-              size="medium"
-              startIcon={<DownloadIcon />}
-              disabled={downloadingPdf}
-              onClick={async () => {
-                setDownloadingPdf(true);
-                try {
-                  await downloadReportPdf(selectedDay.format('YYYY-MM'));
-                } catch (err) {
-                  console.error('PDF download failed:', err);
-                } finally {
-                  setDownloadingPdf(false);
-                }
-              }}
-            >
-              {downloadingPdf ? '...' : t('overview.downloadPdf')}
-            </Button>
+            <Tooltip title={!canEdit ? t('common.loginRequiredForExport') : undefined}>
+              <span>
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<DownloadIcon />}
+                  disabled={downloadingPdf || !canEdit}
+                  onClick={async () => {
+                    if (!canEdit) return;
+                    setDownloadingPdf(true);
+                    try {
+                      await downloadReportPdf(selectedDay.format('YYYY-MM'));
+                    } catch (err) {
+                      console.error('PDF download failed:', err);
+                    } finally {
+                      setDownloadingPdf(false);
+                    }
+                  }}
+                >
+                  {downloadingPdf ? '...' : t('overview.downloadPdf')}
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
         </Grid>
       </Grid>
@@ -254,25 +262,33 @@ export const Overview = () => {
           {weather && <WeatherCard weather={weather} />}
         </Grid>
 
-        {/* Feed Control */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
-          <FeedCard />
-        </Grid>
-
-        {/* Hourly Activity Line Chart */}
-        <Grid size={{ xs: 12, md: 8 }} sx={{ display: 'flex' }}>
-          <Paper sx={{ p: 2, width: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              {t('overview.hourlyActivity')}
-            </Typography>
-            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
-              <HourlyActivityChart data={overviewData.topSpecies} />
-            ) : (
-              <Typography color="text.secondary" sx={{ py: 4 }}>
-                {t('overview.noData')}
+        {/* Feed Control + Hourly Activity — в одной строке без зазора */}
+        <Grid size={12}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'minmax(280px, 320px) 1fr' },
+              gap: 2,
+              alignItems: 'stretch',
+              width: '100%',
+            }}
+          >
+            <Box>
+              <FeedCard />
+            </Box>
+            <Paper sx={{ p: 2, minWidth: 0 }}>
+              <Typography variant="h6" gutterBottom>
+                {t('overview.hourlyActivity')}
               </Typography>
-            )}
-          </Paper>
+              {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
+                <HourlyActivityChart data={overviewData.topSpecies} />
+              ) : (
+                <Typography color="text.secondary" sx={{ py: 4 }}>
+                  {t('overview.noData')}
+                </Typography>
+              )}
+            </Paper>
+          </Box>
         </Grid>
       </Grid>
 

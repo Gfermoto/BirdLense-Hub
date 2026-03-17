@@ -64,10 +64,7 @@ export const FeedCard = () => {
         <Typography variant="h6">{t('feed.feederControl')}</Typography>
         {!isAdmin && (
           <Typography variant="body2" color="text.secondary">
-            {t('unknowns.passwordRequired')}{' '}
-            <Link to="/settings" style={{ fontWeight: 600 }}>
-              {t('nav.settings')}
-            </Link>
+            {t('feed.adminOnly')}
           </Typography>
         )}
         <Button
