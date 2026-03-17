@@ -12,7 +12,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData, fetchWeather, downloadReportPdf } from '../../api/api';
+import { fetchOverviewData, fetchWeather, downloadReportPdf, fetchRegionComparison } from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -53,6 +53,13 @@ export const Overview = () => {
   const { data: weather, error: errorWeather, refetch: refetchWeather } = useQuery({
     queryKey: ['weather'],
     queryFn: () => fetchWeather(),
+  });
+
+  const { data: regionComparison } = useQuery({
+    queryKey: ['region-comparison'],
+    queryFn: () => fetchRegionComparison(),
+    staleTime: 1000 * 60 * 10, // 10 min
+    retry: false,
   });
 
   if (isLoadingSightings)
@@ -301,6 +308,37 @@ export const Overview = () => {
             ) : (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                 {t('overview.noData')}
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Region Comparison — в конце страницы, на всю ширину */}
+        <Grid size={12} sx={{ mt: 3 }}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              {t('overview.regionComparison')}
+            </Typography>
+            {regionComparison?.regionCode && regionComparison.regionTopCount > 0 ? (
+              <>
+                <Typography variant="body1">
+                  {t('overview.regionComparisonDesc', {
+                    userCount: regionComparison.userCount,
+                    regionTop: regionComparison.regionTopCount,
+                    matchCount: regionComparison.matchCount,
+                  })}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  {t('overview.regionComparisonHint', { region: regionComparison.regionCode })}
+                </Typography>
+              </>
+            ) : regionComparison?.regionCode ? (
+              <Typography variant="body2" color="text.secondary">
+                {t('overview.regionComparisonNoData', { region: regionComparison.regionCode })}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {t('overview.regionComparisonConfigure')}
               </Typography>
             )}
           </Paper>

@@ -19,6 +19,7 @@ SENSITIVE_KEYS = frozenset({
     'weather.ha_token',
     'secrets.openweather_api_key',
     'secrets.xeno_canto_api_key',
+    'secrets.ebird_api_key',
     'mcp.token',
 })
 MASK_PLACEHOLDER = '***'
@@ -28,6 +29,10 @@ class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
         self.default_config_file = f"{os.path.dirname(__file__)}/{default_config}"
+        self.config = self.load_and_merge_configs()
+
+    def reload(self):
+        """Reload config from disk (e.g. after external edit or to pick up saved keys)."""
         self.config = self.load_and_merge_configs()
 
     def load_and_merge_configs(self):

@@ -43,7 +43,12 @@
     "meanDuration": "Mean Visit Duration",
     "busiestHour": "Busiest Hour",
     "recordingTime": "Recording Time",
-    "downloadPdf": "PDF report"
+    "downloadPdf": "PDF report",
+    "regionComparison": "Region Comparison",
+    "regionComparisonDesc": "You have {{userCount}} species. {{matchCount}} of them are in the region's top {{regionTop}}.",
+    "regionComparisonHint": "Based on eBird data for the last 30 days. Region: {{region}}.",
+    "regionComparisonConfigure": "Add eBird API key in Settings → Advanced for regional comparison.",
+    "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings."
   },
   "settings": {
     "section1": "1. Connection",
@@ -210,11 +215,13 @@
     "openWeatherApiKey": "OpenWeather API Key",
     "xenoCantoApiKey": "Xeno-canto API Key",
     "xenoCantoApiKeyHint": "For bird song playback on species pages. Get key at xeno-canto.org/account",
+    "ebirdApiKey": "eBird API Key",
+    "ebirdApiKeyHint": "For regional comparison (upcoming feature). Get at ebird.org/api/keygen",
     "ebirdSection": "eBird export",
     "ebirdCountry": "Country",
     "ebirdCountryHint": "US, RU",
     "ebirdState": "Region",
-    "ebirdStateHint": "NY, CA",
+    "ebirdStateHint": "NY, CA, MOS (Moscow Oblast)",
     "ebirdLocation": "Location name",
     "ebirdLocationHint": "e.g. BirdLense Feeder",
     "objectTracker": "Object Tracker",

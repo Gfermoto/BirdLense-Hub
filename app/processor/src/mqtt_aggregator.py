@@ -30,7 +30,8 @@ def _parse_frigate_event(payload):
     """
     try:
         data = json.loads(payload.decode())
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        logger.warning("Frigate parse error: %s", e)
         return None
     after = data.get("after") or data
     before = data.get("before") or {}
@@ -319,9 +320,9 @@ class MQTTEventAggregator:
                 self._client.on_message = self._on_message
                 self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
                 self._client.connect(self.broker, self.port, 60)
-                self._client.subscribe(self.frigate_topic)
+                self._client.subscribe(self.frigate_topic, qos=1)
                 for t in self.birdnet_topics:
-                    self._client.subscribe(t)
+                    self._client.subscribe(t, qos=1)
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
                 retry_delay = 5
                 self._client.loop_forever()

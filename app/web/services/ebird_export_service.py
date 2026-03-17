@@ -1,9 +1,25 @@
-"""eBird Record Format export for BirdLense species visits."""
+"""eBird Record Format export for BirdLense species visits.
+
+Порядок колонок по официальному шаблону eBird (support.ebird.org):
+1 Common Name, 2 Genus, 3 Species, 4 Number, 5 Species Comments,
+6 Location Name, 7 Latitude, 8 Longitude, 9 Date, 10 Start Time,
+11 State/Province, 12 Country Code, 13 Protocol, 14 Number of Observers,
+15 Duration, 16 All observations reported?, 17 Effort Distance Miles,
+18 Effort area acres, 19 Submission Comments
+"""
 import csv
 import io
 import re
 from datetime import datetime, timezone
 from app_config.app_config import app_config
+
+
+_REGION_NAME_TO_CODE = {
+    "moscow oblast": "MOS",
+    "moscow": "MO",
+    "московская область": "MOS",
+    "москва": "MO",
+}
 
 
 def _common_name_from_species(name: str) -> str:
@@ -22,25 +38,26 @@ def build_ebird_csv(
     start_dt: datetime,
     end_dt: datetime,
 ) -> str:
-    """Build CSV in eBird Record Format.
-    Each row = one unique species per day. Count = X (present).
-    Columns per eBird import: Common Name, Count, Date, Time, Country, State,
-    Location, Latitude, Longitude, Protocol, Duration, All Obs.
-    No header row (eBird requires first row = data).
-    """
-    country = (app_config.get("ebird.country") or "").strip() or "US"
-    state = (app_config.get("ebird.state") or "").strip() or ""
+    """Build CSV in eBird Record Format. Порядок колонок — по официальному шаблону."""
+    country = (app_config.get("ebird.country") or "").strip().upper() or "US"
+    state_raw = (app_config.get("ebird.state") or "").strip()
+    state = _REGION_NAME_TO_CODE.get(state_raw.lower()) or (state_raw.upper()[:3] if state_raw else "")
     location = (app_config.get("ebird.location_name") or "").strip() or "BirdLense Feeder"
     lat = app_config.get("secrets.latitude") or ""
     lon = app_config.get("secrets.longitude") or ""
-    protocol = (app_config.get("ebird.protocol") or "Stationary").strip()
+    protocol_raw = (app_config.get("ebird.protocol") or "Stationary").strip()
+    protocol = protocol_raw.lower() if protocol_raw else "stationary"
 
-    # Use first visit time for the "checklist" time
     first_date = start_dt.strftime("%m/%d/%Y")
-    first_time = start_dt.strftime("%H:%M")
+    hour = start_dt.hour % 12 or 12
+    am_pm = "AM" if start_dt.hour < 12 else "PM"
+    first_time = f"{hour}:{start_dt.strftime('%M')} {am_pm}"
 
-    # Duration in minutes (full day = 1440 for Stationary)
     duration_min = int((end_dt - start_dt).total_seconds() / 60) if end_dt > start_dt else 1440
+
+    def _lat_lon(val) -> str:
+        s = str(val).replace(",", ".").strip()
+        return s if s else ""
 
     output = io.StringIO()
     w = csv.writer(output, lineterminator="\n")
@@ -49,23 +66,26 @@ def build_ebird_csv(
         common_name = _common_name_from_species(r.get("species_name", ""))
         if not common_name:
             continue
-        # eBird: no quotes in data, Count = X for present
-        # Column order: Common Name, Scientific (optional), Count, Date, Time,
-        # Country, State, Location, Lat, Lon, Protocol, Duration, All Obs
         w.writerow([
-            common_name,
-            "",  # Scientific name optional
-            "X",  # Present, not counted
-            first_date,
-            first_time,
-            country[:2] if len(country) >= 2 else country,
-            state[:3] if state else "",
-            location,
-            str(lat).replace(",", ".") if lat else "",
-            str(lon).replace(",", ".") if lon else "",
-            protocol,
-            str(duration_min),
-            "Y",  # All observations reported
+            common_name,       # 1 Common Name
+            "",               # 2 Genus
+            "",               # 3 Species
+            "X",              # 4 Number (present)
+            "",               # 5 Species Comments
+            location,         # 6 Location Name
+            _lat_lon(lat),     # 7 Latitude
+            _lat_lon(lon),     # 8 Longitude
+            first_date,        # 9 Date (MM/DD/YYYY)
+            first_time,        # 10 Start Time (8:00 AM or 14:50)
+            state,             # 11 State/Province
+            country[:2],       # 12 Country Code
+            protocol,          # 13 Protocol
+            1,                 # 14 Number of Observers
+            duration_min,      # 15 Duration (minutes)
+            "Y",               # 16 All observations reported?
+            "",               # 17 Effort Distance Miles (stationary = empty)
+            "",               # 18 Effort area acres
+            "",               # 19 Submission Comments
         ])
 
     return output.getvalue()

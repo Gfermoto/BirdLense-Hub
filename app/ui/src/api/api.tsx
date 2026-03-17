@@ -81,6 +81,25 @@ export const fetchWeather = async () => {
   return response.data;
 };
 
+/** Region comparison with eBird. Returns null if API key not configured or error. */
+export const fetchRegionComparison = async (): Promise<{
+  regionCode: string;
+  userCount: number;
+  regionTopCount: number;
+  matchCount: number;
+  matchedSpecies: string[];
+  regionTopSample: string[];
+} | null> => {
+  try {
+    const res = await axios.get(`${BASE_API_URL}/region-comparison`);
+    const d = res.data;
+    if (!d || typeof d !== 'object' || !('regionCode' in d)) return null;
+    return d;
+  } catch {
+    return null;
+  }
+};
+
 export const fetchVideo = async (id: string) => {
   const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
   return response.data;

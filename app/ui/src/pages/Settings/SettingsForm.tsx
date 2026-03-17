@@ -1185,6 +1185,18 @@ export const SettingsForm = ({
               </form.Field>
             </Grid>
             <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
+              <form.Field name="secrets.ebird_api_key">
+                {(field) => (
+                  <PasswordField
+                    value={field.state.value ?? ''}
+                    onChange={(v) => field.handleChange(v)}
+                    label={t('settings.ebirdApiKey')}
+                    helperText={t('settings.ebirdApiKeyHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {t('settings.ebirdSection')}
               </Typography>
