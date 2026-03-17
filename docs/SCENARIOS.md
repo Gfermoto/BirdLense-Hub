@@ -141,4 +141,10 @@
 
 ---
 
+## Troubleshooting
+
+**Frigate обнаружил птицу, но BirdLense не записал:** см. [archive/FRIGATE_EVENT_LOSS_AUDIT.md](./archive/FRIGATE_EVENT_LOSS_AUDIT.md) — чеклист причин (motion.source, frigate_camera_filter, MQTT и др.).
+
+---
+
 См. также: [CONFIGURATION.md](./CONFIGURATION.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md).

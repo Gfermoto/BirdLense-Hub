@@ -60,7 +60,6 @@ def register_routes(app):
         except (ValueError, TypeError):
             return {'error': 'Invalid datetime format'}, 400
 
-        # Validate required data
         species_list = data.get('species', []) or []
         # Отсечь детекции с низким confidence (4% и т.п.)
         min_conf = float(app_config.get('detection.min_confidence_to_store') or 0.05)
@@ -73,7 +72,6 @@ def register_routes(app):
             return {'error': 'Invalid video_path format'}, 400
 
         try:
-            # Create video record
             video = Video(
                 processor_version=data['processor_version'],
                 start_time=start_time,
@@ -88,15 +86,13 @@ def register_routes(app):
             active_bird_foods = BirdFood.query.filter_by(active=True).all()
             video.food.extend(active_bird_foods)
 
-            # Process all detections (visit_timeout = dedup_window для согласованности)
             visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
             visit_processor.process_detections(video, species_list)
 
-            # Save everything
             db.session.commit()
 
-            # Webhook: POST each detection (fire-and-forget)
+            # Webhook: fire-and-forget
             webhook_url = (app_config.get('webhook.url') or '').strip()
             if webhook_url and species_list:
                 threading.Thread(
@@ -129,10 +125,7 @@ def register_routes(app):
             return {"message": "success", "active_feeder_names": []}, 200
         active_feeder_names = filter_feeder_species(active_names)
 
-        # Reset all to inactive
         db.session.query(Species).update({'active': False})
-
-        # Set provided species as active
         for name in active_feeder_names:
             species = db.session.query(Species).filter_by(name=name).first()
             if species:
@@ -158,6 +151,10 @@ def register_routes(app):
                 image_bytes = base64.b64decode(image_base64)
             except Exception as e:
                 app.logger.warning("Failed to decode image_base64 for notify: %s", e)
+        if image_base64 and not image_bytes:
+            app.logger.warning("notify/detections: image_base64 present but decode produced empty bytes")
+        elif not image_base64:
+            app.logger.info("notify/detections: no image for %s (processor sent no best_frame)", detection)
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:

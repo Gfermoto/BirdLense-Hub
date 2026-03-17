@@ -17,7 +17,7 @@
 | 4   | EU-классификатор YOLO11n-cls (birds-525 + iNaturalist)                            | ✅ [TRAINING.md](./TRAINING.md) |
 | 5   | Vite 6                                                                            | ✅                              |
 | 6   | ultralytics в processor/requirements.txt (pin 8.4.21)                             | ✅                              |
-| 7   | Апгрейд React 19                                                                   | ✅ 16.03.2026 [REACT_19_MIGRATION.md](./REACT_19_MIGRATION.md) |
+| 7   | Апгрейд React 19                                                                   | ✅ 16.03.2026 [archive/REACT_19_MIGRATION.md](./archive/REACT_19_MIGRATION.md) |
 
 
 ### Дальнейшие шаги
@@ -90,6 +90,13 @@ State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected
 | ✅ Календарь миграций                  | «Вид X обычно появляется в марте» — по историческим данным                                    | Высокая   | Нет     |
 | Сравнение с регионом                   | «У вас 12 видов, в среднем по региону 8» — требует бэкенд/агрегацию                           | Высокая   | Средний |
 
+### UX backlog (из [archive/UX_IMPROVEMENTS.md](./archive/UX_IMPROVEMENTS.md))
+
+| # | Улучшение | Описание |
+|---|-----------|----------|
+| 4 | Календарь активности | MonthPicker — выбор месяца (сейчас только текущий) |
+| 5 | Неизвестные — пустое состояние | Подсказка: «Попробуйте другой день. Bird всегда здесь для проверки.» |
+| 6 | Неизвестные — выбор часа | Подсказка: «При выборе времени (не 00:00) — только этот час.» |
 
 ---
 

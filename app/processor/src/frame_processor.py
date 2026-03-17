@@ -31,23 +31,18 @@ class FrameProcessor:
         else:
             frame_time = round(float(frame_time), 2)
 
-        # Check lighting condition first
         if not self.light_detector.has_sufficient_light(img):
             time.sleep(1)  # rate limiting when light is low
             return False
 
-        # Detect
         st = time.time()
-        
-        # Strategy detect - Returns ONLY valid result objects
-        results = self.strategy.detect(img, self.tracker, min_confidence=0.1) # min_confidence could be config, leaving 0.1 default
+        results = self.strategy.detect(img, self.tracker, min_confidence=0.1)
         
         if self.save_images and results:
             debug_img = img.copy()
             h, w, _ = debug_img.shape
             for res in results:
                 x1, y1, x2, y2 = res.bbox
-                # Denormalize
                 x1, y1, x2, y2 = int(x1*w), int(y1*h), int(x2*w), int(y2*h)
                 cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(debug_img, f"{res.class_name} {res.confidence:.2f}", (x1, y1 - 10), 
@@ -59,7 +54,6 @@ class FrameProcessor:
                 self.logger.debug(f'No detections (frame {self.cnt})')
             return False
 
-        # Update tracks with valid detections
         for res in results:
             self.update_track(res.track_id, res.class_name, res.confidence, res.bbox, frame_time, res.crop, res.blur_variance)
 
@@ -77,28 +71,26 @@ class FrameProcessor:
                 'preds': [],
                 'best_frame': None,
                 'best_frame_score': 0.0,
-                'frames': []  # List of {t: float, bbox: [x1,y1,x2,y2]}
+                'frames': []
             }
-        # Only append real predictions (None means not classified this frame)
         if class_name is not None:
             self.tracks[track_id]['preds'].append((class_name, confidence))
         self.tracks[track_id]['end_time'] = frame_time
         
-        # Store frame bbox for track visualization
         self.tracks[track_id]['frames'].append({
             't': frame_time,
             'bbox': [round(float(b), 2) for b in bbox]
         })
         
-        # Update best frame using combined score: sharpness + size
-        # Log-space addition balances blur variance and pixel count regardless of scale
-        if crop is not None and blur_variance is not None:
-            pixel_count = crop.shape[0] * crop.shape[1]
-            # 1.5x weight on blur to prioritize sharpness over size
-            frame_score = 1.5 * math.log(blur_variance + 1) + math.log(pixel_count + 1)
-            if frame_score > self.tracks[track_id]['best_frame_score']:
+        if crop is not None:
+            if blur_variance is not None:
+                pixel_count = crop.shape[0] * crop.shape[1]
+                frame_score = 1.5 * math.log(blur_variance + 1) + math.log(pixel_count + 1)
+                if frame_score > self.tracks[track_id]['best_frame_score']:
+                    self.tracks[track_id]['best_frame'] = crop
+                    self.tracks[track_id]['best_frame_score'] = frame_score
+            elif self.tracks[track_id]['best_frame'] is None:
                 self.tracks[track_id]['best_frame'] = crop
-                self.tracks[track_id]['best_frame_score'] = frame_score
 
     def reset(self):
         self.tracks = {}

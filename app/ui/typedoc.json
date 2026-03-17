@@ -1,0 +1,10 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/main.tsx"],
+  "entryPointStrategy": "expand",
+  "out": "../../docs/ui",
+  "exclude": ["**/*.test.*", "**/node_modules/**"],
+  "excludePrivate": true,
+  "readme": "none",
+  "skipErrorChecking": true
+}

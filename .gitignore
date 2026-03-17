@@ -48,3 +48,7 @@ app/.coverage
 
 # Обученные модели (веса и артефакты обучения)
 app/processor/models/
+
+# Сгенерированная документация (make docs)
+docs/api/
+docs/ui/

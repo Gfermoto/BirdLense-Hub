@@ -1,4 +1,4 @@
-.PHONY: build start stop logs deploy pull setup test test-web test-e2e test-coverage test-report local local-build
+.PHONY: build start stop logs deploy pull setup test test-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 # Настройка секретов (app/.env) — перед первым запуском
 setup:
@@ -73,3 +73,23 @@ test-report:
 test-e2e:
 	cd e2e && npm ci && npx playwright install chromium && npm test
 # E2E с паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
+
+# Автодокументация
+docs: docs-python docs-ui
+
+docs-python:
+	@echo "Генерация Python API (pdoc)..."
+	@mkdir -p ../docs/api
+	@docker compose run --rm -v $$(pwd):/app -v $$(pwd)/../docs:/docs birdlense bash -c '\
+		cd /app/web && PYTHONPATH=/app python -m pdoc app util config models routes services -o /docs/api; \
+		cd /app/processor/src && PYTHONPATH=. python -m pdoc frame_processor detection_strategy decision_maker species_normalizer light_level_detector api dataset_saver -o /docs/api/processor'
+	@echo "Python docs: docs/api/"
+
+docs-check:
+	@echo "Проверка docstrings (interrogate)..."
+	@docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+		interrogate -v web/ --fail-under 50 || true'
+
+docs-ui:
+	@echo "Генерация UI (TypeDoc)..."
+	@(cd ui && npm run docs) || echo "TypeDoc: cd app/ui && npm run docs"

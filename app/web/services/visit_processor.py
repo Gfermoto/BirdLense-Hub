@@ -37,8 +37,6 @@ class VisitProcessor:
             visit.end_time,
             video_start + timedelta(seconds=detection_end)
         )
-
-        # Create video species record
         video_species = VideoSpecies(
             species_id=species.id,
             start_time=detection_start,
@@ -61,10 +59,7 @@ class VisitProcessor:
                                 confidence: float,
                                 detection_provider: Optional[str] = None
                                 ) -> Optional[VideoSpecies]:
-        """
-        Process an audio detection and associate it with an existing visit if found.
-        Returns the video_species record if successful.
-        """
+        """Аудио-детекция → привязка к активному визиту."""
         video_start = _ensure_utc(video.start_time)
         detection_time = video_start + timedelta(seconds=detection_start)
         visit = self._find_active_visit_for_audio(species, detection_time)
@@ -72,7 +67,6 @@ class VisitProcessor:
         if not visit:
             return None
 
-        # Create video species record
         video_species = VideoSpecies(
             species_id=species.id,
             start_time=detection_start,
@@ -89,10 +83,7 @@ class VisitProcessor:
         return video_species
 
     def process_detections(self, video: Video, detections: List[Dict]) -> List[VideoSpecies]:
-        """
-        Process all detections for a video and manage visits.
-        Returns list of created VideoSpecies records.
-        """
+        """Обработка детекций видео, создание визитов и VideoSpecies."""
         video_species_records = []
         visits_to_update = {}  # Map (species_id, start_time) to visit data
 
@@ -117,7 +108,6 @@ class VisitProcessor:
                     frames=det.get('frames'),
                     detection_provider=det.get('detection_provider')
                 )
-                # Create tuple key from visit attributes
                 visit_key = (visit.species_id, visit.start_time)
                 if visit_key not in visits_to_update:
                     visits_to_update[visit_key] = {
@@ -170,7 +160,6 @@ class VisitProcessor:
                 tzinfo=timezone.utc)
             return recent_visit, False
 
-        # Create new visit
         visit = SpeciesVisit(
             species_id=species.id,
             start_time=detection_time,
@@ -181,17 +170,12 @@ class VisitProcessor:
         return visit, True
 
     def _get_or_create_species(self, name: str) -> Optional[Species]:
-        """
-        Get species by name, or create if unknown (Frigate/YOLO/BirdNET).
-        Maps generic 'bird' -> 'Bird'. Creates new species under Birds category.
-        Для формата "Scientific (Common)" ищет родителя по common name в иерархии.
-        """
+        """Вид по имени или создание (Frigate/YOLO/BirdNET). bird → Bird."""
         if not name or not isinstance(name, str):
             return None
         normalized = name.strip()
         if not normalized:
             return None
-        # Frigate generic label -> canonical
         if normalized.lower() == 'bird':
             normalized = 'Bird'
         species = Species.query.filter_by(name=normalized).first()
@@ -199,7 +183,6 @@ class VisitProcessor:
             return species
         birds = Species.query.filter_by(name='Birds').first()
         parent_id = birds.id if birds else None
-        # Для "Scientific (Common)" — найти родителя по иерархии
         parent_name = get_parent_name_for_species(normalized)
         if parent_name:
             parent_species = Species.query.filter_by(name=parent_name).first()
@@ -212,13 +195,9 @@ class VisitProcessor:
         return species
 
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:
-        """
-        Find an active visit for an audio detection.
-        Looks for visits of the audio species or its direct children.
-        """
+        """Активный визит для аудио: вид или его дочерние."""
         cutoff_time = detection_time - timedelta(seconds=self.visit_timeout)
 
-        # Get IDs of direct child species
         child_species = Species.query.filter_by(
             parent_id=audio_species.id).all()
         species_ids = [audio_species.id] + [s.id for s in child_species]
@@ -232,25 +211,13 @@ class VisitProcessor:
                 .first())
 
     def _update_simultaneous_count(self, visit: SpeciesVisit, current_detections: List[VideoSpecies]) -> None:
-        """
-        Updates max_simultaneous count based on overlapping video detections from the current video.
-        Takes into account that VideoSpecies start/end times are relative offsets from video start.
-
-        Args:
-            visit: The species visit to update
-            current_detections: List of VideoSpecies records from the current video being processed
-        """
-        # Filter for just video detections
+        """max_simultaneous по перекрывающимся детекциям в текущем видео."""
         video_detections = [
             vs for vs in current_detections if vs.source == 'video']
         if not video_detections:
             return
-
-        # Sort by start time
         sorted_detections = sorted(
             video_detections, key=lambda x: x.start_time)
-
-        # Count overlapping intervals
         max_concurrent = 1
         for i, curr in enumerate(sorted_detections):
             concurrent = 1
@@ -260,6 +227,4 @@ class VisitProcessor:
                 else:
                     break
             max_concurrent = max(max_concurrent, concurrent)
-
-        # Update the visit with the highest concurrent count found
         visit.max_simultaneous = max(visit.max_simultaneous, max_concurrent)
