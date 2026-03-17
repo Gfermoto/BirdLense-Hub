@@ -30,6 +30,7 @@
 |------|----------|--------|
 | **CSV/JSON** | `GET /api/ui/timeline/export?format=csv\|json` | 0.1.2 |
 | **eBird** | `GET /api/ui/timeline/export?format=ebird` | 0.1.4 |
+| **Сравнение с регионом** | `GET /api/ui/region-comparison` — ваши виды vs топ eBird региона (Overview) | 0.1.9 |
 | **PDF-отчёт** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
 | **Prometheus** | `GET /metrics` | 0.1.3 |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
@@ -42,7 +43,7 @@
 | Фича | Описание |
 |------|----------|
 | **Timeline: дата + время суток** | DatePicker, фильтр: Утро, День, Вечер, Ночь (22–06) |
-| **Неизвестные** | `/unknowns` — детекции с confidence < порога, ручная коррекция |
+| **Неизвестные** | `/unknowns` — детекции с confidence < порога; дата + время суток (как Timeline), ручная коррекция |
 | **Playback speed** | 0.5x, 2x в видеоплеере |
 | **Виджет «Последняя птица»** | На Overview |
 | **PWA** | Install prompt, offline cache |
@@ -85,7 +86,8 @@
 | GET | `/api/ui/health` | Health check |
 | GET | `/api/ui/timeline` | Визиты за период |
 | GET | `/api/ui/timeline/export` | CSV, JSON, eBird |
-| GET | `/api/ui/unknowns` | Низкая confidence |
+| GET | `/api/ui/unknowns` | Низкая confidence (params: start_time, end_time, limit) |
+| GET | `/api/ui/region-comparison` | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
 | PATCH | `/api/ui/detections/:id` | Исправить вид |
 | GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
 | GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |

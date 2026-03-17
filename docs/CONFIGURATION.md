@@ -236,7 +236,7 @@ Push-уведомления в браузере (дополнение или а�
 | `ebird.state` | Регион (1–3 символа: NY, CA, MOS для Московской обл.) |
 | `ebird.location_name` | Название локации для чеклиста |
 | `ebird.protocol` | Stationary \| Traveling \| Incidental \| Historical |
-| `secrets.ebird_api_key` | Ключ eBird API для сравнения с регионом (будущая фича). Получить: [ebird.org/api/keygen](https://ebird.org/api/keygen) |
+| `secrets.ebird_api_key` | Ключ eBird API для карточки «Сравнение с регионом» на Overview. Получить: [ebird.org/api/keygen](https://ebird.org/api/keygen) |
 
 Настройки → Расширенные. Экспорт «Экспорт для eBird» в Timeline не требует API ключа. Ключ нужен для фичи «Сравнение с регионом».
 

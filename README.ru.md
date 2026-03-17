@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.5-blue.svg)](./CHANGELOG.md) [English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.1.9-blue.svg)](./CHANGELOG.md) [English](./README.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
@@ -55,12 +55,13 @@
 ### Аналитика и экспорт
 - **CSV/JSON** — скачать визиты для анализа в Excel/Python
 - **eBird** — формат чеклиста для импорта в eBird.org
+- **Сравнение с регионом** — ваши виды vs топ eBird региона (карточка на Overview)
 - **PDF-отчёт** — месячная сводка: виды, топ-5, графики
 - **Prometheus** — метрики `/metrics` для Grafana
 
 ### Гражданская наука
 - **iNaturalist** — экспорт в один клик: кадр из видео → inaturalist.org/observations/upload
-- **Неизвестные** — детекции с низкой уверенностью для ручной проверки
+- **Неизвестные** — детекции с низкой уверенностью; фильтр по дате и времени суток (как в Записях)
 
 ### Интеграции
 - **Webhook** — POST при каждой детекции (IFTTT, Zapier)
@@ -93,7 +94,7 @@ UI: http://localhost:8085
 |------|----------|
 | [app/](./app) | Приложение (UI, API, processor) — один контейнер |
 | [docs/](./docs) | Архитектура, конфиг, API, деплой, MCP |
-| [scripts/](./scripts) | Деплой, проверка |
+| [scripts/](./scripts) | Деплой, restore-config, датасеты, проверка |
 
 ## Команды
 
@@ -123,12 +124,13 @@ UI: http://localhost:8085
 
 ## Безопасность
 
-Для продакшена задайте в `app/.env`:
+Для продакшена задайте в `app/.env` (или через `deploy.local.sh` при деплое):
 
 | Переменная | Назначение |
 |------------|------------|
 | `FLASK_SECRET_KEY` | Сессия Flask (защита настроек) |
 | `PROCESSOR_SECRET` | Защита API processor (заголовок `X-Processor-Token`) |
+| `BIRDLENSE_ENV` | `production` — строгая проверка секретов |
 
 Секреты генерируются автоматически при первом `make start` или `make pull`. См. `app/.env.example`.
 

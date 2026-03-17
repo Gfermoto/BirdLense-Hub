@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.1.6-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.1.9-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -55,12 +55,13 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 ### Analytics & Export
 - **CSV/JSON export** — download visits for analysis in Excel/Python
 - **eBird export** — checklist format for import into eBird.org
+- **Region comparison** — compare your species with eBird region top (Overview card)
 - **PDF report** — monthly summary: species count, top-5, charts
 - **Prometheus metrics** — `/metrics` for Grafana dashboards
 
 ### Citizen Science
 - **iNaturalist** — one-click export: download crop from video, open inaturalist.org/observations/upload
-- **Unknowns** — low-confidence detections for manual review and correction
+- **Unknowns** — low-confidence detections for manual review; date + time-of-day filter (like Timeline)
 
 ### Integrations
 - **Webhook** — POST on each detection (IFTTT, Zapier)
@@ -93,7 +94,7 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 |------|-------------|
 | [app/](./app) | Application (UI, API, processor) — single container |
 | [docs/](./docs) | Architecture, config, API, deployment, MCP |
-| [scripts/](./scripts) | Deploy, verification |
+| [scripts/](./scripts) | Deploy, restore-config, datasets, verification |
 
 ## Commands
 
@@ -129,7 +130,7 @@ For production, set in `app/.env` (or via `deploy.local.sh` when deploying):
 |----------|---------|
 | `FLASK_SECRET_KEY` | Flask session (settings protection) |
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token` header) |
-| `BIRDLENSE_ENV` | `production` — строгая проверка секретов |
+| `BIRDLENSE_ENV` | `production` — strict secret validation |
 
 Secrets are auto-generated on first `make start` or `make pull`. See `app/.env.example`. Deploy script writes them to server `app/.env`.
 

@@ -1,6 +1,6 @@
 # Документация BirdLense Hub
 
-Навигация по документации. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
+Навигация по документации. Версия: **0.1.9**. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
 
 ---
 
