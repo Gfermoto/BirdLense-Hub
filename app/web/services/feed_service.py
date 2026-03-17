@@ -1,6 +1,9 @@
 """Feed control service: MQTT or ESPHome for feeder dispense."""
+import json
 import logging
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import quote
 
 import paho.mqtt.client as mqtt
@@ -9,6 +12,39 @@ import requests
 from app_config.app_config import app_config
 
 logger = logging.getLogger(__name__)
+
+_FEED_LAST_FILE = 'feed_last_dispense.json'
+
+
+def _feed_data_path():
+    """Path to feed state file in DATA_DIR."""
+    data_dir = os.environ.get('DATA_DIR') or os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), '..', 'data'
+    )
+    return Path(data_dir) / _FEED_LAST_FILE
+
+
+def _save_last_dispense():
+    """Save current UTC timestamp when feed was dispensed."""
+    try:
+        path = _feed_data_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
+        path.write_text(json.dumps({'last_dispense_at': now.isoformat()}), encoding='utf-8')
+    except OSError as e:
+        logger.warning('Could not save last dispense time: %s', e)
+
+
+def get_last_dispense():
+    """Return last dispense ISO timestamp or None."""
+    try:
+        path = _feed_data_path()
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding='utf-8'))
+        return data.get('last_dispense_at')
+    except (OSError, json.JSONDecodeError, KeyError):
+        return None
 
 _mqtt_client = None
 
@@ -100,6 +136,7 @@ def dispense_feed():
             time.sleep(duration)
             client.publish(topic, 'OFF', qos=1)
             logger.info('Feed dispensed via MQTT (relay %ds)', duration)
+            _save_last_dispense()
             return True, 'Feed dispensed'
         except Exception as e:
             logger.error('MQTT feed failed: %s', e)
@@ -131,6 +168,7 @@ def dispense_feed():
                     f"{url.rstrip('/')}/switch/{entity_path}/turn_off", timeout=5
                 )
                 logger.info('Feed dispensed via ESPHome (switch %ds)', duration)
+            _save_last_dispense()
             return True, 'Feed dispensed'
         except Exception as e:
             logger.error('ESPHome feed failed: %s', e)

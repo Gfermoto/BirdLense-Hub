@@ -25,7 +25,7 @@ from util import (
 )
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
-from services.feed_service import dispense_feed, check_mqtt_connected, check_esphome_reachable
+from services.feed_service import dispense_feed, get_last_dispense, check_mqtt_connected, check_esphome_reachable
 from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
@@ -178,6 +178,17 @@ def register_routes(app):
             'processor_secret_configured': bool(os.environ.get('PROCESSOR_SECRET', '').strip()),
             'api_url_base_configured': bool(os.environ.get('API_URL_BASE', '').strip()),
         }
+
+    @app.route('/api/ui/feed/info', methods=['GET'])
+    def feed_info():
+        """Last dispense time and donate URL. No auth required."""
+        from app_config.app_config import app_config
+        app_config.reload()
+        donate_url = (app_config.get('general.donate_url') or '').strip()
+        return {
+            'last_dispense_at': get_last_dispense(),
+            'donate_url': donate_url or None,
+        }, 200
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])
     def feed_dispense():

@@ -8,6 +8,8 @@ general:
   contributor_password: ""
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
+  # Ссылка на страницу пожертвований (Ko-fi, Buy Me a Coffee и т.д.). Пусто — кнопка не показывается.
+  donate_url: ""
 
 # Video/Audio processor settings
 processor:

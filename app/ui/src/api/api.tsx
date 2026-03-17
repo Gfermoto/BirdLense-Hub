@@ -259,6 +259,14 @@ export const fetchStatus = async (): Promise<{
   return response.data;
 };
 
+export const fetchFeedInfo = async (): Promise<{
+  last_dispense_at: string | null;
+  donate_url: string | null;
+}> => {
+  const response = await axios.get(`${BASE_API_URL}/feed/info`);
+  return response.data;
+};
+
 export const dispenseFeed = async (): Promise<{ success: boolean; message?: string }> => {
   try {
     const response = await axios.post(`${BASE_API_URL}/feed/dispense`, {}, {

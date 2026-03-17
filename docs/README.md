@@ -73,6 +73,8 @@
 | [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи |
 | [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
 | [DETECTION_SOURCES.md](./DETECTION_SOURCES.md) | Источники детекций: YOLO, Frigate, BirdNET |
+| [FEED_LAST_DISPENSE.md](./FEED_LAST_DISPENSE.md) | Время последней выдачи корма, ESPHome |
+| [DONATE_SETUP.md](./DONATE_SETUP.md) | Настройка пожертвований — Boosty, DonationAlerts, Ko-fi |
 
 ---
 
