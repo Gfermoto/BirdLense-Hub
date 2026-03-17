@@ -30,6 +30,7 @@ import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
 import { PageHelp } from '../../components/PageHelp';
 import { timelineHelpConfig } from '../../page-help-config';
+import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -42,35 +43,6 @@ function useSpeciesList(visits: SpeciesVisit[] | undefined) {
         return acc;
       }, [])
     : [];
-}
-
-type TimeOfDay = 'all' | 'night' | 'morning' | 'day' | 'afternoon' | 'evening';
-
-const TIME_RANGES: Record<Exclude<TimeOfDay, 'all'>, [number, number]> = {
-  night: [22, 6],    // 22–06 (через полночь)
-  morning: [6, 10],  // 6–10
-  day: [10, 14],     // 10–14
-  afternoon: [14, 18], // 14–18
-  evening: [18, 22],  // 18–22
-};
-
-/** Возвращает start/end для API по дате и времени суток. */
-function getTimeRange(date: Dayjs, timeOfDay: TimeOfDay): { start: Dayjs; end: Dayjs } {
-  const startOfDay = date.startOf('date');
-  if (timeOfDay === 'all') {
-    return { start: startOfDay, end: date.endOf('date') };
-  }
-  const [startHour, endHour] = TIME_RANGES[timeOfDay];
-  if (timeOfDay === 'night') {
-    return {
-      start: startOfDay.hour(startHour).minute(0).second(0).millisecond(0),
-      end: startOfDay.add(1, 'day').hour(endHour).minute(0).second(0).millisecond(0).subtract(1, 'millisecond'),
-    };
-  }
-  return {
-    start: startOfDay.hour(startHour).minute(0).second(0).millisecond(0),
-    end: startOfDay.hour(endHour).minute(0).second(0).millisecond(0).subtract(1, 'millisecond'),
-  };
 }
 
 function useFilteredVisits(

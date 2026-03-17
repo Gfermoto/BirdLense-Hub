@@ -83,7 +83,7 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
     """Compare user's species with region top.
 
     Returns dict with regionCode, userCount, regionTopCount, matchCount,
-    matchedSpecies, regionTopSample. Or None if API key missing or error.
+    matchedSpecies, regionTop. Or None if API key missing or error.
     """
     api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
     if not api_key:
@@ -106,7 +106,7 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
             'regionTopCount': 0,
             'matchCount': 0,
             'matchedSpecies': [],
-            'regionTopSample': [],
+            'regionTop': [],
         }
 
     region_set = {n.lower() for n in region_top}
@@ -117,6 +117,6 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
         'userCount': len(user_set),
         'regionTopCount': len(region_top),
         'matchCount': len(matched),
-        'matchedSpecies': matched[:10],
-        'regionTopSample': region_top[:10],
+        'matchedSpecies': matched,
+        'regionTop': region_top,
     }

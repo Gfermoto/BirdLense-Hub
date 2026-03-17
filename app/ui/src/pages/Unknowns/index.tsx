@@ -16,8 +16,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
+import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import Snackbar from '@mui/material/Snackbar';
@@ -189,20 +190,17 @@ export function UnknownsPage() {
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
-  const [dateTime, setDateTime] = useState<Dayjs | null>(() => dayjs().startOf('date'));
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => dayjs().startOf('date'));
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
 
   const { data: unknowns, isLoading, error } = useQuery({
-    queryKey: ['unknowns', dateTime],
+    queryKey: ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
     queryFn: () => {
-      if (!dateTime) return [];
-      const isTimeSelected = dateTime.hour() !== 0 || dateTime.minute() !== 0;
-      return fetchUnknowns(
-        dateTime.startOf(isTimeSelected ? 'hour' : 'date'),
-        dateTime.endOf(isTimeSelected ? 'hour' : 'date'),
-        500,
-      );
+      if (!selectedDate) return [];
+      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      return fetchUnknowns(start, end, 500);
     },
-    enabled: !!dateTime,
+    enabled: !!selectedDate,
   });
 
   const { data: speciesList = [] } = useQuery({
@@ -279,16 +277,37 @@ export function UnknownsPage() {
   return (
     <>
       <PageHelp {...unknownsHelpConfig} />
-      <Box sx={{ mb: 3 }}>
+      <Box
+        display="flex"
+        flexWrap="wrap"
+        alignItems="center"
+        gap={2}
+        sx={{ mb: 3, '& > :not(style)': { minWidth: 160 } }}
+      >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DateTimePicker
-            label={t('timeline.selectDateTime')}
-            value={dateTime}
-            onChange={(v) => setDateTime(v)}
-            maxDateTime={dayjs()}
-            views={['year', 'month', 'day', 'hours']}
+          <DatePicker
+            label={t('timeline.selectDate')}
+            value={selectedDate}
+            onChange={(v) => setSelectedDate(v)}
+            maxDate={dayjs()}
           />
         </LocalizationProvider>
+        <FormControl sx={{ minWidth: 160 }}>
+          <InputLabel id="unknowns-timeofday-label">{t('timeline.timeOfDay')}</InputLabel>
+          <Select
+            labelId="unknowns-timeofday-label"
+            value={timeOfDay}
+            onChange={(e) => setTimeOfDay(e.target.value as TimeOfDay)}
+            label={t('timeline.timeOfDay')}
+          >
+            <MenuItem value="all">{t('timeline.timeAllDay')}</MenuItem>
+            <MenuItem value="night">{t('timeline.timeNight')}</MenuItem>
+            <MenuItem value="morning">{t('timeline.timeMorning')}</MenuItem>
+            <MenuItem value="day">{t('timeline.timeDay')}</MenuItem>
+            <MenuItem value="afternoon">{t('timeline.timeAfternoon')}</MenuItem>
+            <MenuItem value="evening">{t('timeline.timeEvening')}</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       {!canEdit && requiresPassword && (

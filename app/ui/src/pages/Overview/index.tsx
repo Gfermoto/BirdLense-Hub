@@ -328,7 +328,64 @@ export const Overview = () => {
                     matchCount: regionComparison.matchCount,
                   })}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                {regionComparison.matchedSpecies?.length > 0 && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      {t('overview.regionComparisonMatched')}
+                    </Typography>
+                    <Box
+                      component="ul"
+                      sx={{
+                        m: 0,
+                        pl: 2.5,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 0.5,
+                        '& li': { display: 'inline' },
+                        '& li:not(:last-child)::after': { content: '" · "', color: 'text.secondary' },
+                      }}
+                    >
+                      {regionComparison.matchedSpecies.map((name) => (
+                        <li key={name}>
+                          <Typography component="span" variant="body2" fontWeight={500}>
+                            {name}
+                          </Typography>
+                        </li>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                {regionComparison.regionTop?.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      {t('overview.regionComparisonTopList')}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 0.75,
+                      }}
+                    >
+                      {regionComparison.regionTop.map((name, idx) => (
+                        <Typography
+                          key={name}
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1,
+                            bgcolor: 'action.hover',
+                          }}
+                        >
+                          {idx + 1}. {name}
+                        </Typography>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                   {t('overview.regionComparisonHint', { region: regionComparison.regionCode })}
                 </Typography>
               </>
