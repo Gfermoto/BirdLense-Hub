@@ -294,6 +294,7 @@ export const fetchStatus = async (): Promise<{
 export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
   donate_url: string | null;
+  feed_source?: string;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/feed/info`);
   return response.data;

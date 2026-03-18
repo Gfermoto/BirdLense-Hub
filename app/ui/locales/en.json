@@ -116,8 +116,8 @@
     "mqttHaDiscoveryHint": "Publish configs so HA auto-discovers Last Species, Bird at Feeder, etc.",
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
-    "donateUrl": "Donation page URL",
-    "donateUrlHint": "Boosty, DonationAlerts (RU). Ko-fi, Buy Me a Coffee. Button always visible as placeholder.",
+    "donateUrl": "Support page URL",
+    "donateUrlHint": "Boosty, DonationAlerts, Ko-fi, project page. Button always visible.",
     "go2rtcUrl": "Go2RTC URL",
     "go2rtcUrlHint": "Host: http://IP:1984",
     "go2rtcUser": "Go2RTC login",
@@ -429,12 +429,13 @@
   },
   "feed": {
     "feederControl": "Feeder Control",
+    "supportTitle": "Support the project",
     "dispenseFeed": "Dispense Feed",
     "dispensing": "Dispensing...",
     "feedDispensed": "Feed dispensed",
     "lastDispense": "Last dispense",
-    "donate": "Donate",
-    "donatePlaceholder": "Donate (set URL in Settings)",
+    "support": "Support",
+    "supportPlaceholder": "Support (set URL in Settings)",
     "adminOnly": "Button available to admin. Volunteers can help with species — contact us."
   },
   "speciesSummary": {
