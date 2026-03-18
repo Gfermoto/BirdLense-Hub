@@ -290,21 +290,15 @@ def get_monthly_report_data(session, start_dt, end_dt):
         .first()
     )
 
+    dur_expr = case(
+        (VideoSpecies.end_time >= VideoSpecies.start_time,
+         VideoSpecies.end_time - VideoSpecies.start_time),
+        else_=0
+    )
     source_duration = (
         session.query(
-            func.sum(
-                case(
-                    (VideoSpecies.source == 'video',
-                     VideoSpecies.end_time - VideoSpecies.start_time),
-                    else_=0
-                )
-            ).label('video_duration'),
-            func.sum(
-                case(
-                    (VideoSpecies.source == 'audio',
-                     VideoSpecies.end_time - VideoSpecies.start_time),
-                )
-            ).label('audio_duration'),
+            func.sum(case((VideoSpecies.source == 'video', dur_expr), else_=0)).label('video_duration'),
+            func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)).label('audio_duration'),
         )
         .join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id)
         .filter(

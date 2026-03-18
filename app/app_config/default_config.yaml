@@ -16,8 +16,9 @@ processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
   max_inactive_seconds: 10
-  min_track_duration: 2  # сек; треки короче отбрасываются. 1 — больше треков, 2 — меньше ложных
-  min_confidence_to_process: 0.10  # мин. confidence трека (voting × classifier). 0.03 — больше детекций, 0.10 — строже
+  min_track_duration: 3  # сек; треки короче отбрасываются. 2 — больше треков, 3 — меньше ложных
+  min_confidence_binary: 0.15  # Детектор «птица/не птица». 0.15 = 15% по умолчанию
+  min_confidence_to_process: 0.30  # Классификатор (вид). 0.30 = 30% по умолчанию
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   spectrogram_px_per_sec: 200
@@ -85,8 +86,8 @@ detection:
   one_per_species: true
   # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
   source_priority: ["yolo", "frigate", "birdnet"]
-  # Минимальный confidence для сохранения (0.05 = 5%). Детекции ниже — не сохраняются (отсекает 4% и т.п.)
-  min_confidence_to_store: 0.05
+  # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
+  min_confidence_to_store: 0.30
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
@@ -146,6 +147,10 @@ notifications:
   telegram_bot_token: ""       # @BotFather → /newbot
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
+  telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
+  telegram_timeout: 45        # Таймаут сек (медиа медленнее при троттлинге). Текст: timeout/2
+  telegram_retries: 3        # Повторы при таймауте/сетевой ошибке
+  compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
   message_thread_id: ""       # ID топика в канале (если канал с форумом)
   disable_notification: false # Тихие сообщения (без звука)
   protect_content: false      # Запретить пересылку и сохранение
@@ -194,6 +199,10 @@ ebird:
   state: ""           # 1–3 chars (NY, CA, MOS для Московской обл., etc.)
   location_name: "BirdLense Feeder"
   protocol: "Stationary"  # Stationary | Traveling | Incidental | Historical
+  # Маппинг eBird (Gray, US) -> BirdLense (Grey, EU). Для сопоставления в «Сравнение с регионом».
+  species_mapping:
+    "Gray-headed Woodpecker": "Grey-headed Woodpecker"
+    "Great Gray Shrike": "Great Grey Shrike"
 
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:

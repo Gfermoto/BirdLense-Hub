@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid2';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
@@ -23,7 +22,34 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Paper from '@mui/material/Paper';
 import { PasswordField } from '../../components/PasswordField';
+
+/** Блок настроек одного сервиса — подсветка и заголовок */
+function ServiceBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        mb: 2,
+        bgcolor: 'action.hover',
+        '&:last-of-type': { mb: 0 },
+      }}
+    >
+      <Typography variant="subtitle2" color="primary" sx={{ mb: 1.5, fontWeight: 600 }}>
+        {title}
+      </Typography>
+      {children}
+    </Paper>
+  );
+}
 
 type CameraRow = { stream_name?: string; name?: string };
 
@@ -277,14 +303,18 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      {/* ========== 1. CONNECTION ========== */}
-      <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
-        {t('settings.section1')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section1Desc')}
-      </Typography>
-      <Grid container spacing={2}>
+      {/* ========== 1. ПОДКЛЮЧЕНИЕ ========== */}
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionConnection')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionConnectionDesc')}
+          </Typography>
+
+          <ServiceBlock title={t('settings.serviceMqtt')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mqtt.broker">
             {(field) => (
@@ -382,34 +412,11 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="general.birdnet_url">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.birdnetUrl')}
-                placeholder="http://birdnet.local"
-                helperText={t('settings.birdnetUrlHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="general.donate_url">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.donateUrl')}
-                placeholder="https://ko-fi.com/..."
-                helperText={t('settings.donateUrlHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceGo2rtc')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="video.go2rtc_url">
             {(field) => (
@@ -438,18 +445,11 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
-      </Grid>
+            </Grid>
+          </ServiceBlock>
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* ========== 2. CAMERAS ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section2')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section2Desc')}
-      </Typography>
-      <Grid container spacing={2}>
+          <ServiceBlock title={t('settings.serviceVideo')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="video.cameras">
             {(field) => (
@@ -460,18 +460,55 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
-      </Grid>
+            </Grid>
+          </ServiceBlock>
 
-      <Divider sx={{ my: 4 }} />
+          <ServiceBlock title={t('settings.serviceGeneral')}>
+            <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="general.birdnet_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.birdnetUrl')}
+                placeholder="http://birdnet.local"
+                helperText={t('settings.birdnetUrlHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="general.donate_url">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.donateUrl')}
+                placeholder="https://ko-fi.com/..."
+                helperText={t('settings.donateUrlHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+            </Grid>
+          </ServiceBlock>
+        </AccordionDetails>
+      </Accordion>
 
-      {/* ========== 3. MOTION DETECTION ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section3')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section3Desc')}
-      </Typography>
-      <Grid container spacing={2}>
+      {/* ========== 2. ДЕТЕКЦИЯ ДВИЖЕНИЯ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionMotion')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionMotionDesc')}
+          </Typography>
+          <ServiceBlock title={t('settings.serviceTrigger')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="motion.source">
             {(field) => (
@@ -559,17 +596,20 @@ export const SettingsForm = ({
             </>
           )}
         </form.Subscribe>
-      </Grid>
+            </Grid>
+          </ServiceBlock>
+        </AccordionDetails>
+      </Accordion>
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* ========== 4. FEED RELAY ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section4')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section4Desc')}
-      </Typography>
+      {/* ========== 3. РЕЛЕ КОРМУШКИ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionFeed')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionFeedDesc')}
+          </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="feed.source">
@@ -689,18 +729,21 @@ export const SettingsForm = ({
           )}
         </form.Subscribe>
       </Grid>
+        </AccordionDetails>
+      </Accordion>
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* ========== 5. УВЕДОМЛЕНИЯ (Telegram) ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section5')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section5Desc')}
-      </Typography>
+      {/* ========== 4. УВЕДОМЛЕНИЯ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionNotifications')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionNotificationsDesc')}
+          </Typography>
+          <ServiceBlock title={t('settings.serviceTelegram')}>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid size={{ xs: 12 }}>
           <form.Field name="general.enable_notifications">
             {(field) => (
               <FormControlLabel
@@ -718,7 +761,7 @@ export const SettingsForm = ({
         <form.Subscribe selector={(state) => [state.values.general?.enable_notifications]}>
           {([notificationsEnabled]) => (
             <>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <form.Field name="notifications.telegram_bot_token">
                   {(field) => (
                     <PasswordField
@@ -731,7 +774,7 @@ export const SettingsForm = ({
                   )}
                 </form.Field>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <form.Field name="notifications.telegram_chat_id">
                   {(field) => (
                     <TextField
@@ -974,6 +1017,11 @@ export const SettingsForm = ({
             </>
           )}
         </form.Subscribe>
+          </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceWebhook')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="webhook.url">
             {(field) => (
@@ -988,7 +1036,11 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
-        <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>{t('settings.galleryTitle')}</Typography>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceGallery')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="gallery.enabled">
             {(field) => (
@@ -1058,24 +1110,28 @@ export const SettingsForm = ({
             </>
           )}
         </form.Subscribe>
-        <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
-          {(notificationsEnabled) => (
-            <Grid size={{ xs: 12 }}>
-              <WebPushSubscribeButton notificationsEnabled={!!notificationsEnabled} />
             </Grid>
-          )}
-        </form.Subscribe>
-      </Grid>
+          </ServiceBlock>
 
-      <Divider sx={{ my: 4 }} />
+          <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
+            {(notificationsEnabled) => (
+              <Box sx={{ mt: 2 }}>
+                <WebPushSubscribeButton notificationsEnabled={!!notificationsEnabled} />
+              </Box>
+            )}
+          </form.Subscribe>
+        </AccordionDetails>
+      </Accordion>
 
-      {/* ========== 6. ПОГОДА ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section6')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section6Desc')}
-      </Typography>
+      {/* ========== 5. ПОГОДА ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionWeather')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionWeatherDesc')}
+          </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="weather.source">
@@ -1205,16 +1261,18 @@ export const SettingsForm = ({
           )}
         </form.Subscribe>
       </Grid>
+        </AccordionDetails>
+      </Accordion>
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* ========== 7. БЕЗОПАСНОСТЬ ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section7')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section7Desc')}
-      </Typography>
+      {/* ========== 6. БЕЗОПАСНОСТЬ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionSecurity')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionSecurityDesc')}
+          </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="general.settings_password">
@@ -1243,85 +1301,51 @@ export const SettingsForm = ({
           </form.Field>
         </Grid>
       </Grid>
+        </AccordionDetails>
+      </Accordion>
 
-      <Divider sx={{ my: 4 }} />
+      {/* ========== 7. ИНТЕГРАЦИИ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionIntegrations')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionIntegrationsDesc')}
+          </Typography>
 
-      {/* ========== 8. MCP ========== */}
-      <Typography variant="h5" gutterBottom>
-        {t('settings.section8')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('settings.section8Desc')}
-      </Typography>
-      <Grid container spacing={2}>
+          <ServiceBlock title={t('settings.serviceXenoCanto')}>
+            <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
-          <form.Field name="mcp.enabled">
-            {(field) => (
-              <>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={field.state.value ?? false}
-                      onChange={(e) => field.handleChange(e.target.checked)}
-                    />
-                  }
-                  label={t('settings.mcpEnabled')}
-                />
-                <FormHelperText>{t('settings.mcpHint')}</FormHelperText>
-              </>
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <form.Field name="mcp.token">
+          <form.Field name="secrets.xeno_canto_api_key">
             {(field) => (
               <PasswordField
                 value={field.state.value ?? ''}
                 onChange={(v) => field.handleChange(v)}
-                label={t('settings.mcpToken')}
-                placeholder={t('settings.mcpTokenPlaceholder')}
-                helperText={t('settings.mcpTokenHint')}
+                label={t('settings.xenoCantoApiKey')}
+                helperText={t('settings.xenoCantoApiKeyHint')}
               />
             )}
           </form.Field>
         </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 4 }} />
-
-      {/* ========== РАСШИРЕННЫЕ ========== */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>{t('settings.advanced')}</AccordionSummary>
-        <AccordionDetails>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.advancedDesc')}
-            </Typography>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <form.Field name="secrets.xeno_canto_api_key">
-                {(field) => (
-                  <PasswordField
-                    value={field.state.value ?? ''}
-                    onChange={(v) => field.handleChange(v)}
-                    label={t('settings.xenoCantoApiKey')}
-                    helperText={t('settings.xenoCantoApiKeyHint')}
-                  />
-                )}
-              </form.Field>
             </Grid>
-            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
-              <form.Field name="secrets.ebird_api_key">
-                {(field) => (
-                  <PasswordField
-                    value={field.state.value ?? ''}
-                    onChange={(v) => field.handleChange(v)}
-                    label={t('settings.ebirdApiKey')}
-                    helperText={t('settings.ebirdApiKeyHint')}
-                  />
-                )}
-              </form.Field>
-            </Grid>
-            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceEbird')}>
+            <Grid container spacing={2}>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="secrets.ebird_api_key">
+            {(field) => (
+              <PasswordField
+                value={field.state.value ?? ''}
+                onChange={(v) => field.handleChange(v)}
+                label={t('settings.ebirdApiKey')}
+                helperText={t('settings.ebirdApiKeyHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {t('settings.ebirdSection')}
               </Typography>
@@ -1367,6 +1391,152 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="ebird.species_mapping">
+                {(field) => {
+                  const val = field.state.value;
+                  const str = val && typeof val === 'object' && !Array.isArray(val)
+                    ? Object.entries(val).map(([k, v]) => `${k}: ${v}`).join('\n')
+                    : '';
+                  return (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      value={str}
+                      onChange={(e) => {
+                        const lines = e.target.value.split('\n').filter(Boolean);
+                        const obj: Record<string, string> = {};
+                        for (const line of lines) {
+                          const idx = line.indexOf(':');
+                          if (idx > 0) {
+                            const k = line.slice(0, idx).trim();
+                            const v = line.slice(idx + 1).trim();
+                            if (k && v) obj[k] = v;
+                          }
+                        }
+                        field.handleChange(Object.keys(obj).length ? obj : {});
+                      }}
+                      label={t('settings.ebirdSpeciesMapping')}
+                      placeholder="Gray-headed Woodpecker: Grey-headed Woodpecker"
+                      helperText={t('settings.ebirdSpeciesMappingHint')}
+                    />
+                  );
+                }}
+              </form.Field>
+            </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title="MCP">
+            <Grid container spacing={2}>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="mcp.enabled">
+            {(field) => (
+              <>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.state.value ?? false}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  }
+                  label={t('settings.mcpEnabled')}
+                />
+                <FormHelperText>{t('settings.mcpHint')}</FormHelperText>
+              </>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mcp.token">
+            {(field) => (
+              <PasswordField
+                value={field.state.value ?? ''}
+                onChange={(v) => field.handleChange(v)}
+                label={t('settings.mcpToken')}
+                placeholder={t('settings.mcpTokenPlaceholder')}
+                helperText={t('settings.mcpTokenHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+            </Grid>
+          </ServiceBlock>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ========== 8. ПРОЦЕССОР И ДЕТЕКЦИЯ ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionProcessor')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionProcessorDesc')}
+          </Typography>
+
+          <ServiceBlock title={t('settings.confidenceThresholdsTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.confidenceThresholdsDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <form.Field name="processor.min_confidence_binary">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0.05, max: 0.9, step: 0.05 }}
+                    value={field.state.value ?? 0.15}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || undefined)
+                    }
+                    label={t('settings.confidenceDetector')}
+                    helperText={t('settings.confidenceDetectorHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <form.Field name="processor.min_confidence_to_process">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 1, step: 0.05 }}
+                    value={field.state.value ?? 0.30}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || undefined)
+                    }
+                    label={t('settings.confidenceClassifier')}
+                    helperText={t('settings.confidenceClassifierHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <form.Field name="processor.dataset_min_confidence">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 1, step: 0.05 }}
+                    value={field.state.value ?? 0.50}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || undefined)
+                    }
+                    label={t('settings.confidenceDataset')}
+                    helperText={t('settings.confidenceDatasetHelp')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceProcessor')}>
+            <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.max_record_seconds">
                 {(field) => (
@@ -1399,7 +1569,7 @@ export const SettingsForm = ({
                   <TextField
                     fullWidth
                     type="number"
-                    value={field.state.value ?? 2}
+                    value={field.state.value ?? 3}
                     onChange={(e) => field.handleChange(Number(e.target.value))}
                     label={t('settings.minTrackDuration')}
                     helperText={t('settings.minTrackDurationHelp')}
@@ -1407,23 +1577,11 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <form.Field name="processor.min_confidence_to_process">
-                {(field) => (
-                  <TextField
-                    fullWidth
-                    type="number"
-                    inputProps={{ min: 0, max: 1, step: 0.01 }}
-                    value={field.state.value ?? 0.10}
-                    onChange={(e) =>
-                      field.handleChange(Number(e.target.value) || undefined)
-                    }
-                    label={t('settings.minConfidenceToProcess')}
-                    helperText={t('settings.minConfidenceToProcessHelp')}
-                  />
-                )}
-              </form.Field>
             </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.confidenceAdvanced')}>
+            <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <form.Field name="processor.species_confidence_overrides">
                 {(field) => {
@@ -1464,7 +1622,7 @@ export const SettingsForm = ({
                   <TextField
                     fullWidth
                     type="number"
-                    inputProps={{ min: 0, max: 1, step: 0.01 }}
+                    inputProps={{ min: 0, max: 1, step: 0.05 }}
                     value={field.state.value ?? 0.5}
                     onChange={(e) =>
                       field.handleChange(Number(e.target.value) || undefined)
@@ -1475,6 +1633,11 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceProcessor')}>
+            <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="processor.spectrogram_px_per_sec">
                 {(field) => (
@@ -1485,27 +1648,6 @@ export const SettingsForm = ({
                     onChange={(e) => field.handleChange(Number(e.target.value))}
                     label={t('settings.spectrogramDetail')}
                     helperText={t('settings.spectrogramDetailHelp')}
-                  />
-                )}
-              </form.Field>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <form.Field name="motion.frigate_label_exclude">
-                {(field) => (
-                  <TextField
-                    fullWidth
-                    value={(field.state.value || []).join(', ')}
-                    onChange={(e) =>
-                      field.handleChange(
-                        (e.target.value || '')
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      )
-                    }
-                    label={t('settings.frigateLabelExclude')}
-                    placeholder="cat, dog"
-                    helperText={t('settings.frigateLabelExcludeHint')}
                   />
                 )}
               </form.Field>
@@ -1535,23 +1677,37 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceFrigate')}>
+            <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <form.Field name="processor.dataset_min_confidence">
+              <form.Field name="motion.frigate_label_exclude">
                 {(field) => (
                   <TextField
                     fullWidth
-                    type="number"
-                    inputProps={{ min: 0, max: 1, step: 0.01 }}
-                    value={field.state.value ?? 0.5}
+                    value={(field.state.value || []).join(', ')}
                     onChange={(e) =>
-                      field.handleChange(Number(e.target.value) || undefined)
+                      field.handleChange(
+                        (e.target.value || '')
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
                     }
-                    label={t('settings.datasetMinConfidence')}
-                    helperText={t('settings.datasetMinConfidenceHelp')}
+                    label={t('settings.frigateLabelExclude')}
+                    placeholder="cat, dog"
+                    helperText={t('settings.frigateLabelExcludeHint')}
                   />
                 )}
               </form.Field>
             </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceVideo')}>
+            <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <form.Field name="video.video_width">
                 {(widthField) => (
@@ -1588,7 +1744,8 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
-          </Grid>
+            </Grid>
+          </ServiceBlock>
         </AccordionDetails>
       </Accordion>
 

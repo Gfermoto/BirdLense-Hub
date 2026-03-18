@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from light_level_detector import LightLevelDetector
 from detection_strategy import DetectionStrategy
+from app_config.app_config import app_config
 
 class FrameProcessor:
     def __init__(self, detection_strategy: DetectionStrategy, save_images=False, tracker='bytetrack.yaml'):
@@ -36,7 +37,8 @@ class FrameProcessor:
             return False
 
         st = time.time()
-        results = self.strategy.detect(img, self.tracker, min_confidence=0.1)
+        min_conf = float(app_config.get('processor.min_confidence_binary') or 0.15)
+        results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
         
         if self.save_images and results:
             debug_img = img.copy()
