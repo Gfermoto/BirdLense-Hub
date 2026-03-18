@@ -107,7 +107,8 @@ export interface Settings {
     max_record_seconds: number; // Max recording duration in seconds
     max_inactive_seconds: number; // Max inactivity before stopping recording
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
-    min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.03 = more detections
+    min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
+    min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
     species_confidence_overrides?: Record<string, number>; // Per-species thresholds (rare species — lower)
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
@@ -165,6 +166,7 @@ export interface Settings {
     state?: string;
     location_name?: string;
     protocol?: string;
+    species_mapping?: Record<string, string>;  // eBird name -> BirdLense name
   };
   feed?: {
     source?: string;
@@ -182,6 +184,9 @@ export interface Settings {
     mqtt_topic?: string;
     esphome_url?: string;
     esphome_sensor_id?: string;
+  };
+  detection?: {
+    min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
   };
   mcp?: {
     enabled?: boolean;

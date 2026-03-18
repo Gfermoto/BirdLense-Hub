@@ -88,9 +88,10 @@ export const Overview = () => {
   }
 
   const formatRecordingTime = (seconds: number) => {
-    if (seconds < 60) return `${Math.round(seconds)} ${t('time.sec')}`;
-    if (seconds < 3600) return `${Math.round(seconds / 60)} ${t('time.min')}`;
-    return `${(seconds / 3600).toFixed(1)} ${t('time.hrs')}`;
+    const s = Math.max(0, seconds);
+    if (s < 60) return `${Math.round(s)} ${t('time.sec')}`;
+    if (s < 3600) return `${Math.round(s / 60)} ${t('time.min')}`;
+    return `${(s / 3600).toFixed(1)} ${t('time.hrs')}`;
   };
 
   return (
@@ -224,7 +225,7 @@ export const Overview = () => {
                 icon={VideocamOutlined}
                 title={t('overview.recordingTime')}
                 value={formatRecordingTime(
-                  overviewData?.stats.videoDuration || 0,
+                  Math.max(0, overviewData?.stats.videoDuration ?? 0),
                 )}
               />
             </Grid>

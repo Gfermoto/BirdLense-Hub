@@ -75,28 +75,19 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         exclude_bird,
     ).first()
 
-    # Source duration
+    # Source duration: сумма длительностей детекций (включая Bird — иначе 0 при только generic).
+    # case — защита от end<start. Без exclude_bird — считаем все детекции.
+    dur_expr = case(
+        (VideoSpecies.end_time >= VideoSpecies.start_time,
+         VideoSpecies.end_time - VideoSpecies.start_time),
+        else_=0
+    )
     dur_q = session.query(
-        func.sum(
-            case(
-                (VideoSpecies.source == 'video',
-                 VideoSpecies.end_time - VideoSpecies.start_time),
-                else_=0
-            )
-        ).label('video_duration'),
-        func.sum(
-            case(
-                (VideoSpecies.source == 'audio',
-                 VideoSpecies.end_time - VideoSpecies.start_time),
-                else_=0
-            )
-        ).label('audio_duration'),
-    ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).join(
-        Species, SpeciesVisit.species_id == Species.id
-    ).filter(
+        func.sum(case((VideoSpecies.source == 'video', dur_expr), else_=0)).label('video_duration'),
+        func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)).label('audio_duration'),
+    ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).filter(
         SpeciesVisit.start_time >= start_of_day,
         SpeciesVisit.start_time <= end_of_day,
-        exclude_bird,
     ).first()
 
     # Provider counts
