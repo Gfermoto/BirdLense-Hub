@@ -309,11 +309,18 @@ export const SettingsForm = ({
           {t('settings.accordionConnection')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionConnectionDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionConnection')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionConnectionDesc')}
+            </Typography>
 
-          <ServiceBlock title={t('settings.serviceMqtt')}>
+            <ServiceBlock title={t('settings.serviceMqtt')}>
             <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mqtt.broker">
@@ -495,6 +502,7 @@ export const SettingsForm = ({
         </Grid>
             </Grid>
           </ServiceBlock>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -504,17 +512,25 @@ export const SettingsForm = ({
           {t('settings.accordionMotion')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionMotionDesc')}
-          </Typography>
-          <ServiceBlock title={t('settings.serviceTrigger')}>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionMotion')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionMotionDesc')}
+            </Typography>
+            <ServiceBlock title={t('settings.serviceTrigger')}>
             <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="motion.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>{t('settings.triggerLabel')}</InputLabel>
+                <InputLabel id="settings-trigger-label">{t('settings.triggerLabel')}</InputLabel>
                 <Select
+                  labelId="settings-trigger-label"
                   value={(field.state.value === 'frigate' ? 'auto' : field.state.value) ?? 'auto'}
                   label={t('settings.triggerLabel')}
                   onChange={(e) => field.handleChange(e.target.value === 'auto' ? 'frigate' : e.target.value)}
@@ -598,6 +614,7 @@ export const SettingsForm = ({
         </form.Subscribe>
             </Grid>
           </ServiceBlock>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -607,16 +624,24 @@ export const SettingsForm = ({
           {t('settings.accordionFeed')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionFeedDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionFeed')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionFeedDesc')}
+            </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="feed.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>{t('settings.feedType')}</InputLabel>
+                <InputLabel id="settings-feed-type-label">{t('settings.feedType')}</InputLabel>
                 <Select
+                  labelId="settings-feed-type-label"
                   value={field.state.value ?? 'none'}
                   label={t('settings.feedType')}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -666,8 +691,9 @@ export const SettingsForm = ({
                     <form.Field name="feed.esphome_type">
                       {(field) => (
                         <FormControl fullWidth>
-                          <InputLabel>{t('settings.switchType')}</InputLabel>
+                          <InputLabel id="settings-switch-type-label">{t('settings.switchType')}</InputLabel>
                           <Select
+                            labelId="settings-switch-type-label"
                             value={field.state.value ?? 'switch'}
                             label={t('settings.switchType')}
                             onChange={(e) => field.handleChange(e.target.value)}
@@ -729,6 +755,7 @@ export const SettingsForm = ({
           )}
         </form.Subscribe>
       </Grid>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -738,9 +765,16 @@ export const SettingsForm = ({
           {t('settings.accordionNotifications')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionNotificationsDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionNotifications')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionNotificationsDesc')}
+            </Typography>
           <ServiceBlock title={t('settings.serviceTelegram')}>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
@@ -995,8 +1029,9 @@ export const SettingsForm = ({
                 <form.Field name="general.notification_excluded_species">
                   {(field) => (
                     <FormControl fullWidth disabled={!notificationsEnabled}>
-                      <InputLabel>{t('settings.excludeSpecies')}</InputLabel>
+                      <InputLabel id="settings-exclude-species-label">{t('settings.excludeSpecies')}</InputLabel>
                       <Select
+                        labelId="settings-exclude-species-label"
                         multiple
                         value={field.state.value || []}
                         onChange={(e) => field.handleChange(e.target.value as string[])}
@@ -1120,6 +1155,7 @@ export const SettingsForm = ({
               </Box>
             )}
           </form.Subscribe>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -1129,16 +1165,24 @@ export const SettingsForm = ({
           {t('settings.accordionWeather')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionWeatherDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionWeather')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionWeatherDesc')}
+            </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="weather.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel>{t('settings.weatherSource')}</InputLabel>
+                <InputLabel id="settings-weather-source-label">{t('settings.weatherSource')}</InputLabel>
                 <Select
+                  labelId="settings-weather-source-label"
                   value={field.state.value ?? 'openweather'}
                   label={t('settings.weatherSource')}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -1261,6 +1305,7 @@ export const SettingsForm = ({
           )}
         </form.Subscribe>
       </Grid>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -1270,9 +1315,16 @@ export const SettingsForm = ({
           {t('settings.accordionSecurity')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionSecurityDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionSecurity')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionSecurityDesc')}
+            </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="general.settings_password">
@@ -1301,6 +1353,7 @@ export const SettingsForm = ({
           </form.Field>
         </Grid>
       </Grid>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -1310,9 +1363,16 @@ export const SettingsForm = ({
           {t('settings.accordionIntegrations')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionIntegrationsDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionIntegrations')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionIntegrationsDesc')}
+            </Typography>
 
           <ServiceBlock title={t('settings.serviceXenoCanto')}>
             <Grid container spacing={2}>
@@ -1463,6 +1523,7 @@ export const SettingsForm = ({
         </Grid>
             </Grid>
           </ServiceBlock>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -1472,9 +1533,16 @@ export const SettingsForm = ({
           {t('settings.accordionProcessor')}
         </AccordionSummary>
         <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('settings.accordionProcessorDesc')}
-          </Typography>
+          <Box
+            component="fieldset"
+            sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          >
+            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+              {t('settings.accordionProcessor')}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionProcessorDesc')}
+            </Typography>
 
           <ServiceBlock title={t('settings.confidenceThresholdsTitle')}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -1718,8 +1786,9 @@ export const SettingsForm = ({
                       const sel = resolutions.find((r) => r.width === w && r.height === h);
                       return (
                         <FormControl fullWidth>
-                          <InputLabel>{t('settings.resolution')}</InputLabel>
+                          <InputLabel id="settings-resolution-label">{t('settings.resolution')}</InputLabel>
                           <Select
+                            labelId="settings-resolution-label"
                             value={sel ? `${sel.width}x${sel.height}` : ''}
                             label={t('settings.resolution')}
                             onChange={(e) => {
@@ -1746,6 +1815,7 @@ export const SettingsForm = ({
             </Grid>
             </Grid>
           </ServiceBlock>
+          </Box>
         </AccordionDetails>
       </Accordion>
 

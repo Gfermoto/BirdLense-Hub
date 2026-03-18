@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -11,7 +11,8 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-export const StatCard = ({ icon: Icon, title, value, subtitle }: StatCardProps) => (
+export const StatCard = memo(function StatCard({ icon: Icon, title, value, subtitle }: StatCardProps) {
+  return (
   <Card sx={{ height: '100%' }}>
     <CardContent>
       <Box display="flex" alignItems="center" gap={2}>
@@ -30,4 +31,5 @@ export const StatCard = ({ icon: Icon, title, value, subtitle }: StatCardProps) 
       </Box>
     </CardContent>
   </Card>
-);
+  );
+});

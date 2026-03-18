@@ -239,6 +239,7 @@ Push-уведомления в браузере (дополнение или а�
 | `ebird.state` | Регион (1–3 символа: NY, CA, MOS для Московской обл.) |
 | `ebird.location_name` | Название локации для чеклиста |
 | `ebird.protocol` | Stationary \| Traveling \| Incidental \| Historical |
+| `ebird.species_mapping` | Маппинг eBird → BirdLense для «Сравнение с регионом». eBird использует Gray (US), BirdLense — Grey (EU). Пример: `Gray-headed Woodpecker: Grey-headed Woodpecker` |
 | `secrets.ebird_api_key` | Ключ eBird API для карточки «Сравнение с регионом» на Overview. Получить: [ebird.org/api/keygen](https://ebird.org/api/keygen) |
 
 Настройки → Расширенные. Экспорт «Экспорт для eBird» в Timeline не требует API ключа. Ключ нужен для фичи «Сравнение с регионом».

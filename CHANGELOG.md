@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.0] - 2026-03-18
+
+### Added
+
+- **Публичная галерея** — тестовый контейнер `docker/gallery-test` для проверки загрузки кадров.
+- **Порог бинарного детектора** — настраиваемый `processor.min_confidence_binary` (по умолчанию 0.25) для снижения ложных срабатываний.
+- **PWA: prompt при обновлении** — Snackbar «Доступна новая версия» вместо автоматической перезагрузки.
+
+### Changed
+
+- **Пороги детекции** — повышены по умолчанию: `min_confidence_to_process` 0.15, `min_track_duration` 3 сек, `min_confidence_to_store` 0.10.
+- **Шрифты** — Google Fonts загружаются асинхронно (не блокируют рендер, быстрее в РФ).
+- **Telegram** — retry, увеличенный timeout, fallback на текст при ошибке фото, сжатие изображений.
+
+---
+
 ## [0.1.10] - 2026-03-17
 
 ### Changed
@@ -266,6 +282,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.2.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.0
 [0.1.10]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.10
 [0.1.9]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.9
 [0.1.8]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.8

@@ -18,7 +18,8 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'public',
       filename: 'sw.js',
-      registerType: 'autoUpdate',
+      registerType: 'prompt',  // prompt = спросить пользователя; autoUpdate = авто-перезагрузка при деплое
+      injectRegister: null,   // регистрация в main.tsx с onNeedRefresh
       includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'web-app-manifest-*.png'],
       manifest: {
         name: 'BirdLense Hub',

@@ -193,7 +193,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         groups.push(group);
       }
       group.detections.push(sp);
-      group.totalDuration += sp.end_time - sp.start_time;
+      group.totalDuration += Math.max(0, sp.end_time - sp.start_time);
       return groups;
     }, []);
 
@@ -260,8 +260,9 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <FormControl size="small" sx={{ minWidth: 200 }} disabled={!canEdit}>
-              <InputLabel>{t('video.mergeAllToSpecies')}</InputLabel>
+              <InputLabel id="video-merge-species-label">{t('video.mergeAllToSpecies')}</InputLabel>
               <Select
+                labelId="video-merge-species-label"
                 value={mergeSpeciesId}
                 label={t('video.mergeAllToSpecies')}
                 onChange={(e) => setMergeSpeciesId(e.target.value as number | '')}
@@ -327,7 +328,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {group.detections.length} {group.detections.length > 1 ? t('video.detections') : t('video.detection')} •{' '}
-                  {Math.round(group.totalDuration)}s
+                  {Math.max(0, Math.round(group.totalDuration))}s
                 </Typography>
                 {(() => {
                   const providers = [...new Set(group.detections.map((d) => d.detection_provider).filter(Boolean))];
@@ -368,8 +369,9 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                 {editingGroupKey === String(group.species_id) ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '1 1 100%', mt: 0.5 }}>
                       <FormControl size="small" sx={{ minWidth: 160 }} disabled={!canEdit}>
-                        <InputLabel>{t('unknowns.correctSpecies')}</InputLabel>
+                        <InputLabel id={`video-correct-species-${group.species_id}`}>{t('unknowns.correctSpecies')}</InputLabel>
                         <Select
+                          labelId={`video-correct-species-${group.species_id}`}
                           value={selectedSpeciesId}
                           label={t('unknowns.correctSpecies')}
                           onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}

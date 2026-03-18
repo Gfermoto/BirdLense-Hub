@@ -53,8 +53,11 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       timeStyle: 'short',
     });
 
-  const duration = Math.round(
-    (new Date(end_time).getTime() - new Date(start_time).getTime()) / 1000,
+  const duration = Math.max(
+    0,
+    Math.round(
+      (new Date(end_time).getTime() - new Date(start_time).getTime()) / 1000,
+    ),
   );
 
   return (

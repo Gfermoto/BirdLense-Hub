@@ -221,13 +221,17 @@ export const Overview = () => {
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-              <StatCard
-                icon={VideocamOutlined}
-                title={t('overview.recordingTime')}
-                value={formatRecordingTime(
-                  Math.max(0, overviewData?.stats.videoDuration ?? 0),
-                )}
-              />
+              <Tooltip title={t('overview.recordingTimeHint')}>
+                <span>
+                  <StatCard
+                    icon={VideocamOutlined}
+                    title={t('overview.recordingTime')}
+                    value={formatRecordingTime(
+                      Math.max(0, overviewData?.stats.videoDuration ?? 0),
+                    )}
+                  />
+                </span>
+              </Tooltip>
             </Grid>
           </Grid>
           {overviewData?.stats.detectionByProvider &&

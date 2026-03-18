@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import type { SpeciesVisit } from '../types';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -97,12 +97,14 @@ const DetectionItem = ({
             color="text.secondary"
             sx={{ ml: 'auto' }}
           >
-            {Math.round(
-              (new Date(detection.end_time).getTime() -
-                new Date(detection.start_time).getTime()) /
-                1000,
-            )}
-            s
+            {(() => {
+              const sec = Math.round(
+                (new Date(detection.end_time).getTime() -
+                  new Date(detection.start_time).getTime()) /
+                  1000,
+              );
+              return sec >= 0 ? `${sec}s` : '—';
+            })()}
           </Typography>
           {detection.source === 'video' && detection.id && (
             <Tooltip title={t('common.iNaturalist')}>
@@ -156,11 +158,12 @@ export interface VisitCardProps {
   showDateTime?: boolean;
 }
 
-export const VisitCard = ({
+export const VisitCard = memo(function VisitCard({
   visit,
   compact = false,
   showDateTime = false,
-}: VisitCardProps) => {
+}: VisitCardProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
@@ -228,7 +231,7 @@ export const VisitCard = ({
                 {expanded ? <ExpandLess /> : <ExpandMore />}
               </IconButton>
             </Box>
-            <Box display="flex" gap={1.5} mt={1.5} flexWrap="nowrap">
+            <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
               <Chip
                 icon={
                   <Box display="flex" alignItems="center">
@@ -239,20 +242,19 @@ export const VisitCard = ({
                 size="small"
                 sx={{ height: 28 }}
               />
-              <Chip
-                icon={
-                  <Box display="flex" alignItems="center">
-                    <AccessTime sx={{ fontSize: 18 }} />
-                  </Box>
-                }
-                label={`${Math.round(
-                  (new Date(visit.end_time).getTime() -
-                    new Date(visit.start_time).getTime()) /
-                    1000,
-                )}s`}
-                size="small"
-                sx={{ height: 28 }}
-              />
+              {visit.total_recording_seconds != null && (
+                <Chip
+                  icon={
+                    <Box display="flex" alignItems="center">
+                      <VideoCall sx={{ fontSize: 18 }} />
+                    </Box>
+                  }
+                  label={`${visit.total_recording_seconds}s`}
+                  size="small"
+                  sx={{ height: 28 }}
+                  title={t('visitCard.recordingTime')}
+                />
+              )}
               {visit.weather?.temp && (
                 <Chip
                   icon={
@@ -270,7 +272,7 @@ export const VisitCard = ({
         </Box>
         <Collapse in={expanded} timeout="auto">
           <Box mt={2}>
-            {groupDetectionsByVideo(visit.detections).map(
+            {groupDetectionsByVideo(visit.detections ?? []).map(
               (group, groupIndex) => (
                 <Box key={`group-${groupIndex}`}>
                   {group.map((detection, index) => (
@@ -290,4 +292,4 @@ export const VisitCard = ({
       </CardContent>
     </Card>
   );
-};
+});

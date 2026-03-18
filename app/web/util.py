@@ -84,8 +84,11 @@ def format_visit_for_timeline(visit) -> dict:
     """Format SpeciesVisit to timeline API format (detections, weather, species)."""
     video = get_primary_video_for_visit(visit)
     detections = []
+    total_recording_seconds = 0.0
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
         video_start = ensure_utc(vs.video.start_time)
+        seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
+        total_recording_seconds += seg_dur
         det = {
             'id': vs.id,
             'video_id': vs.video_id,
@@ -102,6 +105,7 @@ def format_visit_for_timeline(visit) -> dict:
         'start_time': ensure_utc(visit.start_time).isoformat(),
         'end_time': ensure_utc(visit.end_time).isoformat(),
         'max_simultaneous': visit.max_simultaneous,
+        'total_recording_seconds': round(total_recording_seconds),
         'weather': {
             'temp': video.weather_temp if video else None,
             'clouds': video.weather_clouds if video else None,
@@ -543,6 +547,61 @@ def _get_button_custom_emoji_id(tags):
     return val if val else None
 
 
+def _get_telegram_api_base():
+    """Base URL для Telegram Bot API. Прокси/альтернатива при троттлинге."""
+    base = (app_config.get('notifications.telegram_api_base') or '').strip().rstrip('/')
+    return base or 'https://api.telegram.org'
+
+
+def _telegram_timeouts():
+    """(timeout_text, timeout_media) — текст легче, медиа тяжелее."""
+    t = int(app_config.get('notifications.telegram_timeout') or 45)
+    t = max(15, min(120, t))
+    return t // 2, t
+
+
+def _telegram_request(method, url, timeout, retries=None, **kwargs):
+    """Запрос к Telegram API с повторами при таймауте/сетевой ошибке."""
+    retries = retries or int(app_config.get('notifications.telegram_retries') or 3)
+    retries = max(1, min(5, retries))
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            r = requests.request(method, url, timeout=timeout, **kwargs)
+            return r
+        except (requests.Timeout, requests.ConnectionError, OSError) as e:
+            last_exc = e
+            if attempt < retries - 1:
+                delay = 2 ** attempt
+                logging.warning(
+                    "Telegram attempt %d/%d failed (%s), retry in %ds",
+                    attempt + 1, retries, type(e).__name__, delay)
+                time.sleep(delay)
+    raise last_exc
+
+
+def _compress_image_for_telegram(image_bytes):
+    """Сжать JPEG если > N KB. Ускоряет при троттлинге медиа."""
+    limit_kb = int(app_config.get('notifications.compress_photo_over_kb') or 0)
+    if limit_kb <= 0 or len(image_bytes) <= limit_kb * 1024:
+        return image_bytes
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, 'JPEG', quality=78, optimize=True)
+        out = buf.getvalue()
+        if len(out) < len(image_bytes):
+            logging.debug("Telegram: compressed %d -> %d bytes", len(image_bytes), len(out))
+            return out
+    except Exception as e:
+        logging.debug("Telegram compress skip: %s", e)
+    return image_bytes
+
+
 def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
                           button_style='primary', button_tags=None, **kwargs):
     """Build and send Telegram message with HTML, keyboard, options."""
@@ -574,11 +633,10 @@ def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
                 link, button_emoji, button_style, icon_custom_emoji_id=custom_id)]]
         }
     payload.update(kwargs)
-    return requests.post(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        json=payload,
-        timeout=10,
-    )
+    base = _get_telegram_api_base()
+    timeout_text, _ = _telegram_timeouts()
+    url = f"{base}/bot{token}/sendMessage"
+    return _telegram_request('POST', url, timeout=timeout_text, json=payload)
 
 
 def notify_telegram_test(message="Test notification from BirdLense"):
@@ -649,6 +707,7 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 logging.warning("Cannot read image for Telegram: %s", e)
                 image_to_send = None
         if image_to_send:
+            image_to_send = _compress_image_for_telegram(image_to_send)
             view_stars = app_config.get('notifications.paid_media_view_star_count')
             forward_stars = app_config.get('notifications.paid_media_forward_star_count')
             try:
@@ -695,24 +754,41 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                         icon_custom_emoji_id=custom_id)]]
                 }
 
-            if view_stars > 0:
-                payload['star_count'] = view_stars
-                payload['media'] = json.dumps([
-                    {'type': 'photo', 'media': 'attach://photo'}
-                ])
-                r = requests.post(
-                    f"https://api.telegram.org/bot{token}/sendPaidMedia",
-                    data=payload,
-                    files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                    timeout=15,
-                )
-            else:
-                r = requests.post(
-                    f"https://api.telegram.org/bot{token}/sendPhoto",
-                    data=payload,
-                    files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                    timeout=15,
-                )
+            base = _get_telegram_api_base()
+            _, timeout_media = _telegram_timeouts()
+            photo_failed = False
+            try:
+                if view_stars > 0:
+                    payload['star_count'] = view_stars
+                    payload['media'] = json.dumps([
+                        {'type': 'photo', 'media': 'attach://photo'}
+                    ])
+                    r = _telegram_request(
+                        'POST', f"{base}/bot{token}/sendPaidMedia",
+                        timeout=timeout_media,
+                        data=payload,
+                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                    )
+                else:
+                    r = _telegram_request(
+                        'POST', f"{base}/bot{token}/sendPhoto",
+                        timeout=timeout_media,
+                        data=payload,
+                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                    )
+            except (requests.Timeout, requests.ConnectionError, OSError) as e:
+                logging.warning("Telegram photo failed (%s), fallback to text", e)
+                photo_failed = True
+                try:
+                    r = _telegram_send_message(
+                        token, chat_id, text, link=link_url,
+                        button_emoji=button_emoji, button_style='primary',
+                        button_tags=button_tags)
+                except requests.RequestException as fallback_e:
+                    logging.warning("Telegram text fallback also failed: %s", fallback_e)
+                    r = None
+            if r is None:
+                return
             if image_path and os.path.isfile(image_path):
                 try:
                     os.remove(image_path)

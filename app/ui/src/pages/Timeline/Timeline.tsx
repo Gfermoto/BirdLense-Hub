@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { SpeciesVisit } from '../../types';
 import MuiTimeline from '@mui/lab/Timeline';
 import TimelineItem from '@mui/lab/TimelineItem';
@@ -11,7 +12,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { VisitCard } from '../../components/VisitCard';
 
-export const Timeline = ({ visits }: { visits: SpeciesVisit[] }) => {
+export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisit[] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -60,9 +61,9 @@ export const Timeline = ({ visits }: { visits: SpeciesVisit[] }) => {
               compact={isMobile}
               showDateTime={isMobile}
             />
-          </TimelineContent>
-        </TimelineItem>
-      ))}
-    </MuiTimeline>
+        </TimelineContent>
+      </TimelineItem>
+    ))}
+  </MuiTimeline>
   );
-};
+});

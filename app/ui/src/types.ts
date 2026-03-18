@@ -3,6 +3,8 @@ export interface SpeciesVisit {
   start_time: string;
   end_time: string;
   max_simultaneous: number;
+  /** Сумма длительностей всех детекций (записей) в событии, секунды */
+  total_recording_seconds?: number;
   weather?: {
     temp?: number;
     clouds?: number;

@@ -46,6 +46,7 @@
     "meanDuration": "Mean Visit Duration",
     "busiestHour": "Busiest Hour",
     "recordingTime": "Recording Time",
+    "recordingTimeHint": "Sum of all video file durations for the day",
     "downloadPdf": "PDF report",
     "regionComparison": "Region Comparison",
     "regionComparisonDesc": "You have {{userCount}} species. {{matchCount}} of them are in the region's top {{regionTop}}.",
@@ -509,7 +510,12 @@
   "timelineStats": {
     "uniqueSpecies": "Unique Species",
     "totalVisits": "Total Visits",
-    "totalDuration": "Total Duration"
+    "totalDuration": "Visit Duration",
+    "totalRecordingTime": "Recording Time"
+  },
+  "visitCard": {
+    "visitDuration": "Visit duration (time at feeder)",
+    "recordingTime": "Sum of recordings in event"
   },
   "videoInfo": {
     "downloadVideo": "Download video",

@@ -164,9 +164,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
 
   const duration = useMemo(
     () =>
-      (new Date(video.end_time).getTime() -
-        new Date(video.start_time).getTime()) /
-      1000,
+      Math.max(
+        0,
+        (new Date(video.end_time).getTime() -
+          new Date(video.start_time).getTime()) /
+          1000,
+      ),
     [video.end_time, video.start_time],
   );
 

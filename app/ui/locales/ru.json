@@ -46,6 +46,7 @@
     "meanDuration": "Средняя длительность",
     "busiestHour": "Пиковый час",
     "recordingTime": "Время записи",
+    "recordingTimeHint": "Сумма длительностей всех видеофайлов за день",
     "downloadPdf": "PDF-отчёт",
     "regionComparison": "Сравнение с регионом",
     "regionComparisonDesc": "У вас {{userCount}} видов. В топ-{{regionTop}} региона — {{matchCount}} из них.",
@@ -509,7 +510,12 @@
   "timelineStats": {
     "uniqueSpecies": "Уникальных видов",
     "totalVisits": "Всего визитов",
-    "totalDuration": "Общая длительность"
+    "totalDuration": "Время визитов",
+    "totalRecordingTime": "Время записей"
+  },
+  "visitCard": {
+    "visitDuration": "Длительность визита (время у кормушки)",
+    "recordingTime": "Сумма записей в событии"
   },
   "videoInfo": {
     "downloadVideo": "Скачать видео",

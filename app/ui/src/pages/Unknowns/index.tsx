@@ -140,8 +140,9 @@ function UnknownCard({
           </CardActionArea>
           <Box display="flex" flexDirection="column" gap={1} minWidth={200}>
             <FormControl size="small" fullWidth>
-              <InputLabel>{t('unknowns.correctSpecies')}</InputLabel>
+              <InputLabel id={`unknowns-correct-species-${detection.id}`}>{t('unknowns.correctSpecies')}</InputLabel>
               <Select
+                labelId={`unknowns-correct-species-${detection.id}`}
                 value={selectedSpeciesId}
                 label={t('unknowns.correctSpecies')}
                 onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
