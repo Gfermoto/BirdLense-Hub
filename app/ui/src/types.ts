@@ -191,6 +191,12 @@ export interface Settings {
   webhook?: {
     url?: string;  // POST при детекции (IFTTT, Zapier)
   };
+  gallery?: {
+    enabled?: boolean;
+    upload_url?: string;
+    min_confidence?: number;
+    only_manually_corrected?: boolean;
+  };
   ui?: {
     unknown_confidence_threshold?: number;  // 0–1; детекции ниже попадают в «Неизвестные»
   };

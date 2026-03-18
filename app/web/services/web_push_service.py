@@ -10,17 +10,27 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_vapid_keys() -> tuple[str, str]:
-    """Генерирует и сохраняет VAPID ключи, если их нет."""
+    """Генерирует и сохраняет VAPID ключи, если их нет.
+    pub = base64url для PushManager.subscribe(applicationServerKey)
+    priv = PEM строка для pywebpush
+    """
     pub = (app_config.get('web_push.vapid_public_key') or '').strip()
     priv = (app_config.get('web_push.vapid_private_key') or '').strip()
     if pub and priv:
         return pub, priv
     try:
-        from vapid import Vapid
+        from cryptography.hazmat.primitives import serialization
+        from py_vapid import Vapid
+        from py_vapid.utils import b64urlencode
+
         vapid = Vapid()
         vapid.generate_keys()
-        priv = vapid.private_key
-        pub = vapid.public_key
+        raw_pub = vapid.public_key.public_bytes(
+            serialization.Encoding.X962,
+            serialization.PublicFormat.UncompressedPoint,
+        )
+        pub = b64urlencode(raw_pub)
+        priv = vapid.private_pem().decode('utf-8')
         app_config.set('web_push.vapid_public_key', pub)
         app_config.set('web_push.vapid_private_key', priv)
         app_config.save()
@@ -31,13 +41,19 @@ def _ensure_vapid_keys() -> tuple[str, str]:
 
 
 def get_vapid_public_key() -> Optional[str]:
-    """Возвращает публичный VAPID ключ для подписки клиента."""
-    if not app_config.get('general.enable_notifications'):
-        return None
+    """Возвращает публичный VAPID ключ для подписки клиента.
+    Не проверяет enable_notifications — subscribe endpoint это сделает.
+    Так пользователь получает понятную ошибку «Notifications disabled» при subscribe,
+    а не «Web Push not available» при запросе ключа.
+    """
     try:
         pub, _ = _ensure_vapid_keys()
         return pub
-    except Exception:
+    except ImportError as e:
+        logger.warning("Web Push: py-vapid not installed: %s", e)
+        return None
+    except Exception as e:
+        logger.warning("Web Push: failed to get VAPID key: %s", e)
         return None
 
 

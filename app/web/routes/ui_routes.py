@@ -23,6 +23,7 @@ from util import (
     GENERIC_BIRD_SPECIES,
     _check_verify_password_rate_limit,
     _record_verify_password_failure,
+    notify_telegram_test,
 )
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
@@ -1128,6 +1129,22 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Update settings failed')
             return {"error": "Failed to save settings"}, 500
+
+    @app.route('/api/ui/notify/test', methods=['POST'])
+    def notify_test():
+        """Отправить тестовое уведомление в Telegram. Проверка: token, chat_id, enable_notifications."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        if not app_config.get('general.enable_notifications'):
+            return {'error': 'Notifications disabled'}, 400
+        token = (app_config.get('notifications.telegram_bot_token') or '').strip()
+        chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
+        if not token or not chat_id:
+            return {'error': 'Telegram bot token or chat_id not configured'}, 400
+        success, err = notify_telegram_test()
+        if success:
+            return {'message': 'Test notification sent'}, 200
+        return {'error': err or 'Failed'}, 500
 
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():

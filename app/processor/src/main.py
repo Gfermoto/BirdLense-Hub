@@ -512,7 +512,13 @@ def main():
                         try:
                             api.notify_species(sn, image_base64=image_base64)
                         except Exception as e:
-                            logging.warning("Notify species failed: %s", e)
+                            resp = getattr(e, 'response', None)
+                            hint = ''
+                            if resp is not None:
+                                if resp.status_code == 403:
+                                    hint = ' (check PROCESSOR_SECRET in app/.env)'
+                                hint = f' {resp.status_code}{hint}'
+                            logging.warning("Notify species failed%s: %s", hint, e)
             else:
                 # no detections, delete folder
                 shutil.rmtree(output_path_physical)

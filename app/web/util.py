@@ -581,6 +581,26 @@ def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
     )
 
 
+def notify_telegram_test(message="Test notification from BirdLense"):
+    """Отправить тестовое сообщение в Telegram. Возвращает (success, error_message)."""
+    if not app_config.get('general.enable_notifications'):
+        return False, 'Notifications disabled'
+    token = (app_config.get('notifications.telegram_bot_token') or '').strip()
+    chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
+    if not token or not chat_id:
+        return False, 'Telegram bot token or chat_id not configured'
+    text = f"🚀 {message}"
+    try:
+        r = _telegram_send_message(token, chat_id, text, link=None)
+        if r.ok:
+            return True, None
+        err = r.json() if r.text else {}
+        desc = err.get('description', r.text[:200] if r.text else str(r.status_code))
+        return False, desc
+    except requests.RequestException as e:
+        return False, str(e)
+
+
 def notify(message, link="live", tags=None, image_path=None, image_bytes=None, timestamp=None):
     """Send notification via Telegram and/or Web Push. Requires token+chat_id or Web Push subscribers.
 

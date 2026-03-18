@@ -168,6 +168,13 @@ web_push:
 webhook:
   url: ""  # например https://maker.ifttt.com/trigger/bird_detected/with/key/xxx
 
+# Публичная галерея: opt-in загрузка лучших кадров на общий сайт сообщества
+gallery:
+  enabled: false
+  upload_url: ""  # URL API галереи для приёма кадров (multipart/form-data)
+  min_confidence: 0.5
+  only_manually_corrected: false
+
 # UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
 ui:
   unknown_confidence_threshold: 0.5  # 0.0–1.0; детекции с confidence < порога попадают в «Неизвестные»
