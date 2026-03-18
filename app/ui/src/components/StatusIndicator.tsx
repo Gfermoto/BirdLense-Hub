@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
 const STATUS_KEYS: Record<string, Record<string, string>> = {
-  video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoUnknown' },
+  video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoError', not_configured: 'status.videoNotConfigured' },
   mqtt: { ok: 'status.mqttOk', unknown: 'status.mqttUnknown', not_used: 'status.mqttNotUsed', not_configured: 'status.mqttNotConfigured', error: 'status.mqttError', offline: 'status.mqttUnknown' },
   esphome: { ok: 'status.esphomeOk', not_used: 'status.esphomeNotUsed', not_configured: 'status.esphomeNotConfigured', unknown: 'status.esphomeUnknown', error: 'status.esphomeError', offline: 'status.esphomeUnknown' },
   yolo: { ok: 'status.yoloOk', unknown: 'status.yoloUnknown', offline: 'status.yoloUnknown', error: 'status.yoloUnknown' },
@@ -56,16 +56,24 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
-  const motion = data.motion_source || 'opencv';
+  const trigger = data.trigger_display ?? data.motion_source ?? 'opencv';
+  const motion = data.motion_source ?? 'opencv';
+  const hintKeys: Record<string, string> = {
+    frigate: 'status.motionHint_frigate',
+    opencv: 'status.motionHint_opencv',
+    mqtt: 'status.motionHint_mqtt',
+    esphome: 'status.motionHint_esphome',
+  };
+  const hint = t(hintKeys[motion] ?? hintKeys.opencv);
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
       <StatusDot status={data.video} component="video" icon={VideocamOutlined} t={t} />
       <StatusDot status={data.mqtt} component="mqtt" icon={CloudOutlined} t={t} />
       <StatusDot status={data.esphome ?? 'not_used'} component="esphome" icon={SmartToyOutlined} t={t} />
       <StatusDot status={data.yolo} component="yolo" icon={PsychologyOutlined} t={t} />
-      <Tooltip title={motion === 'frigate' ? t('status.motionFrigateHint') : t('status.motionOpencvHint')}>
+      <Tooltip title={hint}>
         <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-          {t('status.motion')}: {motion}
+          {t('status.motion')}: {trigger}
         </Box>
       </Tooltip>
     </Box>

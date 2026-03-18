@@ -63,6 +63,43 @@ paths:
                     type: number
                   wind_speed:
                     type: number
+  /sun-times:
+    get:
+      summary: Get sunrise/sunset times
+      description: |
+        Returns dawn, sunrise, noon, sunset, dusk for a given date at the configured location (lat/lon from settings). Times are in UTC (ISO format); frontend displays in local timezone.
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-03-17"
+          description: Date in YYYY-MM-DD format
+      responses:
+        "200":
+          description: Sun times (ISO UTC strings)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dawn:
+                    type: string
+                    format: date-time
+                  sunrise:
+                    type: string
+                    format: date-time
+                  noon:
+                    type: string
+                    format: date-time
+                  sunset:
+                    type: string
+                    format: date-time
+                  dusk:
+                    type: string
+                    format: date-time
   /videos/{video_id}:
     get:
       summary: Get video details

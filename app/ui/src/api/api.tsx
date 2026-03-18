@@ -81,6 +81,36 @@ export const fetchWeather = async () => {
   return response.data;
 };
 
+/** Sunrise, sunset, dawn, dusk for date at configured location. date: YYYY-MM-DD. Returns ISO strings (UTC). */
+export const fetchSunTimes = async (date: string): Promise<{
+  dawn?: string;
+  sunrise?: string;
+  noon?: string;
+  sunset?: string;
+  dusk?: string;
+} | null> => {
+  try {
+    const res = await axios.get(`${BASE_API_URL}/sun-times`, {
+      params: { date },
+    });
+    const d = res.data;
+    if (!d || typeof d !== 'object' || !('sunrise' in d)) return null;
+    return d;
+  } catch {
+    return null;
+  }
+};
+
+/** Format ISO UTC string to local HH:MM */
+export const formatSunTimeLocal = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '--:--';
+  }
+};
+
 /** Region comparison with eBird. Returns null if API key not configured or error. */
 export const fetchRegionComparison = async (): Promise<{
   regionCode: string;
@@ -253,6 +283,8 @@ export const fetchStatus = async (): Promise<{
   mqtt: string;
   esphome?: string;
   yolo: string;
+  motion_source?: string;
+  trigger_display?: string;
   birdnet_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);

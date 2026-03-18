@@ -84,6 +84,13 @@ class MQTTBinaryMotionDetector:
         self._thread.start()
         time.sleep(1)
 
+    def check_pending(self):
+        """Non-blocking: True if motion (ON) received (for OR with Frigate)."""
+        if self._event.is_set():
+            self._event.clear()
+            return True
+        return False
+
     def detect(self):
         """Block until motion (ON) received. Returns True."""
         if not self._client or not self._connected:

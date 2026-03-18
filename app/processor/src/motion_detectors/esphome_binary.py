@@ -35,13 +35,19 @@ class ESPHomeBinaryMotionDetector:
             logger.debug("ESPHome binary sensor poll failed: %s", e)
             return False
 
+    def check(self):
+        """One poll: returns True if motion (sensor ON) and cooldown passed (for OR with Frigate)."""
+        if self._get_state():
+            now = time.time()
+            if now - self._last_trigger >= self._cooldown:
+                self._last_trigger = now
+                logger.info("ESPHome binary sensor: motion ON")
+                return True
+        return False
+
     def detect(self):
         """Block until motion (sensor ON). Returns True when detected."""
         while True:
-            if self._get_state():
-                now = time.time()
-                if now - self._last_trigger >= self._cooldown:
-                    self._last_trigger = now
-                    logger.info("ESPHome binary sensor: motion ON")
-                    return True
+            if self.check():
+                return True
             time.sleep(self.poll_interval)

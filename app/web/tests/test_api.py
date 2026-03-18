@@ -160,7 +160,7 @@ class TestStatus:
         data = r.json
         assert data['web'] == 'ok'
         assert data['processor'] in ('ok', 'offline')
-        assert data['video'] in ('ok', 'unknown')
+        assert data['video'] in ('ok', 'unknown', 'error', 'not_configured')
         assert data['mqtt'] in ('ok', 'error', 'not_configured', 'not_used', 'unknown')
         assert data['esphome'] in ('ok', 'error', 'not_configured', 'not_used')
         assert data['yolo'] in ('ok', 'unknown')
