@@ -2,11 +2,11 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispenseFeed, fetchFeedInfo } from '../api/api';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
@@ -57,46 +57,67 @@ export const FeedCard = () => {
 
   const lastDispenseStr = formatLastDispense(feedInfo?.last_dispense_at ?? null);
   const donateUrl = feedInfo?.donate_url;
+  const feedEnabled = feedInfo?.feed_source !== 'none';
 
   return (
     <Paper sx={{ padding: 2, height: '100%' }}>
       <Stack spacing={2}>
-        <Typography variant="h6">{t('feed.feederControl')}</Typography>
-        {!isAdmin && (
-          <Typography variant="body2" color="text.secondary">
-            {t('feed.adminOnly')}
-          </Typography>
-        )}
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<RestaurantIcon />}
-          onClick={handleDispense}
-          disabled={loading || !isAdmin}
-        >
-          {loading ? t('feed.dispensing') : t('feed.dispenseFeed')}
-        </Button>
-        {lastDispenseStr && (
-          <Typography variant="caption" color="text.secondary">
-            {t('feed.lastDispense')}: {lastDispenseStr}
-          </Typography>
-        )}
-        {message && (
-          <Typography variant="body2" color={message.success ? 'success.main' : 'error.main'}>
-            {message.text}
-          </Typography>
+        <Typography variant="h6">
+          {feedEnabled ? t('feed.feederControl') : t('feed.supportTitle')}
+        </Typography>
+        {feedEnabled && (
+          <>
+            {!isAdmin && (
+              <Typography variant="body2" color="text.secondary">
+                {t('feed.adminOnly')}
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<RestaurantIcon />}
+              onClick={handleDispense}
+              disabled={loading || !isAdmin}
+            >
+              {loading ? t('feed.dispensing') : t('feed.dispenseFeed')}
+            </Button>
+            {lastDispenseStr && (
+              <Typography variant="caption" color="text.secondary">
+                {t('feed.lastDispense')}: {lastDispenseStr}
+              </Typography>
+            )}
+            {message && (
+              <Typography variant="body2" color={message.success ? 'success.main' : 'error.main'}>
+                {message.text}
+              </Typography>
+            )}
+          </>
         )}
         <Button
           size="small"
           variant="outlined"
-          startIcon={<FavoriteBorderIcon />}
+          startIcon={
+            <Box
+              component="span"
+              sx={{
+                display: 'inline-flex',
+                animation: 'feedHeartPulse 1.5s ease-in-out infinite',
+                '@keyframes feedHeartPulse': {
+                  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                  '50%': { opacity: 0.85, transform: 'scale(1.1)' },
+                },
+              }}
+            >
+              <FavoriteIcon sx={{ color: 'rgba(251, 191, 36, 0.95)', fontSize: 20 }} />
+            </Box>
+          }
           href={donateUrl || undefined}
           target={donateUrl ? '_blank' : undefined}
           rel={donateUrl ? 'noopener noreferrer' : undefined}
           disabled={!donateUrl}
-          title={!donateUrl ? t('feed.donatePlaceholder') : undefined}
+          title={!donateUrl ? t('feed.supportPlaceholder') : undefined}
         >
-          {donateUrl ? t('feed.donate') : t('feed.donatePlaceholder')}
+          {donateUrl ? t('feed.support') : t('feed.supportPlaceholder')}
         </Button>
       </Stack>
     </Paper>
