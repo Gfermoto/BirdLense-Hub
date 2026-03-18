@@ -60,13 +60,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
     detections.forEach((species) => {
       const startPercentage = Math.min(
-        (species.start_time / duration) * 100,
+        Math.max(0, species.start_time / duration) * 100,
         100,
       );
-      const endPercentage = Math.min((species.end_time / duration) * 100, 100);
-      const width = Math.min(
-        endPercentage - startPercentage,
-        100 - startPercentage,
+      const endPercentage = Math.min(
+        Math.max(0, species.end_time / duration) * 100,
+        100,
+      );
+      const width = Math.max(
+        0,
+        Math.min(endPercentage - startPercentage, 100 - startPercentage),
       );
 
       let layerIndex = layers.findIndex(

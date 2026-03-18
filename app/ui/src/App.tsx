@@ -11,6 +11,7 @@ import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
+import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
@@ -168,6 +169,7 @@ function App() {
             </Box>
             <Footer />
             <InstallPrompt />
+            <PwaUpdatePrompt />
           </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>

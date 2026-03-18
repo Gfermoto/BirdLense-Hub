@@ -75,8 +75,20 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         exclude_bird,
     ).first()
 
-    # Source duration: сумма длительностей детекций (включая Bird — иначе 0 при только generic).
-    # case — защита от end<start. Без exclude_bird — считаем все детекции.
+    # Recording time: сумма длительностей видеофайлов за день (Video.start_time в диапазоне).
+    # Это «время записей» — сколько всего записали камерой.
+    video_dur_expr = (
+        func.strftime('%s', Video.end_time) - func.strftime('%s', Video.start_time)
+    )
+    recording_sec = session.query(
+        func.sum(video_dur_expr).label('total'),
+    ).filter(
+        Video.start_time >= start_of_day,
+        Video.start_time <= end_of_day,
+    ).scalar() or 0
+
+    # Detection time: сумма длительностей детекций (VideoSpecies) — сколько птиц было видно.
+    # case — защита от end<start.
     dur_expr = case(
         (VideoSpecies.end_time >= VideoSpecies.start_time,
          VideoSpecies.end_time - VideoSpecies.start_time),
@@ -108,7 +120,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         'lastHourDetections': stats_q.lastHourDetections or 0,
         'busiestHour': int(busiest.hour) if busiest else 0,
         'avgVisitDuration': round(stats_q.avgVisitDuration or 0),
-        'videoDuration': round(dur_q.video_duration or 0),
+        'videoDuration': round(recording_sec),  # время записей: сумма длительностей видеофайлов
         'audioDuration': round(dur_q.audio_duration or 0),
         'detectionByProvider': {(p or 'legacy'): int(c) for p, c in prov_q},
     }

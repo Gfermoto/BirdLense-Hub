@@ -79,11 +79,18 @@ def get_region_top_species(api_key: str, region_code: str) -> list[str]:
     return [name for name, _ in counter.most_common(TOP_N)]
 
 
+def _ebird_to_birdlense(name: str) -> str:
+    """Map eBird common name to BirdLense canonical (Gray->Grey, etc.)."""
+    mapping = app_config.get('ebird.species_mapping') or {}
+    return mapping.get(name, name)
+
+
 def get_region_comparison(user_species_names: list[str]) -> dict | None:
     """Compare user's species with region top.
 
     Returns dict with regionCode, userCount, regionTopCount, matchCount,
     matchedSpecies, regionTop. Or None if API key missing or error.
+    Uses ebird.species_mapping to align eBird names (Gray) with BirdLense (Grey).
     """
     api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
     if not api_key:
@@ -109,7 +116,9 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
             'regionTop': [],
         }
 
-    region_set = {n.lower() for n in region_top}
+    # eBird names -> BirdLense canonical для сопоставления
+    region_mapped = [_ebird_to_birdlense(n) for n in region_top]
+    region_set = {n.lower() for n in region_mapped}
     matched = [n for n in user_common if n.lower() in region_set]
 
     return {
@@ -118,5 +127,5 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
         'regionTopCount': len(region_top),
         'matchCount': len(matched),
         'matchedSpecies': matched,
-        'regionTop': region_top,
+        'regionTop': region_mapped,  # показываем BirdLense-имена
     }

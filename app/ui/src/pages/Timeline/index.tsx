@@ -260,9 +260,9 @@ export function TimelinePage() {
         </Menu>
       </Box>
 
-      <TimelineStats visits={filteredVisits as SpeciesVisit[]} />
+      <TimelineStats visits={filteredVisits ?? []} />
       <Divider sx={{ marginBottom: 4 }} />
-      <Timeline visits={filteredVisits as SpeciesVisit[]} />
+      <Timeline visits={filteredVisits ?? []} />
     </>
   );
 }

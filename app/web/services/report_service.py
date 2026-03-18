@@ -290,30 +290,41 @@ def get_monthly_report_data(session, start_dt, end_dt):
         .first()
     )
 
+    # Recording time: сумма длительностей видеофайлов за период (как в Overview)
+    video_dur_expr = (
+        func.strftime('%s', Video.end_time) - func.strftime('%s', Video.start_time)
+    )
+    recording_sec = (
+        session.query(func.sum(video_dur_expr).label('total'))
+        .filter(
+            Video.start_time >= start_dt,
+            Video.start_time <= end_dt,
+        )
+        .scalar()
+    ) or 0
+
+    # Audio detection time (VideoSpecies)
     dur_expr = case(
         (VideoSpecies.end_time >= VideoSpecies.start_time,
          VideoSpecies.end_time - VideoSpecies.start_time),
         else_=0
     )
-    source_duration = (
-        session.query(
-            func.sum(case((VideoSpecies.source == 'video', dur_expr), else_=0)).label('video_duration'),
-            func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)).label('audio_duration'),
-        )
+    audio_duration = (
+        session.query(func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)))
         .join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id)
         .filter(
             SpeciesVisit.start_time >= start_dt,
             SpeciesVisit.start_time <= end_dt,
         )
-        .first()
-    )
+        .scalar()
+    ) or 0
 
     stats = {
         'uniqueSpecies': stats_row.uniqueSpecies or 0,
         'totalDetections': stats_row.totalDetections or 0,
         'avgVisitDuration': round(stats_row.avgVisitDuration or 0),
-        'videoDuration': round(source_duration.video_duration or 0),
-        'audioDuration': round(source_duration.audio_duration or 0),
+        'videoDuration': round(recording_sec),
+        'audioDuration': round(audio_duration),
     }
 
     return top_species, stats
