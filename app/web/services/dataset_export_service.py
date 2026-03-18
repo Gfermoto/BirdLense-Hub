@@ -9,6 +9,9 @@ import shutil
 import struct
 import zipfile
 from datetime import datetime, timezone
+
+from util import data_dir
+
 logger = logging.getLogger(__name__)
 
 # Full-frame heuristic: bird crops typically < 0.5 MP and aspect ratio not 16:9/4:3
@@ -73,15 +76,6 @@ def _sanitize_dirname(name: str) -> str:
     return s or 'unknown'
 
 
-def _data_dir() -> str:
-    """
-    Resolve DATA_DIR for dataset path.
-    """
-    return os.environ.get('DATA_DIR') or os.path.join(
-        os.path.dirname(__file__), '..', '..', 'data'
-    )
-
-
 def _video_ids_in_period(start_date: str | None, end_date: str | None) -> set[int] | None:
     """Return set of video_ids in period, or None if no filter."""
     if not start_date and not end_date:
@@ -129,8 +123,8 @@ def build_dataset_zip(
     only_manually_corrected: только кропы вручную исправленных детекций (правильные виды).
     Returns (zip_bytes, error_message). On success error_message is None.
     """
-    data_dir = _data_dir()
-    dataset_base = os.path.join(data_dir, 'dataset')
+    base = data_dir()
+    dataset_base = os.path.join(base, 'dataset')
     if not os.path.isdir(dataset_base):
         return None, (
             'Dataset folder not found. '
@@ -223,10 +217,10 @@ def move_crop_on_species_correction(
     When user corrects species in UI, move the crop file to the new class dir.
     Returns True if a file was moved.
     """
-    data_dir = _data_dir()
-    base = os.path.join(data_dir, 'dataset', 'train')
-    old_dir = os.path.join(base, _sanitize_dirname(old_species_name))
-    new_dir = os.path.join(base, _sanitize_dirname(new_species_name))
+    base = data_dir()
+    train_base = os.path.join(base, 'dataset', 'train')
+    old_dir = os.path.join(train_base, _sanitize_dirname(old_species_name))
+    new_dir = os.path.join(train_base, _sanitize_dirname(new_species_name))
     if not os.path.isdir(old_dir):
         return False
     # Match: video_id_track_id_*.jpg or video_id_*_*.jpg
@@ -278,10 +272,10 @@ def extract_and_save_crop_for_detection(vs, species_name: str, require_bbox: boo
     jpeg_bytes = extract_detection_frame_cropped(video.video_path, offset, bbox)
     if not jpeg_bytes:
         return False
-    data_dir = _data_dir()
-    base = os.path.join(data_dir, 'dataset', 'train')
+    base = data_dir()
+    train_base = os.path.join(base, 'dataset', 'train')
     dirname = _sanitize_dirname(species_name)
-    out_dir = os.path.join(base, dirname)
+    out_dir = os.path.join(train_base, dirname)
     os.makedirs(out_dir, exist_ok=True)
     track_id = vs.track_id if vs.track_id is not None else 0
     filename = f"{vs.video_id}_{track_id}_{vs.id}.jpg"
@@ -308,8 +302,8 @@ def clean_dataset(
     dry_run: только подсчёт, не удалять.
     Returns {deleted_fullframe, deleted_orphaned, errors, dry_run}.
     """
-    data_dir = _data_dir()
-    train_dir = os.path.join(data_dir, 'dataset', 'train')
+    base = data_dir()
+    train_dir = os.path.join(base, 'dataset', 'train')
     if not os.path.isdir(train_dir):
         return {'deleted_fullframe': 0, 'deleted_orphaned': 0, 'errors': [], 'dry_run': dry_run}
 
@@ -377,8 +371,8 @@ def _delete_dataset_crops_for_video_ids(video_ids: set[int]) -> int:
     Формат имени: video_id_track_id_*.jpg
     Returns count of deleted files.
     """
-    data_dir = _data_dir()
-    train_dir = os.path.join(data_dir, 'dataset', 'train')
+    base = data_dir()
+    train_dir = os.path.join(base, 'dataset', 'train')
     if not os.path.isdir(train_dir):
         return 0
     deleted = 0
@@ -467,10 +461,10 @@ def retro_export_all_video_detections(
         if not _bbox_for_offset(getattr(vs, 'frames', None), mid):
             skipped_no_bbox += 1
             continue
-        data_dir = _data_dir()
-        base = os.path.join(data_dir, 'dataset', 'train')
+        base = data_dir()
+        train_base = os.path.join(base, 'dataset', 'train')
         dirname = _sanitize_dirname(vs.species.name)
-        out_dir = os.path.join(base, dirname)
+        out_dir = os.path.join(train_base, dirname)
         track_id = vs.track_id if vs.track_id is not None else 0
         filename = f"{vs.video_id}_{track_id}_{vs.id}.jpg"
         out_path = os.path.join(out_dir, filename)

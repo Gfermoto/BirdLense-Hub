@@ -6,6 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { VideoSpecies } from '../../../types';
 import { labelToUniqueHexColor } from '../../../util';
+import { formatTimeMmSs } from '../../../utils/timeUtils';
 
 const providerToKey: Record<string, string> = {
   yolo: 'detectionProviderYolo',
@@ -29,12 +30,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const progressBarRef = useRef<HTMLDivElement | null>(null);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-  };
 
   const handleProgressBarSeek = useCallback(
     (event: React.MouseEvent) => {
@@ -137,9 +132,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                 slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
                 title={
                   <>
-                    {detection.species.species_name} ({formatTime(
+                    {detection.species.species_name} ({formatTimeMmSs(
                       detection.species.start_time,
-                    )} – {formatTime(detection.species.end_time)})
+                    )} – {formatTimeMmSs(detection.species.end_time)})
                     {detection.species.detection_provider && (
                       <>
                         <br />
@@ -189,8 +184,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           fontSize: '0.8rem',
         }}
       >
-        <Typography>{formatTime(progress)}</Typography>
-        <Typography>{formatTime(duration)}</Typography>
+        <Typography>{formatTimeMmSs(progress)}</Typography>
+        <Typography>{formatTimeMmSs(duration)}</Typography>
       </Box>
     </Box>
   );

@@ -11,6 +11,8 @@ import requests
 
 from app_config.app_config import app_config
 
+from util import data_dir
+
 logger = logging.getLogger(__name__)
 
 _FEED_LAST_FILE = 'feed_last_dispense.json'
@@ -18,10 +20,7 @@ _FEED_LAST_FILE = 'feed_last_dispense.json'
 
 def _feed_data_path():
     """Path to feed state file in DATA_DIR."""
-    data_dir = os.environ.get('DATA_DIR') or os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), '..', 'data'
-    )
-    return Path(data_dir) / _FEED_LAST_FILE
+    return Path(data_dir()) / _FEED_LAST_FILE
 
 
 def _save_last_dispense():

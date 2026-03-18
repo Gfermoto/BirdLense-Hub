@@ -43,6 +43,11 @@ def _data_dir() -> str:
     )
 
 
+def data_dir() -> str:
+    """Public access to base data directory. Use for dataset, retention, etc."""
+    return _data_dir()
+
+
 def _is_safe_image_path(path: str) -> bool:
     """Путь под DATA_DIR, файл существует. Защита от path traversal."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
@@ -122,22 +127,15 @@ def format_visit_for_timeline(visit) -> dict:
 
 def recordings_dir():
     """Path to data/recordings directory."""
-    base = os.environ.get(
-        'DATA_DIR',
-        os.path.join(os.path.dirname(__file__), '..', 'data')
-    )
-    return os.path.join(base, 'recordings')
+    return os.path.join(_data_dir(), 'recordings')
 
 
 def full_path_for_video(video_path: str) -> str | None:
     """Полный путь по video_path из БД (data/recordings/YYYY/MM/DD/...)."""
     if not video_path:
         return None
-    data_dir = os.environ.get(
-        'DATA_DIR',
-        os.path.join(os.path.dirname(__file__), '..', 'data')
-    )
-    app_base = os.path.dirname(data_dir)
+    base = _data_dir()
+    app_base = os.path.dirname(base)
     return os.path.normpath(os.path.join(app_base, video_path))
 
 
@@ -657,6 +655,16 @@ def notify_telegram_test(message="Test notification from BirdLense"):
         return False, desc
     except requests.RequestException as e:
         return False, str(e)
+
+
+def notify_app_startup(app=None):
+    """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×)."""
+    if app and app.config.get('TESTING'):
+        return
+    try:
+        notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+    except Exception as e:
+        logging.warning("notify_app_startup failed: %s", e)
 
 
 def notify(message, link="live", tags=None, image_path=None, image_bytes=None, timestamp=None):
