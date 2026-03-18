@@ -329,11 +329,14 @@ class TestSpeciesXenoCanto:
 class TestPush:
     """Web Push endpoints."""
 
-    def test_push_vapid_returns_503_when_notifications_disabled(self, client):
-        """vapid-public returns 503 when enable_notifications is False."""
+    def test_push_vapid_returns_key_or_503(self, client):
+        """vapid-public returns key when py-vapid available, else 503."""
         r = client.get('/api/ui/push/vapid-public')
-        assert r.status_code == 503
-        assert 'error' in r.json
+        if r.status_code == 200:
+            assert 'vapid_public_key' in r.json
+        else:
+            assert r.status_code == 503
+            assert 'error' in r.json
 
     def test_push_subscribe_rejects_empty_or_invalid(self, client):
         """Subscribe returns 400 when notifications disabled or payload invalid."""

@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from models import ActivityLog, db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
+from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 import requests
 
@@ -98,6 +99,14 @@ def register_routes(app):
                 threading.Thread(
                     target=_fire_webhook,
                     args=(webhook_url, species_list, start_time, app.logger),
+                    daemon=True,
+                ).start()
+
+            # Публичная галерея: opt-in загрузка кадров
+            if app_config.get('gallery.enabled') and (app_config.get('gallery.upload_url') or '').strip():
+                threading.Thread(
+                    target=upload_video_detections_to_gallery,
+                    args=(video.id,),
                     daemon=True,
                 ).start()
 

@@ -264,6 +264,17 @@ curl -s http://IP:8085/api/ui/status
 
 Если всё зелёное — можно оставлять на ночь.
 
+### 7. Telegram: детекции не приходят, перезагрузка — приходит
+
+**Причина:** Сообщение «App is UP!» отправляет web при старте. Детекции отправляет **processor** через POST `/api/processor/notify/detections`. Если processor не доходит до API или получает 403 — уведомления не уйдут.
+
+**Проверки:**
+
+1. **Тест Telegram** — Настройки → Уведомления → «Тест Telegram». Если приходит — token, chat_id, enable_notifications в порядке. Проблема в цепочке processor → API.
+2. **PROCESSOR_SECRET** — в логах процессора: `Notify species failed 403 (check PROCESSOR_SECRET in app/.env)`. На сервере: `cat app/.env | grep PROCESSOR_SECRET` — должно быть hex-значение.
+3. **Детекции есть?** — В логах: `Processing stopped. Video Result: [...]` — если пусто, YOLO/MQTT не нашли птиц. Уведомления шлются только при `video_detections > 0`.
+4. **Исключения** — `general.notification_excluded_species` — виды из списка не уходят в Telegram.
+
 ---
 
 См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md), [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md).

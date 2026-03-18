@@ -391,7 +391,9 @@ export const updateSettings = async (settings: Settings) => {
 
 /** Web Push: get VAPID public key for subscription. */
 export const fetchVapidPublicKey = async (): Promise<string> => {
-  const res = await fetch(`${BASE_API_URL}/push/vapid-public`);
+  const res = await fetch(`${BASE_API_URL}/push/vapid-public`, {
+    credentials: 'include',
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Web Push not available');
@@ -419,6 +421,24 @@ export const subscribePush = async (subscription: globalThis.PushSubscription): 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Subscribe failed');
+  }
+};
+
+export const sendTestNotification = async (): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await axios.post(`${BASE_API_URL}/notify/test`, {}, {
+      withCredentials: true,
+    });
+    return {
+      success: true,
+      message: response.data?.message || 'Sent',
+    };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      success: false,
+      message: err.response?.data?.error || 'Failed',
+    };
   }
 };
 

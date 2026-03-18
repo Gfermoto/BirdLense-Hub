@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import { Settings } from '../../types';
-import { fetchCoordinatesByZip, fetchVapidPublicKey, subscribePush } from '../../api/api';
+import { fetchCoordinatesByZip, fetchVapidPublicKey, subscribePush, updateSettings, sendTestNotification } from '../../api/api';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -62,6 +62,9 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
         setStatus('error');
         return;
       }
+      // Сохраняем enable_notifications на сервере до запроса ключа,
+      // иначе vapid-public/subscribe могут вернуть «not available» / «Notifications disabled»
+      await updateSettings({ general: { enable_notifications: true } });
       const reg = await navigator.serviceWorker.ready;
       const vapidKey = await fetchVapidPublicKey();
       const sub = await reg.pushManager.subscribe({
@@ -71,7 +74,9 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
       await subscribePush(sub);
       setStatus('subscribed');
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : 'Failed');
+      const err = e as { message?: string; response?: { data?: { error?: string } } };
+      const msg = err.response?.data?.error || (err instanceof Error ? err.message : 'Failed');
+      setErrorMsg(msg);
       setStatus('error');
     }
   };
@@ -102,6 +107,39 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
       {errorMsg && (
         <Typography variant="body2" color="error" sx={{ mt: 1 }}>
           {errorMsg}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+function TestTelegramButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [msg, setMsg] = useState<string>('');
+
+  const handleTest = async () => {
+    if (!notificationsEnabled) return;
+    setStatus('loading');
+    setMsg('');
+    const result = await sendTestNotification();
+    setStatus(result.success ? 'success' : 'error');
+    setMsg(result.message || '');
+  };
+
+  return (
+    <Box>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={handleTest}
+        disabled={!notificationsEnabled || status === 'loading'}
+      >
+        {status === 'loading' ? '...' : t('settings.testTelegram')}
+      </Button>
+      {msg && (
+        <Typography variant="body2" color={status === 'success' ? 'text.secondary' : 'error'} sx={{ mt: 0.5, ml: 1, display: 'inline' }}>
+          {msg}
         </Typography>
       )}
     </Box>
@@ -708,6 +746,9 @@ export const SettingsForm = ({
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
+                <TestTelegramButton notificationsEnabled={!!notificationsEnabled} />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
                 <form.Field name="notifications.base_url">
                   {(field) => (
                     <TextField
@@ -947,6 +988,76 @@ export const SettingsForm = ({
             )}
           </form.Field>
         </Grid>
+        <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>{t('settings.galleryTitle')}</Typography>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="gallery.enabled">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.state.value ?? false}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.galleryEnabled')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <form.Subscribe selector={(state) => state.values.gallery?.enabled}>
+          {(enabled) => (
+            <>
+              {enabled && (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <form.Field name="gallery.upload_url">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.galleryUploadUrl')}
+                          helperText={t('settings.galleryUploadUrlHint')}
+                          placeholder="https://gallery.example.com/api/upload"
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <form.Field name="gallery.min_confidence">
+                      {(field) => (
+                        <TextField
+                          fullWidth
+                          type="number"
+                          inputProps={{ min: 0, max: 1, step: 0.05 }}
+                          value={field.state.value ?? 0.5}
+                          onChange={(e) => field.handleChange(parseFloat(e.target.value) || 0.5)}
+                          label={t('settings.galleryMinConfidence')}
+                          helperText={t('settings.galleryMinConfidenceHint')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <form.Field name="gallery.only_manually_corrected">
+                      {(field) => (
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={field.state.value ?? false}
+                              onChange={(e) => field.handleChange(e.target.checked)}
+                            />
+                          }
+                          label={t('settings.galleryOnlyCorrected')}
+                        />
+                      )}
+                    </form.Field>
+                  </Grid>
+                </>
+              )}
+            </>
+          )}
+        </form.Subscribe>
         <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
           {(notificationsEnabled) => (
             <Grid size={{ xs: 12 }}>
