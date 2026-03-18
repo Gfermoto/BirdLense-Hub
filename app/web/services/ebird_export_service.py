@@ -9,28 +9,11 @@
 """
 import csv
 import io
-import re
 from datetime import datetime, timezone
+
 from app_config.app_config import app_config
 
-
-_REGION_NAME_TO_CODE = {
-    "moscow oblast": "MOS",
-    "moscow": "MO",
-    "московская область": "MOS",
-    "москва": "MO",
-}
-
-
-def _common_name_from_species(name: str) -> str:
-    """Extract common name from 'Scientific (Common)' or return as-is."""
-    if not name or not isinstance(name, str):
-        return ""
-    name = name.strip()
-    match = re.search(r"\(([^)]+)\)\s*$", name)
-    if match:
-        return match.group(1).strip()
-    return name
+from services.ebird_util import REGION_NAME_TO_CODE, common_name_from_species
 
 
 def build_ebird_csv(
@@ -41,7 +24,7 @@ def build_ebird_csv(
     """Build CSV in eBird Record Format. Порядок колонок — по официальному шаблону."""
     country = (app_config.get("ebird.country") or "").strip().upper() or "US"
     state_raw = (app_config.get("ebird.state") or "").strip()
-    state = _REGION_NAME_TO_CODE.get(state_raw.lower()) or (state_raw.upper()[:3] if state_raw else "")
+    state = REGION_NAME_TO_CODE.get(state_raw.lower()) or (state_raw.upper()[:3] if state_raw else "")
     location = (app_config.get("ebird.location_name") or "").strip() or "BirdLense Feeder"
     lat = app_config.get("secrets.latitude") or ""
     lon = app_config.get("secrets.longitude") or ""
@@ -63,7 +46,7 @@ def build_ebird_csv(
     w = csv.writer(output, lineterminator="\n")
 
     for r in rows:
-        common_name = _common_name_from_species(r.get("species_name", ""))
+        common_name = common_name_from_species(r.get("species_name", ""))
         if not common_name:
             continue
         w.writerow([

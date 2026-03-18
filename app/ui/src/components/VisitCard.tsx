@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { downloadDetectionCropForINaturalist } from '../api/api';
+import { formatDuration } from '../utils/timeUtils';
 
 const DetectionItem = ({
   detection,
@@ -103,7 +104,7 @@ const DetectionItem = ({
                   new Date(detection.start_time).getTime()) /
                   1000,
               );
-              return sec >= 0 ? `${sec}s` : '—';
+              return sec >= 0 ? formatDuration(sec) : '—';
             })()}
           </Typography>
           {detection.source === 'video' && detection.id && (
@@ -249,7 +250,7 @@ export const VisitCard = memo(function VisitCard({
                       <VideoCall sx={{ fontSize: 18 }} />
                     </Box>
                   }
-                  label={`${visit.total_recording_seconds}s`}
+                  label={formatDuration(visit.total_recording_seconds)}
                   size="small"
                   sx={{ height: 28 }}
                   title={t('visitCard.recordingTime')}

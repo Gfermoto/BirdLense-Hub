@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
 from util import (
+    data_dir,
     fetch_weather,
     fetch_sun_times,
     update_species_info_from_wiki,
@@ -1151,10 +1152,7 @@ def register_routes(app):
         """Create flag file; processor will exit and docker restarts it."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        import os
-        data_dir = os.environ.get('DATA_DIR') or os.path.join(
-            os.path.dirname(__file__), '..', '..', 'data')
-        flag_path = os.path.join(data_dir, 'restart_processor.flag')
+        flag_path = os.path.join(data_dir(), 'restart_processor.flag')
         try:
             os.makedirs(os.path.dirname(flag_path), exist_ok=True)
             with open(flag_path, 'w') as f:

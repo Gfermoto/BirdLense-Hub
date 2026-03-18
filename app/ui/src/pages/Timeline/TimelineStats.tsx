@@ -6,12 +6,7 @@ import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import { BirdIcon } from '../../components/icons/BirdIcon';
 import { SpeciesVisit } from '../../types';
 import { StatCard } from '../../components/StatCard';
-
-const formatDuration = (seconds: number) => {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-  return `${(seconds / 3600).toFixed(1)}h`;
-};
+import { formatDuration } from '../../utils/timeUtils';
 
 export const TimelineStats = memo(function TimelineStats({ visits }: { visits: SpeciesVisit[] }) {
   const { t } = useTranslation();

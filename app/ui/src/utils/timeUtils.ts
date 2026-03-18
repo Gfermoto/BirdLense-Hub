@@ -2,6 +2,21 @@ import type { Dayjs } from 'dayjs';
 
 export type TimeOfDay = 'all' | 'night' | 'morning' | 'day' | 'afternoon' | 'evening';
 
+/** Форматирует секунды в короткий вид: 45s, 5m, 1.5h */
+export function formatDuration(seconds: number): string {
+  if (seconds < 0 || !Number.isFinite(seconds)) return '—';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${(seconds / 3600).toFixed(1)}h`;
+}
+
+/** Форматирует секунды как mm:ss для таймлайна видео */
+export function formatTimeMmSs(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 export const TIME_RANGES: Record<Exclude<TimeOfDay, 'all'>, [number, number]> = {
   night: [22, 6],    // 22–06 (через полночь)
   morning: [6, 10],  // 6–10

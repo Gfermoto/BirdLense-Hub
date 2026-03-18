@@ -1,11 +1,12 @@
 """eBird API: regional species for comparison with user's feeder."""
 import logging
-import re
 from collections import Counter
 
 import httpx
 
 from app_config.app_config import app_config
+
+from services.ebird_util import REGION_NAME_TO_CODE, common_name_from_species
 
 logger = logging.getLogger(__name__)
 
@@ -13,26 +14,6 @@ EBIRD_API_BASE = 'https://api.ebird.org/v2'
 TOP_N = 20
 BACK_DAYS = 30
 MAX_OBSERVATIONS = 5000
-
-
-def _common_name_from_species(name: str) -> str:
-    """Extract common name from 'Scientific (Common)' or return as-is."""
-    if not name or not isinstance(name, str):
-        return ''
-    name = name.strip()
-    match = re.search(r'\(([^)]+)\)\s*$', name)
-    if match:
-        return match.group(1).strip()
-    return name
-
-
-# Маппинг полных названий регионов на коды eBird
-_REGION_NAME_TO_CODE = {
-    "moscow oblast": "MOS",
-    "moscow": "MO",
-    "московская область": "MOS",
-    "москва": "MO",
-}
 
 
 def _build_region_code() -> str:
@@ -43,7 +24,7 @@ def _build_region_code() -> str:
         return country
     # Поддержка полных названий: "Moscow Oblast" -> MOS
     state_lower = state_raw.lower().strip()
-    state = _REGION_NAME_TO_CODE.get(state_lower) or state_raw.upper()[:3]
+    state = REGION_NAME_TO_CODE.get(state_lower) or state_raw.upper()[:3]
     return f"{country}-{state}"
 
 
@@ -97,7 +78,7 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
         return None
 
     region_code = _build_region_code()
-    user_common = [_common_name_from_species(n) for n in user_species_names if n]
+    user_common = [common_name_from_species(n) for n in user_species_names if n]
     user_common = [n for n in user_common if n and n != 'Bird']
     user_set = {n.lower() for n in user_common}
 

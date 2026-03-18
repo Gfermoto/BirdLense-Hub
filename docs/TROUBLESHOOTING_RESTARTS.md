@@ -7,7 +7,7 @@
 2. **gunicorn** (1 worker) — Flask API
 3. **processor** (`main.py`) — **foreground-процесс**
 
-Когда processor завершается (crash, exit) — **контейнер падает** и Docker перезапускает его. При каждом старте gunicorn вызывает `notify("App is UP!")`.
+Когда processor завершается (crash, exit) — **контейнер падает** и Docker перезапускает его. При каждом старте gunicorn вызывает `notify_app_startup()`.
 
 ---
 
