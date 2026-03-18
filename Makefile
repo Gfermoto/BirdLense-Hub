@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs
+.PHONY: deploy build start stop logs restore-config docs diagnose
 
 deploy:
 	@./scripts/deploy.sh
@@ -12,3 +12,7 @@ build start stop logs:
 
 docs:
 	@$(MAKE) -C app docs
+
+# Диагностика перезапусков на сервере (ssh birdlense)
+diagnose:
+	@./scripts/diagnose.sh
