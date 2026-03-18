@@ -47,6 +47,9 @@ def _setup_logging():
 
 _setup_logging()
 
+# Состояние для честной проверки Video/YOLO в статусе (обновляется в main loop)
+_processor_status = {'last_video_ok_at': None, 'last_yolo_ok_at': None}
+
 
 def get_output_path():
     data_dir = os.environ.get('DATA_DIR', 'data')
@@ -74,14 +77,19 @@ def _check_restart_flag():
 
 
 def heartbeat():
-    """Отправляет heartbeat в API каждые 60 сек. При ошибке — логирует и повторяет (не падает)."""
+    """Отправляет heartbeat в API каждые 60 сек. Включает last_video_ok_at, last_yolo_ok_at для честной проверки."""
     id = None
     api = None
     while True:
         try:
             if api is None:
                 api = API()
-            id = api.activity_log(type='heartbeat', data={"status": "up"}, id=id)
+            data = {"status": "up"}
+            if _processor_status.get('last_video_ok_at'):
+                data['last_video_ok_at'] = _processor_status['last_video_ok_at']
+            if _processor_status.get('last_yolo_ok_at'):
+                data['last_yolo_ok_at'] = _processor_status['last_yolo_ok_at']
+            id = api.activity_log(type='heartbeat', data=data, id=id)
         except Exception as e:
             logging.error("Heartbeat failed: %s (will retry in 60s)", e)
         _check_restart_flag()
@@ -173,11 +181,8 @@ def main():
         or app_config.get('mqtt.frigate_label_exclude')
         or ['cat', 'dog']
     )
-    use_frigate_from_aggregator = (
-        app_config.get('motion.source') in ('frigate', 'mqtt')
-        and mqtt_broker
-        and not (app_config.get('motion.mqtt_topic') or '').strip()
-    )
+    # Frigate + BirdNET: always active when MQTT configured (merge + trigger)
+    use_frigate_from_aggregator = bool(mqtt_broker)
     if mqtt_broker:
         on_frigate_motion = None
         if use_frigate_from_aggregator:
@@ -205,59 +210,73 @@ def main():
         if use_frigate_from_aggregator:
             frigate_detector._aggregator = mqtt_aggregator
 
-    # Motion detector: fake (arg) | mock-mqtt | opencv | mqtt | pir
+    # Motion detector: fake (arg) | mock-mqtt | Frigate + optional additional | opencv | pir
+    from motion_detectors.or_motion import OrMotionDetector
+
     if args.fake_motion:
         motion = args.fake_motion.lower() == 'true'
         motion_detector = FakeMotionDetector(motion=motion, wait=10)
     elif args.mock_mqtt:
         motion_detector = FakeMotionDetector(motion=True, wait=5)
         logging.info('Using --mock-mqtt: fake motion for development')
-    elif use_frigate_from_aggregator and mqtt_aggregator:
-        for _ in range(5):
-            if mqtt_aggregator.is_connected():
-                break
-            time.sleep(1)
-        if not mqtt_aggregator.is_connected():
-            logging.warning('Frigate MQTT not connected, falling back to OpenCV')
-            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
-        else:
-            logging.info(
-                'Motion: Frigate (cameras=%s labels=%s)',
-                list(frigate_camera_filter) if frigate_camera_filter else 'any',
-                list(frigate_label_filter))
-            motion_detector = frigate_detector
-    elif app_config.get('motion.source') == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
-        mqtt_topic = app_config.get('motion.mqtt_topic', '').strip()
-        from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
-        motion_detector = MQTTBinaryMotionDetector(
-            broker=mqtt_broker,
-            port=app_config.get('mqtt.port', 1883),
-            topic=mqtt_topic,
-            username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
-            password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
-        )
-        motion_detector.start()
-    elif app_config.get('motion.source') == 'esphome':
-        esphome_url = (os.environ.get('MOTION_ESPHOME_URL') or app_config.get('motion.esphome_url', '')).strip()
-        esphome_sensor = (os.environ.get('MOTION_ESPHOME_SENSOR') or app_config.get('motion.esphome_sensor_id', '')).strip()
-        if esphome_url and esphome_sensor:
-            from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
-            motion_detector = ESPHomeBinaryMotionDetector(
-                url=esphome_url,
-                sensor_id=esphome_sensor,
-            )
-        else:
-            logging.warning('motion.source=esphome but URL/sensor empty, falling back to OpenCV')
-            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
-    elif app_config.get('motion.source') == 'opencv':
-        logging.info(
-            'Motion: OpenCV (Frigate events only for merge, NOT for trigger)')
-        motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
     elif app_config.get('motion.source') == 'pir':
         from motion_detectors.pir import PIRMotionDetector
         motion_detector = PIRMotionDetector()
     else:
-        motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
+        # Frigate + BirdNET: always when MQTT configured
+        primary = None
+        if use_frigate_from_aggregator and mqtt_aggregator:
+            for _ in range(5):
+                if mqtt_aggregator.is_connected():
+                    break
+                time.sleep(1)
+            if mqtt_aggregator.is_connected():
+                primary = frigate_detector
+                logging.info(
+                    'Motion: Frigate (cameras=%s labels=%s)',
+                    list(frigate_camera_filter) if frigate_camera_filter else 'any',
+                    list(frigate_label_filter))
+            else:
+                logging.warning('Frigate MQTT not connected')
+
+        # Additional trigger (parallel): opencv | mqtt | esphome
+        additional = None
+        add_source = app_config.get('motion.source', 'frigate')
+        if add_source == 'opencv':
+            additional = OpenCVMotionDetector(capture_fn=media_source.capture)
+            logging.info('Motion: + OpenCV (parallel)')
+        elif add_source == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
+            from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
+            additional = MQTTBinaryMotionDetector(
+                broker=mqtt_broker,
+                port=app_config.get('mqtt.port', 1883),
+                topic=app_config.get('motion.mqtt_topic', '').strip(),
+                username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
+                password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+            )
+            additional.start()
+            logging.info('Motion: + MQTT binary (parallel)')
+        elif add_source == 'esphome':
+            esphome_url = (os.environ.get('MOTION_ESPHOME_URL') or app_config.get('motion.esphome_url', '')).strip()
+            esphome_sensor = (os.environ.get('MOTION_ESPHOME_SENSOR') or app_config.get('motion.esphome_sensor_id', '')).strip()
+            if esphome_url and esphome_sensor:
+                from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
+                additional = ESPHomeBinaryMotionDetector(
+                    url=esphome_url,
+                    sensor_id=esphome_sensor,
+                )
+                logging.info('Motion: + ESPHome (parallel)')
+            else:
+                logging.warning('motion.source=esphome but URL/sensor empty')
+
+        if primary or additional:
+            if primary and additional:
+                motion_detector = OrMotionDetector(primary=primary, additional=additional)
+            else:
+                motion_detector = primary or additional
+        else:
+            logging.info('Motion: OpenCV (no MQTT)')
+            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
 
     decision_maker = DecisionMaker(
         max_record_seconds=app_config.get('processor.max_record_seconds'),
@@ -350,11 +369,13 @@ def main():
                 frame = media_source.capture()
                 if frame is None:
                     break
+                _processor_status['last_video_ok_at'] = datetime.now(timezone.utc).isoformat()
                 # VideoFileSource: use video timestamp for correct track duration
                 frame_time = getattr(media_source, 'get_frame_time', lambda: None)()
                 with fps_tracker:
                     has_detections = frame_processor.run(
                         frame, frame_time=frame_time)
+                _processor_status['last_yolo_ok_at'] = datetime.now(timezone.utc).isoformat()
 
                 # Decision making
                 decision_maker.update_has_detections(has_detections)

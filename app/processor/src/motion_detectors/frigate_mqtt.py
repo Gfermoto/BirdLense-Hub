@@ -31,6 +31,13 @@ class FrigateMotionFromAggregator:
     def get_on_frigate_motion_tuple(self):
         return (self._camera_filter, self._label_filter, self._on_motion)
 
+    def check_pending(self):
+        """Non-blocking: True if motion event is pending (for OR with other detectors)."""
+        if self._event.is_set():
+            self._event.clear()
+            return True
+        return False
+
     @property
     def _connected(self):
         return self._aggregator.is_connected()

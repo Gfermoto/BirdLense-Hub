@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
 from util import (
     fetch_weather,
+    fetch_sun_times,
     update_species_info_from_wiki,
     ensure_utc,
     parse_utc_timestamp,
@@ -26,6 +27,7 @@ from util import (
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
 from services.feed_service import dispense_feed, get_last_dispense, check_mqtt_connected, check_esphome_reachable
+from services.status_service import check_video_reachable, parse_yolo_status_from_heartbeat
 from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
@@ -140,24 +142,38 @@ def register_routes(app):
         esphome_status = check_esphome_reachable()
         feed_source = app_config.get('feed.source', 'mqtt')
         motion_source = app_config.get('motion.source', 'opencv')
-        # MQTT: feed uses check_mqtt_connected; motion (Frigate) uses aggregator in processor
-        if feed_source == 'mqtt':
+        mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
+        # MQTT: Frigate + BirdNET всегда при настроенном брокере; feed — при feed.source=mqtt
+        if mqtt_broker:
             mqtt_display = mqtt_status
-        elif motion_source in ('frigate', 'mqtt'):
-            mqtt_display = 'ok' if processor_ok else 'unknown'
+        elif feed_source == 'mqtt':
+            mqtt_display = mqtt_status
         else:
             mqtt_display = 'not_used'
         # ESPHome: show real status if feed source is esphome
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
         birdnet_url = (app_config.get('general.birdnet_url') or '').strip()
+        # Триггер для отображения: frigate → mqtt (триггер идёт через MQTT)
+        trigger_display = 'mqtt' if motion_source == 'frigate' else motion_source
+        # Video: реальная проверка через go2rtc snapshot
+        video_display = check_video_reachable()
+        # YOLO: из heartbeat процессора (last_yolo_ok_at в пределах 5 мин)
+        heartbeat_data = None
+        if last_heartbeat and last_heartbeat.data:
+            try:
+                heartbeat_data = json_module.loads(last_heartbeat.data) if isinstance(last_heartbeat.data, str) else last_heartbeat.data
+            except (TypeError, ValueError):
+                pass
+        yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else 'unknown'
         return {
             'web': 'ok',
             'processor': 'ok' if processor_ok else 'offline',
-            'video': 'ok' if processor_ok else 'unknown',
+            'video': video_display,
             'mqtt': mqtt_display,
             'esphome': esphome_display,
-            'yolo': 'ok' if processor_ok else 'unknown',
+            'yolo': yolo_display,
             'motion_source': motion_source,
+            'trigger_display': trigger_display,
             'birdnet_url': birdnet_url or None,
         }
 
@@ -211,6 +227,15 @@ def register_routes(app):
             'clouds': weather.get('weather_clouds'),
             'wind_speed': weather.get('weather_wind_speed'),
         } if weather else {}
+
+    @app.route('/api/ui/sun-times', methods=['GET'])
+    def sun_times():
+        """Sunrise, sunset, dawn, dusk for date at configured location. date=YYYY-MM-DD."""
+        date_param = request.args.get('date')
+        if not date_param:
+            return {'error': 'date (YYYY-MM-DD) required'}, 400
+        result = fetch_sun_times(date_param)
+        return result if result else {}, 200
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['GET'])
     def get_video_details(video_id):

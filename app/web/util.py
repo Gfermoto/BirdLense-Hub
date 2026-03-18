@@ -347,6 +347,45 @@ def fetch_weather():
     return fetcher.fetch()
 
 
+def fetch_sun_times(date_str: str) -> dict | None:
+    """Sunrise, sunset, dawn, dusk for date at configured location. Returns None if no coords."""
+    from datetime import date
+
+    lat = _normalize_coord(app_config.get('secrets.latitude'))
+    lon = _normalize_coord(app_config.get('secrets.longitude'))
+    if not lat or not lon:
+        return None
+    try:
+        lat_f = float(str(lat).replace(',', '.'))
+        lon_f = float(str(lon).replace(',', '.'))
+    except (ValueError, TypeError):
+        return None
+    try:
+        year, month, day = map(int, date_str.split('-'))
+        d = date(year, month, day)
+    except (ValueError, TypeError):
+        return None
+    try:
+        from astral import LocationInfo
+        from astral.sun import sun
+        import zoneinfo
+
+        tz = zoneinfo.ZoneInfo('UTC')
+        loc = LocationInfo('', '', 'UTC', lat_f, lon_f)
+        s = sun(loc.observer, date=d, tzinfo=tz)
+        date_str = d.isoformat()
+        return {
+            'dawn': f"{date_str}T{s['dawn'].strftime('%H:%M:%S')}Z",
+            'sunrise': f"{date_str}T{s['sunrise'].strftime('%H:%M:%S')}Z",
+            'noon': f"{date_str}T{s['noon'].strftime('%H:%M:%S')}Z",
+            'sunset': f"{date_str}T{s['sunset'].strftime('%H:%M:%S')}Z",
+            'dusk': f"{date_str}T{s['dusk'].strftime('%H:%M:%S')}Z",
+        }
+    except Exception as e:
+        logging.warning(f"Sun times calculation failed: {e}")
+        return None
+
+
 def _extract_common_for_hierarchy(species_name: str) -> str:
     """
     Извлечь common name для поиска в иерархии.

@@ -257,9 +257,14 @@ export const Overview = () => {
             )}
         </Grid>
 
-        {/* Weather Card */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
-          {weather && <WeatherCard weather={weather} />}
+        {/* Weather Card — высота как две StatCard слева */}
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex', alignItems: 'stretch' }}>
+          {weather && (
+            <WeatherCard
+              weather={weather}
+              date={selectedDay?.format('YYYY-MM-DD')}
+            />
+          )}
         </Grid>
 
         {/* Feed Control + Hourly Activity — в одной строке без зазора */}

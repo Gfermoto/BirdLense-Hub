@@ -146,7 +146,10 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       </Paper>
 
       {/* Weather Card */}
-      <WeatherCard weather={weather} />
+      <WeatherCard
+        weather={weather}
+        date={start_time ? new Date(start_time).toISOString().slice(0, 10) : undefined}
+      />
 
       {/* Food Section */}
       {food.length > 0 && (
