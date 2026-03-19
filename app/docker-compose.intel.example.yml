@@ -1,8 +1,13 @@
-# Intel GPU (VA-API): для кодирования записи на встроенной графике Intel (NUC, Celeron и т.д.)
-# Скопируйте в docker-compose.override.yml на хосте с Intel:
+# Intel GPU (VA-API): кодирование записи на встроенной графике Intel (NUC, Celeron и т.д.)
+#
+# Работает везде: без этого файла контейнер использует CPU. Выбор «CPU» или «Intel GPU»
+# в Настройках → Видео → Кодирование записи. На хосте без Intel или без override — просто CPU.
+#
+# На хосте С Intel — один раз скопировать в override (рядом с docker-compose.yml):
 #   cp docker-compose.intel.example.yml docker-compose.override.yml
+# Затем make deploy или docker compose up -d. В настройках выбрать «Intel GPU».
+#
 # На хосте: apt install intel-media-va-driver-non-free vainfo; vainfo; ls /dev/dri/
-# В настройках Hub: Видео → Кодирование записи: Intel GPU
 
 services:
   birdlense:

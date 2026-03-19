@@ -76,8 +76,12 @@ def _check_restart_flag():
         raise SystemExit(0)
 
 
+# Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
+_heartbeat_mqtt_ref = [None]
+
+
 def heartbeat():
-    """Отправляет heartbeat в API каждые 60 сек. Включает last_video_ok_at, last_yolo_ok_at для честной проверки."""
+    """Отправляет heartbeat в API каждые 60 сек. Включает last_video_ok_at, last_yolo_ok_at, mqtt_connected, encoding_used."""
     id = None
     api = None
     while True:
@@ -89,6 +93,19 @@ def heartbeat():
                 data['last_video_ok_at'] = _processor_status['last_video_ok_at']
             if _processor_status.get('last_yolo_ok_at'):
                 data['last_yolo_ok_at'] = _processor_status['last_yolo_ok_at']
+            mqtt_aggregator_ref = _heartbeat_mqtt_ref[0] if _heartbeat_mqtt_ref else None
+            if mqtt_aggregator_ref is not None:
+                try:
+                    data['mqtt_connected'] = mqtt_aggregator_ref.is_connected()
+                except Exception:
+                    data['mqtt_connected'] = False
+            try:
+                from encoding_status import get_last_encoding_used
+                enc = get_last_encoding_used()
+                if enc:
+                    data['encoding_used'] = enc
+            except Exception:
+                pass
             id = api.activity_log(type='heartbeat', data=data, id=id)
         except Exception as e:
             logging.error("Heartbeat failed: %s (will retry in 60s)", e)
@@ -211,6 +228,7 @@ def main():
             base_url=app_config.get('notifications.base_url', ''),
         )
         mqtt_aggregator.start()
+        _heartbeat_mqtt_ref[0] = mqtt_aggregator
         if use_frigate_from_aggregator:
             frigate_detector._aggregator = mqtt_aggregator
 

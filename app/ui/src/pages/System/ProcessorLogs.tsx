@@ -14,6 +14,7 @@ export const ProcessorLogs = () => {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['processorLogs', lines],
+    refetchInterval: 10000,
     queryFn: async () => {
       const res = await fetch(
         `${BASE_API_URL}/system/logs?lines=${lines}`,

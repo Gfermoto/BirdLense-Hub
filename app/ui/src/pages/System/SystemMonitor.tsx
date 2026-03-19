@@ -9,6 +9,8 @@ import Box from '@mui/material/Box';
 import MemoryIcon from '@mui/icons-material/Memory';
 import StorageIcon from '@mui/icons-material/Storage';
 import SpeedIcon from '@mui/icons-material/Speed';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import CloudIcon from '@mui/icons-material/Cloud';
 import { BASE_API_URL } from '../../api/api';
 
 interface MetricCardProps {
@@ -103,6 +105,50 @@ export const SystemMonitor = () => {
             percent={data.disk.percent}
           />
         </Grid>
+
+        {data.encoding != null && (
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <VideocamIcon color="action" />
+                  <Typography variant="h6">{t('system.encoding')}</Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {t('system.encodingUsed')}:{' '}
+                  {data.encoding_used === 'vaapi'
+                    ? t('system.encodingVaapi')
+                    : data.encoding_used === 'cpu'
+                      ? t('system.encodingCpu')
+                      : data.encoding === 'intel'
+                        ? t('system.encodingVaapi')
+                        : t('system.encodingCpu')}
+                </Typography>
+                {data.encoding === 'intel' && data.encoding_used === 'cpu' && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    {t('system.encodingGpuUnavailable')}
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {data.processor_mqtt != null && (
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <CloudIcon color="action" />
+                  <Typography variant="h6">{t('system.processorMqtt')}</Typography>
+                </Box>
+                <Typography variant="body2" color={data.processor_mqtt === 'ok' ? 'text.secondary' : 'error.main'}>
+                  {data.processor_mqtt === 'ok' ? t('status.mqttOk') : data.processor_mqtt === 'error' ? t('status.mqttError') : t('status.mqttUnknown')}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

@@ -147,7 +147,8 @@ class MQTTEventAggregator:
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
         ha_discovery: publish Home Assistant MQTT Autodiscovery configs on connect.
         base_url: URL for device configuration_url (e.g. http://birdlense.local:8085)."""
-        self.client_id = client_id or os.environ.get("MQTT_CLIENT_ID", "birdlense_aggregator")
+        base_id = client_id or os.environ.get("MQTT_CLIENT_ID", "birdlense_aggregator")
+        self.client_id = f"{base_id}_{os.getpid()}"
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
@@ -161,6 +162,7 @@ class MQTTEventAggregator:
         self._client = None
         self._thread = None
         self._connected = False
+        self._last_connected_at = None  # for heartbeat: ok if connected or recently was
         self._stopped = False
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
         self._frigate_label_exclude = set(frigate_label_exclude or [])
@@ -170,8 +172,10 @@ class MQTTEventAggregator:
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
             self._connected = True
+            self._last_connected_at = time.time()
             logger.info("MQTT aggregator connected")
             if self.ha_discovery:
+                time.sleep(0.3)
                 self._publish_ha_discovery()
         else:
             self._connected = False
@@ -413,7 +417,11 @@ class MQTTEventAggregator:
             self.publish_detection(species, conf, src, start_time, end_time)
 
     def is_connected(self):
-        return self._connected
+        if self._connected:
+            return True
+        if self._last_connected_at and (time.time() - self._last_connected_at) < 120:
+            return True
+        return False
 
     def stop(self):
         self._stopped = True

@@ -53,6 +53,10 @@ Push в `main` → автодеплой. Требует self-hosted runner на 
 
 См. [.github/workflows/deploy.yml](../.github/workflows/deploy.yml).
 
+## Развёртывание из готового образа (для пользователей)
+
+Если нужно раздать BirdLense **без сборки** — только образ и конфиг: см. [DEPLOY_USER_STANDALONE.md](DEPLOY_USER_STANDALONE.md). Пользователь копирует `app/docker-compose.image.yml` и `.env.example`, заполняет `.env`, выполняет `docker compose -f docker-compose.image.yml up -d`. Образ можно публиковать в GitHub Container Registry или свой registry.
+
 ## Если сервер недоступен
 
 - Соберите локально: `cd app && make build`
