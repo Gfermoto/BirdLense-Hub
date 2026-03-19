@@ -22,6 +22,10 @@ logging.basicConfig(
 
 
 def create_app():
+    logging.getLogger(__name__).info(
+        "create_app() invoked (pid=%s)",
+        os.getpid()
+    )
     app = Flask(__name__)
     # Базовые origins + CORS_ORIGINS из env (через запятую, для своих IP)
     cors_origins = [

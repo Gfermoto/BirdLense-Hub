@@ -661,12 +661,17 @@ def notify_app_startup(app=None):
     """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×).
     Skips when startup is due to 'restart processor' from UI (marker file .startup_notify_skip
     in data_dir with recent mtime). Skips when already sent in this container run (marker in
-    /tmp — survives worker restarts but not container restart) to avoid TG spam."""
+    /tmp — survives worker restarts but not container restart) to avoid TG spam.
+    Marker is created BEFORE notify() so that if we crash during send, we don't send again."""
     if app and app.config.get('TESTING'):
         return
     sent_marker = '/tmp/.birdlense_startup_notify_sent'  # not in volume → one send per container
     try:
         if os.path.exists(sent_marker):
+            logging.info(
+                "notify_app_startup: skip (marker exists, pid=%s)",
+                os.getpid(),
+            )
             return  # already sent this container run (e.g. after gunicorn worker restart)
         skip_marker = os.path.join(_data_dir(), '.startup_notify_skip')
         if os.path.exists(skip_marker):
@@ -676,16 +681,19 @@ def notify_app_startup(app=None):
                     os.remove(skip_marker)
                 except OSError:
                     pass
+                logging.info("notify_app_startup: skip (restart processor, pid=%s)", os.getpid())
                 return  # restart was from UI "restart processor", skip TG
             try:
                 os.remove(skip_marker)
             except OSError:
                 pass
-        notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+        # Create marker BEFORE notify so crash during send doesn't cause resend on next start
         try:
             open(sent_marker, 'a').close()
         except OSError:
             pass
+        logging.info("notify_app_startup: sending (pid=%s)", os.getpid())
+        notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
     except Exception as e:
         logging.warning("notify_app_startup failed: %s", e)
 
