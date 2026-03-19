@@ -148,7 +148,8 @@ class Go2RTCStreamSource:
             return False
         if not os.path.exists(VAAPI_DEVICE):
             self.logger.warning(
-                "video.encoding=intel but %s not found; recording with CPU",
+                "video.encoding=intel but %s not found — recording with CPU. "
+                "Для GPU: добавьте devices в compose (см. docker-compose.intel.example.yml).",
                 VAAPI_DEVICE,
             )
             return False

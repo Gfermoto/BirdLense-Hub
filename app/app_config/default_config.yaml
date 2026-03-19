@@ -150,11 +150,12 @@ notifications:
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
-  telegram_timeout: 45        # Таймаут сек (медиа медленнее при троттлинге). Текст: timeout/2
-  telegram_retries: 3        # Повторы при таймауте/сетевой ошибке
+  telegram_timeout: 300      # Таймаут сек (в РФ блокировки — ставить 300+). Текст: timeout/2
+  telegram_retries: 5        # Повторы при таймауте/сетевой ошибке
   compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
+  telegram_max_side_px: 1024 # Макс. сторона в пикселях (0=не менять). Кропы уменьшаются — чаще доходят в РФ
   message_thread_id: ""       # ID топика в канале (если канал с форумом)
-  disable_notification: false # Тихие сообщения (без звука)
+  disable_notification: false # Тихие сообщения (без звука). В multipart шлём true/false для совместимости
   protect_content: false      # Запретить пересылку и сохранение
   link_preview_large: false  # true: большие превью ссылок (prefer_large_media), ссылка в тексте
   send_photo: true           # false: только текст, без фото (даже при processor.save_images)
