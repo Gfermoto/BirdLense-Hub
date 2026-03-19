@@ -51,26 +51,6 @@ UNKNOWNS_LIMIT_MAX = 500
 
 
 def register_routes(app):
-    @app.route('/metrics', methods=['GET'])
-    def prometheus_metrics():
-        """Prometheus exposition format for Grafana/dashboards."""
-        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
-        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
-        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
-        lines = [
-            '# HELP birdlense_detections_total Total number of bird detections',
-            '# TYPE birdlense_detections_total counter',
-            f'birdlense_detections_total {detections}',
-            '# HELP birdlense_species_count Number of unique species detected',
-            '# TYPE birdlense_species_count gauge',
-            f'birdlense_species_count {species_count}',
-            '# HELP birdlense_videos_total Total number of recorded videos',
-            '# TYPE birdlense_videos_total counter',
-            f'birdlense_videos_total {videos_count}',
-        ]
-        body = '\n'.join(lines) + '\n'
-        return Response(body, mimetype='text/plain; charset=utf-8')
-
     @app.route('/api/ui/health', methods=['GET'])
     def health():
         return {'status': 'ok'}
@@ -371,6 +351,26 @@ def register_routes(app):
             as_attachment=True,
             download_name=filename,
             mimetype='video/mp4',
+        )
+
+    @app.route('/api/ui/videos/<int:video_id>/stream', methods=['GET'])
+    def stream_video(video_id):
+        """Стриминг видео для воспроизведения в плеере (Range, Content-Type)."""
+        video = Video.query.get(video_id)
+        if not video or not video.video_path:
+            return {'error': 'Video not found'}, 404
+        from flask import send_file
+        from services.detection_crop_service import VIDEO_PATH_SAFE_RE
+        from util import full_path_for_video
+        if not VIDEO_PATH_SAFE_RE.match(video.video_path):
+            return {'error': 'Invalid video path'}, 400
+        full_path = full_path_for_video(video.video_path)
+        if not full_path or not os.path.isfile(full_path):
+            return {'error': 'Video file not found'}, 404
+        return send_file(
+            full_path,
+            mimetype='video/mp4',
+            conditional=True,
         )
 
     @app.route('/api/ui/birdfood', methods=['POST'])

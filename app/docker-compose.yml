@@ -28,6 +28,11 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
       interval: 30s

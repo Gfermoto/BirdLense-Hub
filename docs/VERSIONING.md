@@ -52,4 +52,4 @@
 
 ---
 
-См. также: [CHANGELOG.md](../CHANGELOG.md), [DEPLOYMENT.md](./DEPLOYMENT.md).
+См. также: [CHANGELOG.md](../CHANGELOG.md), [INSTALL.md](./INSTALL.md).

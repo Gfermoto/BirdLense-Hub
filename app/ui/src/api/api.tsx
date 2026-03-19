@@ -270,7 +270,7 @@ export const addBirdFood = async (newFood: Partial<BirdFood>) => {
 };
 
 export const fetchCameras = async (): Promise<
-  { id: string; name: string; stream_url: string }[]
+  { id: string; name: string; stream_url: string; stream_url_mjpeg?: string }[]
 > => {
   const response = await axios.get(`${BASE_API_URL}/cameras`);
   return response.data.cameras || [];

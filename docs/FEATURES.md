@@ -32,7 +32,7 @@
 | **eBird** | `GET /api/ui/timeline/export?format=ebird` | 0.1.4 |
 | **Сравнение с регионом** | `GET /api/ui/region-comparison` — ваши виды vs топ eBird региона (Overview) | 0.1.9 |
 | **PDF-отчёт** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
-| **Prometheus** | `GET /metrics` | 0.1.3 |
+| **Prometheus** | `GET /metrics`, `GET /api/metrics` | 0.1.3 |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
 | **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + dataset_info.json | 0.1.5 |
 

@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
@@ -23,7 +23,7 @@ Smart bird feeder monitoring: computer vision and audio recognition to detect, i
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Models:** EU classifier (birds-525 + iNaturalist). See [docs/HUGGINGFACE.md](./docs/HUGGINGFACE.md) for model info.
+**Models:** EU classifier (birds-525 + iNaturalist). See [docs/TRAINING.md](./docs/TRAINING.md) for model info.
 
 <details>
 <summary>📷 Screenshots</summary>

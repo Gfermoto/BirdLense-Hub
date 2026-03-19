@@ -631,6 +631,24 @@ export const SettingsForm = ({
             </>
           )}
         </form.Subscribe>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="motion.check_every_n_frames">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 1, max: 30, step: 1 }}
+                value={field.state.value ?? 1}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  field.handleChange(isNaN(v) || v < 1 ? 1 : Math.min(30, v));
+                }}
+                label={t('settings.motionCheckEveryNFrames')}
+                helperText={t('settings.motionCheckEveryNFramesHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
             </Grid>
           </ServiceBlock>
           </Box>

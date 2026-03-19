@@ -1,6 +1,6 @@
 # Документация BirdLense Hub
 
-Навигация по документации. Версия: **0.2.0**. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
+Версия: **0.2.1**. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
 
 ---
 
@@ -8,9 +8,9 @@
 
 | Документ | Описание |
 |----------|----------|
-| [INSTALL.md](./INSTALL.md) | **Установка** — Docker, готовый образ, первый запуск |
-| [SCENARIOS.md](./SCENARIOS.md) | **Типичные сценарии** — минимальная установка, Frigate, BirdNET, Telegram, кормушка |
-| [CONFIGURATION.md](./CONFIGURATION.md) | **Настройка** — конфиг, переменные окружения, секции |
+| [INSTALL.md](./INSTALL.md) | **Установка и деплой** — образ, сборка, образ без репо, make deploy |
+| [SCENARIOS.md](./SCENARIOS.md) | **Сценарии** — минимальная установка, Frigate, BirdNET, Telegram, кормушка |
+| [CONFIGURATION.md](./CONFIGURATION.md) | **Настройка** — конфиг, переменные, секции (General, MQTT, Detection, Gallery, Notifications…) |
 
 ---
 
@@ -18,21 +18,28 @@
 
 | Документ | Описание |
 |----------|----------|
-| [FEATURES.md](./FEATURES.md) | **Полный список возможностей** — для разработчиков |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI |
+| [FEATURES.md](./FEATURES.md) | Список возможностей |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI, индикаторы |
 | [API.md](./API.md) | Эндпоинты UI, System, Processor |
-| [DEPLOYMENT.md](./DEPLOYMENT.md) | Деплой, deploy.local.sh, секреты, pre-built UI |
-| [VERSIONING.md](./VERSIONING.md) | Версионирование, CHANGELOG, политика обновлений |
+| [VERSIONING.md](./VERSIONING.md) | Версионирование, CHANGELOG |
 
 ---
 
-## Безопасность и доступ
+## Безопасность
 
 | Документ | Описание |
 |----------|----------|
-| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Роли: Admin, Contributor, пароли настроек |
-| [SECURITY.md](./SECURITY.md) | Анализ рисков, рекомендации для продакшена |
-| [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) | Восстановление доступа при потере пароля |
+| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Роли, пароли настроек |
+| [SECURITY.md](./SECURITY.md) | Риски, рекомендации для продакшена |
+| [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) | Восстановление конфига при сбое |
+
+---
+
+## Troubleshooting
+
+| Документ | Описание |
+|----------|----------|
+| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Intel GPU, спам «App is UP!», перезапуски, пропущенные события, Live 502 |
 
 ---
 
@@ -40,7 +47,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [TESTING.md](./TESTING.md) | Unit, API, E2E тесты + проверка после деплоя |
+| [TESTING.md](./TESTING.md) | Unit, API, E2E, проверка после деплоя |
 
 ---
 
@@ -48,9 +55,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [MCP_SETUP.md](./MCP_SETUP.md) | Настройка MCP (Model Context Protocol) |
-| [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md) | MQTT-топики Frigate, BirdNET, HA Autodiscovery |
-| [TELEGRAM_CUSTOM_EMOJI.md](./TELEGRAM_CUSTOM_EMOJI.md) | Кастомные эмодзи в Telegram-уведомлениях |
+| [MCP_SETUP.md](./MCP_SETUP.md) | MCP (Model Context Protocol) |
 
 ---
 
@@ -58,9 +63,8 @@
 
 | Документ | Описание |
 |----------|----------|
-| [TRAINING.md](./TRAINING.md) | **EU-модель** — обучение в Colab Free (пошагово) |
-| [DATASETS.md](./DATASETS.md) | Форматы, скрипты, источники, модели |
-| [HUGGINGFACE.md](./HUGGINGFACE.md) | Загрузка датасета и модели на HF |
+| [TRAINING.md](./TRAINING.md) | EU-модель — обучение в Colab, Hugging Face |
+| [DATASETS.md](./DATASETS.md) | Форматы, скрипты, источники |
 
 ---
 
@@ -68,13 +72,8 @@
 
 | Документ | Описание |
 |----------|----------|
-| [AUTODOC.md](./AUTODOC.md) | Автодокументация (pdoc, TypeDoc, interrogate) |
-| [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальная сборка и тестирование (make local) |
-| [ROADMAP.md](./ROADMAP.md) | План развития — апгрейды, фичи |
-| [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md) | Совместная разметка (планируется) |
-| [DETECTION_SOURCES.md](./DETECTION_SOURCES.md) | Источники детекций: YOLO, Frigate, BirdNET |
-| [FEED_LAST_DISPENSE.md](./FEED_LAST_DISPENSE.md) | Время последней выдачи корма, ESPHome |
-| [DONATE_SETUP.md](./DONATE_SETUP.md) | Настройка пожертвований — Boosty, DonationAlerts, Ko-fi |
+| [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальная сборка, тесты, автодокументация |
+| [ROADMAP.md](./ROADMAP.md) | План развития |
 
 ---
 
@@ -82,12 +81,4 @@
 
 | Документ | Описание |
 |----------|----------|
-| [archive/README.md](./archive/README.md) | Завершённые ревью, мозговые штурмы, troubleshooting |
-
----
-
-## Правила
-
-- Новый документ — сразу добавить в таблицу выше
-- В конце документа — секция «См. также» со ссылками
-- Один источник истины: избегать дублирования
+| [archive/README.md](./archive/README.md) | Завершённые ревью, устаревшие документы |

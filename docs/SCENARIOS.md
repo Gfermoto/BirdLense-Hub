@@ -66,16 +66,9 @@
 
 ---
 
-## Сценарий 6: Деплой на домашний сервер
+## Сценарий 6: Деплой на сервер
 
-**Цель:** BirdLense на отдельной машине (NUC, x86-сервер). Требуется x86/amd64 — ARM (Raspberry Pi) не поддерживается.
-
-1. `cp scripts/deploy.local.sh.example scripts/deploy.local.sh`
-2. В deploy.local.sh: `DEPLOY_HOST`, `DEPLOY_URL`, `PROCESSOR_SECRET`
-3. SSH config: Host birdlense → IP сервера
-4. `make deploy`
-
-**Результат:** Код синхронизируется, контейнер собирается и запускается. Данные (recordings, db) не трогаются.
+См. [INSTALL.md](./INSTALL.md) — раздел «Деплой на сервер (make deploy)». x86/amd64, ARM не поддерживается.
 
 ---
 
@@ -122,7 +115,7 @@
 **Цель:** Месячная сводка и дашборды.
 
 1. **PDF:** Overview → «PDF-отчёт» → выберите месяц.
-2. **Grafana:** Добавьте Prometheus datasource, scrape `http://birdlense:8080/metrics`. Метрики: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
+2. **Grafana:** Prometheus datasource, scrape `http://birdlense:8085/api/metrics`. Метрики: CPU, память, диск, GPU, detections, species, videos.
 
 **Результат:** Отчёт и графики активности.
 
@@ -130,21 +123,14 @@
 
 ## Сценарий 11: Исследование и дообучение модели
 
-**Цель:** Собрать датасет из записей, дообучить YOLO на европейских птицах.
-
-1. Записи накапливаются в `data/recordings/`.
-2. Скрипты: `scripts/datasets/` — загрузка birds-525, iNaturalist Europe.
-3. Merge: `merge_classification_datasets.py` — объединение в формате Scientific (Common).
-4. Обучение: `scripts/birds_train*.ipynb` — fine-tuning.
-
-Подробнее: [DATASETS.md](./DATASETS.md).
+См. [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md). Скрипты: `scripts/datasets/`, merge → Colab.
 
 ---
 
 ## Troubleshooting
 
-**Frigate обнаружил птицу, но BirdLense не записал:** см. [archive/FRIGATE_EVENT_LOSS_AUDIT.md](./archive/FRIGATE_EVENT_LOSS_AUDIT.md) — чеклист причин (motion.source, frigate_camera_filter, MQTT и др.).
+**Frigate обнаружил птицу, но BirdLense не записал:** см. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — пропущенные события. Чеклист: [archive/FRIGATE_EVENT_LOSS_AUDIT.md](./archive/FRIGATE_EVENT_LOSS_AUDIT.md).
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md).
+См. также: [INSTALL.md](./INSTALL.md), [CONFIGURATION.md](./CONFIGURATION.md), [ARCHITECTURE.md](./ARCHITECTURE.md).

@@ -118,6 +118,19 @@ make stop
 - **Нет MQTT** — уведомления и Frigate/BirdNET не работают.
 - **Порт 8085** — по умолчанию. Переопределить: `BIRDLENSE_PORT=8080 make start`
 
+## Автодокументация
+
+```bash
+make docs          # Python (pdoc) + UI (TypeDoc)
+make docs-python   # Только Python → docs/api/
+make docs-ui       # Только UI → docs/ui/
+make docs-check    # interrogate — проверка docstrings (порог 80%)
+```
+
+OpenAPI: `app/web/openapi.yaml`. Стиль: краткий docstring на русском, без Args/Returns для простых функций.
+
+---
+
 ## Устранение неполадок
 
 ### Docker build падает на npm

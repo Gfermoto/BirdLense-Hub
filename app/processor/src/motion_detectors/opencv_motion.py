@@ -13,21 +13,31 @@ class OpenCVMotionDetector:
     """
     Motion detection using frame differencing.
     Blocks in detect() until motion is found, calling capture_fn for frames.
+    check_every_n_frames: analyze only every N-th frame (1 = every frame); reduces CPU at high FPS.
     """
 
-    def __init__(self, capture_fn, threshold=25, min_contour_area=500, check_interval=0.1):
+    def __init__(self, capture_fn, threshold=25, min_contour_area=500, check_interval=0.1, check_every_n_frames=1):
         self.capture_fn = capture_fn
         self.threshold = threshold
         self.min_contour_area = min_contour_area
         self.check_interval = check_interval
+        self.check_every_n_frames = max(1, int(check_every_n_frames or 1))
         self._prev_gray = None
+        self._frame_count = 0
         self.logger = logging.getLogger(__name__)
+
+    def _should_analyze(self):
+        self._frame_count += 1
+        return (self._frame_count % self.check_every_n_frames) == 0
 
     def detect(self):
         """Block until motion detected. Returns True when motion found."""
         while True:
             frame = self.capture_fn()
             if frame is None:
+                time.sleep(self.check_interval)
+                continue
+            if not self._should_analyze():
                 time.sleep(self.check_interval)
                 continue
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -53,6 +63,8 @@ class OpenCVMotionDetector:
         """One iteration: returns True if motion detected (for OR with Frigate)."""
         frame = self.capture_fn()
         if frame is None:
+            return False
+        if not self._should_analyze():
             return False
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)

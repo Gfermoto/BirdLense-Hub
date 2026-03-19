@@ -11,6 +11,7 @@ app.log
 /datasets
 scripts/datasets/.cache/
 .venv-datasets/
+app/.venv/
 
 # Настройки — не коммитить (только шаблоны в репо)
 user_config.yaml

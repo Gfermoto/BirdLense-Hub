@@ -1,0 +1,14 @@
+# NVIDIA GPU: скопируйте в docker-compose.override.yml на сервере
+# Требуется nvidia-container-toolkit на хосте.
+#
+# cp docker-compose.nvidia.example.yml docker-compose.override.yml
+
+services:
+  birdlense:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

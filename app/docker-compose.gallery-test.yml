@@ -1,0 +1,30 @@
+# BirdLense + тестовая галерея в одной сети
+# Запуск: docker compose -f docker-compose.yml -f docker-compose.gallery-test.yml up -d
+# В BirdLense: gallery.upload_url = http://gallery-test:5000/api/upload
+
+services:
+  birdlense:
+    networks:
+      - default
+      - gallery
+
+  gallery-test:
+    build:
+      context: ../docker/gallery-test
+      dockerfile: Dockerfile
+    container_name: gallery-test
+    ports:
+      - "8086:5000"
+    volumes:
+      - gallery-data:/data
+    environment:
+      - GALLERY_DATA=/data/uploads
+    networks:
+      - gallery
+
+networks:
+  gallery:
+    name: app_gallery
+
+volumes:
+  gallery-data:

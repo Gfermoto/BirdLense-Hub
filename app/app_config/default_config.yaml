@@ -45,7 +45,7 @@ video:
   source: go2rtc
   # Хост Go2RTC: http://IP:1984
   go2rtc_url: ""
-  # Кодирование записи: cpu | intel (Intel встроенная графика — VA-API: NUC, Celeron и др.)
+  # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
   cameras: []
@@ -63,6 +63,8 @@ video:
 # opencv - analyze every frame; frigate - Frigate MQTT events; mqtt - binary sensor topic; esphome - ESPHome binary sensor
 motion:
   source: opencv
+  # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
+  check_every_n_frames: 1
   frigate_camera_filter: []  # from cameras list; frigate/events
   frigate_label_filter: ["bird", "Bird"]
   frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)

@@ -6,6 +6,7 @@ Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Cel
 import logging
 import os
 import subprocess
+import threading
 import time
 
 import cv2
@@ -80,6 +81,9 @@ class Go2RTCStreamSource:
         self._last_frame_time = 0
         self._frame_count = 0
         self._source_fps = 15.0
+        self._read_lock = threading.Lock()
+        self._vaapi_checked = False
+        self._vaapi_available = True
 
         self._connect()
 
@@ -142,8 +146,28 @@ class Go2RTCStreamSource:
             if jpeg is not None:
                 self._streaming_output.write(jpeg.tobytes())
 
+    def _probe_vaapi(self) -> bool:
+        """Check if VA-API actually works in this container (libva/driver)."""
+        try:
+            r = subprocess.run(
+                [
+                    "ffmpeg", "-y", "-loglevel", "error",
+                    "-hwaccel", "vaapi", "-hwaccel_device", VAAPI_DEVICE,
+                    "-hwaccel_output_format", "vaapi",
+                    "-f", "lavfi", "-i", "nullsrc=d=1", "-t", "0.01", "-f", "null", "-",
+                ],
+                capture_output=True,
+                timeout=10,
+            )
+            if r.returncode != 0 and r.stderr:
+                self.logger.debug("VA-API probe stderr: %s", r.stderr.decode("utf-8", errors="replace")[:300])
+            return r.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            self.logger.debug("VA-API probe failed: %s", e)
+            return False
+
     def _use_intel_vaapi(self) -> bool:
-        """True if encoding_mode is intel and VA-API device is available."""
+        """True if encoding_mode is intel and VA-API device works (device + libva init)."""
         if self._encoding_mode != "intel":
             return False
         if not os.path.exists(VAAPI_DEVICE):
@@ -153,7 +177,15 @@ class Go2RTCStreamSource:
                 VAAPI_DEVICE,
             )
             return False
-        return True
+        if not self._vaapi_checked:
+            self._vaapi_checked = True
+            self._vaapi_available = self._probe_vaapi()
+            if not self._vaapi_available:
+                self.logger.warning(
+                    "VA-API устройство есть, но инициализация не удалась (libva/драйвер в контейнере). "
+                    "Запись идёт на CPU. См. логи FFmpeg при выборе Intel GPU."
+                )
+        return self._vaapi_available
 
     def start_recording(self, output: str):
         """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
@@ -215,8 +247,17 @@ class Go2RTCStreamSource:
                 self._ffmpeg_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._ffmpeg_process.kill()
+                self._ffmpeg_process.wait(timeout=2)
             except Exception as e:
-                self.logger.warning(f"Error stopping FFmpeg: {e}")
+                self.logger.warning("Error stopping FFmpeg: %s", e)
+            if self._ffmpeg_process and self._ffmpeg_process.stderr:
+                try:
+                    err = self._ffmpeg_process.stderr.read()
+                    if err:
+                        for line in err.decode("utf-8", errors="replace").strip().splitlines():
+                            self.logger.info("FFmpeg: %s", line)
+                except Exception:
+                    pass
             self._ffmpeg_process = None
         self.logger.info("Recording stopped")
 
@@ -225,22 +266,30 @@ class Go2RTCStreamSource:
         Get next frame for processing.
         Returns BGR frame resized to lores_size, or None on error.
         """
-        frame, ok = self._read_frame()
+        with self._read_lock:
+            frame, ok = self._read_frame()
         if not ok or frame is None:
             if self._reconnect_if_needed():
                 return self.capture()
             return None
-
         self._frame_count += 1
         self._last_frame_time = time.time()
-
-        # Resize for detection (frame is already BGR from VideoCapture)
         frame_lores = cv2.resize(frame, self.lores_size)
-
-        # Update live stream
         self._update_streaming_output(frame)
-
         return frame_lores
+
+    def push_one_frame_to_mjpeg(self):
+        """Read one frame and push to MJPEG (for live view). Skips if main thread is reading."""
+        if not self._streaming_output:
+            return
+        if not self._read_lock.acquire(blocking=False):
+            return
+        try:
+            frame, ok = self._read_frame()
+            if ok and frame is not None:
+                self._update_streaming_output(frame)
+        finally:
+            self._read_lock.release()
 
     def close(self):
         """Release resources."""

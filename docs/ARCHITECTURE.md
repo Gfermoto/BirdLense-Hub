@@ -54,7 +54,7 @@
 
 1. **React SPA** → `index.html`, static assets
 2. **API** → `/api/ui/*` (health, status, timeline, timeline/export, videos, unknowns, detections/:id/crop, report/pdf, species/:id/xeno-canto, settings, birdfood и др.)
-3. **Метрики** → `GET /metrics` (Prometheus)
+3. **Метрики** → `GET /metrics`, `GET /api/metrics` (Prometheus)
 4. **Видео** → `/data/recordings/...` (nginx alias)
 5. **Live** → `/processor/live` (MJPEG от processor) или `/go2rtc/stream.html`
 
@@ -86,6 +86,18 @@
 | `/settings` | Настройки |
 | `/system` | System — Storage, Activity, Monitor, Processor Logs |
 | `/food` | Food Management |
+
+## Индикаторы Overview
+
+| Индикатор | Как проверяется |
+|-----------|-----------------|
+| **Video** | `check_video_reachable()` — HTTP GET snapshot первой камеры через go2rtc |
+| **MQTT** | `check_mqtt_connected()` — подключение к брокеру (feed_service) |
+| **ESPHome** | `check_esphome_reachable()` — HTTP к URL устройства |
+| **YOLO** | Процессор шлёт в heartbeat `last_yolo_ok_at`; ok если в пределах 5 мин |
+| **Processor** | Последний heartbeat в ActivityLog (каждые 60 сек) |
+
+При `motion.source=frigate` показывается `mqtt` (триггер идёт через MQTT).
 
 ---
 

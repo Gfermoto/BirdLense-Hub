@@ -188,6 +188,20 @@ def main():
         for cam in cameras:
             get_media_source(cam['id'])
 
+        # Подпитка MJPEG для всех камер (иначе в Live только активная камера показывает картинку)
+        def _mjpeg_feeder():
+            while True:
+                time.sleep(0.5)
+                for _cid, src in list(media_sources_cache.items()):
+                    try:
+                        if getattr(src, 'push_one_frame_to_mjpeg', None):
+                            src.push_one_frame_to_mjpeg()
+                    except Exception as e:
+                        logging.debug("MJPEG feeder: %s", e)
+
+        _mjpeg_thread = threading.Thread(target=_mjpeg_feeder, daemon=True)
+        _mjpeg_thread.start()
+
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
@@ -265,8 +279,9 @@ def main():
         additional = None
         add_source = app_config.get('motion.source', 'frigate')
         if add_source == 'opencv':
-            additional = OpenCVMotionDetector(capture_fn=media_source.capture)
-            logging.info('Motion: + OpenCV (parallel)')
+            check_n = app_config.get('motion.check_every_n_frames', 1)
+            additional = OpenCVMotionDetector(capture_fn=media_source.capture, check_every_n_frames=check_n)
+            logging.info('Motion: + OpenCV (parallel, check_every_n_frames=%s)', check_n)
         elif add_source == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
             from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
             additional = MQTTBinaryMotionDetector(
@@ -298,7 +313,8 @@ def main():
                 motion_detector = primary or additional
         else:
             logging.info('Motion: OpenCV (no MQTT)')
-            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture)
+            check_n = app_config.get('motion.check_every_n_frames', 1)
+            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture, check_every_n_frames=check_n)
 
     decision_maker = DecisionMaker(
         max_record_seconds=app_config.get('processor.max_record_seconds'),
