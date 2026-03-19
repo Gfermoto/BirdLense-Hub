@@ -660,24 +660,32 @@ def notify_telegram_test(message="Test notification from BirdLense"):
 def notify_app_startup(app=None):
     """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×).
     Skips when startup is due to 'restart processor' from UI (marker file .startup_notify_skip
-    in data_dir with recent mtime) — to avoid TG spam; only notifies on real container restart."""
+    in data_dir with recent mtime). Skips when already sent in this container run (marker in
+    /tmp — survives worker restarts but not container restart) to avoid TG spam."""
     if app and app.config.get('TESTING'):
         return
-    marker = os.path.join(_data_dir(), '.startup_notify_skip')
+    sent_marker = '/tmp/.birdlense_startup_notify_sent'  # not in volume → one send per container
     try:
-        if os.path.exists(marker):
-            age_sec = time.time() - os.path.getmtime(marker)
+        if os.path.exists(sent_marker):
+            return  # already sent this container run (e.g. after gunicorn worker restart)
+        skip_marker = os.path.join(_data_dir(), '.startup_notify_skip')
+        if os.path.exists(skip_marker):
+            age_sec = time.time() - os.path.getmtime(skip_marker)
             if age_sec <= 120:
                 try:
-                    os.remove(marker)
+                    os.remove(skip_marker)
                 except OSError:
                     pass
                 return  # restart was from UI "restart processor", skip TG
             try:
-                os.remove(marker)
+                os.remove(skip_marker)
             except OSError:
                 pass
         notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+        try:
+            open(sent_marker, 'a').close()
+        except OSError:
+            pass
     except Exception as e:
         logging.warning("notify_app_startup failed: %s", e)
 
