@@ -1149,14 +1149,19 @@ def register_routes(app):
 
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():
-        """Create flag file; processor will exit and docker restarts it."""
+        """Create flag file; processor will exit and docker restarts it.
+        Also touch .startup_notify_skip so notify_app_startup skips TG on next start (no spam)."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        flag_path = os.path.join(data_dir(), 'restart_processor.flag')
+        base = data_dir()
+        flag_path = os.path.join(base, 'restart_processor.flag')
+        notify_skip_path = os.path.join(base, '.startup_notify_skip')
         try:
-            os.makedirs(os.path.dirname(flag_path), exist_ok=True)
+            os.makedirs(base, exist_ok=True)
             with open(flag_path, 'w') as f:
                 f.write('1')
+            with open(notify_skip_path, 'a'):
+                os.utime(notify_skip_path, None)
             return {"message": "Processor restart requested"}, 200
         except Exception as e:
             app.logger.exception('Restart processor failed')

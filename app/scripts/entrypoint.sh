@@ -16,4 +16,9 @@ fi
 if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
   PYTHONPATH=/app python3 /app/web/birdlense_mcp.py --transport http --port 8001 --host 127.0.0.1 &
 fi
-PYTHONPATH=/app python /app/processor/src/main.py
+# Процессор в цикле: при перезапуске по флагу из UI контейнер не выходит, перезапускается только процесс
+while true; do
+  PYTHONPATH=/app python /app/processor/src/main.py || true
+  echo "Processor exited, restarting in 2s..."
+  sleep 2
+done
