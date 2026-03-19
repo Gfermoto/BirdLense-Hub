@@ -2,6 +2,7 @@
 set -e
 # Go2RTC upstream: из GO2RTC_URL или video.go2rtc_url в конфиге
 GO2RTC_UPSTREAM=$(python3 /app/scripts/get_go2rtc_upstream.py)
+GO2RTC_UPSTREAM="${GO2RTC_UPSTREAM//[$'\r\n']/}"
 python3 -c 'import sys; t=open("/etc/nginx/conf.d/default.conf.template").read(); t=t.replace("__GO2RTC_UPSTREAM__", sys.argv[1]); open("/etc/nginx/conf.d/default.conf","w").write(t)' "$GO2RTC_UPSTREAM"
 
 nginx &
