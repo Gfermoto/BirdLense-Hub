@@ -1,6 +1,7 @@
 """
 Go2RTC stream source for x86/Docker deployment.
 Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg.
+Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Celeron).
 """
 import logging
 import os
@@ -12,6 +13,8 @@ import cv2
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
+
+VAAPI_DEVICE = "/dev/dri/renderD128"
 
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
@@ -56,12 +59,16 @@ class Go2RTCStreamSource:
         auto_reconnect=True,
         pre_record_seconds=0,
         mjpeg_port=8082,
+        encoding_mode="cpu",
     ):
         self.logger = logging.getLogger(__name__)
         self.stream_url = stream_url
         self.main_size = main_size
         self.lores_size = lores_size
         self.auto_reconnect = auto_reconnect
+        self._encoding_mode = (encoding_mode or "cpu").strip().lower()
+        if self._encoding_mode not in ("cpu", "intel"):
+            self._encoding_mode = "cpu"
 
         self._cap = None
         self._out = None
@@ -135,22 +142,55 @@ class Go2RTCStreamSource:
             if jpeg is not None:
                 self._streaming_output.write(jpeg.tobytes())
 
+    def _use_intel_vaapi(self) -> bool:
+        """True if encoding_mode is intel and VA-API device is available."""
+        if self._encoding_mode != "intel":
+            return False
+        if not os.path.exists(VAAPI_DEVICE):
+            self.logger.warning(
+                "video.encoding=intel but %s not found; recording with CPU",
+                VAAPI_DEVICE,
+            )
+            return False
+        return True
+
     def start_recording(self, output: str):
-        """Start recording via FFmpeg (video+audio from RTSP)."""
+        """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
         self._recording = True
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-rtsp_transport", "tcp",
-            "-i", self.stream_url,
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-movflags", "+faststart",
+        use_vaapi = self._use_intel_vaapi()
+        if use_vaapi:
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hwaccel", "vaapi",
+                "-hwaccel_device", VAAPI_DEVICE,
+                "-hwaccel_output_format", "vaapi",
+                "-rtsp_transport", "tcp",
+                "-i", self.stream_url,
+                "-c:v", "h264_vaapi",
+                "-b:v", "2M",
+                "-c:a", "aac",
+                "-movflags", "+faststart",
+                output,
+            ]
+        else:
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-rtsp_transport", "tcp",
+                "-i", self.stream_url,
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-movflags", "+faststart",
+                output,
+            ]
+        self.logger.info(
+            "Starting FFmpeg recording to %s (%s)",
             output,
-        ]
-        self.logger.info(f"Starting FFmpeg recording to {output}")
+            "VA-API" if use_vaapi else "CPU",
+        )
         self._ffmpeg_process = subprocess.Popen(
             cmd,
             stdin=subprocess.DEVNULL,

@@ -45,6 +45,8 @@ video:
   source: go2rtc
   # Хост Go2RTC: http://IP:1984
   go2rtc_url: ""
+  # Кодирование записи: cpu | intel (Intel встроенная графика — VA-API: NUC, Celeron и др.)
+  encoding: cpu
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
   cameras: []
   # Пример после добавления:

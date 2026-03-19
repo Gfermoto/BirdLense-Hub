@@ -457,6 +457,25 @@ export const SettingsForm = ({
 
           <ServiceBlock title={t('settings.serviceVideo')}>
             <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="video.encoding">
+            {(field) => (
+              <FormControl fullWidth>
+                <InputLabel id="settings-encoding-label">{t('settings.encodingLabel')}</InputLabel>
+                <Select
+                  labelId="settings-encoding-label"
+                  value={(field.state.value ?? 'cpu').toLowerCase()}
+                  label={t('settings.encodingLabel')}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <MenuItem value="cpu">{t('settings.encodingCpu')}</MenuItem>
+                  <MenuItem value="intel">{t('settings.encodingIntel')}</MenuItem>
+                </Select>
+                <FormHelperText>{t('settings.encodingHint')}</FormHelperText>
+              </FormControl>
+            )}
+          </form.Field>
+        </Grid>
         <Grid size={{ xs: 12 }}>
           <form.Field name="video.cameras">
             {(field) => (

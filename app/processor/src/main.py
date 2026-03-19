@@ -148,12 +148,16 @@ def main():
                 password=app_config.get('video.go2rtc_password'),
             )
             idx = next((i for i, c in enumerate(cameras) if c['id'] == camera_id), 0)
+            encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
+            if encoding not in ('cpu', 'intel'):
+                encoding = 'cpu'
             media_sources_cache[camera_id] = Go2RTCStreamSource(
                 stream_url=stream_url,
                 main_size=main_size,
                 lores_size=lores_size,
                 auto_reconnect=app_config.get('video.auto_reconnect', True),
                 mjpeg_port=mjpeg_base_port + idx,
+                encoding_mode=encoding,
             )
         return media_sources_cache[camera_id]
 
