@@ -13,9 +13,9 @@
 | Пункт | Статус | Примечание |
 |-------|--------|------------|
 | 0 (процессор в цикле, TG только при старте контейнера) | **Выполнено** | Entrypoint: цикл `while true; do ... main.py \|\| true; sleep 2; done`. Маркер `.startup_notify_skip` в коде. |
-| 1 (nginx proxy_pass без $uri) | Не выполнено | |
-| 2 (get_go2rtc_upstream try/except) | Не выполнено | |
-| 3 (обрезка \r\n, нефатальный health check) | Не выполнено | |
+| 1 (nginx proxy_pass без $uri) | **Выполнено** | Фаза 1. |
+| 2 (get_go2rtc_upstream try/except) | **Выполнено** | Фаза 1. |
+| 3 (обрезка \r\n, нефатальный health check) | Частично | Обрезка \r\n — выполнено (Фаза 1); нефатальный health check в entrypoint — по желанию. |
 | 4 (BIRDLENSE_PORT в nginx) | Не выполнено | По необходимости. |
 | 5 (MJPEG-fallback в Live) | Не выполнено | По желанию. |
 | 6 (Intel GPU) | Отложено | Отдельная ветка при появлении Intel NUC. |
