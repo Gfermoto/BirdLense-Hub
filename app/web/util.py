@@ -658,10 +658,25 @@ def notify_telegram_test(message="Test notification from BirdLense"):
 
 
 def notify_app_startup(app=None):
-    """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×)."""
+    """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×).
+    Skips when startup is due to 'restart processor' from UI (marker file .startup_notify_skip
+    in data_dir with recent mtime) — to avoid TG spam; only notifies on real container restart."""
     if app and app.config.get('TESTING'):
         return
+    marker = os.path.join(_data_dir(), '.startup_notify_skip')
     try:
+        if os.path.exists(marker):
+            age_sec = time.time() - os.path.getmtime(marker)
+            if age_sec <= 120:
+                try:
+                    os.remove(marker)
+                except OSError:
+                    pass
+                return  # restart was from UI "restart processor", skip TG
+            try:
+                os.remove(marker)
+            except OSError:
+                pass
         notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
     except Exception as e:
         logging.warning("notify_app_startup failed: %s", e)

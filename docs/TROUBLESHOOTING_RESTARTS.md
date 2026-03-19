@@ -5,9 +5,9 @@
 В одном контейнере работают:
 1. **nginx** — статика, прокси
 2. **gunicorn** (1 worker) — Flask API
-3. **processor** (`main.py`) — **foreground-процесс**
+3. **processor** (`main.py`) — запускается **в цикле** в entrypoint
 
-Когда processor завершается (crash, exit) — **контейнер падает** и Docker перезапускает его. При каждом старте gunicorn вызывает `notify_app_startup()`.
+Когда processor завершается (по флагу перезапуска из UI, crash или exit) — перезапускается **только процесс процессора**, контейнер не выходит. Контейнер падает только при выходе nginx/gunicorn или самого entrypoint. При старте контейнера gunicorn вызывает `notify_app_startup()` (уведомление «App is UP!» в Telegram).
 
 ---
 
