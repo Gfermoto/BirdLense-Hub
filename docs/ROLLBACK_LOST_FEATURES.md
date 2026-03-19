@@ -124,7 +124,7 @@
 - При `intel` процессор использует FFmpeg с VA-API (`-hwaccel vaapi`, `h264_vaapi`). Если устройство `/dev/dri/renderD128` недоступно в контейнере — запись идёт на CPU с предупреждением в логах.
 - Для работы Intel GPU: в docker-compose добавить `devices: - /dev/dri/renderD128:/dev/dri/renderD128`, на хосте — драйверы (п. 6.1 ниже).
 
-**Опционально (не реализовано):** Dockerfile.intel, отдельный compose, метрики загрузки GPU в System (intel_gpu_top / sysfs).
+**Опционально (не реализовано):** Dockerfile.intel, отдельный compose. **Метрики загрузки GPU** (intel_gpu_top / sysfs) в System — добавлены в план реализации как **Фаза 4.1**, см. ROLLBACK_IMPLEMENTATION_PLAN.md.
 
 | Стоит ли расширять | Выбор CPU/GPU уже есть. Метрики GPU и отдельный образ — по желанию. |
 |--------------------|---------------------------------------------------------------------|

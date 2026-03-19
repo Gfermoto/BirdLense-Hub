@@ -43,6 +43,24 @@ def register_routes(app):
             disk_used_gb = round(disk.used / (1024**3), 1)
             disk_percent = disk.percent
 
+            # Encoding: config + actual from processor heartbeat
+            encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
+            if encoding not in ('cpu', 'intel'):
+                encoding = 'cpu'
+            encoding_used = None
+            processor_mqtt = None
+            last_hb = ActivityLog.query.filter_by(type='heartbeat').order_by(
+                ActivityLog.updated_at.desc()
+            ).first()
+            if last_hb and last_hb.data:
+                try:
+                    import json as _json
+                    data = _json.loads(last_hb.data) if isinstance(last_hb.data, str) else last_hb.data
+                    encoding_used = data.get('encoding_used')
+                    processor_mqtt = 'ok' if data.get('mqtt_connected') is True else ('error' if data.get('mqtt_connected') is False else None)
+                except (TypeError, ValueError):
+                    pass
+
             metrics = {
                 'cpu': {
                     'percent': cpu_percent
@@ -56,7 +74,10 @@ def register_routes(app):
                     'total': disk_total_gb,
                     'used': disk_used_gb,
                     'percent': disk_percent
-                }
+                },
+                'encoding': encoding,
+                'encoding_used': encoding_used,
+                'processor_mqtt': processor_mqtt,
             }
 
             return metrics

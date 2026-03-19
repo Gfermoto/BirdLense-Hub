@@ -187,6 +187,11 @@ class Go2RTCStreamSource:
                 "-movflags", "+faststart",
                 output,
             ]
+        try:
+            from encoding_status import set_last_encoding_used
+            set_last_encoding_used("vaapi" if use_vaapi else "cpu")
+        except Exception:
+            pass
         self.logger.info(
             "Starting FFmpeg recording to %s (%s)",
             output,

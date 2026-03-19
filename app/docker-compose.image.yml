@@ -1,13 +1,14 @@
-# BirdLense Hub — один контейнер (web + processor в одном образе)
-# Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
-# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без devices — всегда CPU.
-# Intel GPU: см. docker-compose.intel.example.yml → скопировать в docker-compose.override.yml на хосте с Intel.
+# Развёртывание из готового образа (без сборки)
+# Использование: см. docs/DEPLOY_USER_STANDALONE.md
+#
+#   export BIRDLENSE_IMAGE=ghcr.io/gfermoto/birdlense-hub:latest   # или свой registry
+#   cp .env.example .env   # и заполнить
+#   mkdir -p data/recordings data/db app_config
+#   docker compose -f docker-compose.image.yml up -d
 
 services:
   birdlense:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${BIRDLENSE_IMAGE:-ghcr.io/gfermoto/birdlense-hub:latest}
     container_name: birdlense
     ports:
       - "${BIRDLENSE_PORT:-8085}:8080"
