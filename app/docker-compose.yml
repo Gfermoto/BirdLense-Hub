@@ -26,3 +26,8 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
