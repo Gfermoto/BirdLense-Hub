@@ -277,4 +277,4 @@ curl -s http://IP:8085/api/ui/status
 
 ---
 
-См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [CONFIGURATION.md](./CONFIGURATION.md), [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md).
+См. также: [INSTALL.md](./INSTALL.md), [CONFIGURATION.md](./CONFIGURATION.md).

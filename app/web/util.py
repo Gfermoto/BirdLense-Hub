@@ -819,6 +819,11 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
 
             base = _get_telegram_api_base()
             _, timeout_media = _telegram_timeouts()
+            logging.info(
+                "Telegram: sending photo (%d bytes), timeout=%ds",
+                len(image_to_send),
+                timeout_media,
+            )
             photo_failed = False
             r = None
             try:
@@ -842,13 +847,16 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                         files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
                     )
             except (requests.Timeout, requests.ConnectionError, OSError) as e:
-                logging.warning("Telegram photo failed (%s), fallback to text", e)
+                logging.warning(
+                    "Telegram photo failed (timeout/network): %s — fallback to text",
+                    e,
+                )
                 photo_failed = True
             if r is not None and not r.ok:
                 logging.warning(
-                    "Telegram sendPhoto error %s: %s",
+                    "Telegram sendPhoto HTTP %s: %s",
                     r.status_code,
-                    (r.text or "")[:300],
+                    (r.text or "")[:500],
                 )
                 photo_failed = True
             if photo_failed:
@@ -872,9 +880,12 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 token, chat_id, text, link=link_url,
                 button_emoji=button_emoji, button_style='primary',
                 button_tags=button_tags)
-        if not r.ok:
+        if r is not None and not r.ok:
             logging.warning(
-                "Telegram notify failed: %s %s", r.status_code, r.text[:200])
+                "Telegram notify failed: %s %s",
+                r.status_code,
+                (getattr(r, "text", "") or "")[:300],
+            )
     except requests.RequestException as e:
         logging.warning("Telegram notify error: %s", e)
 

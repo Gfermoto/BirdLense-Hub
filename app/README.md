@@ -43,7 +43,7 @@ UI: http://localhost:8085
 | `make pull` | Скачать и запустить готовый образ |
 | `make stop` | Остановка |
 | `make logs` | Логи |
-| `make deploy` | Деплой на сервер (из корня репо; см. [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)) |
+| `make deploy` | Деплой на сервер (из корня репо; см. [docs/INSTALL.md](../docs/INSTALL.md)) |
 
 ## Конфигурация
 

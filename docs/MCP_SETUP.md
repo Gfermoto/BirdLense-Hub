@@ -68,4 +68,4 @@ mkdir -p .cursor
 
 ---
 
-См. также: [DEPLOYMENT.md](./DEPLOYMENT.md), [API.md](./API.md), [CONFIGURATION.md](./CONFIGURATION.md).
+См. также: [INSTALL.md](./INSTALL.md), [API.md](./API.md), [CONFIGURATION.md](./CONFIGURATION.md).

@@ -4,7 +4,7 @@ import threading
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
-from flask import request
+from flask import request, Response
 import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func, select, exists
@@ -24,64 +24,145 @@ LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 
 
+def _collect_system_metrics_dict(app):
+    """Собирает системные метрики (CPU, память, диск, GPU). Используется в system_metrics и /api/metrics."""
+    cpu_percent = psutil.cpu_percent(interval=0.5)
+    memory = psutil.virtual_memory()
+    memory_total_gb = round(memory.total / (1024**3), 1)
+    memory_used_gb = round(memory.used / (1024**3), 1)
+    memory_percent = memory.percent
+    disk = psutil.disk_usage('/')
+    disk_total_gb = round(disk.total / (1024**3), 1)
+    disk_used_gb = round(disk.used / (1024**3), 1)
+    disk_percent = disk.percent
+
+    encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
+    if encoding not in ('cpu', 'intel'):
+        encoding = 'cpu'
+    encoding_used = None
+    processor_mqtt = None
+    last_hb = ActivityLog.query.filter_by(type='heartbeat').order_by(
+        ActivityLog.updated_at.desc()
+    ).first()
+    if last_hb and last_hb.data:
+        try:
+            import json as _json
+            data = _json.loads(last_hb.data) if isinstance(last_hb.data, str) else last_hb.data
+            encoding_used = data.get('encoding_used')
+            processor_mqtt = 'ok' if data.get('mqtt_connected') is True else ('error' if data.get('mqtt_connected') is False else None)
+        except (TypeError, ValueError):
+            pass
+
+    gpu_percent = None
+    for path in ('/sys/class/drm/card0/device/gpu_busy_percent',
+                 '/sys/class/drm/card0/device/utilization'):
+        try:
+            with open(path) as f:
+                raw = f.read().strip()
+            val = int(raw)
+            if 0 <= val <= 100:
+                gpu_percent = val
+            elif 0 <= val <= 255:
+                gpu_percent = round(100 * val / 255)
+            if gpu_percent is not None:
+                break
+        except (OSError, ValueError):
+            continue
+    intel_gpu = encoding == 'intel' or os.path.exists('/dev/dri/renderD128')
+    if gpu_percent is None and intel_gpu:
+        try:
+            from gpu_stats import get_intel_gpu_percent
+            gpu_percent = get_intel_gpu_percent()
+        except Exception as e:
+            app.logger.warning("gpu_stats: %s", e)
+
+    return {
+        'cpu': {'percent': cpu_percent},
+        'memory': {
+            'total': memory_total_gb, 'used': memory_used_gb, 'percent': memory_percent,
+            'total_bytes': memory.total, 'used_bytes': memory.used,
+        },
+        'disk': {'total': disk_total_gb, 'used': disk_used_gb, 'percent': disk_percent},
+        'encoding': encoding,
+        'encoding_used': encoding_used,
+        'processor_mqtt': processor_mqtt,
+        'gpu_percent': gpu_percent,
+    }
+
+
 def register_routes(app):
+    def _prometheus_metrics_body(app):
+        sys_m = _collect_system_metrics_dict(app)
+        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+        lines = [
+            '# HELP birdlense_cpu_usage_percent CPU usage',
+            '# TYPE birdlense_cpu_usage_percent gauge',
+            f'birdlense_cpu_usage_percent {sys_m["cpu"]["percent"]}',
+            '# HELP birdlense_memory_used_percent Memory usage percent',
+            '# TYPE birdlense_memory_used_percent gauge',
+            f'birdlense_memory_used_percent {sys_m["memory"]["percent"]}',
+            '# HELP birdlense_memory_total_bytes Memory total in bytes',
+            '# TYPE birdlense_memory_total_bytes gauge',
+            f'birdlense_memory_total_bytes {sys_m["memory"]["total_bytes"]}',
+            '# HELP birdlense_memory_used_bytes Memory used in bytes',
+            '# TYPE birdlense_memory_used_bytes gauge',
+            f'birdlense_memory_used_bytes {sys_m["memory"]["used_bytes"]}',
+            '# HELP birdlense_disk_used_percent Disk usage percent',
+            '# TYPE birdlense_disk_used_percent gauge',
+            f'birdlense_disk_used_percent {sys_m["disk"]["percent"]}',
+            '# HELP birdlense_detections_total Total number of bird detections',
+            '# TYPE birdlense_detections_total counter',
+            f'birdlense_detections_total {detections}',
+            '# HELP birdlense_species_count Number of unique species detected',
+            '# TYPE birdlense_species_count gauge',
+            f'birdlense_species_count {species_count}',
+            '# HELP birdlense_videos_total Total number of recorded videos',
+            '# TYPE birdlense_videos_total counter',
+            f'birdlense_videos_total {videos_count}',
+        ]
+        if sys_m['gpu_percent'] is not None:
+            lines.extend([
+                '# HELP birdlense_gpu_usage_percent GPU usage',
+                '# TYPE birdlense_gpu_usage_percent gauge',
+                f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
+            ])
+        return '\n'.join(lines) + '\n'
+
+    @app.route('/api/metrics', methods=['GET'])
+    def prometheus_metrics_api():
+        """Prometheus exposition format для Grafana. CPU, память, диск, GPU, detections, species, videos."""
+        try:
+            body = _prometheus_metrics_body(app)
+            return Response(body, mimetype='text/plain; charset=utf-8')
+        except Exception as e:
+            app.logger.error(f"Error getting Prometheus metrics: {str(e)}")
+            return Response('# Error\n', mimetype='text/plain; charset=utf-8', status=500)
+
+    @app.route('/metrics', methods=['GET'])
+    def prometheus_metrics():
+        """Prometheus metrics (alias for /api/metrics)."""
+        try:
+            body = _prometheus_metrics_body(app)
+            return Response(body, mimetype='text/plain; charset=utf-8')
+        except Exception as e:
+            app.logger.error(f"Error getting Prometheus metrics: {str(e)}")
+            return Response('# Error\n', mimetype='text/plain; charset=utf-8', status=500)
+
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
         try:
-            # CPU usage
-            cpu_percent = psutil.cpu_percent(interval=0.5)
-
-            # Memory information
-            memory = psutil.virtual_memory()
-            memory_total_gb = round(memory.total / (1024**3), 1)
-            memory_used_gb = round(memory.used / (1024**3), 1)
-            memory_percent = memory.percent
-
-            # Disk information for the root filesystem
-            disk = psutil.disk_usage('/')
-            disk_total_gb = round(disk.total / (1024**3), 1)
-            disk_used_gb = round(disk.used / (1024**3), 1)
-            disk_percent = disk.percent
-
-            # Encoding: config + actual from processor heartbeat
-            encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
-            if encoding not in ('cpu', 'intel'):
-                encoding = 'cpu'
-            encoding_used = None
-            processor_mqtt = None
-            last_hb = ActivityLog.query.filter_by(type='heartbeat').order_by(
-                ActivityLog.updated_at.desc()
-            ).first()
-            if last_hb and last_hb.data:
-                try:
-                    import json as _json
-                    data = _json.loads(last_hb.data) if isinstance(last_hb.data, str) else last_hb.data
-                    encoding_used = data.get('encoding_used')
-                    processor_mqtt = 'ok' if data.get('mqtt_connected') is True else ('error' if data.get('mqtt_connected') is False else None)
-                except (TypeError, ValueError):
-                    pass
-
-            metrics = {
-                'cpu': {
-                    'percent': cpu_percent
-                },
-                'memory': {
-                    'total': memory_total_gb,
-                    'used': memory_used_gb,
-                    'percent': memory_percent
-                },
-                'disk': {
-                    'total': disk_total_gb,
-                    'used': disk_used_gb,
-                    'percent': disk_percent
-                },
-                'encoding': encoding,
-                'encoding_used': encoding_used,
-                'processor_mqtt': processor_mqtt,
+            m = _collect_system_metrics_dict(app)
+            return {
+                'cpu': m['cpu'],
+                'memory': m['memory'],
+                'disk': m['disk'],
+                'encoding': m['encoding'],
+                'encoding_used': m['encoding_used'],
+                'processor_mqtt': m['processor_mqtt'],
+                'gpu_percent': m['gpu_percent'],
             }
-
-            return metrics
-
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500

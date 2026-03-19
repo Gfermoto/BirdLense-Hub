@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.1] - 2026-03-19
+
+### Added
+
+- **Prometheus /api/metrics** — эндпоинт для Grafana (CPU, память, диск, GPU, detections, species, videos).
+- **Intel GPU метрики** — карточка GPU в System, `gpu_percent` из sysfs/intel_gpu_top.
+
+### Changed
+
+- **Документация** — консолидация: TROUBLESHOOTING в один файл, MQTT/Gallery/Detection в CONFIGURATION, INSTALL+DEPLOYMENT+DEPLOY_USER в INSTALL, TRAINING+HUGGINGFACE в TRAINING. Удалены дубли, архив сокращён.
+- **Подсказка кодирования** — убрано «(NUC, Celeron и др.)» из UI.
+
+---
+
 ## [0.2.0] - 2026-03-18
 
 ### Added

@@ -11,6 +11,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import SpeedIcon from '@mui/icons-material/Speed';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CloudIcon from '@mui/icons-material/Cloud';
+import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import { BASE_API_URL } from '../../api/api';
 
 interface MetricCardProps {
@@ -20,13 +21,15 @@ interface MetricCardProps {
   percent: number;
 }
 
+const CARD_MIN_HEIGHT = 130;
+
 const MetricCard: React.FC<MetricCardProps> = ({
   icon: Icon,
   title,
   value,
   percent,
 }) => (
-  <Card>
+  <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Icon color="action" />
@@ -68,7 +71,7 @@ export const SystemMonitor = () => {
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
+          <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
             <CardContent>
               <Box
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
@@ -108,7 +111,7 @@ export const SystemMonitor = () => {
 
         {data.encoding != null && (
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card>
+            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <VideocamIcon color="action" />
@@ -136,7 +139,7 @@ export const SystemMonitor = () => {
 
         {data.processor_mqtt != null && (
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card>
+            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <CloudIcon color="action" />
@@ -145,6 +148,42 @@ export const SystemMonitor = () => {
                 <Typography variant="body2" color={data.processor_mqtt === 'ok' ? 'text.secondary' : 'error.main'}>
                   {data.processor_mqtt === 'ok' ? t('status.mqttOk') : data.processor_mqtt === 'error' ? t('status.mqttError') : t('status.mqttUnknown')}
                 </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {(data.encoding === 'intel' || data.gpu_percent != null) && (
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <DeveloperBoardIcon color="action" />
+                  <Typography variant="h6">{t('system.gpu')}</Typography>
+                </Box>
+                {data.gpu_percent != null ? (
+                  <>
+                    <LinearProgress
+                      variant="determinate"
+                      value={data.gpu_percent}
+                      sx={{ mb: 2, height: 8, borderRadius: 1 }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {t('system.usagePercent', { percent: data.gpu_percent })}
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <LinearProgress
+                      variant="determinate"
+                      value={0}
+                      sx={{ mb: 2, height: 8, borderRadius: 1, opacity: 0.4 }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {t('system.gpuNoData')}
+                    </Typography>
+                  </>
+                )}
               </CardContent>
             </Card>
           </Grid>

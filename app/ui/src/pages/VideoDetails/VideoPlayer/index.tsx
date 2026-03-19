@@ -18,7 +18,7 @@ import Fade from '@mui/material/Fade';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Video, VideoSpecies } from '../../../types';
-import { BASE_URL } from '../../../api/api';
+import { BASE_URL, BASE_API_URL } from '../../../api/api';
 import { ProgressBar } from './ProgressBar';
 import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
@@ -495,7 +495,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
         >
           <video
             ref={videoRef}
-            src={`${BASE_URL}/${video.video_path}`}
+            src={`${BASE_API_URL}/videos/${video.id}/stream`}
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
             onError={() => setError(t('errors.loadVideo'))}

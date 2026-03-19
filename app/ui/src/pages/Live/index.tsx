@@ -1,39 +1,65 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCameras } from '../../api/api';
 
-/** Go2RTC iframe — формат (WebRTC/MSE) выбирает сам Go2RTC. */
+type StreamMode = 'go2rtc' | 'mjpeg';
+
+/** Go2RTC iframe (RTC/MSE) или MJPEG img — fallback при 502/go2rtc недоступен. */
 const CameraStream = ({
   streamUrl,
+  streamUrlMjpeg,
   name,
+  mode,
 }: {
   streamUrl: string;
+  streamUrlMjpeg?: string;
   name: string;
+  mode: StreamMode;
 }) => {
+  const useMjpeg = mode === 'mjpeg' && streamUrlMjpeg;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{name}</Typography>
-      <Box
-        component="iframe"
-        src={streamUrl}
-        title={name}
-        sx={{
-          flex: 1,
-          minHeight: 200,
-          border: 'none',
-          borderRadius: 1,
-          bgcolor: 'black',
-        }}
-      />
+      {useMjpeg ? (
+        <Box
+          component="img"
+          src={streamUrlMjpeg}
+          alt={name}
+          sx={{
+            flex: 1,
+            minHeight: 200,
+            objectFit: 'contain',
+            borderRadius: 1,
+            bgcolor: 'black',
+          }}
+        />
+      ) : (
+        <Box
+          component="iframe"
+          src={streamUrl}
+          title={name}
+          sx={{
+            flex: 1,
+            minHeight: 200,
+            border: 'none',
+            borderRadius: 1,
+            bgcolor: 'black',
+          }}
+        />
+      )}
     </Box>
   );
 };
 
 export const LivePage = () => {
   const { t } = useTranslation();
+  const [streamMode, setStreamMode] = useState<StreamMode>('go2rtc');
   const { data: cameras, isLoading } = useQuery({
     queryKey: ['cameras'],
     queryFn: fetchCameras,
@@ -51,6 +77,7 @@ export const LivePage = () => {
   }
 
   const cams = cameras ?? [];
+  const hasMjpeg = cams.some((c) => c.stream_url_mjpeg);
 
   // Адаптивная сетка: 1 камера — на всю ширину, 2 — в 2 колонки, 3–4 — в 4, 5+ — в 6
   const numCols = cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
@@ -58,9 +85,22 @@ export const LivePage = () => {
 
   return (
     <Box>
-      <Typography variant="h4" mb={3}>
-        {t('live.title')}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+        <Typography variant="h4">
+          {t('live.title')}
+        </Typography>
+        {hasMjpeg && (
+          <ToggleButtonGroup
+            value={streamMode}
+            exclusive
+            onChange={(_, v: StreamMode | null) => v != null && setStreamMode(v)}
+            size="small"
+          >
+            <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
+            <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>
+          </ToggleButtonGroup>
+        )}
+      </Box>
       {cams.length === 0 ? (
         <Typography color="text.secondary">
           {t('live.noCameras')}
@@ -71,7 +111,9 @@ export const LivePage = () => {
           <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
             <CameraStream
               streamUrl={cam.stream_url}
+              streamUrlMjpeg={cam.stream_url_mjpeg}
               name={cam.name}
+              mode={streamMode}
             />
           </Grid>
         ))}

@@ -80,11 +80,11 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
 
-# 1.8 Intel GPU: на сервере с /dev/dri/renderD128 — создать override для VA-API; без устройства — убрать override
+# 1.8 Intel GPU: на сервере с /dev/dri/renderD128 — создать/обновить override (devices + sysfs для метрик GPU)
 echo "1.8 Проверка Intel GPU на сервере..."
 ssh ${SSH_OPTS} "${HOST}" "cd ${REMOTE_DIR}/app && \
   if [ -e /dev/dri/renderD128 ]; then \
-    [ ! -f docker-compose.override.yml ] && cp docker-compose.intel.example.yml docker-compose.override.yml && echo '  override создан (Intel GPU)'; \
+    cp docker-compose.intel.example.yml docker-compose.override.yml && echo '  override установлен (Intel GPU + sysfs)'; \
   else \
     rm -f docker-compose.override.yml; \
   fi"

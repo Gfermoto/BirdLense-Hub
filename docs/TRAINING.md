@@ -556,4 +556,18 @@ if os.path.exists(best):
 
 ---
 
-См. также: [DATASETS.md](./DATASETS.md), [HUGGINGFACE.md](./HUGGINGFACE.md).
+## Hugging Face — датасеты и модели
+
+**Репозитории:** [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (датасет), [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (best.pt), [gfermoto/birdlense-annotations](https://huggingface.co/datasets/gfermoto/birdlense-annotations) (разметка).
+
+**Токен:** [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) → Write → `huggingface-cli login`.
+
+**Загрузка датасета:** Web UI или `huggingface-cli upload gfermoto/birds-eu-merged merged_cls.zip . --repo-type dataset`. **Скачать в Colab:** `hf_hub_download(repo_id="gfermoto/birds-eu-merged", filename="merged_cls.zip", repo_type="dataset")`.
+
+**Загрузка best.pt:** `huggingface-cli upload gfermoto/birdlense-birds-eu best.pt .`. **Скачать в BirdLense:** `huggingface-cli download gfermoto/birdlense-birds-eu best.pt --local-dir app/processor/models/classification/weights`.
+
+**Model card:** `datasets: - gfermoto/birds-eu-merged`, `tags: image-classification, birds, europe, birdlense, yolo`. Лимиты: 50 GB датасеты, 10 GB модели (бесплатно).
+
+---
+
+См. также: [DATASETS.md](./DATASETS.md).

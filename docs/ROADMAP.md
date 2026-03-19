@@ -82,11 +82,11 @@ State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected
 | ✅ PDF-отчёт                           | Месячный отчёт: N видов, топ-5, графики — скачать PDF. v0.1.8: брендинг, шапка/футер          | Средняя   | Нет     |
 | ✅ Bird song player (Xeno-canto)       | Кнопка «Воспроизвести песню» на карточке вида — аудио из Xeno-canto API                       | Средняя   | Нет     |
 | ✅ eBird export                         | Экспорт списка видов в формат eBird для загрузки в приложение                                 | Средняя   | Нет     |
-| ✅ Grafana/Prometheus метрики         | Эндпоинт `/metrics` — detections_count, species_count для дашбордов                           | Средняя   | Нет     |
+| ✅ Grafana/Prometheus метрики         | `/metrics`, `/api/metrics` — CPU, память, диск, GPU, detections, species, videos             | Средняя   | Нет     |
 | ✅ Confidence по виду                   | Разные пороги min_confidence для разных видов (редкие — ниже)                                 | Средняя   | Низкий  |
 | ✅ Экспорт в iNaturalist               | Кнопка «Отправить в iNaturalist» — crop + вид для citizen science                             | Средняя   | Нет     |
 | ✅ Web Push                             | Push-уведомления в браузере вместо/дополнение Telegram                                        | Средняя   | Низкий  |
-| ✅ Публичная галерея                   | Opt-in: загрузка лучших кадров на настраиваемый URL (multipart/form-data). См. [GALLERY_UPLOAD.md](./GALLERY_UPLOAD.md) | Высокая   | Средний |
+| ✅ Публичная галерея                   | Opt-in: загрузка лучших кадров на настраиваемый URL. См. [CONFIGURATION.md](./CONFIGURATION.md) — Gallery | Высокая   | Средний |
 | ✅ Календарь миграций                  | «Вид X обычно появляется в марте» — по историческим данным                                    | Высокая   | Нет     |
 | ✅ Сравнение с регионом               | Карточка на Overview: ваши виды в топе региона + полный топ региона (eBird API)               | Высокая   | Средний |
 | ✅ Закат и рассвет на карточке погоды | Восход, закат, рассвет, сумерки, полдень — дуга солнца (в стиле Horizon Card) на выбранную дату в локации из настроек | Низкая    | Нет     |
@@ -101,4 +101,4 @@ State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected
 
 ---
 
-См. также: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md), [DATASETS.md](./DATASETS.md), [COLLABORATIVE_LABELING.md](./COLLABORATIVE_LABELING.md), [MQTT_DISCOVERED_TOPICS.md](./MQTT_DISCOVERED_TOPICS.md), [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md).
+См. также: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md), [DATASETS.md](./DATASETS.md), [archive/COLLABORATIVE_LABELING.md](./archive/COLLABORATIVE_LABELING.md), [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md).

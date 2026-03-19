@@ -1,6 +1,6 @@
 # API BirdLense Hub
 
-**Версия:** 0.1.9
+**Версия:** 0.2.1
 
 Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
 
@@ -44,7 +44,8 @@
 
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
-| `/metrics` | GET | Метрики в формате Prometheus: `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total` |
+| `/metrics` | GET | Prometheus: CPU, память, диск, GPU, detections, species, videos |
+| `/api/metrics` | GET | То же (для Grafana) |
 
 См. [CONFIGURATION.md](./CONFIGURATION.md) — раздел Prometheus / Grafana.
 
@@ -52,7 +53,7 @@
 
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
-| `/system/metrics` | GET | CPU, память, диск |
+| `/system/metrics` | GET | CPU, память, диск, GPU, encoding |
 | `/system/activity` | GET | Активность по дням |
 | `/storage/stats` | GET | Статистика записей |
 | `/storage/purge` | POST | Удаление записей по дате |

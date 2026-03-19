@@ -106,9 +106,9 @@ birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
 
 | Платформа | Назначение |
 |-----------|------------|
-| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — см. [HUGGINGFACE.md](./HUGGINGFACE.md) |
+| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — см. [TRAINING.md](./TRAINING.md) |
 | **Zenodo** | DOI для статей, снапшоты |
 
 ---
 
-См. также: [TRAINING.md](./TRAINING.md), [HUGGINGFACE.md](./HUGGINGFACE.md).
+См. также: [TRAINING.md](./TRAINING.md).

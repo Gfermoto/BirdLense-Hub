@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md) [English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [English](./README.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
@@ -23,7 +23,7 @@
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
 
-**Модели:** EU-классификатор (birds-525 + iNaturalist). См. [docs/HUGGINGFACE.md](./docs/HUGGINGFACE.md).
+**Модели:** EU-классификатор (birds-525 + iNaturalist). См. [docs/TRAINING.md](./docs/TRAINING.md).
 
 <details>
 <summary>📷 Скриншоты</summary>

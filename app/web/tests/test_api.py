@@ -26,7 +26,21 @@ class TestMetrics:
             if line and not line.startswith('#'):
                 parts = line.split()
                 assert len(parts) >= 2
-                assert parts[1].isdigit()
+                try:
+                    float(parts[1])
+                except ValueError:
+                    pytest.fail(f"Metric value not numeric: {parts[1]!r}")
+
+    def test_api_metrics_same_as_metrics(self, client):
+        """`/api/metrics` — отдельный эндпоинт для Grafana, тот же формат."""
+        r = client.get('/api/metrics')
+        assert r.status_code == 200
+        assert 'text/plain' in (r.content_type or '')
+        body = r.get_data(as_text=True)
+        assert 'birdlense_cpu_usage_percent' in body
+        assert 'birdlense_memory_used_percent' in body
+        assert 'birdlense_disk_used_percent' in body
+        assert 'birdlense_detections_total' in body
 
 
 class TestTimelineExport:

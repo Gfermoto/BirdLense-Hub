@@ -1,15 +1,25 @@
-# Intel GPU (VA-API): кодирование записи на встроенной графике Intel (NUC, Celeron и т.д.)
+# Intel GPU (VA-API): кодирование записи на встроенной видеокарте Intel (Intel UHD, Iris и т.д.)
 #
 # Работает везде: без этого файла контейнер использует CPU. Выбор «CPU» или «Intel GPU»
 # в Настройках → Видео → Кодирование записи. На хосте без Intel или без override — просто CPU.
 #
 # На хосте С Intel — один раз скопировать в override (рядом с docker-compose.yml):
 #   cp docker-compose.intel.example.yml docker-compose.override.yml
-# Затем make deploy или docker compose up -d. В настройках выбрать «Intel GPU».
+# Либо при деплое (make deploy) override создаётся автоматически, если есть /dev/dri/renderD128.
 #
-# На хосте: apt install intel-media-va-driver-non-free vainfo; vainfo; ls /dev/dri/
+# Драйвер VA-API (intel-media-va-driver-non-free) — в образе. На хосте: ls /dev/dri/
+# Для старых Intel (gen1–5): заменить LIBVA_DRIVER_NAME=iHD на i965
 
 services:
   birdlense:
     devices:
       - /dev/dri/renderD128:/dev/dri/renderD128
+    # intel_gpu_top (метрики GPU) требует SYS_ADMIN для PMU
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      # Intel VA-API: iHD по умолчанию (gen6+); для старых (gen1–5) — i965
+      - LIBVA_DRIVER_NAME=iHD
+    volumes:
+      # Метрики загрузки GPU в UI (System): чтение из sysfs
+      - /sys/class/drm:/sys/class/drm:ro

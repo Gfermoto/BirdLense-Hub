@@ -34,9 +34,9 @@
 | `enable_notifications` | Включить уведомления (глобально) |
 | `settings_password` | Пароль для доступа к настройкам. Пусто — без пароля |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
-| `donate_url` | Ссылка на страницу пожертвований. Пусто — кнопка-заглушка. |
+| `donate_url` | Ссылка на пожертвования. Кнопка на Overview. Пусто — заглушка. |
 
-**Платформы для РФ:** [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru). За рубежом: Ko-fi, Buy Me a Coffee, GitHub Sponsors.
+**Платформы:** РФ — [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru), ЮMoney. За рубежом — Ko-fi, GitHub Sponsors, Patreon. Настройки → General → вставить URL страницы.
 
 ---
 
@@ -90,6 +90,8 @@
 
 ## MQTT
 
+Одно подключение — топики frigate и birdnet. Триггеры: Frigate, BirdNET (при MQTT), ESPHome, MQTT binary, OpenCV. YOLO распознаёт после триггера.
+
 | Ключ | Описание |
 |------|----------|
 | `broker` | Адрес брокера |
@@ -97,7 +99,11 @@
 | `frigate_topic` | Топик событий Frigate |
 | `birdnet_topic` | Топик BirdNET |
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
-| `ha_discovery` | Home Assistant MQTT Autodiscovery — публикация config для автообнаружения сущностей (Last Species, Bird at Feeder и др.). По умолчанию true. |
+| `ha_discovery` | Home Assistant MQTT Autodiscovery — Last Species, Bird at Feeder и др. По умолчанию true. |
+
+**Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
+
+**BirdNET:** `CommonName`, `Confidence`, `BeginTime` (для слияния), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label`.
 
 ---
 
@@ -111,6 +117,8 @@
 | `esphome_url` | URL ESPHome |
 | `esphome_switch_id` | ID switch/button |
 | `esphome_type` | `switch` \| `button` |
+
+**Время последней выдачи:** Hub сохраняет в `data/feed_last_dispense.json` при успешном dispense (MQTT и ESPHome). На Overview в карточке «Управление кормушкой» показывается «Последняя выдача: дата, время».
 
 ---
 
@@ -126,30 +134,40 @@
 
 ## Detection (слияние YOLO + Frigate + BirdNET)
 
-Кто распознал каждый вид — см. [DETECTION_SOURCES.md](./DETECTION_SOURCES.md).
+**Источники:** YOLO (видео, EU ~491 вид), Frigate (`sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/)), BirdNET (аудио). В UI — полосы под видео, карточки видов: «Источник: YOLO», «Frigate», «BirdNET». Один результат на вид (max confidence).
+
+**Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 
 | Ключ | Описание |
 |------|----------|
-| `merge_window_seconds` | Окно слияния MQTT-событий по времени (8 сек) |
-| `dedup_window_seconds` | Детекции одного вида с разрывом > N сек считаются разными визитами (60 сек) |
-| `one_per_species` | Гарантированно один результат на вид в записи (true — устраняет дубликаты) |
-| `source_priority` | При конфликте видов: `["yolo", "frigate", "birdnet"]` — первый выше приоритет |
-| `min_confidence_to_store` | Мин. confidence для сохранения (0.05 = 5%). Детекции ниже отсекаются |
+| `merge_window_seconds` | Окно слияния MQTT (8 сек) |
+| `dedup_window_seconds` | Разрыв > N сек = разные визиты (60 сек) |
+| `one_per_species` | Один результат на вид (true) |
+| `source_priority` | При конфликте: `["yolo", "frigate", "birdnet"]` |
+| `min_confidence_to_store` | Мин. confidence (0.05) |
 | `species_mapping` | Маппинг названий видов |
 
-**Источники видов:**
-- **YOLO** — видео, классификация (EU: birds-525 + iNaturalist ~491 вид — активна в `best.pt`)
-- **Frigate** — видео, `sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/) (MobileNet INat)
-- **BirdNET** — аудио, распознавание по голосу
-
-**EU-модель:** активна в `best.pt`. US — резерв в `best_US.pt`. Обучение: [TRAINING.md](./TRAINING.md).
+**EU-модель:** `best.pt`. US — `best_US.pt`. [TRAINING.md](./TRAINING.md).
 
 ## Retention
 
 | Ключ | Описание |
 |------|----------|
 | `days` | Удалять записи старше N дней |
-| `max_gb` | Макс. размер в GB (по достижении — удалять старые, опционально) |
+| `max_gb` | Макс. размер в GB (опционально) |
+
+---
+
+## Gallery (публичная галерея)
+
+Opt-in: при `enabled=true` и `upload_url` Hub загружает лучшие кадры на указанный URL. POST multipart/form-data: `image`, `species`, `confidence`, `timestamp`, `detection_id`, `video_id`, `latitude`, `longitude`. Фильтры: `min_confidence` (0.5), `only_manually_corrected`. Тест: `docker compose -f docker/gallery-test/docker-compose.yml up -d` → http://localhost:8086/api/upload.
+
+| Ключ | Описание |
+|------|----------|
+| `enabled` | Включить загрузку |
+| `upload_url` | URL API приёмника |
+| `min_confidence` | Только детекции ≥ порога |
+| `only_manually_corrected` | Только проверенные вручную |
 
 ---
 
@@ -259,20 +277,21 @@ Push-уведомления в браузере (дополнение или а�
 
 ## Prometheus / Grafana
 
-Эндпоинт `GET /metrics` отдаёт метрики в формате Prometheus. Конфигурации в BirdLense не требуется.
+Эндпоинты `GET /metrics` и `GET /api/metrics` — формат Prometheus.
 
-**Prometheus** — в `prometheus.yml` добавьте scrape job:
+**Prometheus** — в `prometheus.yml`:
 ```yaml
 scrape_configs:
   - job_name: 'birdlense'
+    metrics_path: '/api/metrics'
     static_configs:
-      - targets: ['birdlense:8080']  # или IP:порт вашего Hub
-    metrics_path: /metrics
+      - targets: ['birdlense:8085']  # или ваш хост:порт
+    scrape_interval: 15s
 ```
 
-**Метрики:** `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
+**Метрики:** CPU, память, диск, GPU (если есть), `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
 
-**Grafana** — добавьте Prometheus как datasource, создайте дашборд с панелями по этим метрикам.
+**Grafana** — Prometheus datasource, дашборд по метрикам.
 
 ---
 
@@ -289,4 +308,4 @@ scrape_configs:
 
 ---
 
-См. также: [INSTALL.md](./INSTALL.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [DEPLOYMENT.md](./DEPLOYMENT.md).
+См. также: [INSTALL.md](./INSTALL.md), [ARCHITECTURE.md](./ARCHITECTURE.md).

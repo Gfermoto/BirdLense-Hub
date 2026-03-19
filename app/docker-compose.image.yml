@@ -1,5 +1,5 @@
 # Развёртывание из готового образа (без сборки)
-# Использование: см. docs/DEPLOY_USER_STANDALONE.md
+# Использование: см. docs/INSTALL.md — Вариант 3
 #
 #   export BIRDLENSE_IMAGE=ghcr.io/gfermoto/birdlense-hub:latest   # или свой registry
 #   cp .env.example .env   # и заполнить
