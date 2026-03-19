@@ -8,11 +8,11 @@ python3 -c 'import sys; t=open("/etc/nginx/conf.d/default.conf.template").read()
 nginx &
 sleep 1
 cd /app/web && PYTHONPATH=/app gunicorn -w 1 -b 127.0.0.1:8000 app:app &
-# create_app() блокируется на отправке в Telegram (до telegram_timeout, по умолчанию 45s).
-# Ждём до 60s, иначе контейнер выходит по таймауту и перезапускается → спам «App is UP!».
-for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null && break; sleep 1; done
+# create_app() блокируется на отправке в Telegram (telegram_timeout может быть 300+ сек в РФ).
+# Ждём до 400s, иначе контейнер выходит по таймауту и перезапускается → спам «App is UP!».
+for i in $(seq 1 400); do curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null && break; sleep 1; done
 if ! curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null; then
-  echo "API health check failed after 60s"
+  echo "API health check failed after 400s"
   exit 1
 fi
 # MCP server (при mcp.enabled) — HTTP на 8001, nginx проксирует /mcp

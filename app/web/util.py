@@ -552,9 +552,9 @@ def _get_telegram_api_base():
 
 
 def _telegram_timeouts():
-    """(timeout_text, timeout_media) — текст легче, медиа тяжелее."""
-    t = int(app_config.get('notifications.telegram_timeout') or 45)
-    t = max(15, min(120, t))
+    """(timeout_text, timeout_media) — текст легче, медиа тяжелее. В РФ таймауты большие (блокировки)."""
+    t = int(app_config.get('notifications.telegram_timeout') or 300)
+    t = max(30, min(600, t))  # до 10 мин при блокировках
     return t // 2, t
 
 
@@ -578,10 +578,24 @@ def _telegram_request(method, url, timeout, retries=None, **kwargs):
     raise last_exc
 
 
+def _payload_for_telegram_multipart(payload):
+    """Для multipart/form-data Telegram ожидает булевы как строки 'true'/'false'."""
+    out = {}
+    for k, v in payload.items():
+        if isinstance(v, bool):
+            out[k] = 'true' if v else 'false'
+        elif isinstance(v, dict):
+            out[k] = json.dumps(v)
+        else:
+            out[k] = v
+    return out
+
+
 def _compress_image_for_telegram(image_bytes):
-    """Сжать JPEG если > N KB. Ускоряет при троттлинге медиа."""
+    """Сжать и/или уменьшить JPEG для Telegram. В уведомлениях уже шлём кропы (bounding box) с процессора."""
+    max_side = int(app_config.get('notifications.telegram_max_side_px') or 0)
     limit_kb = int(app_config.get('notifications.compress_photo_over_kb') or 0)
-    if limit_kb <= 0 or len(image_bytes) <= limit_kb * 1024:
+    if max_side <= 0 and (limit_kb <= 0 or len(image_bytes) <= limit_kb * 1024):
         return image_bytes
     try:
         from PIL import Image
@@ -589,14 +603,24 @@ def _compress_image_for_telegram(image_bytes):
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode in ('RGBA', 'P'):
             img = img.convert('RGB')
+        w, h = img.size
+        if max_side > 0 and max(w, h) > max_side:
+            ratio = max_side / max(w, h)
+            new_size = (int(w * ratio), int(h * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            logging.debug("Telegram: resized to %s (max_side=%s)", new_size, max_side)
         buf = io.BytesIO()
-        img.save(buf, 'JPEG', quality=78, optimize=True)
+        img.save(buf, 'JPEG', quality=85, optimize=True)
         out = buf.getvalue()
+        if limit_kb > 0 and len(out) > limit_kb * 1024:
+            buf2 = io.BytesIO()
+            img.save(buf2, 'JPEG', quality=78, optimize=True)
+            out = buf2.getvalue()
         if len(out) < len(image_bytes):
-            logging.debug("Telegram: compressed %d -> %d bytes", len(image_bytes), len(out))
-            return out
+            logging.debug("Telegram: %d -> %d bytes", len(image_bytes), len(out))
+        return out
     except Exception as e:
-        logging.debug("Telegram compress skip: %s", e)
+        logging.debug("Telegram image process skip: %s", e)
     return image_bytes
 
 
@@ -796,28 +820,38 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
             base = _get_telegram_api_base()
             _, timeout_media = _telegram_timeouts()
             photo_failed = False
+            r = None
             try:
+                data = _payload_for_telegram_multipart(payload)
                 if view_stars > 0:
-                    payload['star_count'] = view_stars
-                    payload['media'] = json.dumps([
+                    data['star_count'] = view_stars
+                    data['media'] = json.dumps([
                         {'type': 'photo', 'media': 'attach://photo'}
                     ])
                     r = _telegram_request(
                         'POST', f"{base}/bot{token}/sendPaidMedia",
                         timeout=timeout_media,
-                        data=payload,
+                        data=data,
                         files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
                     )
                 else:
                     r = _telegram_request(
                         'POST', f"{base}/bot{token}/sendPhoto",
                         timeout=timeout_media,
-                        data=payload,
+                        data=data,
                         files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
                     )
             except (requests.Timeout, requests.ConnectionError, OSError) as e:
                 logging.warning("Telegram photo failed (%s), fallback to text", e)
                 photo_failed = True
+            if r is not None and not r.ok:
+                logging.warning(
+                    "Telegram sendPhoto error %s: %s",
+                    r.status_code,
+                    (r.text or "")[:300],
+                )
+                photo_failed = True
+            if photo_failed:
                 try:
                     r = _telegram_send_message(
                         token, chat_id, text, link=link_url,
