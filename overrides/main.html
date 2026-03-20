@@ -1,11 +1,4 @@
-{#-
-  Announcement bar: Material ignores theme.announcement in mkdocs.yml; official way is this block.
-  Version from extra.site_version (must match root VERSION; see scripts/check-docs-version.py).
-
-  Header repo widget (stars / forks / version): Material fetches GitHub `releases/latest` for the
-  version label — it lags behind VERSION if there is no matching GitHub Release. We patch the
-  `.md-source__fact--version` label to match `extra.site_version` after the widget renders.
--#}
+{#- Banner: block announce (Material). Version: extra.site_version = VERSION. Script syncs header repo chip to same version. -#}
 {% extends "base.html" %}
 
 {% block announce %}

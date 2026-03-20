@@ -67,8 +67,6 @@ Wiki через API:
 gh api "repos/$FULL" -X PATCH -f has_wiki=true
 ```
 
-Связка **Pages, Docker, Wiki, Issues и релизов**: [GITHUB_ECOSYSTEM.ru.md](./GITHUB_ECOSYSTEM.ru.md).
-
 Автоотчёты и вывод скриптов в CI → **Summary** / **Wiki**: [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md).
 
 Опционально (если поддерживает ваша версия `gh`):
