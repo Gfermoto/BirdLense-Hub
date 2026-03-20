@@ -3,7 +3,7 @@ ultralytics==8.4.21
 pyyaml==6.0.3
 paho-mqtt==2.1.0
 requests==2.32.4
-ncnn==1.0.20240410
+ncnn==1.0.20260114
 
 # numpy 2.x — совместим с opencv, librosa, ultralytics
 numpy>=2.0,<3
