@@ -19,7 +19,7 @@ Steps to reproduce the behavior:
 What you expected to happen.
 
 **Environment**
-- BirdLense version: (e.g. 0.2.1)
+- BirdLense version: (e.g. 0.2.2)
 - Docker / bare metal
 - OS: (e.g. Ubuntu 24.04)
 - GPU: (e.g. Intel, NVIDIA, none)

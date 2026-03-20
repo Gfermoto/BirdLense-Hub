@@ -37,6 +37,11 @@
 4. **Пуш:** `git push && git push origin v0.1.0`
 5. **GitHub Release:** создать Release из тега, вставить заметки из CHANGELOG
 
+### Что запускает GitHub Actions после релиза
+
+- **Docker:** [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) — образ **`latest`** при каждом push в `main`, тег **semver** (например `0.2.2`) при **опубликованном** GitHub Release с тегом вида `v0.2.2`.
+- **Сайт документации:** [`.github/workflows/docs-pages.yml`](../.github/workflows/docs-pages.yml) — деплой при изменениях в `docs/**` и при событии **`release: published`**, чтобы версия на Pages обновлялась после релиза.
+
 ## CHANGELOG
 
 Формат [Keep a Changelog](https://keepachangelog.com/).
