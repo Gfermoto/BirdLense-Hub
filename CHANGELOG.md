@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- CI: сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
+
 ---
 
 ## [0.2.3] - 2026-03-20
