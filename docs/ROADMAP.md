@@ -33,24 +33,26 @@ Roughly ordered **simple → complex**. Many rows are **done** — kept for hist
 
 | Idea | Notes | Complexity |
 |------|--------|--------------|
-| Playback speed 0.5× / 2× | Video player | Low |
-| Webhook on detection | JSON POST for automation | Low |
-| CSV/JSON timeline export | Analytics | Low |
-| “Last bird” Overview widget | | Low |
-| Timeline time-of-day filter | | Low |
-| PWA improvements | Install prompt, static cache | Low |
-| Unknowns page | Low-confidence review | Medium |
-| Monthly PDF report | | Medium |
-| Xeno-canto on species page | | Medium |
-| eBird export | | Medium |
-| Prometheus / Grafana | `/metrics`, `/api/metrics` | Medium |
-| Per-species confidence overrides | | Medium |
-| iNaturalist crop export | | Medium |
-| Web Push | | Medium |
-| Public gallery (opt-in) | [CONFIGURATION](./CONFIGURATION.md) → Gallery | High |
-| Migration calendar | Seasonal patterns | High |
-| Region comparison (eBird) | Overview card | High |
-| Sun/moon card on weather | | Low |
+| ✅ Playback speed 0.5× / 2× | Video player (`VideoPlayer/index.tsx`) | Low |
+| ✅ Webhook on detection | `webhook.url` + POST from processor | Low |
+| ✅ CSV/JSON timeline export | `/api/ui/timeline/export` + Timeline UI | Low |
+| ✅ “Last bird” Overview widget | See Overview | Low |
+| ✅ Timeline time-of-day filter | Timeline (+ Unknowns) | Low |
+| ✅ PWA improvements | Vite PWA, install prompt, update prompt | Low |
+| ✅ Unknowns page | Low-confidence review | Medium |
+| ✅ Monthly PDF report | System / reports | Medium |
+| ✅ Xeno-canto on species page | Bird directory | Medium |
+| ✅ eBird export | Timeline export menu | Medium |
+| ✅ Prometheus / Grafana | `/metrics`, `/api/metrics` | Medium |
+| ✅ Per-species confidence overrides | Settings | Medium |
+| ✅ iNaturalist crop export | Species / export flows | Medium |
+| ✅ Web Push | Settings (notifications) | Medium |
+| ✅ Public gallery (opt-in) | [CONFIGURATION](./CONFIGURATION.md) → Gallery | High |
+| ✅ Migration calendar | Overview / patterns | High |
+| ✅ Region comparison (eBird) | Overview card | High |
+| ✅ Sun/moon card on weather | Overview / weather | Low |
+
+**Note:** This table is kept as a **shipped checklist** aligned with [ROADMAP.ru.md](./ROADMAP.ru.md) and the codebase. For **new** ideas, open a GitHub Discussion or Issue — do not assume a row here is still “to do”.
 
 ### UX backlog (selected)
 
