@@ -59,6 +59,12 @@ PR template: [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE
 
 ---
 
+## GitHub setup via `gh` (personal account)
+
+See [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) and `scripts/github-repo-bootstrap.sh` — no tokens in chat.
+
+---
+
 ## Automated signals (not a substitute for humans)
 
 - Dependabot + timely alert triage.
