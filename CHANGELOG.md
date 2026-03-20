@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- GitHub: `scripts/github-repo-bootstrap.sh` — **без** `--delete-branch-on-merge`, явно `delete_branch_on_merge=false`; защита **`dev`** тем же JSON, что и `main` (`allow_deletions: false`). Доки: [GITHUB_SETUP_GH.ru.md](docs/GITHUB_SETUP_GH.ru.md) §4.
 - Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
 - `app/Makefile`: комментарии деплоя и E2E без захардкоженного LAN IP.
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
