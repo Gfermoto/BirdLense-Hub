@@ -136,13 +136,11 @@ gh api --method PUT "repos/$FULL/branches/main/protection" \
 
 Потом добавьте **Required approvals: 1** и второго в [`.github/CODEOWNERS`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS).
 
-### Важно про обязательные status checks
+### Обязательные status checks (ruleset **Protect**)
 
-Workflow **Documentation site** и **Deploy** срабатывают **не на каждый** push в `main` (фильтры путей и self-hosted runner).  
-**Не включайте** их как required checks, пока не будет:
+На default branch в ruleset включены проверки из workflow **CI**: **`ui-build`** и **`docs`** (они бегают на каждый push/PR в `main` и `dev`). Approve по-прежнему **0** — для одного разработчика.
 
-- либо отдельного workflow **«CI на каждый push в main»**;
-- либо стабильного self-hosted runner для `Deploy`.
+**Не добавляйте** как required checks workflow **Documentation site** или **Deploy**, если они не гарантированно запускаются на каждый merge (фильтры путей, self-hosted).
 
 Иначе merge в `main` будет «висеть» в ожидании пропущенных проверок.
 
