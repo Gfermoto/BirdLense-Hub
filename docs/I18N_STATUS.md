@@ -44,6 +44,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | LOCAL_DEV | ✅ | ✅ |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
+| reference/openapi (Redoc embed) | ✅ | ✅ |
 | MCP_SETUP | ✅ | ✅ |
 | ACCESS_CONTROL | ✅ | ✅ |
 | RECOVERY_CONFIG | ✅ | ✅ |

@@ -47,7 +47,7 @@
 
 ### CODEOWNERS
 
-В корне репозитория файл [CODEOWNERS](../.github/CODEOWNERS): укажите логины ответственных и при необходимости отдельные владельцы для `docs/`, `.github/workflows/`, `app/processor/` и т.д.
+В корне репозитория файл [CODEOWNERS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS): укажите логины ответственных и при необходимости отдельные владельцы для `docs/`, `.github/workflows/`, `app/processor/` и т.д.
 
 ---
 
@@ -58,7 +58,7 @@
 - CI зелёный; для релизов — теги и артефакты.
 - Лицензионная чистота новых зависимостей и ассетов.
 
-Шаблон PR с чекбоксами: [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md).
+Шаблон PR с чекбоксами: [.github/PULL_REQUEST_TEMPLATE.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/PULL_REQUEST_TEMPLATE.md).
 
 ---
 

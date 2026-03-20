@@ -67,4 +67,17 @@
 
 ---
 
+## Приоритеты на ближайшее время (публично)
+
+| Приоритет | Фокус |
+|-----------|--------|
+| **Сообщество** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), метка `good first issue`, обратная связь по докам |
+| **Качество** | CI на PR (сборка UI + MkDocs `--strict`), Dependabot / зависимости |
+| **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте |
+| **Релизы** | Теги + GitHub Release → semver-образ Docker + деплой Pages |
+
+Таблица бэклога выше — смесь истории и идей; перед задачей сверяйтесь с [FEATURES](./FEATURES.ru.md).
+
+---
+
 См. также: [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md), [DATASETS](./DATASETS.ru.md), [TESTING](./TESTING.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md).

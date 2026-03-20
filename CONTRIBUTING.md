@@ -49,4 +49,13 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 
 ## Questions
 
-Open a Discussion or Issue on GitHub.
+Use **[GitHub Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** for Q&A and ideas, or open an **Issue** for bugs and concrete work.
+
+## Good first issues
+
+Look for issues labelled **`good first issue`** — small, scoped tasks for newcomers. Maintainers: when filing such an issue, describe expected files, acceptance criteria, and link to relevant docs (`docs/LOCAL_DEV.md`, `docs/TESTING.md`).
+
+## Community
+
+- **Discussions:** https://github.com/Gfermoto/BirdLense-Hub/discussions  
+- **Security:** follow [SECURITY.md](SECURITY.md) — do not report vulnerabilities in public threads.

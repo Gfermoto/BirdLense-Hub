@@ -62,6 +62,19 @@ Roughly ordered **simple → complex**. Many rows are **done** — kept for hist
 
 ---
 
+## Near-term priorities (public)
+
+| Priority | Focus |
+|----------|--------|
+| **Community** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), `good first issue` triage, docs feedback |
+| **Quality** | CI on PRs (UI build + MkDocs `--strict`), Dependabot / dependency hygiene |
+| **Docs** | Version banner in `mkdocs.yml` matches `VERSION`; interactive OpenAPI (Redoc) on the doc site |
+| **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
+
+The backlog table above mixes historical ideas with future work — always cross-check [FEATURES](./FEATURES.md) before starting.
+
+---
+
 ## See also
 
 [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [DATASETS](./DATASETS.md) · [TESTING](./TESTING.md) · [CONFIGURATION](./CONFIGURATION.md)

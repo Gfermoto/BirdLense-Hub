@@ -8,7 +8,9 @@
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
-**Документация:** [Обзор проекта](./docs/OVERVIEW.ru.md) · [Полный индекс](./docs/README.ru.md)
+**Документация:** [Обзор проекта](./docs/OVERVIEW.ru.md) · [Полный индекс](./docs/README.ru.md) · [Сайт документации (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
+
+**Сообщество:** [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) · [Issues](https://github.com/Gfermoto/BirdLense-Hub/issues)
 
 ### Модели
 

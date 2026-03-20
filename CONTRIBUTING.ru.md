@@ -49,4 +49,13 @@ make start
 
 ## Вопросы
 
-Создайте Discussion или Issue на GitHub.
+**[GitHub Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** — для вопросов и идей; **Issues** — для багов и конкретных задач.
+
+## Good first issue
+
+Ищите задачи с меткой **`good first issue`**. Мейнтейнерам: в таком issue укажите файлы, критерии готовности и ссылки на `docs/LOCAL_DEV.ru.md` / `docs/TESTING.ru.md`.
+
+## Сообщество
+
+- **Discussions:** https://github.com/Gfermoto/BirdLense-Hub/discussions  
+- **Безопасность:** только по [SECURITY.md](SECURITY.md), не в открытых тредах.

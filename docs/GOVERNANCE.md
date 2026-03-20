@@ -44,7 +44,7 @@ Then merges to `main` (including AI-suggested patches) go through a PR and **hum
 
 ### CODEOWNERS
 
-Edit [.github/CODEOWNERS](../.github/CODEOWNERS) with real GitHub usernames and optional path-specific owners.
+Edit [.github/CODEOWNERS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS) with real GitHub usernames and optional path-specific owners.
 
 ---
 
@@ -55,7 +55,7 @@ Edit [.github/CODEOWNERS](../.github/CODEOWNERS) with real GitHub usernames and 
 - CI green; release tags/artifacts OK.
 - License compatibility for new deps/assets.
 
-PR template: [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md).
+PR template: [.github/PULL_REQUEST_TEMPLATE.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/PULL_REQUEST_TEMPLATE.md).
 
 ---
 

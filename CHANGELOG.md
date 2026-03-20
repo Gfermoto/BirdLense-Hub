@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **CI:** PR workflow builds `app/ui` and runs docs checks (`check-docs-version.py` + `mkdocs build --strict`).
+- **Docs:** interactive OpenAPI (Redoc) pages under `docs/reference/`; nav entries in `mkdocs.yml`.
+- **Community:** issue template `good_first_issue`, Discussions link in issue chooser; ROADMAP / CONTRIBUTING (EN+RU) — public priorities and `good first issue` guidance.
+
+### Changed
+
+- **GitHub Pages:** docs workflow triggers on `VERSION` and `scripts/check-docs-version.py` changes; build is strict.
+
+### Fixed
+
+- **Docs (MkDocs strict):** internal links to repo-root files (`.github/`, `scripts/`) and excluded `docs/archive/` now point to GitHub blob URLs so `mkdocs build --strict` passes in CI.
+
 ---
 
 ## [0.2.2] - 2026-03-20

@@ -36,6 +36,7 @@
 |----------|----------|
 | Архитектура | [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md) |
 | HTTP API | [API.ru.md](./API.ru.md) + OpenAPI |
+| OpenAPI (Redoc) | [reference/openapi.ru.md](./reference/openapi.ru.md) · [EN](./reference/openapi.md) |
 | Доступ и роли | [ACCESS_CONTROL.ru.md](./ACCESS_CONTROL.ru.md) |
 | MCP | [MCP_SETUP.ru.md](./MCP_SETUP.ru.md) |
 | Локальная разработка | [LOCAL_DEV.ru.md](./LOCAL_DEV.ru.md) |

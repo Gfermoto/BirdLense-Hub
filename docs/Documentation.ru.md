@@ -36,10 +36,14 @@ python3 -m venv .venv-docs
 
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
 
-- При push в **`main`** или **`dev`** (при изменениях в `docs/**`, `mkdocs.yml` или `requirements-docs.txt`) сайт **собирается** каждый раз.
+- При push в **`main`** или **`dev`** при изменениях в `docs/**`, `mkdocs.yml`, **`VERSION`**, `requirements-docs.txt` или `scripts/check-docs-version.py` (или вручную: **Actions → Documentation site → Run workflow**) сайт **собирается** каждый раз.
+- Перед сборкой: **`python3 scripts/check-docs-version.py`** — строка из корневого **`VERSION`** должна быть в `mkdocs.yml` (`theme.announcement` и `extra.site_version`), чтобы баннер не отставал от релиза.
+- Сборка: **`mkdocs build --strict`** (битые ссылки и ошибки навигации роняют CI).
 - **Деплой на GitHub Pages** выполняется только для ветки **`main`**.
 
 **Настройки репозитория (один раз):** *Settings → Pages → Build and deployment → Source:* **GitHub Actions**. При первом запуске может понадобиться подтвердить окружение `github-pages` для workflow.
+
+Если на опубликованном сайте всё ещё старая версия в баннере, проверьте, что в **`main`** попал актуальный `mkdocs.yml` и что workflow **Documentation site** завершился успешно (обновление Pages может занять несколько минут).
 
 ---
 
@@ -53,7 +57,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 | [INSTALL](./INSTALL.md) + [SCENARIOS](./SCENARIOS.ru.md) | Быстрый старт и туториалы |
 | [FEATURES](./FEATURES.ru.md) | Витрина возможностей |
 | [ARCHITECTURE](./ARCHITECTURE.md) | Техническая глубина |
-| `app/web/openapi.yaml` | Справка по API |
+| `app/web/openapi.yaml` | Контракт API; на статическом сайте: [OpenAPI (Redoc)](./reference/openapi.ru.md) (iframe → `openapi.html`) |
 
 **Стиль:** на «вы», короткие блоки, таблицы; без внутреннего жаргона планирования в пользовательских страницах.
 

@@ -7,7 +7,9 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "VERSION"
       - "requirements-docs.txt"
+      - "scripts/check-docs-version.py"
       - ".github/workflows/docs-pages.yml"
   # После релиза пересобрать сайт, даже если в коммите не трогали docs/** (обновился README/VERSION в релизном теге).
   release:
@@ -38,8 +40,11 @@ jobs:
       - name: Install MkDocs
         run: pip install -r requirements-docs.txt
 
+      - name: Check docs version vs VERSION file
+        run: python3 scripts/check-docs-version.py
+
       - name: Build site
-        run: mkdocs build
+        run: mkdocs build --strict
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

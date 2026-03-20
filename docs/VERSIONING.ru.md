@@ -29,6 +29,8 @@
 
 При релизе обновлять все три.
 
+Также **`mkdocs.yml`**: строка версии в `theme.announcement` и в `extra.site_version` должна совпадать с `VERSION` (проверка в CI: `scripts/check-docs-version.py`).
+
 ## Релизы и теги
 
 1. **Перед релизом:** обновить `VERSION`, `package.json`, `openapi.yaml`, `CHANGELOG.md`
@@ -39,8 +41,8 @@
 
 ### Что запускает GitHub Actions после релиза
 
-- **Docker:** [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) — образ **`latest`** при каждом push в `main`, тег **semver** (например `0.2.2`) при **опубликованном** GitHub Release с тегом вида `v0.2.2`.
-- **Сайт документации:** [`.github/workflows/docs-pages.yml`](../.github/workflows/docs-pages.yml) — деплой при изменениях в `docs/**` и при событии **`release: published`**, чтобы версия на Pages обновлялась после релиза.
+- **Docker:** [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — образ **`latest`** при каждом push в `main`, тег **semver** (например `0.2.2`) при **опубликованном** GitHub Release с тегом вида `v0.2.2`.
+- **Сайт документации:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — деплой при изменениях в `docs/**` и при событии **`release: published`**, чтобы версия на Pages обновлялась после релиза.
 
 ## CHANGELOG
 
