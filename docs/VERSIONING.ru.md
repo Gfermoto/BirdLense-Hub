@@ -41,8 +41,10 @@
 
 ### Что запускает GitHub Actions после релиза
 
-- **Docker:** [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — образ **`latest`** при каждом push в `main`, тег **semver** (например `0.2.2`) при **опубликованном** GitHub Release с тегом вида `v0.2.2`.
-- **Сайт документации:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — деплой при изменениях в `docs/**` и при событии **`release: published`**, чтобы версия на Pages обновлялась после релиза.
+- **Docker:** [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — при push в **`main`** и при **`release: published`**. Пушит **`latest`** в обоих случаях и **semver-тег** образа (например `0.2.2`) при **опубликованном** Release (не Draft). Для релиза checkout идёт по тегу/коммиту релиза.
+- **Сайт документации:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — **сборка** при push в `main`/`dev` (по путям), при **`release: published`** и `workflow_dispatch`. **Деплой на Pages** — при push/`workflow_dispatch` с **`main`** и при **опубликованном релизе** (у события release `github.ref` = `refs/tags/...`, поэтому деплой нельзя включать только при `ref == main`).
+
+Общая схема: **[Экосистема GitHub](./GITHUB_ECOSYSTEM.ru.md)** (Wiki, Discussions, Issues, Projects).
 
 ## CHANGELOG
 

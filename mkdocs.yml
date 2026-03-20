@@ -75,6 +75,7 @@ nav:
       - Open-source prep: OPEN_SOURCE_PREP.md
       - Governance: GOVERNANCE.md
       - GitHub CLI setup: GITHUB_SETUP_GH.md
+      - GitHub ecosystem (Pages, Docker, Wiki, Issues): GITHUB_ECOSYSTEM.md
       - Wiki and CI reports: WIKI_AUTOMATION.md
   - "Repository (canonical files)":
       - Contributing: project/contributing.md
@@ -111,6 +112,7 @@ nav:
       - Open-source: OPEN_SOURCE_PREP.ru.md
       - Управление проектом: GOVERNANCE.ru.md
       - Настройка GitHub (gh): GITHUB_SETUP_GH.ru.md
+      - Экосистема GitHub (Pages, Docker, Wiki): GITHUB_ECOSYSTEM.ru.md
       - Wiki и отчёты CI: WIKI_AUTOMATION.ru.md
 
 extra:
