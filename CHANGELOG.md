@@ -10,12 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Доки: [DOCS_REFACTOR_CONSILIUM](docs/DOCS_REFACTOR_CONSILIUM.md) / [.ru](docs/DOCS_REFACTOR_CONSILIUM.ru.md) — регламент консилиума по рефакторингу документации и чеклист ревью.
 - CI: workflow `prune-branches.yml` — на `origin` только **`main`** и **`dev`** (только ручной `workflow_dispatch`).
 - `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
 
 ### Changed
 
+- Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
+- `app/Makefile`: комментарии деплоя и E2E без захардкоженного LAN IP.
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
 - GitHub: **удаление head-ветки после merge** PR; Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`); без cron у `prune-branches`.
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
