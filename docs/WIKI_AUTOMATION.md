@@ -16,6 +16,20 @@ gh api "repos/OWNER/REPO" -X PATCH -f has_wiki=true
 
 The default `GITHUB_TOKEN` cannot push to the wiki remote. Create a **classic PAT** with **`repo`** scope, add repository secret **`WIKI_PUSH_TOKEN`**, then run workflow **Wiki report**.
 
+## Run manually
+
+Direct page (shows **Run workflow** on the right):
+
+`https://github.com/Gfermoto/BirdLense-Hub/actions/workflows/wiki-report.yml`
+
+Or CLI:
+
+```bash
+gh workflow run "Wiki report" --repo Gfermoto/BirdLense-Hub --ref main
+```
+
+If the workflow is missing, confirm the file exists on the default branch and Actions are not disabled in repo **Settings → Actions → General**.
+
 ## Files
 
 - `scripts/generate-wiki-report.sh` — builds the report
