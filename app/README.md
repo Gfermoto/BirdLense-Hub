@@ -1,30 +1,32 @@
 # BirdLense Hub
 
-Один контейнер. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
+[Русский](./README.ru.md)
 
-**Возможности:** Timeline (дата + время суток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные», iNaturalist, Xeno-canto, Prometheus. См. [docs/FEATURES.md](../docs/FEATURES.md).
+Single container. Connects to Go2RTC (standalone or via Frigate) and MQTT (BirdNET, Frigate).
 
-## Запуск
+**Features:** Timeline (date + time of day), CSV/JSON/eBird export, PDF report, “Unknowns”, iNaturalist, Xeno-canto, Prometheus. See [docs/FEATURES.md](../docs/FEATURES.md).
 
-### Локальная разработка (без сервера)
+## Run
+
+### Local development (no remote server)
 
 ```bash
 cd app
 make local
 ```
 
-См. [docs/LOCAL_DEV.md](../docs/LOCAL_DEV.md) — полная сборка, тесты, E2E.
+See [docs/LOCAL_DEV.md](../docs/LOCAL_DEV.md) — full build, tests, E2E.
 
-### Вариант 1: Готовый образ (рекомендуется)
+### Option 1: Pre-built image (recommended)
 
 ```bash
 cd app
 make pull
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest` ([GitHub Packages](https://github.com/Gfermoto/BirdLense-Hub/pkgs/container/birdlense-hub))
+Image: `ghcr.io/gfermoto/birdlense-hub:latest` ([GitHub Packages](https://github.com/Gfermoto/BirdLense-Hub/pkgs/container/birdlense-hub))
 
-### Вариант 2: Сборка из исходников
+### Option 2: Build from source
 
 ```bash
 cd app
@@ -33,47 +35,47 @@ make build && make start
 
 UI: http://localhost:8085
 
-## Команды
+## Commands
 
-| Команда | Описание |
-|---------|----------|
-| `make setup` | Создать app/.env с PROCESSOR_SECRET и FLASK_SECRET_KEY (вызывается автоматически) |
-| `make build` | Сборка образа |
-| `make start` | Запуск (после build) |
-| `make pull` | Скачать и запустить готовый образ |
-| `make stop` | Остановка |
-| `make logs` | Логи |
-| `make deploy` | Деплой на сервер (из корня репо; см. [docs/INSTALL.md](../docs/INSTALL.md)) |
+| Command | Description |
+|---------|-------------|
+| `make setup` | Create `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` (runs automatically) |
+| `make build` | Build image |
+| `make start` | Start (after build) |
+| `make pull` | Pull and run pre-built image |
+| `make stop` | Stop |
+| `make logs` | Logs |
+| `make deploy` | Deploy to server (from repo root; see [docs/INSTALL.md](../docs/INSTALL.md)) |
 
-## Конфигурация
+## Configuration
 
-- `app_config/user_config.yaml` — основной конфиг
-- **Go2RTC URL:** Настройки → Видео — `http://IP:1984` (хост, где доступен Go2RTC)
-- Камеры: Настройки → Камеры (stream name из Go2RTC)
-- Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`
+- `app_config/user_config.yaml` — main config
+- **Go2RTC URL:** Settings → Video — `http://IP:1984` (host where Go2RTC is reachable)
+- Cameras: Settings → Cameras (stream name from Go2RTC)
+- Examples: `cp configs/minimal.yaml app_config/user_config.yaml`
 
-## Данные
+## Data
 
-- `./data/recordings/` — видео (YYYY/MM/DD/HHMMSS/video.mp4)
+- `./data/recordings/` — videos (`YYYY/MM/DD/HHMMSS/video.mp4`)
 - `./data/db/birdlense.db` — SQLite
-- `./app_config/` — конфиг
+- `./app_config/` — config
 
-Записи не видны? System → «Сканировать и импортировать».
+No recordings in UI? System → “Scan and import”.
 
 ## MCP
 
-Настройки → раздел 8. Подключение: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
+Settings → section 8. Setup: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
 
-## Деплой
+## Deploy
 
 ```bash
 cd BirdLense
 make deploy
 ```
 
-Синхронизирует код на сервер (см. scripts/deploy.local.sh.example), **не трогает** data на сервере.
+Syncs code to the server (see `scripts/deploy.local.sh.example`), **does not touch** server `data/`.
 
-## Требования
+## Requirements
 
-- Go2RTC — укажите хост в Настройках (`http://IP:1984`)
-- MQTT (опционально)
+- Go2RTC — set host in Settings (`http://IP:1984`)
+- MQTT (optional)

@@ -24,6 +24,7 @@ Pick what matches you — you can read the rest as reference.
 
 | Topic | English | Russian |
 |-------|---------|---------|
+| **Short description** (GitHub About, press) | [SHORT_DESCRIPTION.md](../SHORT_DESCRIPTION.md) | [RU](../SHORT_DESCRIPTION.ru.md) |
 | **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
 | **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
