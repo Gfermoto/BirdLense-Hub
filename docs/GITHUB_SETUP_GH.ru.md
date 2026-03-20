@@ -114,11 +114,11 @@ gh api -X POST "repos/$FULL/pages" \
 
 ---
 
-## 4. Защита ветки `main` (один мейнтейнер, без второго человека)
+## 4. Защита веток `main` и `dev` (один мейнтейнер, без второго человека)
 
-Цель: **запрет прямого push в `main`**, merge только через **PR** (с `dev` или фича-веток), **без** обязательных approve (пока нет наблюдателя).
+Цель: **запрет прямого push** в `main` и `dev`, merge в `main` только через **PR**; **ветки нельзя удалить** (в т.ч. случайно после merge). **Не включайте** в репозитории опцию *Automatically delete head branches*: при merge PR `dev` → `main` GitHub иначе **удалит `dev`**.
 
-Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json).
+Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) — тот же payload для **обеих** веток (`allow_deletions: false`).
 
 Применить:
 
@@ -126,12 +126,20 @@ gh api -X POST "repos/$FULL/pages" \
 cd /path/to/BirdLense-Hub   # корень клона
 gh api --method PUT "repos/$FULL/branches/main/protection" \
   --input scripts/github-branch-protection-main.json
+gh api --method PUT "repos/$FULL/branches/dev/protection" \
+  --input scripts/github-branch-protection-main.json
 ```
 
-Если GitHub вернёт **422** (политика API менялась), откройте **Settings → Rules → Rulesets** и создайте правило для `main`:
+Выключить автоудаление веток после merge (если включалось ранее):
+
+```bash
+gh api "repos/$FULL" -X PATCH -f delete_branch_on_merge=false
+```
+
+Если GitHub вернёт **422** (политика API менялась), откройте **Settings → Rules → Rulesets** и создайте правила для `main` и `dev`:
 
 - запрет удаления / force push;
-- требование **Pull request** перед merge;
+- требование **Pull request** перед merge в `main` (для `dev` — по желанию: можно разрешить прямой push мейнтейнеру, но **запрет удаления** оставить);
 - **Required approvals: 0** до появления второго человека.
 
 Потом добавьте **Required approvals: 1** и второго в [`.github/CODEOWNERS`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS).
@@ -183,7 +191,8 @@ gh secret list -R "$FULL"
 
 ## Чеклист после настройки
 
-- [ ] `main` защищён: нет force-push, merge через PR.
+- [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; `main` — merge через PR.
+- [ ] **Automatically delete head branches** выключено (или эквивалент: `delete_branch_on_merge=false`), иначе после merge PR из `dev` пропадёт сама `dev`.
 - [ ] Pages: сайт открывается, последний workflow **Documentation site** зелёный на `main`.
 - [ ] Dependabot PR’ы не копятся месяцами.
 - [ ] **Deploy** workflow: либо runner поднят, либо workflow отключён / не required, чтобы не было вечных красных статусов.
