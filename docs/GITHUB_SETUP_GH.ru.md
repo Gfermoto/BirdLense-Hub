@@ -16,6 +16,8 @@ gh auth login
 gh auth status
 ```
 
+**WSL / SSH / сервер без GUI:** если `xdg-open` и «Permission denied» для браузера — это ожидаемо. Скопируйте одноразовый код из терминала и **вручную** откройте в браузере (на Windows — Chrome/Edge): **https://github.com/login/device** . Код быстро истекает; при ошибке снова `gh auth login`. Из WSL можно открыть вкладку в Windows: `cmd.exe /c start https://github.com/login/device` .
+
 Переменные (удобно вставлять дальше):
 
 ```bash
