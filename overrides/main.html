@@ -1,0 +1,7 @@
+{#- Announcement bar: Material ignores theme.announcement in mkdocs.yml; official way is this block. Version from extra.site_version (must match root VERSION; see scripts/check-docs-version.py). -#}
+{% extends "base.html" %}
+
+{% block announce %}
+  BirdLense Hub documentation · <strong>v{{ config.extra.site_version }}</strong> ·
+  <a href="https://github.com/Gfermoto/BirdLense-Hub/releases">Releases</a>
+{% endblock %}

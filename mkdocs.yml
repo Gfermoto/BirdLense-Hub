@@ -1,6 +1,6 @@
 # Static documentation site (MkDocs Material).
 # Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
-# При релизе: строка версии из VERSION должна встречаться в theme.announcement (проверка scripts/check-docs-version.py).
+# При релизе: VERSION должна встречаться в mkdocs.yml и совпадать с extra.site_version (проверка scripts/check-docs-version.py). Баннер — overrides/main.html.
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
 site_url: https://gfermoto.github.io/BirdLense-Hub/
@@ -12,8 +12,7 @@ copyright: Copyright &copy; BirdLense Hub contributors
 
 theme:
   name: material
-  # Видимая версия на сайте (должна совпадать с VERSION в корне репозитория).
-  announcement: 'BirdLense Hub documentation · <strong>v0.2.2</strong> · <a href="https://github.com/Gfermoto/BirdLense-Hub/releases">Releases</a>'
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -30,6 +29,7 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    - announce.dismiss
     - navigation.instant
     - navigation.tracking
     - content.code.copy
