@@ -10,7 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- CI: workflow `prune-branches.yml` — на `origin` остаются только ветки **`main`** и **`dev`** (еженедельно + `workflow_dispatch`).
 - `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
+
+### Changed
+
+- GitHub: включено **удаление head-ветки после merge** PR; Dependabot version updates отключены (`open-pull-requests-limit: 0`), чтобы не плодить ветки.
+- Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
 
 ### Fixed
 
