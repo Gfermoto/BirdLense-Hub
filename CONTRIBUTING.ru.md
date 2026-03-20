@@ -71,3 +71,11 @@ gh auth logout -h github.com
 gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
 bash scripts/github-bootstrap-project.sh
 ```
+
+Новый проект изначально **без карточек**. Подтянуть все **открытые issues и PR** на доску:
+
+```bash
+bash scripts/github-project-import-open-items.sh
+```
+
+В **WSL** команда `gh project view … --web` часто падает (`xdg-open: Permission denied`) — откройте напечатанную ссылку вида **https://github.com/users/…/projects/N** в браузере Windows.
