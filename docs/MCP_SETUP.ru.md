@@ -31,7 +31,7 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 2. Раздел **8. MCP** → включите «Включить MCP-сервер»
 3. Сохраните и перезапустите контейнер
 
-## 3. Добавить MCP-сервер с заголовком Authorization
+## 3. Конфиг клиента (пример: Cursor)
 
 Создайте `.cursor/mcp.json`:
 
@@ -39,7 +39,7 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 mkdir -p .cursor
 ```
 
-Содержимое `.cursor/mcp.json`:
+### 3a. API хаба (инструменты + OpenAPI)
 
 ```json
 {
@@ -55,10 +55,26 @@ mkdir -p .cursor
 ```
 
 Замените:
-- `YOUR_HOST:8085` — hostname или IP и порт вашего BirdLense Hub
-- `YOUR_MCP_TOKEN_HERE` — тот же токен, что в Настройках (MCP) или MCP_TOKEN на сервере
+- `YOUR_HOST:8085` — хост и порт Hub (путь может быть `/mcp` или `/sse` — см. **Настройки → MCP**)
+- `YOUR_MCP_TOKEN_HERE` — тот же токен, что в разделе MCP или `MCP_TOKEN` на сервере
 
-**Важно:** `.cursor/` в .gitignore — токен не попадёт в репозиторий.
+**Важно:** `.cursor/` в `.gitignore` — токен не коммитится.
+
+### 3b. Документация репозитория (GitMCP, только чтение)
+
+Чтобы агент читал **Markdown из GitHub** (`docs/`, `README` и т.д.) без запущенного Hub, добавьте [GitMCP](https://gitmcp.io):
+
+```json
+{
+  "mcpServers": {
+    "BirdLense-Hub Docs": {
+      "url": "https://gitmcp.io/Gfermoto/BirdLense-Hub"
+    }
+  }
+}
+```
+
+Блоки **3a** и **3b** можно объединить в одном объекте `mcpServers`. GitMCP **не** вызывает ваш деплой — только содержимое репозитория для справки по докам.
 
 **Токен из Настроек:** если MCP включён и токен задан в разделе «8. MCP», MCP-сервер передаёт его при вызовах API. Инструменты Get_app_settings, Update_app_settings и др. работают без ввода пароля настроек.
 
@@ -68,7 +84,7 @@ mkdir -p .cursor
 
 ## Проверка
 
-В настройках MCP-клиента сервер `birdlense` должен быть в списке и активен.
+В MCP-панели редактора должны быть активны настроенные серверы: **birdlense** (хаб) и при необходимости **BirdLense-Hub Docs** (GitMCP).
 
 ---
 
