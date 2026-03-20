@@ -69,6 +69,7 @@
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) |
 | Локализация | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
+| Настройка GitHub (`gh`) | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 
 **Генератор:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) в корне репозитория (MkDocs Material); русские страницы — отдельная секция в `nav`.
 
