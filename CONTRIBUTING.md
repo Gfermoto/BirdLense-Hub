@@ -71,3 +71,11 @@ gh auth logout -h github.com
 gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
 bash scripts/github-bootstrap-project.sh
 ```
+
+New projects start **empty**. To add all **open issues and PRs** to the board:
+
+```bash
+bash scripts/github-project-import-open-items.sh
+```
+
+On **WSL**, `gh project view … --web` often fails (`xdg-open: Permission denied`); open the printed **https://github.com/users/…/projects/N** link in your Windows browser instead.

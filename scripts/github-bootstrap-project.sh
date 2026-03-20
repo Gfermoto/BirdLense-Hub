@@ -15,6 +15,9 @@
 #
 #   Вариант «refresh» часто НЕ добавляет project, если токен fine-grained или кэш не обновился.
 #
+# После создания проекта по умолчанию вызывается импорт открытых issues/PR
+# (github-project-import-open-items.sh). Отключить: GITHUB_PROJECT_IMPORT_OPEN=0
+#
 set -euo pipefail
 
 OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
@@ -75,6 +78,23 @@ gh project field-create "$proj_num" --owner "$OWNER" \
   --single-select-options "Backlog,Ready,In progress,In review,Done" 2>/dev/null \
   || echo "(поле «Поток» уже есть или не удалось создать — проверьте в UI проекта)"
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+proj_url=$(gh project view "$proj_num" --owner "$OWNER" --format json --jq '.url' 2>/dev/null) || true
+if [[ -z "$proj_url" || "$proj_url" == "null" ]]; then
+  proj_url="https://github.com/users/${OWNER}/projects/${proj_num}"
+fi
+
 echo
-echo "Готово. Открыть в браузере:"
-gh project view "$proj_num" --owner "$OWNER" --web 2>/dev/null || echo "  gh project view $proj_num --owner $OWNER --web"
+echo "Готово."
+echo "Ссылка на проект (в WSL откройте вручную в браузере — «gh … --web» часто даёт Permission denied на xdg-open):"
+echo "  $proj_url"
+echo
+echo "Проект по умолчанию без карточек. Чтобы добавить все открытые issues и PR:"
+echo "  bash \"$SCRIPT_DIR/github-project-import-open-items.sh\""
+
+if [[ "${GITHUB_PROJECT_IMPORT_OPEN:-1}" == "1" ]]; then
+  echo ""
+  echo "GITHUB_PROJECT_IMPORT_OPEN=1 — запускаю импорт открытых карточек…"
+  bash "$SCRIPT_DIR/github-project-import-open-items.sh"
+fi
