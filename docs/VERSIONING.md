@@ -36,7 +36,7 @@ Update **all three** on each release.
 
 ## Releases and tags
 
-1. **Before release:** bump `VERSION`, `package.json`, `openapi.yaml`, and [CHANGELOG](../CHANGELOG.md)
+1. **Before release:** bump `VERSION`, `package.json`, `openapi.yaml`, and edit **`CHANGELOG.md`** at the repository root (see [Changelog](./project/changelog.md) for the canonical location).
 2. **Commit:** `git add -A && git commit -m "Release v0.1.0"`
 3. **Tag:** `git tag -a v0.1.0 -m "Release v0.1.0"`
 4. **Push:** `git push && git push origin v0.1.0`
@@ -61,4 +61,4 @@ Sections: **Added**, **Changed**, **Deprecated**, **Removed**, **Fixed**, **Secu
 
 ## See also
 
-[CHANGELOG](../CHANGELOG.md) · [INSTALL](./INSTALL.md)
+[Changelog](./project/changelog.md) · [INSTALL](./INSTALL.md)

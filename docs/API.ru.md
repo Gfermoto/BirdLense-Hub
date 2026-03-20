@@ -6,7 +6,7 @@
 
 **Версия:** 0.2.1
 
-Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
+Полная спецификация: [OpenAPI YAML](./project/openapi.md)
 
 ## Группы эндпоинтов
 

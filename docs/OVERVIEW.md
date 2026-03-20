@@ -20,7 +20,7 @@
 |----------|------------|
 | **Home / nature enthusiast** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
 | **Frigate / Home Assistant user** | [SCENARIOS](./SCENARIOS.md) (Frigate + MQTT), [CONFIGURATION](./CONFIGURATION.md) |
-| **Developer / contributor** | [LOCAL_DEV](./LOCAL_DEV.md), [CONTRIBUTING](../CONTRIBUTING.md), [ARCHITECTURE](./ARCHITECTURE.md) |
+| **Developer / contributor** | [LOCAL_DEV](./LOCAL_DEV.md), [Contributing](./project/contributing.md), [ARCHITECTURE](./ARCHITECTURE.md) |
 | **Writer / advocate** | This page + [FEATURES](./FEATURES.md) — factual bullets for articles and landing copy |
 
 ---
@@ -56,7 +56,7 @@ See the diagram and data paths in [ARCHITECTURE](./ARCHITECTURE.md).
 | Full doc index | [docs/README](./README.md) |
 | Static site section map | [SITE_MAP](./SITE_MAP.md) |
 
-**Machine-readable API:** [`app/web/openapi.yaml`](../app/web/openapi.yaml).
+**Machine-readable API:** [OpenAPI (YAML)](./project/openapi.md).
 
 ---
 
@@ -68,4 +68,4 @@ Use **this file** as the narrative “what & why”, **INSTALL** + **SCENARIOS**
 
 ## Version
 
-Current release line: see root [README](../README.md) badge and [CHANGELOG](../CHANGELOG.md).
+Current release line: see [root README](./project/root-readme.md) badge and [Changelog](./project/changelog.md).

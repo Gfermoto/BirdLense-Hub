@@ -54,6 +54,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | VERSIONING | ✅ | ✅ |
 | SECURITY (analysis in docs/) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |
+| **docs/project/** (stubs → root files / OpenAPI; MkDocs) | ✅ | — (optional later) |
 
 ## Adding or refreshing a doc
 

@@ -1,0 +1,105 @@
+# Static documentation site (MkDocs Material).
+# Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
+site_name: BirdLense Hub
+site_description: Documentation for the BirdLense Hub bird-monitoring stack
+site_url: https://gfermoto.github.io/BirdLense-Hub/
+repo_url: https://github.com/Gfermoto/BirdLense-Hub
+repo_name: Gfermoto/BirdLense-Hub
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; BirdLense Hub contributors
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+# Keep archive and other non-nav pages out of the built site (optional deep links only via explicit nav).
+exclude_docs: |
+  archive/**
+
+nav:
+  - Overview: OVERVIEW.md
+  - Documentation index: README.md
+  - "Use the hub":
+      - Install: INSTALL.md
+      - Scenarios: SCENARIOS.md
+      - Configuration: CONFIGURATION.md
+      - Features: FEATURES.md
+      - Troubleshooting: TROUBLESHOOTING.md
+      - Recover config: RECOVERY_CONFIG.md
+      - Glossary: GLOSSARY.md
+  - "Develop & integrate":
+      - Architecture: ARCHITECTURE.md
+      - HTTP API: API.md
+      - Access control: ACCESS_CONTROL.md
+      - MCP setup: MCP_SETUP.md
+      - Local development: LOCAL_DEV.md
+      - Testing: TESTING.md
+  - "ML & project":
+      - Training: TRAINING.md
+      - Datasets: DATASETS.md
+      - Versioning: VERSIONING.md
+      - Roadmap: ROADMAP.md
+  - Meta:
+      - Doc conventions: Documentation.md
+      - Site map (generator): SITE_MAP.md
+      - i18n status: I18N_STATUS.md
+      - Security analysis: SECURITY.md
+      - Open-source prep: OPEN_SOURCE_PREP.md
+  - "Repository (canonical files)":
+      - Contributing: project/contributing.md
+      - Security policy: project/security-policy.md
+      - Code of Conduct: project/code-of-conduct.md
+      - Changelog: project/changelog.md
+      - OpenAPI (YAML): project/openapi.md
+      - Root README: project/root-readme.md
+  - "Русский":
+      - Обзор: OVERVIEW.ru.md
+      - Оглавление: README.ru.md
+      - Установка: INSTALL.ru.md
+      - Сценарии: SCENARIOS.ru.md
+      - Конфигурация: CONFIGURATION.ru.md
+      - Возможности: FEATURES.ru.md
+      - Решение проблем: TROUBLESHOOTING.ru.md
+      - Восстановление конфига: RECOVERY_CONFIG.ru.md
+      - Глоссарий: GLOSSARY.ru.md
+      - Архитектура: ARCHITECTURE.ru.md
+      - API: API.ru.md
+      - Доступ: ACCESS_CONTROL.ru.md
+      - MCP: MCP_SETUP.ru.md
+      - Локальная разработка: LOCAL_DEV.ru.md
+      - Тестирование: TESTING.ru.md
+      - Обучение: TRAINING.ru.md
+      - Датасеты: DATASETS.ru.md
+      - Версионирование: VERSIONING.ru.md
+      - Roadmap: ROADMAP.ru.md
+      - О документации: Documentation.ru.md
+      - Карта сайта: SITE_MAP.ru.md
+      - Локализация: I18N_STATUS.md
+      - Анализ безопасности: SECURITY.ru.md
+      - Open-source: OPEN_SOURCE_PREP.ru.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Gfermoto/BirdLense-Hub

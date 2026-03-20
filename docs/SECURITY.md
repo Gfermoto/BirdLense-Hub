@@ -134,4 +134,4 @@
 
 ## Contact
 
-To report a vulnerability, create a GitHub Security Advisory or contact the maintainers. See [SECURITY.md](../SECURITY.md) in the repo root.
+To report a vulnerability, create a GitHub Security Advisory or contact the maintainers. See [Security policy](./project/security-policy.md) in the repository root.

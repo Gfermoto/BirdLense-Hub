@@ -58,13 +58,18 @@
 
 | Страница | Источник |
 |----------|----------|
-| Contributing | `../CONTRIBUTING.ru.md` |
-| Security | `../SECURITY.ru.md` |
-| Changelog | `../CHANGELOG.md` |
+| Contributing | [project/contributing.md](./project/contributing.md) → корневой `CONTRIBUTING.md` на GitHub |
+| Политика безопасности | [project/security-policy.md](./project/security-policy.md) → корневой `SECURITY.md` |
+| Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → корень репозитория |
+| Changelog | [project/changelog.md](./project/changelog.md) → корневой `CHANGELOG.md` |
+| OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Корневой README | [project/root-readme.md](./project/root-readme.md) |
 | Правила доков | [Documentation.ru.md](./Documentation.ru.md) |
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) |
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) |
 | Локализация | [I18N_STATUS.md](./I18N_STATUS.md) |
+
+**Генератор:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) в корне репозитория (MkDocs Material); русские страницы — отдельная секция в `nav`.
 
 ---
 

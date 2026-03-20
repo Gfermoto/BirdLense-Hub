@@ -2,7 +2,7 @@
 
 **Version:** 0.2.1
 
-Authoritative contract: [`app/web/openapi.yaml`](../app/web/openapi.yaml) (import into Redoc, Stoplight, or IDE).
+Authoritative contract: [OpenAPI YAML](./project/openapi.md) (import into Redoc, Stoplight, or IDE).
 
 [Русский](./API.ru.md)
 

@@ -97,4 +97,4 @@ make deploy
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) · [SECURITY](../SECURITY.ru.md).
+См. также: [CONFIGURATION](./CONFIGURATION.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) · [политика безопасности](./project/security-policy.md).

@@ -18,6 +18,31 @@ How this project structures docs for contributors and readers.
 
 ---
 
+## Static documentation site (MkDocs + GitHub Pages)
+
+The repository ships **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)** at the root: **MkDocs Material**, `docs_dir: docs`, `nav` aligned with [SITE_MAP.md](./SITE_MAP.md). Canonical policy files that live at the repo root (Contributing, Security policy, Changelog, OpenAPI YAML) are surfaced on the site via short pages under [docs/project/](./project/contributing.md) so internal links stay inside `docs/` and work when the site is published.
+
+### Build locally
+
+```bash
+python3 -m venv .venv-docs
+.venv-docs/bin/pip install -r requirements-docs.txt
+.venv-docs/bin/mkdocs serve   # http://127.0.0.1:8000
+```
+
+Build output goes to `site/` (ignored by git).
+
+### Publish (CI)
+
+Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
+
+- On push to **`main`** or **`dev`** (when `docs/**`, `mkdocs.yml`, or `requirements-docs.txt` change), the site is **built** on every run.
+- **Deploy to GitHub Pages** runs only for **`main`**.
+
+**One-time repo settings:** *Settings → Pages → Build and deployment → Source:* **GitHub Actions**. The first deploy may require approving the `github-pages` environment for the workflow.
+
+---
+
 ## Content strategy (community, site, articles)
 
 Docs are written so they can be **split into a static site** or **quoted in blog posts** without rewriting facts.
@@ -77,7 +102,7 @@ Full table: [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) § Placeholders.
 3. After changing headings, grep for broken internal links.
 4. For a new guide: add one line to [docs/README.md](./README.md) and update [I18N_STATUS.md](./I18N_STATUS.md).
 
-Repository norms: [CONTRIBUTING.md](../CONTRIBUTING.md).
+Repository norms: [Contributing](./project/contributing.md).
 
 ---
 

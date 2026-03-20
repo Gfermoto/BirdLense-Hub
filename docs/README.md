@@ -1,6 +1,6 @@
 # BirdLense Hub — Documentation
 
-> **Version 0.2.1** · OpenAPI: [`app/web/openapi.yaml`](../app/web/openapi.yaml)
+> **Version 0.2.1** · OpenAPI: [YAML spec](./project/openapi.md)
 
 [Русский](./README.ru.md)
 
@@ -16,7 +16,7 @@ Pick what matches you — you can read the rest as reference.
 |------|----------------|-------|
 | **Run** | Install Docker, connect cameras, go live | [OVERVIEW](./OVERVIEW.md) (context) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
 | **Integrate** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.md) → [CONFIGURATION](./CONFIGURATION.md) |
-| **Build & ship** | Hacks, tests, releases | [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [CONTRIBUTING](../CONTRIBUTING.md) |
+| **Build & ship** | Hacks, tests, releases | [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -76,6 +76,7 @@ Pick what matches you — you can read the rest as reference.
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Translation status | [I18N_STATUS](./I18N_STATUS.md) |
 | **Suggested nav for a static doc site** | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| **MkDocs site (build & GitHub Pages)** | [Documentation](./Documentation.md) § *Static documentation site* |
 | Historical notes | [archive/README](./archive/README.md) |
 
 ---
@@ -87,5 +88,6 @@ Pick what matches you — you can read the rest as reference.
 | Local stack | `cd app && make local` → http://localhost:8085 |
 | Web tests | `cd app && make test-web` |
 | Full doc index above | You are here ✓ |
+| Preview static doc site | `pip install -r requirements-docs.txt && mkdocs serve` ([details](./Documentation.md)) |
 
 For server deploy patterns, see [INSTALL](./INSTALL.md).

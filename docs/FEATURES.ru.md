@@ -4,7 +4,7 @@
 
 ---
 
-Полный список фич. См. [CHANGELOG.md](../CHANGELOG.md) для деталей по версиям.
+Полный список фич. См. [Changelog](./project/changelog.md) для деталей по версиям.
 
 ---
 
@@ -101,7 +101,7 @@
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
 | GET | `/metrics` | Prometheus |
 
-Полная спецификация: [openapi.yaml](../app/web/openapi.yaml).
+Полная спецификация: [OpenAPI (YAML)](./project/openapi.md).
 
 ---
 

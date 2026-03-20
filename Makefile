@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs diagnose
+.PHONY: deploy build start stop logs restore-config docs docs-site diagnose
 
 deploy:
 	@./scripts/deploy.sh
@@ -12,6 +12,11 @@ build start stop logs:
 
 docs:
 	@$(MAKE) -C app docs
+
+# Статический сайт документации (MkDocs): см. docs/Documentation.md
+docs-site:
+	@command -v mkdocs >/dev/null 2>&1 || { echo "Установите: python3 -m venv .venv-docs && .venv-docs/bin/pip install -r requirements-docs.txt"; exit 1; }
+	mkdocs serve
 
 # Диагностика перезапусков на сервере (ssh birdlense)
 diagnose:

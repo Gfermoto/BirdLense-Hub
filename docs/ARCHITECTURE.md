@@ -1,6 +1,6 @@
 # BirdLense Hub — Architecture
 
-High-level layout of the single-container app, data paths, and integrations. For feature lists see [FEATURES](./FEATURES.md); for HTTP details see [API](./API.md) and [`openapi.yaml`](../app/web/openapi.yaml).
+High-level layout of the single-container app, data paths, and integrations. For feature lists see [FEATURES](./FEATURES.md); for HTTP details see [API](./API.md) and [OpenAPI (YAML)](./project/openapi.md).
 
 [Русский](./ARCHITECTURE.ru.md)
 
