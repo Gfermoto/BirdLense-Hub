@@ -4,6 +4,8 @@
 
 Authoritative contract: [OpenAPI YAML](./project/openapi.md) (import into Redoc, Stoplight, or IDE).
 
+**Interactive (browser):** [OpenAPI (Redoc)](reference/openapi.md).
+
 [Русский](./API.ru.md)
 
 ---

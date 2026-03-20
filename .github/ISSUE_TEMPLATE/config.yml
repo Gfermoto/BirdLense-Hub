@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Questions & ideas (Discussions)
+    url: https://github.com/Gfermoto/BirdLense-Hub/discussions
+    about: Вопросы, идеи и обсуждения — лучше начинать здесь
   - name: Security vulnerability
     url: https://github.com/Gfermoto/BirdLense-Hub/security/advisories/new
     about: Report a security vulnerability privately

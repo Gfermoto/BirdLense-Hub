@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.2.2** · OpenAPI: [YAML](./project/openapi.md)
+> **Версия 0.2.2** · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [English](./README.md)
 
@@ -29,7 +29,7 @@
 | **Термины (Hub, Frigate, слияние…)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
 | **Возможности и API** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
 | **Архитектура** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
-| **API (текстом)** | [API](./API.md) | [RU](./API.ru.md) |
+| **API** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc](./reference/openapi.ru.md) |
 | **Версионирование** | [VERSIONING](./VERSIONING.md) | — |
 
 ---
@@ -78,7 +78,7 @@
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
 | **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |
 | **MkDocs и GitHub Pages** | [Documentation.ru.md](./Documentation.ru.md) § *Статический сайт* |
-| Архив | [archive/README](./archive/README.md) |
+| Архив | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (в репозитории; не входит в сборку MkDocs) |
 
 ---
 

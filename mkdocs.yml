@@ -1,5 +1,6 @@
 # Static documentation site (MkDocs Material).
 # Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
+# При релизе: строка версии из VERSION должна встречаться в theme.announcement (проверка scripts/check-docs-version.py).
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
 site_url: https://gfermoto.github.io/BirdLense-Hub/
@@ -11,6 +12,8 @@ copyright: Copyright &copy; BirdLense Hub contributors
 
 theme:
   name: material
+  # Видимая версия на сайте (должна совпадать с VERSION в корне репозитория).
+  announcement: 'BirdLense Hub documentation · <strong>v0.2.2</strong> · <a href="https://github.com/Gfermoto/BirdLense-Hub/releases">Releases</a>'
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -33,6 +36,9 @@ theme:
     - search.suggest
     - search.highlight
 
+markdown_extensions:
+  - md_in_html
+
 # Keep archive and other non-nav pages out of the built site (optional deep links only via explicit nav).
 exclude_docs: |
   archive/**
@@ -51,6 +57,7 @@ nav:
   - "Develop & integrate":
       - Architecture: ARCHITECTURE.md
       - HTTP API: API.md
+      - OpenAPI (Redoc): reference/openapi.md
       - Access control: ACCESS_CONTROL.md
       - MCP setup: MCP_SETUP.md
       - Local development: LOCAL_DEV.md
@@ -88,6 +95,7 @@ nav:
       - Глоссарий: GLOSSARY.ru.md
       - Архитектура: ARCHITECTURE.ru.md
       - API: API.ru.md
+      - OpenAPI (Redoc): reference/openapi.ru.md
       - Доступ: ACCESS_CONTROL.ru.md
       - MCP: MCP_SETUP.ru.md
       - Локальная разработка: LOCAL_DEV.ru.md
@@ -106,6 +114,8 @@ nav:
       - Wiki и отчёты CI: WIKI_AUTOMATION.ru.md
 
 extra:
+  # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
+  site_version: "0.2.2"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub

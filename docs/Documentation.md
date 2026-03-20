@@ -36,10 +36,14 @@ Build output goes to `site/` (ignored by git).
 
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
 
-- On push to **`main`** or **`dev`** (when `docs/**`, `mkdocs.yml`, or `requirements-docs.txt` change), the site is **built** on every run.
+- On push to **`main`** or **`dev`** when `docs/**`, `mkdocs.yml`, `VERSION`, `requirements-docs.txt`, or `scripts/check-docs-version.py` change (or manually via **Actions → Documentation site → Run workflow**), the site is **built** every run.
+- Before build: **`python3 scripts/check-docs-version.py`** — the string from root **`VERSION`** must appear in `mkdocs.yml` (`theme.announcement` and `extra.site_version`) so the banner cannot drift from releases.
+- Build: **`mkdocs build --strict`** (broken links / nav issues fail CI).
 - **Deploy to GitHub Pages** runs only for **`main`**.
 
 **One-time repo settings:** *Settings → Pages → Build and deployment → Source:* **GitHub Actions**. The first deploy may require approving the `github-pages` environment for the workflow.
+
+If the live site still shows an old banner, check that **`main`** contains the updated `mkdocs.yml` and that the **Documentation site** workflow succeeded (Pages can lag by a few minutes after deploy).
 
 ---
 
@@ -55,7 +59,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 | [INSTALL](./INSTALL.md) + [SCENARIOS](./SCENARIOS.md) | Getting started & tutorials |
 | [FEATURES](./FEATURES.md) | Capability / comparison page |
 | [ARCHITECTURE](./ARCHITECTURE.md) | Technical deep dive |
-| `app/web/openapi.yaml` | API reference (import into Redoc / Stoplight) |
+| `app/web/openapi.yaml` | API contract; on the static site: [OpenAPI (Redoc)](./reference/openapi.md) (iframe → `reference/openapi.html`) |
 
 **Tone:** direct, second person (“you”), no internal roadmap jargon in user-facing pages. Prefer tables and short sections over long prose.
 

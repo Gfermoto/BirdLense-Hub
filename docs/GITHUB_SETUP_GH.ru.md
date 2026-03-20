@@ -118,7 +118,7 @@ gh api -X POST "repos/$FULL/pages" \
 
 Цель: **запрет прямого push в `main`**, merge только через **PR** (с `dev` или фича-веток), **без** обязательных approve (пока нет наблюдателя).
 
-Файл в репозитории: [`scripts/github-branch-protection-main.json`](../scripts/github-branch-protection-main.json).
+Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json).
 
 Применить:
 
@@ -134,7 +134,7 @@ gh api --method PUT "repos/$FULL/branches/main/protection" \
 - требование **Pull request** перед merge;
 - **Required approvals: 0** до появления второго человека.
 
-Потом добавьте **Required approvals: 1** и второго в [`.github/CODEOWNERS`](../.github/CODEOWNERS).
+Потом добавьте **Required approvals: 1** и второго в [`.github/CODEOWNERS`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS).
 
 ### Важно про обязательные status checks
 
@@ -162,7 +162,7 @@ gh api "user/packages?package_type=container" -q '.[].name' | head -20
 
 ## 6. Секреты для `Deploy` (только если используете self-hosted)
 
-Workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) ожидает runner с метками `self-hosted`, `birdlense`. Секреты в чат не кладём; при необходимости:
+Workflow [`.github/workflows/deploy.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/deploy.yml) ожидает runner с метками `self-hosted`, `birdlense`. Секреты в чат не кладём; при необходимости:
 
 ```bash
 gh secret list -R "$FULL"

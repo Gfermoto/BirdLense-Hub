@@ -6,7 +6,9 @@
 
 **Версия:** 0.2.2
 
-Полная спецификация: [OpenAPI YAML](./project/openapi.md)
+Полная спецификация: [OpenAPI YAML](./project/openapi.md).
+
+**Интерактивно в браузере:** [OpenAPI (Redoc)](reference/openapi.ru.md).
 
 ## Группы эндпоинтов
 
