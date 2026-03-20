@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Деплой (`scripts/deploy.sh`): rsync исключает `.venv-docs-tmp`, `.venv-docs`, `site/`, `app/.venv` — не заливать локальные venv на сервер.
 - CI: сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
 
 ---
