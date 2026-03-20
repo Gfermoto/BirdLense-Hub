@@ -73,6 +73,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | Document |
 |-------|----------|
 | How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
+| **Refactor process** (consilium + review checklist) | [DOCS_REFACTOR_CONSILIUM](./DOCS_REFACTOR_CONSILIUM.md) · [RU](./DOCS_REFACTOR_CONSILIUM.ru.md) |
 | Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |

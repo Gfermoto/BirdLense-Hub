@@ -71,6 +71,7 @@
 | Тема | Документ |
 |------|----------|
 | Как вести документацию | [Documentation](./Documentation.ru.md) |
+| **Рефакторинг доков** (консилиум + ревью) | [DOCS_REFACTOR_CONSILIUM.ru](./DOCS_REFACTOR_CONSILIUM.ru.md) · [EN](./DOCS_REFACTOR_CONSILIUM.md) |
 | Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Управление и внешний наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
