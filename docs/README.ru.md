@@ -75,6 +75,7 @@
 | Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Управление и внешний наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
 | **Настройка GitHub через gh** | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
+| **Экосистема GitHub** (Pages, Docker, Wiki, Issues, релизы) | [GITHUB_ECOSYSTEM.ru.md](./GITHUB_ECOSYSTEM.ru.md) · [EN](./GITHUB_ECOSYSTEM.md) |
 | **Wiki и отчёты CI** | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
 | **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |

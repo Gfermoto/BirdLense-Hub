@@ -10,6 +10,8 @@ Full Russian walkthrough: **[GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md)** (
 
 Branch protection payload: `scripts/github-branch-protection-main.json`.
 
+How Pages, Docker, Wiki, and Issues fit together: [GITHUB_ECOSYSTEM.md](./GITHUB_ECOSYSTEM.md).
+
 Wiki + CI reports: [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md).
 
 Set default repo for `gh` (avoids wrong target on `pr merge`):

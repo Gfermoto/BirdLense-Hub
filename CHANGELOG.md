@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Docs:** interactive OpenAPI (Redoc) pages under `docs/reference/`; nav entries in `mkdocs.yml`.
 - **Community:** issue template `good_first_issue`, Discussions link in issue chooser; ROADMAP / CONTRIBUTING (EN+RU) — public priorities and `good first issue` guidance.
 - **Docs:** canonical short descriptions `SHORT_DESCRIPTION.md` / `SHORT_DESCRIPTION.ru.md`; bilingual `app/README.md` + `app/README.ru.md`; root README links to short-description files.
+- **Docs:** `GITHUB_ECOSYSTEM.md` / `GITHUB_ECOSYSTEM.ru.md` — как связаны Pages, Docker, Wiki, Discussions, Issues, Projects и релизы.
 
 ### Changed
 
@@ -24,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **GitHub Pages:** workflow `docs-pages.yml` — деплой при **`release: published`** (раньше `deploy` требовал `ref == main`, а у release `ref` = тег → сайт после релиза не обновлялся).
+- **GHCR Docker:** при опубликованном релизе пушится и тег **`latest`** (раньше только semver-тег, без обновления `latest` до следующего push в `main`).
 - **Docs site (MkDocs):** версия в шапке рядом со звёздами/форками совпадает с `VERSION` / `extra.site_version` (Material иначе берёт только GitHub Latest Release и отстаёт).
 - **ROADMAP.md (EN):** бэклог синхронизирован с фактически отгруженными фичами (как в `ROADMAP.ru.md`), чтобы не плодить ложные GitHub Issues.
 - **MkDocs:** баннер версии через `overrides/main.html` (`{% block announce %}`): в community Material `theme.announcement` в `mkdocs.yml` не рендерится — баннер был пустым; после деплоя отображается **v** из `extra.site_version`.
