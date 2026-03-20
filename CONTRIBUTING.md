@@ -4,7 +4,7 @@ Thank you for your interest in contributing to BirdLense Hub.
 
 ## How to contribute
 
-1. **Fork** the repository and create a branch from `dev`.
+1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and branch from **`dev`**.
 2. **Make changes** — follow existing code style and conventions.
 3. **Test** — run `make test-web` in `app/` before submitting.
 4. **Submit a Pull Request** to the `dev` branch.

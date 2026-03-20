@@ -1,0 +1,32 @@
+# Оставляем на origin только main и dev (остальные ветки — по cron / вручную).
+# Ветка под открытым PR будет удалена → PR «потеряет» head (не используйте долгоживущие feature-ветки).
+name: Prune remote branches
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all branches except main and dev
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          REPO="${{ github.repository }}"
+          gh api "repos/${REPO}/branches" --paginate -q '.[].name' | while read -r b; do
+            case "$b" in
+              main|dev) ;;
+              *)
+                echo "DELETE heads/$b"
+                enc=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "heads/${b}")
+                gh api --method DELETE "repos/${REPO}/git/refs/${enc}" || true
+                ;;
+            esac
+          done
