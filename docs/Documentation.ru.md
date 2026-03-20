@@ -16,6 +16,8 @@
 
 **Навигация:** с [docs/README.md](./README.md).
 
+**Большой рефакторинг:** [DOCS_REFACTOR_CONSILIUM.ru](./DOCS_REFACTOR_CONSILIUM.ru.md) — роли, фазы, обязательный чеклист ревью.
+
 ---
 
 ## Статический сайт документации (MkDocs + GitHub Pages)
