@@ -64,9 +64,10 @@ make start
 
 В репозитории включены **Issues**, **Discussions** и **Projects**. Метки `area:*`, `priority:*`, `triage` и вехи **v0.2.3** / **Backlog (no milestone)** уже заведены.
 
-Создать проект **BirdLense Hub — Roadmap**, привязать репозиторий и поле «Поток» (канбан):
+Создать проект **BirdLense Hub — Roadmap**, привязать репозиторий и поле «Поток» (канбан). Нужны права **Projects** у токена gh. Если `gh auth refresh` не помогает — полный вход или classic PAT с scope `project` (см. комментарии в `scripts/github-bootstrap-project.sh`):
 
 ```bash
-gh auth refresh -s project -s read:project
+gh auth logout -h github.com
+gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
 bash scripts/github-bootstrap-project.sh
 ```
