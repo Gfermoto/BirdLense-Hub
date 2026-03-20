@@ -35,7 +35,16 @@
 
 **Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
 
-**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57). Их нужно добавить на **Project**-доску репозитория (колонка Backlog / Todo). Если команда `gh project` ругается на права — выполните `gh auth refresh -s read:project,project` или перенесите issues вручную в веб-интерфейсе GitHub.
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+
+**Карточки на доске Project** (нужны scope `project` и `read:project` у `gh`):
+
+```bash
+gh auth refresh -h github.com -s read:project -s project   # или полный gh auth login с этими scope
+bash scripts/github-project-add-backlog-consilium.sh
+```
+
+Все открытые issues/PR: `bash scripts/github-project-import-open-items.sh`. Либо вручную в интерфейсе GitHub.
 
 | # | Тема | Issue | Приоритет / зона |
 |---|------|-------|------------------|
