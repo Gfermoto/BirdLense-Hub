@@ -23,6 +23,21 @@ gh api "repos/Gfermoto/BirdLense-Hub" -X PATCH -f has_wiki=true
 
 Либо включите вручную в UI.
 
+**Обязательно один раз:** откройте вкладку **Wiki** у репозитория и нажмите **Create the first page** (любой заголовок и текст → **Save**). Пока Wiki «пустая» в смысле GitHub, адрес `https://github.com/OWNER/REPO.wiki.git` может отвечать **Repository not found**.
+
+---
+
+## Ошибка `Repository not found` при push
+
+Обычно это не «не тот URL», а одно из:
+
+1. **Wiki выключена** — включите **Wikis** в Settings → General → Features.
+2. **Нет ни одной страницы** — создайте первую на вкладке **Wiki** (см. выше).
+3. **Неподходящий токен** — используйте **classic PAT** с **`repo`**. Fine-grained PAT часто **не подходит** для push в `*.wiki.git`.
+4. **Токен чужого аккаунта** без прав на репозиторий — GitHub маскирует это как «not found».
+
+После исправлений снова запустите **Wiki report**.
+
 ---
 
 ## Секрет для автопубликации в Wiki (опционально)
@@ -42,7 +57,31 @@ gh api "repos/Gfermoto/BirdLense-Hub" -X PATCH -f has_wiki=true
 
 ## Запуск вручную
 
-**Actions** → **Wiki report** → **Run workflow**.
+### В браузере (если не видите кнопку)
+
+1. Откройте **прямую страницу workflow** (имя в YAML — `Wiki report`, файл — `wiki-report.yml`):  
+   **https://github.com/Gfermoto/BirdLense-Hub/actions/workflows/wiki-report.yml**
+2. Справа сверху блок **Run workflow** → выберите ветку **`main`** → зелёная кнопка **Run workflow**.
+
+Если открываете через общий список: **Actions** → слева в списке **All workflows** найдите **Wiki report** (если список длинный — прокрутите или используйте ссылку выше).
+
+**Если workflow нет в списке вообще:**
+
+- Убедитесь, что файл есть на **default branch** (`main`):  
+  https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/wiki-report.yml
+- **Settings** → **Actions** → **General** → раздел *Actions permissions* — должно быть разрешено выполнение workflows (не «Disable actions»).
+
+### Через CLI (надёжно)
+
+```bash
+gh workflow run "Wiki report" --repo Gfermoto/BirdLense-Hub --ref main
+```
+
+Просмотр последнего запуска:
+
+```bash
+gh run list --repo Gfermoto/BirdLense-Hub --workflow=wiki-report.yml --limit 3
+```
 
 Расписание: по понедельникам ~06:00 UTC (см. `cron` в workflow).
 
