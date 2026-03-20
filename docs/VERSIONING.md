@@ -46,8 +46,10 @@ Also update **`mkdocs.yml`**: `extra.site_version` must match `VERSION` (CI: `sc
 
 ### GitHub Actions after a release
 
-- **Docker:** workflow [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) pushes **`latest`** on every push to `main`, and a **semver tag** (e.g. `0.2.2`) when a **GitHub Release** is **published** (tag `v0.2.2`).
-- **Docs site:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) deploys on `docs/**` changes and also on **`release: published`**, so the version on Pages updates after a release even if the release commit only touched root files.
+- **Docker:** [docker-publish.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — `main` + **published** Release → `latest` + semver tag.
+- **Docs site:** [docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — deploy Pages on `main` (path-filtered pushes), `workflow_dispatch` from `main`, and **published** Release.
+
+Wiki (optional): [WIKI_AUTOMATION](./WIKI_AUTOMATION.md).
 
 ---
 

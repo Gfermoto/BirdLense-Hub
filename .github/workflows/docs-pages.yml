@@ -12,7 +12,6 @@ on:
       - "requirements-docs.txt"
       - "scripts/check-docs-version.py"
       - ".github/workflows/docs-pages.yml"
-  # После релиза пересобрать сайт, даже если в коммите не трогали docs/** (обновился README/VERSION в релизном теге).
   release:
     types: [published]
   workflow_dispatch:
@@ -53,7 +52,7 @@ jobs:
           path: site
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'release' || (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
     needs: build
     runs-on: ubuntu-latest
     environment:

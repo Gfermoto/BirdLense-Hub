@@ -58,3 +58,4 @@ docs/ui/
 # MkDocs (static doc site)
 site/
 .venv-docs/
+.venv-docs-tmp/

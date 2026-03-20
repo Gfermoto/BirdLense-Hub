@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.2.2** · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
+> **Версия 0.2.3** · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [English](./README.md)
 
@@ -22,6 +22,7 @@
 
 | Тема | English | Русский |
 |------|---------|---------|
+| **Краткое описание** (About на GitHub, анонсы) | [EN](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **О проекте** (лендинг, статьи) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
 | **Установка и деплой** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
 | **Сценарии** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |

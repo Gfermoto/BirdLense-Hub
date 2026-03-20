@@ -41,8 +41,10 @@
 
 ### Что запускает GitHub Actions после релиза
 
-- **Docker:** [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — образ **`latest`** при каждом push в `main`, тег **semver** (например `0.2.2`) при **опубликованном** GitHub Release с тегом вида `v0.2.2`.
-- **Сайт документации:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — деплой при изменениях в `docs/**` и при событии **`release: published`**, чтобы версия на Pages обновлялась после релиза.
+- **Docker:** [docker-publish.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — `main` + **опубликованный** Release → `latest` + semver-тег образа.
+- **Сайт:** [docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — деплой Pages при push в `main` (по путям), `workflow_dispatch` с `main` и при **опубликованном** Release.
+
+Wiki (опционально): [WIKI_AUTOMATION](./WIKI_AUTOMATION.ru.md).
 
 ## CHANGELOG
 
