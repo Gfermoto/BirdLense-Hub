@@ -8,7 +8,7 @@ Full Russian walkthrough: **[GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md)** (
 ./scripts/github-repo-bootstrap.sh
 ```
 
-Branch protection payload: `scripts/github-branch-protection-main.json`.
+Branch protection payload: `scripts/github-branch-protection-main.json`. Ruleset **Protect** also requires CI jobs **`ui-build`** and **`docs`** (0 approvals — solo maintainer); details in the Russian guide.
 
 Wiki + CI reports: [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md).
 
