@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Добавляет на GitHub Project карточки по issues бэклога из ROADMAP (консилиум): #46–#57.
+# Нужны те же права, что для github-project-import-open-items.sh:
+#   gh auth login … -s project -s read:project
+#
+# Использование:
+#   bash scripts/github-project-add-backlog-consilium.sh
+#
+set -euo pipefail
+
+OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
+REPO_FULL="${GITHUB_REPO:-Gfermoto/BirdLense-Hub}"
+PROJECT_TITLE="${GITHUB_PROJECT_TITLE:-BirdLense Hub — Roadmap}"
+# Issues из docs/ROADMAP.md § Backlog consilium
+ISSUE_START="${GITHUB_BACKLOG_ISSUE_START:-46}"
+ISSUE_END="${GITHUB_BACKLOG_ISSUE_END:-57}"
+
+command -v jq >/dev/null || { echo "Нужна утилита jq"; exit 1; }
+
+TMPERR=$(mktemp)
+trap 'rm -f "$TMPERR"' EXIT
+
+if ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>"$TMPERR"; then
+  echo "Нет доступа к Projects (нужны scope project / read:project):"
+  cat "$TMPERR"
+  echo ""
+  echo "Выполните: gh auth refresh -h github.com -s read:project -s project"
+  echo "или: gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project"
+  exit 1
+fi
+
+exists_json=$(gh project list --owner "$OWNER" --format json --limit 50)
+proj_num=$(echo "$exists_json" | jq -r --arg t "$PROJECT_TITLE" '.projects[] | select(.title == $t) | .number' | head -1)
+
+if [[ -z "$proj_num" || "$proj_num" == "null" ]]; then
+  echo "Проект «$PROJECT_TITLE» не найден. Сначала: bash scripts/github-bootstrap-project.sh"
+  exit 1
+fi
+
+echo "Проект #$proj_num «$PROJECT_TITLE» — добавляю issues ${ISSUE_START}..${ISSUE_END} из $REPO_FULL"
+
+added=0
+skipped=0
+failed=0
+
+for n in $(seq "$ISSUE_START" "$ISSUE_END"); do
+  url="https://github.com/${REPO_FULL}/issues/${n}"
+  if gh project item-add "$proj_num" --owner "$OWNER" --url "$url" 2>"$TMPERR"; then
+    echo "  + #$n"
+    added=$((added + 1))
+  else
+    err=$(tr '\n' ' ' <"$TMPERR")
+    if echo "$err" | grep -qiE 'already|exist|duplicate|in the project|not found'; then
+      echo "  = #$n (уже на доске или issue не найден)"
+      skipped=$((skipped + 1))
+    else
+      echo "  ! #$n — $err"
+      failed=$((failed + 1))
+    fi
+  fi
+done
+
+echo ""
+echo "Итого: добавлено $added, пропущено/уже есть $skipped, ошибок $failed"
+proj_url=$(gh project view "$proj_num" --owner "$OWNER" --format json 2>/dev/null | jq -r '.url // empty')
+[[ -z "$proj_url" || "$proj_url" == "null" ]] && proj_url="https://github.com/users/${OWNER}/projects/${proj_num}"
+echo "Доска: $proj_url"
