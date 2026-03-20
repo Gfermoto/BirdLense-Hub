@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Roadmap: секция **Backlog consilium (March 2026)** + 12 GitHub Issues [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) для доски Project.
 - CI: workflow `prune-branches.yml` — на `origin` только **`main`** и **`dev`** (только ручной `workflow_dispatch`).
 - `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
 
