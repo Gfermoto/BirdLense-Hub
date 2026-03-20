@@ -11,16 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Roadmap: секция **Backlog consilium (March 2026)** + 12 GitHub Issues [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) для доски Project.
-- CI: workflow `prune-branches.yml` — на `origin` только **`main`** и **`dev`** (только ручной `workflow_dispatch`).
+- CI: workflow `prune-branches.yml` — удаление на `origin` всех веток кроме **`main`** и **`dev`** (`workflow_dispatch` + **cron** понедельник 06:00 UTC).
 - `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
 
 ### Changed
 
-- GitHub: `scripts/github-repo-bootstrap.sh` — **без** `--delete-branch-on-merge`, явно `delete_branch_on_merge=false`; защита **`dev`** тем же JSON, что и `main` (`allow_deletions: false`). Доки: [GITHUB_SETUP_GH.ru.md](docs/GITHUB_SETUP_GH.ru.md) §4.
+- GitHub: модель веток — **фича → PR в `dev`**, затем **PR `dev`→`main`**; CONTRIBUTING + шаблон PR; `delete_branch_on_merge=true` (фичи не копятся, `main`/`dev` защищены от удаления). `github-repo-bootstrap.sh` и [GITHUB_SETUP_GH.ru.md](docs/GITHUB_SETUP_GH.ru.md) §4 обновлены.
 - Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
 - `app/Makefile`: комментарии деплоя и E2E без захардкоженного LAN IP.
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
-- GitHub: **удаление head-ветки после merge** PR; Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`); без cron у `prune-branches`.
+- Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`).
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
 
 ### Fixed
