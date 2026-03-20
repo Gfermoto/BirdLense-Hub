@@ -48,7 +48,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | MCP_SETUP | ✅ | ✅ |
 | ACCESS_CONTROL | ✅ | ✅ |
 | RECOVERY_CONFIG | ✅ | ✅ |
-| SITE_MAP (static site nav) | ✅ | ✅ |
+| SITE_MAP (sections ↔ files, MkDocs `nav`) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | ROADMAP | ✅ | ✅ |
