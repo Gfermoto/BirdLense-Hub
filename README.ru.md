@@ -4,11 +4,11 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [English](./README.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 
-**Распространение:** Проприетарное. Исходный код недоступен. Бесплатно только Docker-образ — см. Быстрый старт.
+**Документация:** [Обзор проекта](./docs/OVERVIEW.ru.md) · [Полный индекс](./docs/README.ru.md)
 
 ### Модели
 
@@ -102,7 +102,7 @@ UI: http://localhost:8085
 
 | Команда | Описание |
 |---------|----------|
-| `make deploy` | Деплой на сервер (см. [.cursor/rules/deploy.mdc](.cursor/rules/deploy.mdc)) |
+| `make deploy` | Деплой на сервер (требуется `scripts/deploy.local.sh`) |
 | `make build` | Сборка образа |
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |

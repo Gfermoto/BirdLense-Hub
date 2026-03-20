@@ -1,84 +1,91 @@
-# Документация BirdLense Hub
+# BirdLense Hub — Documentation
 
-Версия: **0.2.1**. OpenAPI: [app/web/openapi.yaml](../app/web/openapi.yaml).
+> **Version 0.2.1** · OpenAPI: [`app/web/openapi.yaml`](../app/web/openapi.yaml)
 
----
+[Русский](./README.ru.md)
 
-## Начало работы
-
-| Документ | Описание |
-|----------|----------|
-| [INSTALL.md](./INSTALL.md) | **Установка и деплой** — образ, сборка, образ без репо, make deploy |
-| [SCENARIOS.md](./SCENARIOS.md) | **Сценарии** — минимальная установка, Frigate, BirdNET, Telegram, кормушка |
-| [CONFIGURATION.md](./CONFIGURATION.md) | **Настройка** — конфиг, переменные, секции (General, MQTT, Detection, Gallery, Notifications…) |
+Welcome. This folder is the **single source of truth** for operators, integrators, and contributors. Use it to run the stack, fix issues, extend the project, or **repurpose content** for a website, wiki, or blog (see [OVERVIEW](./OVERVIEW.md)).
 
 ---
 
-## Система
+## Start in three paths
 
-| Документ | Описание |
-|----------|----------|
-| [FEATURES.md](./FEATURES.md) | Список возможностей |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Компоненты, потоки данных, страницы UI, индикаторы |
-| [API.md](./API.md) | Эндпоинты UI, System, Processor |
-| [VERSIONING.md](./VERSIONING.md) | Версионирование, CHANGELOG |
+Pick what matches you — you can read the rest as reference.
 
----
-
-## Безопасность
-
-| Документ | Описание |
-|----------|----------|
-| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Роли, пароли настроек |
-| [SECURITY.md](./SECURITY.md) | Риски, рекомендации для продакшена |
-| [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) | Восстановление конфига при сбое |
+| Path | You want to… | Go to |
+|------|----------------|-------|
+| **Run** | Install Docker, connect cameras, go live | [OVERVIEW](./OVERVIEW.md) (context) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
+| **Integrate** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.md) → [CONFIGURATION](./CONFIGURATION.md) |
+| **Build & ship** | Hacks, tests, releases | [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [CONTRIBUTING](../CONTRIBUTING.md) |
 
 ---
 
-## Troubleshooting
+## Product & reference
 
-| Документ | Описание |
-|----------|----------|
-| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Intel GPU, спам «App is UP!», перезапуски, пропущенные события, Live 502 |
-
----
-
-## Тестирование
-
-| Документ | Описание |
-|----------|----------|
-| [TESTING.md](./TESTING.md) | Unit, API, E2E, проверка после деплоя |
-
----
-
-## Интеграции
-
-| Документ | Описание |
-|----------|----------|
-| [MCP_SETUP.md](./MCP_SETUP.md) | MCP (Model Context Protocol) |
+| Topic | English | Russian |
+|-------|---------|---------|
+| **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
+| **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
+| **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
+| **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
+| **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
+| **Feature matrix & API hints** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
+| **System design** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
+| **HTTP API narrative** | [API](./API.md) | [RU](./API.ru.md) |
+| **Versioning** | [VERSIONING](./VERSIONING.md) | — |
 
 ---
 
-## Исследования (датасеты, обучение)
+## Security & operations
 
-| Документ | Описание |
-|----------|----------|
-| [TRAINING.md](./TRAINING.md) | EU-модель — обучение в Colab, Hugging Face |
-| [DATASETS.md](./DATASETS.md) | Форматы, скрипты, источники |
-
----
-
-## Разработка
-
-| Документ | Описание |
-|----------|----------|
-| [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальная сборка, тесты, автодокументация |
-| [ROADMAP.md](./ROADMAP.md) | План развития |
+| Topic | Document |
+|-------|----------|
+| Access & passwords | [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) |
+| Threats & hardening | [SECURITY](./SECURITY.md) |
+| Recover broken config | [RECOVERY_CONFIG](./RECOVERY_CONFIG.md) · [RU](./RECOVERY_CONFIG.ru.md) |
+| When something fails | [TROUBLESHOOTING](./TROUBLESHOOTING.md) · [RU](./TROUBLESHOOTING.ru.md) |
 
 ---
 
-## Архив
+## Quality & tooling
 
-| Документ | Описание |
-|----------|----------|
-| [archive/README.md](./archive/README.md) | Завершённые ревью, устаревшие документы |
+| Topic | Document |
+|-------|----------|
+| Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
+| MCP (AI tools) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
+
+---
+
+## ML, data & roadmap
+
+| Topic | English | Russian |
+|-------|---------|---------|
+| Model training (EU/US) | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
+| Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
+| Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
+
+---
+
+## Project meta
+
+| Topic | Document |
+|-------|----------|
+| How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
+| Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
+| Translation status | [I18N_STATUS](./I18N_STATUS.md) |
+| **Suggested nav for a static doc site** | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| Historical notes | [archive/README](./archive/README.md) |
+
+---
+
+## Quick commands (from repo)
+
+| Goal | Command |
+|------|---------|
+| Local stack | `cd app && make local` → http://localhost:8085 |
+| Web tests | `cd app && make test-web` |
+| Full doc index above | You are here ✓ |
+
+For server deploy patterns, see [INSTALL](./INSTALL.md).

@@ -4,26 +4,24 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
-**Distribution:** Proprietary. Source code is not available. Free Docker image only — see Quick Start.
+**Docs:** [Project overview](./docs/OVERVIEW.md) · [Full documentation index](./docs/README.md)
 
 ### Model info
 
-Два компонента: **детектор** (птица/белка в кадре) и **классификатор** (вид птицы).
+Two components: **detector** (bird/squirrel in frame) and **classifier** (bird species).
 
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
-| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — **не меняется** при EU-обучении |
-| **Classifier** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) или birds-525 + iNaturalist (≈490) | US или EU |
+| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — unchanged in EU training |
+| **Classifier** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) or birds-525 + iNaturalist (≈490) | US or EU |
 
-**Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
+**Current model:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
 
-**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
-
-**Models:** EU classifier (birds-525 + iNaturalist). See [docs/TRAINING.md](./docs/TRAINING.md) for model info.
+**EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
 
 <details>
 <summary>📷 Screenshots</summary>
@@ -78,14 +76,14 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All features:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 
 ## Requirements
 
 - **Docker** — x86/amd64
-- **Go2RTC** — video streams (standalone or in Frigate), `http://IP:1984`
+- **Go2RTC** — video streams (standalone or in Frigate), e.g. `http://YOUR_HOST:1984`
 - **MQTT** (optional) — Frigate events, BirdNET sightings
 
 ## Structure
@@ -102,7 +100,7 @@ From repo root:
 
 | Command | Description |
 |---------|-------------|
-| `make deploy` | Deploy to server (see [.cursor/rules/deploy.mdc](.cursor/rules/deploy.mdc)) |
+| `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |
@@ -136,7 +134,7 @@ Secrets are auto-generated on first `make start` or `make pull`. See `app/.env.e
 
 ## License
 
-Docker image: CC BY-NC-ND 4.0 — use and share for non-commercial purposes only. No derivatives. See [LICENSE](LICENSE).
+See [LICENSE](LICENSE). Docker image: CC BY-NC-ND 4.0 for non-commercial use.
 
 ## Acknowledgments
 

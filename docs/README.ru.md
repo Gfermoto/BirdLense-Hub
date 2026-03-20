@@ -1,0 +1,89 @@
+# BirdLense Hub — Документация
+
+> **Версия 0.2.1** · OpenAPI: [`app/web/openapi.yaml`](../app/web/openapi.yaml)
+
+[English](./README.md)
+
+Этот каталог — **единый источник правды** для администраторов, интеграторов и контрибьюторов: запуск, устранение проблем, расширение проекта и **основа для сайта, вики или статей** (см. [OVERVIEW](./OVERVIEW.ru.md)).
+
+---
+
+## Три входа
+
+| Путь | Задача | Куда идти |
+|------|--------|-----------|
+| **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
+| **Интеграции** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.ru.md) → [CONFIGURATION](./CONFIGURATION.ru.md) |
+| **Разработка** | Код, тесты, релизы | [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [CONTRIBUTING](../CONTRIBUTING.ru.md) |
+
+---
+
+## Продукт и справка
+
+| Тема | English | Русский |
+|------|---------|---------|
+| **О проекте** (лендинг, статьи) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
+| **Установка и деплой** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
+| **Сценарии** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
+| **Конфигурация** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
+| **Термины (Hub, Frigate, слияние…)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
+| **Возможности и API** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
+| **Архитектура** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
+| **API (текстом)** | [API](./API.md) | [RU](./API.ru.md) |
+| **Версионирование** | [VERSIONING](./VERSIONING.md) | — |
+
+---
+
+## Безопасность и эксплуатация
+
+| Тема | Документ |
+|------|----------|
+| Доступ и пароли | [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) |
+| Риски и рекомендации | [SECURITY](./SECURITY.md) |
+| Восстановление конфига | [RECOVERY_CONFIG](./RECOVERY_CONFIG.ru.md) |
+| Не работает | [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) |
+
+---
+
+## Качество и инструменты
+
+| Тема | Документ |
+|------|----------|
+| Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
+| MCP | [MCP_SETUP](./MCP_SETUP.ru.md) |
+
+---
+
+## ML, данные, план
+
+| Тема | English | Русский |
+|------|---------|---------|
+| Обучение моделей | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
+| Датасеты и скрипты | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Версионирование | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
+| Roadmap | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
+
+---
+
+## Мета
+
+| Тема | Документ |
+|------|----------|
+| Как вести документацию | [Documentation](./Documentation.ru.md) |
+| Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
+| Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
+| **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |
+| Архив | [archive/README](./archive/README.md) |
+
+---
+
+## Команды (из корня репозитория)
+
+| Цель | Команда |
+|------|---------|
+| Локально | `cd app && make local` → http://localhost:8085 |
+| Web-тесты | `cd app && make test-web` |
+| Полный индекс | Вы здесь ✓ |
+
+Деплой на сервер: [INSTALL](./INSTALL.ru.md).

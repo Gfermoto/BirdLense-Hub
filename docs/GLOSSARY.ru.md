@@ -1,0 +1,85 @@
+# Глоссарий — BirdLense Hub
+
+Краткие определения терминов из [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [ARCHITECTURE](./ARCHITECTURE.ru.md).
+
+[English](./GLOSSARY.md)
+
+---
+
+## Продукт
+
+| Термин | Значение |
+|--------|----------|
+| **Hub** | BirdLense Hub — это приложение: Docker, веб-UI, API, processor, опционально MCP. |
+| **Processor** | Фоновый сервис в контейнере: поток с камер (через Go2RTC), детекция/трекинг, записи, MQTT, вызовы web API (`/api/processor/*`). |
+| **Web / API** | Flask за nginx: `/api/ui/*` для SPA, системные маршруты, приём данных от processor. |
+
+---
+
+## Видео и потоки
+
+| Термин | Значение |
+|--------|----------|
+| **Go2RTC** | Внешний (или рядом) шлюз потоков. Hub забирает RTSP/WebRTC/HLS; nginx может проксировать `/go2rtc/*`. Конфиг: `video.go2rtc_url`. |
+| **Live** | Просмотр в браузере — UI Go2RTC или MJPEG процессора `/processor/live`. |
+| **Запись** | Клип в `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4` + строка в БД и детекции. |
+
+---
+
+## Детекция и ML
+
+| Термин | Значение |
+|--------|----------|
+| **YOLO** | Локальная модель: бинарная птица/белка + классификатор вида (EU ~491 вид по умолчанию). |
+| **ByteTrack** | Трекинг объектов по кадрам до финализации записи. |
+| **NCNN** | Ускоренный формат инференса; пути в конфиге `processor` при `single_stage` / экспорте. |
+| **Слияние (детекции)** | Объединение YOLO, Frigate `sub_label` и BirdNET по MQTT в окне времени → одно сохранённое значение на вид (ключи `detection.*`). |
+| **Неизвестные** | Детекции ниже `unknown_confidence_threshold`; список для ручной проверки. |
+
+---
+
+## Интеграции
+
+| Термин | Значение |
+|--------|----------|
+| **Frigate** | NVR с детекцией; Hub подписывается на MQTT и использует **Bird Classification** (`sub_label`) как подсказку вида. |
+| **BirdNET** | Аудио-идентификация птиц (BirdNET-Pi/Go). Публикует MQTT, сливается с видео. |
+| **MQTT** | Один брокер: Frigate, BirdNET, реле кормушки, опционально HA discovery. |
+| **Home Assistant** | Умный дом; Hub публикует discovery и может читать сущности погоды. |
+
+---
+
+## Движение и триггеры
+
+| Термин | Значение |
+|--------|----------|
+| **Источник движения** | Что запускает запись: OpenCV на потоке, события Frigate по MQTT, binary MQTT, ESPHome. `motion.source`. |
+| **Триггер** | Событие начала/продолжения записи; YOLO запускается после валидного триггера (в зависимости от режима). |
+
+---
+
+## Доступ и автоматизация
+
+| Термин | Значение |
+|--------|----------|
+| **Admin (роль)** | Разблокировка `settings_password` — полный UI, кормушка, система, перезапуск processor. |
+| **Contributor (роль)** | `contributor_password` — разметка и экспорты без админ-функций. |
+| **Viewer** | Без разблокировки — просмотр (экспорты см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)). |
+| **MCP** | Сервер Model Context Protocol; защита `MCP_TOKEN` / `mcp.token`. |
+| **`PROCESSOR_SECRET`** | Секрет processor → web API (`X-Processor-Token`). |
+
+---
+
+## Данные и экспорт
+
+| Термин | Значение |
+|--------|----------|
+| **Timeline** | Визиты и клипы по времени; экспорт CSV/JSON/eBird. |
+| **Визит вида** | Логическая сущность из детекций и окон дедупликации (`dedup_window_seconds`). |
+| **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](./DATASETS.ru.md)). |
+
+---
+
+## См. также
+
+[OVERVIEW](./OVERVIEW.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md)

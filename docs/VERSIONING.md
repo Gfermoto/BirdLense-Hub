@@ -1,55 +1,64 @@
-# Версионирование BirdLense Hub
+# Versioning — BirdLense Hub
 
-## Схема версий
-
-Используется [Semantic Versioning](https://semver.org/lang/ru/): `MAJOR.MINOR.PATCH`.
-
-| Часть | Когда увеличивать |
-|-------|-------------------|
-| **MAJOR** | Несовместимые изменения API или конфигурации |
-| **MINOR** | Новая функциональность с обратной совместимостью |
-| **PATCH** | Исправления ошибок, мелкие улучшения |
-
-Примеры:
-- `0.1.0` → `0.1.1` — исправление бага
-- `0.1.1` → `0.2.0` — новая фича (например, новый тип триггера)
-- `1.0.0` → `2.0.0` — ломающее изменение (например, смена формата конфига)
-
-## Где хранится версия
-
-| Файл | Назначение |
-|------|------------|
-| `VERSION` | Единый источник истины (корень репозитория) |
-| `app/ui/package.json` | Версия UI-пакета |
-| `app/web/openapi.yaml` | Версия API в OpenAPI |
-
-При релизе обновлять все три.
-
-## Релизы и теги
-
-1. **Перед релизом:** обновить `VERSION`, `package.json`, `openapi.yaml`, `CHANGELOG.md`
-2. **Коммит:** `git add -A && git commit -m "Release v0.1.0"`
-3. **Тег:** `git tag -a v0.1.0 -m "Release v0.1.0"`
-4. **Пуш:** `git push && git push origin v0.1.0`
-5. **GitHub Release:** создать Release из тега, вставить заметки из CHANGELOG
-
-## CHANGELOG
-
-Формат [Keep a Changelog](https://keepachangelog.com/).
-
-Секции:
-- **Added** — новая функциональность
-- **Changed** — изменения в существующем поведении
-- **Deprecated** — устаревшее (будет удалено)
-- **Removed** — удалённая функциональность
-- **Fixed** — исправления багов
-- **Security** — уязвимости
-
-## Обновления
-
-- **Минорные (0.x.y):** обновление через `make deploy` или `make pull`. Конфиг и данные сохраняются.
-- **Мажорные:** см. заметки к релизу — могут потребоваться миграции.
+[Русский](./VERSIONING.ru.md)
 
 ---
 
-См. также: [CHANGELOG.md](../CHANGELOG.md), [INSTALL.md](./INSTALL.md).
+## Scheme
+
+We follow [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
+
+| Part | When to bump |
+|------|----------------|
+| **MAJOR** | Breaking API or configuration changes |
+| **MINOR** | New functionality, backward compatible |
+| **PATCH** | Bug fixes, small safe improvements |
+
+Examples:
+
+- `0.1.0` → `0.1.1` — bugfix
+- `0.1.1` → `0.2.0` — new feature (e.g. new motion trigger type)
+- `1.0.0` → `2.0.0` — breaking change (e.g. config format)
+
+---
+
+## Where the version lives
+
+| File | Purpose |
+|------|---------|
+| `VERSION` | Single source of truth (repo root) |
+| `app/ui/package.json` | UI package version |
+| `app/web/openapi.yaml` | API version in OpenAPI |
+
+Update **all three** on each release.
+
+---
+
+## Releases and tags
+
+1. **Before release:** bump `VERSION`, `package.json`, `openapi.yaml`, and [CHANGELOG](../CHANGELOG.md)
+2. **Commit:** `git add -A && git commit -m "Release v0.1.0"`
+3. **Tag:** `git tag -a v0.1.0 -m "Release v0.1.0"`
+4. **Push:** `git push && git push origin v0.1.0`
+5. **GitHub Release:** create from tag; paste notes from CHANGELOG
+
+---
+
+## CHANGELOG
+
+Format: [Keep a Changelog](https://keepachangelog.com/).
+
+Sections: **Added**, **Changed**, **Deprecated**, **Removed**, **Fixed**, **Security**.
+
+---
+
+## Upgrades
+
+- **Minor / patch (`0.x.y`):** usually `make deploy` or `make pull`; user config and data are preserved.
+- **Major:** read release notes — migrations may be required.
+
+---
+
+## See also
+
+[CHANGELOG](../CHANGELOG.md) · [INSTALL](./INSTALL.md)

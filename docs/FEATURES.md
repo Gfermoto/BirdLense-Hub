@@ -1,104 +1,110 @@
-# Возможности BirdLense Hub (для разработчиков)
+# BirdLense Hub — Features
 
-Полный список фич по версиям. См. [CHANGELOG.md](../CHANGELOG.md) для деталей.
+Capability overview. Per-version notes: [CHANGELOG](../CHANGELOG.md).
 
----
-
-## Ядро (всегда)
-
-| Фича | Описание |
-|------|----------|
-| **Live video** | Go2RTC, MJPEG overlay с детекциями |
-| **YOLO + ByteTrack** | Двухэтапная стратегия: binary detector + species classifier |
-| **EU-модель** | ~491 вид (birds-525 + iNaturalist). US (NABirds) — резерв |
-| **Триггеры** | OpenCV, Frigate, MQTT, ESPHome |
-| **BirdNET** | Слияние аудио-детекций через MQTT |
-| **Frigate** | Bird Classification sub_label в слиянии |
-| **Timeline** | Визиты по дате, воспроизведение видео, спектрограммы |
-| **Overview** | Статистика, графики активности |
-| **Species** | Дерево видов, сводка по виду |
-| **Погода** | OpenWeather, Home Assistant |
-| **Telegram** | Уведомления при детекции, превью best frame в фото |
-| **Кормушка** | Реле (MQTT/ESPHome) при детекции |
-| **MCP** | Model Context Protocol для внешних инструментов |
+[Русский](./FEATURES.ru.md)
 
 ---
 
-## Экспорт и аналитика
+## Core (always on)
 
-| Фича | API / UI | Версия |
-|------|----------|--------|
-| **CSV/JSON** | `GET /api/ui/timeline/export?format=csv\|json` | 0.1.2 |
+| Feature | Description |
+|---------|-------------|
+| **Live video** | Go2RTC integration, MJPEG overlay with detections |
+| **YOLO + ByteTrack** | Two-stage path: binary detector + species classifier |
+| **EU model default** | ~491 species (birds-525 + iNaturalist). US (NABirds) weights available |
+| **Motion triggers** | OpenCV, Frigate, MQTT, ESPHome |
+| **BirdNET** | Merge audio sightings via MQTT |
+| **Frigate** | Bird Classification `sub_label` merged with video ML |
+| **Timeline** | Visits by date, playback, spectrograms |
+| **Overview** | Stats, activity charts |
+| **Species** | Species tree and per-species summary |
+| **Weather** | OpenWeather or Home Assistant |
+| **Telegram** | Detection alerts, optional best-frame photo |
+| **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
+| **MCP** | Model Context Protocol for external tools |
+
+---
+
+## Export & analytics
+
+| Feature | API / UI | Since |
+|---------|----------|-------|
+| **CSV / JSON** | `GET /api/ui/timeline/export?format=csv|json` | 0.1.2 |
 | **eBird** | `GET /api/ui/timeline/export?format=ebird` | 0.1.4 |
-| **Сравнение с регионом** | `GET /api/ui/region-comparison` — ваши виды vs топ eBird региона (Overview) | 0.1.9 |
-| **PDF-отчёт** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
+| **Region comparison** | `GET /api/ui/region-comparison` — your species vs regional eBird top list (Overview) | 0.1.9 |
+| **PDF report** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
 | **Prometheus** | `GET /metrics`, `GET /api/metrics` | 0.1.3 |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
-| **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + dataset_info.json | 0.1.5 |
+| **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + `dataset_info.json` | 0.1.5 |
 
 ---
 
-## UI
+## UI highlights
 
-| Фича | Описание |
-|------|----------|
-| **Timeline: дата + время суток** | DatePicker, фильтр: Утро, День, Вечер, Ночь (22–06) |
-| **Неизвестные** | `/unknowns` — детекции с confidence < порога; дата + время суток (как Timeline), ручная коррекция |
-| **Playback speed** | 0.5x, 2x в видеоплеере |
-| **Виджет «Последняя птица»** | На Overview |
+| Feature | Description |
+|---------|-------------|
+| **Timeline: time of day** | Date picker + Morning / Day / Evening / Night (22–06) |
+| **Unknowns** | `/unknowns` — low-confidence detections; manual correction |
+| **Playback speed** | 0.5×, 2× in player |
+| **Last bird widget** | Overview |
 | **PWA** | Install prompt, offline cache |
-| **Источник детекции** | YOLO / Frigate / BirdNET в карточках |
-| **Календарь миграций** | `/migration-calendar` — таблица визитов по виду и месяцу (Jan–Dec), интенсивность по данным |
-| **Xeno-canto** | Песни птиц на странице вида |
-| **Confidence по виду** | `processor.species_confidence_overrides` |
-| **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
-| **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
+| **Detection source** | YOLO / Frigate / BirdNET badges on cards |
+| **Migration calendar** | `/migration-calendar` — visits by species × month |
+| **Xeno-canto** | Calls on species page |
+| **Per-species thresholds** | `processor.species_confidence_overrides` |
+| **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
+| **Download video** | Video details — Admin/Contributor after password |
 
 ---
 
-## Интеграции
+## Integrations
 
-| Фича | Конфиг | Описание |
-|------|--------|----------|
-| **Webhook** | `webhook.url` | POST при детекции (IFTTT, Zapier) |
-| **eBird** | `ebird.country`, `ebird.state`, `ebird.location_name` | Экспорт чеклиста |
-| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | MQTT Autodiscovery — Last Species, Bird at Feeder и др. |
-| **Grafana** | Prometheus scrape | Метрики для дашбордов |
+| Feature | Config | Description |
+|---------|--------|-------------|
+| **Webhook** | `webhook.url` | POST JSON on each detection (IFTTT, Zapier, custom) |
+| **eBird** | `ebird.country`, `ebird.state`, `ebird.location_name` | Checklist export |
+| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | MQTT discovery — Last Species, Bird at Feeder, … |
+| **Grafana** | Prometheus scrape | Dashboards from Hub metrics |
 
 ---
 
-## Конфигурация (ключевые ключи)
+## Notable config keys
 
-| Секция | Ключи |
-|--------|-------|
+| Section | Keys |
+|---------|------|
 | `processor` | `species_confidence_overrides`, `min_confidence_to_process` |
 | `ui` | `unknown_confidence_threshold` |
 | `webhook` | `url` |
 | `ebird` | `country`, `state`, `location_name` |
 | `secrets` | `xeno_canto_api_key`, `ebird_api_key` |
 
+Full reference: [CONFIGURATION](./CONFIGURATION.md).
+
 ---
 
-## API (основные эндпоинты)
+## Representative API routes
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/ui/health` | Health check |
-| GET | `/api/ui/timeline` | Визиты за период |
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/ui/health` | Health |
+| GET | `/api/ui/timeline` | Visits in range |
 | GET | `/api/ui/timeline/export` | CSV, JSON, eBird |
-| GET | `/api/ui/unknowns` | Низкая confidence (params: start_time, end_time, limit) |
-| GET | `/api/ui/region-comparison` | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
-| PATCH | `/api/ui/detections/:id` | Исправить вид |
-| GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
-| GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |
-| GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
-| GET | `/api/ui/migration-calendar` | Агрегация визитов по виду и месяцу для календаря миграций |
-| GET | `/api/ui/report/pdf` | PDF-отчёт |
-| GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
+| GET | `/api/ui/unknowns` | Low confidence (`start_time`, `end_time`, `limit`) |
+| GET | `/api/ui/region-comparison` | Region vs your list (needs `secrets.ebird_api_key`) |
+| PATCH | `/api/ui/detections/:id` | Correct species |
+| GET | `/api/ui/detections/:id/crop` | Crop for iNaturalist |
+| GET | `/api/ui/videos/:id/download` | Download clip (role-gated) |
+| GET | `/api/ui/dataset/export` | Dataset ZIP |
+| GET | `/api/ui/migration-calendar` | Migration calendar data |
+| GET | `/api/ui/report/pdf` | PDF report |
+| GET | `/api/ui/species/:id/xeno-canto` | Xeno-canto proxy |
 | GET | `/metrics` | Prometheus |
 
-Полная спецификация: [openapi.yaml](../app/web/openapi.yaml).
+Full spec: [`app/web/openapi.yaml`](../app/web/openapi.yaml) · narrative: [API](./API.md).
 
 ---
 
-См. также: [API.md](./API.md), [CONFIGURATION.md](./CONFIGURATION.md), [ROADMAP.md](./ROADMAP.md).
+## See also
+
+[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md)

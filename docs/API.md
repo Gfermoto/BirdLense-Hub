@@ -1,89 +1,110 @@
-# API BirdLense Hub
+# BirdLense Hub — HTTP API
 
-**Версия:** 0.2.1
+**Version:** 0.2.1
 
-Полная спецификация: [app/web/openapi.yaml](../app/web/openapi.yaml)
+Authoritative contract: [`app/web/openapi.yaml`](../app/web/openapi.yaml) (import into Redoc, Stoplight, or IDE).
 
-## Группы эндпоинтов
-
-### UI API (`/api/ui/*`)
-
-| Эндпоинт | Метод | Описание |
-|----------|-------|----------|
-| `/health` | GET | Проверка доступности |
-| `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo). Значения: ok, error, not_configured, not_used, unknown |
-| `/cameras` | GET | Список камер |
-| `/weather` | GET | Погода |
-| `/timeline` | GET | Визиты по периоду (params: start_time, end_time) |
-| `/timeline/export` | GET | Экспорт визитов в CSV, JSON или eBird (params: start_time, end_time, format=csv\|json\|ebird) |
-| `/videos/:id` | GET | Детали видео |
-| `/overview` | GET | Данные для Overview |
-| `/species` | GET | Список видов |
-| `/birdfood` | GET/POST | Список и добавление корма |
-| `/birdfood/:id/toggle` | PATCH | Переключить активность корма |
-| `/bird_families` | GET | Список семейств птиц |
-| `/feed/dispense` | POST | Выдать корм |
-| `/settings` | GET/PATCH | Настройки |
-| `/settings/requires-password` | GET | Проверка, требуется ли пароль |
-| `/settings/verify-password` | POST | Разблокировка настроек |
-| `/settings/check-access` | GET | Проверка разблокировки (200/403) |
-| `/unknowns` | GET | Детекции с низкой confidence (params: start_time, end_time, limit) |
-| `/region-comparison` | GET | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
-| `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
-| `/detections/:id/crop` | GET | Кадр из видео для экспорта в iNaturalist. Возвращает JPEG |
-| `/dataset/export` | GET | Экспорт датасета (ZIP: train/val + dataset_info.json). Требует пароль |
-| `/push/vapid-public` | GET | Публичный ключ VAPID для Web Push подписки |
-| `/push/subscribe` | POST | Регистрация Web Push подписки (body: `{subscription}`) |
-| `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
-| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу (species, month_labels, monthly_counts) |
-| `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
-| `/species/:id/summary` | GET | Сводка по виду |
-| `/restart-processor` | POST | Перезапуск processor |
-
-### Prometheus
-
-| Эндпоинт | Метод | Описание |
-|----------|-------|----------|
-| `/metrics` | GET | Prometheus: CPU, память, диск, GPU, detections, species, videos |
-| `/api/metrics` | GET | То же (для Grafana) |
-
-См. [CONFIGURATION.md](./CONFIGURATION.md) — раздел Prometheus / Grafana.
-
-### System API (`/api/ui/system/*`)
-
-| Эндпоинт | Метод | Описание |
-|----------|-------|----------|
-| `/system/metrics` | GET | CPU, память, диск, GPU, encoding |
-| `/system/activity` | GET | Активность по дням |
-| `/storage/stats` | GET | Статистика записей |
-| `/storage/purge` | POST | Удаление записей по дате |
-| `/system/retention` | POST | Запуск политики retention |
-| `/system/regenerate-spectrograms` | POST | Регенерация спектрограмм |
-| `/system/regenerate-spectrograms/status` | GET | Статус регенерации спектрограмм |
-| `/system/regenerate-tracks` | POST | Регенерация треков |
-| `/system/regenerate-tracks/status` | GET | Статус регенерации треков |
-| `/system/recordings/scan` | POST | Сканирование и импорт записей |
-| `/system/logs` | GET | Логи процессора (последние N строк, ?lines=100) |
-
-### Processor API (`/api/processor/*`)
-
-Внутренний API для processor. Защищён `X-Processor-Token` при заданном `PROCESSOR_SECRET`.
-
-| Эндпоинт | Метод | Описание |
-|----------|-------|----------|
-| `/videos` | POST | Создание записи с детекциями |
-| `/species/active` | PUT | Установка активных видов |
-| `/notify/detections` | POST | Уведомление о детекции |
-| `/notify/motion` | POST | Уведомление о движении |
-| `/activity_log` | POST | Heartbeat, статус processor |
-
-## Аутентификация
-
-- **По умолчанию** — нет. Доступ ко всем эндпоинтам открыт.
-- **Настройки** — опционально `settings_password` в конфиге. При заданном пароле `/settings`, `/storage/purge`, `/restart-processor` и др. требуют разблокировки через `verify-password`.
-- **MCP** — опционально `MCP_TOKEN` в env. Заголовок `Authorization: Bearer <token>`.
-- **Processor API** — опционально `PROCESSOR_SECRET` в env. Заголовок `X-Processor-Token`.
+[Русский](./API.ru.md)
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [ARCHITECTURE.md](./ARCHITECTURE.md).
+## UI API (`/api/ui/*`)
+
+All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /api/ui/health`).
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Liveness |
+| `/status` | GET | Component status: `web`, `processor`, `mqtt`, `esphome`, `yolo` — `ok` \| `error` \| `not_configured` \| `not_used` \| `unknown` |
+| `/cameras` | GET | Camera list |
+| `/weather` | GET | Weather snapshot |
+| `/timeline` | GET | Visits in range (`start_time`, `end_time`) |
+| `/timeline/export` | GET | CSV, JSON, or eBird (`format=csv|json|ebird`) |
+| `/videos/:id` | GET | Video detail |
+| `/overview` | GET | Overview dashboard payload |
+| `/species` | GET | Species list |
+| `/birdfood` | GET/POST | Food list / add |
+| `/birdfood/:id/toggle` | PATCH | Toggle food entry |
+| `/bird_families` | GET | Bird family list |
+| `/feed/dispense` | POST | Trigger feeder (**Admin** session or MCP Bearer — see [ACCESS_CONTROL](./ACCESS_CONTROL.md)) |
+| `/settings` | GET/PATCH | Read/update settings |
+| `/settings/requires-password` | GET | Whether a password is configured |
+| `/settings/verify-password` | POST | Unlock session (`password` → `role`: `admin` \| `contributor`) |
+| `/settings/check-access` | GET | Admin gate (200/403) |
+| `/unknowns` | GET | Low-confidence detections (`start_time`, `end_time`, `limit`) |
+| `/region-comparison` | GET | Your species vs regional eBird (needs `secrets.ebird_api_key`) |
+| `/detections/:id` | PATCH | Correct species (`species_id`) — Contributor+ |
+| `/detections/:id/crop` | GET | JPEG crop for iNaturalist |
+| `/dataset/export` | GET | Dataset ZIP — Contributor+ |
+| `/push/vapid-public` | GET | Web Push VAPID public key |
+| `/push/subscribe` | POST | Register push subscription |
+| `/report/pdf` | GET | Monthly PDF (`month=YYYY-MM` or time range) |
+| `/migration-calendar` | GET | Visits aggregated by species × month |
+| `/species/:id/xeno-canto` | GET | Xeno-canto clips for species |
+| `/species/:id/summary` | GET | Species summary |
+| `/restart-processor` | POST | Restart processor (**Admin**) |
+
+---
+
+## Prometheus
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/metrics` | GET | Prometheus text format |
+| `/api/metrics` | GET | Same (Grafana-friendly path) |
+
+Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
+
+---
+
+## System & storage (`/api/ui/...`)
+
+| Path | Method | Description |
+|------|--------|-------------|
+| `/api/ui/system/metrics` | GET | CPU, RAM, disk, GPU, encoding |
+| `/api/ui/system/activity` | GET | Activity by day |
+| `/api/ui/storage/stats` | GET | Recording storage stats |
+| `/api/ui/storage/purge` | POST | Purge by date (**Admin**) |
+| `/api/ui/system/retention` | POST | Run retention policy |
+| `/api/ui/system/regenerate-spectrograms` | POST | Regenerate spectrograms |
+| `/api/ui/system/regenerate-spectrograms/status` | GET | Job status |
+| `/api/ui/system/regenerate-tracks` | POST | Regenerate tracks |
+| `/api/ui/system/regenerate-tracks/status` | GET | Job status |
+| `/api/ui/system/recordings/scan` | POST | Scan & import recordings |
+| `/api/ui/system/logs` | GET | Processor log tail (`?lines=100`) |
+
+More maintenance endpoints exist — see `ui_system_routes.py` and OpenAPI.
+
+---
+
+## Processor API (`/api/processor/*`)
+
+Internal contract between **processor** and **web**. When `PROCESSOR_SECRET` is set, send header **`X-Processor-Token: <secret>`**.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/videos` | POST | Upsert recording + detections |
+| `/species/active` | PUT | Active species snapshot |
+| `/notify/detections` | POST | Detection notification (e.g. Telegram pipeline) |
+| `/notify/motion` | POST | Motion notification |
+| `/activity_log` | POST | Heartbeat / processor status |
+
+---
+
+## Authentication summary
+
+| Surface | Behavior |
+|---------|----------|
+| **Default** | No login; all UI routes open if no passwords configured |
+| **Settings / feeder / system** | Optional `settings_password`; **Admin** unlock via `verify-password` |
+| **Contributor** | Optional `contributor_password` — labeling & exports without full admin |
+| **MCP** | Optional `MCP_TOKEN` — `Authorization: Bearer <token>` |
+| **Processor** | Optional `PROCESSOR_SECRET` — `X-Processor-Token` |
+
+Details: [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [CONFIGURATION](./CONFIGURATION.md).
+
+---
+
+## See also
+
+[CONFIGURATION](./CONFIGURATION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [FEATURES](./FEATURES.md) · [GLOSSARY](./GLOSSARY.md)

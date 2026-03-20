@@ -1,92 +1,82 @@
-# Локальная сборка и тестирование BirdLense
+# Local development — BirdLense Hub
 
-Полный цикл: сборка контейнера и запуск локально без доступа к серверу.
+Build and run the full stack on your machine **without** a production server. Ideal for UI/API work and running automated tests.
 
-## Требования
+[Русский](./LOCAL_DEV.ru.md)
 
-- **Docker** и **Docker Compose**
-- **Node.js 18+** (для сборки UI)
-- **npm** (для UI)
+---
 
-Проверка:
+## Prerequisites
+
+| Tool | Notes |
+|------|--------|
+| **Docker** + **Compose v2** | Required |
+| **Node.js 18+** | UI build |
+| **npm** | UI build |
+
+Verify:
+
 ```bash
 docker --version && docker compose version
 node --version && npm --version
 ```
 
-## Быстрый старт
+---
+
+## Fast path
+
+From the repository root:
 
 ```bash
-cd /home/gfer/BirdLense/app
+cd app
 make local
 ```
 
-Откроется UI: http://localhost:8085
+Open **http://localhost:8085**.
 
-## Что делает `make local`
+`make local` runs **setup** (creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` if missing), **local-build** (UI + Docker image), then **start**.
 
-1. **setup** — создаёт `app/.env` с PROCESSOR_SECRET и FLASK_SECRET_KEY (если нет)
-2. **local-build** — собирает UI, затем Docker-образ
-3. **start** — запускает контейнер
+Without cameras or Go2RTC, the processor idles in wait mode — **the web UI and API still work**.
 
-Без камер и Go2RTC процессор переходит в режим ожидания — веб-интерфейс и API работают.
+---
 
-## Ручной запуск
+## Manual equivalent
 
 ```bash
 cd app
-
-# 1. Секреты (один раз)
 make setup
-
-# 2. Сборка UI (обязательно до docker build — иначе npm в контейнере)
 cd ui && npm ci && npm run build && cd ..
-
-# 3. Сборка образа
 docker compose build
-
-# 4. Запуск
 docker compose up -d
-
-# 5. Логи
 docker compose logs -f --tail=100
 ```
 
-## Тестирование
+Build the UI **before** `docker compose build` unless your image runs `npm` inside (default workflow expects prebuilt static files).
 
-### API-тесты (в контейнере)
+---
 
-```bash
-cd app
-make test-web
-```
+## Running tests
 
-Или только часть:
-```bash
-docker compose run --rm -v $(pwd):/app birdlense python -m pytest web/tests/test_api.py -v -k "unknowns or overview"
-```
+| Layer | Command |
+|-------|---------|
+| Web API | `cd app && make test-web` |
+| Processor | `cd app && make test` |
+| E2E | `cd app && make start` then `make test-e2e` (optional `E2E_SETTINGS_PASSWORD`, `BASE_URL`) |
 
-### E2E (Playwright)
+Focused pytest example:
 
 ```bash
-cd app
-# Сначала запустить контейнер
-make start
-# Затем E2E
-make test-e2e
-# С паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://localhost:8085 make test-e2e
+docker compose run --rm -v $(pwd):/app birdlense \
+  python -m pytest web/tests/test_api.py -v -k "unknowns or overview"
 ```
 
-### Processor-тесты
+Details: [TESTING](./TESTING.md).
 
-```bash
-cd app
-make test
-```
+---
 
-## Переопределение порта
+## Ports & lifecycle
 
-Если 8085 занят, создайте `app/docker-compose.override.yml`:
+**Busy 8085?** Add `app/docker-compose.override.yml`:
 
 ```yaml
 services:
@@ -95,60 +85,49 @@ services:
       - "8086:8080"
 ```
 
-Или: `BIRDLENSE_PORT=8086 make start`
+Or: `BIRDLENSE_PORT=8086 make start`
 
-## Остановка
-
-```bash
-cd app
-make stop
-```
-
-## Данные
-
-- `app/data/recordings/` — видео (пусто при первом запуске)
-- `app/data/db/birdlense.db` — SQLite (создаётся автоматически)
-- `app/app_config/user_config.yaml` — настройки (опционально)
-
-Для импорта записей: System → «Сканировать и импортировать» (если есть видео в data/recordings/).
-
-## Ограничения локального режима
-
-- **Нет камер** — процессор ждёт настройки Go2RTC. UI и API работают.
-- **Нет MQTT** — уведомления и Frigate/BirdNET не работают.
-- **Порт 8085** — по умолчанию. Переопределить: `BIRDLENSE_PORT=8080 make start`
-
-## Автодокументация
-
-```bash
-make docs          # Python (pdoc) + UI (TypeDoc)
-make docs-python   # Только Python → docs/api/
-make docs-ui       # Только UI → docs/ui/
-make docs-check    # interrogate — проверка docstrings (порог 80%)
-```
-
-OpenAPI: `app/web/openapi.yaml`. Стиль: краткий docstring на русском, без Args/Returns для простых функций.
+**Stop:** `cd app && make stop`
 
 ---
 
-## Устранение неполадок
+## Data directories
 
-### Docker build падает на npm
+| Path | Role |
+|------|------|
+| `app/data/recordings/` | Video clips |
+| `app/data/db/birdlense.db` | SQLite (auto-created) |
+| `app/app_config/user_config.yaml` | Optional overrides |
 
-Соберите UI до сборки образа:
+Import existing files: **System → Scan and import** (if media is already under `data/recordings/`).
+
+---
+
+## Local limitations
+
+- No live cameras until Go2RTC (or file-based CLI flows) is configured.
+- No MQTT → no Frigate/BirdNET-driven triggers unless you add a broker.
+- Default UI port **8085** — override with `BIRDLENSE_PORT`.
+
+---
+
+## Generated docs (optional)
+
 ```bash
-cd app/ui && npm run build && cd ..
-docker compose build
+make docs          # Python (pdoc) + UI (TypeDoc)
+make docs-python   # → docs/api/
+make docs-ui       # → docs/ui/
+make docs-check    # interrogate (docstring coverage)
 ```
 
-### Контейнер не стартует
+Authoritative HTTP contract: `app/web/openapi.yaml`.
 
-```bash
-docker compose logs birdlense
-```
+---
 
-Проверьте, что порт свободен: `ss -tlnp | grep 8085`
+## Common issues
 
-### Тесты зависают
+**Docker build fails on npm** — build UI first: `cd app/ui && npm run build && cd .. && docker compose build`
 
-Тесты используют `:memory:` SQLite. Если зависают — проверьте `docker compose ps`, контейнер должен быть запущен для `make test-web`.
+**Container exits** — `docker compose logs birdlense`; ensure port not in use (`ss -tlnp | grep 8085`)
+
+**Tests hang** — web tests expect a running container; check `docker compose ps`

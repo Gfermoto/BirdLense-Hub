@@ -1,47 +1,50 @@
-# Настройка MCP BirdLense Hub
+# MCP setup — BirdLense Hub
 
-MCP (Model Context Protocol) позволяет внешним инструментам вызывать API BirdLense Hub.
+[Model Context Protocol](https://modelcontextprotocol.io/) lets editors and agents call BirdLense Hub tools backed by your OpenAPI surface.
 
-## 1. MCP_TOKEN в .env на сервере
+[Русский](./MCP_SETUP.ru.md)
 
-**Вариант А — через деплой (рекомендуется):**
+---
 
-В `scripts/deploy.local.sh` добавьте:
+## 1. Set `MCP_TOKEN`
 
-```bash
-export MCP_TOKEN="ваш-секретный-токен-минимум-16-символов"
-```
-
-При `make deploy` токен автоматически попадёт в `app/.env` на сервере.
-
-**Вариант Б — вручную на сервере:**
+**Option A — deploy hook (recommended)**  
+In your local `scripts/deploy.local.sh` (not committed):
 
 ```bash
-ssh birdlense "echo 'MCP_TOKEN=ваш-токен' >> /root/BirdLense/app/.env"
-# затем перезапуск: make stop && make start
+export MCP_TOKEN="your-secret-token-min-16-chars"
 ```
 
-## 2. Включить MCP в настройках
+`make deploy` can merge this into `app/.env` on the server (see your deploy script).
 
-1. Откройте BirdLense Hub → Настройки
-2. Раздел **8. MCP** → включите «Включить MCP-сервер»
-3. Сохраните и перезапустите контейнер
-
-## 3. Добавить MCP-сервер с заголовком Authorization
-
-Создайте `.cursor/mcp.json`:
+**Option B — on the server**
 
 ```bash
-mkdir -p .cursor
+ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-secret-token' >> YOUR_REMOTE_DIR/app/.env"
+# then: make stop && make start
 ```
 
-Содержимое `.cursor/mcp.json`:
+You can also set the token in **Settings → MCP** in the UI; env overrides are documented in [CONFIGURATION](./CONFIGURATION.md).
+
+---
+
+## 2. Enable MCP in the UI
+
+1. Open Hub → **Settings**
+2. Section **MCP** → enable the MCP server
+3. Save and **restart** the container
+
+---
+
+## 3. Client config (example: Cursor)
+
+Create `.cursor/mcp.json` (folder is gitignored — do not commit secrets):
 
 ```json
 {
   "mcpServers": {
     "birdlense": {
-      "url": "http://192.168.1.11:8085/mcp",
+      "url": "http://YOUR_HOST:8085/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_MCP_TOKEN_HERE"
       }
@@ -50,22 +53,27 @@ mkdir -p .cursor
 }
 ```
 
-Замените:
-- `192.168.1.11:8085` — IP и порт вашего BirdLense Hub
-- `YOUR_MCP_TOKEN_HERE` — тот же токен, что в Настройках (MCP) или MCP_TOKEN на сервере
+Replace:
 
-**Важно:** `.cursor/` в .gitignore — токен не попадёт в репозиторий.
+- `YOUR_HOST:8085` — reachable Hub host and port
+- `YOUR_MCP_TOKEN_HERE` — same value as `MCP_TOKEN` / UI MCP token
 
-**Токен из Настроек:** если MCP включён и токен задан в разделе «8. MCP», MCP-сервер передаёт его при вызовах API. Инструменты Get_app_settings, Update_app_settings и др. работают без ввода пароля настроек.
-
-## 4. Перезапуск клиента
-
-После изменения `mcp.json` перезапустите редактор или инструмент, использующий MCP.
-
-## Проверка
-
-В настройках MCP-клиента сервер `birdlense` должен быть в списке и активен.
+With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
 
 ---
 
-См. также: [INSTALL.md](./INSTALL.md), [API.md](./API.md), [CONFIGURATION.md](./CONFIGURATION.md).
+## 4. Restart the MCP client
+
+Restart the editor or agent after editing `mcp.json`.
+
+---
+
+## Verify
+
+The server should appear connected in your client’s MCP panel.
+
+---
+
+## See also
+
+[INSTALL](./INSTALL.md) · [API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md)
