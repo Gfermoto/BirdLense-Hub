@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
+
 ### Fixed
 
 - CI: сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
