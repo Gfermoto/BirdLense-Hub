@@ -50,8 +50,13 @@ gh repo edit "$FULL" \
   --default-branch main \
   --delete-branch-on-merge \
   --enable-issues \
-  --enable-projects \
-  --disable-wiki
+  --enable-projects
+```
+
+Wiki в старых версиях `gh` не отключается флагом; через API:
+
+```bash
+gh api "repos/$FULL" -X PATCH -f has_wiki=false
 ```
 
 Опционально (если поддерживает ваша версия `gh`):

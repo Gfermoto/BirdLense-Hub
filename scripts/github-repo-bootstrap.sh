@@ -21,7 +21,8 @@ fi
 echo "==> Репозиторий: $FULL"
 gh repo view "$FULL" >/dev/null
 
-echo "==> Базовые настройки (описание, темы, merge, issues, без wiki)"
+echo "==> Базовые настройки (описание, темы, merge, issues; wiki выключаем через API)"
+# Примечание: старые версии gh не знают --disable-wiki; wiki отключаем PATCH-запросом.
 gh repo edit "$FULL" \
   --description "Smart bird feeder monitoring: local ML, Docker, Go2RTC, Frigate, BirdNET, HA — open source." \
   --homepage "https://gfermoto.github.io/BirdLense-Hub/" \
@@ -33,8 +34,11 @@ gh repo edit "$FULL" \
   --default-branch main \
   --delete-branch-on-merge \
   --enable-issues \
-  --enable-projects \
-  --disable-wiki || true
+  --enable-projects
+
+gh api "repos/${FULL}" -X PATCH -f has_wiki=false >/dev/null \
+  && echo "    Wiki: выключена (has_wiki=false)." \
+  || echo "    Wiki: не удалось выключить через API (проверьте права или выключите в Settings)."
 
 gh repo edit "$FULL" --enable-discussions 2>/dev/null || echo "(discussions: пропуск, если флаг недоступен)"
 
