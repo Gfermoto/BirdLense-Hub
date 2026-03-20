@@ -69,6 +69,7 @@ nav:
       - Roadmap: ROADMAP.md
   - Meta:
       - Doc conventions: Documentation.md
+      - Docs refactor (consilium & review): DOCS_REFACTOR_CONSILIUM.md
       - Site map (generator): SITE_MAP.md
       - i18n status: I18N_STATUS.md
       - Security analysis: SECURITY.md
@@ -105,6 +106,7 @@ nav:
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md
       - О документации: Documentation.ru.md
+      - Рефакторинг доков (консилиум): DOCS_REFACTOR_CONSILIUM.ru.md
       - Карта сайта: SITE_MAP.ru.md
       - Локализация: I18N_STATUS.md
       - Анализ безопасности: SECURITY.ru.md
