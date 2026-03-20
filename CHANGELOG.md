@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Docs site (MkDocs):** версия в шапке рядом со звёздами/форками совпадает с `VERSION` / `extra.site_version` (Material иначе берёт только GitHub Latest Release и отстаёт).
 - **ROADMAP.md (EN):** бэклог синхронизирован с фактически отгруженными фичами (как в `ROADMAP.ru.md`), чтобы не плодить ложные GitHub Issues.
 - **MkDocs:** баннер версии через `overrides/main.html` (`{% block announce %}`): в community Material `theme.announcement` в `mkdocs.yml` не рендерится — баннер был пустым; после деплоя отображается **v** из `extra.site_version`.
 - **Docs (MkDocs strict):** ссылки на корень репозитория и `docs/archive/` — на blob GitHub, чтобы `mkdocs build --strict` проходил в CI.
