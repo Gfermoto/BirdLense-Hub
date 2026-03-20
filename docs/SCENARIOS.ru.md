@@ -119,7 +119,7 @@
 **Цель:** Месячная сводка и дашборды.
 
 1. **PDF:** Overview → «PDF-отчёт» → выберите месяц.
-2. **Grafana:** Prometheus datasource, scrape `http://birdlense:8085/api/metrics`. Метрики: CPU, память, диск, GPU, detections, species, videos.
+2. **Grafana:** источник Prometheus, scrape `http://birdlense:8085/api/metrics` (в Docker-сети) или `http://YOUR_HOST:8085/api/metrics`. Метрики: CPU, память, диск, GPU, detections, species, videos.
 
 **Результат:** Отчёт и графики активности.
 

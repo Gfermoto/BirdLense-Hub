@@ -17,22 +17,17 @@
 | Категория | Файлы | Статус |
 |-----------|-------|--------|
 | **Корневые** | README.md, README.ru.md, CHANGELOG.md, SECURITY.md | Нужна интернационализация (EN приоритет) |
-| **docs/** | 20+ файлов | Структура ок, но: русский доминирует, есть внутренние ссылки |
+| **docs/** | Гайды в `docs/` | EN — основной текст (`*.md`), RU — зеркала (`*.ru.md`); см. [I18N_STATUS](./I18N_STATUS.md) |
 | **docs/archive/** | 8 файлов | Оставить как есть (история) |
 | **Лишнее** | article/, scripts/datasets/README | Проверить релевантность |
 
-### 1.2 Потенциальные утечки (требуют замены на placeholders)
+### 1.2 Утечки и плейсхолдеры
 
-| Место | Что найдено | Действие |
-|-------|-------------|----------|
-| docs/TESTING.md | `192.168.1.11:8085`, `ssh birdlense`, `/root/BirdLense` | Заменить на `YOUR_HOST:8085`, `ssh YOUR_HOST`, `YOUR_REMOTE_DIR` |
-| docs/MCP_SETUP.md | `192.168.1.11:8085`, `ssh birdlense`, `/root/BirdLense` | То же |
-| docs/INSTALL.md | `ssh birdlense`, `/root/BirdLense` | То же |
-| docs/RECOVERY_CONFIG.md | `ssh birdlense`, `/root/BirdLense` | То же |
-| app/.env.example | `192.168.1.11`, `192.168.1.100` | Оставить как примеры private IP (OK) |
-| app/web/app.py | `birdlense.eyera.info` в CORS | Это публичный demo — оставить или вынести в конфиг |
-| app/app_config/user_config.yaml.bak | **НЕ в .gitignore** — содержит base_url | Добавить в .gitignore, не коммитить |
-| .cursor/rules/deploy.mdc | IP сервера, порт | В .gitignore — не попадает в репо |
+В пользовательских доках — `YOUR_HOST`, `YOUR_SSH_HOST`, `YOUR_REMOTE_DIR`; путь на сервере по умолчанию для `deploy.sh` описан в [INSTALL.ru.md](./INSTALL.ru.md) (`DEPLOY_REMOTE_DIR`). Имя сервера в JSON MCP (`"birdlense"`) — идентификатор клиента, не SSH.
+
+`app/.env.example` может содержать **примерные** частные IP. Правила только для Cursor (деплой) — локально, в репозиторий не коммитятся.
+
+Периодически проверять: нет ли реальных токенов в примерах; `user_config.yaml.bak` — в `.gitignore` (задача 1.1 в фазе 1 ниже).
 
 ### 1.3 Безопасность (из docs/SECURITY.md)
 
