@@ -1,4 +1,4 @@
-# Build MkDocs site and deploy to GitHub Pages (source: GitHub Actions).
+# MkDocs → GitHub Pages. Deploy only from main (tag refs fail github-pages environment rules).
 name: Documentation site
 
 on:
@@ -12,8 +12,6 @@ on:
       - "requirements-docs.txt"
       - "scripts/check-docs-version.py"
       - ".github/workflows/docs-pages.yml"
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -52,7 +50,7 @@ jobs:
           path: site
 
   deploy:
-    if: github.event_name == 'release' || (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: build
     runs-on: ubuntu-latest
     environment:
