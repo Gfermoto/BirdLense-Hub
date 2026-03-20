@@ -9,3 +9,5 @@ Full Russian walkthrough: **[GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md)** (
 ```
 
 Branch protection payload: `scripts/github-branch-protection-main.json`.
+
+Wiki + CI reports: [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md).

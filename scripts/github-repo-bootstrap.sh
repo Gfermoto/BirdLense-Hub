@@ -21,8 +21,7 @@ fi
 echo "==> Репозиторий: $FULL"
 gh repo view "$FULL" >/dev/null
 
-echo "==> Базовые настройки (описание, темы, merge, issues; wiki выключаем через API)"
-# Примечание: старые версии gh не знают --disable-wiki; wiki отключаем PATCH-запросом.
+echo "==> Базовые настройки (описание, темы, merge, issues; Wiki включаем через API)"
 gh repo edit "$FULL" \
   --description "Smart bird feeder monitoring: local ML, Docker, Go2RTC, Frigate, BirdNET, HA — open source." \
   --homepage "https://gfermoto.github.io/BirdLense-Hub/" \
@@ -36,9 +35,9 @@ gh repo edit "$FULL" \
   --enable-issues \
   --enable-projects
 
-gh api "repos/${FULL}" -X PATCH -f has_wiki=false >/dev/null \
-  && echo "    Wiki: выключена (has_wiki=false)." \
-  || echo "    Wiki: не удалось выключить через API (проверьте права или выключите в Settings)."
+gh api "repos/${FULL}" -X PATCH -f has_wiki=true >/dev/null \
+  && echo "    Wiki: включена (has_wiki=true). Автоотчёты: workflow Wiki report + docs/WIKI_AUTOMATION.ru.md" \
+  || echo "    Wiki: не удалось включить через API (включите в Settings → General → Wikis)."
 
 gh repo edit "$FULL" --enable-discussions 2>/dev/null || echo "(discussions: пропуск, если флаг недоступен)"
 
@@ -60,5 +59,6 @@ fi
 echo ""
 echo "Готово. Дальше вручную в UI:"
 echo "  - Settings → Pages → Source: GitHub Actions (если ещё не)"
+echo "  - Wiki: при желании секрет WIKI_PUSH_TOKEN для пуша отчёта (см. docs/WIKI_AUTOMATION.ru.md)"
 echo "  - Security → Dependabot: разгрести алерты"
 echo "  - При отсутствии self-hosted runner: не включать workflow Deploy как required check"
