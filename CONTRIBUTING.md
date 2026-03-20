@@ -89,4 +89,10 @@ New projects start **empty**. To add all **open issues and PRs** to the board:
 bash scripts/github-project-import-open-items.sh
 ```
 
+Roadmap backlog issues **#46–#57** (see [docs/ROADMAP.md](docs/ROADMAP.md)):
+
+```bash
+bash scripts/github-project-add-backlog-consilium.sh
+```
+
 On **WSL**, `gh project view … --web` often fails (`xdg-open: Permission denied`); open the printed **https://github.com/users/…/projects/N** link in your Windows browser instead.
