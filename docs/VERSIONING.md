@@ -32,6 +32,8 @@ Examples:
 
 Update **all three** on each release.
 
+Also update **`mkdocs.yml`**: `theme.announcement` and `extra.site_version` must contain the same semver string as `VERSION` (CI runs `scripts/check-docs-version.py`).
+
 ---
 
 ## Releases and tags
@@ -44,8 +46,8 @@ Update **all three** on each release.
 
 ### GitHub Actions after a release
 
-- **Docker:** workflow [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) pushes **`latest`** on every push to `main`, and a **semver tag** (e.g. `0.2.2`) when a **GitHub Release** is **published** (tag `v0.2.2`).
-- **Docs site:** [`.github/workflows/docs-pages.yml`](../.github/workflows/docs-pages.yml) deploys on `docs/**` changes and also on **`release: published`**, so the version on Pages updates after a release even if the release commit only touched root files.
+- **Docker:** workflow [`.github/workflows/docker-publish.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) pushes **`latest`** on every push to `main`, and a **semver tag** (e.g. `0.2.2`) when a **GitHub Release** is **published** (tag `v0.2.2`).
+- **Docs site:** [`.github/workflows/docs-pages.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) deploys on `docs/**` changes and also on **`release: published`**, so the version on Pages updates after a release even if the release commit only touched root files.
 
 ---
 
