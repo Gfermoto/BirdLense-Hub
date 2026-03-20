@@ -9,7 +9,7 @@ COPY ui/ ./
 RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legacy-peer-deps && npm run build)
 
 # Stage 2: всё в одном
-FROM ultralytics/ultralytics:8.4.21
+FROM ultralytics/ultralytics:8.4.24
 # Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl \
