@@ -54,6 +54,9 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | VERSIONING | ✅ | ✅ |
 | SECURITY (analysis in docs/) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |
+| GOVERNANCE (process / observer) | ✅ | ✅ |
+| GITHUB_SETUP_GH | ✅ | ✅ (RU primary) |
+| WIKI_AUTOMATION | ✅ | ✅ |
 | **docs/project/** (stubs → root files / OpenAPI; MkDocs) | ✅ | — (optional later) |
 
 ## Adding or refreshing a doc

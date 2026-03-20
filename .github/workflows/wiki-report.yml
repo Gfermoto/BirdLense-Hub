@@ -1,0 +1,40 @@
+# Отчёт для Wiki: скрипты в CI, вывод в Summary + Artifact + опционально GitHub Wiki.
+name: Wiki report
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Понедельник 06:00 UTC
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: wiki-report
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate wiki report
+        run: |
+          bash scripts/generate-wiki-report.sh | tee wiki-report.md
+
+      - name: Add to job summary
+        run: cat wiki-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wiki-report
+          path: wiki-report.md
+
+      - name: Push to GitHub Wiki
+        env:
+          WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
+        run: bash scripts/push-wiki-report.sh
