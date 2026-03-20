@@ -53,11 +53,13 @@ gh repo edit "$FULL" \
   --enable-projects
 ```
 
-Wiki в старых версиях `gh` не отключается флагом; через API:
+Wiki через API:
 
 ```bash
-gh api "repos/$FULL" -X PATCH -f has_wiki=false
+gh api "repos/$FULL" -X PATCH -f has_wiki=true
 ```
+
+Автоотчёты и вывод скриптов в CI → **Summary** / **Wiki**: [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md).
 
 Опционально (если поддерживает ваша версия `gh`):
 
