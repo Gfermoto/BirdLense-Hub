@@ -4,10 +4,21 @@ Thank you for your interest in contributing to BirdLense Hub.
 
 ## How to contribute
 
-1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and branch from **`dev`**.
+### Branching (two steps to production)
+
+| Step | Branch flow | Who |
+|------|-------------|-----|
+| **1** | `feature/*` (from **`dev`**) → **Pull Request into `dev`** | Contributors |
+| **2** | **`dev`** → **Pull Request into `main`** | Maintainers (release) |
+
+Do **not** open feature PRs **directly** to `main`. Integrate on `dev` first; only then promote to `main`.
+
+After your PR into `dev` is merged, GitHub **deletes the feature branch** automatically so branches do not pile up. Long-lived **`main`** and **`dev`** stay: they are **protected from deletion**.
+
+1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and create a branch from **`dev`**.
 2. **Make changes** — follow existing code style and conventions.
 3. **Test** — run `make test-web` in `app/` before submitting.
-4. **Submit a Pull Request** to the `dev` branch.
+4. **Open a Pull Request** with base branch **`dev`**.
 
 **Second pair of eyes:** maintainers should use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub and why AI assistants cannot accept repo invites).
 

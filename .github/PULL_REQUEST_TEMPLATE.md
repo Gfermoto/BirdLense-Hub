@@ -2,6 +2,11 @@
 
 <!-- What does this PR change and why? -->
 
+## Base branch
+
+- [ ] **Feature / fix / docs / CI:** target **`dev`** (not `main`).
+- [ ] **Release:** **`dev` → `main`** (maintainers only; integrates what is already on `dev`).
+
 ## Type of change
 
 - [ ] Bug fix
