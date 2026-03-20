@@ -29,7 +29,7 @@
 
 При релизе обновлять все три.
 
-Также **`mkdocs.yml`**: строка версии в `theme.announcement` и в `extra.site_version` должна совпадать с `VERSION` (проверка в CI: `scripts/check-docs-version.py`).
+Также **`mkdocs.yml`**: `extra.site_version` должен совпадать с `VERSION` (CI: `scripts/check-docs-version.py`). Видимый баннер задаётся в **`overrides/main.html`** (блок `announce`), ключ `theme.announcement` в YAML Material не использует.
 
 ## Релизы и теги
 
