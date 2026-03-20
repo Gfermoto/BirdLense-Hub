@@ -97,4 +97,4 @@ go2rtc must listen on `0.0.0.0:1984`. Test from host/container: `curl -s -o /dev
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [SCENARIOS](./SCENARIOS.md)
+[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md)

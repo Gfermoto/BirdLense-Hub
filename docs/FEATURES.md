@@ -107,4 +107,4 @@ Full spec: [`app/web/openapi.yaml`](../app/web/openapi.yaml) · narrative: [API]
 
 ## See also
 
-[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md)
+[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [GLOSSARY](./GLOSSARY.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md)
