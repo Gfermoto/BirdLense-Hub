@@ -1,10 +1,7 @@
-# Оставляем на origin только main и dev (остальные ветки — по cron / вручную).
-# Ветка под открытым PR будет удалена → PR «потеряет» head (не используйте долгоживущие feature-ветки).
+# Только workflow_dispatch: снять с origin все ветки кроме main и dev (по необходимости).
 name: Prune remote branches
 
 on:
-  schedule:
-    - cron: "0 4 * * 1"
   workflow_dispatch:
 
 permissions:
