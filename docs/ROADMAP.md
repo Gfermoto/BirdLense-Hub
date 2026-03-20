@@ -31,7 +31,16 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 **Brainstorm roles:** product (operator value), security, platform/infra, ML & data, integrations (MQTT/HA/Frigate), UX, docs & OSS hygiene.
 
-**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57). Add them to the repo **Project** board (Backlog / Todo column). If `gh project` fails locally, run `gh auth refresh -s read:project,project` and attach issues in the GitHub UI.
+**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+
+**Put them on the Project board** (needs `project` + `read:project` on `gh`):
+
+```bash
+gh auth refresh -h github.com -s read:project -s project   # or full `gh auth login` with those scopes
+bash scripts/github-project-add-backlog-consilium.sh
+```
+
+All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add cards manually in the GitHub UI.
 
 | # | Theme | Issue | Labels (summary) |
 |---|--------|-------|------------------|
