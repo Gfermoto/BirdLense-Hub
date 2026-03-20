@@ -55,7 +55,7 @@
 | # | Task | Done |
 |---|------|:----:|
 | 2.1 | Root `README.md` EN, concise | [x] |
-| 2.2 | `README.ru.md` | [x] |
+| 2.2 | `README.ru.md`; `app/README.md` + `app/README.ru.md`; `SHORT_DESCRIPTION*.md` | [x] |
 | 2.3 | `docs/README.md` hub (Run / Integrate / Build) | [x] |
 | 2.4 | `CONTRIBUTING.md` | [x] |
 | 2.5 | `CODE_OF_CONDUCT.md` | [x] |

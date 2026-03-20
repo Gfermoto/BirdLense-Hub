@@ -6,6 +6,10 @@
 
 [![Version](https://img.shields.io/badge/version-0.2.2-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
+### Short description
+
+Canonical one-liners for **GitHub About**, mirrors, and press: **[SHORT_DESCRIPTION.md](./SHORT_DESCRIPTION.md)** · **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)**
+
 Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
 
 **Docs:** [Project overview](./docs/OVERVIEW.md) · [Full documentation index](./docs/README.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
