@@ -32,6 +32,14 @@ export FULL="$OWNER/$REPO"
 gh repo view "$FULL"
 ```
 
+### Репозиторий по умолчанию для `gh`
+
+Чтобы команды вроде `gh pr merge` не обращались к другому репо из контекста каталога:
+
+```bash
+gh repo set-default Gfermoto/BirdLense-Hub
+```
+
 ---
 
 ## 1. Описание, темы, поведение merge
