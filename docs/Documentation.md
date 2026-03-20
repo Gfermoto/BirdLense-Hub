@@ -16,6 +16,8 @@ How this project structures docs for contributors and readers.
 
 **Navigation:** start at [docs/README.md](./README.md).
 
+**Large refactor:** [DOCS_REFACTOR_CONSILIUM](./DOCS_REFACTOR_CONSILIUM.md) — roles, phases, mandatory review checklist.
+
 ---
 
 ## Static documentation site (MkDocs + GitHub Pages)
