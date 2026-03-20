@@ -116,7 +116,9 @@ gh api -X POST "repos/$FULL/pages" \
 
 ## 4. Защита веток `main` и `dev` (один мейнтейнер, без второго человека)
 
-Цель: **запрет прямого push** в `main` и `dev`, merge в `main` только через **PR**; **ветки нельзя удалить** (в т.ч. случайно после merge). **Не включайте** в репозитории опцию *Automatically delete head branches*: при merge PR `dev` → `main` GitHub иначе **удалит `dev`**.
+Цель: **запрет прямого push** в `main` и `dev`; **фичи** — только PR в **`dev`**, затем отдельный PR **`dev` → `main`**. Ветки **`main`** и **`dev`** **нельзя удалить** (`allow_deletions: false`). Остальные ветки после merge **удаляются**, чтобы не копились.
+
+**Автоудаление head после merge** (`delete_branch_on_merge=true`): при merge фича-PR в `dev` GitHub удалит фича-ветку. При merge PR `dev` → `main` head — это `dev`, но **защищённую от удаления** ветку GitHub **не сотрёт** (см. [документацию GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-the-automatic-deletion-of-branches)).
 
 Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) — тот же payload для **обеих** веток (`allow_deletions: false`).
 
@@ -130,10 +132,10 @@ gh api --method PUT "repos/$FULL/branches/dev/protection" \
   --input scripts/github-branch-protection-main.json
 ```
 
-Выключить автоудаление веток после merge (если включалось ранее):
+Включить автоудаление фича-веток после merge (рекомендуется вместе с защитой `main`/`dev`):
 
 ```bash
-gh api "repos/$FULL" -X PATCH -f delete_branch_on_merge=false
+gh api "repos/$FULL" -X PATCH -f delete_branch_on_merge=true
 ```
 
 Если GitHub вернёт **422** (политика API менялась), откройте **Settings → Rules → Rulesets** и создайте правила для `main` и `dev`:
@@ -191,8 +193,9 @@ gh secret list -R "$FULL"
 
 ## Чеклист после настройки
 
-- [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; `main` — merge через PR.
-- [ ] **Automatically delete head branches** выключено (или эквивалент: `delete_branch_on_merge=false`), иначе после merge PR из `dev` пропадёт сама `dev`.
+- [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; фичи → PR в `dev`, релиз — PR `dev` → `main`.
+- [ ] **Automatically delete head branches** включено (`delete_branch_on_merge=true`): фича-ветки после merge не копятся; `main`/`dev` не удаляются (защита).
+- [ ] Workflow **Prune remote branches** (по cron или вручную) — подчистить забытые ветки, кроме `main` и `dev`.
 - [ ] Pages: сайт открывается, последний workflow **Documentation site** зелёный на `main`.
 - [ ] Dependabot PR’ы не копятся месяцами.
 - [ ] **Deploy** workflow: либо runner поднят, либо workflow отключён / не required, чтобы не было вечных красных статусов.

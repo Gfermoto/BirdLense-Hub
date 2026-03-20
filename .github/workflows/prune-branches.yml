@@ -1,8 +1,11 @@
-# Только workflow_dispatch: снять с origin все ветки кроме main и dev (по необходимости).
+# Удалить на origin все ветки кроме main и dev (заброшенные фичи, забытые ветки).
 name: Prune remote branches
 
 on:
   workflow_dispatch:
+  schedule:
+    # Понедельник 06:00 UTC — не даём веткам копиться; main и dev не трогаем.
+    - cron: "0 6 * * 1"
 
 permissions:
   contents: write

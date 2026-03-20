@@ -38,9 +38,10 @@ gh api "repos/${FULL}" -X PATCH -f has_wiki=true >/dev/null \
   && echo "    Wiki: включена (has_wiki=true). Автоотчёты: workflow Wiki report + docs/WIKI_AUTOMATION.ru.md" \
   || echo "    Wiki: не удалось включить через API (включите в Settings → General → Wikis)."
 
-# Не удалять head-ветку после merge: иначе при merge PR dev→main GitHub сотрёт long-lived ветку dev.
-gh api "repos/${FULL}" -X PATCH -f delete_branch_on_merge=false >/dev/null \
-  && echo "    delete_branch_on_merge=false (ветки main и dev не исчезают после PR)" \
+# Автоудаление head-ветки после merge: фича-ветки не копятся. Ветки main и dev защищены
+# (allow_deletions: false) — при merge PR dev→main GitHub НЕ удалит dev.
+gh api "repos/${FULL}" -X PATCH -f delete_branch_on_merge=true >/dev/null \
+  && echo "    delete_branch_on_merge=true (фичи удаляются; main/dev — защищены от удаления)" \
   || echo "    (delete_branch_on_merge: не удалось выставить через API)"
 
 gh repo edit "$FULL" --enable-discussions 2>/dev/null || echo "(discussions: пропуск, если флаг недоступен)"
