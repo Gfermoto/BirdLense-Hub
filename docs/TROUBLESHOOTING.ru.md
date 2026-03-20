@@ -80,3 +80,9 @@ docker logs birdlense --tail 200 2>&1
 go2rtc должен слушать `0.0.0.0:1984`. Проверка: `curl -s -o /dev/null -w "%{http_code}" http://172.17.0.1:1984/api/streams` → 200.
 
 **Обход:** на странице Live нажать **«MJPEG»** — поток через процессор.
+
+---
+
+## См. также
+
+[INSTALL](./INSTALL.ru.md) · [CONFIGURATION](./CONFIGURATION.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md)

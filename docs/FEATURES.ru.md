@@ -105,4 +105,4 @@
 
 ---
 
-См. также: [API](./API.md), [CONFIGURATION](./CONFIGURATION.ru.md), [ROADMAP](./ROADMAP.md).
+См. также: [API](./API.md), [CONFIGURATION](./CONFIGURATION.ru.md), [GLOSSARY](./GLOSSARY.ru.md), [ROADMAP](./ROADMAP.md).
