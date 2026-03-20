@@ -77,7 +77,6 @@ Pick what matches you — you can read the rest as reference.
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 | **GitHub CLI setup** (personal repo) | [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
-| **GitHub ecosystem** (Pages, Docker, Wiki, Issues, Projects, releases) | [GITHUB_ECOSYSTEM](./GITHUB_ECOSYSTEM.md) · [RU](./GITHUB_ECOSYSTEM.ru.md) |
 | **Wiki + CI reports** (Summary / Artifact / optional Wiki push) | [WIKI_AUTOMATION](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
 | Translation status | [I18N_STATUS](./I18N_STATUS.md) |
 | **Suggested nav for a static doc site** | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
