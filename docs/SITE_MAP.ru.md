@@ -68,6 +68,7 @@
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) |
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) |
 | Локализация | [I18N_STATUS.md](./I18N_STATUS.md) |
+| Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
 
 **Генератор:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) в корне репозитория (MkDocs Material); русские страницы — отдельная секция в `nav`.
 

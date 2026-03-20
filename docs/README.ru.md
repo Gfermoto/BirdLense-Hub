@@ -72,6 +72,7 @@
 | Как вести документацию | [Documentation](./Documentation.ru.md) |
 | Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
+| Управление и внешний наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
 | **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |
 | **MkDocs и GitHub Pages** | [Documentation.ru.md](./Documentation.ru.md) § *Статический сайт* |

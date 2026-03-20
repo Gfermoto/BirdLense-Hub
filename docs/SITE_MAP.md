@@ -68,6 +68,7 @@ Use this when generating a static site (VitePress, Docusaurus, MkDocs). Slugs ar
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
+| Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 
 **Implemented generator:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) at repo root (MkDocs Material); Russian pages are a section in the same `nav`.
 

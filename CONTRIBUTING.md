@@ -9,6 +9,8 @@ Thank you for your interest in contributing to BirdLense Hub.
 3. **Test** — run `make test-web` in `app/` before submitting.
 4. **Submit a Pull Request** to the `dev` branch.
 
+**Second pair of eyes:** maintainers should use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub and why AI assistants cannot accept repo invites).
+
 ## Development setup
 
 ```bash
