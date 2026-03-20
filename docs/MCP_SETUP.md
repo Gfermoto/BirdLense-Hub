@@ -38,7 +38,9 @@ You can also set the token in **Settings → MCP** in the UI; env overrides are 
 
 ## 3. Client config (example: Cursor)
 
-Create `.cursor/mcp.json` (folder is gitignored — do not commit secrets):
+Create `.cursor/mcp.json` (folder is gitignored — do not commit secrets).
+
+### 3a. Hub API (tools + OpenAPI)
 
 ```json
 {
@@ -55,10 +57,26 @@ Create `.cursor/mcp.json` (folder is gitignored — do not commit secrets):
 
 Replace:
 
-- `YOUR_HOST:8085` — reachable Hub host and port
+- `YOUR_HOST:8085` — reachable Hub host and port (path may be `/mcp` or `/sse` depending on your Hub version — check **Settings → MCP**).
 - `YOUR_MCP_TOKEN_HERE` — same value as `MCP_TOKEN` / UI MCP token
 
 With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
+
+### 3b. Repository documentation (GitMCP, read-only)
+
+For agents that should read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub, add [GitMCP](https://gitmcp.io):
+
+```json
+{
+  "mcpServers": {
+    "BirdLense-Hub Docs": {
+      "url": "https://gitmcp.io/Gfermoto/BirdLense-Hub"
+    }
+  }
+}
+```
+
+You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** a substitute for Hub MCP — it does not call your deployment; it exposes repo content for documentation lookup.
 
 ---
 
@@ -70,7 +88,7 @@ Restart the editor or agent after editing `mcp.json`.
 
 ## Verify
 
-The server should appear connected in your client’s MCP panel.
+Both servers (if configured) should show as connected in the client’s MCP panel: **birdlense** (Hub) and **BirdLense-Hub Docs** (GitMCP).
 
 ---
 
