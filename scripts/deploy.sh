@@ -43,6 +43,9 @@ cd "$(dirname "$0")/.."
 echo "1. Синхронизация кода..."
 RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
+# Локальные venv / сборка док — не на сервер
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then

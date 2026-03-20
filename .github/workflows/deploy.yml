@@ -26,6 +26,11 @@ jobs:
             --exclude='app/app_config/user_config.yaml' \
             --exclude='node_modules' \
             --exclude='__pycache__' \
+            --exclude='.venv-docs-tmp' \
+            --exclude='.venv-docs' \
+            --exclude='site' \
+            --exclude='app/.venv' \
+            --exclude='.venv-datasets' \
             ./ "$DEPLOY_DIR"/
 
       - name: Pull and restart
