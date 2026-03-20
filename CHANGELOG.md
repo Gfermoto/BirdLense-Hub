@@ -17,10 +17,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **GitHub Pages:** docs workflow triggers on `VERSION` and `scripts/check-docs-version.py` changes; build is strict.
+- **GitHub Actions:** `actions/checkout@v6`, `setup-python@v6`, `setup-node@v6`, `upload-pages-artifact@v4`, `upload-artifact@v6`, Docker actions (buildx/login/metadata/build-push v4/v4/v6/v7) — актуальные рантаймы, меньше предупреждений про Node.js 20.
 
 ### Fixed
 
-- **Docs (MkDocs strict):** internal links to repo-root files (`.github/`, `scripts/`) and excluded `docs/archive/` now point to GitHub blob URLs so `mkdocs build --strict` passes in CI.
+- **MkDocs:** баннер версии через `overrides/main.html` (`{% block announce %}`): в community Material `theme.announcement` в `mkdocs.yml` не рендерится — баннер был пустым; после деплоя отображается **v** из `extra.site_version`.
+- **Docs (MkDocs strict):** ссылки на корень репозитория и `docs/archive/` — на blob GitHub, чтобы `mkdocs build --strict` проходил в CI.
 
 ---
 

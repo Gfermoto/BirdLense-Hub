@@ -32,7 +32,7 @@ Examples:
 
 Update **all three** on each release.
 
-Also update **`mkdocs.yml`**: `theme.announcement` and `extra.site_version` must contain the same semver string as `VERSION` (CI runs `scripts/check-docs-version.py`).
+Also update **`mkdocs.yml`**: `extra.site_version` must match `VERSION` (CI: `scripts/check-docs-version.py`). The visible banner is rendered from **`overrides/main.html`** (`announce` block), not from a `theme.announcement` key (Material ignores that in YAML).
 
 ---
 
