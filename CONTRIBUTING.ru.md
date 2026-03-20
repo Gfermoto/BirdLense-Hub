@@ -59,3 +59,14 @@ make start
 
 - **Discussions:** https://github.com/Gfermoto/BirdLense-Hub/discussions  
 - **Безопасность:** только по [SECURITY.md](SECURITY.md), не в открытых тредах.
+
+## GitHub Projects (мейнтейнерам)
+
+В репозитории включены **Issues**, **Discussions** и **Projects**. Метки `area:*`, `priority:*`, `triage` и вехи **v0.2.3** / **Backlog (no milestone)** уже заведены.
+
+Создать проект **BirdLense Hub — Roadmap**, привязать репозиторий и поле «Поток» (канбан):
+
+```bash
+gh auth refresh -s project -s read:project
+bash scripts/github-bootstrap-project.sh
+```
