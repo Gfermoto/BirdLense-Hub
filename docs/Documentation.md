@@ -37,7 +37,7 @@ Build output goes to `site/` (ignored by git).
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
 
 - On push to **`main`** or **`dev`** when `docs/**`, `mkdocs.yml`, `VERSION`, `requirements-docs.txt`, or `scripts/check-docs-version.py` change (or manually via **Actions → Documentation site → Run workflow**), the site is **built** every run.
-- Before build: **`python3 scripts/check-docs-version.py`** — the string from root **`VERSION`** must appear in `mkdocs.yml` (`theme.announcement` and `extra.site_version`) so the banner cannot drift from releases.
+- Before build: **`python3 scripts/check-docs-version.py`** — the string from root **`VERSION`** must appear in `mkdocs.yml` (at least `extra.site_version`; the top banner is **`overrides/main.html`** → `{% block announce %}` with `config.extra.site_version`).
 - Build: **`mkdocs build --strict`** (broken links / nav issues fail CI).
 - **Deploy to GitHub Pages** runs only for **`main`**.
 

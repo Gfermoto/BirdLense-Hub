@@ -37,7 +37,7 @@ python3 -m venv .venv-docs
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
 
 - При push в **`main`** или **`dev`** при изменениях в `docs/**`, `mkdocs.yml`, **`VERSION`**, `requirements-docs.txt` или `scripts/check-docs-version.py` (или вручную: **Actions → Documentation site → Run workflow**) сайт **собирается** каждый раз.
-- Перед сборкой: **`python3 scripts/check-docs-version.py`** — строка из корневого **`VERSION`** должна быть в `mkdocs.yml` (`theme.announcement` и `extra.site_version`), чтобы баннер не отставал от релиза.
+- Перед сборкой: **`python3 scripts/check-docs-version.py`** — строка из корневого **`VERSION`** должна быть в `mkdocs.yml` (как минимум `extra.site_version`; верхний баннер — **`overrides/main.html`**, блок `{% block announce %}`, версия из `config.extra.site_version`).
 - Сборка: **`mkdocs build --strict`** (битые ссылки и ошибки навигации роняют CI).
 - **Деплой на GitHub Pages** выполняется только для ветки **`main`**.
 
