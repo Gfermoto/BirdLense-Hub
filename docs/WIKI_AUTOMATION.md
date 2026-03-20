@@ -12,6 +12,12 @@ GitHub **Wiki does not execute scripts** — it is a separate Git repo of Markdo
 gh api "repos/OWNER/REPO" -X PATCH -f has_wiki=true
 ```
 
+You must also open the **Wiki** tab once and **Create the first page** (any title/body → Save). Until then, `https://github.com/OWNER/REPO.wiki.git` may return **Repository not found**.
+
+## `Repository not found` on push
+
+Usually: Wikis disabled, no first wiki page yet, wrong token type (prefer **classic PAT** with **`repo`**; fine-grained often fails for `*.wiki.git`), or token from an account without repo access.
+
 ## Optional: push to Wiki (`WIKI_PUSH_TOKEN`)
 
 The default `GITHUB_TOKEN` cannot push to the wiki remote. Create a **classic PAT** with **`repo`** scope, add repository secret **`WIKI_PUSH_TOKEN`**, then run workflow **Wiki report**.

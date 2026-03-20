@@ -23,6 +23,21 @@ gh api "repos/Gfermoto/BirdLense-Hub" -X PATCH -f has_wiki=true
 
 Либо включите вручную в UI.
 
+**Обязательно один раз:** откройте вкладку **Wiki** у репозитория и нажмите **Create the first page** (любой заголовок и текст → **Save**). Пока Wiki «пустая» в смысле GitHub, адрес `https://github.com/OWNER/REPO.wiki.git` может отвечать **Repository not found**.
+
+---
+
+## Ошибка `Repository not found` при push
+
+Обычно это не «не тот URL», а одно из:
+
+1. **Wiki выключена** — включите **Wikis** в Settings → General → Features.
+2. **Нет ни одной страницы** — создайте первую на вкладке **Wiki** (см. выше).
+3. **Неподходящий токен** — используйте **classic PAT** с **`repo`**. Fine-grained PAT часто **не подходит** для push в `*.wiki.git`.
+4. **Токен чужого аккаунта** без прав на репозиторий — GitHub маскирует это как «not found».
+
+После исправлений снова запустите **Wiki report**.
+
 ---
 
 ## Секрет для автопубликации в Wiki (опционально)
