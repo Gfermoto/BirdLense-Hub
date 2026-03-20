@@ -58,14 +58,18 @@ Use this when generating a static site (VitePress, Docusaurus, MkDocs). Slugs ar
 
 | Page | Source |
 |------|--------|
-| Contributing | `../CONTRIBUTING.md` |
-| Security | `../SECURITY.md` |
-| Code of Conduct | `../CODE_OF_CONDUCT.md` |
-| Changelog | `../CHANGELOG.md` |
+| Contributing | [project/contributing.md](./project/contributing.md) → root `CONTRIBUTING.md` on GitHub |
+| Security policy | [project/security-policy.md](./project/security-policy.md) → root `SECURITY.md` |
+| Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → root `CODE_OF_CONDUCT.md` |
+| Changelog | [project/changelog.md](./project/changelog.md) → root `CHANGELOG.md` |
+| OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
 | Doc conventions | [Documentation.md](./Documentation.md) |
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
+
+**Implemented generator:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) at repo root (MkDocs Material); Russian pages are a section in the same `nav`.
 
 ---
 

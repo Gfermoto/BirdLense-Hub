@@ -140,4 +140,4 @@ scripts/deploy.local.sh
 1. Maintainer: git history / secret scan (**1.3**).
 2. LICENSE: clarify code vs container image (e.g. add OSS license for source if needed).
 3. Complete **4.2–4.4** before announcing.
-4. Optional: static site from [SITE_MAP](./SITE_MAP.md).
+4. Documentation site: MkDocs config is in-repo ([Documentation](./Documentation.md) § *Static documentation site*); enable **GitHub Pages** (Actions source) and merge to **`main`** to deploy. Nav template: [SITE_MAP](./SITE_MAP.md).

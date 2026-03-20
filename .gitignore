@@ -54,3 +54,7 @@ app/processor/models/
 # Сгенерированная документация (make docs)
 docs/api/
 docs/ui/
+
+# MkDocs (static doc site)
+site/
+.venv-docs/

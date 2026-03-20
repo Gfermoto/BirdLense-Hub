@@ -134,4 +134,4 @@
 
 ## Контакты
 
-Сообщить об уязвимости: GitHub Security Advisory или maintainers. См. [SECURITY.md](../SECURITY.md) в корне репозитория.
+Сообщить об уязвимости: GitHub Security Advisory или maintainers. См. [политику безопасности](./project/security-policy.md) в корне репозитория.

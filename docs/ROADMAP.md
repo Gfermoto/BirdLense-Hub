@@ -1,6 +1,6 @@
 # Roadmap — BirdLense Hub
 
-Direction of travel and current stack. **Shipped items** are summarized here; details live in [CHANGELOG](../CHANGELOG.md) and [FEATURES](./FEATURES.md).
+Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](./project/changelog.md) and [FEATURES](./FEATURES.md).
 
 [Русский](./ROADMAP.ru.md)
 

@@ -20,7 +20,7 @@
 |-----------|----------------|
 | **Дом / любитель природы** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
 | **Пользователь Frigate / HA** | [SCENARIOS](./SCENARIOS.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md) |
-| **Разработчик / контрибьютор** | [LOCAL_DEV](./LOCAL_DEV.ru.md), [CONTRIBUTING](../CONTRIBUTING.ru.md), [ARCHITECTURE](./ARCHITECTURE.md) |
+| **Разработчик / контрибьютор** | [LOCAL_DEV](./LOCAL_DEV.ru.md), [Contributing](./project/contributing.md), [ARCHITECTURE](./ARCHITECTURE.md) |
 | **Автор статей / лендинга** | Эта страница + [FEATURES](./FEATURES.ru.md) |
 
 ---
@@ -56,7 +56,7 @@
 | Полный индекс | [docs/README](./README.ru.md) |
 | Карта разделов для сайта | [SITE_MAP](./SITE_MAP.ru.md) |
 
-**OpenAPI:** [`app/web/openapi.yaml`](../app/web/openapi.yaml).
+**OpenAPI:** [спецификация YAML](./project/openapi.md).
 
 ---
 
@@ -68,4 +68,4 @@
 
 ## Версия
 
-Актуальная линейка релизов: бейдж в корневом [README](../README.ru.md) и [CHANGELOG](../CHANGELOG.md).
+Актуальная линейка релизов: бейдж в [корневом README](./project/root-readme.md) и [Changelog](./project/changelog.md).

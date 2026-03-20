@@ -18,6 +18,31 @@
 
 ---
 
+## Статический сайт документации (MkDocs + GitHub Pages)
+
+В корне репозитория лежит **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)**: тема **Material**, каталог исходников — `docs/`, структура `nav` согласована с [SITE_MAP.ru.md](./SITE_MAP.ru.md). Файлы политики и метаданных в корне репозитория (contributing, security policy, changelog, OpenAPI) на сайте открываются через короткие страницы в [docs/project/](./project/contributing.md), чтобы ссылки из `docs/` не уходили в `../` (так ломается публикация на GitHub Pages).
+
+### Сборка локально
+
+```bash
+python3 -m venv .venv-docs
+.venv-docs/bin/pip install -r requirements-docs.txt
+.venv-docs/bin/mkdocs serve   # http://127.0.0.1:8000
+```
+
+Каталог `site/` в git не коммитится (см. `.gitignore`).
+
+### Публикация (CI)
+
+Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
+
+- При push в **`main`** или **`dev`** (при изменениях в `docs/**`, `mkdocs.yml` или `requirements-docs.txt`) сайт **собирается** каждый раз.
+- **Деплой на GitHub Pages** выполняется только для ветки **`main`**.
+
+**Настройки репозитория (один раз):** *Settings → Pages → Build and deployment → Source:* **GitHub Actions**. При первом запуске может понадобиться подтвердить окружение `github-pages` для workflow.
+
+---
+
 ## Контент для сообщества, сайта и статей
 
 | Материал | Назначение |
@@ -75,7 +100,7 @@
 3. После смены заголовков — проверить внутренние ссылки.
 4. Новый гайд — строка в [docs/README.md](./README.md) и обновление [I18N_STATUS.md](./I18N_STATUS.md).
 
-Нормы репозитория: [CONTRIBUTING.md](../CONTRIBUTING.ru.md) (или [CONTRIBUTING.md](../CONTRIBUTING.md)).
+Нормы репозитория: [Contributing](./project/contributing.md).
 
 ---
 

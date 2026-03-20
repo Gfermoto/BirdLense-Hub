@@ -1,6 +1,6 @@
 # BirdLense Hub — Features
 
-Capability overview. Per-version notes: [CHANGELOG](../CHANGELOG.md).
+Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 
 [Русский](./FEATURES.ru.md)
 
@@ -101,7 +101,7 @@ Full reference: [CONFIGURATION](./CONFIGURATION.md).
 | GET | `/api/ui/species/:id/xeno-canto` | Xeno-canto proxy |
 | GET | `/metrics` | Prometheus |
 
-Full spec: [`app/web/openapi.yaml`](../app/web/openapi.yaml) · narrative: [API](./API.md).
+Full spec: [OpenAPI (YAML)](./project/openapi.md) · narrative: [API](./API.md).
 
 ---
 

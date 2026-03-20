@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.2.1** · OpenAPI: [`app/web/openapi.yaml`](../app/web/openapi.yaml)
+> **Версия 0.2.1** · OpenAPI: [YAML](./project/openapi.md)
 
 [English](./README.md)
 
@@ -14,7 +14,7 @@
 |------|--------|-----------|
 | **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
 | **Интеграции** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.ru.md) → [CONFIGURATION](./CONFIGURATION.ru.md) |
-| **Разработка** | Код, тесты, релизы | [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [CONTRIBUTING](../CONTRIBUTING.ru.md) |
+| **Разработка** | Код, тесты, релизы | [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -74,6 +74,7 @@
 | Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
 | **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |
+| **MkDocs и GitHub Pages** | [Documentation.ru.md](./Documentation.ru.md) § *Статический сайт* |
 | Архив | [archive/README](./archive/README.md) |
 
 ---
@@ -85,5 +86,6 @@
 | Локально | `cd app && make local` → http://localhost:8085 |
 | Web-тесты | `cd app && make test-web` |
 | Полный индекс | Вы здесь ✓ |
+| Предпросмотр статического сайта | `pip install -r requirements-docs.txt && mkdocs serve` ([подробности](./Documentation.ru.md)) |
 
 Деплой на сервер: [INSTALL](./INSTALL.ru.md).

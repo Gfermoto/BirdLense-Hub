@@ -56,4 +56,4 @@
 
 ---
 
-См. также: [CHANGELOG](../CHANGELOG.md), [INSTALL](./INSTALL.ru.md).
+См. также: [Changelog](./project/changelog.md), [INSTALL](./INSTALL.ru.md).
