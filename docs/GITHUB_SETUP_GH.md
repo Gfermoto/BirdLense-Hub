@@ -8,7 +8,7 @@ Full Russian walkthrough: **[GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md)** (
 ./scripts/github-repo-bootstrap.sh
 ```
 
-Branch protection payload: `scripts/github-branch-protection-main.json`. Ruleset **Protect** also requires CI jobs **`ui-build`** and **`docs`** (0 approvals — solo maintainer); details in the Russian guide.
+Branch protection: use [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) for **both** `main` and `dev` (`allow_deletions: false`). Turn off **Automatically delete head branches** so merging `dev` → `main` does not delete `dev`. Ruleset **Protect** + required checks **`ui-build`** / **`docs`** — see the Russian guide.
 
 Wiki + CI reports: [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md).
 
