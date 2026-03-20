@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
 - GitHub: **удаление head-ветки после merge** PR; Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`); без cron у `prune-branches`.
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
 
