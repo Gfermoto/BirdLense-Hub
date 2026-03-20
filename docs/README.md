@@ -1,6 +1,6 @@
 # BirdLense Hub — Documentation
 
-> **Version 0.2.2** · OpenAPI: [YAML spec](./project/openapi.md)
+> **Version 0.2.2** · OpenAPI: [YAML spec](./project/openapi.md) · **Interactive:** [Redoc](./reference/openapi.md) · **Published docs:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [Русский](./README.ru.md)
 
@@ -31,7 +31,7 @@ Pick what matches you — you can read the rest as reference.
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
 | **Feature matrix & API hints** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
 | **System design** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
-| **HTTP API narrative** | [API](./API.md) | [RU](./API.ru.md) |
+| **HTTP API narrative** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc RU](./reference/openapi.ru.md) |
 | **Versioning** | [VERSIONING](./VERSIONING.md) | — |
 
 ---
@@ -80,7 +80,7 @@ Pick what matches you — you can read the rest as reference.
 | Translation status | [I18N_STATUS](./I18N_STATUS.md) |
 | **Suggested nav for a static doc site** | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
 | **MkDocs site (build & GitHub Pages)** | [Documentation](./Documentation.md) § *Static documentation site* |
-| Historical notes | [archive/README](./archive/README.md) |
+| Historical notes | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (in repo; excluded from MkDocs build) |
 
 ---
 

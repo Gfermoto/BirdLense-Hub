@@ -36,6 +36,7 @@ Use this when generating a static site (VitePress, Docusaurus, MkDocs). Slugs ar
 |------|--------|
 | Architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | HTTP API | [API.md](./API.md) + OpenAPI import |
+| OpenAPI (Redoc) | [reference/openapi.md](./reference/openapi.md) · [RU](./reference/openapi.ru.md) |
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | MCP | [MCP_SETUP.md](./MCP_SETUP.md) |
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
