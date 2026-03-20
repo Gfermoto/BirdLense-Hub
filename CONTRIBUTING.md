@@ -64,9 +64,10 @@ Look for issues labelled **`good first issue`** — small, scoped tasks for newc
 
 **Issues**, **Discussions**, and **Projects** are enabled on the repo. Labels `area:*`, `priority:*`, and `triage` support triage; milestones **v0.2.3** and **Backlog (no milestone)** are available.
 
-To create the Kanban project **BirdLense Hub — Roadmap** and link this repository (requires GitHub CLI with `project` scope):
+To create the Kanban project **BirdLense Hub — Roadmap** and link this repository, GitHub CLI needs **Projects** scopes. If `gh auth refresh -s project -s read:project` does nothing, do a full login (or use a **classic** PAT with the `project` scope as `GH_TOKEN` — see script header):
 
 ```bash
-gh auth refresh -s project -s read:project
+gh auth logout -h github.com
+gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
 bash scripts/github-bootstrap-project.sh
 ```
