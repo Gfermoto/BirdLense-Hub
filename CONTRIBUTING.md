@@ -59,3 +59,14 @@ Look for issues labelled **`good first issue`** — small, scoped tasks for newc
 
 - **Discussions:** https://github.com/Gfermoto/BirdLense-Hub/discussions  
 - **Security:** follow [SECURITY.md](SECURITY.md) — do not report vulnerabilities in public threads.
+
+## GitHub Projects (maintainers)
+
+**Issues**, **Discussions**, and **Projects** are enabled on the repo. Labels `area:*`, `priority:*`, and `triage` support triage; milestones **v0.2.3** and **Backlog (no milestone)** are available.
+
+To create the Kanban project **BirdLense Hub — Roadmap** and link this repository (requires GitHub CLI with `project` scope):
+
+```bash
+gh auth refresh -s project -s read:project
+bash scripts/github-bootstrap-project.sh
+```

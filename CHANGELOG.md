@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **GitHub (репозиторий):** включены Discussions и Issues; метки `area:*`, `priority:*`, `triage`; вехи `v0.2.3`, `Backlog (no milestone)`; приветственная Discussion; скрипт `scripts/github-bootstrap-project.sh` для создания Project v2 после `gh auth refresh -s project`.
 - **CI:** PR workflow builds `app/ui` and runs docs checks (`check-docs-version.py` + `mkdocs build --strict`).
 - **Docs:** interactive OpenAPI (Redoc) pages under `docs/reference/`; nav entries in `mkdocs.yml`.
 - **Community:** issue template `good_first_issue`, Discussions link in issue chooser; ROADMAP / CONTRIBUTING (EN+RU) — public priorities and `good first issue` guidance.
