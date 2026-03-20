@@ -42,7 +42,31 @@ gh api "repos/Gfermoto/BirdLense-Hub" -X PATCH -f has_wiki=true
 
 ## Запуск вручную
 
-**Actions** → **Wiki report** → **Run workflow**.
+### В браузере (если не видите кнопку)
+
+1. Откройте **прямую страницу workflow** (имя в YAML — `Wiki report`, файл — `wiki-report.yml`):  
+   **https://github.com/Gfermoto/BirdLense-Hub/actions/workflows/wiki-report.yml**
+2. Справа сверху блок **Run workflow** → выберите ветку **`main`** → зелёная кнопка **Run workflow**.
+
+Если открываете через общий список: **Actions** → слева в списке **All workflows** найдите **Wiki report** (если список длинный — прокрутите или используйте ссылку выше).
+
+**Если workflow нет в списке вообще:**
+
+- Убедитесь, что файл есть на **default branch** (`main`):  
+  https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/wiki-report.yml
+- **Settings** → **Actions** → **General** → раздел *Actions permissions* — должно быть разрешено выполнение workflows (не «Disable actions»).
+
+### Через CLI (надёжно)
+
+```bash
+gh workflow run "Wiki report" --repo Gfermoto/BirdLense-Hub --ref main
+```
+
+Просмотр последнего запуска:
+
+```bash
+gh run list --repo Gfermoto/BirdLense-Hub --workflow=wiki-report.yml --limit 3
+```
 
 Расписание: по понедельникам ~06:00 UTC (см. `cron` в workflow).
 
