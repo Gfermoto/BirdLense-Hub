@@ -8,9 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.2.2] - 2026-03-20
+
+### Added
+
+- **Документация:** статический сайт (MkDocs + GitHub Pages), карта и i18n; отчёт **Wiki report** в Actions (Summary, артефакт, опционально push в GitHub Wiki).
+- **Сообщество:** `GOVERNANCE`, `CODEOWNERS`, шаблон PR; инструкция настройки репозитория через `gh` (`GITHUB_SETUP_GH`); `WIKI_AUTOMATION`; черновик материала в `article/habr.md`.
+
 ### Security
 
-- **npm (UI):** обновлена транзитивная зависимость `flatted` (устранение GHSA high / prototype pollution в цепочке dev-зависимостей).
+- **npm (UI):** обновлена транзитивная зависимость `flatted` (GHSA high / prototype pollution).
+
+### Fixed
+
+- Push в GitHub Wiki: проверка `has_wiki`, понятные ошибки; bootstrap без флага `--disable-wiki` в старых версиях `gh`.
+
+### Changed
+
+- В bootstrap репозитория Wiki включается через API (`has_wiki=true`).
 
 ---
 
