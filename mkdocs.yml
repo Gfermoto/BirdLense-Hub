@@ -66,6 +66,9 @@ nav:
       - i18n status: I18N_STATUS.md
       - Security analysis: SECURITY.md
       - Open-source prep: OPEN_SOURCE_PREP.md
+      - Governance: GOVERNANCE.md
+      - GitHub CLI setup: GITHUB_SETUP_GH.md
+      - Wiki and CI reports: WIKI_AUTOMATION.md
   - "Repository (canonical files)":
       - Contributing: project/contributing.md
       - Security policy: project/security-policy.md
@@ -98,6 +101,9 @@ nav:
       - Локализация: I18N_STATUS.md
       - Анализ безопасности: SECURITY.ru.md
       - Open-source: OPEN_SOURCE_PREP.ru.md
+      - Управление проектом: GOVERNANCE.ru.md
+      - Настройка GitHub (gh): GITHUB_SETUP_GH.ru.md
+      - Wiki и отчёты CI: WIKI_AUTOMATION.ru.md
 
 extra:
   social:
