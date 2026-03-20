@@ -9,6 +9,9 @@ on:
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - ".github/workflows/docs-pages.yml"
+  # После релиза пересобрать сайт, даже если в коммите не трогали docs/** (обновился README/VERSION в релизном теге).
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:

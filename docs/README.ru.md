@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.2.1** · OpenAPI: [YAML](./project/openapi.md)
+> **Версия 0.2.2** · OpenAPI: [YAML](./project/openapi.md)
 
 [English](./README.md)
 
