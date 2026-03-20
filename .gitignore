@@ -16,6 +16,7 @@ app/.venv/
 # Настройки — не коммитить (только шаблоны в репо)
 user_config.yaml
 app/app_config/user_config.yaml
+app/app_config/user_config.yaml.bak
 app/configs/*.local.yaml
 app/configs/*.local.yml
 app/configs/env.local

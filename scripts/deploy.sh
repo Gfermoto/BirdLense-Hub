@@ -18,7 +18,7 @@ SYNC_RETRIES="${SYNC_RETRIES:-3}"
 SSH_OPTS="-o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
-  echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://192.168.1.11:8085)"
+  echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
 fi
 
 # 0. Остановка текущего контейнера (один контейнер birdlense)

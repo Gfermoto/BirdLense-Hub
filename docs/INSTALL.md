@@ -1,18 +1,22 @@
-# Установка и деплой BirdLense Hub
+# Installation and Deployment — BirdLense Hub
 
-BirdLense Hub — мониторинг кормушки: детекция птиц по видео и аудио, записи, аналитика. Docker на x86.
+BirdLense Hub — bird feeder monitoring: video and audio detection, recordings, analytics. Docker on x86.
 
-## Требования
+**New here?** Read [OVERVIEW](./OVERVIEW.md) (what it is, who it’s for). **Recipes:** [SCENARIOS](./SCENARIOS.md).
 
-| Компонент | Описание |
-|-----------|----------|
+[Русский](./INSTALL.ru.md)
+
+## Requirements
+
+| Component | Description |
+|-----------|-------------|
 | **Docker** | x86/amd64, Compose v2 |
-| **Go2RTC** | Видеопотоки с IP-камер (standalone или Frigate) |
-| **MQTT** (опционально) | Frigate events, BirdNET sightings |
+| **Go2RTC** | Video streams from IP cameras (standalone or Frigate) |
+| **MQTT** (optional) | Frigate events, BirdNET sightings |
 
 ---
 
-## Вариант 1: Готовый образ (рекомендуется)
+## Option 1: Pre-built image (recommended)
 
 ```bash
 git clone https://github.com/Gfermoto/BirdLense-Hub.git
@@ -20,77 +24,77 @@ cd BirdLense-Hub/app
 make pull
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
 
-## Вариант 2: Сборка из исходников
+## Option 2: Build from source
 
 ```bash
 cd BirdLense-Hub/app
 make build && make start
 ```
 
-## Вариант 3: Образ без сборки (для пользователей)
+## Option 3: Image without repo (for users)
 
-Без клонирования репо — только образ и конфиг:
+No cloning — image and config only:
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
 mkdir -p data/recordings data/db app_config
 # .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (openssl rand -hex 16)
-# docker-compose.image.yml из репо app/
+# docker-compose.image.yml from repo app/
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. Intel GPU: `cp docker-compose.intel.example.yml docker-compose.override.yml`.
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. Intel GPU: `cp docker-compose.intel.example.yml docker-compose.override.yml`.
 
 ---
 
-## Первый запуск
+## First run
 
-1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`.
-2. **Конфиг** — `app/app_config/user_config.yaml`. Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`.
-3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
-4. **Камеры** — Настройки → Камеры: stream names из Go2RTC.
+1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`.
+2. **Config** — `app/app_config/user_config.yaml`. Examples: `cp configs/minimal.yaml app_config/user_config.yaml`.
+3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
+4. **Cameras** — Settings → Cameras: stream names from Go2RTC.
 
 ---
 
-## Деплой на сервер (make deploy)
+## Deploy to server (make deploy)
 
 ```bash
 cd BirdLense
 make deploy
 ```
 
-Требуется: SSH (`ssh birdlense` или `DEPLOY_HOST`), Docker на сервере, локально Node.js для сборки UI.
+Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, Node.js locally for UI build.
 
-**Настройки:** `scripts/deploy.local.sh` из `deploy.local.sh.example`: DEPLOY_HOST, DEPLOY_REMOTE_DIR, DEPLOY_URL, FLASK_SECRET_KEY, PROCESSOR_SECRET, MCP_TOKEN. Файл в .gitignore.
+**Setup:** copy `scripts/deploy.local.sh.example` to `deploy.local.sh` and set DEPLOY_HOST, DEPLOY_REMOTE_DIR, DEPLOY_URL, secrets. File is in .gitignore.
 
-**Что делает:** останавливает контейнеры, собирает UI локально, rsync (исключая data, user_config), записывает секреты в .env, собирает Docker, запускает.
+**What it does:** stops containers, builds UI locally, rsync (excludes data, user_config), writes secrets to .env, builds Docker, starts.
 
-**Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → автодеплой (self-hosted runner).
+**Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → auto-deploy (self-hosted runner).
 
-**Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
+**Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
 ---
 
-## Проверка
+## Verification
 
 - **Health:** `curl http://localhost:8085/api/ui/health`
-- **Камеры:** Настройки → Камеры
-- **Live:** видеопоток с оверлеем
+- **Cameras:** Settings → Cameras
+- **Live:** video stream with overlay
 
-Записи не видны? System → «Сканировать и импортировать».
+Recordings not visible? System → «Scan and import».
 
 ---
 
-## Данные
+## Data
 
-| Путь | Содержимое |
-|------|------------|
-| `app/data/recordings/` | Видеозаписи (YYYY/MM/DD/HHMMSS/video.mp4) |
+| Path | Contents |
+|------|----------|
+| `app/data/recordings/` | Video files (YYYY/MM/DD/HHMMSS/video.mp4) |
 | `app/data/db/birdlense.db` | SQLite |
-| `app/app_config/user_config.yaml` | Пользовательский конфиг |
+| `app/app_config/user_config.yaml` | User config |
 
 ---
 
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [SCENARIOS.md](./SCENARIOS.md), [TROUBLESHOOTING.md](./TROUBLESHOOTING.md), [SECURITY.md](./SECURITY.md).
+See also: [CONFIGURATION.md](./CONFIGURATION.md), [SCENARIOS.md](./SCENARIOS.md), [TROUBLESHOOTING.md](./TROUBLESHOOTING.md), [SECURITY.md](./SECURITY.md).

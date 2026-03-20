@@ -1,58 +1,90 @@
-# Восстановление настроек
+# Recovering configuration
 
-## Если настройки сбросились
+If the UI shows wrong defaults or empty cameras after an edit, restore from backup or re-sync from the server.
 
-### 0. Скрипт восстановления (быстро)
+[Русский](./RECOVERY_CONFIG.ru.md)
+
+---
+
+> **Placeholders:** `YOUR_SSH_HOST` — SSH host alias (`~/.ssh/config` or `DEPLOY_HOST`); `YOUR_REMOTE_DIR` — app root on the server (e.g. `/opt/birdlense` or `DEPLOY_REMOTE_DIR`).
+
+---
+
+## Fast path: `restore-config.sh`
 
 ```bash
-# Восстановить из .bak на сервере (если есть)
+# Restore from .bak on the server (if present)
 ./scripts/restore-config.sh
 
-# Или скопировать ЛОКАЛЬНЫЙ конфиг на сервер
+# Push a known-good local file to the server
 ./scripts/restore-config.sh from-local
 ```
 
-После восстановления перезапустите: `ssh birdlense "cd /root/BirdLense/app && make stop && make start"`
-
-### 1. Вручную: бэкап (с версии с бэкапом)
-
-Перед каждым сохранением создаётся `user_config.yaml.bak`:
+Then restart:
 
 ```bash
-# Локально
+ssh YOUR_SSH_HOST "cd YOUR_REMOTE_DIR/app && make stop && make start"
+```
+
+---
+
+## Automatic `.bak` file
+
+Each save can create `app/app_config/user_config.yaml.bak` next to `user_config.yaml`.
+
+**Local:**
+
+```bash
 cp app/app_config/user_config.yaml.bak app/app_config/user_config.yaml
-
-# На сервере
-ssh birdlense "cp /root/BirdLense/app/app_config/user_config.yaml.bak /root/BirdLense/app/app_config/user_config.yaml"
-# Затем перезапустить: make restart (или подождать перезапуска процессора)
 ```
 
-### 2. Проверить user_config на сервере
-
-Деплой **не перезаписывает** `user_config.yaml` на сервере. Если настройки были на сервере, они могут быть целы:
+**Remote:**
 
 ```bash
-ssh birdlense "cat /root/BirdLense/app/app_config/user_config.yaml"
+ssh YOUR_SSH_HOST "cp YOUR_REMOTE_DIR/app/app_config/user_config.yaml.bak YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
 ```
 
-Если файл полный — скопировать локально или оставить как есть.
+Restart or wait for processor reload per your setup.
 
-### 3. Git
+---
 
-Если `user_config.yaml` был в git (не рекомендуется для секретов):
+## Deploy does not wipe `user_config.yaml`
+
+Standard deploy syncs code but **keeps** server-side `user_config.yaml`. If settings “vanished” locally, the server copy may still be intact:
+
+```bash
+ssh YOUR_SSH_HOST "cat YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
+```
+
+Copy the content back or edit via **Settings** in the UI.
+
+---
+
+## Git (discouraged for secrets)
+
+If you accidentally committed `user_config.yaml`:
 
 ```bash
 git checkout app/app_config/user_config.yaml
 ```
 
-### 4. Ручное восстановление
+Prefer **not** storing API keys or tokens in git — use env vars documented in [CONFIGURATION](./CONFIGURATION.md).
 
-Восстановить ключевые параметры через Настройки в UI или напрямую в `app/app_config/user_config.yaml`:
+---
+
+## Manual rebuild
+
+Re-enter critical keys in **Settings** or edit YAML directly:
 
 - `video.cameras`, `video.go2rtc_url`
 - `mqtt.broker`, `mqtt.password`
 - `notifications.telegram_bot_token`, `notifications.telegram_chat_id`
-- `general.settings_password`
-- и т.д.
+- `general.settings_password`, `general.contributor_password`
 
-См. [CONFIGURATION.md](./CONFIGURATION.md).
+Full reference: [CONFIGURATION](./CONFIGURATION.md).
+
+---
+
+## See also
+
+[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md)

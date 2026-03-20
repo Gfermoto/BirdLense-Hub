@@ -1,133 +1,137 @@
-# Анализ безопасности BirdLense Hub
+# BirdLense Hub Security Analysis
 
-> Последнее обновление: март 2026
-
-## Сводка
-
-| Приоритет | Кол-во | Действия |
-|-----------|--------|----------|
-| Критичный | 5 | Path traversal, auth по умолчанию, секреты в API |
-| Высокий | 8 | Хранение секретов, rate limiting, Docker root |
-| Средний | 9 | Таймаут сессии, CORS, зависимости |
-| Низкий | 6 | Документация, миграции |
+[Русский](./SECURITY.ru.md)
 
 ---
 
-## 1. Аутентификация и авторизация
+> Last updated: March 2026
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Критичный** | API без аутентификации по умолчанию. Эндпоинты `/api/ui/*` доступны без проверки. | Добавить обязательную аутентификацию для продакшена (API key, JWT или reverse proxy с auth). |
-| ~~**Критичный**~~ **Исправлено** | `PROCESSOR_SECRET` не задан — Processor API открыт. | В production блокирует при пустом. Deploy записывает в `.env`. |
-| **Критичный** | MCP без аутентификации при пустом `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
-| **Высокий** | Пароль настроек (`settings_password`) опционален. При пустом — доступ к настройкам и системным операциям не защищён. | Требовать пароль в продакшене. |
-| **Высокий** | Сессия настроек: `session.permanent = True`, нет таймаута. | Добавить таймаут сессии (15–30 мин). |
-| **Средний** | Эндпоинты `/api/ui/system/*` (логи, метрики, purge, scan) защищены только `settings_check_access()`. | Обеспечить обязательный `settings_password`. |
+## Summary
 
----
-
-## 2. Секреты
-
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| ~~**Критичный**~~ **Исправлено** | `FLASK_SECRET_KEY` по умолчанию. | В `BIRDLENSE_ENV=production` требуется env, иначе RuntimeError. Deploy записывает в `.env`. |
-| ~~**Критичный**~~ **Исправлено** | `GET /api/ui/settings` возвращал полный конфиг с секретами. | Секреты маскируются (`***`), placeholder при сохранении не перезаписывает реальное значение. |
-| **Высокий** | `user_config.yaml` хранит секреты в открытом виде: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `weather.ha_token`, `settings_password`, `mcp.token`. | Хранить в env или секрет-менеджере; не писать в YAML. |
-| **Высокий** | OpenAPI описывает `telegram_bot_token`, `secrets.openweather_api_key` в схеме Settings. | Добавить `x-sensitive: true`, не отдавать в примерах. |
-| **Средний** | `settings_password` в plain text. В default_config: *"Для продакшена рассмотрите хеширование"*. | Хранить хеш (bcrypt/argon2). |
-| **Низкий** | `.env` в `.gitignore`, `deploy.sh` не коммитит. | Оставить как есть. |
+| Priority | Count | Actions |
+|----------|-------|---------|
+| Critical | 5 | Path traversal, default auth, secrets in API |
+| High | 8 | Secret storage, rate limiting, Docker root |
+| Medium | 9 | Session timeout, CORS, dependencies |
+| Low | 6 | Documentation, migrations |
 
 ---
 
-## 3. Path traversal (nginx)
+## 1. Authentication and Authorization
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| ~~**Критичный**~~ **Исправлено** | `location /data/` с `alias /app/data/` — запрос `/data/../.env` мог привести к чтению `/app/.env`. | Добавлена проверка `if ($request_uri ~* "\.\.") { return 403; }` во все nginx-конфиги. |
-| **Высокий** | `/data/recordings/` доступен без аутентификации. Путь `YYYY/MM/DD/HHMMSS/video.mp4` предсказуем. | Добавить проверку доступа через API с auth или ограничить по IP. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **Critical** | API has no authentication by default. Endpoints `/api/ui/*` are accessible without checks. | Add mandatory auth for production (API key, JWT, or reverse proxy with auth). |
+| ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy writes to `.env`. |
+| **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
+| **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |
+| **High** | Settings session: `session.permanent = True`, no timeout. | Add session timeout (15–30 min). |
+| **Medium** | Endpoints `/api/ui/system/*` (logs, metrics, purge, scan) protected only by `settings_check_access()`. | Ensure mandatory `settings_password`. |
 
-**Проверка:** `curl -I "http://HOST:8085/data/../.env"` — при уязвимости вернётся 200.
+---
+
+## 2. Secrets
+
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy writes to `.env`. |
+| ~~**Critical**~~ **Fixed** | `GET /api/ui/settings` returned full config with secrets. | Secrets are masked (`***`), placeholder on save does not overwrite real value. |
+| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `weather.ha_token`, `settings_password`, `mcp.token`. | Store in env or secret manager; do not write to YAML. |
+| **High** | OpenAPI describes `telegram_bot_token`, `secrets.openweather_api_key` in Settings schema. | Add `x-sensitive: true`, do not expose in examples. |
+| **Medium** | `settings_password` in plain text. In default_config: *"Consider hashing for production"*. | Store hash (bcrypt/argon2). |
+| **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |
+
+---
+
+## 3. Path Traversal (nginx)
+
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| ~~**Critical**~~ **Fixed** | `location /data/` with `alias /app/data/` — request `/data/../.env` could read `/app/.env`. | Added check `if ($request_uri ~* "\.\.") { return 403; }` in all nginx configs. |
+| **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. |
+
+**Test:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — if vulnerable, returns 200.
 
 ---
 
 ## 4. API
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Высокий** | Нет rate limiting. | Добавить Flask-Limiter или аналог. |
-| **Средний** | CORS: `supports_credentials: True`, origins через `CORS_ORIGINS`. При пустом — только localhost. | Документировать настройку CORS для внешнего доступа. |
-| **Средний** | Валидация входных данных частичная. | Расширить валидацию (схемы, размеры) для мутирующих эндпоинтов. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **High** | No rate limiting. | Add Flask-Limiter or similar. |
+| **Medium** | CORS: `supports_credentials: True`, origins via `CORS_ORIGINS`. When empty — localhost only. | Document CORS setup for external access. |
+| **Medium** | Input validation is partial. | Extend validation (schemas, sizes) for mutating endpoints. |
 
 ---
 
-## 5. База данных
+## 5. Database
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Низкий** | SQLAlchemy ORM, параметризованные запросы. | Продолжать использовать ORM. |
-| **Низкий** | SQLite: `app/data/db/birdlense.db`, не экспортируется наружу. | Оставить. |
-| **Средний** | Миграции в `app.py` — статические строки. | Оформить через Alembic. |
-
----
-
-## 6. Файловая система
-
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Средний** | `scan_recordings` проверяет `year.isdigit()`, regex для timestamp. | Дополнительно проверять, что путь остаётся внутри `recordings_dir()`. |
-| **Низкий** | `processor_routes.py`: `VIDEO_PATH_RE` строго ограничивает `video_path`. | Оставить. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **Low** | SQLAlchemy ORM, parameterized queries. | Continue using ORM. |
+| **Low** | SQLite: `app/data/db/birdlense.db`, not exposed. | Keep as is. |
+| **Medium** | Migrations in `app.py` — static strings. | Use Alembic. |
 
 ---
 
-## 7. Сеть
+## 6. File System
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Средний** | Порт 8085 проброшен наружу. | Использовать reverse proxy (nginx/traefik) с TLS. |
-| **Низкий** | Gunicorn — 127.0.0.1:8000, MCP — 127.0.0.1:8001. Внешний доступ только через nginx. | Оставить. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **Medium** | `scan_recordings` checks `year.isdigit()`, regex for timestamp. | Additionally verify path stays inside `recordings_dir()`. |
+| **Low** | `processor_routes.py`: `VIDEO_PATH_RE` strictly limits `video_path`. | Keep as is. |
 
 ---
 
-## 8. Зависимости
+## 7. Network
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Средний** | Уязвимости не проверяются автоматически. | Регулярно: `pip audit`, `safety check`, `npm audit`. |
-| **Низкий** | Версии в requirements.txt зафиксированы. | Обновлять по результатам аудита. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **Medium** | Port 8085 exposed. | Use reverse proxy (nginx/traefik) with TLS. |
+| **Low** | Gunicorn — 127.0.0.1:8000, MCP — 127.0.0.1:8001. External access only via nginx. | Keep as is. |
+
+---
+
+## 8. Dependencies
+
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **Medium** | Vulnerabilities not checked automatically. | Regularly: `pip audit`, `safety check`, `npm audit`. |
+| **Low** | Versions in requirements.txt pinned. | Update based on audit results. |
 
 ---
 
 ## 9. Docker
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Высокий** | Контейнер запускается от root (нет `USER` в Dockerfile). | Добавить непривилегированного пользователя и `USER`. |
-| **Средний** | Базовый образ `ultralytics/ultralytics` — тяжёлый. | Рассмотреть multi-stage с минимальным runtime. |
-| **Низкий** | Нет `--privileged`, `--cap-add`. | Не добавлять. |
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **High** | Container runs as root (no `USER` in Dockerfile). | Add non-privileged user and `USER`. |
+| **Medium** | Base image `ultralytics/ultralytics` — heavy. | Consider multi-stage with minimal runtime. |
+| **Low** | No `--privileged`, `--cap-add`. | Do not add. |
 
 ---
 
-## 10. Конфигурация
+## 10. Configuration
 
-| Риск | Описание | Рекомендация |
-|------|----------|--------------|
-| **Высокий** | `user_config.yaml` содержит чувствительные поля. | Хранить в env или секрет-менеджере. |
-| **Низкий** | `deploy.sh` исключает `user_config.yaml` при синхронизации. | Оставить. |
-
----
-
-## Быстрые шаги для продакшена
-
-1. ~~**Задать секреты**~~ ✅ Deploy через `deploy.local.sh` записывает `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV=production`.
-2. **Пароль настроек:** задать `general.settings_password`.
-3. ~~**Path traversal**~~ ✅ Nginx: блокировка `\.\.`, `%2e%2e`. `image_path` в notify: `_is_safe_image_path`.
-4. **Ограничить доступ** к `/data/recordings/` (auth или IP).
-5. **Rate limiting** на API (verify-password: 5 failed/60 sec per IP).
-6. **Docker:** запускать контейнер от непривилегированного пользователя.
-7. ~~**Маскировать секреты**~~ ✅ `GET /api/ui/settings` возвращает `***` для чувствительных полей.
+| Risk | Description | Recommendation |
+|------|--------------|----------------|
+| **High** | `user_config.yaml` contains sensitive fields. | Store in env or secret manager. |
+| **Low** | `deploy.sh` excludes `user_config.yaml` on sync. | Keep as is. |
 
 ---
 
-## Контакты
+## Quick Steps for Production
 
-При обнаружении уязвимости — создайте issue в репозитории (или свяжитесь с maintainer).
+1. ~~**Set secrets**~~ ✅ Deploy via `deploy.local.sh` writes `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV=production`.
+2. **Settings password:** set `general.settings_password`.
+3. ~~**Path traversal**~~ ✅ Nginx: block `\.\.`, `%2e%2e`. `image_path` in notify: `_is_safe_image_path`.
+4. **Restrict access** to `/data/recordings/` (auth or IP).
+5. **Rate limiting** on API (verify-password: 5 failed/60 sec per IP).
+6. **Docker:** run container as non-privileged user.
+7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
+
+---
+
+## Contact
+
+To report a vulnerability, create a GitHub Security Advisory or contact the maintainers. See [SECURITY.md](../SECURITY.md) in the repo root.

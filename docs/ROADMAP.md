@@ -1,104 +1,67 @@
-# План развития BirdLense Hub
+# Roadmap — BirdLense Hub
 
-Апгрейды зависимостей и идеи на будущее. Март 2026.
+Direction of travel and current stack. **Shipped items** are summarized here; details live in [CHANGELOG](../CHANGELOG.md) and [FEATURES](./FEATURES.md).
 
----
-
-## Часть 1: Апгрейды и зависимости
-
-### Выполнено
-
-
-| #   | Действие                                                                          | Статус                         |
-| --- | --------------------------------------------------------------------------------- | ------------------------------ |
-| 1   | Docker base `ultralytics/ultralytics:8.4.21`                                      | ✅                              |
-| 2   | Уязвимости: npm (Vite 6, @tanstack/form 0.42), Python (requests, PyYAML, numpy 2) | ✅                              |
-| 3   | Конфликт numpy/opencv: lapx удалён, librosa 0.11, matplotlib 3.8                  | ✅                              |
-| 4   | EU-классификатор YOLO11n-cls (birds-525 + iNaturalist)                            | ✅ [TRAINING.md](./TRAINING.md) |
-| 5   | Vite 6                                                                            | ✅                              |
-| 6   | ultralytics в processor/requirements.txt (pin 8.4.21)                             | ✅                              |
-| 7   | Апгрейд React 19                                                                   | ✅ 16.03.2026 [archive/REACT_19_MIGRATION.md](./archive/REACT_19_MIGRATION.md) |
-
-
-### Дальнейшие шаги
-
-— нет запланированных
-
-### Текущий стек
-
-
-|                 | Версия                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| **Ultralytics** | 8.4.21 (Docker base)                                                                       |
-| **Платформа**   | x86/amd64 (ARM не поддерживается)                                                          |
-| **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей |
-| **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                             |
-| **US-модель**   | `best_US.pt` — NABirds (резерв)                                                            |
-| **React**       | 19.2.4                                                                                     |
-| **Vite**        | 6.4.1                                                                                      |
-
+[Русский](./ROADMAP.ru.md)
 
 ---
 
-## Часть 2: Фичи и улучшения
+## Current stack (March 2026)
 
-### 1. ✅ Home Assistant — MQTT Autodiscovery (выполнено)
-
-**Цель:** BirdLense Hub публикует сущности через MQTT так, чтобы HA автоматически их обнаружил.
-
-**Реализовано:** При `mqtt.ha_discovery=true` (по умолчанию) при подключении к MQTT публикуются config в `homeassistant/<component>/birdlense_<id>/config`:
-- `sensor.birdlense_last_species` — последний вид
-- `sensor.birdlense_last_confidence` — последний confidence
-- `sensor.birdlense_last_detection_time` — время последней детекции
-- `binary_sensor.birdlense_bird_detected` — птица у кормушки (ON при детекции, off_delay 5 мин)
-
-State topics: `birdlense/sensor/*/state`, `birdlense/binary_sensor/bird_detected/state`. Device «BirdLense Hub» с configuration_url из `notifications.base_url`.
-
-### 2. ✅ Датасет из лучших кадров — экспорт архивом (выполнено)
-
-**Цель:** Лучшие картинки (best_frame) сохраняются в формате YOLO classification, пользователь может скачать архивом для дообучения.
-
-**Реализовано:**
-
-1. **Сохранение best_frame на диск** — путь `data/dataset/train/<Species_Name>/<video_id>_<track_id>_<idx>.jpg`, формат `Scientific (Common)`, фильтр `processor.dataset_min_confidence` (по умолчанию 0.5). Опция `processor.save_dataset_crops: true` в Настройки → Processor.
-2. **Коррекция вида** — при исправлении вида в Unknowns/VideoDetails файл перемещается в директорию нового вида.
-3. **API экспорта** — `GET /api/ui/dataset/export` → ZIP со структурой `train/ClassName/*.jpg`, `val/` (если есть), `dataset_info.json`. Кнопка «Экспорт датасета» в Система → Управление хранилищем.
-4. **Разметка** — используется `species` из VideoSpecies (подтверждённый или исправленный).
-
-### 3. Новые предложения
-
-От простого к сложному:
-
-
-| Фича                                   | Описание                                                                                      | Сложность | Риск    |
-| -------------------------------------- | --------------------------------------------------------------------------------------------- | --------- | ------- |
-| ✅ Playback speed (0.5x, 2x)            | Кнопки в видеоплеере для замедления/ускорения просмотра                                       | Низкая    | Нет     |
-| ✅ Webhook (POST при детекции)          | POST на настраиваемый URL с JSON (вид, confidence, время) — для IFTTT, Zapier                 | Низкая    | Нет     |
-| ✅ CSV/JSON экспорт статистики          | Скачать визиты, виды, детекции для анализа в Excel/Python                                     | Низкая    | Нет     |
-| ✅ Виджет «Последняя птица» на Overview | Блок «Сегодня в 14:32 — Eurasian Jay» на главной                                              | Низкая    | Нет     |
-| ✅ Фильтр по времени суток в Timeline   | «Только утро (6–10)», «только вечер» — сузить список визитов                                  | Низкая    | Нет     |
-| ✅ PWA improvements                    | Install prompt «Добавить на главный экран», offline cache для статики                         | Низкая    | Нет     |
-| ✅ «Неизвестные» (низкий confidence)   | Отдельный список детекций с confidence < порога для ручной проверки и разметки                | Средняя   | Нет     |
-| ✅ PDF-отчёт                           | Месячный отчёт: N видов, топ-5, графики — скачать PDF. v0.1.8: брендинг, шапка/футер          | Средняя   | Нет     |
-| ✅ Bird song player (Xeno-canto)       | Кнопка «Воспроизвести песню» на карточке вида — аудио из Xeno-canto API                       | Средняя   | Нет     |
-| ✅ eBird export                         | Экспорт списка видов в формат eBird для загрузки в приложение                                 | Средняя   | Нет     |
-| ✅ Grafana/Prometheus метрики         | `/metrics`, `/api/metrics` — CPU, память, диск, GPU, detections, species, videos             | Средняя   | Нет     |
-| ✅ Confidence по виду                   | Разные пороги min_confidence для разных видов (редкие — ниже)                                 | Средняя   | Низкий  |
-| ✅ Экспорт в iNaturalist               | Кнопка «Отправить в iNaturalist» — crop + вид для citizen science                             | Средняя   | Нет     |
-| ✅ Web Push                             | Push-уведомления в браузере вместо/дополнение Telegram                                        | Средняя   | Низкий  |
-| ✅ Публичная галерея                   | Opt-in: загрузка лучших кадров на настраиваемый URL. См. [CONFIGURATION.md](./CONFIGURATION.md) — Gallery | Высокая   | Средний |
-| ✅ Календарь миграций                  | «Вид X обычно появляется в марте» — по историческим данным                                    | Высокая   | Нет     |
-| ✅ Сравнение с регионом               | Карточка на Overview: ваши виды в топе региона + полный топ региона (eBird API)               | Высокая   | Средний |
-| ✅ Закат и рассвет на карточке погоды | Восход, закат, рассвет, сумерки, полдень — дуга солнца (в стиле Horizon Card) на выбранную дату в локации из настроек | Низкая    | Нет     |
-
-### UX backlog (из [archive/UX_IMPROVEMENTS.md](./archive/UX_IMPROVEMENTS.md))
-
-| # | Улучшение | Описание | Статус |
-|---|-----------|----------|--------|
-| 4 | Календарь активности | MonthPicker — выбор месяца (сейчас только текущий) | ✅ v0.1.8 |
-| 5 | Неизвестные — пустое состояние | Подсказка: «Попробуйте другой день. Bird всегда здесь для проверки.» | ✅ |
-| 6 | Неизвестные — выбор времени суток | DatePicker + Утро/День/Вечер/Ночь (как Timeline) вместо прокрутки по часам | ✅ v0.1.9 |
+| Component | Version / note |
+|-----------|----------------|
+| **Ultralytics** | 8.4.21 (Docker base image) |
+| **Platform** | x86/amd64 (**ARM not supported**) |
+| **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
+| **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
+| **US classifier** | `best_US.pt` — NABirds (fallback) |
+| **React** | 19.2.4 |
+| **Vite** | 6.4.1 |
 
 ---
 
-См. также: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md), [DATASETS.md](./DATASETS.md), [archive/COLLABORATIVE_LABELING.md](./archive/COLLABORATIVE_LABELING.md), [TESTING.md](./TESTING.md), [CONFIGURATION.md](./CONFIGURATION.md).
+## Recently delivered (high level)
+
+- **Home Assistant** — MQTT discovery (e.g. last species, bird-detected). See [CONFIGURATION](./CONFIGURATION.md) → MQTT.
+- **Dataset pipeline** — `best_frame` in YOLO layout, ZIP export (`GET /api/ui/dataset/export`), relabel moves on-disk crops. **System → Storage**.
+
+---
+
+## Backlog (ideas)
+
+Roughly ordered **simple → complex**. Many rows are **done** — kept for history; cross-check [FEATURES](./FEATURES.md) before assuming something is missing.
+
+| Idea | Notes | Complexity |
+|------|--------|--------------|
+| Playback speed 0.5× / 2× | Video player | Low |
+| Webhook on detection | JSON POST for automation | Low |
+| CSV/JSON timeline export | Analytics | Low |
+| “Last bird” Overview widget | | Low |
+| Timeline time-of-day filter | | Low |
+| PWA improvements | Install prompt, static cache | Low |
+| Unknowns page | Low-confidence review | Medium |
+| Monthly PDF report | | Medium |
+| Xeno-canto on species page | | Medium |
+| eBird export | | Medium |
+| Prometheus / Grafana | `/metrics`, `/api/metrics` | Medium |
+| Per-species confidence overrides | | Medium |
+| iNaturalist crop export | | Medium |
+| Web Push | | Medium |
+| Public gallery (opt-in) | [CONFIGURATION](./CONFIGURATION.md) → Gallery | High |
+| Migration calendar | Seasonal patterns | High |
+| Region comparison (eBird) | Overview card | High |
+| Sun/moon card on weather | | Low |
+
+### UX backlog (selected)
+
+| Item | Status |
+|------|--------|
+| Activity month picker | Shipped (v0.1.8) |
+| Unknowns empty state | Shipped |
+| Unknowns time-of-day filter | Shipped (v0.1.9) |
+
+---
+
+## See also
+
+[ACCESS_CONTROL](./ACCESS_CONTROL.md) · [DATASETS](./DATASETS.md) · [TESTING](./TESTING.md) · [CONFIGURATION](./CONFIGURATION.md)

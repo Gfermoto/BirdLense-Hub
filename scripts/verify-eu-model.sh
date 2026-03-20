@@ -3,20 +3,21 @@
 # Убеждаемся, что best.pt — европейские птицы и веса работают.
 #
 # Запуск: ./scripts/verify-eu-model.sh
-# Требует: deploy.local.sh (DEPLOY_HOST) или ssh root@192.168.1.11
+# Требует: deploy.local.sh с DEPLOY_HOST и DEPLOY_REMOTE_DIR
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -f "${SCRIPT_DIR}/deploy.local.sh" ] && . "${SCRIPT_DIR}/deploy.local.sh"
 
-HOST="${DEPLOY_HOST:-root@192.168.1.11}"
+HOST="${DEPLOY_HOST:?Set DEPLOY_HOST in deploy.local.sh}"
+REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/opt/birdlense}"
 
 echo "=== Проверка EU-модели на ${HOST} ==="
 echo ""
 
 echo "1. Файлы весов:"
-ssh "${HOST}" "ls -la /root/BirdLense/app/processor/models/classification/weights/best*.pt 2>/dev/null || true"
+ssh "${HOST}" "ls -la ${REMOTE_DIR}/app/processor/models/classification/weights/best*.pt 2>/dev/null || true"
 echo ""
 
 echo "2. Классы модели best.pt (должно быть ~491):"
@@ -48,7 +49,7 @@ else:
 echo ""
 
 echo "4. Конфиг (detection_strategy, classifier path):"
-ssh "${HOST}" "grep -E 'detection_strategy|classifier:' /root/BirdLense/app/app_config/default_config.yaml 2>/dev/null || grep -E 'detection_strategy|classifier:' /root/BirdLense/app/app_config/user_config.yaml 2>/dev/null || echo '   (default_config)'"
+ssh "${HOST}" "grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/default_config.yaml 2>/dev/null || grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/user_config.yaml 2>/dev/null || echo '   (default_config)'"
 echo ""
 
 echo "=== Готово. EU-модель активна, если: классов ~491, EU-виды в списке, тест OK. ==="

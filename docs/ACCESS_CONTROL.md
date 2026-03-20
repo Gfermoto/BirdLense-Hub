@@ -1,166 +1,117 @@
-# Модель доступа и роли BirdLense Hub
+# Access control — BirdLense Hub
 
-Проектирование уровней доступа для личного использования, сообщества и донатов.
+How optional passwords split **view**, **contribute**, and **admin** capabilities. Default install: **no password** = full local trust.
 
----
-
-## Текущее состояние
-
-- **Один пароль** (`general.settings_password`) — разблокирует всё: настройки, системные операции, коррекцию видов.
-- **Кормушка** (`/api/ui/feed/dispense`) — **не защищена** (нужно добавить).
-- **Коррекция видов** — требует разблокировки (пароль).
-- **Экспорт датасета** — требует разблокировки.
+[Русский](./ACCESS_CONTROL.ru.md)
 
 ---
 
-## Роли
-
-| Роль | Описание | Целевая аудитория |
-|------|----------|-------------------|
-| **Viewer** | Только просмотр | Гости, семья, случайные посетители |
-| **Contributor** | Разметка и отчёты | Волонтёры, помогающие с коррекцией видов |
-| **Admin** | Полный доступ | Владелец установки |
-
----
-
-## Матрица доступа
-
-### Viewer (без входа)
-
-| Действие | Доступ |
-|----------|--------|
-| Overview, Timeline, Live | ✅ |
-| Просмотр видео, видов, каталога | ✅ |
-| PDF-отчёт (скачать) | ✅ |
-| Экспорт Timeline (CSV, JSON, eBird) | ✅ |
-| Коррекция видов | ❌ |
-| iNaturalist | ❌ |
-| Кормушка | ❌ |
-| Настройки | ❌ |
-| Система (storage, purge, scan) | ❌ |
-| Экспорт датасета | ❌ |
-
-### Contributor (пароль помощника)
-
-| Действие | Доступ |
-|----------|--------|
-| Всё из Viewer | ✅ |
-| **Коррекция видов** (Unknowns, VideoDetails) | ✅ |
-| **iNaturalist** (отправить кадр) | ✅ |
-| **PDF-отчёт** | ✅ |
-| **Экспорт Timeline** (CSV, JSON, eBird) | ✅ |
-| **Экспорт датасета** | ✅ |
-| Кормушка | ❌ |
-| Настройки | ❌ |
-| Система (purge, scan, restart) | ❌ |
-
-### Admin (полный пароль)
-
-| Действие | Доступ |
-|----------|--------|
-| Всё из Contributor | ✅ |
-| **Кормушка** | ✅ |
-| **Настройки** | ✅ |
-| **Система** (storage, purge, scan, regenerate) | ✅ |
-| **Restart processor** | ✅ |
-
----
-
-## Конфигурация
+## Configuration keys
 
 ```yaml
 general:
-  # Полный доступ (настройки, кормушка, система)
+  # Full access: settings, feeder, system, processor restart
   settings_password: ""
-  
-  # Пароль помощника (только разметка и отчёты)
-  # Пусто = те же права, что и settings_password (обратная совместимость)
+
+  # Optional: labeling & exports without admin (empty = single-password mode)
   contributor_password: ""
 ```
 
-**Логика:**
-- `contributor_password` пусто → один пароль на всё (как сейчас).
-- Оба заданы → два уровня: Contributor и Admin.
-- Только `contributor_password` → Admin = Contributor (редкий кейс).
+**Rules:**
+
+- Both empty → legacy “open hub” (same as today for home labs).
+- Only `settings_password` → one tier; unlock behaves as **admin** for all gated actions.
+- Both set → `verify-password` returns `role`: **`admin`** (matches `settings_password` first) or **`contributor`**.
 
 ---
 
-## Сессия
+## Roles
+
+| Role | Typical user | Scope |
+|------|--------------|--------|
+| **Viewer** | Guest, read-only share | Browse UI, exports that stay public in your policy |
+| **Contributor** | Volunteer labeler | Unknowns, species fixes, iNaturalist crop, dataset export, reports |
+| **Admin** | Owner | Everything Contributor has **plus** settings, feeder dispense, storage purge, processor restart |
+
+Exact UI gates follow `settings_check_access()` (admin) and `contributor_or_admin_access()` (contributor + admin) in code.
+
+---
+
+## Permission matrix
+
+### Viewer (not unlocked)
+
+| Action | Allowed |
+|--------|:-------:|
+| Overview, Timeline, Live, species pages | ✅ |
+| PDF report, timeline CSV/JSON/eBird (if you expose them without lock) | ✅* |
+| Correct species / Unknowns | ❌ |
+| iNaturalist export crop | ❌ |
+| Feeder **dispense** | ❌ |
+| Settings | ❌ |
+| System (purge, scan, regenerate, logs…) | ❌ |
+| Dataset ZIP export | ❌ |
+
+\*Depends on route-level checks; sensitive exports require Contributor+.
+
+### Contributor
+
+| Action | Allowed |
+|--------|:-------:|
+| Everything Viewer | ✅ |
+| Species correction, Unknowns | ✅ |
+| iNaturalist | ✅ |
+| Dataset export (where exposed to contributor) | ✅ |
+| Feeder dispense | ❌ |
+| Settings | ❌ |
+| Destructive system actions | ❌ |
+
+### Admin
+
+| Action | Allowed |
+|--------|:-------:|
+| Everything Contributor | ✅ |
+| Feeder `POST /api/ui/feed/dispense` | ✅ |
+| Settings | ✅ |
+| System tools, restart processor | ✅ |
+
+---
+
+## Session
+
+After successful `POST /api/ui/settings/verify-password`:
 
 ```python
-session['role'] = 'admin' | 'contributor'  # после verify-password
-session['settings_unlocked'] = True        # для обратной совместимости
+session['access_role'] = 'admin' | 'contributor'
+session['settings_unlocked'] = True   # admin path; contributor may differ
 ```
 
-**API verify-password:**
-- `POST /api/ui/settings/verify-password` с `{ "password": "xxx" }`
-- Ответ: `{ "ok": true, "role": "admin" }` или `{ "ok": true, "role": "contributor" }`
-- Проверка: сначала `settings_password`, потом `contributor_password`.
+Server checks `access_role` on each gated request.
+
+**MCP:** Valid `Authorization: Bearer <MCP_TOKEN>` can satisfy **admin-level** checks for automation (`settings_check_access()`), so protect tokens like root passwords.
 
 ---
 
-## Защита кормушки (сейчас)
+## Feeder API
 
-**Сейчас:** `feed/dispense` не проверяет пароль.
-
-**Нужно:** требовать `admin` (или `settings_check_access` до введения ролей).
+`POST /api/ui/feed/dispense` requires **`settings_check_access()`** → **Admin** (or valid MCP Bearer where implemented). Otherwise **403**.
 
 ---
 
-## Будущее: донаты и сообщество
+## Security notes
 
-### Идеи для монетизации/поддержки
-
-1. **Кнопка «Поддержать проект»** — при попытке Contributor получить Admin-функцию:
-   - «Разблокировать кормушку? Поддержите проект» → ссылка на DonationAlerts, Boosty, Patreon.
-
-2. **Страница «Сообщество»** (опционально):
-   - Топ помощников за месяц (по числу исправленных детекций).
-   - «Вы исправили 47 видов в марте — спасибо!»
-   - Opt-in: показывать ник/имя в рейтинге.
-
-3. **Донат = временный Admin:**
-   - После доната — временный доступ к кормушке (например, 24 часа).
-   - Или: донат разблокирует «гостевую кормушку» (1 раз в день).
-
-4. **Бейджи для Contributors:**
-   - «Помощник марта», «100 исправлений», «Первый в iNaturalist».
-   - Отображать на странице Unknowns или в профиле (если будет).
-
-### Технические заготовки
-
-- `general.donate_url` — ссылка на страницу донатов.
-- `general.community_stats_enabled` — показывать ли рейтинг помощников.
-- В БД: `SpeciesVisit` или отдельная таблица `contributor_actions` для учёта (опционально).
+- Passwords in YAML are **plain text** today — prefer restricted file permissions; consider env-based secrets for production.
+- Use **HTTPS** when exposing the UI beyond localhost so session cookies are not leaked.
+- Processor and MCP use **separate** secrets (`PROCESSOR_SECRET`, `MCP_TOKEN`).
 
 ---
 
-## План внедрения
+## Future ideas (not roadmap commitments)
 
-### Фаза 1 (минимальная)
-1. Защитить `feed/dispense` паролем (`settings_check_access`).
-2. Документировать текущую модель.
-
-### Фаза 2 (роли) — выполнено
-1. ✅ `contributor_password` в конфиге.
-2. ✅ `verify-password` возвращает `role`.
-3. ✅ `settings_check_access()` (admin), `contributor_or_admin_access()`.
-4. ✅ UI: кормушка только при `isAdmin`; коррекция при `canEdit`.
-5. ✅ Экспорт датасета в Timeline (доступен Contributor) и в Система (Admin).
-
-### Фаза 3 (сообщество)
-1. Страница «Сообщество» с благодарностями.
-2. Ссылка на донаты при попытке Admin-действия от Contributor.
-3. Опциональная статистика помощников.
+Community / donation UX (leaderboards, “unlock with support”, badges) is sketched in [ROADMAP](./ROADMAP.md). Config hooks such as `general.donate_url` already exist — see [CONFIGURATION](./CONFIGURATION.md).
 
 ---
 
-## Безопасность
+## See also
 
-- Пароли в конфиге — plain text (как сейчас). Для продакшена: env или хеширование.
-- Сессия: `role` хранится в Flask session (cookie). HTTPS обязателен.
-- MCP, внутренние API — без изменений (отдельные токены).
-
----
-
-См. также: [CONFIGURATION.md](./CONFIGURATION.md), [SECURITY.md](./SECURITY.md).
+[CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [SECURITY](./SECURITY.md) · [GLOSSARY](./GLOSSARY.md)

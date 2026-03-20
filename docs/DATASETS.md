@@ -1,114 +1,118 @@
-# Датасеты и модели BirdLense
+# Datasets & models — BirdLense Hub
 
-Справочник: форматы, скрипты, источники, оборудование. **Обучение:** [TRAINING.md](./TRAINING.md).
+Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAINING](./TRAINING.md).
 
----
-
-## 1. Модели
-
-| Компонент | Версия | Дообучено на |
-|-----------|--------|--------------|
-| **Детектор** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel (бинарный bird/squirrel) |
-| **Классификатор EU** | YOLO11n-cls | birds-525 + iNaturalist (~491 вид) — активна в `best.pt` |
-| **Классификатор US** | YOLOv8n-cls | NABirds (~400 видов) — резерв в `best_US.pt` |
-
-Вернуть US: `cp best_US.pt best.pt`.
+[Русский](./DATASETS.ru.md)
 
 ---
 
-## 2. Формат имён: Scientific (Common)
+## 1. Models
 
-Единый формат для merge, Frigate, BirdNET, YOLO:
+| Component | Version | Trained on |
+|-----------|---------|------------|
+| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel (binary bird/squirrel) |
+| **EU classifier** | YOLO11n-cls | birds-525 + iNaturalist (~491 species) — active `best.pt` |
+| **US classifier** | YOLOv8n-cls | NABirds (~400 species) — `best_US.pt` |
 
-| Источник | Исходный формат | После приведения |
-|----------|-----------------|------------------|
-| **Frigate** | `Cardinalis cardinalis (Northern Cardinal)` | уже в формате |
+Switch to US: `cp best_US.pt best.pt`.
+
+---
+
+## 2. Name format: `Scientific (Common)`
+
+Shared convention for merge, Frigate, BirdNET, YOLO:
+
+| Source | Raw | Normalized |
+|--------|-----|--------------|
+| **Frigate** | `Cardinalis cardinalis (Northern Cardinal)` | as-is |
 | **iNaturalist** | `Columba palumbus` | `Columba palumbus (Common Wood Pigeon)` |
 | **birds-525** | `GOLDEN_EAGLE` | `Aquila chrysaetos (Golden Eagle)` |
 
-**YOLO classification:** `train/Parus major (Great Tit)/img.jpg`, `val/` — те же классы.
+**YOLO cls folders:** `train/Parus major (Great Tit)/img.jpg`, same class names under `val/`.
 
 ---
 
-## 3. Скрипты (`scripts/datasets/`)
+## 3. Scripts (`scripts/datasets/`)
 
-### EU-классификатор (birds-525 + iNaturalist)
+### EU classifier (birds-525 + iNaturalist)
 
-| Скрипт | Назначение |
-|--------|------------|
+| Script | Role |
+|--------|------|
 | `download_hf_birds.py` | Hugging Face → YOLO cls (`--format scientific_common`) |
 | `download_inaturalist.py` | iNaturalist Europe → YOLO cls |
-| `merge_classification_datasets.py` | Объединить датасеты |
-| `download_and_merge_all.sh` | Полный пайплайн → merged_cls |
+| `merge_classification_datasets.py` | Merge splits |
+| `download_and_merge_all.sh` | Full pipeline → `merged_cls` |
 
-### Детектор (legacy)
+### Detector (legacy)
 
-| Скрипт | Назначение |
-|--------|------------|
+| Script | Role |
+|--------|------|
 | `convert_nabirds_to_yolo.py` | NABirds → YOLO |
-| `download_coco_birds.py` | COCO birds — для binary |
+| `download_coco_birds.py` | COCO birds for binary |
 | `merge_datasets_binary.py` | NABirds + COCO → binary |
 
-### Модели (`app/processor/models/`)
+### Weights (`app/processor/models/`)
 
-| Путь | Роль |
+| Path | Role |
 |------|------|
-| `classification/weights/best.pt` | EU-классификатор (активна) |
-| `classification/weights/best_US.pt` | Резерв US |
-| `detection/weights/best.pt` | Бинарный детектор |
+| `classification/weights/best.pt` | EU classifier (default) |
+| `classification/weights/best_US.pt` | US backup |
+| `detection/weights/best.pt` | Binary detector |
 
 ---
 
-## 4. Источники датасетов
+## 4. Public datasets
 
-### Для EU (приоритет)
+### EU (primary)
 
-| Датасет | Видов | Ссылка |
-|---------|-------|--------|
-| **[34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species)** | 525 | Hugging Face |
-| **iNaturalist Europe** | Тысячи | [API](https://api.inaturalist.org/v1/docs/), `place_id=96372` |
+| Dataset | Species | Link |
+|---------|---------|------|
+| **34data/birds-525-species** | 525 | [Hugging Face](https://huggingface.co/datasets/34data/birds-525-species) |
+| **iNaturalist Europe** | many | [API](https://api.inaturalist.org/v1/docs/), e.g. `place_id=96372` |
 
-### Северная Америка (не дают улучшения по EU)
+### North America (weak signal for EU accuracy)
 
-| Датасет | Видов |
-|---------|-------|
+| Dataset | Species |
+|---------|---------|
 | NABirds | ~400 |
 | [sasha/birdsnap](https://huggingface.co/datasets/sasha/birdsnap) | 500 |
 | [randall-lab/cub200](https://huggingface.co/datasets/randall-lab/cub200) | 200 |
 
 ---
 
-## 5. Оборудование
+## 5. Hardware for training
 
-| Платформа | GPU | Цена |
-|-----------|-----|------|
-| **Google Colab** | T4 (15 GB) | Бесплатно |
-| **RunPod** | RTX 4090, A100 | ~$0.40–0.80/ч |
-| **Локально** | Своя видеокарта | — |
+| Platform | GPU | Cost |
+|----------|-----|------|
+| **Google Colab** | T4 (15 GB) | Free tier |
+| **RunPod** | RTX 4090, A100 | ~$0.40–0.80/h |
+| **Local** | Your GPU | — |
 
-**Рекомендация:** Colab Free (T4) — [TRAINING.md](./TRAINING.md).
+**Practical default:** Colab Free (T4) — see [TRAINING](./TRAINING.md).
 
 ---
 
-## 6. Пайплайн: сбор → обучение
+## 6. Pipeline: collect → train
 
 ```
-BirdLense (записи) → export_birdlense_to_yolo.py (планируется) → YOLO dataset
-                                                                    ↓
+BirdLense recordings → (planned) export_birdlense_to_yolo.py → YOLO dataset
+                                              ↓
 birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
-                                                                    ↓
-                                              TRAINING.md (Colab) → best.pt
+                                              ↓
+                              TRAINING.md (Colab) → best.pt
 ```
 
 ---
 
-## 7. Платформы для публикации
+## 7. Publishing artifacts
 
-| Платформа | Назначение |
-|-----------|------------|
-| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — см. [TRAINING.md](./TRAINING.md) |
-| **Zenodo** | DOI для статей, снапшоты |
+| Platform | Use |
+|----------|-----|
+| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — see [TRAINING](./TRAINING.md) |
+| **Zenodo** | DOI snapshots for papers |
 
 ---
 
-См. также: [TRAINING.md](./TRAINING.md).
+## See also
+
+[TRAINING](./TRAINING.md) · [FEATURES](./FEATURES.md) · [CONFIGURATION](./CONFIGURATION.md)
