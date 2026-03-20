@@ -4,7 +4,11 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.2-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+
+### Краткое описание
+
+Канонические формулировки для **About** на GitHub, зеркал и анонсов: **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)** · **[English](./SHORT_DESCRIPTION.md)**
 
 Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
 

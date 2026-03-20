@@ -1,7 +1,37 @@
-{#- Announcement bar: Material ignores theme.announcement in mkdocs.yml; official way is this block. Version from extra.site_version (must match root VERSION; see scripts/check-docs-version.py). -#}
+{#- Banner: block announce (Material). Version: extra.site_version = VERSION. Script syncs header repo chip to same version. -#}
 {% extends "base.html" %}
 
 {% block announce %}
   BirdLense Hub documentation · <strong>v{{ config.extra.site_version }}</strong> ·
   <a href="https://github.com/Gfermoto/BirdLense-Hub/releases">Releases</a>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+  (function () {
+    var docVersion = "{{ config.extra.site_version | e }}";
+    function patchHeaderRepoVersion() {
+      document.querySelectorAll(".md-source__fact--version").forEach(function (el) {
+        el.textContent = "v" + docVersion;
+      });
+    }
+    function armObserver() {
+      if (window.__birdlenseDocVersionMO) {
+        window.__birdlenseDocVersionMO.disconnect();
+        window.__birdlenseDocVersionMO = null;
+      }
+      var repo = document.querySelector(".md-source__repository");
+      if (!repo || typeof MutationObserver === "undefined") return;
+      window.__birdlenseDocVersionMO = new MutationObserver(patchHeaderRepoVersion);
+      window.__birdlenseDocVersionMO.observe(repo, { childList: true, subtree: true });
+    }
+    if (typeof document$ !== "undefined" && document$.subscribe) {
+      document$.subscribe(function () {
+        patchHeaderRepoVersion();
+        armObserver();
+      });
+    }
+  })();
+  </script>
 {% endblock %}

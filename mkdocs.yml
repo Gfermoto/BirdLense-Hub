@@ -1,6 +1,6 @@
 # Static documentation site (MkDocs Material).
 # Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
-# При релизе: VERSION должна встречаться в mkdocs.yml и совпадать с extra.site_version (проверка scripts/check-docs-version.py). Баннер — overrides/main.html.
+# Релиз: VERSION в mkdocs extra.site_version (check scripts/check-docs-version.py); баннер — overrides/main.html.
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
 site_url: https://gfermoto.github.io/BirdLense-Hub/
@@ -115,7 +115,7 @@ nav:
 
 extra:
   # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
-  site_version: "0.2.2"
+  site_version: "0.2.3"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub
