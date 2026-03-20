@@ -47,7 +47,7 @@ Also update **`mkdocs.yml`**: `extra.site_version` must match `VERSION` (CI: `sc
 ### GitHub Actions after a release
 
 - **Docker:** [docker-publish.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docker-publish.yml) — `main` + **published** Release → `latest` + semver tag.
-- **Docs site:** [docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — deploy Pages on `main` (path-filtered pushes), `workflow_dispatch` from `main`, and **published** Release.
+- **Docs site:** [docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml) — deploy Pages только с ветки **`main`** (push по путям или `workflow_dispatch`). После merge релиза этого достаточно; деплой с тега не используется (ограничения окружения `github-pages`).
 
 Wiki (optional): [WIKI_AUTOMATION](./WIKI_AUTOMATION.md).
 
