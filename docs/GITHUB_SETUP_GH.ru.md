@@ -123,7 +123,7 @@ gh api -X POST "repos/$FULL/pages" \
 Применить:
 
 ```bash
-cd /path/to/BirdLense   # корень клона
+cd /path/to/BirdLense-Hub   # корень клона
 gh api --method PUT "repos/$FULL/branches/main/protection" \
   --input scripts/github-branch-protection-main.json
 ```

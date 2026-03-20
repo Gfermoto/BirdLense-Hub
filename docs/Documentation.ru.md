@@ -16,8 +16,6 @@
 
 **Навигация:** с [docs/README.md](./README.md).
 
-**Большой рефакторинг:** [DOCS_REFACTOR_CONSILIUM.ru](./DOCS_REFACTOR_CONSILIUM.ru.md) — роли, фазы, обязательный чеклист ревью.
-
 ---
 
 ## Статический сайт документации (MkDocs + GitHub Pages)
@@ -54,7 +52,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 | Материал | Назначение |
 |----------|------------|
 | [OVERVIEW](./OVERVIEW.ru.md) | Текст «что и зачем» — главная, статьи |
-| [README](./README.ru.md) в `docs/` | Структура навигации для статического сайта |
+| [README](./README.ru.md) в `docs/` | Оглавление по темам; навигация сайта — `mkdocs.yml` в корне |
 | [SITE_MAP](./SITE_MAP.ru.md) | Готовое сопоставление разделов и файлов |
 | [INSTALL](./INSTALL.md) + [SCENARIOS](./SCENARIOS.ru.md) | Быстрый старт и туториалы |
 | [FEATURES](./FEATURES.ru.md) | Витрина возможностей |

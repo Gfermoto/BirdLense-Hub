@@ -41,7 +41,7 @@ stop:
 logs:
 	@docker compose logs -f --tail=200
 
-# Деплой на 192.168.1.11
+# Деплой на сервер: ../scripts/deploy.sh (см. docs/INSTALL.md)
 deploy:
 	@cd .. && ./scripts/deploy.sh
 
@@ -72,7 +72,7 @@ test-report:
 
 test-e2e:
 	cd e2e && npm ci && npx playwright install chromium && npm test
-# E2E с паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://192.168.1.11:8085 make test-e2e
+# E2E с паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://YOUR_HOST:8085 make test-e2e
 
 # Автодокументация
 docs: docs-python docs-ui

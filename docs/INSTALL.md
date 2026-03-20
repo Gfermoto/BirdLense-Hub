@@ -61,15 +61,17 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 ## Deploy to server (make deploy)
 
 ```bash
-cd BirdLense
+cd BirdLense-Hub   # repo root (folder from git clone; rename OK)
 make deploy
 ```
 
 Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, Node.js locally for UI build.
 
-**Setup:** copy `scripts/deploy.local.sh.example` to `deploy.local.sh` and set DEPLOY_HOST, DEPLOY_REMOTE_DIR, DEPLOY_URL, secrets. File is in .gitignore.
+**Setup:** copy `scripts/deploy.local.sh.example` to `deploy.local.sh` and set `DEPLOY_HOST`, `DEPLOY_URL`, secrets; optional `DEPLOY_REMOTE_DIR`. File is gitignored.
 
-**What it does:** stops containers, builds UI locally, rsync (excludes data, user_config), writes secrets to .env, builds Docker, starts.
+**Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
+
+**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`), merges secrets into `app/.env` on the server, Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → auto-deploy (self-hosted runner).
 

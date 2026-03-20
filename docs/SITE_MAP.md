@@ -1,6 +1,6 @@
 # Documentation site map (suggested)
 
-Use this when generating a static site (VitePress, Docusaurus, MkDocs). Slugs are suggestions; adjust to your generator.
+Section → file map for humans and for keeping [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) `nav` aligned. The built site is **MkDocs Material** at repo root.
 
 [Русский](./SITE_MAP.ru.md)
 
@@ -10,8 +10,8 @@ Use this when generating a static site (VitePress, Docusaurus, MkDocs). Slugs ar
 
 | Label | Source file | Notes |
 |-------|-------------|--------|
-| Home / Overview | [OVERVIEW.md](./OVERVIEW.md) | Hero copy for landing |
-| Docs | [README.md](./README.md) | Doc home (or merge into Overview) |
+| Overview | [OVERVIEW.md](./OVERVIEW.md) | MkDocs first item |
+| Documentation index | [README.md](./README.md) | Topic tables / entry paths |
 | GitHub | external | Repository URL |
 
 ---
