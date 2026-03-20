@@ -89,4 +89,10 @@ bash scripts/github-bootstrap-project.sh
 bash scripts/github-project-import-open-items.sh
 ```
 
+Бэклог из ROADMAP (issues **#46–#57**):
+
+```bash
+bash scripts/github-project-add-backlog-consilium.sh
+```
+
 В **WSL** команда `gh project view … --web` часто падает (`xdg-open: Permission denied`) — откройте напечатанную ссылку вида **https://github.com/users/…/projects/N** в браузере Windows.

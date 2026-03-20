@@ -195,7 +195,7 @@ gh secret list -R "$FULL"
 
 - [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; фичи → PR в `dev`, релиз — PR `dev` → `main`.
 - [ ] **Automatically delete head branches** включено (`delete_branch_on_merge=true`): фича-ветки после merge не копятся; `main`/`dev` не удаляются (защита).
-- [ ] Workflow **Prune remote branches** (по cron или вручную) — подчистить забытые ветки, кроме `main` и `dev`.
+- [ ] (Опционально) Workflow **Prune remote branches** — только **вручную** (`workflow_dispatch`), если нужно снять забытые ветки с `origin`; обычно хватает удаления ветки **после merge** PR.
 - [ ] Pages: сайт открывается, последний workflow **Documentation site** зелёный на `main`.
 - [ ] Dependabot PR’ы не копятся месяцами.
 - [ ] **Deploy** workflow: либо runner поднят, либо workflow отключён / не required, чтобы не было вечных красных статусов.

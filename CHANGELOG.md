@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Roadmap: секция **Backlog consilium (March 2026)** + 12 GitHub Issues [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) для доски Project.
-- CI: workflow `prune-branches.yml` — удаление на `origin` всех веток кроме **`main`** и **`dev`** (`workflow_dispatch` + **cron** понедельник 06:00 UTC).
+- CI: workflow `prune-branches.yml` — опционально, только **`workflow_dispatch`**: снятие с `origin` веток кроме **`main`** и **`dev`** (без cron; обычная уборка — после merge PR).
+- Скрипт `scripts/github-project-add-backlog-consilium.sh` — добавить issues **#46–#57** на доску Project (нужен scope `project` у `gh`).
 - `.github/github-social-preview.png` — Open Graph / Social preview для репозитория (1280×640).
 
 ### Changed
