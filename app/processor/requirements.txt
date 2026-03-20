@@ -8,4 +8,4 @@ ncnn==1.0.20240410
 # numpy 2.x — совместим с opencv, librosa, ultralytics
 numpy>=2.0,<3
 librosa==0.11.0
-matplotlib==3.8.4
+matplotlib==3.10.8
