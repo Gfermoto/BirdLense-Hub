@@ -1,0 +1,77 @@
+# Example Prometheus alerting rules for BirdLense Hub.
+# Copy into your Prometheus config (rule_files) and tune thresholds.
+#
+# Prerequisites:
+#   - Scrape job name must match labels below (default: job="birdlense").
+#   - Metrics from GET /api/metrics — see docs/CONFIGURATION.md → Prometheus / Grafana.
+#
+# Metric notes:
+#   - birdlense_detections_total / birdlense_videos_total reflect DB totals at scrape time
+#     (typed as counter in exposition; suitable for increase() over long windows).
+#   - birdlense_gpu_usage_percent is omitted when no GPU stats are available — do not alert on absent() unless you know the host always exposes GPU.
+
+groups:
+  - name: birdlense-availability
+    interval: 30s
+    rules:
+      - alert: BirdlenseTargetDown
+        expr: up{job="birdlense"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BirdLense scrape target is down"
+          description: "Prometheus cannot scrape job {{ $labels.job }} / {{ $labels.instance }} for 3m."
+
+  - name: birdlense-resources
+    interval: 30s
+    rules:
+      - alert: BirdlenseDiskAlmostFull
+        expr: birdlense_disk_used_percent > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BirdLense host disk usage high"
+          description: "Disk used is {{ $value | printf \"%.1f\" }}% on {{ $labels.instance }}. Recordings and DB need free space."
+
+      - alert: BirdlenseDiskCritical
+        expr: birdlense_disk_used_percent > 97
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BirdLense disk critically full"
+          description: "Disk used {{ $value | printf \"%.1f\" }}% — risk of failed writes and SQLite errors."
+
+      - alert: BirdlenseMemoryHigh
+        expr: birdlense_memory_used_percent > 92
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BirdLense host memory pressure"
+          description: "Memory used {{ $value | printf \"%.1f\" }}%. Processor/YOLO may OOM; consider retention or more RAM."
+
+      - alert: BirdlenseCpuSaturated
+        expr: birdlense_cpu_usage_percent > 95
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "BirdLense CPU very high"
+          description: "CPU {{ $value | printf \"%.1f\" }}% for 30m — may be normal during heavy encoding; tune or mute if expected."
+
+  - name: birdlense-optional-activity
+    interval: 1m
+    rules:
+      # OPTIONAL: fires if there were zero new detection rows (DB total unchanged) over 24h.
+      # Mute or raise `for` in winter / when feeder is offline for days.
+      - alert: BirdlenseDetectionsUnchanged24h
+        expr: increase(birdlense_detections_total[24h]) == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No growth in birdlense_detections_total for 24h"
+          description: "Check processor, motion source, Frigate/MQTT, and /api/ui/status. Disable this alert if pausing the feeder is normal."
