@@ -55,7 +55,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 8 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | P3, web |
 | 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | P3, web |
 | 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
-| 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | P3, docs |
+| 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
 
 ### Триаж: Issue или Discussion
 
