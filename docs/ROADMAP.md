@@ -11,7 +11,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 | Component | Version / note |
 |-----------|----------------|
 | **Ultralytics** | 8.4.21 (Docker base image) |
-| **Platform** | x86/amd64 (**ARM not supported**) |
+| **Platform** | **x86/amd64 only** (Intel or AMD 64-bit). ARM / Apple Silicon / aarch64 — **not supported, not planned** |
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
 | **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
 | **US classifier** | `best_US.pt` — NABirds (fallback) |
@@ -31,7 +31,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 **Brainstorm roles:** product (operator value), security, platform/infra, ML & data, integrations (MQTT/HA/Frigate), UX, docs & OSS hygiene.
 
-**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) is **closed** — x86-only; not part of this backlog.
 
 **Put them on the Project board:** OAuth scopes often loop on device login — use a **classic PAT** (`repo` + `project`) in `GH_TOKEN` or `scripts/.env.project` (see `scripts/env.project.example`), then:
 
@@ -44,23 +44,45 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 | # | Theme | Issue | Labels (summary) |
 |---|--------|-------|------------------|
 | 1 | Rate limiting for settings / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) | `area:web`, P2 |
-| 2 | Git history secret scan (maintainer) | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | `area:infra`, docs |
+| 2 | Git history secret scan (maintainer) | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | `area:infra`, P3, `documentation` |
 | 3 | `export_birdlense_to_yolo.py` training export | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | `area:processor`, P2 |
-| 4 | ARM64 Docker spike | [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) | `area:infra`, P3 |
-| 5 | MQTT reconnect / missed-events clarity | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | `area:processor`, P2 |
-| 6 | UI: backup / restore SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | `area:web`, P3 |
-| 7 | UI i18n framework | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | `area:web`, P3 |
-| 8 | CI: scheduled image smoke test | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) | `area:infra`, P3 |
-| 9 | CI: OpenAPI contract tests | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | `area:web`, P3 |
-| 10 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | `area:web`, P3 |
-| 11 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | `area:web`, P3 |
-| 12 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | `area:docs`, P3 |
+| 4 | MQTT reconnect / missed-events clarity | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | `area:processor`, P2 |
+| 5 | UI: backup / restore SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | `area:web`, P3 |
+| 6 | UI i18n framework | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | `area:web`, P3 |
+| 7 | CI: scheduled image smoke test | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) | `area:infra`, P3 |
+| 8 | CI: OpenAPI contract tests | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | `area:web`, P3 |
+| 9 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | `area:web`, P3 |
+| 10 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | `area:web`, P3 |
+| 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | `area:docs`, P3 |
+
+### Triage: Issue vs. Discussion
+
+| Use | When |
+|-----|------|
+| **[GitHub Issue](https://github.com/Gfermoto/BirdLense-Hub/issues)** | Clear scope, definition of done, fits an area label (`area:*`) and priority — work can land on the **Project** board. |
+| **[Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** | Exploratory ideas, multiple design options, “should we at all?”, community input before committing. |
+
+**After consilium:** new tracked work → create/update the Issue, add the card to the Project (`github-project-add-backlog-consilium.sh` or manually), then **update this ROADMAP** table in the same PR or follow-up.
 
 ---
 
-## Backlog (ideas)
+## Future work candidates (no issue yet)
 
-Roughly ordered **simple → complex**. Many rows are **done** — kept for history; cross-check [FEATURES](./FEATURES.md) before assuming something is missing.
+Themes worth **Issues** when you are ready to schedule them (not on the consilium board today):
+
+| Theme | Why |
+|-------|-----|
+| **Accessibility (a11y)** | Keyboard navigation, focus order, contrast — natural follow-up after UI i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
+| **Broader E2E (Playwright)** | Beyond smoke: login, timeline, critical settings — tied to CI cost and flake budget. |
+| **Secrets in production** | Documented rotation / operational path for `secrets.*` and related keys (complements maintainer git scan [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Stack version sync** | After bumping Ultralytics, React, or base image — align **this doc**, `Dockerfile`, and release notes in one pass. |
+| **Community / donation UX** | Leaderboards, supporter badges, etc. — exploratory; `general.donate_url` already exists — [CONFIGURATION](./CONFIGURATION.md). |
+
+---
+
+## Shipped ideas (archive)
+
+Historical **simple → complex** checklist (all rows shipped). Cross-check [FEATURES](./FEATURES.md); do **not** treat this table as a to-do list.
 
 | Idea | Notes | Complexity |
 |------|--------|--------------|
@@ -83,9 +105,9 @@ Roughly ordered **simple → complex**. Many rows are **done** — kept for hist
 | ✅ Region comparison (eBird) | Overview card | High |
 | ✅ Sun/moon card on weather | Overview / weather | Low |
 
-**Note:** This table is kept as a **shipped checklist** aligned with [ROADMAP.ru.md](./ROADMAP.ru.md) and the codebase. For **new** ideas, open a GitHub Discussion or Issue — do not assume a row here is still “to do”.
+**Note:** For **new** ideas use [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) or an Issue per the triage table above.
 
-### UX backlog (selected)
+### UX improvements (shipped)
 
 | Item | Status |
 |------|--------|
@@ -104,7 +126,7 @@ Roughly ordered **simple → complex**. Many rows are **done** — kept for hist
 | **Docs** | Version banner in `mkdocs.yml` matches `VERSION`; interactive OpenAPI (Redoc) on the doc site |
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
 
-The backlog table above mixes historical ideas with future work — always cross-check [FEATURES](./FEATURES.md) before starting.
+The **shipped archive** above is historical only. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).
 
 ---
 
