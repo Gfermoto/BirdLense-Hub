@@ -86,6 +86,12 @@ UI: http://localhost:8085
 
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 
+## Developers
+
+- **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
+- **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
+- **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Requirements
 
 - **Docker** — x86/amd64
