@@ -20,6 +20,8 @@
 
 ## Статический сайт документации (MkDocs + GitHub Pages)
 
+**Версия Python:** в **Docker-образе приложения** BirdLense — **Python 3.11** (база Ultralytics). **MkDocs** для этого репозитория собирается на **Python 3.12** (как в CI job **docs**) — используйте **отдельный venv** (например `.venv-docs`); не смешивайте с интерпретатором внутри контейнера приложения.
+
 В корне репозитория лежит **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)**: тема **Material**, каталог исходников — `docs/`, структура `nav` согласована с [SITE_MAP.ru.md](./SITE_MAP.ru.md). Файлы политики и метаданных в корне репозитория (contributing, security policy, changelog, OpenAPI) на сайте открываются через короткие страницы в [docs/project/](./project/contributing.md), чтобы ссылки из `docs/` не уходили в `../` (так ломается публикация на GitHub Pages).
 
 ### Сборка локально

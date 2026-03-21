@@ -18,6 +18,45 @@ docker --version && docker compose version
 node --version && npm --version
 ```
 
+### Node 22 на хосте (WSL / macOS / Linux)
+
+UI в **`app/ui/`**, файл **`.nvmrc`** → `22`. Варианты:
+
+| Инструмент | Пример |
+|------------|--------|
+| **nvm** | `cd app/ui && nvm install && nvm use` |
+| **fnm** | `cd app/ui && fnm use` |
+| **Volta** | В `app/ui/package.json` заданы `engines` и `volta` — при входе в каталог (с включённой Volta). |
+
+**Cursor / VS Code:** открывайте репозиторий с корня; для сборки UI в терминале сначала `cd app/ui`, чтобы подтянулась нужная версия Node.
+
+### Python: приложение vs сайт доков
+
+| Где | Python | Комментарий |
+|-----|--------|-------------|
+| **Контейнер BirdLense** | **3.11** (база Ultralytics) | Web + processor — не ожидайте 3.12 внутри образа. |
+| **MkDocs** | **3.12** (как в CI job **docs**) | Отдельный venv — см. ниже. |
+
+### MkDocs (статический сайт) — локальный venv
+
+Из **корня репозитория** (не из `app/`):
+
+```bash
+python3 -m venv .venv-docs
+.venv-docs/bin/pip install -r requirements-docs.txt
+.venv-docs/bin/python3 scripts/check-docs-version.py
+.venv-docs/bin/mkdocs build --strict
+```
+
+Подробнее: [Documentation.ru](./Documentation.ru.md).
+
+### Чеклист перед релизом (мейнтейнер)
+
+- [ ] `cd app && make test && make test-web` (или зелёный **CI** на PR `dev` → `main`)
+- [ ] Из корня репо: `mkdocs build --strict` (или команды с `.venv-docs` выше)
+- [ ] По желанию: `cd app && make start`, затем `make test-e2e` — или **Actions → E2E (Playwright) → Run workflow**
+- [ ] После деплоя: смоук `curl`/UI по [TESTING.ru](./TESTING.ru.md) §2
+
 ## Быстрый старт
 
 ```bash
