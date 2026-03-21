@@ -50,3 +50,41 @@ jobs:
 
       - name: MkDocs build (strict)
         run: mkdocs build --strict
+
+  # Те же тесты, что локально: processor (unittest) + web (pytest) в образе birdlense.
+  # Требует места на диске раннера (база Ultralytics). Добавьте job **docker-tests**
+  # в required checks ruleset **Protect** вместе с ui-build и docs.
+  docker-tests:
+    name: docker-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Free disk space (large Docker image)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell || true
+          df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare .env and data dirs
+        run: |
+          test -f .env || cp .env.example .env
+          mkdir -p data/db data/recordings
+
+      - name: Build birdlense image
+        run: docker compose build birdlense
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+
+      - name: Processor unit tests
+        run: make test
+
+      - name: Web API tests (pytest)
+        run: make test-web
