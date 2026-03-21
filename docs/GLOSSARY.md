@@ -32,7 +32,7 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 |------|---------|
 | **YOLO** | On-device object model: binary bird/squirrel plus species classifier (EU ~491 species by default). |
 | **ByteTrack** | Multi-object tracker across frames before a recording is finalized. |
-| **NCNN** | Optional accelerated inference format; paths under `processor` config when `single_stage` / exported weights used. |
+| **NCNN** | Optional accelerated inference format on **x86/amd64**; paths under `processor` when `single_stage` / exported weights used. Not an ARM product target. |
 | **Merge (detection)** | Combining YOLO, Frigate `sub_label`, and BirdNET MQTT inside a time window → one stored result per species (see `detection.*` keys). |
 | **Unknowns** | Detections below `unknown_confidence_threshold`; listed for manual review. |
 
