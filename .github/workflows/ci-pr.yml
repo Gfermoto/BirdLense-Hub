@@ -52,8 +52,7 @@ jobs:
         run: mkdocs build --strict
 
   # Те же тесты, что локально: processor (unittest) + web (pytest) в образе birdlense.
-  # Требует места на диске раннера (база Ultralytics). Добавьте job **docker-tests**
-  # в required checks ruleset **Protect** вместе с ui-build и docs.
+  # Требует места на диске раннера (база Ultralytics). Required в ruleset **Protect** (main).
   docker-tests:
     name: docker-tests
     runs-on: ubuntu-latest

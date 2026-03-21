@@ -18,7 +18,7 @@
 - **`docs`** — MkDocs `--strict` + проверка версии в доках  
 - **`docker-tests`** — `docker compose build` + `make test` + `make test-web` (как ниже)
 
-Добавьте job **`docker-tests`** в **required checks** ruleset **Protect** рядом с `ui-build` и `docs` (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)).
+Job **`docker-tests`** входит в **required checks** ruleset **Protect** на `main` (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)).
 
 ### Unit-тесты (processor)
 
