@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Примеры алертинга Prometheus: `examples/prometheus/birdlense.rules.yml`, `examples/prometheus/alertmanager.birdlense.example.yml`; раздел **Alerting** в [CONFIGURATION](docs/CONFIGURATION.md) / RU — закрывает [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
 - `app/ui/package.json`: поле **`engines`** (Node **22.x**, минимум **22.13**; npm **>=10**) — согласовано с CI и UI Docker stage.
 - `.vscode/extensions.json` — рекомендуемые расширения (ESLint, Prettier, Docker).
 - CI: workflow **`E2E (Playwright)`** (`.github/workflows/e2e-scheduled.yml`) — раз в неделю + `workflow_dispatch`; **не** required в ruleset.
