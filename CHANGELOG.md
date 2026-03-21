@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Политика платформы: **официально только x86/amd64** (Intel/AMD); ARM / aarch64 не поддерживаются и не планируются — ROADMAP, доки, конфиг; бэклог без ARM64 Docker ([#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49)).
 - ROADMAP (EN/RU): **триаж** Issue vs Discussion; **Future work candidates** (a11y, E2E, секреты, версии стека, community/donation UX); таблица идей переименована в **Shipped ideas (archive)**; UX-блок выровнен; [ACCESS_CONTROL](docs/ACCESS_CONTROL.md) ссылается на кандидатов.
+- `chore(deps)`: **@mui/x-charts** 7.x → 8.x в `app/ui` ([#42](https://github.com/Gfermoto/BirdLense-Hub/pull/42)).
+- `.gitignore`: `app/data/processor.log*` — ротированные логи процессора не коммитятся.
 - GitHub: модель веток — **фича → PR в `dev`**, затем **PR `dev`→`main`**; CONTRIBUTING + шаблон PR; `delete_branch_on_merge=true` (фичи не копятся, `main`/`dev` защищены от удаления). `github-repo-bootstrap.sh` и [GITHUB_SETUP_GH.ru.md](docs/GITHUB_SETUP_GH.ru.md) §4 обновлены.
 - Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
 - `app/Makefile`: комментарии деплоя и E2E без захардкоженного LAN IP.
