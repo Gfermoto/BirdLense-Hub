@@ -31,6 +31,37 @@
 
 ---
 
+## Консилиум по бэклогу (март 2026)
+
+**Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
+
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+
+**Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
+
+```bash
+bash scripts/github-project-add-backlog-consilium.sh
+```
+
+Все открытые issues/PR: `bash scripts/github-project-import-open-items.sh`. Либо вручную в интерфейсе GitHub.
+
+| # | Тема | Issue | Приоритет / зона |
+|---|------|-------|------------------|
+| 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) | P2, web |
+| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | P3, infra |
+| 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | P2, processor |
+| 4 | Спайк ARM64 Docker | [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) | P3, infra |
+| 5 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | P2, processor |
+| 6 | UI: бэкап/восстановление SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | P3, web |
+| 7 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | P3, web |
+| 8 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) | P3, infra |
+| 9 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | P3, web |
+| 10 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | P3, web |
+| 11 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
+| 12 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | P3, docs |
+
+---
+
 ## Идеи (backlog)
 
 От простого к сложному:

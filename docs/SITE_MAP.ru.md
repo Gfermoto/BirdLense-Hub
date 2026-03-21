@@ -1,6 +1,6 @@
 # Карта сайта документации (рекомендация)
 
-Ориентир для статического генератора (VitePress, Docusaurus, MkDocs). Slug’и можно менять под свой шаблон.
+Сопоставление разделов и файлов и проверка, что `nav` в [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) не разъехался. Сайт собирается **MkDocs Material** из корня репозитория.
 
 [English](./SITE_MAP.md)
 
@@ -10,8 +10,8 @@
 
 | Пункт | Файл | Примечание |
 |-------|------|------------|
-| Главная / Обзор | [OVERVIEW.ru.md](./OVERVIEW.ru.md) | Текст для лендинга |
-| Документация | [README.ru.md](./README.ru.md) | Дом документации |
+| Обзор | [OVERVIEW.ru.md](./OVERVIEW.ru.md) | Первый пункт MkDocs (секция «Русский») |
+| Оглавление | [README.ru.md](./README.ru.md) | Таблицы по темам и входы |
 | GitHub | внешняя ссылка | Репозиторий |
 
 ---

@@ -77,7 +77,7 @@
 | **Настройка GitHub через gh** | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 | **Wiki и отчёты CI** | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
-| **Карта сайта документации** | [SITE_MAP](./SITE_MAP.ru.md) |
+| **Разделы ↔ файлы** (сверка с `mkdocs.yml`) | [SITE_MAP](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) |
 | **MkDocs и GitHub Pages** | [Documentation.ru.md](./Documentation.ru.md) § *Статический сайт* |
 | Архив | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (в репозитории; не входит в сборку MkDocs) |
 

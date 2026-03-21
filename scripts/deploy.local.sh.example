@@ -12,6 +12,8 @@
 export DEPLOY_HOST="birdlense"           # хост из ~/.ssh/config
 # DEPLOY_URL — ОБЯЗАТЕЛЬНО для удалённого деплоя! Health check идёт с локальной машины.
 export DEPLOY_URL="http://YOUR_HOST:8085"
+# Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
+# export DEPLOY_REMOTE_DIR="/root/BirdLense"
 
 # На сервере создайте app/.env или задайте здесь (попадут в app/.env при деплое):
 #   CORS_ORIGINS=http://YOUR_HOST:8085

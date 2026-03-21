@@ -39,7 +39,7 @@ From the **repository root** (with your datasets venv activated):
 
 ```bash
 # Example: venv + full pipeline
-cd BirdLense
+cd BirdLense-Hub   # repo root (your clone folder name may differ)
 .venv-datasets/bin/python scripts/datasets/download_hf_birds.py \
   --dataset 34data/birds-525-species \
   --output datasets/birds_525_cls \
@@ -60,14 +60,14 @@ Or reuse an existing `datasets/merged_cls` tree.
 ### 1.2 Zip it
 
 ```bash
-cd BirdLense
+cd BirdLense-Hub   # repo root
 zip -r merged_cls.zip datasets/merged_cls
 ```
 
 From `datasets/`:
 
 ```bash
-cd BirdLense/datasets
+cd BirdLense-Hub/datasets
 zip -r merged_cls.zip merged_cls
 ```
 

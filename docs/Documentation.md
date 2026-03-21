@@ -54,7 +54,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 | Asset | Role |
 |-------|------|
 | [OVERVIEW.md](./OVERVIEW.md) | Narrative “what & why” — homepage hero, press kit, first paragraph of articles |
-| [README.md](./README.md) (this folder) | Information architecture — sidebar / nav for Docusaurus, MkDocs, VitePress |
+| [README.md](./README.md) (this folder) | Doc home + topic tables; site nav is root `mkdocs.yml` |
 | [SITE_MAP.md](./SITE_MAP.md) | Ready-made section → file mapping for a doc site |
 | [INSTALL](./INSTALL.md) + [SCENARIOS](./SCENARIOS.md) | Getting started & tutorials |
 | [FEATURES](./FEATURES.md) | Capability / comparison page |

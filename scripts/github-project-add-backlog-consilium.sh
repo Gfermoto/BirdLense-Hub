@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Добавляет в GitHub Project все открытые issues и pull requests из репозитория.
-# Повторный запуск безопасен: уже добавленные элементы пропускаются (по тексту ошибки API).
+# Добавляет на GitHub Project карточки по issues бэклога из ROADMAP (консилиум): #46–#57.
 #
-# Доступ: GH_TOKEN (classic PAT: repo + project) или scripts/.env.project — см. env.project.example
+# Доступ к API Projects (надёжно): classic PAT в GH_TOKEN или в scripts/.env.project
+#   (см. scripts/env.project.example). OAuth «refresh -s project» часто крутит device-login.
+#
+# Использование:
+#   bash scripts/github-project-add-backlog-consilium.sh
 #
 set -euo pipefail
 
@@ -15,6 +18,9 @@ github_project_load_env "$ROOT"
 OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
 REPO_FULL="${GITHUB_REPO:-Gfermoto/BirdLense-Hub}"
 PROJECT_TITLE="${GITHUB_PROJECT_TITLE:-BirdLense Hub — Roadmap}"
+# Issues из docs/ROADMAP.md § Backlog consilium
+ISSUE_START="${GITHUB_BACKLOG_ISSUE_START:-46}"
+ISSUE_END="${GITHUB_BACKLOG_ISSUE_END:-57}"
 
 command -v jq >/dev/null || { echo "Нужна утилита jq"; exit 1; }
 
@@ -37,37 +43,31 @@ if [[ -z "$proj_num" || "$proj_num" == "null" ]]; then
   exit 1
 fi
 
-echo "Проект #$proj_num «$PROJECT_TITLE» — импорт открытых issues/PR из $REPO_FULL"
+echo "Проект #$proj_num «$PROJECT_TITLE» — добавляю issues ${ISSUE_START}..${ISSUE_END} из $REPO_FULL"
 
 added=0
 skipped=0
 failed=0
 
-while IFS= read -r url; do
-  [[ -z "$url" ]] && continue
+for n in $(seq "$ISSUE_START" "$ISSUE_END"); do
+  url="https://github.com/${REPO_FULL}/issues/${n}"
   if gh project item-add "$proj_num" --owner "$OWNER" --url "$url" 2>"$TMPERR"; then
-    echo "  + $url"
+    echo "  + #$n"
     added=$((added + 1))
   else
-    err=$(cat "$TMPERR" | tr '\n' ' ')
-    if echo "$err" | grep -qiE 'already|exist|duplicate|in the project'; then
-      echo "  = уже на доске: $url"
+    err=$(tr '\n' ' ' <"$TMPERR")
+    if echo "$err" | grep -qiE 'already|exist|duplicate|in the project|not found'; then
+      echo "  = #$n (уже на доске или issue не найден)"
       skipped=$((skipped + 1))
     else
-      echo "  ! $url"
-      echo "    $err"
+      echo "  ! #$n — $err"
       failed=$((failed + 1))
     fi
   fi
-done < <(gh issue list -R "$REPO_FULL" --state open --limit 500 --json url --jq '.[].url')
+done
 
 echo ""
-echo "Итого: добавлено $added, уже было $skipped, ошибок $failed"
-
+echo "Итого: добавлено $added, пропущено/уже есть $skipped, ошибок $failed"
 proj_url=$(gh project view "$proj_num" --owner "$OWNER" --format json 2>/dev/null | jq -r '.url // empty')
-if [[ -z "$proj_url" || "$proj_url" == "null" ]]; then
-  proj_url="https://github.com/users/${OWNER}/projects/${proj_num}"
-fi
+[[ -z "$proj_url" || "$proj_url" == "null" ]] && proj_url="https://github.com/users/${OWNER}/projects/${proj_num}"
 echo "Доска: $proj_url"
-echo ""
-echo "В WSL ссылку откройте вручную в Windows-браузере (gh project view --web часто падает на xdg-open)."

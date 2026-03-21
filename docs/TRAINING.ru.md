@@ -40,7 +40,7 @@
 
 ```bash
 # Активировать venv и запустить полный пайплайн
-cd BirdLense
+cd BirdLense-Hub   # корень репозитория (имя папки может быть своим)
 .venv-datasets/bin/python scripts/datasets/download_hf_birds.py \
   --dataset 34data/birds-525-species \
   --output datasets/birds_525_cls \
@@ -61,13 +61,13 @@ cd BirdLense
 ### 1.2 Упаковать в ZIP
 
 ```bash
-cd BirdLense
+cd BirdLense-Hub   # корень репозитория
 zip -r merged_cls.zip datasets/merged_cls
 ```
 
 Или из папки датасета:
 ```bash
-cd BirdLense/datasets
+cd BirdLense-Hub/datasets
 zip -r merged_cls.zip merged_cls
 ```
 

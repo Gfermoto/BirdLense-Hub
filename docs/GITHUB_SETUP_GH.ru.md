@@ -114,35 +114,43 @@ gh api -X POST "repos/$FULL/pages" \
 
 ---
 
-## 4. Защита ветки `main` (один мейнтейнер, без второго человека)
+## 4. Защита веток `main` и `dev` (один мейнтейнер, без второго человека)
 
-Цель: **запрет прямого push в `main`**, merge только через **PR** (с `dev` или фича-веток), **без** обязательных approve (пока нет наблюдателя).
+Цель: **запрет прямого push** в `main` и `dev`; **фичи** — только PR в **`dev`**, затем отдельный PR **`dev` → `main`**. Ветки **`main`** и **`dev`** **нельзя удалить** (`allow_deletions: false`). Остальные ветки после merge **удаляются**, чтобы не копились.
 
-Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json).
+**Автоудаление head после merge** (`delete_branch_on_merge=true`): при merge фича-PR в `dev` GitHub удалит фича-ветку. При merge PR `dev` → `main` head — это `dev`, но **защищённую от удаления** ветку GitHub **не сотрёт** (см. [документацию GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-the-automatic-deletion-of-branches)).
+
+Файл в репозитории: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) — тот же payload для **обеих** веток (`allow_deletions: false`).
 
 Применить:
 
 ```bash
-cd /path/to/BirdLense   # корень клона
+cd /path/to/BirdLense-Hub   # корень клона
 gh api --method PUT "repos/$FULL/branches/main/protection" \
+  --input scripts/github-branch-protection-main.json
+gh api --method PUT "repos/$FULL/branches/dev/protection" \
   --input scripts/github-branch-protection-main.json
 ```
 
-Если GitHub вернёт **422** (политика API менялась), откройте **Settings → Rules → Rulesets** и создайте правило для `main`:
+Включить автоудаление фича-веток после merge (рекомендуется вместе с защитой `main`/`dev`):
+
+```bash
+gh api "repos/$FULL" -X PATCH -f delete_branch_on_merge=true
+```
+
+Если GitHub вернёт **422** (политика API менялась), откройте **Settings → Rules → Rulesets** и создайте правила для `main` и `dev`:
 
 - запрет удаления / force push;
-- требование **Pull request** перед merge;
+- требование **Pull request** перед merge в `main` (для `dev` — по желанию: можно разрешить прямой push мейнтейнеру, но **запрет удаления** оставить);
 - **Required approvals: 0** до появления второго человека.
 
 Потом добавьте **Required approvals: 1** и второго в [`.github/CODEOWNERS`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/CODEOWNERS).
 
-### Важно про обязательные status checks
+### Обязательные status checks (ruleset **Protect**)
 
-Workflow **Documentation site** и **Deploy** срабатывают **не на каждый** push в `main` (фильтры путей и self-hosted runner).  
-**Не включайте** их как required checks, пока не будет:
+На default branch в ruleset включены проверки из workflow **CI**: **`ui-build`** и **`docs`** (они бегают на каждый push/PR в `main` и `dev`). Approve по-прежнему **0** — для одного разработчика.
 
-- либо отдельного workflow **«CI на каждый push в main»**;
-- либо стабильного self-hosted runner для `Deploy`.
+**Не добавляйте** как required checks workflow **Documentation site** или **Deploy**, если они не гарантированно запускаются на каждый merge (фильтры путей, self-hosted).
 
 Иначе merge в `main` будет «висеть» в ожидании пропущенных проверок.
 
@@ -183,9 +191,19 @@ gh secret list -R "$FULL"
 
 ---
 
+## 7a. Projects / доска: если «авторизация по кругу»
+
+Для `gh project …` и скриптов `github-project-*.sh` **не полагайтесь на `gh auth refresh -s project`** — часто бесконечный browser/device flow.
+
+**Стабильный вариант:** [classic PAT](https://github.com/settings/tokens/new) с **repo** + **project** → `export GH_TOKEN=ghp_…` или файл `scripts/.env.project` (шаблон `scripts/env.project.example`, в git не попадает).
+
+---
+
 ## Чеклист после настройки
 
-- [ ] `main` защищён: нет force-push, merge через PR.
+- [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; фичи → PR в `dev`, релиз — PR `dev` → `main`.
+- [ ] **Automatically delete head branches** включено (`delete_branch_on_merge=true`): фича-ветки после merge не копятся; `main`/`dev` не удаляются (защита).
+- [ ] (Опционально) Workflow **Prune remote branches** — только **вручную** (`workflow_dispatch`), если нужно снять забытые ветки с `origin`; обычно хватает удаления ветки **после merge** PR.
 - [ ] Pages: сайт открывается, последний workflow **Documentation site** зелёный на `main`.
 - [ ] Dependabot PR’ы не копятся месяцами.
 - [ ] **Deploy** workflow: либо runner поднят, либо workflow отключён / не required, чтобы не было вечных красных статусов.

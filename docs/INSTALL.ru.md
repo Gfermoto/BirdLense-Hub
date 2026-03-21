@@ -61,15 +61,17 @@ docker compose -f docker-compose.image.yml up -d
 ## Деплой на сервер (make deploy)
 
 ```bash
-cd BirdLense
+cd BirdLense-Hub   # корень клона (имя после git clone; своё имя — нормально)
 make deploy
 ```
 
 Требуется: SSH (настройте `~/.ssh/config` или `DEPLOY_HOST`), Docker на сервере, локально Node.js для сборки UI.
 
-**Настройки:** скопируйте `scripts/deploy.local.sh.example` в `deploy.local.sh` и задайте DEPLOY_HOST, DEPLOY_REMOTE_DIR, DEPLOY_URL, секреты. Файл в .gitignore.
+**Настройки:** скопируйте `scripts/deploy.local.sh.example` в `deploy.local.sh` и задайте `DEPLOY_HOST`, `DEPLOY_URL`, секреты; при необходимости `DEPLOY_REMOTE_DIR`. Файл в .gitignore.
 
-**Что делает:** останавливает контейнеры, собирает UI локально, rsync (исключая data, user_config), записывает секреты в .env, собирает Docker, запускает.
+**Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
+
+**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → автодеплой (self-hosted runner).
 

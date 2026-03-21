@@ -4,10 +4,21 @@ Thank you for your interest in contributing to BirdLense Hub.
 
 ## How to contribute
 
-1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and branch from **`dev`**.
+### Branching (two steps to production)
+
+| Step | Branch flow | Who |
+|------|-------------|-----|
+| **1** | `feature/*` (from **`dev`**) → **Pull Request into `dev`** | Contributors |
+| **2** | **`dev`** → **Pull Request into `main`** | Maintainers (release) |
+
+Do **not** open feature PRs **directly** to `main`. Integrate on `dev` first; only then promote to `main`.
+
+After your PR into `dev` is merged, GitHub **deletes the feature branch** automatically so branches do not pile up. Long-lived **`main`** and **`dev`** stay: they are **protected from deletion**.
+
+1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and create a branch from **`dev`**.
 2. **Make changes** — follow existing code style and conventions.
 3. **Test** — run `make test-web` in `app/` before submitting.
-4. **Submit a Pull Request** to the `dev` branch.
+4. **Open a Pull Request** with base branch **`dev`**.
 
 **Second pair of eyes:** maintainers should use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub and why AI assistants cannot accept repo invites).
 
@@ -64,18 +75,22 @@ Look for issues labelled **`good first issue`** — small, scoped tasks for newc
 
 **Issues**, **Discussions**, and **Projects** are enabled on the repo. Labels `area:*`, `priority:*`, and `triage` support triage; milestones **v0.2.3** and **Backlog (no milestone)** are available.
 
-To create the Kanban project **BirdLense Hub — Roadmap** and link this repository, GitHub CLI needs **Projects** scopes. If `gh auth refresh -s project -s read:project` does nothing, do a full login (or use a **classic** PAT with the `project` scope as `GH_TOKEN` — see script header):
+To create the Kanban project **BirdLense Hub — Roadmap** and link this repository, `gh` must reach the **Projects** API. OAuth + `gh auth refresh -s project` often loops through device login — **use a classic PAT** instead:
 
-```bash
-gh auth logout -h github.com
-gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
-bash scripts/github-bootstrap-project.sh
-```
+1. [New classic token](https://github.com/settings/tokens/new) → enable **repo** + **project**.
+2. `cp scripts/env.project.example scripts/.env.project` and set `export GH_TOKEN="ghp_…"` (file is gitignored via `.env.*`), **or** run `export GH_TOKEN=ghp_…` for one session.
+3. `bash scripts/github-bootstrap-project.sh`
 
 New projects start **empty**. To add all **open issues and PRs** to the board:
 
 ```bash
 bash scripts/github-project-import-open-items.sh
+```
+
+Roadmap backlog issues **#46–#57** (see [docs/ROADMAP.md](docs/ROADMAP.md)):
+
+```bash
+bash scripts/github-project-add-backlog-consilium.sh
 ```
 
 On **WSL**, `gh project view … --web` often fails (`xdg-open: Permission denied`); open the printed **https://github.com/users/…/projects/N** link in your Windows browser instead.

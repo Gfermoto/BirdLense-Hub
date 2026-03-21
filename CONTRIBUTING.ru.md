@@ -4,10 +4,21 @@
 
 ## Как участвовать
 
+### Модель веток (два шага до production)
+
+| Шаг | Куда мержим | Кто |
+|-----|-------------|-----|
+| **1** | Ветка `feature/...` (от **`dev`**) → **Pull Request в `dev`** | Контрибьюторы |
+| **2** | **`dev`** → **Pull Request в `main`** | Мейнтейнеры (релиз) |
+
+**Не открывайте** PR фич **напрямую в `main`**: сначала интеграция в `dev`, затем отдельный PR `dev` → `main`.
+
+После merge PR в **`dev`** GitHub **автоматически удалит** фича-ветку — ветки не копятся. **`main`** и **`dev`** остаются: они **защищены от удаления**.
+
 1. **Клонируйте** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (при необходимости — **fork** в свой аккаунт) и создайте ветку от **`dev`**.
 2. **Вносите изменения** — следуйте существующему стилю кода.
 3. **Тестируйте** — перед отправкой выполните `make test-web` в `app/`.
-4. **Отправьте Pull Request** в ветку `dev`.
+4. **Откройте Pull Request** с базой **`dev`**.
 
 **Вторая пара глаз:** для защищённых веток желательно одобрение другого человека. См. [docs/GOVERNANCE.ru.md](docs/GOVERNANCE.ru.md) — как добавить наблюдателя на GitHub и почему ИИ не может принять приглашение collaborator.
 
@@ -64,18 +75,22 @@ make start
 
 В репозитории включены **Issues**, **Discussions** и **Projects**. Метки `area:*`, `priority:*`, `triage` и вехи **v0.2.3** / **Backlog (no milestone)** уже заведены.
 
-Создать проект **BirdLense Hub — Roadmap**, привязать репозиторий и поле «Поток» (канбан). Нужны права **Projects** у токена gh. Если `gh auth refresh` не помогает — полный вход или classic PAT с scope `project` (см. комментарии в `scripts/github-bootstrap-project.sh`):
+Создать проект **BirdLense Hub — Roadmap**, привязать репозиторий и поле «Поток» (канбан). Для API Projects у `gh` OAuth и `auth refresh -s project` часто крутят **device login** — проще **classic PAT**:
 
-```bash
-gh auth logout -h github.com
-gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project
-bash scripts/github-bootstrap-project.sh
-```
+1. [Новый classic token](https://github.com/settings/tokens/new) → **repo** + **project**.
+2. `cp scripts/env.project.example scripts/.env.project` и вписать `export GH_TOKEN="ghp_…"` (файл не коммитится, шаблон `.env.*`), либо разово `export GH_TOKEN=ghp_…`.
+3. `bash scripts/github-bootstrap-project.sh`
 
 Новый проект изначально **без карточек**. Подтянуть все **открытые issues и PR** на доску:
 
 ```bash
 bash scripts/github-project-import-open-items.sh
+```
+
+Бэклог из ROADMAP (issues **#46–#57**):
+
+```bash
+bash scripts/github-project-add-backlog-consilium.sh
 ```
 
 В **WSL** команда `gh project view … --web` часто падает (`xdg-open: Permission denied`) — откройте напечатанную ссылку вида **https://github.com/users/…/projects/N** в браузере Windows.

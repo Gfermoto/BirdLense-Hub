@@ -1,4 +1,5 @@
-# Только workflow_dispatch: снять с origin все ветки кроме main и dev (по необходимости).
+# Опционально: снять с origin ветки кроме main и dev (ручной запуск мейнтейнером).
+# Обычная уборка — только автоматическое удаление head-ветки после merge PR (delete_branch_on_merge).
 name: Prune remote branches
 
 on:
@@ -11,7 +12,7 @@ jobs:
   prune:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete all branches except main and dev
+      - name: Delete remote branches except main and dev (manual only)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

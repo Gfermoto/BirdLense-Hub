@@ -79,7 +79,7 @@ Pick what matches you — you can read the rest as reference.
 | **GitHub CLI setup** (personal repo) | [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | **Wiki + CI reports** (Summary / Artifact / optional Wiki push) | [WIKI_AUTOMATION](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
 | Translation status | [I18N_STATUS](./I18N_STATUS.md) |
-| **Suggested nav for a static doc site** | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| **Site sections ↔ files** (keep in sync with `mkdocs.yml`) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
 | **MkDocs site (build & GitHub Pages)** | [Documentation](./Documentation.md) § *Static documentation site* |
 | Historical notes | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (in repo; excluded from MkDocs build) |
 
