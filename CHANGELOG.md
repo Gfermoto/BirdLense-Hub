@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- CI: job **`docker-tests`** — сборка образа `birdlense` + `make test` + `make test-web` на каждый PR/push в `main` и `dev` (см. [TESTING](docs/TESTING.md)); в ruleset **Protect** добавить required check **`docker-tests`**.
+- CI: job **`docker-tests`** — сборка образа `birdlense` + `make test` + `make test-web` на каждый PR/push в `main` и `dev` (см. [TESTING](docs/TESTING.md)); в ruleset **Protect** на `main` required checks: **`ui-build`**, **`docs`**, **`docker-tests`**.
 - Скрипты GitHub Project: `scripts/github-project-pat-hint.sh`, загрузка `scripts/.env.project`, шаблон `scripts/env.project.example` — **classic PAT** вместо OAuth refresh (без круга device-login).
 - Roadmap: секция **Backlog consilium (March 2026)** + 11 активных GitHub Issues [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) для доски Project ([#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) ARM — вне скоупа).
 - CI: workflow `prune-branches.yml` — опционально, только **`workflow_dispatch`**: снятие с `origin` веток кроме **`main`** и **`dev`** (без cron; обычная уборка — после merge PR).
