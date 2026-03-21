@@ -8,7 +8,7 @@ Full Russian walkthrough: **[GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md)** (
 ./scripts/github-repo-bootstrap.sh
 ```
 
-Branch protection: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) for **both** `main` and `dev` (`allow_deletions: false`). **Workflow:** feature PR → **`dev`**, then **`dev` → `main`**. Turn **on** **Automatically delete head branches** so merged feature branches are removed; protected `main`/`dev` are not deleted. Rulesets + **`ui-build`** / **`docs`** / **`docker-tests`** — see [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) §4.
+Branch protection: [`scripts/github-branch-protection-main.json`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/github-branch-protection-main.json) for **both** `main` and `dev` (`allow_deletions: false`). **Workflow:** feature PR → **`dev`**, then **`dev` → `main`**. Turn **on** **Automatically delete head branches** so merged feature branches are removed; protected `main`/`dev` are not deleted. Rulesets + **`ui-build`** / **`docs`** / **`docker-tests`** (required on `main` via ruleset **Protect**) — see [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) §4.
 
 Wiki + CI reports: [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md).
 
