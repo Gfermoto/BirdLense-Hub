@@ -108,7 +108,7 @@ Server checks `access_role` on each gated request.
 
 ## Future ideas (not roadmap commitments)
 
-Community / donation UX (leaderboards, “unlock with support”, badges) is sketched in [ROADMAP](./ROADMAP.md). Config hooks such as `general.donate_url` already exist — see [CONFIGURATION](./CONFIGURATION.md).
+Community / donation UX (leaderboards, “unlock with support”, badges) is listed under **Future work candidates** in [ROADMAP](./ROADMAP.md). Config hook `general.donate_url` already exists — see [CONFIGURATION](./CONFIGURATION.md).
 
 ---
 

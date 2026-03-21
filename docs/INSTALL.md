@@ -1,6 +1,6 @@
 # Installation and Deployment — BirdLense Hub
 
-BirdLense Hub — bird feeder monitoring: video and audio detection, recordings, analytics. Docker on x86.
+BirdLense Hub — bird feeder monitoring: video and audio detection, recordings, analytics. Docker on **x86_64** (Intel or AMD).
 
 **New here?** Read [OVERVIEW](./OVERVIEW.md) (what it is, who it’s for). **Recipes:** [SCENARIOS](./SCENARIOS.md).
 
@@ -10,7 +10,7 @@ BirdLense Hub — bird feeder monitoring: video and audio detection, recordings,
 
 | Component | Description |
 |-----------|-------------|
-| **Docker** | x86/amd64, Compose v2 |
+| **Docker** | **x86_64 / amd64** (Intel or AMD), Compose v2 — ARM/aarch64 not supported |
 | **Go2RTC** | Video streams from IP cameras (standalone or Frigate) |
 | **MQTT** (optional) | Frigate events, BirdNET sightings |
 

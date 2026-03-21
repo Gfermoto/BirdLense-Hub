@@ -5,7 +5,7 @@ __pycache__
 *.db
 app/data/recordings
 app/data/notify_temp
-app/data/processor.log
+app/data/processor.log*
 app.log
 .DS_Store
 /datasets

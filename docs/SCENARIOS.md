@@ -72,7 +72,7 @@
 
 ## Scenario 6: Server deployment
 
-See [INSTALL.md](./INSTALL.md) — “Server deployment (`make deploy`)”. x86/amd64 only; ARM not supported.
+See [INSTALL.md](./INSTALL.md) — “Server deployment (`make deploy`)”. **x86_64 / amd64** (Intel or AMD) only; ARM / aarch64 not supported or planned.
 
 ---
 
