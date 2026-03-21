@@ -87,7 +87,7 @@ make start
 bash scripts/github-project-import-open-items.sh
 ```
 
-Бэклог из ROADMAP (issues **#46–#57**):
+Бэклог из ROADMAP (issues **#46–#48, #50–#57**; **#49** не в скоупе — только x86):
 
 ```bash
 bash scripts/github-project-add-backlog-consilium.sh

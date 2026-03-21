@@ -2,9 +2,7 @@
 
 [English](./ROADMAP.md)
 
----
-
-План развития и текущий стек. Март 2026.
+Направление развития и текущий стек (**март 2026**). **Что уже в релизах** — [Changelog](./project/changelog.md) и [FEATURES](./FEATURES.ru.md).
 
 ---
 
@@ -14,7 +12,7 @@
 |                 | Версия                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | **Ultralytics** | 8.4.21 (Docker base)                                                                       |
-| **Платформа**   | x86/amd64 (ARM не поддерживается)                                                          |
+| **Платформа**   | **только x86/amd64** (Intel или AMD, 64-bit). ARM / Apple Silicon / aarch64 — **не поддерживается и не планируется** |
 | **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей |
 | **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                             |
 | **US-модель**   | `best_US.pt` — NABirds (резерв)                                                            |
@@ -35,7 +33,7 @@
 
 **Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
 
-**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
 
 **Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
 
@@ -48,24 +46,45 @@ bash scripts/github-project-add-backlog-consilium.sh
 | # | Тема | Issue | Приоритет / зона |
 |---|------|-------|------------------|
 | 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) | P2, web |
-| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | P3, infra |
+| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | P3, infra, documentation |
 | 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | P2, processor |
-| 4 | Спайк ARM64 Docker | [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) | P3, infra |
-| 5 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | P2, processor |
-| 6 | UI: бэкап/восстановление SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | P3, web |
-| 7 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | P3, web |
-| 8 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) | P3, infra |
-| 9 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | P3, web |
-| 10 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | P3, web |
-| 11 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
-| 12 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | P3, docs |
+| 4 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | P2, processor |
+| 5 | UI: бэкап/восстановление SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | P3, web |
+| 6 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | P3, web |
+| 7 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) | P3, infra |
+| 8 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) | P3, web |
+| 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | P3, web |
+| 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
+| 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) | P3, docs |
+
+### Триаж: Issue или Discussion
+
+| Куда | Когда |
+|------|--------|
+| **[Issue](https://github.com/Gfermoto/BirdLense-Hub/issues)** | Понятный объём, критерий готовности, метки `area:*` и приоритет — можно класть на **Project**. |
+| **[Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** | Идея на проработку, несколько вариантов, «делать или нет», сбор мнений до задачи. |
+
+**После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
 ---
 
-## Идеи (backlog)
+## Кандидаты на будущее (ещё без issue)
 
-От простого к сложному:
+Темы для отдельных **Issues**, когда появится слот (сейчас не на доске консилиума):
 
+| Тема | Зачем |
+|------|--------|
+| **Доступность (a11y)** | Клавиатура, фокус, контраст — логично после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
+| **Расширение E2E (Playwright)** | Не только смоук: логин, таймлайн, критичные настройки — баланс с CI и стабильностью. |
+| **Секреты в проде** | Документированная ротация / операционный путь для `secrets.*` (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Синхронизация версий стека** | После bump Ultralytics/React/base image — **этот док**, Docker и release notes одним проходом. |
+| **Community / донаты в UI** | Лидерборды, бейджи поддержки и т.п. — на стадии идей; ссылка на донаты уже есть: `general.donate_url` — [CONFIGURATION](./CONFIGURATION.ru.md). |
+
+---
+
+## Отгруженные идеи (архив)
+
+Исторический чеклист **от простого к сложному** (все строки — ✅). Сверяйтесь с [FEATURES](./FEATURES.ru.md); **не** воспринимать таблицу как backlog задач.
 
 | Фича                                   | Описание                                                                                      | Сложность | Риск    |
 | -------------------------------------- | --------------------------------------------------------------------------------------------- | --------- | ------- |
@@ -88,13 +107,15 @@ bash scripts/github-project-add-backlog-consilium.sh
 | ✅ Сравнение с регионом               | Карточка на Overview: ваши виды в топе региона + полный топ региона (eBird API)               | Высокая   | Средний |
 | ✅ Закат и рассвет на карточке погоды | Восход, закат, рассвет, сумерки, полдень — дуга солнца (в стиле Horizon Card) на выбранную дату в локации из настроек | Низкая    | Нет     |
 
-### UX backlog
+**Новые идеи:** [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) или Issue по таблице триажа выше.
 
-| # | Улучшение | Описание | Статус |
-|---|-----------|----------|--------|
-| 4 | Календарь активности | MonthPicker — выбор месяца (сейчас только текущий) | ✅ v0.1.8 |
-| 5 | Неизвестные — пустое состояние | Подсказка: «Попробуйте другой день. Bird всегда здесь для проверки.» | ✅ |
-| 6 | Неизвестные — выбор времени суток | DatePicker + Утро/День/Вечер/Ночь (как Timeline) вместо прокрутки по часам | ✅ v0.1.9 |
+### UX-улучшения (отгружено)
+
+| Улучшение | Статус |
+|-----------|--------|
+| Календарь активности (MonthPicker) | ✅ v0.1.8 |
+| Неизвестные — пустое состояние (подсказка) | ✅ |
+| Неизвестные — время суток (как в Timeline) | ✅ v0.1.9 |
 
 ---
 
@@ -107,7 +128,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте |
 | **Релизы** | Теги + GitHub Release → semver-образ Docker + деплой Pages |
 
-Таблица бэклога выше — смесь истории и идей; перед задачей сверяйтесь с [FEATURES](./FEATURES.ru.md).
+Таблица **архива** выше — только история. Активная работа — issues **консилиума** и блок **кандидатов**; сверяйтесь с [FEATURES](./FEATURES.ru.md).
 
 ---
 

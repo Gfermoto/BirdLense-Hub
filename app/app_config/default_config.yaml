@@ -35,7 +35,7 @@ processor:
   dataset_min_confidence: 0.5
   detection_strategy: "two_stage"
   models:
-    # x86/amd64: use .pt (PyTorch). ARM: use best_ncnn_model
+    # Продакшен: x86/amd64 + веса .pt (PyTorch). single_stage (NCNN) — опционально на amd64; ARM не поддерживается.
     single_stage: "models/detection/nabirds_yolov8n_ncnn_model"
     binary: "models/detection/weights/best.pt"
     classifier: "models/classification/weights/best.pt"
