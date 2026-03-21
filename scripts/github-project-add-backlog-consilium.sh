@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # Добавляет на GitHub Project карточки по issues бэклога из ROADMAP (консилиум): #46–#57.
-# Нужны те же права, что для github-project-import-open-items.sh:
-#   gh auth login … -s project -s read:project
+#
+# Доступ к API Projects (надёжно): classic PAT в GH_TOKEN или в scripts/.env.project
+#   (см. scripts/env.project.example). OAuth «refresh -s project» часто крутит device-login.
 #
 # Использование:
 #   bash scripts/github-project-add-backlog-consilium.sh
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=github-project-pat-hint.sh
+source "$SCRIPT_DIR/github-project-pat-hint.sh"
+github_project_load_env "$ROOT"
 
 OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
 REPO_FULL="${GITHUB_REPO:-Gfermoto/BirdLense-Hub}"
@@ -21,11 +28,10 @@ TMPERR=$(mktemp)
 trap 'rm -f "$TMPERR"' EXIT
 
 if ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>"$TMPERR"; then
-  echo "Нет доступа к Projects (нужны scope project / read:project):"
+  echo "Нет доступа к GitHub Projects:"
   cat "$TMPERR"
   echo ""
-  echo "Выполните: gh auth refresh -h github.com -s read:project -s project"
-  echo "или: gh auth login -h github.com -w -s repo -s read:org -s gist -s project -s read:project"
+  github_project_pat_hint
   exit 1
 fi
 

@@ -33,10 +33,9 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 **Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
 
-**Put them on the Project board** (needs `project` + `read:project` on `gh`):
+**Put them on the Project board:** OAuth scopes often loop on device login — use a **classic PAT** (`repo` + `project`) in `GH_TOKEN` or `scripts/.env.project` (see `scripts/env.project.example`), then:
 
 ```bash
-gh auth refresh -h github.com -s read:project -s project   # or full `gh auth login` with those scopes
 bash scripts/github-project-add-backlog-consilium.sh
 ```
 
