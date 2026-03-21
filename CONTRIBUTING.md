@@ -17,7 +17,7 @@ After your PR into `dev` is merged, GitHub **deletes the feature branch** automa
 
 1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and create a branch from **`dev`**.
 2. **Make changes** — follow existing code style and conventions.
-3. **Test** — run `make test-web` in `app/` before submitting.
+3. **Test** — in `app/`: `make test` and `make test-web` (Docker), or ensure the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
 4. **Open a Pull Request** with base branch **`dev`**.
 
 **Second pair of eyes:** maintainers should use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub and why AI assistants cannot accept repo invites).

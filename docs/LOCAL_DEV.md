@@ -11,8 +11,8 @@ Build and run the full stack on your machine **without** a production server. Id
 | Tool | Notes |
 |------|--------|
 | **Docker** + **Compose v2** | Required |
-| **Node.js 18+** | UI build |
-| **npm** | UI build |
+| **Node.js 22** (LTS, как в CI и `Dockerfile` UI stage) | UI build |
+| **npm** | UI build (10.x с Node 22) |
 
 Verify:
 

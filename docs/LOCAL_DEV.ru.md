@@ -9,8 +9,8 @@
 ## Требования
 
 - **Docker** и **Docker Compose**
-- **Node.js 18+** (для сборки UI)
-- **npm** (для UI)
+- **Node.js 22** (LTS — как в CI и в UI stage `Dockerfile`)
+- **npm** (для UI; в репо есть `app/ui/.nvmrc` и Volta в `package.json`)
 
 Проверка:
 ```bash
