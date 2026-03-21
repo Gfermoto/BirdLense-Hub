@@ -332,7 +332,7 @@ To resume elsewhere (another Colab session or machine):
    app/processor/models/classification/weights/best.pt
    ```
    Keep US backup as `best_US.pt`.  
-3. If your deployment uses **NCNN**, export per Ultralytics docs / internal scripts (see [ROADMAP](./ROADMAP.md)).  
+3. If you use **NCNN** (`single_stage`) on **x86/amd64**, export per Ultralytics docs / internal scripts (see [ROADMAP](./ROADMAP.md)). ARM is not a supported target.  
 4. Deploy: `make deploy` (or your pipeline).
 
 ---

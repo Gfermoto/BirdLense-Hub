@@ -355,8 +355,8 @@ model.train(
    best.pt → app/processor/models/classification/weights/best.pt
    ```
    (заменит текущую модель; US — резерв в `best_US.pt`)
-3. Конвертация в NCNN (если используется NCNN в production):
-   - См. [ROADMAP](./ROADMAP.ru.md) или скрипты экспорта Ultralytics
+3. Конвертация в NCNN (если на **x86/amd64** используется `single_stage` / NCNN):
+   - См. [ROADMAP](./ROADMAP.ru.md) или скрипты экспорта Ultralytics. ARM не является целевой платформой.
 4. Деплой: `make deploy`
 
 ---

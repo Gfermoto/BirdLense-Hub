@@ -87,7 +87,7 @@ New projects start **empty**. To add all **open issues and PRs** to the board:
 bash scripts/github-project-import-open-items.sh
 ```
 
-Roadmap backlog issues **#46–#57** (see [docs/ROADMAP.md](docs/ROADMAP.md)):
+Roadmap backlog issues **#46–#48, #50–#57** (see [docs/ROADMAP.md](docs/ROADMAP.md); **#49** skipped — x86-only):
 
 ```bash
 bash scripts/github-project-add-backlog-consilium.sh
