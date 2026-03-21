@@ -28,6 +28,8 @@ cd app && make test
 
 Runs processor `unittest` inside Docker (detection strategy, decision logic). Requires ultralytics/ncnn in the image.
 
+> **Memory / RAM:** Processor tests load YOLO/NCNN inside the container and can use **several GB of RAM**. On a **small VPS or laptop** with tight limits, `make test` (or the **`docker-tests`** CI job) may exit with **SIGKILL / exit 137** (OOM). Prefer a machine with **≥8 GB** free for Docker, close other heavy apps, or run tests on **GitHub Actions** instead of locally.
+
 ### Web API tests
 
 ```bash
@@ -57,6 +59,8 @@ E2E runs against a **live** instance (UI + API).
 **Suites:** `smoke.spec.ts` (home, nav, Settings, Live), `api.spec.ts` (health, status, settings, cameras, weather, feed dispense), `settings.spec.ts` (form, Video/MQTT/Feed sections).
 
 API-only (no browser): `cd app/e2e && npm test -- --grep @api`
+
+**Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **weekly** and on **workflow_dispatch** — not a required check; use it to catch regressions without running Playwright on every PR.
 
 ### MQTT & ESPHome in `/api/ui/status`
 

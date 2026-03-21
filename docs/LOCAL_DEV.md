@@ -11,7 +11,7 @@ Build and run the full stack on your machine **without** a production server. Id
 | Tool | Notes |
 |------|--------|
 | **Docker** + **Compose v2** | Required |
-| **Node.js 22** (LTS, как в CI и `Dockerfile` UI stage) | UI build |
+| **Node.js 22** (LTS — matches CI and UI `Dockerfile` stage) | UI build |
 | **npm** | UI build (10.x с Node 22) |
 
 Verify:
@@ -20,6 +20,45 @@ Verify:
 docker --version && docker compose version
 node --version && npm --version
 ```
+
+### Node 22 on the host (WSL / macOS / Linux)
+
+The UI lives in **`app/ui/`** with **`.nvmrc`** → `22`. Pick one:
+
+| Tool | Example |
+|------|---------|
+| **nvm** | `cd app/ui && nvm install && nvm use` |
+| **fnm** | `cd app/ui && fnm use` |
+| **Volta** | Uses `engines` + `volta` in `app/ui/package.json` automatically when you `cd app/ui` (Volta enabled). |
+
+**Cursor / VS Code:** open the repo from the root; for terminal tasks that build UI, `cd app/ui` first so the right Node is active.
+
+### Python: app vs docs site
+
+| Context | Python | Note |
+|---------|--------|------|
+| **BirdLense container** | **3.11** (Ultralytics base image) | Web + processor — do not assume 3.12 inside the image. |
+| **MkDocs / `mkdocs build`** | **3.12** recommended (same as CI `docs` job) | Separate venv — see below. |
+
+### MkDocs (documentation site) — local venv
+
+From the **repository root** (not `app/`):
+
+```bash
+python3 -m venv .venv-docs
+.venv-docs/bin/pip install -r requirements-docs.txt
+.venv-docs/bin/python3 scripts/check-docs-version.py
+.venv-docs/bin/mkdocs build --strict
+```
+
+Details: [Documentation](./Documentation.md).
+
+### Maintainer checklist (before a release)
+
+- [ ] `cd app && make test && make test-web` (or green **CI** on `dev` → `main`)
+- [ ] From repo root: `mkdocs build --strict` (or `.venv-docs` commands above)
+- [ ] Optional: `cd app && make start` then `make test-e2e` (or workflow **E2E (Playwright)** → *Run workflow*)
+- [ ] After deploy: smoke `curl`/UI per [TESTING](./TESTING.md) §2
 
 ---
 

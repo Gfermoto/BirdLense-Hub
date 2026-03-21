@@ -51,7 +51,11 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 - Keep PRs focused — one feature or fix per PR.
 - Add tests for new API endpoints or processor logic.
 - Update documentation if behavior changes.
-- Ensure `make test-web` passes.
+- Ensure **`make test`** and **`make test-web`** pass in `app/` (Docker), or the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
+
+### Maintainer checklist (before release)
+
+See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) § *Maintainer checklist* — `make test` / `make test-web`, `mkdocs build --strict`, optional E2E, post-deploy smoke.
 
 ## Reporting issues
 

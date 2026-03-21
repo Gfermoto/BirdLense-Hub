@@ -20,6 +20,8 @@ How this project structures docs for contributors and readers.
 
 ## Static documentation site (MkDocs + GitHub Pages)
 
+**Python version:** The **BirdLense application** Docker image uses **Python 3.11** (Ultralytics base). **MkDocs** for this repo is built with **Python 3.12** in CI and locally — use a **separate venv** (e.g. `.venv-docs`); do not assume the app container’s Python for doc builds.
+
 The repository ships **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)** at the root: **MkDocs Material**, `docs_dir: docs`, `nav` aligned with [SITE_MAP.md](./SITE_MAP.md). Canonical policy files that live at the repo root (Contributing, Security policy, Changelog, OpenAPI YAML) are surfaced on the site via short pages under [docs/project/](./project/contributing.md) so internal links stay inside `docs/` and work when the site is published.
 
 ### Build locally

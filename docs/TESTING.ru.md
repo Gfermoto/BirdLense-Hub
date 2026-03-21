@@ -28,6 +28,8 @@ cd app && make test
 
 Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужны ultralytics, ncnn — тесты выполняются в контейнере.
 
+> **Память (RAM):** тесты процессора поднимают YOLO/NCNN в контейнере и могут занять **несколько ГБ ОЗУ**. На **слабом VPS или ноутбуке** с лимитом памяти `make test` (или job **`docker-tests`** в CI) может завершиться **SIGKILL / код 137** (OOM). Лучше **≥8 ГБ** свободно под Docker, закрыть тяжёлые приложения или гонять тесты на **GitHub Actions**, а не только локально.
+
 ### API-тесты (web)
 
 ```bash
@@ -90,6 +92,8 @@ E2E проверяют UI и API на работающем экземпляре.
 ```bash
 cd app/e2e && npm test -- --grep @api
 ```
+
+**CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **раз в неделю** и по **workflow_dispatch**; в ruleset **не required** — для отлова регрессий без Playwright на каждом PR.
 
 ### Статус MQTT и ESPHome
 

@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `app/ui/package.json`: поле **`engines`** (Node **22.x**, минимум **22.13**; npm **>=10**) — согласовано с CI и UI Docker stage.
+- `.vscode/extensions.json` — рекомендуемые расширения (ESLint, Prettier, Docker).
+- CI: workflow **`E2E (Playwright)`** (`.github/workflows/e2e-scheduled.yml`) — раз в неделю + `workflow_dispatch`; **не** required в ruleset.
 - CI: job **`docker-tests`** — сборка образа `birdlense` + `make test` + `make test-web` на каждый PR/push в `main` и `dev` (см. [TESTING](docs/TESTING.md)); в ruleset **Protect** на `main` required checks: **`ui-build`**, **`docs`**, **`docker-tests`**.
 - Скрипты GitHub Project: `scripts/github-project-pat-hint.sh`, загрузка `scripts/.env.project`, шаблон `scripts/env.project.example` — **classic PAT** вместо OAuth refresh (без круга device-login).
 - Roadmap: секция **Backlog consilium (March 2026)** + 11 активных GitHub Issues [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) для доски Project ([#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) ARM — вне скоупа).
@@ -29,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
 - Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`).
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
+- Доки: [LOCAL_DEV](docs/LOCAL_DEV.md) / RU — Node 22 (nvm/fnm/Volta), WSL/Cursor, Python **3.11** (приложение) vs **3.12** (MkDocs), venv для доков, чеклист перед релизом; [TESTING](docs/TESTING.md) / RU — предупреждение про RAM и OOM при `make test`, workflow E2E по расписанию; [Documentation](docs/Documentation.md) / RU — явное разделение Python для MkDocs и runtime; [CONTRIBUTING](CONTRIBUTING.md) / RU — PR: полный набор тестов; [README](README.md) / RU — блок **Developers**.
 
 ### Fixed
 
