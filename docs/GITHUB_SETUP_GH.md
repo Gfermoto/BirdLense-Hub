@@ -17,3 +17,5 @@ Set default repo for `gh` (avoids wrong target on `pr merge`):
 ```bash
 gh repo set-default Gfermoto/BirdLense-Hub
 ```
+
+**Projects / Kanban scripts:** if `gh auth refresh -s project` loops forever, use a **classic PAT** (`repo` + `project`) as `GH_TOKEN` or in `scripts/.env.project` — see [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) §7a and `scripts/env.project.example`.

@@ -2,9 +2,15 @@
 # Добавляет в GitHub Project все открытые issues и pull requests из репозитория.
 # Повторный запуск безопасен: уже добавленные элементы пропускаются (по тексту ошибки API).
 #
-# Те же права, что для github-bootstrap-project.sh (scope project / read:project).
+# Доступ: GH_TOKEN (classic PAT: repo + project) или scripts/.env.project — см. env.project.example
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=github-project-pat-hint.sh
+source "$SCRIPT_DIR/github-project-pat-hint.sh"
+github_project_load_env "$ROOT"
 
 OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
 REPO_FULL="${GITHUB_REPO:-Gfermoto/BirdLense-Hub}"
@@ -16,8 +22,10 @@ TMPERR=$(mktemp)
 trap 'rm -f "$TMPERR"' EXIT
 
 if ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>"$TMPERR"; then
-  echo "Нет доступа к Projects:"
+  echo "Нет доступа к GitHub Projects:"
   cat "$TMPERR"
+  echo ""
+  github_project_pat_hint
   exit 1
 fi
 
