@@ -308,6 +308,30 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, dashboard from metrics.
 
+### Alerting (Prometheus + Alertmanager)
+
+Ready-made examples live in the repo (tune thresholds and job labels to match your scrape config):
+
+| File | Purpose |
+|------|---------|
+| [`examples/prometheus/birdlense.rules.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/examples/prometheus/birdlense.rules.yml) | Alerts: target down, disk/memory/CPU pressure, optional “no new detections in 24h” |
+| [`examples/prometheus/alertmanager.birdlense.example.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/examples/prometheus/alertmanager.birdlense.example.yml) | Minimal Alertmanager `route` / `receivers` skeleton |
+
+**Prometheus** — add `rule_files` next to `scrape_configs`:
+
+```yaml
+rule_files:
+  - 'birdlense.rules.yml'   # path to the copied example
+```
+
+**Notes:**
+
+- Default rules assume scrape **`job_name: birdlense`** (see `up{job="birdlense"}`). If you rename the job, update every `job=` matcher in the rule file.
+- **`BirdlenseDetectionsUnchanged24h`** is optional and noisy when the feeder is off-season — increase `for`, mute in Alertmanager, or remove the rule group `birdlense-optional-activity`.
+- GPU alerts are not included: `birdlense_gpu_usage_percent` is only exported when the container sees a usable GPU sysfs path; “stall” is better diagnosed via **System → Processor logs** and `/api/ui/status`.
+
+Tracked as [issue #57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+
 ---
 
 ## Secrets

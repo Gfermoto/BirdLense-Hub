@@ -307,6 +307,30 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, дашборд по метрикам.
 
+### Алертинг (Prometheus + Alertmanager)
+
+Готовые примеры в репозитории (подстройте пороги и имя `job` под ваш `scrape_configs`):
+
+| Файл | Назначение |
+|------|------------|
+| [`examples/prometheus/birdlense.rules.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/examples/prometheus/birdlense.rules.yml) | Алерты: таргет недоступен, диск/память/CPU, опционально «нет новых детекций за 24 ч» |
+| [`examples/prometheus/alertmanager.birdlense.example.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/examples/prometheus/alertmanager.birdlense.example.yml) | Каркас Alertmanager: `route` / `receivers` |
+
+**Prometheus** — добавьте `rule_files` рядом со `scrape_configs`:
+
+```yaml
+rule_files:
+  - 'birdlense.rules.yml'   # путь к скопированному примеру
+```
+
+**Замечания:**
+
+- Правила по умолчанию ожидают scrape с **`job_name: birdlense`** (см. `up{job="birdlense"}`). Если имя job другое — обновите матчеры в файле правил.
+- **`BirdlenseDetectionsUnchanged24h`** — опционально: срабатывает в межсезонье или при выключенной кормушке; увеличьте `for`, замьте в Alertmanager или удалите группу `birdlense-optional-activity`.
+- Отдельных правил по GPU нет: `birdlense_gpu_usage_percent` экспортируется только при доступной статистике GPU; «зависания» смотрите в **System → Processor logs** и `/api/ui/status`.
+
+Задача: [issue #57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
+
 ---
 
 ## Secrets

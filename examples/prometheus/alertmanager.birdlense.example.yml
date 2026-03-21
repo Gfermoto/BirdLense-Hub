@@ -1,0 +1,38 @@
+# Example Alertmanager configuration snippet for BirdLense alerts.
+# Merge with your global config; adjust receivers (email, Slack, Telegram webhook, etc.).
+#
+# Docs: https://prometheus.io/docs/alerting/latest/configuration/
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: ["alertname", "job", "instance"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = critical
+      receiver: critical
+      continue: true
+
+receivers:
+  - name: default
+    # webhook_configs:
+    #   - url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ'
+  - name: critical
+    # email_configs:
+    #   - to: 'ops@example.com'
+    #     from: 'alertmanager@example.com'
+    #     smarthost: 'smtp.example.com:587'
+    #     auth_username: 'alertmanager@example.com'
+    #     auth_password: 'secret'
+
+inhibit_rules:
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ["instance", "job"]
