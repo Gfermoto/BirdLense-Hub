@@ -12,6 +12,14 @@
 
 ## 1. Automated tests (development & CI)
 
+On **GitHub** (PR/push to `main` and `dev`), workflow **CI** runs:
+
+- **`ui-build`** — `npm ci` + production build of the SPA  
+- **`docs`** — MkDocs `--strict` + docs version check  
+- **`docker-tests`** — `docker compose build` + `make test` + `make test-web` (same as below)
+
+Add **`docker-tests`** as a **required** check in the **Protect** ruleset next to `ui-build` and `docs` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)).
+
 ### Processor unit tests
 
 ```bash

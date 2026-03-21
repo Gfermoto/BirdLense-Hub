@@ -12,6 +12,14 @@
 
 ## Тесты (разработка, CI)
 
+На **GitHub** (PR/push в `main` и `dev`) workflow **CI** запускает:
+
+- **`ui-build`** — `npm ci` + production-сборка SPA  
+- **`docs`** — MkDocs `--strict` + проверка версии в доках  
+- **`docker-tests`** — `docker compose build` + `make test` + `make test-web` (как ниже)
+
+Добавьте job **`docker-tests`** в **required checks** ruleset **Protect** рядом с `ui-build` и `docs` (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)).
+
 ### Unit-тесты (processor)
 
 ```bash
