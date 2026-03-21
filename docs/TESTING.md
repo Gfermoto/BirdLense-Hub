@@ -18,7 +18,7 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **CI** runs:
 - **`docs`** — MkDocs `--strict` + docs version check  
 - **`docker-tests`** — `docker compose build` + `make test` + `make test-web` (same as below)
 
-Add **`docker-tests`** as a **required** check in the **Protect** ruleset next to `ui-build` and `docs` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)).
+**`docker-tests`** is a **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)).
 
 ### Processor unit tests
 

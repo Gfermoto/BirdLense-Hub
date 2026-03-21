@@ -148,9 +148,7 @@ gh api "repos/$FULL" -X PATCH -f delete_branch_on_merge=true
 
 ### Обязательные status checks (ruleset **Protect**)
 
-На default branch в ruleset включены проверки из workflow **CI**: **`ui-build`**, **`docs`** и **`docker-tests`** (processor + web pytest в Docker; долгий job из‑за образа Ultralytics). Approve по-прежнему **0** — для одного разработчика.
-
-Если **`docker-tests`** ещё не в ruleset — добавьте в **Settings → Rules → Protect → Require status checks** (имя job как в Actions).
+На default branch (`main`) в ruleset **Protect** включены проверки из workflow **CI**: **`ui-build`**, **`docs`** и **`docker-tests`** (processor + web pytest в Docker; ~6 мин на раннере). Approve по-прежнему **0** — для одного разработчика.
 
 **Не добавляйте** как required checks workflow **Documentation site** или **Deploy**, если они не гарантированно запускаются на каждый merge (фильтры путей, self-hosted).
 
