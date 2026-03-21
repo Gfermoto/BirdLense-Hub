@@ -37,10 +37,9 @@
 
 **Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
 
-**Карточки на доске Project** (нужны scope `project` и `read:project` у `gh`):
+**Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
 
 ```bash
-gh auth refresh -h github.com -s read:project -s project   # или полный gh auth login с этими scope
 bash scripts/github-project-add-backlog-consilium.sh
 ```
 

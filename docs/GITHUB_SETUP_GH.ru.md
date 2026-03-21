@@ -191,6 +191,14 @@ gh secret list -R "$FULL"
 
 ---
 
+## 7a. Projects / доска: если «авторизация по кругу»
+
+Для `gh project …` и скриптов `github-project-*.sh` **не полагайтесь на `gh auth refresh -s project`** — часто бесконечный browser/device flow.
+
+**Стабильный вариант:** [classic PAT](https://github.com/settings/tokens/new) с **repo** + **project** → `export GH_TOKEN=ghp_…` или файл `scripts/.env.project` (шаблон `scripts/env.project.example`, в git не попадает).
+
+---
+
 ## Чеклист после настройки
 
 - [ ] `main` и `dev` защищены: нет force-push, **нельзя удалить** ветку; фичи → PR в `dev`, релиз — PR `dev` → `main`.
