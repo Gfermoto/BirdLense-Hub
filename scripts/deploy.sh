@@ -117,9 +117,17 @@ echo "  - Docker logs (последние 25 строк):"
 ssh ${SSH_OPTS} "${HOST}" "docker logs birdlense --tail=25 2>&1" | tail -30
 echo ""
 echo "  - API health:"
-curl -sf "${DEPLOY_URL}/api/ui/health" >/dev/null && echo "    OK" || echo "    FAIL (проверьте ${DEPLOY_URL})"
+health_ok=0
+for htry in $(seq 1 5); do
+  if curl -sS -L --max-time 20 -f "${DEPLOY_URL}/api/ui/health" >/dev/null 2>&1; then
+    health_ok=1
+    break
+  fi
+  [[ $htry -lt 5 ]] && sleep 5
+done
+[[ $health_ok -eq 1 ]] && echo "    OK" || echo "    FAIL (проверьте ${DEPLOY_URL}; с хоста: curl -sS -L ${DEPLOY_URL}/api/ui/health)"
 echo "  - API cameras:"
-cameras=$(curl -sf "${DEPLOY_URL}/api/ui/cameras" 2>/dev/null | head -c 150) && echo "    ${cameras}..." || echo "    (не доступен)"
+cameras=$(curl -sS -L --max-time 20 -f "${DEPLOY_URL}/api/ui/cameras" 2>/dev/null | head -c 150) && echo "    ${cameras}..." || echo "    (не доступен)"
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Настройки и записи на сервере не тронуты."
