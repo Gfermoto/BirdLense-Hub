@@ -40,6 +40,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | MCP | [MCP_SETUP.md](./MCP_SETUP.md) |
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
+| CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
 | Testing | [TESTING.md](./TESTING.md) |
 | UX: Unknowns vs video | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
 

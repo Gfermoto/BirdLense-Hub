@@ -40,6 +40,7 @@
 | Доступ и роли | [ACCESS_CONTROL.ru.md](./ACCESS_CONTROL.ru.md) |
 | MCP | [MCP_SETUP.ru.md](./MCP_SETUP.ru.md) |
 | Локальная разработка | [LOCAL_DEV.ru.md](./LOCAL_DEV.ru.md) |
+| CodeQL (CI) | [CODEQL.ru.md](./CODEQL.ru.md) |
 | Тесты | [TESTING.ru.md](./TESTING.ru.md) |
 
 ---

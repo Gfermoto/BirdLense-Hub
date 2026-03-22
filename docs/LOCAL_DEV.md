@@ -163,6 +163,12 @@ Authoritative HTTP contract: `app/web/openapi.yaml`.
 
 ---
 
+## CodeQL (optional)
+
+CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). See [CODEQL.md](./CODEQL.md).
+
+---
+
 ## Common issues
 
 **Docker build fails on npm** — build UI first: `cd app/ui && npm run build && cd .. && docker compose build`

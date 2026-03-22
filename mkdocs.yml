@@ -61,6 +61,7 @@ nav:
       - Access control: ACCESS_CONTROL.md
       - MCP setup: MCP_SETUP.md
       - Local development: LOCAL_DEV.md
+      - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
       - "UX: Unknowns vs video correction": UX_UNKNOWN_VIDEO_CORRECTION.md
   - "ML & project":
@@ -100,6 +101,7 @@ nav:
       - Доступ: ACCESS_CONTROL.ru.md
       - MCP: MCP_SETUP.ru.md
       - Локальная разработка: LOCAL_DEV.ru.md
+      - CodeQL (CI): CODEQL.ru.md
       - Тестирование: TESTING.ru.md
       - "UX: Неизвестные и видео": UX_UNKNOWN_VIDEO_CORRECTION.md
       - Обучение: TRAINING.ru.md

@@ -15,6 +15,8 @@
 | Medium | 9 | Session timeout, CORS, dependencies |
 | Low | 6 | Documentation, migrations |
 
+**Automated scanning:** GitHub CodeQL runs in CI (Python + TypeScript UI). See [CODEQL.md](./CODEQL.md).
+
 ---
 
 ## 1. Authentication and Authorization
