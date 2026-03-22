@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -141,13 +142,16 @@ const StatCard = ({
 const SpeciesSummaryPage = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const speciesId = id ? +id : undefined;
+  const speciesId =
+    id && /^\d+$/.test(id) ? parseInt(id, 10) : undefined;
+  const speciesIdValid = speciesId !== undefined && speciesId > 0;
   const [playingRecording, setPlayingRecording] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery<SpeciesSummary>({
     queryKey: ['speciesSummary', speciesId],
-    queryFn: () => fetchSpeciesSummary(speciesId as number),
+    queryFn: () => fetchSpeciesSummary(speciesId!),
+    enabled: speciesIdValid,
   });
 
   useEffect(() => {
@@ -156,21 +160,41 @@ const SpeciesSummaryPage = () => {
     };
   }, []);
 
+  if (!speciesIdValid) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t('speciesSummary.invalidId')}
+        </Alert>
+        <Button variant="contained" component={RouterLink} to="/species">
+          {t('speciesSummary.openDirectory')}
+        </Button>
+      </Box>
+    );
+  }
+
   if (isLoading)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Box>
     );
-  if (error || !data)
+  if (error || !data) {
+    const notFound = axios.isAxiosError(error) && error.response?.status === 404;
     return (
       <Box sx={{ p: 2 }}>
-        <Box component="span" sx={{ color: 'error.main' }}>{t('speciesSummary.errorLoad')}</Box>
-        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
+        <Alert severity={notFound ? 'info' : 'error'} sx={{ mb: 2 }}>
+          {notFound ? t('speciesSummary.notFound') : t('speciesSummary.errorLoad')}
+        </Alert>
+        <Button variant="outlined" sx={{ mr: 1 }} onClick={() => refetch()}>
           {t('common.retry')}
+        </Button>
+        <Button variant="contained" component={RouterLink} to="/species">
+          {t('speciesSummary.openDirectory')}
         </Button>
       </Box>
     );
+  }
 
   const hours = Array.from(
     { length: 24 },
@@ -187,10 +211,18 @@ const SpeciesSummaryPage = () => {
       return activity[Math.floor(localIdx)];
     });
 
-  const localActivity = adjustTimeZone(data.stats.hourlyActivity);
+  const hourly =
+    Array.isArray(data.stats.hourlyActivity) && data.stats.hourlyActivity.length === 24
+      ? data.stats.hourlyActivity
+      : Array.from({ length: 24 }, () => 0);
+  const localActivity = adjustTimeZone(hourly);
   const subspeciesActivities = data.subspecies.map((sub) => ({
     name: sub.species.name,
-    data: adjustTimeZone(sub.stats.hourlyActivity),
+    data: adjustTimeZone(
+      Array.isArray(sub.stats.hourlyActivity) && sub.stats.hourlyActivity.length === 24
+        ? sub.stats.hourlyActivity
+        : Array.from({ length: 24 }, () => 0),
+    ),
   }));
 
   return (
@@ -386,22 +418,28 @@ const SpeciesSummaryPage = () => {
             title={t('speciesSummary.weatherPreferences')}
           >
             <Box sx={{ width: '100%', height: 300 }}>
-              <ScatterChart
-                height={300}
-                series={[
-                  {
-                    data: data.stats.weather.map((stat, index) => ({
-                      id: index,
-                      x: stat.temp,
-                      y: stat.clouds,
-                      size: Math.min(20, Math.max(5, stat.count / 5)),
-                    })),
-                    label: 'Total Sightings',
-                  },
-                ]}
-                xAxis={[{ label: 'Temperature (°C)' }]}
-                yAxis={[{ label: 'Cloudiness (%)' }]}
-              />
+              {data.stats.weather && data.stats.weather.length > 0 ? (
+                <ScatterChart
+                  height={300}
+                  series={[
+                    {
+                      data: data.stats.weather.map((stat, index) => ({
+                        id: index,
+                        x: stat.temp,
+                        y: stat.clouds,
+                        size: Math.min(20, Math.max(5, stat.count / 5)),
+                      })),
+                      label: 'Total Sightings',
+                    },
+                  ]}
+                  xAxis={[{ label: 'Temperature (°C)' }]}
+                  yAxis={[{ label: 'Cloudiness (%)' }]}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                  {t('speciesSummary.noWeatherData')}
+                </Typography>
+              )}
             </Box>
           </StatCard>
         </Grid>
@@ -413,7 +451,7 @@ const SpeciesSummaryPage = () => {
             title={t('speciesSummary.commonFoodDuringSightings')}
           >
             <Stack spacing={2}>
-              {data.stats.food.map((food) => (
+              {(data.stats.food ?? []).map((food) => (
                 <Box
                   key={food.name}
                   sx={{

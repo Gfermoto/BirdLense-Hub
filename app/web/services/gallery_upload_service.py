@@ -65,7 +65,7 @@ def _upload_video_species_to_gallery(vs, video, species_name: str) -> bool:
             data=data,
             timeout=30,
         )
-        if r.status_code == 200:
+        if r.status_code in (200, 201, 204):
             logger.info("Gallery upload: %s (vs %s)", species_name, vs.id)
             return True
         logger.warning("Gallery upload failed %s: %s", r.status_code, r.text[:200])
@@ -103,6 +103,17 @@ def upload_video_detections_to_gallery(video_id: int):
     if only_corrected:
         q = q.filter(VideoSpecies.manually_corrected == True)
 
-    for vs in q.all():
+    rows = q.all()
+    if not rows:
+        logger.info(
+            "Gallery: video %s — нет строк для загрузки (нужны source=video, frames в БД, "
+            "confidence>=%s%s). Визиты в UI могут быть и с audio-детекций.",
+            video_id,
+            min_conf,
+            "; только manually_corrected" if only_corrected else "",
+        )
+        return
+
+    for vs in rows:
         species_name = vs.species.name if vs.species else 'Unknown'
         _upload_video_species_to_gallery(vs, video, species_name)

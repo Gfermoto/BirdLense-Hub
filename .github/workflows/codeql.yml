@@ -1,0 +1,85 @@
+# Статический анализ безопасности (GitHub CodeQL) для Python и TypeScript UI.
+# Результаты: вкладка Security → Code scanning (на GitHub.com).
+name: CodeQL
+
+on:
+  # Ручной запуск: GitHub → Actions → CodeQL → Run workflow (без push)
+  workflow_dispatch:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    # Еженедельно: подхват новых запросов CodeQL без push
+    - cron: '32 5 * * 1'
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            config-file: .github/codeql/codeql-config-javascript.yml
+          - language: python
+            config-file: .github/codeql/codeql-config-python.yml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          config-file: ${{ matrix.config-file }}
+
+      - name: Set up Python (web deps for extraction)
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: app/web/requirements.txt
+
+      - name: Install Python dependencies (web)
+        if: matrix.language == 'python'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/web/requirements.txt
+
+      - name: Autobuild (Python)
+        if: matrix.language == 'python'
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Set up Node (UI)
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/ui/package-lock.json
+
+      - name: Build UI
+        if: matrix.language == 'javascript-typescript'
+        run: |
+          cd app/ui
+          npm ci
+          npm run build
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'
