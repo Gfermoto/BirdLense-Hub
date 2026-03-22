@@ -26,7 +26,7 @@
 
 - **Home Assistant** — MQTT Autodiscovery (sensor.birdlense_last_species, binary_sensor.bird_detected). См. [CONFIGURATION](./CONFIGURATION.ru.md) — MQTT.
 - **Датасет** — best_frame в YOLO format, экспорт ZIP (`GET /api/ui/dataset/export`), коррекция вида перемещает файл. Система → Управление хранилищем.
-- **Видео: предыдущий/следующий ролик (день UTC)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82): `GET /api/ui/videos/:id/neighbors` и стрелки на странице видео.
+- **Видео: предыдущий/следующий ролик (тот же день UTC)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) закрыт: `GET /api/ui/videos/:id/neighbors` и стрелки на странице видео.
 
 ---
 
