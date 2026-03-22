@@ -102,6 +102,21 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 - Ответ: `{ "ok": true, "role": "admin" }` или `{ "ok": true, "role": "contributor" }`
 - Проверка: сначала `settings_password`, потом `contributor_password`.
 
+### Ограничение частоты (rate limit)
+
+Защита от перебора пароля на `verify-password`:
+
+| Правило | Значение |
+|---------|----------|
+| Окно | **60** с (скользящее), **на IP клиента** |
+| Неудачи | **5** неверных паролей подряд → далее **429** до истечения окна |
+| HTTP | **429** + `{"ok": false, "error": "Too many attempts"}` + заголовок **`Retry-After: 60`** |
+| Успех | Верный пароль **сбрасывает** счётчик неудач для этого IP |
+
+**IP за nginx:** приложение берёт `X-Real-IP`, затем первый адрес из `X-Forwarded-For`, затем `remote_addr` (`client_ip_for_rate_limit()` в `util.py`). Для `/api` заголовки выставляет nginx (`nginx/standalone.conf.template`). Если Gunicorn доступен без доверенного reverse proxy, заголовки теоретически подделываемы — закройте порт 8000 от внешней сети.
+
+Тесты: `TestVerifyPasswordRateLimit` в `app/web/tests/test_api.py` (`make test-web`).
+
 ---
 
 ## Кормушка (API)

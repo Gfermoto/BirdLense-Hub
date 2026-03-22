@@ -40,6 +40,8 @@ cd app && make test-web
 
 Перед первым запуском: `make build`. Тесты выполняются в контейнере.
 
+В том числе **`TestVerifyPasswordRateLimit`**: после пяти неверных паролей к `POST /api/ui/settings/verify-password` за 60 с — ответ **429** и заголовок **`Retry-After`**, отдельные счётчики по `X-Real-IP`, сброс при успешном входе ([ACCESS_CONTROL.ru](./ACCESS_CONTROL.ru.md)).
+
 ### Покрытие (coverage)
 
 ```bash

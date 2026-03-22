@@ -45,7 +45,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 | # | Тема | Issue | Приоритет / зона |
 |---|------|-------|------------------|
-| 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) | P2, web |
+| 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) ✅ `verify-password`, доки, тесты | P2, web |
 | 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | P3, infra, documentation |
 | 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | P2, processor |
 | 4 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | P2, processor |

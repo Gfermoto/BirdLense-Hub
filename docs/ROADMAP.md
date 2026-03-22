@@ -43,7 +43,7 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 
 | # | Theme | Issue | Labels (summary) |
 |---|--------|-------|------------------|
-| 1 | Rate limiting for settings / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) | `area:web`, P2 |
+| 1 | Rate limiting for settings / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) ✅ `verify-password`, docs, tests | `area:web`, P2 |
 | 2 | Git history secret scan (maintainer) | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | `area:infra`, P3, `documentation` |
 | 3 | `export_birdlense_to_yolo.py` training export | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | `area:processor`, P2 |
 | 4 | MQTT reconnect / missed-events clarity | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | `area:processor`, P2 |

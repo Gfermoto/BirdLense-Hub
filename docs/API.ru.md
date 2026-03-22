@@ -33,7 +33,7 @@
 | `/feed/dispense` | POST | Выдать корм |
 | `/settings` | GET/PATCH | Настройки |
 | `/settings/requires-password` | GET | Проверка, требуется ли пароль |
-| `/settings/verify-password` | POST | Разблокировка настроек |
+| `/settings/verify-password` | POST | Разблокировка (`password` → `role`). **401** при неверном пароле; **429** + `Retry-After` после 5 неудач за 60 с на IP — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) |
 | `/settings/check-access` | GET | Проверка разблокировки (200/403) |
 | `/unknowns` | GET | Детекции с низкой confidence (params: start_time, end_time, limit) |
 | `/region-comparison` | GET | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
