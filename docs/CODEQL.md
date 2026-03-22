@@ -4,7 +4,7 @@
 
 ---
 
-GitHub **CodeQL** runs in workflow **`.github/workflows/codeql.yml`** (repository root) on **push/PR** to `main` and `dev`, plus a **weekly** schedule.
+GitHub **CodeQL** runs in workflow **`.github/workflows/codeql.yml`** (repository root) on **push/PR** to `main` and `dev`, a **weekly** schedule, and **manually** (**Actions** → **CodeQL** → **Run workflow**, `workflow_dispatch`). Steps use **`github/codeql-action@v4`** (`init`, `autobuild`, `analyze`).
 
 ## What is analyzed
 
@@ -22,7 +22,13 @@ Forks and private repos need **GitHub Advanced Security** for full UI; the workf
 
 ### Cursor / VS Code
 
-The repo recommends the [CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql) via `.vscode/extensions.json`. After a local run, use **CodeQL: View SARIF** or open a database from `.tools/codeql-dbs/`.
+The repo recommends the [CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql) (extension ID **`GitHub.vscode-codeql`**, capital **G** for the publisher) via `.vscode/extensions.json`. Open the **repository root** so **Recommended** extensions appear. After a local run, use **CodeQL: View SARIF** or open a database from `.tools/codeql-dbs/`.
+
+**If Cursor’s Extensions search finds nothing:**
+
+- Terminal: `cursor --install-extension GitHub.vscode-codeql` (or `code --install-extension …` from VS Code’s CLI).
+- Or download the `.vsix` from the Marketplace page → Cursor **Extensions** → **⋯** → **Install from VSIX…**.
+- CI and **`scripts/codeql-local.sh`** do not require the extension; use GitHub **Code scanning** or another SARIF viewer if needed.
 
 ### CLI
 
