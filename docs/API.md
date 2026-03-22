@@ -23,6 +23,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/timeline` | GET | Visits in range (`start_time`, `end_time`) |
 | `/timeline/export` | GET | CSV, JSON, or eBird (`format=csv|json|ebird`) |
 | `/videos/:id` | GET | Video detail |
+| `/videos/:id/neighbors` | GET | Previous/next video IDs for the same UTC calendar day as `start_time` (`previous_id`, `next_id`, `index`, `total`, `day_utc`) |
 | `/overview` | GET | Overview dashboard payload |
 | `/species` | GET | Species list |
 | `/birdfood` | GET/POST | Food list / add |
