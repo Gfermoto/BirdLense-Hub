@@ -185,9 +185,12 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 **Troubleshooting**
 
-- **Nothing uploaded:** uploads run only for **video** detections that have **track frames** (`frames` JSON in DB). Audio-only or legacy rows without frames are skipped. Check `gallery.min_confidence` and `only_manually_corrected`.
-- **`upload_url` from Docker:** use a hostname reachable **from the web container** (e.g. `http://gallery-test:5000/api/upload` with `docker-compose.gallery-test.yml`), not only `localhost` on the host.
-- **Logs:** web log lines `Gallery upload:` (success) or `Gallery upload failed` / `Gallery upload thread failed` (errors). If the thread had no Flask app context, uploads would not run correctly (fixed in current `main`).
+- **Visits in UI but nothing in gallery:** Timeline/Overview can include **audio** (BirdNET) visits. Gallery uploads only `VideoSpecies` with `source=video`, **non-null `frames`** (track bboxes from the processor), and `confidence >= gallery.min_confidence`. Pure audio or video rows without `frames` are **not** uploaded.
+- **`min_confidence`:** default **0.5**. If your model outputs e.g. 0.35, lower it in `user_config.yaml` (e.g. `gallery.min_confidence: 0.35`).
+- **`only_manually_corrected: true`:** only manually corrected detections are uploaded; everything else is skipped until you correct species.
+- **`upload_url`:** full POST receiver URL (multipart). Server should return **200, 201, or 204**.
+- **`upload_url` from Docker:** hostname must be reachable **from the web container** (e.g. `http://gallery-test:5000/api/upload`). **`http://127.0.0.1:…` on the host** often points at the **container itself**, not your PC.
+- **Logs:** `Gallery upload:` (success), `Gallery upload failed` (HTTP status), `Gallery: video N — нет строк для загрузки` (no rows matched filters), `Gallery upload thread failed` (thread exception).
 
 ---
 
