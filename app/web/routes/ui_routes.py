@@ -1255,8 +1255,13 @@ def register_routes(app):
         children = Species.query.filter_by(parent_id=species_id).all()
         all_species_ids = [species.id] + [c.id for c in children]
 
-        if update_species_info_from_wiki(species):
-            db.session.add(species)
-            db.session.commit()
+        # Wikipedia не должен ломать страницу вида при сетевой ошибке / сбое commit
+        try:
+            if update_species_info_from_wiki(species):
+                db.session.add(species)
+                db.session.commit()
+        except Exception as e:
+            app.logger.warning('get_species_summary: wiki update skipped for %s: %s', species_id, e)
+            db.session.rollback()
 
         return build_species_summary(db.session, species, children, all_species_ids)
