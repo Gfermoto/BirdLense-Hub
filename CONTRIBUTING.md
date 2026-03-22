@@ -97,4 +97,11 @@ Roadmap backlog issues **#46–#48, #50–#57** (see [docs/ROADMAP.md](docs/ROAD
 bash scripts/github-project-add-backlog-consilium.sh
 ```
 
+After closing an issue that is already on the board, mark **Status** and **Поток** as **Done** (same `GH_TOKEN` / `.env.project`):
+
+```bash
+bash scripts/github-project-mark-done.sh 46
+bash scripts/github-project-mark-done.sh 46 57
+```
+
 On **WSL**, `gh project view … --web` often fails (`xdg-open: Permission denied`); open the printed **https://github.com/users/…/projects/N** link in your Windows browser instead.
