@@ -517,6 +517,10 @@
     "subspeciesOf": "This is a subspecies of {{name}}",
     "sightings": "sightings",
     "errorLoad": "Error loading data.",
+    "notFound": "This species is not in the catalog (it may have been removed or the link is outdated).",
+    "invalidId": "Invalid species link. Use the bird directory to open a species.",
+    "openDirectory": "Bird directory",
+    "noWeatherData": "No weather data for sightings in the last 30 days.",
     "recentVisits": "Recent Visits",
     "total": "Total",
     "playSong": "Play bird song (Xeno-canto)"
