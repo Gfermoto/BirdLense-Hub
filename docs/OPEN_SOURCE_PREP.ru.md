@@ -33,7 +33,7 @@
 
 - Секреты в user_config.yaml — документировать: хранить в env, не в YAML
 - OpenAPI — `x-sensitive: true` для полей с токенами
-- Rate limiting на verify-password — в backlog
+- Rate limiting на verify-password — **реализовано** (5 неудач / 60 с на IP, 429 + `Retry-After`); см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
 - Пароль настроек — обязателен для production (документировать)
 
 ---

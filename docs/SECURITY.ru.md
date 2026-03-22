@@ -126,7 +126,7 @@
 2. **Пароль настроек:** `general.settings_password`.
 3. ~~Path traversal~~ ✅ Nginx блокирует `..`, `%2e%2e`; пути изображений проверяются.
 4. **Ограничить** доступ к `/data/recordings/` (auth или IP).
-5. **Rate limiting** (например `verify-password`: 5 неудач / 60 с на IP).
+5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
 6. **Docker:** не root в контейнере.
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.
 

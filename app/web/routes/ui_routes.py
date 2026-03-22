@@ -22,8 +22,11 @@ from util import (
     settings_check_access,
     contributor_or_admin_access,
     GENERIC_BIRD_SPECIES,
+    client_ip_for_rate_limit,
     _check_verify_password_rate_limit,
+    _clear_verify_password_attempts,
     _record_verify_password_failure,
+    verify_password_retry_after_seconds,
     notify_telegram_test,
 )
 from app_config.app_config import app_config
@@ -1065,9 +1068,14 @@ def register_routes(app):
 
     @app.route('/api/ui/settings/verify-password', methods=['POST'])
     def settings_verify_password():
-        ip = request.remote_addr or 'unknown'
+        ip = client_ip_for_rate_limit(request)
         if not _check_verify_password_rate_limit(ip):
-            return {'ok': False, 'error': 'Too many attempts'}, 429
+            retry = verify_password_retry_after_seconds()
+            return (
+                {'ok': False, 'error': 'Too many attempts'},
+                429,
+                {'Retry-After': str(retry)},
+            )
         data = request.json or {}
         pw = (data.get('password') or '').strip()
         admin_pw = (app_config.get('general.settings_password') or '').strip()
@@ -1076,16 +1084,19 @@ def register_routes(app):
             session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
+            _clear_verify_password_attempts(ip)
             return {'ok': True, 'role': 'admin'}, 200
         if secrets.compare_digest(pw, admin_pw):
             session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
+            _clear_verify_password_attempts(ip)
             return {'ok': True, 'role': 'admin'}, 200
         if contrib_pw and secrets.compare_digest(pw, contrib_pw):
             session['access_role'] = 'contributor'
             session['settings_unlocked'] = False
             session.permanent = True
+            _clear_verify_password_attempts(ip)
             return {'ok': True, 'role': 'contributor'}, 200
         _record_verify_password_failure(ip)
         return {'ok': False}, 401

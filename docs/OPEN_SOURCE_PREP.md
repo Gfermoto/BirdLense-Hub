@@ -33,7 +33,7 @@
 
 - Prefer **env** over YAML for secrets in production.
 - OpenAPI: mark sensitive fields (`x-sensitive` where applicable).
-- Rate limiting for `verify-password` — backlog.
+- Rate limiting for `verify-password` — **implemented** (5 fails / 60 s per IP, 429 + `Retry-After`); see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
 - **Settings password** recommended for any internet-exposed install.
 
 ---
