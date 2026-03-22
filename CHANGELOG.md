@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Репозиторий:** в git добавлено **`.cursor/rules/deploy.mdc`** (правило деплоя для Cursor); в **`.gitignore`** — исключение только для этого файла, остальной `.cursor/` по-прежнему не коммитится.
 - **CI: CodeQL** — `github/codeql-action` **v3 → v4** ([changelog GitHub](https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/)): без предупреждений о Node 20 и deprecation v3 на раннере.
 - **Доки CodeQL** (EN/RU): `workflow_dispatch`, **codeql-action@v4** в вводном абзаце; установка расширения в Cursor/VS Code (CLI, VSIX, ID **`GitHub.vscode-codeql`**). **`.vscode/extensions.json`** — тот же ID издателя.
 - ROADMAP (EN/RU): бэклог оператора — issues [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (коррекция видов Unknowns ↔ видео), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по видео); карточки на Project **BirdLense Hub — Roadmap**.

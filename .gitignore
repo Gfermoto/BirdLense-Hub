@@ -45,8 +45,11 @@ app/.coverage
 # CodeQL локально: БД, SARIF, скачанный CLI (см. scripts/codeql-local.sh)
 .tools/
 
-# Cursor IDE
-.cursor/
+# Cursor IDE — в репо только правило деплоя для агента; остальное локально
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/deploy.mdc
 
 # Артефакты (curl -c, debug)
 **/-X
