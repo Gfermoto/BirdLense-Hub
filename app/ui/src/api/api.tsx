@@ -135,6 +135,20 @@ export const fetchVideo = async (id: string) => {
   return response.data;
 };
 
+/** Prev/next video IDs for the same UTC calendar day as this recording's start_time. */
+export type VideoNeighbors = {
+  day_utc: string;
+  previous_id: number | null;
+  next_id: number | null;
+  index: number;
+  total: number;
+};
+
+export const fetchVideoNeighbors = async (id: string): Promise<VideoNeighbors> => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`);
+  return response.data;
+};
+
 /** Delete video recording. Requires contributor or admin access. */
 export const deleteVideo = async (id: number): Promise<void> => {
   const res = await fetch(`${BASE_API_URL}/videos/${id}`, {
