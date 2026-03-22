@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Unknowns ↔ видео:** после смены вида или merge на странице видео список «Неизвестные» больше не «залипает» на старых данных (инвалидация **`['unknowns']`** в `DetectedSpecies`; раньше кэш жил до 5 минут).
+- **Удаление видео:** сначала **коммит** в БД, затем удаление папки записи на диске — при ошибке транзакции файлы не удаляются; после удаления — сброс кэша **`video` / `video-neighbors` / `videos`** и инвалидация соседей по дню.
+
 ### Added
 
 - **#82**: на странице видео — кнопки «предыдущий / следующий» ролик за тот же календарный день UTC, что и `start_time`; API `GET /api/ui/videos/:id/neighbors` (`previous_id`, `next_id`, `index`, `total`, `day_utc`).
