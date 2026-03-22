@@ -342,11 +342,16 @@ def register_routes(app):
             from util import full_path_for_video
             from services.detection_crop_service import VIDEO_PATH_SAFE_RE
 
-            visit_ids = [vs.species_visit_id for vs in video.video_species if vs.species_visit_id]
+            # Путь к папке записи — до удаления объекта video из сессии
+            recording_dir = None
+            if video.video_path and VIDEO_PATH_SAFE_RE.match(video.video_path):
+                d = full_path_for_video(os.path.dirname(video.video_path))
+                if d and os.path.isdir(d):
+                    recording_dir = d
+
+            visit_ids = {vs.species_visit_id for vs in video.video_species if vs.species_visit_id}
             visits_to_delete = []
             for vid in visit_ids:
-                if not vid:
-                    continue
                 other = VideoSpecies.query.filter(
                     VideoSpecies.species_visit_id == vid,
                     VideoSpecies.video_id != video_id,
@@ -360,18 +365,17 @@ def register_routes(app):
                 if visit:
                     db.session.delete(visit)
 
-            # Удаление папки с видео (единый путь через full_path_for_video)
-            if video.video_path and VIDEO_PATH_SAFE_RE.match(video.video_path):
-                dir_path = full_path_for_video(os.path.dirname(video.video_path))
-                if dir_path and os.path.isdir(dir_path):
-                    try:
-                        shutil.rmtree(dir_path)
-                        app.logger.info(f"Deleted recording dir: {dir_path}")
-                    except OSError as e:
-                        app.logger.warning(f"Could not delete dir {dir_path}: {e}")
-
             db.session.delete(video)
             db.session.commit()
+
+            # Файлы — только после успешного коммита БД (иначе при rollback запись пропала с диска)
+            if recording_dir:
+                try:
+                    shutil.rmtree(recording_dir)
+                    app.logger.info(f"Deleted recording dir: {recording_dir}")
+                except OSError as e:
+                    app.logger.warning(f"Could not delete dir {recording_dir}: {e}")
+
             return {'message': 'Video deleted'}, 200
         except Exception as e:
             db.session.rollback()
