@@ -4,7 +4,7 @@
 
 ---
 
-**CodeQL** от GitHub запускается workflow **`.github/workflows/codeql.yml`** (в корне репозитория) при **push/PR** в ветки `main` и `dev`, а также **раз в неделю** по расписанию.
+**CodeQL** от GitHub запускается workflow **`.github/workflows/codeql.yml`** (в корне репозитория) при **push/PR** в ветки `main` и `dev`, **раз в неделю** по расписанию и **вручную** (**Actions** → **CodeQL** → **Run workflow**, `workflow_dispatch`). В шагах используется **`github/codeql-action@v4`** (`init`, `autobuild`, `analyze`).
 
 ## Что анализируется
 
@@ -22,8 +22,17 @@
 
 ### Cursor / VS Code
 
-1. Откройте репозиторий с корня — в **Extensions** будет рекомендация **CodeQL** (`.vscode/extensions.json`).
-2. Установите [CodeQL для VS Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql) (в Cursor — тот же Marketplace).
+1. Откройте репозиторий **с корня** (папка с `.vscode/extensions.json`) — в **Extensions** появится рекомендация **CodeQL**.
+2. Установите [CodeQL для VS Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql) (ID: **`GitHub.vscode-codeql`** — с заглавной **G** у издателя).
+
+**Если в Cursor поиск «CodeQL» ничего не находит:**
+
+- Установка из терминала (на машине, где стоит Cursor):  
+  `cursor --install-extension GitHub.vscode-codeql`  
+  Либо из VS Code: `code --install-extension GitHub.vscode-codeql`.
+- Вручную: на странице расширения в Marketplace — **Download Extension** (файл `.vsix`) → в Cursor: **Extensions** → **⋯** → **Install from VSIX…**.
+- Анализ в CI и локально **не завязан** на расширение: достаточно **`scripts/codeql-local.sh`** и просмотра SARIF (в GitHub Security, другим SARIF-viewer или после установки расширения).
+
 3. После прогона скрипта: команды CodeQL для просмотра SARIF или БД из `.tools/codeql-dbs/`.
 
 ### CLI
