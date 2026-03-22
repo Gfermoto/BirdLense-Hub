@@ -3,6 +3,8 @@
 name: CodeQL
 
 on:
+  # Ручной запуск: GitHub → Actions → CodeQL → Run workflow (без push)
+  workflow_dispatch:
   push:
     branches: [main, dev]
   pull_request:
