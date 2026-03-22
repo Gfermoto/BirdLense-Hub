@@ -57,6 +57,7 @@
 | **Confidence по виду** | `processor.species_confidence_overrides` |
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
 | **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
+| **Предыдущий/следующий ролик** | Тот же календарный день UTC: стрелки и счётчик на странице видео; `GET /api/ui/videos/:id/neighbors` |
 
 ---
 
@@ -95,6 +96,7 @@
 | PATCH | `/api/ui/detections/:id` | Исправить вид |
 | GET | `/api/ui/detections/:id/crop` | Кадр для iNaturalist |
 | GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |
+| GET | `/api/ui/videos/:id/neighbors` | ID предыдущего/следующего ролика за тот же день UTC, что и `start_time` |
 | GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
 | GET | `/api/ui/migration-calendar` | Агрегация визитов по виду и месяцу для календаря миграций |
 | GET | `/api/ui/report/pdf` | PDF-отчёт |
