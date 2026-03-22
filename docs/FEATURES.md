@@ -55,6 +55,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Per-species thresholds** | `processor.species_confidence_overrides` |
 | **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
 | **Download video** | Video details — Admin/Contributor after password |
+| **Video prev/next** | Same UTC calendar day: arrows + counter on video details; `GET /api/ui/videos/:id/neighbors` |
 
 ---
 
@@ -95,6 +96,7 @@ Full reference: [CONFIGURATION](./CONFIGURATION.md).
 | PATCH | `/api/ui/detections/:id` | Correct species |
 | GET | `/api/ui/detections/:id/crop` | Crop for iNaturalist |
 | GET | `/api/ui/videos/:id/download` | Download clip (role-gated) |
+| GET | `/api/ui/videos/:id/neighbors` | Previous/next video IDs for the same UTC day as `start_time` |
 | GET | `/api/ui/dataset/export` | Dataset ZIP |
 | GET | `/api/ui/migration-calendar` | Migration calendar data |
 | GET | `/api/ui/report/pdf` | PDF report |
