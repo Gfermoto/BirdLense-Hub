@@ -124,6 +124,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /videos/{video_id}/neighbors:
+    get:
+      summary: Previous/next video on same UTC day
+      description: |
+        IDs of the previous and next recordings that share the same calendar day (UTC) as this video's `start_time`.
+        Ordering is by `start_time` ascending, then `id` ascending.
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Neighbor video IDs and position in the day's list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoNeighbors"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /birdfood:
     get:
       summary: List all bird food
@@ -544,6 +569,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BirdFood"
+    VideoNeighbors:
+      type: object
+      properties:
+        day_utc:
+          type: string
+          format: date
+          description: Calendar date in UTC (YYYY-MM-DD) used for grouping
+        previous_id:
+          type: integer
+          nullable: true
+          description: ID of the previous video the same UTC day, or null
+        next_id:
+          type: integer
+          nullable: true
+          description: ID of the next video the same UTC day, or null
+        index:
+          type: integer
+          description: Zero-based index of this video in the ordered day list
+        total:
+          type: integer
+          description: Number of videos that day
+      required:
+        - day_utc
+        - previous_id
+        - next_id
+        - index
+        - total
     TopSpecies:
       type: object
       properties:

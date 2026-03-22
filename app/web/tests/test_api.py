@@ -244,6 +244,50 @@ class TestVideos:
         assert r.status_code == 404
         assert 'error' in r.json
 
+    def test_video_neighbors_not_found_returns_404(self, client):
+        r = client.get('/api/ui/videos/999999/neighbors')
+        assert r.status_code == 404
+        assert 'error' in r.json
+
+    def test_video_neighbors_prev_next_same_utc_day(self, app, client):
+        from datetime import datetime, timedelta
+        from models import db, Video
+
+        with app.app_context():
+            base = datetime(2025, 3, 19, 8, 0, 0)
+            videos = []
+            for off_hours in (0, 2, 4):
+                st = base + timedelta(hours=off_hours)
+                v = Video(
+                    processor_version='test',
+                    start_time=st,
+                    end_time=st + timedelta(minutes=1),
+                    video_path=f'2025/03/19/{80000 + off_hours}/v.mp4',
+                )
+                db.session.add(v)
+                videos.append(v)
+            db.session.commit()
+            v1_id, v2_id, v3_id = videos[0].id, videos[1].id, videos[2].id
+
+        r = client.get(f'/api/ui/videos/{v2_id}/neighbors')
+        assert r.status_code == 200
+        j = r.json
+        assert j['day_utc'] == '2025-03-19'
+        assert j['previous_id'] == v1_id
+        assert j['next_id'] == v3_id
+        assert j['index'] == 1
+        assert j['total'] == 3
+
+        r0 = client.get(f'/api/ui/videos/{v1_id}/neighbors')
+        assert r0.status_code == 200
+        assert r0.json['previous_id'] is None
+        assert r0.json['next_id'] == v2_id
+
+        r2 = client.get(f'/api/ui/videos/{v3_id}/neighbors')
+        assert r2.status_code == 200
+        assert r2.json['previous_id'] == v2_id
+        assert r2.json['next_id'] is None
+
     def test_delete_video_requires_access(self, client):
         """Delete returns 403 without contributor/admin access when password is set."""
         r = client.delete('/api/ui/videos/1')
