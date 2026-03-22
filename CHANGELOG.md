@@ -46,6 +46,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.4] - 2026-03-22
+
+### Fixed
+
+- **#80** (галерея): фоновая загрузка кадров после `POST /api/processor/videos` выполняется внутри **Flask app context** — иначе SQLAlchemy не видел сессию и загрузки не происходили. Логи: `Gallery upload thread failed` при прочих ошибках.
+- **Web Push:** `notify_app_startup` вызывает `notify()` внутри **app context** — устранено предупреждение `Working outside of application context` при старте, если включены push и есть подписки.
+
+### Added
+
+- Тесты `app/web/tests/test_gallery_upload.py`; смок галереи в [TESTING](docs/TESTING.md) §2.6 / [TESTING.ru](docs/TESTING.ru.md) §8; troubleshooting в [CONFIGURATION](docs/CONFIGURATION.md) → Gallery.
+- Спецификация UX [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81): [UX_UNKNOWN_VIDEO_CORRECTION](docs/UX_UNKNOWN_VIDEO_CORRECTION.md); фаза A: подсказки в справке Unknowns / Video details (i18n EN/RU).
+
+---
+
 ## [0.2.3] - 2026-03-20
 
 ### Added
