@@ -185,9 +185,12 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 **Разбор проблем**
 
-- **Ничего не уходит:** загрузка только для детекций **video** с заполненным **frames** (трек в JSON). Аудио и старые строки без кадров пропускаются. Проверьте `min_confidence` и `only_manually_corrected`.
-- **URL из Docker:** хост в `upload_url` должен быть доступен **из контейнера web** (например `http://gallery-test:5000/api/upload` с `docker-compose.gallery-test.yml`), а не только `localhost` на хосте.
-- **Логи:** в логе web — `Gallery upload:` (успех) или `Gallery upload failed` / `Gallery upload thread failed`. Раньше поток без app context мог «молча» не работать (исправлено в актуальном `main`).
+- **«Были посещения», но в галерею пусто:** в Timeline/Overview учитываются и **audio** (BirdNET), и **video**. В галерею попадают **только** строки `VideoSpecies` с `source=video`, с **заполненным `frames`** (боксы трека от процессора) и `confidence >= gallery.min_confidence`. Чисто аудио-визит или видео без `frames` в JSON — **не загружаются**.
+- **`min_confidence`:** по умолчанию **0.5**. Если модель даёт 0.35 — снизьте в `user_config.yaml`, например `gallery.min_confidence: 0.35`.
+- **`only_manually_corrected: true`:** тогда загрузятся только детекции после ручной правки на Unknowns/видео; иначе галерея будет пустой до правок.
+- **Адрес `upload_url`:** полный URL **POST** приёмника (multipart). Сервер должен отвечать **200, 201 или 204**. Проверьте с машины, где крутится Hub: `docker exec birdlense curl -sS -o /dev/null -w '%{http_code}' -X POST …` или временный тестовый контейнер из репозитория.
+- **URL из Docker:** хост в `upload_url` должен быть доступен **из контейнера web** (например `http://gallery-test:5000/api/upload` с `docker-compose.gallery-test.yml`). **`http://127.0.0.1:…` на хосте** из контейнера часто указывает **на сам контейнер**, а не на ваш ПК.
+- **Логи:** в логе web — `Gallery upload:` (успех), `Gallery upload failed` (код ответа), `Gallery: video N — нет строк для загрузки` (условия фильтра не выполнены), `Gallery upload thread failed` (исключение в потоке).
 
 ---
 
