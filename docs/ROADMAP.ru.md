@@ -59,7 +59,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
 | 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
 | 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4 | P2, web, bug |
-| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 UX-спека + справка (A); фаза B — действие «Открыть видео» в snackbar после правки на странице Unknowns | P2, web |
+| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 A + B в **v0.2.5** (snackbar «Открыть видео» на Unknowns); фаза C — по запросу | P2, web |
 | 14 | Навигация по видео: подряд (напр. за день), без сброса в начало списка | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` | P2, web |
 | 15 | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) бэклог | P3, web |
 

@@ -10,7 +10,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **#81** (фаза B): на странице **Неизвестные** после успешной коррекции вида или «Верно» — в уведомлении действие **«Открыть видео»** (по умолчанию остаётесь в списке; при наличии `video_id` snackbar держится дольше). См. [UX_UNKNOWN_VIDEO_CORRECTION](docs/UX_UNKNOWN_VIDEO_CORRECTION.md).
 - **#82**: на странице видео — кнопки «предыдущий / следующий» ролик за тот же календарный день UTC, что и `start_time`; API `GET /api/ui/videos/:id/neighbors` (`previous_id`, `next_id`, `index`, `total`, `day_utc`).
 - Скрипт `scripts/github-project-mark-done.sh` — пометить issue на доске **BirdLense Hub — Roadmap** как **Done** (поля **Status** и **Поток**); см. [CONTRIBUTING](CONTRIBUTING.md).
 - Примеры алертинга Prometheus: `examples/prometheus/birdlense.rules.yml`, `examples/prometheus/alertmanager.birdlense.example.yml`; раздел **Alerting** в [CONFIGURATION](docs/CONFIGURATION.md) / RU — закрывает [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
@@ -44,6 +43,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Деплой (`scripts/deploy.sh`): rsync исключает `.venv-docs-tmp`, `.venv-docs`, `site/`, `app/.venv` — не заливать локальные venv на сервер.
 - CI: сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
+
+---
+
+## [0.2.5] - 2026-03-23
+
+### Added
+
+- **#81** (фаза B): на странице **Неизвестные** после успешной коррекции вида или «Верно» — в уведомлении действие **«Открыть видео»** (по умолчанию остаётесь в списке; при наличии `video_id` snackbar дольше открыт). См. [UX_UNKNOWN_VIDEO_CORRECTION](docs/UX_UNKNOWN_VIDEO_CORRECTION.md).
 
 ---
 
