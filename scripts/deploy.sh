@@ -46,6 +46,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data --exclude=app/app_config/user
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
+# CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
