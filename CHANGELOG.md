@@ -46,6 +46,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.5] - 2026-03-23
+
+### Added
+
+- **#81** (фаза B): на странице **Неизвестные** после успешной коррекции вида или «Верно» — в уведомлении действие **«Открыть видео»** (по умолчанию остаётесь в списке; при наличии `video_id` snackbar дольше открыт). См. [UX_UNKNOWN_VIDEO_CORRECTION](docs/UX_UNKNOWN_VIDEO_CORRECTION.md).
+
+---
+
 ## [0.2.4] - 2026-03-22
 
 ### Fixed

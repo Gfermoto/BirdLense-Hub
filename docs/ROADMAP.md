@@ -33,7 +33,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 **Brainstorm roles:** product (operator value), security, platform/infra, ML & data, integrations (MQTT/HA/Frigate), UX, docs & OSS hygiene.
 
-**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (operator UX — Mar 2026). **Done:** [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (gallery upload thread app context, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (same-UTC-day video prev/next). **Backlog follow-up:** [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (local TZ / cross-day / docs). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) is **closed** — x86-only; not part of this backlog.
+**Outcome:** triaged items are **GitHub Issues** (not shipped until closed in a release): [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (operator UX — Mar 2026; phase B: Unknowns snackbar **Open video**). **Done:** [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (gallery upload thread app context, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (same-UTC-day video prev/next). **Backlog follow-up:** [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (local TZ / cross-day / docs). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) is **closed** — x86-only; not part of this backlog.
 
 **Put them on the Project board:** OAuth scopes often loop on device login — use a **classic PAT** (`repo` + `project`) in `GH_TOKEN` or `scripts/.env.project` (see `scripts/env.project.example`), then:
 
@@ -57,7 +57,7 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 | 10 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | `area:web`, P3 |
 | 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.md) | `area:docs`, P3 |
 | 12 | Gallery: investigate / fix (opt-in public gallery) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context in upload thread + docs/tests v0.2.4 | `area:web`, P2, `bug` |
-| 13 | Manual species correction: unify Unknowns vs in-video flow | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 UX spec + help i18n (phase A); implementation TBD | `area:web`, P2 |
+| 13 | Manual species correction: unify Unknowns vs in-video flow | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 Phases A + B in **v0.2.5** (Unknowns snackbar **Open video**); phase C on demand | `area:web`, P2 |
 | 14 | Video navigation: sequential browse (e.g. same day), no list reset | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` | `area:web`, P2 |
 | 15 | Video neighbors: local TZ, cross-day jump, docs clarity (follow-up to #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) backlog | `area:web`, P3 |
 
