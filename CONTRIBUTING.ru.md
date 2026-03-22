@@ -97,4 +97,11 @@ bash scripts/github-project-import-open-items.sh
 bash scripts/github-project-add-backlog-consilium.sh
 ```
 
+После закрытия issue, которая уже на доске, выставить **Status** и **Поток** в **Done** (тот же `GH_TOKEN` / `.env.project`):
+
+```bash
+bash scripts/github-project-mark-done.sh 46
+bash scripts/github-project-mark-done.sh 46 57
+```
+
 В **WSL** команда `gh project view … --web` часто падает (`xdg-open: Permission denied`) — откройте напечатанную ссылку вида **https://github.com/users/…/projects/N** в браузере Windows.
