@@ -38,6 +38,8 @@ cd app && make test-web
 
 Runs pytest against the Flask API (health, status, settings, feed, cameras). Build the image first: `make build`.
 
+Includes **`TestVerifyPasswordRateLimit`** — `POST /api/ui/settings/verify-password` returns **429** after five wrong passwords in 60s, **`Retry-After`**, separate buckets per `X-Real-IP`, counter reset on success ([ACCESS_CONTROL](./ACCESS_CONTROL.md)).
+
 ### Coverage
 
 ```bash

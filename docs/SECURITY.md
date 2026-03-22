@@ -126,7 +126,7 @@
 2. **Settings password:** set `general.settings_password`.
 3. ~~**Path traversal**~~ ✅ Nginx: block `\.\.`, `%2e%2e`. `image_path` in notify: `_is_safe_image_path`.
 4. **Restrict access** to `/data/recordings/` (auth or IP).
-5. **Rate limiting** on API (verify-password: 5 failed/60 sec per IP).
+5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
 6. **Docker:** run container as non-privileged user.
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
 
