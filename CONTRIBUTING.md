@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to BirdLense Hub.
 
+**AI / автоматизация:** доводить задачи до конца (тесты, доки, push, PR, деплой по необходимости) — см. [AGENTS.md](AGENTS.md).
+
 ## How to contribute
 
 ### Branching (two steps to production)

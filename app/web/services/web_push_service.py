@@ -9,6 +9,23 @@ from models import db, PushSubscription
 logger = logging.getLogger(__name__)
 
 
+def _is_unrecoverable_subscription_error(exc: BaseException) -> bool:
+    """Ошибки pywebpush/cryptography при битых p256dh/auth — подписку лучше удалить из БД."""
+    msg = str(exc).lower()
+    markers = (
+        'deserialize',
+        'asn.1',
+        'invalid length',
+        'incorrect format',
+        'unsupported key',
+        'padding',
+        'non-hexadecimal',
+        'invalid base64',
+        'malformed',
+    )
+    return any(m in msg for m in markers)
+
+
 def _ensure_vapid_keys() -> tuple[str, str]:
     """Генерирует и сохраняет VAPID ключи, если их нет.
     pub = base64url для PushManager.subscribe(applicationServerKey)
@@ -82,10 +99,17 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
     }
     payload_json = json.dumps(payload)
     sent = 0
-    expired = []
+    to_remove: list[int] = []
     try:
         from pywebpush import webpush, WebPushException
         for sub in subs:
+            if not (sub.p256dh and sub.auth and sub.endpoint):
+                to_remove.append(sub.id)
+                logger.info(
+                    "Web Push: removing subscription id=%s (missing endpoint or keys)",
+                    sub.id,
+                )
+                continue
             try:
                 subscription_info = {
                     'endpoint': sub.endpoint,
@@ -100,16 +124,31 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
                 sent += 1
             except WebPushException as e:
                 if e.response and e.response.status_code in (404, 410):
-                    expired.append(sub.id)
+                    to_remove.append(sub.id)
+                elif _is_unrecoverable_subscription_error(e):
+                    to_remove.append(sub.id)
+                    logger.info(
+                        "Web Push: removing subscription id=%s (unrecoverable): %s",
+                        sub.id,
+                        e,
+                    )
                 else:
                     logger.warning("Web Push failed for %s: %s", sub.endpoint[:50], e)
             except Exception as e:
-                logger.warning("Web Push error for subscription: %s", e)
+                if _is_unrecoverable_subscription_error(e):
+                    to_remove.append(sub.id)
+                    logger.info(
+                        "Web Push: removing invalid subscription id=%s: %s",
+                        sub.id,
+                        e,
+                    )
+                else:
+                    logger.warning("Web Push error for subscription: %s", e)
     except ImportError:
         logger.warning("pywebpush not installed, skipping Web Push")
         return 0
-    for sub_id in expired:
+    for sub_id in to_remove:
         PushSubscription.query.filter_by(id=sub_id).delete()
-    if expired:
+    if to_remove:
         db.session.commit()
     return sent
