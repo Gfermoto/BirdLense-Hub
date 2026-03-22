@@ -183,6 +183,12 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `min_confidence` | Only detections ≥ threshold |
 | `only_manually_corrected` | Only human-verified |
 
+**Troubleshooting**
+
+- **Nothing uploaded:** uploads run only for **video** detections that have **track frames** (`frames` JSON in DB). Audio-only or legacy rows without frames are skipped. Check `gallery.min_confidence` and `only_manually_corrected`.
+- **`upload_url` from Docker:** use a hostname reachable **from the web container** (e.g. `http://gallery-test:5000/api/upload` with `docker-compose.gallery-test.yml`), not only `localhost` on the host.
+- **Logs:** web log lines `Gallery upload:` (success) or `Gallery upload failed` / `Gallery upload thread failed` (errors). If the thread had no Flask app context, uploads would not run correctly (fixed in current `main`).
+
 ---
 
 ## Notifications (Telegram)

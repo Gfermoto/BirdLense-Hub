@@ -756,7 +756,12 @@ def notify_app_startup(app=None):
         except OSError:
             pass
         logging.info("notify_app_startup: sending (pid=%s)", os.getpid())
-        notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+        # Web Push / DB (PushSubscription) need Flask application context
+        if app is not None:
+            with app.app_context():
+                notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+        else:
+            notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
     except Exception as e:
         logging.warning("notify_app_startup failed: %s", e)
 

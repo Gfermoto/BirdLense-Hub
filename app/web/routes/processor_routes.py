@@ -12,6 +12,16 @@ from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 import requests
 
+
+def _run_gallery_upload_thread(flask_app, video_id: int):
+    """Gallery upload runs in a daemon thread — must push Flask app context for DB access."""
+    with flask_app.app_context():
+        try:
+            upload_video_detections_to_gallery(video_id)
+        except Exception as e:
+            flask_app.logger.warning('Gallery upload thread failed: %s', e)
+
+
 # Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
 VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
 
@@ -102,11 +112,11 @@ def register_routes(app):
                     daemon=True,
                 ).start()
 
-            # Публичная галерея: opt-in загрузка кадров
+            # Публичная галерея: opt-in загрузка кадров (отдельный поток с app context — иначе SQLAlchemy вне контекста)
             if app_config.get('gallery.enabled') and (app_config.get('gallery.upload_url') or '').strip():
                 threading.Thread(
-                    target=upload_video_detections_to_gallery,
-                    args=(video.id,),
+                    target=_run_gallery_upload_thread,
+                    args=(app, video.id),
                     daemon=True,
                 ).start()
 

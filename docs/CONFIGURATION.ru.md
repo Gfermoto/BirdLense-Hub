@@ -183,6 +183,12 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `min_confidence` | Только детекции ≥ порога |
 | `only_manually_corrected` | Только проверенные вручную |
 
+**Разбор проблем**
+
+- **Ничего не уходит:** загрузка только для детекций **video** с заполненным **frames** (трек в JSON). Аудио и старые строки без кадров пропускаются. Проверьте `min_confidence` и `only_manually_corrected`.
+- **URL из Docker:** хост в `upload_url` должен быть доступен **из контейнера web** (например `http://gallery-test:5000/api/upload` с `docker-compose.gallery-test.yml`), а не только `localhost` на хосте.
+- **Логи:** в логе web — `Gallery upload:` (успех) или `Gallery upload failed` / `Gallery upload thread failed`. Раньше поток без app context мог «молча» не работать (исправлено в актуальном `main`).
+
 ---
 
 ## Notifications (Telegram)
