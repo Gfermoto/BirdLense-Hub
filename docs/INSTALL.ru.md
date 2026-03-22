@@ -71,7 +71,7 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
+**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → автодеплой (self-hosted runner).
 
