@@ -12,7 +12,7 @@ Manual species correction works well when one choice applies to **many** detecti
 
 - Both paths call the same API: **`PATCH /api/ui/detections/:id`** with `species_id` (and related dataset/crop logic on the server).
 - **Unknowns** lists low-confidence rows; **Video details → Detected species** groups by species/track and can merge or correct.
-- After correction from video, the UI invalidates **`['unknowns']`** queries (`VideoInfo.tsx`) so Unknowns refreshes when visited again.
+- After correction or merge from video, **`DetectedSpecies`** invalidates **`['unknowns']`** (and related queries) so the Unknowns page refetches — required because the app uses a **5-minute** React Query `staleTime` by default.
 
 ## UX principles (target)
 

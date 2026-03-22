@@ -1,0 +1,8 @@
+# CodeQL: Flask web + processor (без тяжёлых весов моделей)
+name: BirdLense Python
+paths:
+  - app/web
+  - app/processor
+paths-ignore:
+  - app/processor/models
+  - '**/tests/**'

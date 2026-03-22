@@ -174,6 +174,12 @@ OpenAPI: `app/web/openapi.yaml`. Стиль: краткий docstring на ру�
 
 ---
 
+## CodeQL (по желанию)
+
+В CI CodeQL запускается на push/PR; локально удобно расширение [CodeQL для VS Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). См. [CODEQL.ru.md](./CODEQL.ru.md).
+
+---
+
 ## Устранение неполадок
 
 ### Docker build падает на npm

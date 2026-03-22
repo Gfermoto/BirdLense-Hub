@@ -33,14 +33,22 @@ export const VideoInfo = ({ video }: { video: Video }) => {
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteVideo(video.id),
-    onSuccess: () => {
+    onSuccess: async () => {
       setDeleteDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      const vid = String(video.id);
+      queryClient.removeQueries({ queryKey: ['video', vid] });
+      queryClient.removeQueries({ queryKey: ['video-neighbors', vid] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['unknowns'] }),
+        queryClient.invalidateQueries({ queryKey: ['videos'] }),
+        queryClient.invalidateQueries({ queryKey: ['video-neighbors'] }),
+        queryClient.invalidateQueries({ queryKey: ['timeline'] }),
+        queryClient.invalidateQueries({ queryKey: ['speciesVisits'] }),
+        queryClient.invalidateQueries({ queryKey: ['overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['migration-calendar'] }),
+        queryClient.invalidateQueries({ queryKey: ['bird-directory'] }),
+        queryClient.invalidateQueries({ queryKey: ['speciesSummary'] }),
+      ]);
       navigate('/');
     },
   });

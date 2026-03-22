@@ -8,8 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Gallery:** приём ответа приёмника **201** и **204** (раньше только 200); при отсутствии подходящих детекций — **INFO** в лог с причинами фильтра.
+- **Страница вида `/species/:id`:** валидация id; при **404** — понятное сообщение и ссылка в каталог; пустые **weather** / некорректная длина **hourlyActivity** не ломают графики (MUI Charts). API summary: обновление из Wikipedia обёрнуто в **try/except**, чтобы сеть/БД не отдавали «мёртвую» страницу.
+- **Unknowns ↔ видео:** после смены вида или merge на странице видео список «Неизвестные» больше не «залипает» на старых данных (инвалидация **`['unknowns']`** в `DetectedSpecies`; раньше кэш жил до 5 минут).
+- **Удаление видео:** сначала **коммит** в БД, затем удаление папки записи на диске — при ошибке транзакции файлы не удаляются; после удаления — сброс кэша **`video` / `video-neighbors` / `videos`** и инвалидация соседей по дню.
+
 ### Added
 
+- **CI: CodeQL** — workflow `.github/workflows/codeql.yml` (Python `app/web` + `app/processor`, TypeScript `app/ui/src`), конфиги `.github/codeql/`; доки [CODEQL](docs/CODEQL.md) / [RU](docs/CODEQL.ru.md), пункты в mkdocs и SITE_MAP; рекомендация расширения **GitHub.vscode-codeql** в `.vscode/extensions.json`; скрипт **`scripts/codeql-local.sh`**; `.gitignore`: **`.tools/`** (локальный CLI, БД, SARIF); в доке — пример triage последнего локального прогона.
 - **#82**: на странице видео — кнопки «предыдущий / следующий» ролик за тот же календарный день UTC, что и `start_time`; API `GET /api/ui/videos/:id/neighbors` (`previous_id`, `next_id`, `index`, `total`, `day_utc`).
 - Скрипт `scripts/github-project-mark-done.sh` — пометить issue на доске **BirdLense Hub — Roadmap** как **Done** (поля **Status** и **Поток**); см. [CONTRIBUTING](CONTRIBUTING.md).
 - Примеры алертинга Prometheus: `examples/prometheus/birdlense.rules.yml`, `examples/prometheus/alertmanager.birdlense.example.yml`; раздел **Alerting** в [CONFIGURATION](docs/CONFIGURATION.md) / RU — закрывает [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57).
@@ -25,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **CI: CodeQL** — `github/codeql-action` **v3 → v4** ([changelog GitHub](https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/)): без предупреждений о Node 20 и deprecation v3 на раннере.
+- **Доки CodeQL** (EN/RU): `workflow_dispatch`, **codeql-action@v4** в вводном абзаце; установка расширения в Cursor/VS Code (CLI, VSIX, ID **`GitHub.vscode-codeql`**). **`.vscode/extensions.json`** — тот же ID издателя.
 - ROADMAP (EN/RU): бэклог оператора — issues [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (коррекция видов Unknowns ↔ видео), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по видео); карточки на Project **BirdLense Hub — Roadmap**.
 - Безопасность [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46): rate limit `POST /api/ui/settings/verify-password` — IP клиента за nginx (`client_ip_for_rate_limit`: `X-Real-IP`, `X-Forwarded-For`; nginx передаёт оба для `/api` и `/metrics`), сброс счётчика при успешном входе, **`Retry-After`** при **429**; pytest `TestVerifyPasswordRateLimit`; доки ACCESS_CONTROL / API / SECURITY / TESTING / OPEN_SOURCE_PREP / ROADMAP.
 - Политика платформы: **официально только x86/amd64** (Intel/AMD); ARM / aarch64 не поддерживаются и не планируются — ROADMAP, доки, конфиг; бэклог без ARM64 Docker ([#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49)).
