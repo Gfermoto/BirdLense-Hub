@@ -25,7 +25,7 @@ Manual species correction works well when one choice applies to **many** detecti
 | Phase | Scope |
 |-------|--------|
 | **A — Docs & microcopy** | Page help + i18n: clarify that Unknowns and video use the **same** correction API; encourage View video for visual check. |
-| **B — Navigation** | From Unknowns after correct: optional “Stay on list” vs “Open video” (if product wants). |
+| **B — Navigation** | From Unknowns after correct: optional “Stay on list” vs “Open video” — **implemented:** success snackbar includes **Open video** (default: stay on list; 10s auto-hide when action shown). |
 | **C — Unified history** (optional) | Activity log or “last corrected here / there” — only if operators ask. |
 
 ## Acceptance (from issue)

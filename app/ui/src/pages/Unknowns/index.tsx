@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -187,6 +187,7 @@ function UnknownCard({
 
 export function UnknownsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -211,11 +212,26 @@ export function UnknownsPage() {
 
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
+  /** After correct/confirm: optional snackbar action to open this video (#81 phase B). */
+  const [successVideoId, setSuccessVideoId] = useState<number | null>(null);
+
+  const unknownsQueryKey = ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay] as const;
+
+  const resolveVideoIdForDetection = (detectionId: number): number | null => {
+    const list = queryClient.getQueryData<UnknownDetection[]>(unknownsQueryKey) ?? [];
+    const row = list.find((u) => u.id === detectionId);
+    return row?.video_id ?? null;
+  };
+
+  const clearSuccessSnackbar = () => {
+    setCorrectSuccess(null);
+    setSuccessVideoId(null);
+  };
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
       updateDetectionSpecies(detectionId, speciesId),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
@@ -227,6 +243,7 @@ export function UnknownsPage() {
       const msg = data?.updated_count && data.updated_count > 1
         ? t('video.correctedInVideos', { count: data.updated_count })
         : t('unknowns.corrected');
+      setSuccessVideoId(resolveVideoIdForDetection(variables.detectionId));
       setCorrectSuccess(msg);
     },
     onError: (err: Error) => {
@@ -236,12 +253,13 @@ export function UnknownsPage() {
 
   const confirmMutation = useMutation({
     mutationFn: (detectionId: number) => confirmDetection(detectionId),
-    onSuccess: () => {
+    onSuccess: (_data, detectionId) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
       queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      setSuccessVideoId(resolveVideoIdForDetection(detectionId));
       setCorrectSuccess(t('unknowns.corrected'));
     },
     onError: (err: Error) => {
@@ -374,11 +392,25 @@ export function UnknownsPage() {
       </Snackbar>
       <Snackbar
         open={!!correctSuccess}
-        autoHideDuration={4000}
-        onClose={() => setCorrectSuccess(null)}
+        autoHideDuration={successVideoId != null ? 10000 : 4000}
+        onClose={clearSuccessSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        action={
+          successVideoId != null ? (
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                navigate(`/videos/${successVideoId}`);
+                clearSuccessSnackbar();
+              }}
+            >
+              {t('unknowns.openVideoAfterCorrect')}
+            </Button>
+          ) : undefined
+        }
       >
-        <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
+        <Alert severity="success" onClose={clearSuccessSnackbar}>
           {correctSuccess}
         </Alert>
       </Snackbar>
