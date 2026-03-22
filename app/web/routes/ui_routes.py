@@ -280,6 +280,55 @@ def register_routes(app):
         }
         return video_json, 200
 
+    @app.route('/api/ui/videos/<int:video_id>/neighbors', methods=['GET'])
+    def get_video_neighbors(video_id):
+        """Соседние ролики за тот же календарный день (UTC), что и start_time текущего видео.
+
+        Порядок: start_time по возрастанию, при равенстве — id по возрастанию.
+        """
+        video = Video.query.get(video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+        st = ensure_utc(video.start_time).astimezone(timezone.utc).replace(tzinfo=None)
+        day_start = datetime(st.year, st.month, st.day)
+        day_end = day_start + timedelta(days=1)
+        day_rows = (
+            Video.query.filter(
+                Video.start_time >= day_start,
+                Video.start_time < day_end,
+            )
+            .order_by(Video.start_time.asc(), Video.id.asc())
+            .with_entities(Video.id)
+            .all()
+        )
+        ids = [row[0] for row in day_rows]
+        try:
+            idx = ids.index(video_id)
+        except ValueError:
+            app.logger.warning(
+                'Video %s start_time not in UTC day list (day %s–%s); ids=%s',
+                video_id,
+                day_start,
+                day_end,
+                ids,
+            )
+            return {
+                'day_utc': day_start.date().isoformat(),
+                'previous_id': None,
+                'next_id': None,
+                'index': 0,
+                'total': len(ids),
+            }, 200
+        prev_id = ids[idx - 1] if idx > 0 else None
+        next_id = ids[idx + 1] if idx + 1 < len(ids) else None
+        return {
+            'day_utc': day_start.date().isoformat(),
+            'previous_id': prev_id,
+            'next_id': next_id,
+            'index': idx,
+            'total': len(ids),
+        }, 200
+
     @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
     def delete_video(video_id):
         """Удалить запись (видео, файл, связанные данные). Только для админа и помощника."""
