@@ -42,6 +42,9 @@ app/e2e/test-results/
 app/htmlcov/
 app/.coverage
 
+# CodeQL локально: БД, SARIF, скачанный CLI (см. scripts/codeql-local.sh)
+.tools/
+
 # Cursor IDE
 .cursor/
 
