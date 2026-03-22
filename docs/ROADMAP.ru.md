@@ -33,7 +33,7 @@
 
 **Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
 
-**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80)–[#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (операторский UX / галерея — март 2026). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
 
 **Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
 
@@ -56,6 +56,9 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) | P3, web |
 | 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
 | 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
+| 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) | P2, web, bug |
+| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) | P2, web |
+| 14 | Навигация по видео: подряд (напр. за день), без сброса в начало списка | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) | P2, web |
 
 ### Триаж: Issue или Discussion
 
