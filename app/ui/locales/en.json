@@ -446,7 +446,8 @@
     "limitReached": "Showing up to 500 records. Select a specific hour for precise search.",
     "hourHint": "When selecting a time (not 00:00), only detections for that hour are shown.",
     "passwordRequired": "Enter settings password to correct species.",
-    "corrected": "Species corrected"
+    "corrected": "Species corrected",
+    "openVideoAfterCorrect": "Open video"
   },
   "species": {
     "searchPlaceholder": "Search species...",
