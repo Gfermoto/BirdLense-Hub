@@ -1,0 +1,55 @@
+---
+description: Деплой BirdLense Hub на 185.218.111.196
+alwaysApply: true
+---
+
+# Деплой BirdLense Hub
+
+## Критично
+
+**Сервер: 185.218.111.196:2222.** Деплой ВСЕГДА выполнять на него.
+
+**После любых изменений в коде — запускать деплой.** Не запускать автоматически при открытии проекта — только по явному запросу.
+
+## Команда деплоя
+
+```bash
+cd /home/gfer/BirdLense
+make deploy
+```
+
+## Что делает деплой
+
+1. Синхронизирует код (исключая `app/data`, **`.tools/`** (локальный CodeQL), venv и `site/` — записи и БД не трогаются)
+2. На сервере: `make stop` → `make build` → `make start`
+
+## Данные на сервере (не теряются)
+
+- `./app/data/recordings/` — видео
+- `./app/data/db/birdlense.db` — SQLite
+- `./app/app_config/` — default_config синхронизируется; **user_config.yaml не перезаписывается**
+
+## SSH
+
+`ssh birdlense` — Host в ~/.ssh/config:
+```
+Host birdlense
+  HostName 185.218.111.196
+  Port 2222
+  User root
+```
+
+## Порт
+
+По умолчанию 8085. `BIRDLENSE_PORT=8080 make start` на сервере.
+
+## Записи не видны
+
+1. System → «Сканировать и импортировать»
+2. Проверить: `./app/data/recordings/YYYY/MM/DD/HHMMSS/video.mp4` на сервере
+
+## Что НЕ перезаписывается при деплое
+
+- `app/data/` — записи и БД
+- `app/app_config/user_config.yaml` — настройки
+- Старые контейнеры (nginx, processor, web) — удаляются перед деплоем
