@@ -62,6 +62,7 @@ nav:
       - MCP setup: MCP_SETUP.md
       - Local development: LOCAL_DEV.md
       - Testing: TESTING.md
+      - "UX: Unknowns vs video correction": UX_UNKNOWN_VIDEO_CORRECTION.md
   - "ML & project":
       - Training: TRAINING.md
       - Datasets: DATASETS.md
@@ -100,6 +101,7 @@ nav:
       - MCP: MCP_SETUP.ru.md
       - Локальная разработка: LOCAL_DEV.ru.md
       - Тестирование: TESTING.ru.md
+      - "UX: Неизвестные и видео": UX_UNKNOWN_VIDEO_CORRECTION.md
       - Обучение: TRAINING.ru.md
       - Датасеты: DATASETS.ru.md
       - Версионирование: VERSIONING.ru.md
@@ -115,7 +117,7 @@ nav:
 
 extra:
   # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
-  site_version: "0.2.3"
+  site_version: "0.2.4"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub
