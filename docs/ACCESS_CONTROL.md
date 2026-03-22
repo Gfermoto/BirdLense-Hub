@@ -90,6 +90,21 @@ Server checks `access_role` on each gated request.
 
 **MCP:** Valid `Authorization: Bearer <MCP_TOKEN>` can satisfy **admin-level** checks for automation (`settings_check_access()`), so protect tokens like root passwords.
 
+### Rate limiting (`verify-password`)
+
+Brute-force protection on `POST /api/ui/settings/verify-password`:
+
+| Rule | Value |
+|------|--------|
+| Window | **60** seconds (rolling, per client IP) |
+| Failed attempts | **5** wrong passwords → further requests get **429** until the window cools down |
+| HTTP | **429** + JSON `{"ok": false, "error": "Too many attempts"}` + header **`Retry-After: 60`** (seconds) |
+| Success | A correct password **clears** the failure counter for that IP |
+
+**Client IP behind nginx:** the app uses `X-Real-IP`, then the first address in `X-Forwarded-For`, then `remote_addr` (`client_ip_for_rate_limit()` in `util.py`). Nginx sets `X-Real-IP` and `X-Forwarded-For` for `/api` in `nginx/standalone.conf.template`. If Gunicorn is exposed without a trusted reverse proxy, clients could spoof these headers — restrict who can reach port 8000.
+
+Tests: `TestVerifyPasswordRateLimit` in `app/web/tests/test_api.py` (run via `make test-web`).
+
 ---
 
 ## Feeder API

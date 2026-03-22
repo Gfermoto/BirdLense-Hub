@@ -430,3 +430,86 @@ class TestUnknowns:
             }
         )
         assert r.status_code == 400
+
+
+class TestVerifyPasswordRateLimit:
+    """POST /api/ui/settings/verify-password — brute-force throttle (issue #46)."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_buckets(self, client):
+        """Depends on ``client`` so the app (and ``util``) loads before touching rate-limit state."""
+        import util as util_mod
+        with util_mod._verify_password_lock:
+            util_mod._verify_password_attempts.clear()
+        yield
+        with util_mod._verify_password_lock:
+            util_mod._verify_password_attempts.clear()
+
+    def test_five_wrong_then_429(self, client, monkeypatch):
+        from app_config.app_config import app_config
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = 'correct-horse-battery-staple'
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        for _ in range(5):
+            r = client.post(
+                '/api/ui/settings/verify-password',
+                json={'password': 'wrong'},
+            )
+            assert r.status_code == 401
+        r = client.post(
+            '/api/ui/settings/verify-password',
+            json={'password': 'wrong'},
+        )
+        assert r.status_code == 429
+        assert r.json.get('error')
+        import util as util_mod
+        assert r.headers.get('Retry-After') == str(util_mod.VERIFY_PASSWORD_WINDOW)
+
+    def test_success_clears_counter(self, client, monkeypatch):
+        from app_config.app_config import app_config
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = 'good-secret'
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        for _ in range(4):
+            client.post('/api/ui/settings/verify-password', json={'password': 'nope'})
+        r_ok = client.post(
+            '/api/ui/settings/verify-password',
+            json={'password': 'good-secret'},
+        )
+        assert r_ok.status_code == 200
+        for _ in range(5):
+            r = client.post(
+                '/api/ui/settings/verify-password',
+                json={'password': 'x'},
+            )
+            assert r.status_code == 401
+        assert client.post(
+            '/api/ui/settings/verify-password',
+            json={'password': 'x'},
+        ).status_code == 429
+
+    def test_x_real_ip_separate_buckets(self, client, monkeypatch):
+        from app_config.app_config import app_config
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = 's'
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        for _ in range(5):
+            client.post(
+                '/api/ui/settings/verify-password',
+                json={'password': 'bad'},
+                headers={'X-Real-IP': '198.51.100.22'},
+            )
+        assert client.post(
+            '/api/ui/settings/verify-password',
+            json={'password': 'bad'},
+            headers={'X-Real-IP': '198.51.100.22'},
+        ).status_code == 429
+        r = client.post(
+            '/api/ui/settings/verify-password',
+            json={'password': 'bad'},
+            headers={'X-Real-IP': '198.51.100.33'},
+        )
+        assert r.status_code == 401
