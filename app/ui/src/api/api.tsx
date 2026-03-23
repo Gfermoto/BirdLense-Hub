@@ -481,6 +481,45 @@ export const restartProcessor = async (): Promise<{ success: boolean; message?: 
   }
 };
 
+/** Download SQLite DB backup from System page. */
+export const downloadDbBackup = async (): Promise<void> => {
+  const res = await fetch(`${BASE_API_URL}/system/db/backup`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition');
+  const filename =
+    cd?.match(/filename="?([^";\n]+)"?/)?.[1] ||
+    `birdlense_db_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.db`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/** Restore SQLite DB from uploaded file (.db). */
+export const restoreDbBackup = async (
+  file: File,
+): Promise<{ message: string; backup_path?: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_API_URL}/system/db/restore`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+};
+
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {

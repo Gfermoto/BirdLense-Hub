@@ -80,6 +80,24 @@ curl -s http://YOUR_GO2RTC_HOST:1984/api/streams
 
 ---
 
+## SQLite restore failed
+
+Feature location: **System → Storage → Restore from file**.
+
+- Only valid SQLite files are accepted (`.db/.sqlite`).
+- Restore replaces the current DB, but creates an automatic `*.pre_restore_*.bak` next to `birdlense.db` first.
+- `Invalid SQLite database file` means the upload is corrupt or not an SQLite DB.
+
+Validate backup file before upload:
+
+```bash
+sqlite3 "/path/to/backup.db" "PRAGMA integrity_check;"
+```
+
+Expected output: `ok`.
+
+---
+
 ## Live view: 502 or black screen
 
 **502** — UI cannot reach go2rtc from inside the container.

@@ -406,7 +406,18 @@
     "mergeSpeciesConfirm": "Merge duplicate species (e.g. Garrulus glandarius (Eurasian Jay) → Eurasian Jay)? This updates the database.",
     "merging": "Merging…",
     "mergeSpeciesSuccess": "Merged {{count}} duplicate species into canonical names",
-    "mergeSpeciesFailed": "Failed to merge duplicate species"
+    "mergeSpeciesFailed": "Failed to merge duplicate species",
+    "dbBackupRestore": "Database backup (SQLite)",
+    "dbBackupRestoreHint": "Download a backup before major updates. Restore replaces the current DB and creates a pre-restore backup on the server.",
+    "dbBackupAction": "Download DB backup",
+    "dbBackingUp": "Downloading backup...",
+    "dbBackupDone": "DB backup downloaded",
+    "dbBackupFailed": "Failed to download DB backup",
+    "dbRestoreAction": "Restore from file",
+    "dbRestoring": "Restoring...",
+    "dbRestoreConfirm": "Restore database from selected file? Current DB will be replaced (a pre-restore backup will be saved on server).",
+    "dbRestoreDone": "Database restored",
+    "dbRestoreFailed": "Failed to restore database"
   },
   "common": {
     "loginRequiredForExport": "Sign in to export data and reports",
