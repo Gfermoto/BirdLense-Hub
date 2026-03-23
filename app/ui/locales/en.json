@@ -469,7 +469,10 @@
     "hourHint": "When selecting a time (not 00:00), only detections for that hour are shown.",
     "passwordRequired": "Enter settings password to correct species.",
     "corrected": "Species corrected",
-    "openVideoAfterCorrect": "Open video"
+    "openVideoAfterCorrect": "Open video",
+    "recentCorrectionsTitle": "Recent manual corrections (shared Unknowns/Video flow)",
+    "recentCorrectionConfirm": "Current species confirmed",
+    "recentCorrectionUpdate": "{{from}} -> {{to}}"
   },
   "species": {
     "searchPlaceholder": "Search species...",

@@ -469,7 +469,10 @@
     "hourHint": "При выборе времени (не 00:00) показываются только детекции за выбранный час.",
     "passwordRequired": "Введите пароль настроек для исправления вида.",
     "corrected": "Вид исправлен",
-    "openVideoAfterCorrect": "Открыть видео"
+    "openVideoAfterCorrect": "Открыть видео",
+    "recentCorrectionsTitle": "Последние ручные правки (единый поток Unknowns/Video)",
+    "recentCorrectionConfirm": "Подтверждён текущий вид",
+    "recentCorrectionUpdate": "{{from}} → {{to}}"
   },
   "species": {
     "searchPlaceholder": "Поиск видов...",

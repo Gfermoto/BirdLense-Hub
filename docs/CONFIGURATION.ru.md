@@ -30,6 +30,7 @@
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
+| `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
 | `CORS_ORIGINS` | Доп. origins для CORS (через запятую) |
 | `OPENWEATHER_API_KEY` | Ключ OpenWeather |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT (если не в конфиге) |

@@ -393,6 +393,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /corrections/recent:
+    get:
+      summary: Get recent manual species corrections
+      description: |
+        Returns recent correction history entries for unified Unknowns and Video correction flow.
+        Requires contributor or admin access.
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Recent correction entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CorrectionHistoryEntry"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /system/metrics:
     get:
       summary: Get system metrics
@@ -841,6 +870,33 @@ components:
           format: date
         totalUptime:
           type: number
+    CorrectionHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        action:
+          type: string
+          enum: [correct_species, confirm_species]
+        source:
+          type: string
+          enum: [unknowns, video, other]
+        detection_id:
+          type: integer
+          nullable: true
+        from_species_name:
+          type: string
+          nullable: true
+        to_species_name:
+          type: string
+          nullable: true
+        updated_count:
+          type: integer
+          nullable: true
     StorageStats:
       type: object
       properties:

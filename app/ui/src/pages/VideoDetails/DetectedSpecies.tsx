@@ -109,7 +109,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
-      updateDetectionSpecies(detectionId, speciesId),
+      updateDetectionSpecies(detectionId, speciesId, 'video'),
     onSuccess: (data) => {
       if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
       // Тот же API, что на странице Unknowns — иначе при staleTime 5m список «Неизвестные» остаётся старым.
