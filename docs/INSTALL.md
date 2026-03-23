@@ -84,6 +84,7 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 - **Health:** `curl http://localhost:8085/api/ui/health`
 - **Cameras:** Settings → Cameras
 - **Live:** video stream with overlay
+- **DB backup:** System → Storage → “Download DB backup”
 
 Recordings not visible? System → «Scan and import».
 
