@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Документация:** подготовительный чеклист перед реализацией [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) / [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — [PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) / [EN](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md); ссылка из [ROADMAP](docs/ROADMAP.ru.md).
 - **#54 (CI):** контрактный смоук OpenAPI — новый тест `app/web/tests/test_openapi_contract.py` и job `openapi-contract` в `.github/workflows/ci-pr.yml` (гейт на PR/push в `main`/`dev`).
 - **#55 (Migration):** life list / «виды за год» покрывается самой таблицей миграции (фильтр по годам + строки и столбец Σ); отдельный дублирующий блок-чеклист на странице убран.
 - **#81 (phase C):** единый журнал ручных правок Unknowns/Video — backend activity `species_correction` + endpoint `GET /api/ui/corrections/recent` + блок последних правок на странице Unknowns.
