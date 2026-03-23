@@ -1,10 +1,12 @@
 import os
 import re
 import threading
+import sqlite3
+import tempfile
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
-from flask import request, Response
+from flask import request, Response, send_file
 import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func, select, exists
@@ -91,6 +93,12 @@ def _collect_system_metrics_dict(app):
 
 
 def register_routes(app):
+    def _sqlite_db_path() -> str | None:
+        uri = str(db.engine.url)
+        if not uri.startswith('sqlite:///'):
+            return None
+        return db.engine.url.database
+
     def _prometheus_metrics_body(app):
         sys_m = _collect_system_metrics_dict(app)
         detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
@@ -351,6 +359,78 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Purge storage failed')
             return {'error': 'Failed to purge storage'}, 500
+
+    @app.route('/api/ui/system/db/backup', methods=['GET'])
+    def backup_database():
+        """Download current SQLite database snapshot."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        db_path = _sqlite_db_path()
+        if not db_path:
+            return {'error': 'DB backup is supported only for SQLite'}, 400
+        if not os.path.isfile(db_path):
+            return {'error': 'Database file not found'}, 404
+        ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
+        filename = f'birdlense_db_backup_{ts}.db'
+        return send_file(
+            db_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/octet-stream',
+        )
+
+    @app.route('/api/ui/system/db/restore', methods=['POST'])
+    def restore_database():
+        """Restore SQLite DB from uploaded .db file; keep pre-restore backup."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        db_path = _sqlite_db_path()
+        if not db_path:
+            return {'error': 'DB restore is supported only for SQLite'}, 400
+        upload = request.files.get('file')
+        if not upload:
+            return {'error': 'file is required (multipart/form-data)'}, 400
+
+        tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-restore-')
+        uploaded_path = os.path.join(tmp_dir, 'uploaded.db')
+        backup_path = ''
+        try:
+            upload.save(uploaded_path)
+            if not os.path.isfile(uploaded_path) or os.path.getsize(uploaded_path) == 0:
+                return {'error': 'Uploaded file is empty'}, 400
+
+            # Validate uploaded sqlite before touching live DB.
+            with sqlite3.connect(uploaded_path) as src:
+                check = src.execute('PRAGMA integrity_check;').fetchone()
+                if not check or check[0] != 'ok':
+                    return {'error': 'Uploaded SQLite file failed integrity_check'}, 400
+
+            db.session.remove()
+            db.engine.dispose()
+
+            ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
+            backup_path = f'{db_path}.pre_restore_{ts}.bak'
+            shutil.copy2(db_path, backup_path)
+
+            with sqlite3.connect(uploaded_path) as src_conn:
+                with sqlite3.connect(db_path) as dst_conn:
+                    src_conn.backup(dst_conn)
+
+            return {
+                'message': 'Database restored successfully',
+                'backup_path': backup_path,
+            }, 200
+        except sqlite3.DatabaseError:
+            app.logger.exception('DB restore failed: invalid SQLite payload')
+            return {'error': 'Invalid SQLite database file'}, 400
+        except Exception as e:
+            app.logger.exception('DB restore failed')
+            return {'error': f'Failed to restore DB: {e}'}, 500
+        finally:
+            try:
+                shutil.rmtree(tmp_dir)
+            except OSError:
+                pass
 
     @app.route('/api/ui/system/retention', methods=['POST'])
     def trigger_retention():
