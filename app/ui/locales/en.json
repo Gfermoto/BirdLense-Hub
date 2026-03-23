@@ -54,10 +54,7 @@
     "regionComparisonTopList": "Region top:",
     "regionComparisonHint": "Based on eBird data for the last 30 days. Region: {{region}}.",
     "regionComparisonConfigure": "Add eBird API key in Settings → Advanced for regional comparison.",
-    "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings.",
-    "yearlyChecklistTitle": "Yearly Species Checklist",
-    "yearlyChecklistSummary": "Seen {{seen}} of {{total}} species this year",
-    "year": "Year"
+    "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings."
   },
   "settings": {
     "section1": "1. Connection",
@@ -447,6 +444,10 @@
   "migrationCalendar": {
     "title": "Migration Calendar",
     "description": "When each species typically appears at your feeder — based on your historical data.",
+    "yearlyChecklistTitle": "Yearly checklist (from migration table)",
+    "yearlyChecklistSummary": "{{seen}} species recorded in {{year}}",
+    "year": "Year",
+    "noChecklistData": "No species recorded for the selected year yet.",
     "species": "Species",
     "startYear": "From year",
     "endYear": "To year",

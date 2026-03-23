@@ -14,6 +14,8 @@ import Link from '@mui/material/Link';
 import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import { useTranslation } from 'react-i18next';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { fetchMigrationCalendar } from '../../api/api';
@@ -31,6 +33,7 @@ export const MigrationCalendar = () => {
   const { t } = useTranslation();
   const [startYear, setStartYear] = useState<number | ''>('');
   const [endYear, setEndYear] = useState<number | ''>('');
+  const [checklistYear, setChecklistYear] = useState<number>(currentYear);
 
   const params = useMemo(() => {
     const s = startYear === '' ? undefined : startYear;
@@ -42,6 +45,11 @@ export const MigrationCalendar = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
     queryFn: () => fetchMigrationCalendar(params),
+  });
+
+  const { data: checklistData } = useQuery({
+    queryKey: ['migration-calendar-checklist', checklistYear],
+    queryFn: () => fetchMigrationCalendar({ start_year: checklistYear, end_year: checklistYear }),
   });
 
   if (isLoading) {
@@ -61,6 +69,7 @@ export const MigrationCalendar = () => {
   }
 
   const { species, month_labels } = data;
+  const yearlySpecies = checklistData?.species ?? [];
 
   if (species.length === 0) {
     return (
@@ -108,6 +117,61 @@ export const MigrationCalendar = () => {
           ))}
         </TextField>
       </Box>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 1.5,
+            gap: 1,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="h6">{t('migrationCalendar.yearlyChecklistTitle')}</Typography>
+          <TextField
+            select
+            size="small"
+            label={t('migrationCalendar.year')}
+            value={checklistYear}
+            onChange={(e) => setChecklistYear(Number(e.target.value))}
+            sx={{ minWidth: 120 }}
+          >
+            {YEAR_OPTIONS.map((y) => (
+              <MenuItem key={y} value={y}>{y}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          {t('migrationCalendar.yearlyChecklistSummary', {
+            seen: yearlySpecies.length,
+            year: checklistYear,
+          })}
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            gap: 0.5,
+            maxHeight: 320,
+            overflowY: 'auto',
+          }}
+        >
+          {yearlySpecies.map((s) => (
+            <FormControlLabel
+              key={s.id}
+              control={<Checkbox checked disabled size="small" />}
+              label={`${s.name} (${s.total})`}
+              sx={{ m: 0 }}
+            />
+          ))}
+          {yearlySpecies.length === 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {t('migrationCalendar.noChecklistData')}
+            </Typography>
+          )}
+        </Box>
+      </Paper>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table size="small" stickyHeader>
           <TableHead>

@@ -6,7 +6,6 @@ import {
   SpeciesSummary,
   OverviewData,
   Species,
-  YearlyChecklistData,
 } from '../types';
 import axios from 'axios';
 
@@ -588,13 +587,6 @@ export const fetchOverviewData = async (
       start_time: Math.floor(localStart.getTime() / 1000),
       end_time: Math.floor(localEnd.getTime() / 1000),
     },
-  });
-  return response.data;
-};
-
-export const fetchYearlyChecklist = async (year: number): Promise<YearlyChecklistData> => {
-  const response = await axios.get(`${BASE_API_URL}/species/checklist/yearly`, {
-    params: { year },
   });
   return response.data;
 };
