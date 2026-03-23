@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-03-23
+
 ### Changed
 
 - **Отчётность:** без отдельных страниц `PROJECT_REPORTING*` — правила в [docs/ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) и [CONTRIBUTING](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); вести **Issues** и доску, не дублировать политикой в `docs/`.
