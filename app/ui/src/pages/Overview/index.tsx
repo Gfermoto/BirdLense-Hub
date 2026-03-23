@@ -12,7 +12,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData, fetchWeather, downloadReportPdf, fetchRegionComparison, fetchYearlyChecklist } from '../../api/api';
+import { fetchOverviewData, fetchWeather, downloadReportPdf, fetchRegionComparison } from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -29,8 +29,6 @@ import { PageHelp } from '../../components/PageHelp';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 
 const formatHour = (hour: number) => {
   const date = new Date();
@@ -42,7 +40,6 @@ export const Overview = () => {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
-  const [checklistYear, setChecklistYear] = useState<Dayjs>(dayjs().startOf('year'));
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const {
@@ -66,11 +63,6 @@ export const Overview = () => {
     queryFn: () => fetchRegionComparison(),
     staleTime: 1000 * 60 * 10, // 10 min
     retry: false,
-  });
-
-  const { data: yearlyChecklist } = useQuery({
-    queryKey: ['yearly-checklist', checklistYear.year()],
-    queryFn: () => fetchYearlyChecklist(checklistYear.year()),
   });
 
   if (isLoadingSightings)
@@ -311,53 +303,6 @@ export const Overview = () => {
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 2 }}>
-        <Grid size={12}>
-          <Paper sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="h6">{t('overview.yearlyChecklistTitle')}</Typography>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label={t('overview.year')}
-                  views={['year']}
-                  value={checklistYear}
-                  onChange={(newValue) => {
-                    if (newValue) setChecklistYear(newValue.startOf('year'));
-                  }}
-                  disableFuture
-                />
-              </LocalizationProvider>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              {t('overview.yearlyChecklistSummary', {
-                seen: yearlyChecklist?.seen_species ?? 0,
-                total: yearlyChecklist?.total_species ?? 0,
-              })}
-            </Typography>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 0.5,
-                maxHeight: 320,
-                overflowY: 'auto',
-              }}
-            >
-              {(yearlyChecklist?.items || []).map((item) => (
-                <FormControlLabel
-                  key={item.id}
-                  control={<Checkbox checked={item.seen} disabled size="small" />}
-                  label={
-                    item.seen
-                      ? `${item.name} (${item.count})`
-                      : item.name
-                  }
-                  sx={{ m: 0 }}
-                />
-              ))}
-            </Box>
-          </Paper>
-        </Grid>
-
         {/* Daily Pattern Chart */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 1, overflow: 'hidden' }}>

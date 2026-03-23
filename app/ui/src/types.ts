@@ -258,21 +258,6 @@ export interface OverviewData {
   lastDetection?: OverviewLastDetection | null;
 }
 
-export interface YearlyChecklistItem {
-  id: number;
-  name: string;
-  seen: boolean;
-  count: number;
-  last_seen: string | null;
-}
-
-export interface YearlyChecklistData {
-  year: number;
-  total_species: number;
-  seen_species: number;
-  items: YearlyChecklistItem[];
-}
-
 export interface DetectionCounts {
   detections_24h: number;
   detections_7d: number;

@@ -57,7 +57,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 6 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) ✅ locale switch + пилотная `de` | P3, web |
 | 7 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) ✅ workflow `Docker image smoke (published)` (`ghcr ... :latest` + `/api/ui/health`) | P3, infra |
 | 8 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` в CI + `web/tests/test_openapi_contract.py` | P3, web |
-| 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ API `GET /species/checklist/yearly` + блок в Overview (выбор года, seen/not seen) | P3, web |
+| 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ на странице Migration, источник — данные migration-таблицы за выбранный год | P3, web |
 | 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
 | 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
 | 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4 | P2, web, bug |

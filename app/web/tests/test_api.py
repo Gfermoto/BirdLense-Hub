@@ -358,28 +358,6 @@ class TestSpecies:
         for item in r.json:
             assert 'id' in item and 'name' in item and 'count' in item
 
-    def test_yearly_checklist_returns_expected_shape(self, client):
-        r = client.get('/api/ui/species/checklist/yearly')
-        assert r.status_code == 200
-        data = r.json
-        assert 'year' in data
-        assert 'total_species' in data
-        assert 'seen_species' in data
-        assert 'items' in data
-        assert isinstance(data['items'], list)
-        for item in data['items']:
-            assert 'id' in item
-            assert 'name' in item
-            assert 'seen' in item
-            assert 'count' in item
-            assert 'last_seen' in item
-
-    def test_yearly_checklist_rejects_invalid_year(self, client):
-        r = client.get('/api/ui/species/checklist/yearly', query_string={'year': 3001})
-        assert r.status_code == 400
-        assert 'error' in r.json
-
-
 class TestBirdFamilies:
     def test_bird_families_returns_list(self, client):
         r = client.get('/api/ui/bird_families')

@@ -55,7 +55,7 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 6 | UI i18n framework | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) ✅ locale switch + pilot `de` | `area:web`, P3 |
 | 7 | CI: scheduled image smoke test | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) ✅ workflow `Docker image smoke (published)` (`ghcr ... :latest` + `/api/ui/health`) | `area:infra`, P3 |
 | 8 | CI: OpenAPI contract tests | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` in CI + `web/tests/test_openapi_contract.py` | `area:web`, P3 |
-| 9 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ API `GET /species/checklist/yearly` + Overview card (year picker, seen/not seen) | `area:web`, P3 |
+| 9 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ on Migration page, sourced from migration-table data for selected year | `area:web`, P3 |
 | 10 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | `area:web`, P3 |
 | 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.md) | `area:docs`, P3 |
 | 12 | Gallery: investigate / fix (opt-in public gallery) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context in upload thread + docs/tests v0.2.4 | `area:web`, P2, `bug` |
