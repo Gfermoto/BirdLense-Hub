@@ -85,11 +85,11 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 | Тема | Зачем |
 |------|--------|
-| **Доступность (a11y)** | Клавиатура, фокус, контраст — логично после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
-| **Расширение E2E (Playwright)** | Не только смоук: логин, таймлайн, критичные настройки — баланс с CI и стабильностью. |
-| **Секреты в проде** | Документированная ротация / операционный путь для `secrets.*` (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
-| **Синхронизация версий стека** | После bump Ultralytics/React/base image — **этот док**, Docker и release notes одним проходом. |
-| **Community / донаты в UI** | Лидерборды, бейджи поддержки и т.п. — на стадии идей; ссылка на донаты уже есть: `general.donate_url` — [CONFIGURATION](./CONFIGURATION.ru.md). |
+| **Доступность (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): клавиатура, фокус, контраст для Unknowns/Video/Migration после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
+| **Расширение E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): не только смоук — логин, таймлайн, критичные настройки, коррекция видов. |
+| **Секреты в проде** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): документированная ротация / операционный путь для `secrets.*` (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Синхронизация версий стека** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): чеклист sync VERSION/Docker/docs/release notes после bump зависимостей. |
+| **Community / донаты в UI** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): UX-эксперименты поддержки проекта при сохранении ненавязчивости; базовая ссылка уже есть: `general.donate_url`. |
 
 ---
 

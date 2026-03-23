@@ -83,11 +83,11 @@ Themes worth **Issues** when you are ready to schedule them (not on the consiliu
 
 | Theme | Why |
 |-------|-----|
-| **Accessibility (a11y)** | Keyboard navigation, focus order, contrast — natural follow-up after UI i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
-| **Broader E2E (Playwright)** | Beyond smoke: login, timeline, critical settings — tied to CI cost and flake budget. |
-| **Secrets in production** | Documented rotation / operational path for `secrets.*` and related keys (complements maintainer git scan [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
-| **Stack version sync** | After bumping Ultralytics, React, or base image — align **this doc**, `Dockerfile`, and release notes in one pass. |
-| **Community / donation UX** | Leaderboards, supporter badges, etc. — exploratory; `general.donate_url` already exists — [CONFIGURATION](./CONFIGURATION.md). |
+| **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): keyboard navigation, focus order, contrast for Unknowns/Video/Migration (follow-up after i18n [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
+| **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
+| **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): documented rotation / operational path for `secrets.*` and related keys (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): checklist to align VERSION/Docker/docs/release notes after dependency bumps. |
+| **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
 
 ---
 
