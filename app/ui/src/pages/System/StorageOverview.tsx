@@ -1,12 +1,16 @@
 import { useTranslation } from 'react-i18next';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import { BarChart } from '@mui/x-charts/BarChart';
 import dayjs from 'dayjs';
-import { BASE_API_URL } from '../../api/api';
+import { BASE_API_URL, downloadDbBackup, restoreDbBackup } from '../../api/api';
 
 interface StorageStats {
   date: string;
@@ -34,6 +38,11 @@ const formatBytes = (bytes: number): string => {
 
 export const StorageOverview = () => {
   const { t } = useTranslation();
+  const restoreInputRef = useRef<HTMLInputElement | null>(null);
+  const [dbMessage, setDbMessage] = useState<string>('');
+  const [dbError, setDbError] = useState<string>('');
+  const [isDownloadingDb, setIsDownloadingDb] = useState(false);
+  const [isRestoringDb, setIsRestoringDb] = useState(false);
   const { data: storageStats, isLoading } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
     queryFn: async () => {
@@ -57,6 +66,46 @@ export const StorageOverview = () => {
     storageStats?.reduce((acc, stat) => acc + stat.totalSize, 0) || 0;
   const totalFiles =
     storageStats?.reduce((acc, stat) => acc + stat.fileCount, 0) || 0;
+
+  const handleDownloadDb = async () => {
+    setDbError('');
+    setDbMessage('');
+    setIsDownloadingDb(true);
+    try {
+      await downloadDbBackup();
+      setDbMessage(t('storage.dbBackupDone'));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('storage.dbBackupFailed');
+      setDbError(msg);
+    } finally {
+      setIsDownloadingDb(false);
+    }
+  };
+
+  const handleRestorePick = () => {
+    restoreInputRef.current?.click();
+  };
+
+  const handleRestoreFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!window.confirm(t('storage.dbRestoreConfirm'))) return;
+    setDbError('');
+    setDbMessage('');
+    setIsRestoringDb(true);
+    try {
+      const result = await restoreDbBackup(file);
+      setDbMessage(result.message || t('storage.dbRestoreDone'));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('storage.dbRestoreFailed');
+      setDbError(msg);
+    } finally {
+      setIsRestoringDb(false);
+    }
+  };
 
   return (
     <Box>
@@ -103,6 +152,40 @@ export const StorageOverview = () => {
             {t('storage.noStorageData')}
           </Typography>
         )}
+      </Paper>
+      <Paper sx={{ p: 2, mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          {t('storage.dbBackupRestore')}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('storage.dbBackupRestoreHint')}
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <Button
+            variant="outlined"
+            onClick={handleDownloadDb}
+            disabled={isDownloadingDb || isRestoringDb}
+          >
+            {isDownloadingDb ? t('storage.dbBackingUp') : t('storage.dbBackupAction')}
+          </Button>
+          <Button
+            color="warning"
+            variant="outlined"
+            onClick={handleRestorePick}
+            disabled={isDownloadingDb || isRestoringDb}
+          >
+            {isRestoringDb ? t('storage.dbRestoring') : t('storage.dbRestoreAction')}
+          </Button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".db,.sqlite,.sqlite3,application/octet-stream"
+            style={{ display: 'none' }}
+            onChange={handleRestoreFile}
+          />
+        </Stack>
+        {dbMessage && <Alert severity="success" sx={{ mt: 2 }}>{dbMessage}</Alert>}
+        {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
       </Paper>
     </Box>
   );

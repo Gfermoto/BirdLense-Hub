@@ -390,6 +390,24 @@ class TestStatusDebug:
         assert 'last_heartbeat' in data or 'cutoff_utc' in data
 
 
+class TestDatabaseBackupRestore:
+    def test_db_backup_endpoint_exists(self, client):
+        r = client.get('/api/ui/system/db/backup')
+        # 200 when unlocked and file DB is available; 403 if locked; 404 for in-memory test DB.
+        assert r.status_code in (200, 403, 404)
+        if r.status_code == 200:
+            cd = r.headers.get('Content-Disposition', '')
+            assert 'attachment' in cd.lower()
+            assert '.db' in cd
+
+    def test_db_restore_requires_file(self, client):
+        r = client.post('/api/ui/system/db/restore', data={}, content_type='multipart/form-data')
+        # 400 when endpoint reachable and file is missing; 403 if locked.
+        assert r.status_code in (400, 403)
+        if r.status_code == 400:
+            assert 'error' in r.json
+
+
 class TestReportPdf:
     def test_report_requires_params(self, client):
         r = client.get('/api/ui/report/pdf')

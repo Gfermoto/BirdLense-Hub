@@ -406,7 +406,18 @@
     "mergeSpeciesConfirm": "Объединить дубликаты видов (напр. Garrulus glandarius (Eurasian Jay) → Eurasian Jay)? Будет обновлена база данных.",
     "merging": "Объединение…",
     "mergeSpeciesSuccess": "Объединено {{count}} дубликатов видов в канонические имена",
-    "mergeSpeciesFailed": "Ошибка объединения дубликатов видов"
+    "mergeSpeciesFailed": "Ошибка объединения дубликатов видов",
+    "dbBackupRestore": "Резервная копия БД (SQLite)",
+    "dbBackupRestoreHint": "Перед крупными обновлениями скачайте бэкап. Восстановление заменяет текущую БД и создаёт pre-restore backup на сервере.",
+    "dbBackupAction": "Скачать бэкап БД",
+    "dbBackingUp": "Скачивание бэкапа...",
+    "dbBackupDone": "Бэкап БД скачан",
+    "dbBackupFailed": "Не удалось скачать бэкап БД",
+    "dbRestoreAction": "Восстановить из файла",
+    "dbRestoring": "Восстановление...",
+    "dbRestoreConfirm": "Восстановить БД из выбранного файла? Текущая БД будет заменена (pre-restore backup сохранится на сервере).",
+    "dbRestoreDone": "БД восстановлена",
+    "dbRestoreFailed": "Не удалось восстановить БД"
   },
   "common": {
     "loginRequiredForExport": "Войдите для экспорта и отчётов",
