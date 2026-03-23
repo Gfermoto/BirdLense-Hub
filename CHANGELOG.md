@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **#54 (CI):** контрактный смоук OpenAPI — новый тест `app/web/tests/test_openapi_contract.py` и job `openapi-contract` в `.github/workflows/ci-pr.yml` (гейт на PR/push в `main`/`dev`).
+- **#55 (Overview):** yearly species checklist / life list — новый API `GET /api/ui/species/checklist/yearly?year=YYYY`, блок в Overview с выбором года и чеклистом «видел/не видел», плюс API-тесты и OpenAPI схема.
 
 ## [0.2.7] - 2026-03-23
 

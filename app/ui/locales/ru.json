@@ -54,7 +54,10 @@
     "regionComparisonTopList": "Топ региона:",
     "regionComparisonHint": "По данным eBird за последние 30 дней. Регион: {{region}}.",
     "regionComparisonConfigure": "Укажите ключ eBird API в Настройках → Расширенные для сравнения с регионом.",
-    "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках."
+    "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках.",
+    "yearlyChecklistTitle": "Чеклист видов за год",
+    "yearlyChecklistSummary": "За год отмечено {{seen}} из {{total}} видов",
+    "year": "Год"
   },
   "settings": {
     "section1": "1. Подключение",
