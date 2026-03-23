@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage, type LanguageCode } from '../i18n';
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -24,7 +24,7 @@ export function LanguageSwitcher() {
       <IconButton
         color="inherit"
         onClick={handleOpen}
-        aria-label="language"
+        aria-label={t('common.language')}
         sx={{ '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
       >
         <LanguageIcon />
