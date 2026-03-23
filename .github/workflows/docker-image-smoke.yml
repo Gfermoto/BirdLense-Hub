@@ -1,0 +1,58 @@
+name: Docker image smoke (published)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 04:30 UTC: verify published latest image is runnable.
+    - cron: "30 4 * * *"
+
+concurrency:
+  group: smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/birdlense-hub:latest
+  CONTAINER: birdlense-smoke
+  HOST_PORT: "18085"
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Pull published latest image
+        run: docker pull "$IMAGE"
+
+      - name: Start container from published image
+        run: |
+          docker run -d --rm \
+            --name "$CONTAINER" \
+            -p "${HOST_PORT}:8085" \
+            "$IMAGE"
+
+      - name: Wait for /api/ui/health
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/health" >/dev/null; then
+              echo "health OK after ${i} attempts"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "health check failed for ${IMAGE}"
+          docker logs "$CONTAINER" || true
+          exit 1
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs "$CONTAINER" || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f "$CONTAINER" || true

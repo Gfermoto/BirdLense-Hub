@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **#53 (CI):** workflow `.github/workflows/docker-image-smoke.yml` — ежедневный smoke-тест опубликованного `ghcr.io/<owner>/birdlense-hub:latest` (pull/run + проверка `/api/ui/health`).
 - **#48:** скрипт `scripts/datasets/export_birdlense_to_yolo.py` — экспорт локальных кропов BirdLense (`app/data/dataset/train`) в YOLO classification layout `train/val` с детерминированным split и `dataset_info.json`.
 - **#47 (maintainer hygiene):** скрипт `scripts/security/scan_git_history_secrets.sh` для прохода по полной git-истории через Gitleaks (Docker) + документированный процесс в [SECURITY](docs/SECURITY.md) / [RU](docs/SECURITY.ru.md).
 
