@@ -402,6 +402,50 @@ export const SettingsForm = ({
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.publish_topic">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? 'birdlense/detections'}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.mqttPublishTopic')}
+                placeholder="birdlense/detections"
+                helperText={t('settings.mqttPublishTopicHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.reconnect_min_delay">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 1, max: 3600, step: 1 }}
+                value={field.state.value ?? 5}
+                onChange={(e) => field.handleChange(Number(e.target.value) || 5)}
+                label={t('settings.mqttReconnectMinDelay')}
+                helperText={t('settings.mqttReconnectMinDelayHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="mqtt.reconnect_max_delay">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 1, max: 3600, step: 1 }}
+                value={field.state.value ?? 300}
+                onChange={(e) => field.handleChange(Number(e.target.value) || 300)}
+                label={t('settings.mqttReconnectMaxDelay')}
+                helperText={t('settings.mqttReconnectMaxDelayHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="mqtt.ha_discovery">
             {(field) => (
               <>
