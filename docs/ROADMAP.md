@@ -90,6 +90,21 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 | **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
 
+### User wishes backlog (Mar 2026)
+
+Tracked as separate issues; acceptance criteria live in each issue.
+
+| # | Issue | Summary |
+|---|--------|--------|
+| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | Move block from Overview to Migration |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | `species_confidence_overrides` from eBird top (delta must be in 0–1 scale, not literal −0.5) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | Extra sensitivity for species from BirdNET labels |
+| [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Species catalog → Migration | Same features, clickable species in matrix |
+| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | Regional = eBird top + BirdNET-heard |
+| [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | Applies to table + heard/recognized; not to regional reference |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | Expand seed + document source (`seed.py`) |
+
 ---
 
 ## Shipped ideas (archive)
