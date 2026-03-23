@@ -57,8 +57,10 @@ Create `.cursor/mcp.json` (folder is gitignored — do not commit secrets).
 
 Replace:
 
-- `YOUR_HOST:8085` — reachable Hub host and port (path may be `/mcp` or `/sse` depending on your Hub version — check **Settings → MCP**).
+- `YOUR_HOST:8085` — reachable Hub host and port (path **`/mcp`** — check **Settings → MCP** if you use an older `/sse` URL).
 - `YOUR_MCP_TOKEN_HERE` — same value as `MCP_TOKEN` / UI MCP token
+
+**Production (TLS):** e.g. **`https://birdlense.eyera.info/mcp`** — public UI at [birdlense.eyera.info](https://birdlense.eyera.info/); SSH to the host remains `185.218.111.196:2222`. Use the same Bearer token; nginx terminates HTTPS and proxies to the Hub.
 
 With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
 
