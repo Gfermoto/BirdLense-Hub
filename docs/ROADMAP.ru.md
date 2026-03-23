@@ -92,6 +92,21 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Community / донаты в UI** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): UX-эксперименты поддержки проекта при сохранении ненавязчивости; базовая ссылка уже есть: `general.donate_url`. |
 | **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): ручные отметки «видел сам», заметки — отдельно от таблицы миграции; сейчас только беклог и планы в issue, без кода. |
 
+### Пожелания пользователей (backlog, маркет 2026)
+
+Отдельные issues для планирования; детали и критерии — в каждом issue.
+
+| # | Issue | Кратко |
+|---|--------|--------|
+| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET | Доп. снижение порога для видов из лейблов BirdNET |
+| [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview, вторая диаграмма | Клик по виду → записи этого вида за сегодня |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Каталог → Migration | Тот же функционал, кликабельные виды в таблице |
+| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов | Региональные = топ eBird + услышанные BirdNET |
+| [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Период на Migration | На таблицу и услышанные/распознанные; не на регион |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы | Расширить seed + документация источника (`seed.py`) |
+
 ---
 
 ## Отгруженные идеи (архив)
