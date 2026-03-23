@@ -103,6 +103,16 @@
 
 ---
 
+## 8.1 Git history secret scan (maintainer hygiene)
+
+- Command: `bash scripts/security/scan_git_history_secrets.sh`
+- Tool: Gitleaks in Docker image `zricethezav/gitleaks:latest`
+- Report path: `.artifacts/gitleaks-history.json`
+
+Current baseline (Mar 2026): scan of full git history completed with **no leaks found**.
+
+---
+
 ## 9. Docker
 
 | Risk | Description | Recommendation |

@@ -6,6 +6,7 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 
 - **download_hf_birds.py** — Hugging Face (birds-525) → YOLO cls, `--format scientific_common`
 - **download_inaturalist.py** — iNaturalist Europe API → YOLO cls
+- **export_birdlense_to_yolo.py** — BirdLense `app/data/dataset/train` → YOLO cls `train/val` split
 - **species_format.py** — утилиты: format, parse, маппинг inat_bird_labels
 - **merge_classification_datasets.py** — объединить датасеты
 - **download_and_merge_all.sh** — полный пайплайн

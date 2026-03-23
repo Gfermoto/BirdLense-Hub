@@ -11,6 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Отчётность:** без отдельных страниц `PROJECT_REPORTING*` — правила в [docs/ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) и [CONTRIBUTING](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); вести **Issues** и доску, не дублировать политикой в `docs/`.
+- **Доки окружения:** прод-UI **https://birdlense.eyera.info/**, SSH **185.218.111.196:2222** — [`.cursor/rules/deploy.mdc`](.cursor/rules/deploy.mdc), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
+- **#85 (video neighbors):** `GET /api/ui/videos/:id/neighbors` теперь поддерживает локальный день (`day_scope=local`, `tz_offset_minutes`) и опциональный переход на соседние сутки (`cross_day`); UI страницы видео использует локальный режим по умолчанию.
+
+### Added
+
+- **#48:** скрипт `scripts/datasets/export_birdlense_to_yolo.py` — экспорт локальных кропов BirdLense (`app/data/dataset/train`) в YOLO classification layout `train/val` с детерминированным split и `dataset_info.json`.
+- **#47 (maintainer hygiene):** скрипт `scripts/security/scan_git_history_secrets.sh` для прохода по полной git-истории через Gitleaks (Docker) + документированный процесс в [SECURITY](docs/SECURITY.md) / [RU](docs/SECURITY.ru.md).
 
 ## [0.2.6] - 2026-03-23
 

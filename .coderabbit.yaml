@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit: https://docs.coderabbit.ai/guides/configure-coderabbit/
+language: ru-RU
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  review_details: false
+  path_instructions:
+    - path: app/web/**/*.py
+      instructions: |
+        Backend Flask: согласованность с OpenAPI, безопасность (секреты, rate limit), тесты в web/tests/.
+    - path: app/processor/**/*.py
+      instructions: |
+        Процессор детекций: устойчивость к сбоям, логирование, совместимость с конфигом и моделями Ultralytics.
+    - path: app/ui/src/**/*.{ts,tsx}
+      instructions: |
+        React 19 + MUI: доступность базовая, i18n-ключи если трогаете пользовательский текст, согласованность с существующими паттернами UI.
+    - path: docs/**/*.md
+      instructions: |
+        Документация: плейсхолдеры вместо реальных секретов; при дублировании EN/RU — согласованность формулировок.
+  auto_review:
+    enabled: true
+    drafts: false
+chat:
+  auto_reply: true

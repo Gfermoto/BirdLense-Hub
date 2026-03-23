@@ -25,7 +25,7 @@
 | `/timeline` | GET | Визиты по периоду (params: start_time, end_time) |
 | `/timeline/export` | GET | Экспорт визитов в CSV, JSON или eBird (params: start_time, end_time, format=csv\|json\|ebird) |
 | `/videos/:id` | GET | Детали видео |
-| `/videos/:id/neighbors` | GET | Предыдущее/следующее видео за тот же календарный день UTC, что и `start_time` (`previous_id`, `next_id`, `index`, `total`, `day_utc`) |
+| `/videos/:id/neighbors` | GET | Предыдущее/следующее видео; поддерживает локальный день и переход на соседние сутки через `day_scope`, `tz_offset_minutes`, `cross_day`, в ответе `day_scope`, `day_label`, `timezone_offset_minutes` |
 | `/overview` | GET | Данные для Overview |
 | `/species` | GET | Список видов |
 | `/birdfood` | GET/POST | Список и добавление корма |

@@ -282,16 +282,44 @@ def register_routes(app):
 
     @app.route('/api/ui/videos/<int:video_id>/neighbors', methods=['GET'])
     def get_video_neighbors(video_id):
-        """Соседние ролики за тот же календарный день (UTC), что и start_time текущего видео.
+        """Соседние ролики для страницы видео.
 
-        Порядок: start_time по возрастанию, при равенстве — id по возрастанию.
+        По умолчанию границы дня считаются в UTC (совместимо с прежним контрактом).
+        Опции:
+        - day_scope=local: использовать локальный день оператора (tz_offset_minutes)
+        - cross_day=true: если в пределах дня соседей нет, вернуть ближайший из соседних суток
         """
         video = Video.query.get(video_id)
         if not video:
             return {'error': 'Video not found'}, 404
-        st = ensure_utc(video.start_time).astimezone(timezone.utc).replace(tzinfo=None)
-        day_start = datetime(st.year, st.month, st.day)
-        day_end = day_start + timedelta(days=1)
+
+        scope = (request.args.get('day_scope') or 'utc').strip().lower()
+        if scope not in ('utc', 'local'):
+            return {'error': 'day_scope must be "utc" or "local"'}, 400
+        cross_day = (request.args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
+
+        try:
+            tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
+        except (TypeError, ValueError):
+            return {'error': 'tz_offset_minutes must be an integer'}, 400
+        if tz_offset_minutes < -840 or tz_offset_minutes > 840:
+            return {'error': 'tz_offset_minutes out of range [-840, 840]'}, 400
+
+        st_utc = ensure_utc(video.start_time).astimezone(timezone.utc).replace(tzinfo=None)
+        if scope == 'local':
+            # JS getTimezoneOffset: UTC - local (e.g. UTC+3 => -180)
+            # local = utc - offset, then convert local-day bounds back to UTC.
+            local_dt = st_utc - timedelta(minutes=tz_offset_minutes)
+            local_day_start = datetime(local_dt.year, local_dt.month, local_dt.day)
+            local_day_end = local_day_start + timedelta(days=1)
+            day_start = local_day_start + timedelta(minutes=tz_offset_minutes)
+            day_end = local_day_end + timedelta(minutes=tz_offset_minutes)
+            day_label = local_day_start.date().isoformat()
+        else:
+            day_start = datetime(st_utc.year, st_utc.month, st_utc.day)
+            day_end = day_start + timedelta(days=1)
+            day_label = day_start.date().isoformat()
+
         day_rows = (
             Video.query.filter(
                 Video.start_time >= day_start,
@@ -306,14 +334,18 @@ def register_routes(app):
             idx = ids.index(video_id)
         except ValueError:
             app.logger.warning(
-                'Video %s start_time not in UTC day list (day %s–%s); ids=%s',
+                'Video %s start_time not in day list (scope=%s day %s–%s); ids=%s',
                 video_id,
+                scope,
                 day_start,
                 day_end,
                 ids,
             )
             return {
-                'day_utc': day_start.date().isoformat(),
+                'day_scope': scope,
+                'day_label': day_label,
+                'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
+                'cross_day': cross_day,
                 'previous_id': None,
                 'next_id': None,
                 'index': 0,
@@ -321,8 +353,35 @@ def register_routes(app):
             }, 200
         prev_id = ids[idx - 1] if idx > 0 else None
         next_id = ids[idx + 1] if idx + 1 < len(ids) else None
+
+        if cross_day and prev_id is None:
+            prev = (
+                Video.query.filter(
+                    (Video.start_time < video.start_time)
+                    | ((Video.start_time == video.start_time) & (Video.id < video.id))
+                )
+                .order_by(Video.start_time.desc(), Video.id.desc())
+                .with_entities(Video.id)
+                .first()
+            )
+            prev_id = prev[0] if prev else None
+        if cross_day and next_id is None:
+            nxt = (
+                Video.query.filter(
+                    (Video.start_time > video.start_time)
+                    | ((Video.start_time == video.start_time) & (Video.id > video.id))
+                )
+                .order_by(Video.start_time.asc(), Video.id.asc())
+                .with_entities(Video.id)
+                .first()
+            )
+            next_id = nxt[0] if nxt else None
+
         return {
-            'day_utc': day_start.date().isoformat(),
+            'day_scope': scope,
+            'day_label': day_label,
+            'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
+            'cross_day': cross_day,
             'previous_id': prev_id,
             'next_id': next_id,
             'index': idx,
