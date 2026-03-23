@@ -94,6 +94,8 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 
 Tracked as separate issues; acceptance criteria live in each issue.
 
+**Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md).
+
 | # | Issue | Summary |
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | Move block from Overview to Migration |
