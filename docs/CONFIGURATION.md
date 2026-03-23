@@ -30,6 +30,7 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token`) |
 | `MCP_TOKEN` | MCP token (overrides `mcp.token`) |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
+| `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
 | `CORS_ORIGINS` | Extra CORS origins (comma-separated) |
 | `OPENWEATHER_API_KEY` | OpenWeather key |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT if not in config |

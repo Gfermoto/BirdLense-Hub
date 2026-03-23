@@ -29,3 +29,5 @@ class Config:
         'DATABASE_URL', f'sqlite:///{db_path}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = _SECRET_KEY
+    # Optional built-in CORS origins (comma-separated). Keep empty by default for self-hosters.
+    CORS_DEFAULT_ORIGINS = os.getenv('CORS_DEFAULT_ORIGINS', '')

@@ -358,6 +358,19 @@ class TestSpecies:
         for item in r.json:
             assert 'id' in item and 'name' in item and 'count' in item
 
+
+class TestCorrectionsHistory:
+    def test_recent_corrections_endpoint_shape(self, client):
+        r = client.get('/api/ui/corrections/recent', query_string={'limit': 5})
+        assert r.status_code in (200, 403)
+        if r.status_code == 200:
+            assert isinstance(r.json, list)
+            for row in r.json:
+                assert 'id' in row
+                assert 'created_at' in row
+                assert 'action' in row
+                assert 'source' in row
+
 class TestBirdFamilies:
     def test_bird_families_returns_list(self, client):
         r = client.get('/api/ui/bird_families')

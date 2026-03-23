@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **#54 (CI):** контрактный смоук OpenAPI — новый тест `app/web/tests/test_openapi_contract.py` и job `openapi-contract` в `.github/workflows/ci-pr.yml` (гейт на PR/push в `main`/`dev`).
 - **#55 (Migration):** yearly species checklist / life list перенесён на страницу Migration и строится из уже существующих данных migration-таблицы (`/api/ui/migration-calendar`) за выбранный год; с главной страницы блок убран.
+- **#81 (phase C):** единый журнал ручных правок Unknowns/Video — backend activity `species_correction` + endpoint `GET /api/ui/corrections/recent` + блок последних правок на странице Unknowns.
+
+### Changed
+
+- **#56 (CORS config):** demo-host удалён из hardcoded CORS defaults; теперь базовые non-localhost origins задаются через `CORS_DEFAULT_ORIGINS` (и runtime `CORS_ORIGINS`), что безопаснее для self-hosting.
 
 ## [0.2.7] - 2026-03-23
 
