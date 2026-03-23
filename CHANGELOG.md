@@ -8,9 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+### Changed
 
-- **Отчётность:** [docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md) / [RU](docs/PROJECT_REPORTING.ru.md) — все сданные работы фиксировать в **Issues** и на доске **Roadmap** (не только консилиум); ссылки из [CONTRIBUTING](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), [ROADMAP](docs/ROADMAP.md).
+- **Отчётность:** без отдельных страниц `PROJECT_REPORTING*` — правила в [docs/ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) и [CONTRIBUTING](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); вести **Issues** и доску, не дублировать политикой в `docs/`.
 
 ## [0.2.6] - 2026-03-23
 
