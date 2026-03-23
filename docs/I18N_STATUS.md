@@ -56,6 +56,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | SECURITY (analysis in docs/) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |
 | GOVERNANCE (process / observer) | ✅ | ✅ |
+| PROJECT_REPORTING (Issues & board) | ✅ | ✅ |
 | GITHUB_SETUP_GH | ✅ | ✅ (RU primary) |
 | WIKI_AUTOMATION | ✅ | ✅ |
 | **docs/project/** (stubs → root files / OpenAPI; MkDocs) | ✅ | — (optional later) |

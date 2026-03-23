@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Отчётность:** [docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md) / [RU](docs/PROJECT_REPORTING.ru.md) — все сданные работы фиксировать в **Issues** и на доске **Roadmap** (не только консилиум); ссылки из [CONTRIBUTING](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), [ROADMAP](docs/ROADMAP.md).
+
 ## [0.2.6] - 2026-03-23
 
 Накопительный релиз после **v0.2.5**: CI CodeQL, навигация по видео **#82**, деплой/Web Push, сопутствующие доки и инфраструктура репозитория.
