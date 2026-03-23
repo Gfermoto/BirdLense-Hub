@@ -443,11 +443,7 @@
   },
   "migrationCalendar": {
     "title": "Migration Calendar",
-    "description": "When each species typically appears at your feeder — based on your historical data.",
-    "yearlyChecklistTitle": "Yearly checklist (from migration table)",
-    "yearlyChecklistSummary": "{{seen}} species recorded in {{year}}",
-    "usesFilterYearHint": "Uses year from the \"From year / To year\" filter (priority: \"To year\").",
-    "noChecklistData": "No species recorded for the selected year yet.",
+    "description": "When each species typically appears at your feeder — based on your historical data. Rows and the Σ column are your species list for the selected year range (no separate checklist).",
     "species": "Species",
     "startYear": "From year",
     "endYear": "To year",
@@ -719,7 +715,7 @@
       "title": "Migration Calendar",
       "description": "Historical pattern of species activity by month. Shows when each species typically appears at your feeder based on your recorded data.",
       "details": [
-        { "title": "Monthly Pattern", "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month." },
+        { "title": "Monthly Pattern", "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist." },
         { "title": "Data Source", "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern." },
         { "title": "Species Link", "content": "Click a species name to open its detail page with full statistics and visit history." }
       ]
