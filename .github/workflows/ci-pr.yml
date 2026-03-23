@@ -48,6 +48,9 @@ jobs:
       - name: Check docs version vs VERSION file
         run: python3 scripts/check-docs-version.py
 
+      - name: Check Settings UI coverage
+        run: python3 scripts/check-settings-ui-coverage.py
+
       - name: MkDocs build (strict)
         run: mkdocs build --strict
 
