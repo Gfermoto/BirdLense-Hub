@@ -27,7 +27,8 @@ def create_app():
         os.getpid()
     )
     app = Flask(__name__)
-    # Базовые origins + CORS_ORIGINS из env (через запятую, для своих IP)
+    app.config.from_object('config.Config')
+    # Базовые origins + CORS_DEFAULT_ORIGINS/CORS_ORIGINS из env (через запятую, для своих IP/доменов)
     cors_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -35,15 +36,14 @@ def create_app():
         "http://birdlense.local:80",
         "http://localhost:8085",
         "http://127.0.0.1:8085",
-        "http://192.168.1.11:8085",
-        "https://birdlense.eyera.info",
-        "http://birdlense.eyera.info",
     ]
-    extra = os.environ.get("CORS_ORIGINS", "")
-    if extra:
-        cors_origins.extend(s.strip() for s in extra.split(",") if s.strip())
+    default_extra = app.config.get("CORS_DEFAULT_ORIGINS", "")
+    if default_extra:
+        cors_origins.extend(s.strip() for s in default_extra.split(",") if s.strip())
+    runtime_extra = os.environ.get("CORS_ORIGINS", "")
+    if runtime_extra:
+        cors_origins.extend(s.strip() for s in runtime_extra.split(",") if s.strip())
     CORS(app, resources={r"/*": {"origins": cors_origins, "supports_credentials": True}})
-    app.config.from_object('config.Config')
 
     db.init_app(app)
     with app.app_context():
