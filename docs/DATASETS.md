@@ -38,6 +38,7 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 | Script | Role |
 |--------|------|
+| `export_birdlense_to_yolo.py` | BirdLense local crops (`app/data/dataset/train`) → YOLO cls `train/val` |
 | `download_hf_birds.py` | Hugging Face → YOLO cls (`--format scientific_common`) |
 | `download_inaturalist.py` | iNaturalist Europe → YOLO cls |
 | `merge_classification_datasets.py` | Merge splits |
@@ -95,8 +96,8 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 ## 6. Pipeline: collect → train
 
 ```
-BirdLense recordings → (planned) export_birdlense_to_yolo.py → YOLO dataset
-                                              ↓
+BirdLense recordings → export_birdlense_to_yolo.py → YOLO dataset
+                                        ↓
 birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
                                               ↓
                               TRAINING.md (Colab) → best.pt

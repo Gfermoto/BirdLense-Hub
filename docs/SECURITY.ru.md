@@ -103,6 +103,16 @@
 
 ---
 
+## 8.1 Скан истории git на секреты (гигиена maintainer)
+
+- Команда: `bash scripts/security/scan_git_history_secrets.sh`
+- Инструмент: Gitleaks в Docker-образе `zricethezav/gitleaks:latest`
+- Отчёт: `.artifacts/gitleaks-history.json`
+
+Текущая база (март 2026): полный проход истории git завершён, **утечек не найдено**.
+
+---
+
 ## 9. Docker
 
 | Риск | Описание | Рекомендация |

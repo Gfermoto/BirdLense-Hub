@@ -40,6 +40,7 @@
 
 | Скрипт | Назначение |
 |--------|------------|
+| `export_birdlense_to_yolo.py` | Локальные кропы BirdLense (`app/data/dataset/train`) → YOLO cls `train/val` |
 | `download_hf_birds.py` | Hugging Face → YOLO cls (`--format scientific_common`) |
 | `download_inaturalist.py` | iNaturalist Europe → YOLO cls |
 | `merge_classification_datasets.py` | Объединить датасеты |
@@ -97,8 +98,8 @@
 ## 6. Пайплайн: сбор → обучение
 
 ```
-BirdLense (записи) → export_birdlense_to_yolo.py (планируется) → YOLO dataset
-                                                                    ↓
+BirdLense (записи) → export_birdlense_to_yolo.py → YOLO dataset
+                                                      ↓
 birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
                                                                     ↓
                                               TRAINING.md (Colab) → best.pt

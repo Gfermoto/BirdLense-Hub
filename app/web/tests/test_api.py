@@ -272,7 +272,8 @@ class TestVideos:
         r = client.get(f'/api/ui/videos/{v2_id}/neighbors')
         assert r.status_code == 200
         j = r.json
-        assert j['day_utc'] == '2025-03-19'
+        assert j['day_scope'] == 'utc'
+        assert j['day_label'] == '2025-03-19'
         assert j['previous_id'] == v1_id
         assert j['next_id'] == v3_id
         assert j['index'] == 1
@@ -287,6 +288,48 @@ class TestVideos:
         assert r2.status_code == 200
         assert r2.json['previous_id'] == v2_id
         assert r2.json['next_id'] is None
+
+    def test_video_neighbors_local_scope_and_cross_day(self, app, client):
+        from datetime import datetime, timedelta
+        from models import db, Video
+
+        with app.app_context():
+            day1_late = datetime(2025, 3, 19, 22, 30, 0)  # UTC
+            day2_early = datetime(2025, 3, 20, 0, 30, 0)  # UTC
+            v1 = Video(
+                processor_version='test',
+                start_time=day1_late,
+                end_time=day1_late + timedelta(minutes=1),
+                video_path='2025/03/19/223000/v.mp4',
+            )
+            v2 = Video(
+                processor_version='test',
+                start_time=day2_early,
+                end_time=day2_early + timedelta(minutes=1),
+                video_path='2025/03/20/003000/v.mp4',
+            )
+            db.session.add(v1)
+            db.session.add(v2)
+            db.session.commit()
+            v1_id = v1.id
+            v2_id = v2.id
+
+        # UTC+3 browser: 22:30 UTC => 01:30 local next day
+        local = client.get(
+            f'/api/ui/videos/{v1_id}/neighbors',
+            query_string={
+                'day_scope': 'local',
+                'tz_offset_minutes': -180,
+                'cross_day': '1',
+            },
+        )
+        assert local.status_code == 200
+        data = local.json
+        assert data['day_scope'] == 'local'
+        assert data['day_label'] == '2025-03-20'
+        assert data['timezone_offset_minutes'] == -180
+        # В local-дне оба ролика: сосед справа есть
+        assert data['next_id'] == v2_id
 
     def test_delete_video_requires_access(self, client):
         """Delete returns 403 without contributor/admin access when password is set."""
