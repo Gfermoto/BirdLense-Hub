@@ -33,7 +33,7 @@
 
 ## Релизы и теги
 
-1. **Перед релизом:** обновить `VERSION`, `package.json`, `openapi.yaml`, `CHANGELOG.md`
+1. **Перед релизом:** обновить `VERSION`, `package.json`, `openapi.yaml`, `CHANGELOG.md`; закрыть/обновить **Issues** и доску **Roadmap** по [PROJECT_REPORTING.ru.md](./PROJECT_REPORTING.ru.md).
 2. **Коммит:** `git add -A && git commit -m "Release v0.1.0"`
 3. **Тег:** `git tag -a v0.1.0 -m "Release v0.1.0"`
 4. **Пуш:** `git push && git push origin v0.1.0`

@@ -76,6 +76,7 @@ Pick what matches you — you can read the rest as reference.
 | Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
+| **Issues & Project board reporting** | [PROJECT_REPORTING](./PROJECT_REPORTING.md) · [RU](./PROJECT_REPORTING.ru.md) |
 | **GitHub CLI setup** (personal repo) | [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | **Wiki + CI reports** (Summary / Artifact / optional Wiki push) | [WIKI_AUTOMATION](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
 | Translation status | [I18N_STATUS](./I18N_STATUS.md) |

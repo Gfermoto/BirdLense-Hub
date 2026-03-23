@@ -72,6 +72,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
+**Отчётность (вся работа, не только консилиум):** при завершении задачи — комментарий и закрытие **Issue**, обновление статуса на доске **Roadmap**; см. [PROJECT_REPORTING.ru.md](./PROJECT_REPORTING.ru.md).
+
 ---
 
 ## Кандидаты на будущее (ещё без issue)
