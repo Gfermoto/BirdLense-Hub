@@ -140,6 +140,10 @@ export interface Settings {
     password?: string;
     frigate_topic?: string;
     birdnet_topic?: string;
+    publish_topic?: string;
+    reconnect_min_delay?: number;
+    reconnect_max_delay?: number;
+    ha_discovery?: boolean;
   };
   notifications?: {
     telegram_bot_token?: string;

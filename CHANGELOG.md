@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Доки окружения:** прод-UI **https://birdlense.eyera.info/**, SSH **185.218.111.196:2222** — [`.cursor/rules/deploy.mdc`](.cursor/rules/deploy.mdc), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
 - **#85 (video neighbors):** `GET /api/ui/videos/:id/neighbors` теперь поддерживает локальный день (`day_scope=local`, `tz_offset_minutes`) и опциональный переход на соседние сутки (`cross_day`); UI страницы видео использует локальный режим по умолчанию.
 - **#50 (processor MQTT resilience):** MQTT-клиент процессора использует встроенный reconnect/backoff paho (`reconnect_min_delay`/`reconnect_max_delay`), а в конфиг/доки добавлены параметры и пояснение про пропуски live-событий при обрывах.
+- **Settings UI (MQTT):** в форму добавлены `publish_topic`, `reconnect_min_delay`, `reconnect_max_delay` для полной настройки MQTT без ручного редактирования YAML.
 
 ### Added
 
