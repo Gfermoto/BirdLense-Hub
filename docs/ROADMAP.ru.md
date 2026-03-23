@@ -96,6 +96,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 Отдельные issues для планирования; детали и критерии — в каждом issue.
 
+**Подготовка перед реализацией ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [чеклист](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md).
+
 | # | Issue | Кратко |
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration |
