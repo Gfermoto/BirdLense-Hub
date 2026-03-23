@@ -12,6 +12,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  openapi-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: app/web/requirements.txt
+
+      - name: Install web test dependencies
+        run: pip install -r web/requirements.txt
+
+      - name: OpenAPI contract smoke tests
+        run: python -m pytest web/tests/test_openapi_contract.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:
