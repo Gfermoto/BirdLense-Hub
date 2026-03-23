@@ -438,6 +438,7 @@
     "appName": "BirdLense Hub",
     "na": "N/A",
     "help": "Help",
+    "language": "Language",
     "iNaturalist": "Share to iNaturalist"
   },
   "migrationCalendar": {
