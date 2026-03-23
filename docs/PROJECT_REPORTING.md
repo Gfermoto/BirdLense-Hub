@@ -39,6 +39,6 @@
 
 ## Related
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — branching and PRs.  
-- [AGENTS.md](../AGENTS.md) — agent checklist including reporting.  
+- [Contributing](project/contributing.md) — branching and PRs (stub → root `CONTRIBUTING*.md` on GitHub).  
+- [AGENTS.md on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) — agent checklist including reporting.  
 - [Roadmap](./ROADMAP.md) — backlog source; reporting is **broader** than this table.

@@ -39,6 +39,6 @@
 
 ## См. также
 
-- [CONTRIBUTING.md](../CONTRIBUTING.ru.md) — ветки и PR.  
-- [AGENTS.md](../AGENTS.md) — чеклист агента, включая отчётность.  
+- [Contributing](project/contributing.md) — ветки и PR (заглушка → `CONTRIBUTING*.md` в корне на GitHub).  
+- [AGENTS.md на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) — чеклист агента, включая отчётность.  
 - [Roadmap](./ROADMAP.ru.md) — источник бэклога; отчётность **шире** этой таблицы.
