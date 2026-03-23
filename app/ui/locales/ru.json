@@ -54,10 +54,7 @@
     "regionComparisonTopList": "Топ региона:",
     "regionComparisonHint": "По данным eBird за последние 30 дней. Регион: {{region}}.",
     "regionComparisonConfigure": "Укажите ключ eBird API в Настройках → Расширенные для сравнения с регионом.",
-    "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках.",
-    "yearlyChecklistTitle": "Чеклист видов за год",
-    "yearlyChecklistSummary": "За год отмечено {{seen}} из {{total}} видов",
-    "year": "Год"
+    "regionComparisonNoData": "В регионе {{region}} нет наблюдений за последние 30 дней. Проверьте eBird country/state в настройках."
   },
   "settings": {
     "section1": "1. Подключение",
@@ -447,6 +444,10 @@
   "migrationCalendar": {
     "title": "Календарь миграций",
     "description": "Когда каждый вид обычно появляется у кормушки — по вашим историческим данным.",
+    "yearlyChecklistTitle": "Чеклист за год (из таблицы миграции)",
+    "yearlyChecklistSummary": "В {{year}} отмечено {{seen}} видов",
+    "year": "Год",
+    "noChecklistData": "За выбранный год видов пока нет.",
     "species": "Вид",
     "startYear": "С года",
     "endYear": "По год",
