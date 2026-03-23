@@ -100,7 +100,8 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | `species_confidence_overrides` from eBird top (delta must be in 0–1 scale, not literal −0.5) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | Extra sensitivity; **7-day** hint window (when BirdNET is configured) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
-| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | Fewer nav tabs; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
+| [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | Regional = eBird top + BirdNET-heard |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | Expand seed + document source (`seed.py`) |
