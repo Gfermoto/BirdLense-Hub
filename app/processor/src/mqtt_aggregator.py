@@ -142,6 +142,8 @@ class MQTTEventAggregator:
         client_id: str | None = None,
         ha_discovery: bool = True,
         base_url: str = "",
+        reconnect_min_delay: int = 5,
+        reconnect_max_delay: int = 300,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -168,6 +170,8 @@ class MQTTEventAggregator:
         self._frigate_label_exclude = set(frigate_label_exclude or [])
         self.ha_discovery = ha_discovery
         self.base_url = (base_url or "").strip().rstrip("/")
+        self.reconnect_min_delay = max(1, int(reconnect_min_delay))
+        self.reconnect_max_delay = max(self.reconnect_min_delay, int(reconnect_max_delay))
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -309,13 +313,16 @@ class MQTTEventAggregator:
                 self._events.append(ev)
 
     def _run_client(self):
-        retry_delay = 5
-        max_retry_delay = 300
+        retry_delay = self.reconnect_min_delay
         while True:
             try:
                 self._client = mqtt.Client(
                     callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
                     client_id=self.client_id,
+                )
+                self._client.reconnect_delay_set(
+                    min_delay=self.reconnect_min_delay,
+                    max_delay=self.reconnect_max_delay,
                 )
                 if self.username:
                     self._client.username_pw_set(self.username, self.password)
@@ -328,8 +335,9 @@ class MQTTEventAggregator:
                 for t in self.birdnet_topics:
                     self._client.subscribe(t, qos=1)
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
-                retry_delay = 5
-                self._client.loop_forever()
+                retry_delay = self.reconnect_min_delay
+                # paho handles exponential reconnect backoff inside the network loop.
+                self._client.loop_forever(retry_first_connection=True)
             except Exception as e:
                 logger.error("MQTT aggregator error: %s, reconnecting in %ds", e, retry_delay)
             finally:
@@ -343,7 +351,7 @@ class MQTTEventAggregator:
             if self._stopped:
                 break
             time.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, max_retry_delay)
+            retry_delay = min(retry_delay * 2, self.reconnect_max_delay)
 
     def start(self):
         if not self.broker:

@@ -63,7 +63,7 @@ docker logs birdlense --tail 200 2>&1
 | 1 | `motion.source: opencv` (дефолт) | `user_config.yaml` → `motion.source` должен быть `frigate` или `mqtt` |
 | 2 | Камера Frigate не в `video.cameras` | `id` в cameras должен совпадать с именем камеры во Frigate |
 | 3 | `frigate_label_filter` пустой | Дефолт `["bird","Bird"]`; пустой список отбрасывает все события |
-| 4 | MQTT не подключился за 5 с при старте | Логи: `Frigate MQTT not connected, falling back to OpenCV` |
+| 4 | MQTT долго недоступен (брокер/сеть) | Логи `MQTT aggregator disconnected` / `MQTT aggregator connected`; reconnect идёт с backoff (`mqtt.reconnect_min_delay` → `mqtt.reconnect_max_delay`) |
 | 5 | `frigate_topic` не совпадает с Frigate | Frigate `mqtt.topic_prefix` → топик `PREFIX/events` |
 | 6 | MQTT QoS 0 — потеря при reconnect | Нестабильная сеть |
 

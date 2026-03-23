@@ -240,6 +240,8 @@ def main():
             client_id=mqtt_client_id,
             ha_discovery=app_config.get('mqtt.ha_discovery', True),
             base_url=app_config.get('notifications.base_url', ''),
+            reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
+            reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator
