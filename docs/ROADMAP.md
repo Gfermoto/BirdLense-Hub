@@ -70,6 +70,8 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 
 **After consilium:** new tracked work → create/update the Issue, add the card to the Project (`github-project-add-backlog-consilium.sh` or manually), then **update this ROADMAP** table in the same PR or follow-up.
 
+**Reporting (all shipped work, not only consilium):** comment and **close** the **Issue** when done; set the **Roadmap** project card to **Done**. See [PROJECT_REPORTING.md](./PROJECT_REPORTING.md).
+
 ---
 
 ## Future work candidates (no issue yet)
