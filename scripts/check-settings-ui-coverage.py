@@ -22,41 +22,156 @@ SETTINGS_FORM_PATH = ROOT / "app" / "ui" / "src" / "pages" / "Settings" / "Setti
 
 
 # Intentionally hidden from Settings UI.
-# Keep this list short and explicit; every key must have a reason.
-ALLOWED_NON_UI_KEYS: dict[str, str] = {
+# Keep this list short and explicit; every key must have
+# - category: why it's non-UI today
+# - reason: current rationale
+# - next_step: when/how to revisit
+ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     # Processor internals.
-    "processor.detection_strategy": "Deployment-level model strategy; unsafe for casual UI edits.",
-    "processor.models.single_stage": "Model path is environment/deployment-specific.",
-    "processor.models.binary": "Model path is environment/deployment-specific.",
-    "processor.models.classifier": "Model path is environment/deployment-specific.",
-    "processor.regional_species": "Advanced ML tuning; currently config-level only.",
-    "processor.included_bird_families": "Advanced ML tuning; currently config-level only.",
-    "processor.save_images": "Storage/performance-sensitive low-level switch.",
+    "processor.detection_strategy": {
+        "category": "advanced",
+        "reason": "Deployment-level model strategy; unsafe for casual UI edits.",
+        "next_step": "Expose behind Advanced/Expert mode after UX spec.",
+    },
+    "processor.models.single_stage": {
+        "category": "ops-only",
+        "reason": "Model path is environment/deployment-specific.",
+        "next_step": "Keep config-level; expose only if model manager is introduced.",
+    },
+    "processor.models.binary": {
+        "category": "ops-only",
+        "reason": "Model path is environment/deployment-specific.",
+        "next_step": "Keep config-level; expose only if model manager is introduced.",
+    },
+    "processor.models.classifier": {
+        "category": "ops-only",
+        "reason": "Model path is environment/deployment-specific.",
+        "next_step": "Keep config-level; expose only if model manager is introduced.",
+    },
+    "processor.regional_species": {
+        "category": "planned-ui",
+        "reason": "Advanced ML tuning; currently config-level only.",
+        "next_step": "Evaluate after #52 (i18n) and settings information architecture pass.",
+    },
+    "processor.included_bird_families": {
+        "category": "planned-ui",
+        "reason": "Advanced ML tuning; currently config-level only.",
+        "next_step": "Evaluate after #52 (i18n) and settings information architecture pass.",
+    },
+    "processor.save_images": {
+        "category": "advanced",
+        "reason": "Storage/performance-sensitive low-level switch.",
+        "next_step": "Consider exposing with explicit storage warning in UI.",
+    },
     # Motion fine tuning.
-    "motion.frigate_camera_filter": "Advanced routing; kept config-level for now.",
-    "motion.frigate_label_filter": "Advanced routing; kept config-level for now.",
+    "motion.frigate_camera_filter": {
+        "category": "planned-ui",
+        "reason": "Advanced routing; kept config-level for now.",
+        "next_step": "Add multi-select camera picker when trigger UX is expanded.",
+    },
+    "motion.frigate_label_filter": {
+        "category": "planned-ui",
+        "reason": "Advanced routing; kept config-level for now.",
+        "next_step": "Add tokenized label editor in MQTT/Frigate block.",
+    },
     # Merge internals.
-    "detection.merge_window_seconds": "Advanced merge tuning; kept config-level for now.",
-    "detection.dedup_window_seconds": "Advanced merge tuning; kept config-level for now.",
-    "detection.one_per_species": "Advanced merge tuning; kept config-level for now.",
-    "detection.source_priority": "Advanced merge tuning; kept config-level for now.",
-    "detection.species_mapping": "Bulk mapping maintained as config dictionary.",
-    "detection.min_confidence_to_store": "Advanced filtering; currently config-level only.",
+    "detection.merge_window_seconds": {
+        "category": "advanced",
+        "reason": "Advanced merge tuning; kept config-level for now.",
+        "next_step": "Keep config-level until merge strategy presets are designed.",
+    },
+    "detection.dedup_window_seconds": {
+        "category": "advanced",
+        "reason": "Advanced merge tuning; kept config-level for now.",
+        "next_step": "Keep config-level until merge strategy presets are designed.",
+    },
+    "detection.one_per_species": {
+        "category": "advanced",
+        "reason": "Advanced merge tuning; kept config-level for now.",
+        "next_step": "Keep config-level until merge strategy presets are designed.",
+    },
+    "detection.source_priority": {
+        "category": "advanced",
+        "reason": "Advanced merge tuning; kept config-level for now.",
+        "next_step": "Keep config-level until merge strategy presets are designed.",
+    },
+    "detection.species_mapping": {
+        "category": "advanced",
+        "reason": "Bulk mapping maintained as config dictionary.",
+        "next_step": "Consider import/export UI when species tools are expanded.",
+    },
+    "detection.min_confidence_to_store": {
+        "category": "planned-ui",
+        "reason": "Advanced filtering; currently config-level only.",
+        "next_step": "Evaluate as optional control in Processor -> Advanced.",
+    },
     # Ops/security-sensitive/infra-generated values.
-    "notifications.telegram_api_base": "Network/proxy endpoint; ops-level setting.",
-    "notifications.telegram_timeout": "Network resilience tuning; ops-level setting.",
-    "notifications.telegram_retries": "Network resilience tuning; ops-level setting.",
-    "notifications.compress_photo_over_kb": "Low-level delivery optimization; config-level.",
-    "notifications.telegram_max_side_px": "Low-level delivery optimization; config-level.",
-    "web_push.enabled": "Derived by backend from subscriptions.",
-    "web_push.vapid_public_key": "Generated/managed by backend.",
-    "web_push.vapid_private_key": "Secret generated/managed by backend.",
+    "notifications.telegram_api_base": {
+        "category": "ops-only",
+        "reason": "Network/proxy endpoint; ops-level setting.",
+        "next_step": "Keep config-level.",
+    },
+    "notifications.telegram_timeout": {
+        "category": "ops-only",
+        "reason": "Network resilience tuning; ops-level setting.",
+        "next_step": "Keep config-level.",
+    },
+    "notifications.telegram_retries": {
+        "category": "ops-only",
+        "reason": "Network resilience tuning; ops-level setting.",
+        "next_step": "Keep config-level.",
+    },
+    "notifications.compress_photo_over_kb": {
+        "category": "advanced",
+        "reason": "Low-level delivery optimization; config-level.",
+        "next_step": "Consider exposing under Telegram advanced controls.",
+    },
+    "notifications.telegram_max_side_px": {
+        "category": "advanced",
+        "reason": "Low-level delivery optimization; config-level.",
+        "next_step": "Consider exposing under Telegram advanced controls.",
+    },
+    "web_push.enabled": {
+        "category": "backend-managed",
+        "reason": "Derived by backend from subscriptions.",
+        "next_step": "Keep backend-managed.",
+    },
+    "web_push.vapid_public_key": {
+        "category": "backend-managed",
+        "reason": "Generated/managed by backend.",
+        "next_step": "Keep backend-managed.",
+    },
+    "web_push.vapid_private_key": {
+        "category": "backend-managed",
+        "reason": "Secret generated/managed by backend.",
+        "next_step": "Keep backend-managed.",
+    },
     # Runtime controls still config-level.
-    "video.source": "Runtime mode selection; hidden from basic UI flow.",
-    "video.pre_record_seconds": "Advanced recording behavior tuning.",
-    "video.auto_reconnect": "Advanced stream behavior tuning.",
-    "retention.days": "Retention policy managed outside current settings form.",
-    "ebird.protocol": "Protocol is currently fixed in product flow.",
+    "video.source": {
+        "category": "advanced",
+        "reason": "Runtime mode selection; hidden from basic UI flow.",
+        "next_step": "Keep hidden unless file-source mode is productized in UI.",
+    },
+    "video.pre_record_seconds": {
+        "category": "planned-ui",
+        "reason": "Advanced recording behavior tuning.",
+        "next_step": "Evaluate control placement in Video advanced section.",
+    },
+    "video.auto_reconnect": {
+        "category": "planned-ui",
+        "reason": "Advanced stream behavior tuning.",
+        "next_step": "Evaluate control placement in Video advanced section.",
+    },
+    "retention.days": {
+        "category": "planned-ui",
+        "reason": "Retention policy managed outside current settings form.",
+        "next_step": "Add dedicated retention block in System/Settings.",
+    },
+    "ebird.protocol": {
+        "category": "planned-ui",
+        "reason": "Protocol is currently fixed in product flow.",
+        "next_step": "Expose when multi-protocol export flow is finalized.",
+    },
 }
 
 TERMINAL_MAP_KEYS = {
@@ -88,17 +203,34 @@ def _load_form_fields() -> set[str]:
 
 def _build_report(config_keys: set[str], form_fields: set[str]) -> dict:
     rows = []
+    category_stats: dict[str, int] = {}
     for key in sorted(config_keys):
         if key in form_fields:
             status = "ui"
             reason = ""
+            category = ""
+            next_step = ""
         elif key in ALLOWED_NON_UI_KEYS:
             status = "allowlisted_non_ui"
-            reason = ALLOWED_NON_UI_KEYS[key]
+            meta = ALLOWED_NON_UI_KEYS[key]
+            reason = meta["reason"]
+            category = meta["category"]
+            next_step = meta["next_step"]
+            category_stats[category] = category_stats.get(category, 0) + 1
         else:
             status = "missing"
             reason = "No UI field and not allowlisted."
-        rows.append({"key": key, "status": status, "reason": reason})
+            category = ""
+            next_step = ""
+        rows.append(
+            {
+                "key": key,
+                "status": status,
+                "category": category,
+                "reason": reason,
+                "next_step": next_step,
+            }
+        )
     missing = [r["key"] for r in rows if r["status"] == "missing"]
     return {
         "summary": {
@@ -106,6 +238,7 @@ def _build_report(config_keys: set[str], form_fields: set[str]) -> dict:
             "ui_fields": len(form_fields),
             "allowlisted_non_ui": len(ALLOWED_NON_UI_KEYS),
             "missing": len(missing),
+            "allowlist_by_category": category_stats,
         },
         "missing_keys": missing,
         "rows": rows,
@@ -122,9 +255,16 @@ def _to_markdown(report: dict) -> str:
         f"- Allowlisted non-UI keys: **{s['allowlisted_non_ui']}**",
         f"- Missing keys: **{s['missing']}**",
         "",
-        "| Key | Status | Reason |",
-        "|---|---|---|",
+        "### Allowlist maturity categories",
+        "",
     ]
+    for category, count in sorted(s.get("allowlist_by_category", {}).items()):
+        lines.append(f"- `{category}`: **{count}**")
+    lines.extend([
+        "",
+        "| Key | Status | Category | Reason | Next step |",
+        "|---|---|---|---|---|",
+    ])
     for row in report["rows"]:
         status = {
             "ui": "UI",
@@ -132,9 +272,25 @@ def _to_markdown(report: dict) -> str:
             "missing": "Missing",
         }[row["status"]]
         reason = row["reason"] or "-"
-        lines.append(f"| `{row['key']}` | {status} | {reason} |")
+        category = row.get("category") or "-"
+        next_step = row.get("next_step") or "-"
+        lines.append(
+            f"| `{row['key']}` | {status} | `{category}` | {reason} | {next_step} |"
+        )
     lines.append("")
     return "\n".join(lines)
+
+
+def _validate_allowlist() -> list[str]:
+    errors: list[str] = []
+    for key, meta in ALLOWED_NON_UI_KEYS.items():
+        if not isinstance(meta, dict):
+            errors.append(f"{key}: metadata must be an object")
+            continue
+        for required in ("category", "reason", "next_step"):
+            if not meta.get(required):
+                errors.append(f"{key}: missing '{required}'")
+    return errors
 
 
 def _parse_args() -> argparse.Namespace:
@@ -159,6 +315,14 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    allowlist_errors = _validate_allowlist()
+    if allowlist_errors:
+        print("Settings UI coverage check FAILED: invalid allowlist metadata.")
+        for err in allowlist_errors:
+            print(f"  - {err}")
+        if not args.no_strict:
+            return 1
+
     cfg = yaml.safe_load(DEFAULT_CONFIG_PATH.read_text(encoding="utf-8"))
     config_keys = {k for k in _collect_terminal_keys(cfg) if k}
     form_fields = _load_form_fields()
