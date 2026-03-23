@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to BirdLense Hub.
 
-**AI / automation:** finish the full cycle (tests, docs, push, PR, deploy when needed) — see [AGENTS.md](AGENTS.md). **Issue & board reporting:** [docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md).
+**AI / automation:** finish the full cycle (tests, docs, push, PR, deploy when needed) — see [AGENTS.md](AGENTS.md). **Issues & board:** [docs/ROADMAP.md](docs/ROADMAP.md) (triage + reporting) and § *Issues & Project board* below.
 
 ## How to contribute
 
@@ -52,8 +52,6 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 
 **All substantive work** must be reflected in **GitHub Issues** and, when the item is on it, on the **BirdLense Hub — Roadmap** project — including work **outside** the [Roadmap consilium](docs/ROADMAP.md) table (CI-only, docs, chores). Comment with outcomes + PR links, **close** issues when done, set board **Status** to **Done** (or `bash scripts/github-project-mark-done.sh <n>` with PAT `repo` + `project`).
 
-Full policy: **[docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md)**.
-
 ## Pull request guidelines
 
 - Keep PRs focused — one feature or fix per PR.
@@ -67,7 +65,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) § *Maintainer checklist* — `make t
 
 ## Reporting issues
 
-- Use GitHub Issues; follow **[docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md)** for closing work and board updates.
+- Use GitHub Issues; when closing work, update the board as in § *Issues & Project board* above.
 - For security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Questions
@@ -84,8 +82,6 @@ Look for issues labelled **`good first issue`** — small, scoped tasks for newc
 - **Security:** follow [SECURITY.md](SECURITY.md) — do not report vulnerabilities in public threads.
 
 ## GitHub Projects (maintainers)
-
-Accountability rules (Issues + board for **every** shipped change): **[docs/PROJECT_REPORTING.md](docs/PROJECT_REPORTING.md)**.
 
 **Issues**, **Discussions**, and **Projects** are enabled on the repo. Labels `area:*`, `priority:*`, and `triage` support triage; milestones **v0.2.3** and **Backlog (no milestone)** are available.
 

@@ -2,7 +2,7 @@
 
 Спасибо за интерес к проекту BirdLense Hub.
 
-**ИИ / автоматизация:** доводить задачи до конца — [AGENTS.md](AGENTS.md). **Отчётность в Issues и на доске** — [docs/PROJECT_REPORTING.ru.md](docs/PROJECT_REPORTING.ru.md).
+**ИИ / автоматизация:** доводить задачи до конца — [AGENTS.md](AGENTS.md). **Issues и доска:** [docs/ROADMAP.ru.md](docs/ROADMAP.ru.md) (триаж и отчётность) и § *Issues и доска Project* ниже.
 
 ## Как участвовать
 
@@ -52,8 +52,6 @@ make start
 
 **Вся содержательная работа** должна быть отражена в **GitHub Issues** и, если карточка на доске, в проекте **BirdLense Hub — Roadmap** — включая задачи **вне** таблицы консилиума в ROADMAP (только CI, доки, chore). Комментарий с итогом + ссылки на PR, **закрытие** issue при готовности, на доске **Status → Done** (или `bash scripts/github-project-mark-done.sh <n>` при PAT `repo` + `project`).
 
-Политика: **[docs/PROJECT_REPORTING.ru.md](docs/PROJECT_REPORTING.ru.md)**.
-
 ## Требования к Pull Request
 
 - Один PR — одна фича или исправление.
@@ -67,7 +65,7 @@ make start
 
 ## Сообщение об ошибках
 
-- Используйте GitHub Issues; при закрытии работы и обновлении доски — **[docs/PROJECT_REPORTING.ru.md](docs/PROJECT_REPORTING.ru.md)**.
+- Используйте GitHub Issues; при закрытии работы и обновлении доски — как в § *Issues и доска Project* выше.
 - Уязвимости безопасности: [SECURITY.md](SECURITY.md).
 
 ## Вопросы
@@ -84,8 +82,6 @@ make start
 - **Безопасность:** только по [SECURITY.md](SECURITY.md), не в открытых тредах.
 
 ## GitHub Projects (мейнтейнерам)
-
-Правила отчётности (Issues + доска для **каждой** сданной работы): **[docs/PROJECT_REPORTING.ru.md](docs/PROJECT_REPORTING.ru.md)**.
 
 В репозитории включены **Issues**, **Discussions** и **Projects**. Метки `area:*`, `priority:*`, `triage` и вехи **v0.2.3** / **Backlog (no milestone)** уже заведены.
 
