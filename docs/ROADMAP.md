@@ -70,7 +70,7 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 
 **After consilium:** new tracked work → create/update the Issue, add the card to the Project (`github-project-add-backlog-consilium.sh` or manually), then **update this ROADMAP** table in the same PR or follow-up.
 
-**Reporting (all shipped work, not only consilium):** comment and **close** the **Issue** when done; set the **Roadmap** project card to **Done**. See [PROJECT_REPORTING.md](./PROJECT_REPORTING.md).
+**Reporting (all shipped work, not only consilium):** every shipped item has a **GitHub Issue** (open one if missing) and, when tracked, a card on **BirdLense Hub — Roadmap**. When done: comment (outcome + PR links), **close** the issue, set board **Status → Done** (with a PAT: `bash scripts/github-project-mark-done.sh <n>`). Checklist: root **[CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)** § *Issues & Project board*.
 
 ---
 
