@@ -88,6 +88,7 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 | **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): documented rotation / operational path for `secrets.*` and related keys (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): checklist to align VERSION/Docker/docs/release notes after dependency bumps. |
 | **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
+| **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
 
 ---
 
