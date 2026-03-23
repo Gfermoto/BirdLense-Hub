@@ -72,7 +72,7 @@ curl -s http://YOUR_GO2RTC_HOST:1984/api/streams
 | 1 | `motion.source` still `opencv` | `user_config.yaml` → `motion.source` must be `frigate` (or appropriate MQTT path) |
 | 2 | Frigate camera not in `video.cameras` | `id` must match Frigate camera name |
 | 3 | `frigate_label_filter` empty | Default `["bird","Bird"]`; empty list drops all events |
-| 4 | MQTT not ready in 5s at boot | Log: `Frigate MQTT not connected, falling back to OpenCV` |
+| 4 | MQTT unavailable for a long time (broker/network) | Logs `MQTT aggregator disconnected` / `MQTT aggregator connected`; reconnect uses backoff (`mqtt.reconnect_min_delay` → `mqtt.reconnect_max_delay`) |
 | 5 | Topic mismatch | Frigate `mqtt.topic_prefix` → events on `PREFIX/events` |
 | 6 | QoS 0 + bad network | Events can be lost on reconnect |
 

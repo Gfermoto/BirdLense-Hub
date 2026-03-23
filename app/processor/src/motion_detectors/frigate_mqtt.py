@@ -78,6 +78,8 @@ class FrigateMQTTMotionDetector:
         label_filter=None,
         username=None,
         password=None,
+        reconnect_min_delay: int = 5,
+        reconnect_max_delay: int = 300,
     ):
         self.broker = broker
         self.port = port
@@ -92,6 +94,8 @@ class FrigateMQTTMotionDetector:
         self._thread = None
         self._connected = False
         self._stopped = False
+        self.reconnect_min_delay = max(1, int(reconnect_min_delay))
+        self.reconnect_max_delay = max(self.reconnect_min_delay, int(reconnect_max_delay))
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -130,13 +134,16 @@ class FrigateMQTTMotionDetector:
         self._event.set()
 
     def _run_client(self):
-        retry_delay = 5
-        max_retry_delay = 300
+        retry_delay = self.reconnect_min_delay
         while True:
             try:
                 self._client = mqtt.Client(
                     callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
                     client_id="birdlense_frigate",
+                )
+                self._client.reconnect_delay_set(
+                    min_delay=self.reconnect_min_delay,
+                    max_delay=self.reconnect_max_delay,
                 )
                 if self.username:
                     self._client.username_pw_set(self.username, self.password)
@@ -147,8 +154,8 @@ class FrigateMQTTMotionDetector:
                 self._client.connect(self.broker, self.port, 60)
                 self._client.subscribe(self.topic)
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
-                retry_delay = 5
-                self._client.loop_forever()
+                retry_delay = self.reconnect_min_delay
+                self._client.loop_forever(retry_first_connection=True)
             except Exception as e:
                 logger.error("Frigate MQTT error: %s, reconnecting in %ds", e, retry_delay)
             finally:
@@ -163,7 +170,7 @@ class FrigateMQTTMotionDetector:
             if self._stopped:
                 break
             time.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, max_retry_delay)
+            retry_delay = min(retry_delay * 2, self.reconnect_max_delay)
 
     def start(self):
         if not self.broker:
