@@ -446,7 +446,7 @@
     "description": "When each species typically appears at your feeder — based on your historical data.",
     "yearlyChecklistTitle": "Yearly checklist (from migration table)",
     "yearlyChecklistSummary": "{{seen}} species recorded in {{year}}",
-    "year": "Year",
+    "usesFilterYearHint": "Uses year from the \"From year / To year\" filter (priority: \"To year\").",
     "noChecklistData": "No species recorded for the selected year yet.",
     "species": "Species",
     "startYear": "From year",

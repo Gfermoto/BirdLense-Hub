@@ -33,7 +33,6 @@ export const MigrationCalendar = () => {
   const { t } = useTranslation();
   const [startYear, setStartYear] = useState<number | ''>('');
   const [endYear, setEndYear] = useState<number | ''>('');
-  const [checklistYear, setChecklistYear] = useState<number>(currentYear);
 
   const params = useMemo(() => {
     const s = startYear === '' ? undefined : startYear;
@@ -47,9 +46,14 @@ export const MigrationCalendar = () => {
     queryFn: () => fetchMigrationCalendar(params),
   });
 
+  const checklistYear = endYear === '' ? startYear : endYear;
   const { data: checklistData } = useQuery({
     queryKey: ['migration-calendar-checklist', checklistYear],
-    queryFn: () => fetchMigrationCalendar({ start_year: checklistYear, end_year: checklistYear }),
+    queryFn: () =>
+      fetchMigrationCalendar({
+        start_year: typeof checklistYear === 'number' ? checklistYear : currentYear,
+        end_year: typeof checklistYear === 'number' ? checklistYear : currentYear,
+      }),
   });
 
   if (isLoading) {
@@ -129,23 +133,14 @@ export const MigrationCalendar = () => {
           }}
         >
           <Typography variant="h6">{t('migrationCalendar.yearlyChecklistTitle')}</Typography>
-          <TextField
-            select
-            size="small"
-            label={t('migrationCalendar.year')}
-            value={checklistYear}
-            onChange={(e) => setChecklistYear(Number(e.target.value))}
-            sx={{ minWidth: 120 }}
-          >
-            {YEAR_OPTIONS.map((y) => (
-              <MenuItem key={y} value={y}>{y}</MenuItem>
-            ))}
-          </TextField>
+          <Typography variant="body2" color="text.secondary">
+            {t('migrationCalendar.usesFilterYearHint')}
+          </Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           {t('migrationCalendar.yearlyChecklistSummary', {
             seen: yearlySpecies.length,
-            year: checklistYear,
+            year: typeof checklistYear === 'number' ? checklistYear : currentYear,
           })}
         </Typography>
         <Box
