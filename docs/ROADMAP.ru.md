@@ -45,6 +45,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 ```
 
 Все открытые issues/PR: `bash scripts/github-project-import-open-items.sh`. Либо вручную в интерфейсе GitHub.
+Синхронизация статусов/assignee/чеклистов: `bash scripts/github-project-sync.sh --assign Gfermoto`.
 
 | # | Тема | Issue | Приоритет / зона |
 |---|------|-------|------------------|
@@ -74,7 +75,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
-**Отчётность (вся работа, не только консилиум):** каждая сданная задача — **Issue** (нет карточки — завести) и при необходимости карточка на доске **BirdLense Hub — Roadmap**. По готовности: комментарий (итог + ссылки на PR), **закрыть** Issue, на доске **Status → Done** (при PAT: `bash scripts/github-project-mark-done.sh <номер>`). Подробности и чеклист — корневой **[CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)** § *Issues и доска Project*.
+**Отчётность (вся работа, не только консилиум):** каждая сданная задача — **Issue** (нет карточки — завести) и при необходимости карточка на доске **BirdLense Hub — Roadmap**. По готовности: комментарий (итог + ссылки на PR), **закрыть** Issue, на доске **Status → Done** (при PAT: `bash scripts/github-project-mark-done.sh <номер>`). Для регулярной уборки рассинхрона использовать `bash scripts/github-project-sync.sh --assign Gfermoto` (выравнивает статус/поток по issue-state, назначает исполнителя на open без assignee, репортит задачи без подзадач). Подробности и чеклист — корневой **[CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)** § *Issues и доска Project*.
 
 ---
 

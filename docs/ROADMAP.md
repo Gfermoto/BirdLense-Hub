@@ -43,6 +43,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 ```
 
 All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add cards manually in the GitHub UI.
+Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gfermoto`.
 
 | # | Theme | Issue | Labels (summary) |
 |---|--------|-------|------------------|
@@ -72,7 +73,7 @@ All open issues/PRs: `bash scripts/github-project-import-open-items.sh`. Or add 
 
 **After consilium:** new tracked work → create/update the Issue, add the card to the Project (`github-project-add-backlog-consilium.sh` or manually), then **update this ROADMAP** table in the same PR or follow-up.
 
-**Reporting (all shipped work, not only consilium):** every shipped item has a **GitHub Issue** (open one if missing) and, when tracked, a card on **BirdLense Hub — Roadmap**. When done: comment (outcome + PR links), **close** the issue, set board **Status → Done** (with a PAT: `bash scripts/github-project-mark-done.sh <n>`). Checklist: root **[CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)** § *Issues & Project board*.
+**Reporting (all shipped work, not only consilium):** every shipped item has a **GitHub Issue** (open one if missing) and, when tracked, a card on **BirdLense Hub — Roadmap**. When done: comment (outcome + PR links), **close** the issue, set board **Status → Done** (with a PAT: `bash scripts/github-project-mark-done.sh <n>`). For routine hygiene, run `bash scripts/github-project-sync.sh --assign Gfermoto` (aligns board status/flow with issue state, assigns open issues without assignee, reports open issues missing subtask checklists). Checklist: root **[CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)** § *Issues & Project board*.
 
 ---
 
