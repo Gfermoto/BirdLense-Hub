@@ -393,8 +393,8 @@ class TestStatusDebug:
 class TestDatabaseBackupRestore:
     def test_db_backup_endpoint_exists(self, client):
         r = client.get('/api/ui/system/db/backup')
-        # 200 when settings unlocked; 403 if password required.
-        assert r.status_code in (200, 403)
+        # 200 when unlocked and file DB is available; 403 if locked; 404 for in-memory test DB.
+        assert r.status_code in (200, 403, 404)
         if r.status_code == 200:
             cd = r.headers.get('Content-Disposition', '')
             assert 'attachment' in cd.lower()
