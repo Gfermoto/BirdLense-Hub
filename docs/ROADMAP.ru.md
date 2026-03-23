@@ -35,7 +35,7 @@
 
 **Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
 
-**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (операторский UX — март 2026; фаза B: snackbar «Открыть видео» на Unknowns). **Сделано:** [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея: app context в потоке, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по роликам за день UTC, v0.2.6). **Бэклог (надстройка):** [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (локальный TZ / соседние сутки / доки). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (операторский UX — март 2026; фаза B: snackbar «Открыть видео» на Unknowns). **Сделано:** [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) (скан истории git на секреты + SECURITY), [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) (`export_birdlense_to_yolo.py`), [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея: app context в потоке, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по роликам за день UTC, v0.2.6), [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (локальный TZ / соседние сутки / доки). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
 
 **Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
 
@@ -48,8 +48,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 | # | Тема | Issue | Приоритет / зона |
 |---|------|-------|------------------|
 | 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) ✅ `verify-password`, доки, тесты | P2, web |
-| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) | P3, infra, documentation |
-| 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) | P2, processor |
+| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) ✅ gitleaks-скрипт + SECURITY EN/RU | P3, infra, documentation |
+| 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) ✅ экспорт в YOLO cls `train/val` | P2, processor |
 | 4 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) | P2, processor |
 | 5 | UI: бэкап/восстановление SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) | P3, web |
 | 6 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) | P3, web |
@@ -61,7 +61,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4 | P2, web, bug |
 | 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 A + B в **v0.2.5** (snackbar «Открыть видео» на Unknowns); фаза C — по запросу | P2, web |
 | 14 | Навигация по видео: подряд (напр. за день), без сброса в начало списка | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | P2, web |
-| 15 | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) бэклог | P3, web |
+| 15 | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI | P3, web |
 
 ### Триаж: Issue или Discussion
 
