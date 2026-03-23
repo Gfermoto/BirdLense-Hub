@@ -486,11 +486,12 @@
     "confidence": "Confidence",
     "learnMore": "Learn More",
     "correctedInVideos": "Species corrected in {{count}} videos",
-    "previousRecording": "Previous recording (same UTC day)",
-    "nextRecording": "Next recording (same UTC day)",
-    "noPreviousRecording": "No earlier recording this UTC day",
-    "noNextRecording": "No later recording this UTC day",
-    "neighborsDayHint": "Navigation is within the same calendar day in UTC as this clip’s start time"
+    "previousRecording": "Previous recording",
+    "nextRecording": "Next recording",
+    "noPreviousRecording": "No earlier recording",
+    "noNextRecording": "No later recording",
+    "neighborsDayHint": "Navigation uses the browser's local calendar day; at day boundaries it can continue to adjacent days",
+    "localDayLabel": "Local day"
   },
   "feed": {
     "feederControl": "Feeder Control",
@@ -702,7 +703,7 @@
       "title": "Video Details",
       "description": "View detailed information about recorded bird visits, including video footage, audio spectrograms, and detection results from both visual and audio analysis.",
       "details": [
-        { "title": "Media Player", "content": "Above the player: arrows to open the previous or next recording from the same UTC calendar day (ordered by start time), with position like 2 / 5.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip." },
+        { "title": "Media Player", "content": "Above the player: arrows open previous/next recordings within the browser local calendar day (ordered by start time); at day boundaries navigation can continue to adjacent days. Position is shown like 2 / 5.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip." },
         { "title": "Detection Timeline", "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)" },
         { "title": "Detected Species", "content": "Under \"Detected Species\" section:\n- Species cards showing detected birds\n- Number in parentheses shows detection count\n- Confidence range for all detections\n- Total duration of species presence\n- \"Learn More\" links to detailed species information\n- Correcting species here is the same action as on the Unknowns page for that detection (shared API); low-confidence rows may also appear under Unknowns until you confirm or correct." },
         { "title": "General Information", "content": "Technical details about the recording:\n- Processor version used for analysis\n- Start and end timestamps\n- Total recording duration\n- Processing details and settings" },

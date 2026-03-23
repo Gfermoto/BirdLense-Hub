@@ -135,9 +135,12 @@ export const fetchVideo = async (id: string) => {
   return response.data;
 };
 
-/** Prev/next video IDs for the same UTC calendar day as this recording's start_time. */
+/** Prev/next video IDs for the selected day scope. */
 export type VideoNeighbors = {
-  day_utc: string;
+  day_scope: 'utc' | 'local';
+  day_label: string;
+  timezone_offset_minutes: number;
+  cross_day: boolean;
   previous_id: number | null;
   next_id: number | null;
   index: number;
@@ -145,7 +148,14 @@ export type VideoNeighbors = {
 };
 
 export const fetchVideoNeighbors = async (id: string): Promise<VideoNeighbors> => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`);
+  const tzOffset = new Date().getTimezoneOffset();
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`, {
+    params: {
+      day_scope: 'local',
+      tz_offset_minutes: tzOffset,
+      cross_day: 1,
+    },
+  });
   return response.data;
 };
 

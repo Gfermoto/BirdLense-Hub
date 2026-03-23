@@ -55,8 +55,10 @@ mkdir -p .cursor
 ```
 
 Замените:
-- `YOUR_HOST:8085` — хост и порт Hub (путь может быть `/mcp` или `/sse` — см. **Настройки → MCP**)
+- `YOUR_HOST:8085` — хост и порт Hub (путь **`/mcp`** — в старых инструкциях мог быть `/sse`, см. **Настройки → MCP**)
 - `YOUR_MCP_TOKEN_HERE` — тот же токен, что в разделе MCP или `MCP_TOKEN` на сервере
+
+**Прод (HTTPS):** например **`https://birdlense.eyera.info/mcp`** — веб-интерфейс [birdlense.eyera.info](https://birdlense.eyera.info/); SSH на сервер по-прежнему **185.218.111.196:2222**. Тот же Bearer-токен; снаружи nginx отдаёт TLS и проксирует на Hub.
 
 **Важно:** `.cursor/` в `.gitignore` — токен не коммитится.
 
