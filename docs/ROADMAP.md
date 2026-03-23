@@ -77,9 +77,9 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 
 ---
 
-## Future work candidates (no issue yet)
+## Future work candidates (issues created)
 
-Themes worth **Issues** when you are ready to schedule them (not on the consilium board today):
+These themes are now tracked as dedicated **Issues** and added to the board; schedule by available capacity:
 
 | Theme | Why |
 |-------|-----|
