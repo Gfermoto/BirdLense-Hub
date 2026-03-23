@@ -8,14 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-03-23
+
+Накопительный релиз после **v0.2.5**: CI CodeQL, навигация по видео **#82**, деплой/Web Push, сопутствующие доки и инфраструктура репозитория.
+
 ### Fixed
 
 - **Деплой:** rsync исключает **`.tools/`** (локальный CodeQL из `scripts/codeql-local.sh`) — не заливать гигабайты на сервер.
+- **Деплой (`scripts/deploy.sh`):** rsync исключает `.venv-docs-tmp`, `.venv-docs`, `site/`, `app/.venv` — не заливать локальные venv на сервер.
 - **Web Push:** при битых **p256dh/auth** или пустых ключах подписка **удаляется** из БД (раньше — предупреждение в лог на каждую отправку); pytest `web/tests/test_web_push_service.py`.
 - **Gallery:** приём ответа приёмника **201** и **204** (раньше только 200); при отсутствии подходящих детекций — **INFO** в лог с причинами фильтра.
 - **Страница вида `/species/:id`:** валидация id; при **404** — понятное сообщение и ссылка в каталог; пустые **weather** / некорректная длина **hourlyActivity** не ломают графики (MUI Charts). API summary: обновление из Wikipedia обёрнуто в **try/except**, чтобы сеть/БД не отдавали «мёртвую» страницу.
 - **Unknowns ↔ видео:** после смены вида или merge на странице видео список «Неизвестные» больше не «залипает» на старых данных (инвалидация **`['unknowns']`** в `DetectedSpecies`; раньше кэш жил до 5 минут).
 - **Удаление видео:** сначала **коммит** в БД, затем удаление папки записи на диске — при ошибке транзакции файлы не удаляются; после удаления — сброс кэша **`video` / `video-neighbors` / `videos`** и инвалидация соседей по дню.
+- **CI:** сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
 
 ### Added
 
@@ -46,17 +52,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `chore(deps)`: **@mui/x-charts** 7.x → 8.x в `app/ui` ([#42](https://github.com/Gfermoto/BirdLense-Hub/pull/42)).
 - `.gitignore`: `app/data/processor.log*` — ротированные логи процессора не коммитятся.
 - GitHub: модель веток — **фича → PR в `dev`**, затем **PR `dev`→`main`**; CONTRIBUTING + шаблон PR; `delete_branch_on_merge=true` (фичи не копятся, `main`/`dev` защищены от удаления). `github-repo-bootstrap.sh` и [GITHUB_SETUP_GH.ru.md](docs/GITHUB_SETUP_GH.ru.md) §4 обновлены.
-- Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
+- Доки: INSTALL ↔ `scripts/deploy.sh` (контейнер `birdlense`, `DEPLOY_REMOTE_DIR`, rsync, Intel override, исключение **`.tools/`**); пример `deploy.local.sh.example` с `DEPLOY_REMOTE_DIR`; SCENARIOS.ru (Grafana) как в EN; OPEN_SOURCE_PREP.ru — актуальный блок про плейсхолдеры; README / I18N_STATUS / SITE_MAP — формулировки под MkDocs; пути клон `BirdLense-Hub` vs каталог на сервере.
 - `app/Makefile`: комментарии деплоя и E2E без захардкоженного LAN IP.
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
 - Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`).
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
 - Доки: [LOCAL_DEV](docs/LOCAL_DEV.md) / RU — Node 22 (nvm/fnm/Volta), WSL/Cursor, Python **3.11** (приложение) vs **3.12** (MkDocs), venv для доков, чеклист перед релизом; [TESTING](docs/TESTING.md) / RU — предупреждение про RAM и OOM при `make test`, workflow E2E по расписанию; [Documentation](docs/Documentation.md) / RU — явное разделение Python для MkDocs и runtime; [CONTRIBUTING](CONTRIBUTING.md) / RU — PR: полный набор тестов; [README](README.md) / RU — блок **Developers**.
-
-### Fixed
-
-- Деплой (`scripts/deploy.sh`): rsync исключает `.venv-docs-tmp`, `.venv-docs`, `site/`, `app/.venv` — не заливать локальные venv на сервер.
-- CI: сайт документации — без workflow на `release` (деплой только с `main`), чтобы не было failed deployment в списке при теге.
 
 ---
 
@@ -408,6 +409,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.2.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.6
+[0.2.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.5
+[0.2.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.4
+[0.2.3]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.3
 [0.2.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.0
 [0.1.10]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.10
 [0.1.9]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.1.9
