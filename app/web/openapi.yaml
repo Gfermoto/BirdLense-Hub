@@ -302,33 +302,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SpeciesSummary"
-  /species/checklist/yearly:
-    get:
-      summary: Yearly species checklist
-      description: |
-        Return a full species checklist for a specific year with seen/not-seen status and yearly count.
-        If `year` is omitted, current UTC year is used.
-      parameters:
-        - in: query
-          name: year
-          required: false
-          schema:
-            type: integer
-            minimum: 1970
-            maximum: 2100
-      responses:
-        "200":
-          description: Yearly checklist data
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/YearlyChecklist"
-        "400":
-          description: Invalid year
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /bird_families:
     get:
       summary: Get all bird families
@@ -722,34 +695,6 @@ components:
           type: boolean
         count:
           type: integer
-    YearlyChecklistItem:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        seen:
-          type: boolean
-        count:
-          type: integer
-        last_seen:
-          type: string
-          format: date-time
-          nullable: true
-    YearlyChecklist:
-      type: object
-      properties:
-        year:
-          type: integer
-        total_species:
-          type: integer
-        seen_species:
-          type: integer
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/YearlyChecklistItem"
     BirdFamily:
       type: object
       properties:
