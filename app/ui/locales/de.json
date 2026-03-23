@@ -30,7 +30,7 @@
   "migrationCalendar": {
     "yearlyChecklistTitle": "Jahres-Checkliste (aus Migrationstabelle)",
     "yearlyChecklistSummary": "{{seen}} Arten im Jahr {{year}} erfasst",
-    "year": "Jahr",
+    "usesFilterYearHint": "Verwendet das Jahr aus dem Filter \"Von Jahr / Bis Jahr\" (Prioritaet: \"Bis Jahr\").",
     "noChecklistData": "Fuer das gewaehlte Jahr wurden noch keine Arten erfasst."
   },
   "protected": {
