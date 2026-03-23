@@ -18,10 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **CI/процесс:** `settings-ui-coverage` расширен метаданными зрелости для non-UI ключей (`ops-only`, `advanced`, `backend-managed`, `planned-ui`) с `reason` и `next_step`; это даёт прозрачный план эволюции настроек, а не только pass/fail.
 - **#51 (операторский UX):** в System добавлены безопасные `SQLite backup/restore` (скачивание бэкапа и восстановление из файла с авто-`pre_restore` копией), плюс документация в INSTALL/TROUBLESHOOTING.
 - **#52 (UI i18n):** добавлена пилотная третья локаль `de` (German) в `react-i18next`, улучшен выбор стартового языка (saved/browser/fallback), переключатель языка теперь полностью через i18n-ключи.
-- **Overview stats:** карточка `Средняя длительность` теперь считает среднюю длительность **одной записи** (`Video`), а не среднюю длительность визита (`SpeciesVisit`), чтобы метрика соответствовала названию.
+- **#107 (Overview stats):** карточка «Средняя длительность» / Mean recording duration считает среднюю длительность **одной записи** (`Video`), а не среднюю длительность визита (`SpeciesVisit`), чтобы метрика соответствовала названию.
 
 ### Added
 
+- **#53 (CI):** workflow `.github/workflows/docker-image-smoke.yml` — ежедневный smoke-тест опубликованного `ghcr.io/<owner>/birdlense-hub:latest` (pull/run + проверка `/api/ui/health`).
 - **#48:** скрипт `scripts/datasets/export_birdlense_to_yolo.py` — экспорт локальных кропов BirdLense (`app/data/dataset/train`) в YOLO classification layout `train/val` с детерминированным split и `dataset_info.json`.
 - **#47 (maintainer hygiene):** скрипт `scripts/security/scan_git_history_secrets.sh` для прохода по полной git-истории через Gitleaks (Docker) + документированный процесс в [SECURITY](docs/SECURITY.md) / [RU](docs/SECURITY.ru.md).
 
