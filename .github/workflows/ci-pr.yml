@@ -49,7 +49,23 @@ jobs:
         run: python3 scripts/check-docs-version.py
 
       - name: Check Settings UI coverage
-        run: python3 scripts/check-settings-ui-coverage.py
+        run: |
+          python3 scripts/check-settings-ui-coverage.py \
+            --report-path .artifacts/settings-ui-coverage.json \
+            --summary-path .artifacts/settings-ui-coverage.md
+
+      - name: Publish Settings UI coverage summary
+        if: always()
+        run: cat .artifacts/settings-ui-coverage.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Settings UI coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-ui-coverage
+          path: |
+            .artifacts/settings-ui-coverage.json
+            .artifacts/settings-ui-coverage.md
 
       - name: MkDocs build (strict)
         run: mkdocs build --strict
