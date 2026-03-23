@@ -27,12 +27,6 @@
   "settings": {
     "save": "Einstellungen speichern"
   },
-  "migrationCalendar": {
-    "yearlyChecklistTitle": "Jahres-Checkliste (aus Migrationstabelle)",
-    "yearlyChecklistSummary": "{{seen}} Arten im Jahr {{year}} erfasst",
-    "usesFilterYearHint": "Verwendet das Jahr aus dem Filter \"Von Jahr / Bis Jahr\" (Prioritaet: \"Bis Jahr\").",
-    "noChecklistData": "Fuer das gewaehlte Jahr wurden noch keine Arten erfasst."
-  },
   "protected": {
     "passwordRequired": "Geben Sie das Admin-Passwort ein, um auf diesen Bereich zuzugreifen."
   }
