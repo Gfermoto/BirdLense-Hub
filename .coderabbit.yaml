@@ -27,3 +27,5 @@ reviews:
     drafts: false
 chat:
   auto_reply: true
+
+# Триггер smoke-теста CodeRabbit (можно откатить).
