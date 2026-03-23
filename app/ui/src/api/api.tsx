@@ -669,10 +669,11 @@ export const downloadReportPdf = async (month: string): Promise<void> => {
 export const updateDetectionSpecies = async (
   detectionId: number,
   speciesId: number,
+  source?: 'unknowns' | 'video',
 ): Promise<{ message: string; species_id: number; updated_count?: number }> => {
   const response = await axios.patch(
     `${BASE_API_URL}/detections/${detectionId}`,
-    { species_id: speciesId },
+    { species_id: speciesId, source },
     { withCredentials: true },
   );
   return response.data;
@@ -681,12 +682,32 @@ export const updateDetectionSpecies = async (
 /** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
 export const confirmDetection = async (
   detectionId: number,
+  source?: 'unknowns' | 'video',
 ): Promise<{ message: string; updated_count: number }> => {
   const response = await axios.post(
     `${BASE_API_URL}/detections/${detectionId}/confirm`,
-    {},
+    { source },
     { withCredentials: true },
   );
+  return response.data;
+};
+
+export type CorrectionHistoryEntry = {
+  id: number;
+  created_at: string;
+  action: 'correct_species' | 'confirm_species';
+  source: 'unknowns' | 'video' | 'other';
+  detection_id: number | null;
+  from_species_name?: string | null;
+  to_species_name?: string | null;
+  updated_count?: number;
+};
+
+export const fetchRecentCorrections = async (limit = 10): Promise<CorrectionHistoryEntry[]> => {
+  const response = await axios.get(`${BASE_API_URL}/corrections/recent`, {
+    params: { limit },
+    withCredentials: true,
+  });
   return response.data;
 };
 

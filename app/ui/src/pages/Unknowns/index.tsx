@@ -27,6 +27,7 @@ import {
   fetchBirdDirectory,
   updateDetectionSpecies,
   confirmDetection,
+  fetchRecentCorrections,
   resolveImageUrl,
   type UnknownDetection,
 } from '../../api/api';
@@ -209,6 +210,11 @@ export function UnknownsPage() {
     queryKey: ['species'],
     queryFn: () => fetchBirdDirectory(),
   });
+  const { data: recentCorrections = [] } = useQuery({
+    queryKey: ['corrections-recent'],
+    queryFn: () => fetchRecentCorrections(8),
+    enabled: canEdit,
+  });
 
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
@@ -230,7 +236,7 @@ export function UnknownsPage() {
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
-      updateDetectionSpecies(detectionId, speciesId),
+      updateDetectionSpecies(detectionId, speciesId, 'unknowns'),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
@@ -240,6 +246,7 @@ export function UnknownsPage() {
       queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
       queryClient.invalidateQueries({ queryKey: ['species'] });
       queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       const msg = data?.updated_count && data.updated_count > 1
         ? t('video.correctedInVideos', { count: data.updated_count })
         : t('unknowns.corrected');
@@ -252,13 +259,14 @@ export function UnknownsPage() {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: (detectionId: number) => confirmDetection(detectionId),
+    mutationFn: (detectionId: number) => confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
       queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
       setCorrectSuccess(t('unknowns.corrected'));
     },
@@ -354,6 +362,27 @@ export function UnknownsPage() {
         }}
         onClose={() => setShowUnlockDialog(false)}
       />
+
+      {canEdit && recentCorrections.length > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('unknowns.recentCorrectionsTitle')}
+          </Typography>
+          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+            {recentCorrections.slice(0, 5).map((row) => (
+              <Typography component="li" variant="body2" key={row.id}>
+                {new Date(row.created_at).toLocaleString()} — {row.action === 'confirm_species'
+                  ? t('unknowns.recentCorrectionConfirm')
+                  : t('unknowns.recentCorrectionUpdate', {
+                      from: row.from_species_name || t('common.na'),
+                      to: row.to_species_name || t('common.na'),
+                    })}{' '}
+                ({row.source})
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      )}
 
       {unknowns?.length === 0 ? (
         <Alert severity="info">{t('unknowns.empty')}</Alert>

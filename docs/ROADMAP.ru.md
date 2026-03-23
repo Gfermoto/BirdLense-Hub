@@ -58,10 +58,10 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 7 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) ✅ workflow `Docker image smoke (published)` (`ghcr ... :latest` + `/api/ui/health`) | P3, infra |
 | 8 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` в CI + `web/tests/test_openapi_contract.py` | P3, web |
 | 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ на странице Migration, источник — данные migration-таблицы за выбранный год | P3, web |
-| 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) | P3, web |
+| 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo-host вынесен из hardcoded CORS defaults в `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS` | P3, web |
 | 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
 | 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4 | P2, web, bug |
-| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) 📝 A + B в **v0.2.5** (snackbar «Открыть видео» на Unknowns); фаза C — по запросу | P2, web |
+| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) | P2, web |
 | 14 | Навигация по видео: подряд (напр. за день), без сброса в начало списка | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | P2, web |
 | 15 | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI | P3, web |
 | 16 | Overview: «Средняя длительность» считалась по визитам, а не по записям | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug |

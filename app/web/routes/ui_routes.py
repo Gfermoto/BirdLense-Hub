@@ -54,6 +54,30 @@ UNKNOWNS_LIMIT_MAX = 500
 
 
 def register_routes(app):
+    def _normalize_correction_source(value):
+        src = (value or '').strip().lower()
+        if src in ('unknowns', 'video'):
+            return src
+        return 'other'
+
+    def _write_correction_activity(action, source, detection_id, from_species_name=None, to_species_name=None, updated_count=None):
+        from models import ActivityLog
+        payload = {
+            'action': action,
+            'source': source,
+            'detection_id': detection_id,
+            'from_species_name': from_species_name,
+            'to_species_name': to_species_name,
+            'updated_count': updated_count,
+        }
+        try:
+            log = ActivityLog(type='species_correction', data=json_module.dumps(payload, ensure_ascii=False))
+            db.session.add(log)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Failed to write species_correction activity log')
+
     @app.route('/api/ui/health', methods=['GET'])
     def health():
         return {'status': 'ok'}
@@ -905,6 +929,7 @@ def register_routes(app):
         """Подтвердить вид: пометить как проверенный (manually_corrected=True), убрать из Unknowns."""
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
+        source = _normalize_correction_source((request.json or {}).get('source'))
 
         vs = VideoSpecies.query.get(detection_id)
         if not vs:
@@ -915,8 +940,50 @@ def register_routes(app):
         for v in to_confirm:
             v.manually_corrected = True
         db.session.commit()
+        _write_correction_activity(
+            action='confirm_species',
+            source=source,
+            detection_id=detection_id,
+            from_species_name=vs.species.name,
+            to_species_name=vs.species.name,
+            updated_count=len(to_confirm),
+        )
 
         return {'message': 'Confirmed', 'updated_count': len(to_confirm)}, 200
+
+    @app.route('/api/ui/corrections/recent', methods=['GET'])
+    def recent_corrections():
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+        from models import ActivityLog
+        limit = request.args.get('limit', 10, type=int)
+        limit = min(max(limit, 1), 100)
+        rows = (
+            ActivityLog.query
+            .filter_by(type='species_correction')
+            .order_by(ActivityLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        out = []
+        for row in rows:
+            parsed = {}
+            if row.data:
+                try:
+                    parsed = json_module.loads(row.data)
+                except (TypeError, ValueError):
+                    parsed = {}
+            out.append({
+                'id': row.id,
+                'created_at': ensure_utc(row.created_at).isoformat() if row.created_at else None,
+                'action': parsed.get('action') or 'correct_species',
+                'source': parsed.get('source') or 'other',
+                'detection_id': parsed.get('detection_id'),
+                'from_species_name': parsed.get('from_species_name'),
+                'to_species_name': parsed.get('to_species_name'),
+                'updated_count': parsed.get('updated_count'),
+            })
+        return out, 200
 
     @app.route('/api/ui/detections/<int:detection_id>', methods=['PATCH'])
     def update_detection_species(detection_id):
@@ -925,6 +992,7 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
 
         data = request.json or {}
+        source = _normalize_correction_source(data.get('source'))
         species_id = data.get('species_id')
         if species_id is None:
             return {'error': 'species_id is required'}, 400
@@ -1006,6 +1074,14 @@ def register_routes(app):
                     extract_and_save_crop_for_detection(v, species.name)
 
         updated_count = len(to_update)
+        _write_correction_activity(
+            action='correct_species',
+            source=source,
+            detection_id=detection_id,
+            from_species_name=old_species_name,
+            to_species_name=species.name,
+            updated_count=updated_count,
+        )
         return {
             'message': 'Species updated' + (f' ({updated_count} videos)' if updated_count > 1 else ''),
             'species_id': species_id,
