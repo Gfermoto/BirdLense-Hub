@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **CI/процесс:** `settings-ui-coverage` расширен метаданными зрелости для non-UI ключей (`ops-only`, `advanced`, `backend-managed`, `planned-ui`) с `reason` и `next_step`; это даёт прозрачный план эволюции настроек, а не только pass/fail.
 - **#51 (операторский UX):** в System добавлены безопасные `SQLite backup/restore` (скачивание бэкапа и восстановление из файла с авто-`pre_restore` копией), плюс документация в INSTALL/TROUBLESHOOTING.
 - **#52 (UI i18n):** добавлена пилотная третья локаль `de` (German) в `react-i18next`, улучшен выбор стартового языка (saved/browser/fallback), переключатель языка теперь полностью через i18n-ключи.
+- **Overview stats:** карточка `Средняя длительность` теперь считает среднюю длительность **одной записи** (`Video`), а не среднюю длительность визита (`SpeciesVisit`), чтобы метрика соответствовала названию.
 
 ### Added
 

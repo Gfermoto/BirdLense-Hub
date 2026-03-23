@@ -43,7 +43,7 @@
     "uniqueSpecies": "Unique Species",
     "totalVisits": "Total Visits",
     "visitsLastHour": "Visits (Last Hour)",
-    "meanDuration": "Mean Visit Duration",
+    "meanDuration": "Mean Recording Duration",
     "busiestHour": "Busiest Hour",
     "recordingTime": "Recording Time",
     "recordingTimeHint": "Sum of all video file durations for the day",

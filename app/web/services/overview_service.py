@@ -54,7 +54,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         func.sum(SpeciesVisit.max_simultaneous).desc()
     ).first()
 
-    # Stats
+    # Stats based on visits
     stats_q = session.query(
         func.count(distinct(SpeciesVisit.species_id)).label('uniqueSpecies'),
         func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
@@ -65,10 +65,6 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
                 else_=0
             )
         ).label('lastHourDetections'),
-        func.avg(
-            func.strftime('%s', SpeciesVisit.end_time) -
-            func.strftime('%s', SpeciesVisit.start_time)
-        ).label('avgVisitDuration'),
     ).join(Species, SpeciesVisit.species_id == Species.id).filter(
         SpeciesVisit.start_time >= start_of_day,
         SpeciesVisit.start_time <= end_of_day,
@@ -82,6 +78,12 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
     )
     recording_sec = session.query(
         func.sum(video_dur_expr).label('total'),
+    ).filter(
+        Video.start_time >= start_of_day,
+        Video.start_time <= end_of_day,
+    ).scalar() or 0
+    avg_recording_sec = session.query(
+        func.avg(video_dur_expr).label('avg'),
     ).filter(
         Video.start_time >= start_of_day,
         Video.start_time <= end_of_day,
@@ -119,7 +121,8 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         'totalDetections': stats_q.totalDetections or 0,
         'lastHourDetections': stats_q.lastHourDetections or 0,
         'busiestHour': int(busiest.hour) if busiest else 0,
-        'avgVisitDuration': round(stats_q.avgVisitDuration or 0),
+        # UI card "Mean duration": average single recording duration (Video), not visit span.
+        'avgVisitDuration': round(avg_recording_sec),
         'videoDuration': round(recording_sec),  # время записей: сумма длительностей видеофайлов
         'audioDuration': round(dur_q.audio_duration or 0),
         'detectionByProvider': {(p or 'legacy'): int(c) for p, c in prov_q},

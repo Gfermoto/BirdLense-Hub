@@ -43,7 +43,7 @@
     "uniqueSpecies": "Уникальных видов",
     "totalVisits": "Всего визитов",
     "visitsLastHour": "Визитов (последний час)",
-    "meanDuration": "Средняя длительность",
+    "meanDuration": "Средняя длительность записи",
     "busiestHour": "Пиковый час",
     "recordingTime": "Время записи",
     "recordingTimeHint": "Сумма длительностей всех видеофайлов за день",
