@@ -102,7 +102,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview, вторая диаграмма | Клик по виду → записи этого вида за сегодня |
-| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration + каталог | Кликабельные виды в таблице → страница вида; **вкладки** меняют сортировку/режим таблицы (не обязательно переносить весь каталог) |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration = вход в каталог | Меньше вкладок в меню; таблица миграции — главный вход к видам; клики → `/species/:id`; режимы таблицы — вкладки на странице |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов | Региональные = топ eBird + услышанные BirdNET |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Период на Migration | **Диапазон с точностью до дня**; таблица + услышанные/распознанные; не на регион |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы | Расширить seed + документация источника (`seed.py`) |
