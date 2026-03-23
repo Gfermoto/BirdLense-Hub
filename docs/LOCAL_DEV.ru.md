@@ -104,6 +104,12 @@ cd app
 make test-web
 ```
 
+Контрактный смоук OpenAPI (Issue #54):
+```bash
+cd app
+python -m pytest web/tests/test_openapi_contract.py -q
+```
+
 Или только часть:
 ```bash
 docker compose run --rm -v $(pwd):/app birdlense python -m pytest web/tests/test_api.py -v -k "unknowns or overview"

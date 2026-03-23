@@ -99,6 +99,7 @@ Build the UI **before** `docker compose build` unless your image runs `npm` insi
 | Layer | Command |
 |-------|---------|
 | Web API | `cd app && make test-web` |
+| OpenAPI contract smoke | `cd app && python -m pytest web/tests/test_openapi_contract.py -q` |
 | Processor | `cd app && make test` |
 | E2E | `cd app && make start` then `make test-e2e` (optional `E2E_SETTINGS_PASSWORD`, `BASE_URL`) |
 
