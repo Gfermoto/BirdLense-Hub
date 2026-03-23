@@ -74,7 +74,7 @@
 | Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Управление и внешний наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
-| **Отчётность Issues и доска** | [PROJECT_REPORTING.ru.md](./PROJECT_REPORTING.ru.md) · [EN](./PROJECT_REPORTING.md) |
+| **Issues, доска и процесс** | [ROADMAP.ru.md](./ROADMAP.ru.md) § *Триаж* · [EN](./ROADMAP.md); корневой [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md) |
 | **Настройка GitHub через gh** | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 | **Wiki и отчёты CI** | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
 | Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |

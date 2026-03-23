@@ -72,7 +72,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
-**Отчётность (вся работа, не только консилиум):** при завершении задачи — комментарий и закрытие **Issue**, обновление статуса на доске **Roadmap**; см. [PROJECT_REPORTING.ru.md](./PROJECT_REPORTING.ru.md).
+**Отчётность (вся работа, не только консилиум):** каждая сданная задача — **Issue** (нет карточки — завести) и при необходимости карточка на доске **BirdLense Hub — Roadmap**. По готовности: комментарий (итог + ссылки на PR), **закрыть** Issue, на доске **Status → Done** (при PAT: `bash scripts/github-project-mark-done.sh <номер>`). Подробности и чеклист — корневой **[CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)** § *Issues и доска Project*.
 
 ---
 
