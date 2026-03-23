@@ -1,0 +1,33 @@
+{
+  "nav": {
+    "dashboard": "Übersicht",
+    "timeline": "Aufnahmen",
+    "migrationCalendar": "Migration",
+    "unknowns": "Unbekannt",
+    "food": "Futter",
+    "species": "Arten",
+    "live": "Live",
+    "liveView": "Live-Ansicht",
+    "settings": "Einstellungen",
+    "system": "System",
+    "library": "Bibliothek"
+  },
+  "common": {
+    "appName": "BirdLense Hub",
+    "loading": "Wird geladen...",
+    "error": "Fehler",
+    "success": "Erfolgreich",
+    "retry": "Erneut versuchen",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "help": "Hilfe",
+    "language": "Sprache"
+  },
+  "settings": {
+    "save": "Einstellungen speichern"
+  },
+  "protected": {
+    "passwordRequired": "Geben Sie das Admin-Passwort ein, um auf diesen Bereich zuzugreifen."
+  }
+}
