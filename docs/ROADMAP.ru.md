@@ -100,12 +100,13 @@ bash scripts/github-project-add-backlog-consilium.sh
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration |
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET | Доп. снижение порога для видов из лейблов BirdNET |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview, вторая диаграмма | Клик по виду → записи этого вида за сегодня |
-| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Каталог → Migration | Тот же функционал, кликабельные виды в таблице |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration + каталог | Кликабельные виды в таблице → страница вида; **вкладки** меняют сортировку/режим таблицы (не обязательно переносить весь каталог) |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов | Региональные = топ eBird + услышанные BirdNET |
-| [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Период на Migration | На таблицу и услышанные/распознанные; не на регион |
+| [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Период на Migration | **Диапазон с точностью до дня**; таблица + услышанные/распознанные; не на регион |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы | Расширить seed + документация источника (`seed.py`) |
+| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Автозаполнение/подсказки имён — иначе расхождения с каталогом; см. риски в issue |
 
 ---
 
