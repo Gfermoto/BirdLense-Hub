@@ -90,6 +90,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Секреты в проде** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): документированная ротация / операционный путь для `secrets.*` (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Синхронизация версий стека** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): чеклист sync VERSION/Docker/docs/release notes после bump зависимостей. |
 | **Community / донаты в UI** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): UX-эксперименты поддержки проекта при сохранении ненавязчивости; базовая ссылка уже есть: `general.donate_url`. |
+| **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): ручные отметки «видел сам», заметки — отдельно от таблицы миграции; сейчас только беклог и планы в issue, без кода. |
 
 ---
 
