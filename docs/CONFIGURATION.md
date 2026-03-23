@@ -113,11 +113,15 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 | `frigate_topic` | Frigate events topic |
 | `birdnet_topic` | BirdNET topic |
 | `publish_topic` | BirdLense detection publish topic |
+| `reconnect_min_delay` | Minimum MQTT reconnect/backoff delay (seconds) |
+| `reconnect_max_delay` | Maximum MQTT reconnect/backoff delay (seconds) |
 | `ha_discovery` | Home Assistant MQTT discovery — Last Species, Bird at Feeder, etc. Default true. |
 
 **Topics:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (publish), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Feeder relay: `homeassistant/switch/bird_feeder/command`.
 
 **BirdNET:** `CommonName`, `Confidence`, `BeginTime` (merge), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label`.
+
+**Missed-event note:** during outages, MQTT events can be missed and are usually not replayed later (Frigate events are typically a live stream, not backlog replay). Use Frigate recording/clip retention as the source of historical truth.
 
 ---
 

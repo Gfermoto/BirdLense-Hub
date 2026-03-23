@@ -113,11 +113,15 @@
 | `frigate_topic` | Топик событий Frigate |
 | `birdnet_topic` | Топик BirdNET |
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
+| `reconnect_min_delay` | Минимальная задержка reconnect/backoff MQTT (сек) |
+| `reconnect_max_delay` | Максимальная задержка reconnect/backoff MQTT (сек) |
 | `ha_discovery` | Home Assistant MQTT Autodiscovery — Last Species, Bird at Feeder и др. По умолчанию true. |
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
 
 **BirdNET:** `CommonName`, `Confidence`, `BeginTime` (для слияния), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label`.
+
+**Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
 
 ---
 

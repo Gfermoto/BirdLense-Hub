@@ -79,6 +79,8 @@ mqtt:
   frigate_topic: "frigate/events"
   birdnet_topic: "birdnet"  # BirdNET-Go/Pi публикует сюда
   publish_topic: "birdlense/detections"
+  reconnect_min_delay: 5  # сек; стартовый backoff при потере связи
+  reconnect_max_delay: 300  # сек; потолок backoff
   # Home Assistant MQTT Autodiscovery — публикация config и state для автообнаружения
   ha_discovery: true
 
