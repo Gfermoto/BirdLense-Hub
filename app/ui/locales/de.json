@@ -27,6 +27,11 @@
   "settings": {
     "save": "Einstellungen speichern"
   },
+  "overview": {
+    "yearlyChecklistTitle": "Arten-Checkliste pro Jahr",
+    "yearlyChecklistSummary": "{{seen}} von {{total}} Arten in diesem Jahr gesehen",
+    "year": "Jahr"
+  },
   "protected": {
     "passwordRequired": "Geben Sie das Admin-Passwort ein, um auf diesen Bereich zuzugreifen."
   }

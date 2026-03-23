@@ -54,7 +54,10 @@
     "regionComparisonTopList": "Region top:",
     "regionComparisonHint": "Based on eBird data for the last 30 days. Region: {{region}}.",
     "regionComparisonConfigure": "Add eBird API key in Settings → Advanced for regional comparison.",
-    "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings."
+    "regionComparisonNoData": "No observations in region {{region}} in the last 30 days. Check eBird country/state in settings.",
+    "yearlyChecklistTitle": "Yearly Species Checklist",
+    "yearlyChecklistSummary": "Seen {{seen}} of {{total}} species this year",
+    "year": "Year"
   },
   "settings": {
     "section1": "1. Connection",
