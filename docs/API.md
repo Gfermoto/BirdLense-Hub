@@ -23,7 +23,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/timeline` | GET | Visits in range (`start_time`, `end_time`) |
 | `/timeline/export` | GET | CSV, JSON, or eBird (`format=csv|json|ebird`) |
 | `/videos/:id` | GET | Video detail |
-| `/videos/:id/neighbors` | GET | Previous/next video IDs for the same UTC calendar day as `start_time` (`previous_id`, `next_id`, `index`, `total`, `day_utc`) |
+| `/videos/:id/neighbors` | GET | Previous/next video IDs. Supports local day and cross-day fallback via `day_scope`, `tz_offset_minutes`, `cross_day`; response includes `day_scope`, `day_label`, `timezone_offset_minutes` |
 | `/overview` | GET | Overview dashboard payload |
 | `/species` | GET | Species list |
 | `/birdfood` | GET/POST | Food list / add |

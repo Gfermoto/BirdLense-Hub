@@ -116,7 +116,9 @@ export const VideoDetails = () => {
               </Tooltip>
               <Tooltip title={t('video.neighborsDayHint')}>
                 <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
-                  UTC {neighbors.day_utc}
+                  {neighbors.day_scope === 'local'
+                    ? `${t('video.localDayLabel')} ${neighbors.day_label}`
+                    : `UTC ${neighbors.day_label}`}
                 </Typography>
               </Tooltip>
             </Stack>
