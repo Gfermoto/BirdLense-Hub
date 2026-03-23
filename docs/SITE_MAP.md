@@ -72,6 +72,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
+| Issues & Project reporting | [PROJECT_REPORTING.md](./PROJECT_REPORTING.md) · [RU](./PROJECT_REPORTING.ru.md) |
 | GitHub via `gh` CLI | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | Wiki & CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
 

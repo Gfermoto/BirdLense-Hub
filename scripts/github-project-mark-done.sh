@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Помечает issue на доске «BirdLense Hub — Roadmap» как Done:
 #   поля Status и Поток (если есть) → опция Done.
+# Отчётность: сданную работу отражать в Issues и на доске — docs/PROJECT_REPORTING.ru.md.
 #
 # ID полей подтягиваются из API (не хардкод), чтобы пережить правки доски.
 #

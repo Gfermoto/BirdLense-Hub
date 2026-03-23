@@ -1,6 +1,6 @@
 # UX: Unknowns ↔ correction inside video (#81)
 
-[Русский кратко](#русский): цель и фазы — ниже на EN для единого источника.
+[Русский кратко](#russian-summary): цель и фазы — ниже на EN для единого источника.
 
 **Issue:** [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81)
 
@@ -36,7 +36,7 @@ Manual species correction works well when one choice applies to **many** detecti
 
 ---
 
-## Русский
+## Русский {#russian-summary}
 
 **Цель:** одна понятная история для оператора: исправление вида в «Неизвестных» и на странице видео — это **одно и то же действие** над детекцией (общий API), разные точки входа.
 

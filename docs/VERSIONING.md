@@ -38,7 +38,7 @@ Also update **`mkdocs.yml`**: `extra.site_version` must match `VERSION` (CI: `sc
 
 ## Releases and tags
 
-1. **Before release:** bump `VERSION`, `package.json`, `openapi.yaml`, and edit **`CHANGELOG.md`** at the repository root (see [Changelog](./project/changelog.md) for the canonical location).
+1. **Before release:** bump `VERSION`, `package.json`, `openapi.yaml`, and edit **`CHANGELOG.md`** at the repository root (see [Changelog](./project/changelog.md) for the canonical location). Close/update **Issues** and the **Roadmap** project per [PROJECT_REPORTING](./PROJECT_REPORTING.md).
 2. **Commit:** `git add -A && git commit -m "Release v0.1.0"`
 3. **Tag:** `git tag -a v0.1.0 -m "Release v0.1.0"`
 4. **Push:** `git push && git push origin v0.1.0`
