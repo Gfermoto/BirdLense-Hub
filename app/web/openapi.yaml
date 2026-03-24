@@ -288,6 +288,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /unknowns:
+    get:
+      summary: Get low-confidence detections for review
+      description: |
+        Returns low-confidence detections (and generic "Bird" rows) for manual review.
+        All timestamps are UTC. Maximum interval between start_time and end_time is 1 day.
+      parameters:
+        - in: query
+          name: start_time
+          required: true
+          schema:
+            type: integer
+            description: Unix timestamp (UTC)
+        - in: query
+          name: end_time
+          required: true
+          schema:
+            type: integer
+            description: Unix timestamp (UTC)
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        "200":
+          description: List of detections requiring review
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnknownDetection"
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /species:
     get:
       summary: List all species
@@ -704,6 +746,33 @@ components:
                 type: number
               source:
                 type: string
+    UnknownDetection:
+      type: object
+      properties:
+        id:
+          type: integer
+        video_id:
+          type: integer
+        species_id:
+          type: integer
+        species_name:
+          type: string
+        confidence:
+          type: number
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        source:
+          type: string
+        detection_provider:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+          nullable: true
     SpeciesSummary:
       type: object
       properties:
