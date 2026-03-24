@@ -101,7 +101,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 **Прогресс (март 2026):**
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
 - [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: пункт «Каталог» убран из меню, legacy `/species` редиректит на `/migration-calendar`, deep-link `/species/:id` сохранён.
-- [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — в работе: блок «Сравнение с регионом» перенесён с Overview на Migration; на Overview оставлена короткая ссылка-переход.
+- [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
 
 | # | Issue | Кратко |
 |---|--------|--------|
