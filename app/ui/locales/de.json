@@ -12,6 +12,10 @@
     "system": "System",
     "library": "Bibliothek"
   },
+  "timeline": {
+    "modeTimeline": "Aufnahmen",
+    "modeReview": "Prüfen"
+  },
   "common": {
     "appName": "BirdLense Hub",
     "loading": "Wird geladen...",

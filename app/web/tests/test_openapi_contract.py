@@ -118,3 +118,18 @@ class TestOpenApiContractSmoke:
         assert response.status_code == 200
         schema = _schema_for(spec, path="/overview")
         _assert_matches_schema(spec, response.json, schema)
+
+    def test_unknowns_matches_openapi_schema(self, client):
+        spec = _load_spec()
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        response = client.get(
+            "/api/ui/unknowns",
+            query_string={
+                "start_time": now_ts - 3600,
+                "end_time": now_ts,
+                "limit": 10,
+            },
+        )
+        assert response.status_code == 200
+        schema = _schema_for(spec, path="/unknowns")
+        _assert_matches_schema(spec, response.json, schema)
