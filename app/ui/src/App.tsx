@@ -21,9 +21,6 @@ const VideoDetails = lazy(() =>
 const FoodManagement = lazy(() =>
   import('./pages/FoodManagement').then((m) => ({ default: m.FoodManagement })),
 );
-const BirdDirectory = lazy(() =>
-  import('./pages/BirdDirectory').then((m) => ({ default: m.BirdDirectory })),
-);
 const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.LivePage })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
@@ -155,7 +152,7 @@ function App() {
                     <Route path="/migration-calendar" element={<MigrationCalendar />} />
                     <Route path="/videos/:id" element={<VideoDetails />} />
                     <Route path="/food" element={<FoodManagement />} />
-                    <Route path="/species" element={<BirdDirectory />} />
+                    <Route path="/species" element={<Navigate to="/migration-calendar" replace />} />
                     <Route path="/live" element={<LivePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/species/:id" element={<SpeciesSummary />} />
