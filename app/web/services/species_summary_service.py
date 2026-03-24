@@ -59,16 +59,27 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
         Video.weather_temp.isnot(None),
     ).group_by(func.round(Video.weather_temp), Video.weather_clouds).all()
 
+    # Count distinct visits per food instead of summing max_simultaneous across
+    # joined rows. This avoids inflated values when a visit has multiple linked
+    # detections/videos for the same species.
     food_stats = session.query(
         BirdFood.name,
-        func.sum(SpeciesVisit.max_simultaneous).label('count'),
-    ).join(video_bird_food_association, BirdFood.id == video_bird_food_association.c.birdfood_id).join(
+        func.count(func.distinct(SpeciesVisit.id)).label('count'),
+    ).join(
+        video_bird_food_association, BirdFood.id == video_bird_food_association.c.birdfood_id
+    ).join(
         Video, Video.id == video_bird_food_association.c.video_id
-    ).join(VideoSpecies, VideoSpecies.video_id == Video.id).join(
+    ).join(
+        VideoSpecies, VideoSpecies.video_id == Video.id
+    ).join(
         SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id
-    ).filter(SpeciesVisit.species_id.in_(all_species_ids)).group_by(
+    ).filter(
+        SpeciesVisit.species_id.in_(all_species_ids)
+    ).group_by(
         BirdFood.name
-    ).order_by(func.sum(SpeciesVisit.max_simultaneous).desc()).limit(5).all()
+    ).order_by(
+        func.count(func.distinct(SpeciesVisit.id)).desc()
+    ).limit(5).all()
 
     recent_visits = session.query(SpeciesVisit).filter(
         SpeciesVisit.species_id.in_(all_species_ids)
