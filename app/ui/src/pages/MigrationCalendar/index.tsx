@@ -19,6 +19,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
+import dayjs from 'dayjs';
 
 /** Intensity 0–1 → opacity for cell background */
 const cellOpacity = (count: number, maxInRow: number) =>
@@ -31,13 +32,22 @@ export const MigrationCalendar = () => {
   const { t } = useTranslation();
   const [startYear, setStartYear] = useState<number | ''>('');
   const [endYear, setEndYear] = useState<number | ''>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const params = useMemo(() => {
     const s = startYear === '' ? undefined : startYear;
     const e = endYear === '' ? undefined : endYear;
-    if (s === undefined && e === undefined) return undefined;
-    return { start_year: s ?? undefined, end_year: e ?? undefined };
-  }, [startYear, endYear]);
+    const sd = startDate || undefined;
+    const ed = endDate || undefined;
+    if (s === undefined && e === undefined && !sd && !ed) return undefined;
+    return {
+      start_year: s ?? undefined,
+      end_year: e ?? undefined,
+      start_date: sd,
+      end_date: ed,
+    };
+  }, [startYear, endYear, startDate, endDate]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
@@ -86,8 +96,34 @@ export const MigrationCalendar = () => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('migrationCalendar.description')}
       </Typography>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+        {t('migrationCalendar.periodHint')}
+      </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <FilterListIcon fontSize="small" color="action" />
+        <TextField
+          type="date"
+          size="small"
+          label={t('migrationCalendar.startDate')}
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          inputProps={{ max: endDate || dayjs().format('YYYY-MM-DD') }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 170 }}
+        />
+        <TextField
+          type="date"
+          size="small"
+          label={t('migrationCalendar.endDate')}
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          inputProps={{
+            min: startDate || undefined,
+            max: dayjs().format('YYYY-MM-DD'),
+          }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 170 }}
+        />
         <TextField
           select
           size="small"
