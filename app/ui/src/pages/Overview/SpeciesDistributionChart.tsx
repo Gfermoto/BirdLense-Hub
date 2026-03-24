@@ -5,15 +5,19 @@ import { OverviewTopSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import dayjs, { Dayjs } from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 
 interface SpeciesDistributionChartProps {
   data: OverviewTopSpecies[];
+  date?: Dayjs;
 }
 
 export const SpeciesDistributionChart: React.FC<
   SpeciesDistributionChartProps
-> = ({ data }) => {
+> = ({ data, date }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const pieData = data
     .map((species) => ({
       id: species.id,
@@ -23,6 +27,11 @@ export const SpeciesDistributionChart: React.FC<
     }))
     .filter((item) => item.value > 0)
     .sort((a, b) => b.value - a.value);
+
+  const navigateToTimelineForSpecies = (speciesId: number) => {
+    const dateValue = (date ?? dayjs()).startOf('day').toISOString();
+    navigate(`/timeline?speciesId=${speciesId}&date=${dateValue}`);
+  };
 
   if (pieData.length === 0) {
     return (
@@ -64,6 +73,12 @@ export const SpeciesDistributionChart: React.FC<
         ]}
         width={400}
         height={400}
+        onItemClick={(_, item) => {
+          if (typeof item.dataIndex !== 'number') return;
+          const selected = pieData[item.dataIndex];
+          if (!selected) return;
+          navigateToTimelineForSpecies(Number(selected.id));
+        }}
         slotProps={{
           legend: {
             hidden: true,
@@ -71,6 +86,48 @@ export const SpeciesDistributionChart: React.FC<
         }}
         margin={{ top: 20, bottom: 20, left: 20, right: 20 }}
       />
+      <Box
+        sx={{
+          mt: 1,
+          px: 2,
+          width: '100%',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 1.5,
+        }}
+      >
+        {pieData.map((item) => (
+          <Box
+            key={String(item.id)}
+            onClick={() => navigateToTimelineForSpecies(Number(item.id))}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: 999,
+              border: 1,
+              borderColor: 'divider',
+              cursor: 'pointer',
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <Box
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                backgroundColor: item.color,
+              }}
+            />
+            <Typography variant="caption">
+              {item.label} ({item.value})
+            </Typography>
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 };

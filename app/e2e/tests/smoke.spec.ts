@@ -47,6 +47,13 @@ test.describe('Smoke tests', () => {
     });
   });
 
+  test('Overview species chart click opens timeline with species filter', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const firstSlice = page.locator('svg path[style*="cursor: pointer"]').first();
+    await firstSlice.click();
+    await expect(page).toHaveURL(/\/timeline\?speciesId=\d+&date=/);
+  });
+
   test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {
     await page.goto('/unknowns', { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(/\/timeline\?review=1/);
