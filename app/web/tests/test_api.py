@@ -521,6 +521,28 @@ class TestMigrationCalendar:
         assert 'species' in r.json
         assert 'month_labels' in r.json
 
+    def test_migration_calendar_filter_by_date(self, client):
+        r = client.get(
+            '/api/ui/migration-calendar',
+            query_string={'start_date': '2024-01-01', 'end_date': '2025-12-31'},
+        )
+        assert r.status_code == 200
+        assert 'species' in r.json
+        assert 'month_labels' in r.json
+
+    def test_migration_calendar_rejects_invalid_start_date(self, client):
+        r = client.get('/api/ui/migration-calendar', query_string={'start_date': '2024/01/01'})
+        assert r.status_code == 400
+        assert 'error' in r.json
+
+    def test_migration_calendar_rejects_reversed_date_range(self, client):
+        r = client.get(
+            '/api/ui/migration-calendar',
+            query_string={'start_date': '2025-01-01', 'end_date': '2024-01-01'},
+        )
+        assert r.status_code == 400
+        assert 'error' in r.json
+
 
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):

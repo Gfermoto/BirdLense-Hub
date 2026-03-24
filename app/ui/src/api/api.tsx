@@ -570,6 +570,8 @@ export interface MigrationCalendarData {
 export const fetchMigrationCalendar = async (params?: {
   start_year?: number;
   end_year?: number;
+  start_date?: string;
+  end_date?: string;
 }): Promise<MigrationCalendarData> => {
   const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
     params: params || {},

@@ -1,15 +1,23 @@
 """Migration calendar: species activity by month (historical data)."""
+from datetime import datetime, timezone
 from sqlalchemy import func, and_
 
 from models import Species, SpeciesVisit
 from util import GENERIC_BIRD_SPECIES
 
 
-def get_migration_calendar(session, start_year: int | None = None, end_year: int | None = None) -> dict:
+def get_migration_calendar(
+    session,
+    start_year: int | None = None,
+    end_year: int | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict:
     """
     Aggregate SpeciesVisit by species and month (1-12).
     Returns species list with monthly visit counts for heatmap/calendar.
     start_year, end_year: filter by year (inclusive). None = no filter.
+    start_date, end_date: filter by date (inclusive, YYYY-MM-DD, UTC).
     """
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     filters = [exclude_bird]
@@ -17,6 +25,16 @@ def get_migration_calendar(session, start_year: int | None = None, end_year: int
         filters.append(func.strftime('%Y', SpeciesVisit.start_time) >= str(start_year))
     if end_year is not None:
         filters.append(func.strftime('%Y', SpeciesVisit.start_time) <= str(end_year))
+    if start_date:
+        start_dt = datetime.fromisoformat(start_date).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc,
+        )
+        filters.append(SpeciesVisit.start_time >= start_dt)
+    if end_date:
+        end_dt = datetime.fromisoformat(end_date).replace(
+            hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc,
+        )
+        filters.append(SpeciesVisit.start_time <= end_dt)
 
     # Per species: count visits per month (all years in range combined)
     month_expr = func.strftime('%m', SpeciesVisit.start_time)
