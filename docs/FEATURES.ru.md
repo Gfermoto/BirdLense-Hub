@@ -20,7 +20,7 @@
 | **Frigate** | Bird Classification sub_label в слиянии |
 | **Timeline** | Визиты по дате, воспроизведение видео, спектрограммы |
 | **Overview** | Статистика, графики активности |
-| **Species** | Дерево видов, сводка по виду |
+| **Species** | Основной вход через таблицу Migration (`/migration-calendar`) + сводка по виду (`/species/:id`) |
 | **Погода** | OpenWeather, Home Assistant |
 | **Telegram** | Уведомления при детекции, превью best frame в фото |
 | **Кормушка** | Реле (MQTT/ESPHome) при детекции |
@@ -47,7 +47,7 @@
 | Фича | Описание |
 |------|----------|
 | **Timeline: дата + время суток** | DatePicker, фильтр: Утро, День, Вечер, Ночь (22–06) |
-| **Неизвестные** | `/unknowns` — детекции с confidence < порога; дата + время суток (как Timeline), ручная коррекция |
+| **Timeline: режим «На проверке»** | `/timeline?review=1` — детекции с confidence < порога и ручная коррекция; legacy `/unknowns` редиректит сюда |
 | **Playback speed** | 0.5x, 2x в видеоплеере |
 | **Виджет «Последняя птица»** | На Overview |
 | **PWA** | Install prompt, offline cache |

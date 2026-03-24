@@ -548,6 +548,20 @@ class TestUnknowns:
         )
         assert r.status_code == 400
 
+    def test_unknowns_limit_is_capped(self, client):
+        ts = int(datetime.now(timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/unknowns',
+            query_string={
+                'start_time': ts - 86400,
+                'end_time': ts,
+                'limit': 999999,
+            }
+        )
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+        assert len(r.json) <= 500
+
 
 class TestVerifyPasswordRateLimit:
     """POST /api/ui/settings/verify-password — brute-force throttle (issue #46)."""

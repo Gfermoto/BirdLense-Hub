@@ -40,9 +40,12 @@ test.describe('Smoke tests', () => {
     await expect(page.getByText(/Timeline|Записи|Select/i).first()).toBeVisible({ timeout: 15000 });
   });
 
-  test('Unknowns page loads', async ({ page }) => {
+  test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {
     await page.goto('/unknowns', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Unknown|Неизвестн/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/timeline\?review=1/);
+    await expect(page.getByText(/Review|На проверке|Unknown|Неизвестн/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('System page loads', async ({ page }) => {
