@@ -33,7 +33,6 @@ import { timelineHelpConfig } from '../../page-help-config';
 import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
-import Badge from '@mui/material/Badge';
 import { UnknownsPage } from '../Unknowns';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
@@ -190,15 +189,32 @@ export function TimelinePage() {
           variant={isReviewMode ? 'filled' : 'outlined'}
           aria-pressed={isReviewMode}
           onClick={() => navigate('/timeline?review=1')}
+          sx={{ px: 0.5 }}
           label={
-            <Badge
-              badgeContent={unknownsCount}
-              color="warning"
-              max={500}
-              invisible={unknownsCount === 0}
-            >
-              {t('timeline.modeReview')}
-            </Badge>
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Box component="span">{t('timeline.modeReview')}</Box>
+              {unknownsCount > 0 && (
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 20,
+                    height: 20,
+                    px: 0.75,
+                    borderRadius: 10,
+                    bgcolor: 'warning.main',
+                    color: 'warning.contrastText',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  {Math.min(unknownsCount, 500)}
+                </Box>
+              )}
+            </Box>
           }
         />
       </Box>
