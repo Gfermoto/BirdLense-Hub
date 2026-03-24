@@ -16,7 +16,7 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { fetchMigrationCalendar } from '../../api/api';
+import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
 
@@ -42,6 +42,13 @@ export const MigrationCalendar = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
     queryFn: () => fetchMigrationCalendar(params),
+  });
+
+  const { data: regionComparison } = useQuery({
+    queryKey: ['region-comparison'],
+    queryFn: () => fetchRegionComparison(),
+    staleTime: 1000 * 60 * 10, // 10 min
+    retry: false,
   });
 
   if (isLoading) {
@@ -167,6 +174,91 @@ export const MigrationCalendar = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Paper sx={{ p: 2, mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          {t('overview.regionComparison')}
+        </Typography>
+        {regionComparison?.regionCode && regionComparison.regionTopCount > 0 ? (
+          <>
+            <Typography variant="body1">
+              {t('overview.regionComparisonDesc', {
+                userCount: regionComparison.userCount,
+                regionTop: regionComparison.regionTopCount,
+                matchCount: regionComparison.matchCount,
+              })}
+            </Typography>
+            {regionComparison.matchedSpecies?.length > 0 && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  {t('overview.regionComparisonMatched')}
+                </Typography>
+                <Box
+                  component="ul"
+                  sx={{
+                    m: 0,
+                    pl: 2.5,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 0.5,
+                    '& li': { display: 'inline' },
+                    '& li:not(:last-child)::after': { content: '" · "', color: 'text.secondary' },
+                  }}
+                >
+                  {regionComparison.matchedSpecies.map((name) => (
+                    <li key={name}>
+                      <Typography component="span" variant="body2" fontWeight={500}>
+                        {name}
+                      </Typography>
+                    </li>
+                  ))}
+                </Box>
+              </Box>
+            )}
+            {regionComparison.regionTop?.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  {t('overview.regionComparisonTopList')}
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 0.75,
+                  }}
+                >
+                  {regionComparison.regionTop.map((name, idx) => (
+                    <Typography
+                      key={name}
+                      component="span"
+                      variant="body2"
+                      sx={{
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        bgcolor: 'action.hover',
+                      }}
+                    >
+                      {idx + 1}. {name}
+                    </Typography>
+                  ))}
+                </Box>
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+              {t('overview.regionComparisonHint', { region: regionComparison.regionCode })}
+            </Typography>
+          </>
+        ) : regionComparison?.regionCode ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('overview.regionComparisonNoData', { region: regionComparison.regionCode })}
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {t('overview.regionComparisonConfigure')}
+          </Typography>
+        )}
+      </Paper>
     </Box>
   );
 };

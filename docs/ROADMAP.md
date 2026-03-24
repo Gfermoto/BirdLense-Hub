@@ -97,9 +97,9 @@ Tracked as separate issues; acceptance criteria live in each issue.
 **Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md).
 
 **Progress update (Mar 2026):**
-- [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — increment 1/2 shipped in code: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + badge), OpenAPI + API tests + smoke redirect test.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — navigation part shipped in code: Catalog nav entry removed; Migration remains the primary path to species (`/species/:id` deep links intact).
-- Increment 3 (docs + final validation/deploy + issue/board reporting) is in progress.
+- [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — shipped and closed: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + counter), OpenAPI + API tests + smoke redirect coverage.
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: Catalog menu entry removed, legacy `/species` redirects to `/migration-calendar`, species deep links (`/species/:id`) preserved.
+- [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — in progress: region comparison block moved from Overview to Migration; Overview now shows a short pointer to Migration.
 
 | # | Issue | Summary |
 |---|--------|--------|
