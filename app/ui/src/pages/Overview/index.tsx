@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -30,7 +29,6 @@ import { PageHelp } from '../../components/PageHelp';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
-import Link from '@mui/material/Link';
 
 const formatHour = (hour: number) => {
   const date = new Date();
@@ -334,21 +332,6 @@ export const Overview = () => {
           </Paper>
         </Grid>
 
-        {/* Region comparison moved to Migration page */}
-        <Grid size={12} sx={{ mt: 3 }}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              {t('overview.regionComparison')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('overview.regionComparisonMoved')}{' '}
-              <Link component={RouterLink} to="/migration-calendar" underline="hover">
-                {t('nav.migrationCalendar')}
-              </Link>
-              .
-            </Typography>
-          </Paper>
-        </Grid>
       </Grid>
     </Box>
   );
