@@ -48,6 +48,12 @@ test.describe('Smoke tests', () => {
     });
   });
 
+  test('Species legacy URL redirects to migration page', async ({ page }) => {
+    await page.goto('/species', { waitUntil: 'networkidle' });
+    await expect(page).toHaveURL(/\/migration-calendar/);
+    await expect(page.getByText(/Migration|Мигра/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
   test('System page loads', async ({ page }) => {
     await page.goto('/system', { waitUntil: 'networkidle' });
     await expect(page.getByText(/System|Система/i).first()).toBeVisible({ timeout: 15000 });
