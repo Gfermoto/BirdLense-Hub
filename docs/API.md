@@ -108,6 +108,13 @@ Details: [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [CONFIGURATION](./CONFIGURATIO
 
 ---
 
+## UI routing note (operator-facing)
+
+- Legacy route **`/unknowns`** is kept for bookmarks and redirects to **`/timeline?review=1`**.
+- Review mode uses the same unknown-detection API (`GET /api/ui/unknowns`), while normal Timeline mode uses `GET /api/ui/timeline`.
+
+---
+
 ## See also
 
 [CONFIGURATION](./CONFIGURATION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [FEATURES](./FEATURES.md) · [GLOSSARY](./GLOSSARY.md)

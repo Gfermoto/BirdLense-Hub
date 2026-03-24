@@ -313,6 +313,8 @@
   },
   "timeline": {
     "intro": "Camera recordings: select date and time to view videos with bird detections.",
+    "modeTimeline": "Timeline",
+    "modeReview": "Review",
     "noRecords": "No records? If videos are on disk but not showing —",
     "scanImport": "Scan and import",
     "scanHint": "(Library → Recordings)",

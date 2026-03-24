@@ -41,9 +41,7 @@ const NAV_KEYS = [
   { key: 'dashboard', path: '/' },
   { key: 'timeline', path: '/timeline' },
   { key: 'migrationCalendar', path: '/migration-calendar' },
-  { key: 'unknowns', path: '/unknowns' },
   { key: 'food', path: '/food' },
-  { key: 'species', path: '/species' },
 ] as const;
 
 // Pill-shaped nav item styles (defined outside component to avoid recreation)

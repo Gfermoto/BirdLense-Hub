@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Timeline } from './Timeline';
 import { TimelineStats } from './TimelineStats';
 import { SpeciesVisit, Species } from '../../types';
@@ -24,7 +24,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTimeline, exportTimeline, exportDataset } from '../../api/api';
+import { fetchTimeline, exportTimeline, exportDataset, fetchUnknowns } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
@@ -32,6 +32,9 @@ import { PageHelp } from '../../components/PageHelp';
 import { timelineHelpConfig } from '../../page-help-config';
 import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import Chip from '@mui/material/Chip';
+import Badge from '@mui/material/Badge';
+import { UnknownsPage } from '../Unknowns';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -58,7 +61,9 @@ function useFilteredVisits(
 export function TimelinePage() {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isReviewMode = searchParams.get('review') === '1';
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
@@ -79,6 +84,17 @@ export function TimelinePage() {
       if (!selectedDate) return [];
       const { start, end } = getTimeRange(selectedDate, timeOfDay);
       return fetchTimeline(start, end);
+    },
+    enabled: !!selectedDate && !isReviewMode,
+  });
+
+  const { data: unknownsCount = 0 } = useQuery({
+    queryKey: ['unknowns-count', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
+    queryFn: async () => {
+      if (!selectedDate) return 0;
+      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      const rows = await fetchUnknowns(start, end, 500);
+      return rows.length;
     },
     enabled: !!selectedDate,
   });
@@ -143,13 +159,13 @@ export function TimelinePage() {
     }
   };
 
-  if (isLoading)
+  if (!isReviewMode && isLoading)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Box>
     );
-  if (error)
+  if (!isReviewMode && error)
     return (
       <Box sx={{ p: 2 }}>
         <Typography color="error">{t('timeline.errorLoad')}</Typography>
@@ -161,6 +177,35 @@ export function TimelinePage() {
 
   return (
     <>
+      <Box display="flex" gap={1} alignItems="center" sx={{ mb: 2 }}>
+        <Chip
+          color={!isReviewMode ? 'primary' : 'default'}
+          variant={!isReviewMode ? 'filled' : 'outlined'}
+          label={t('timeline.modeTimeline')}
+          aria-pressed={!isReviewMode}
+          onClick={() => navigate('/timeline')}
+        />
+        <Chip
+          color={isReviewMode ? 'primary' : 'default'}
+          variant={isReviewMode ? 'filled' : 'outlined'}
+          aria-pressed={isReviewMode}
+          onClick={() => navigate('/timeline?review=1')}
+          label={
+            <Badge
+              badgeContent={unknownsCount}
+              color="warning"
+              max={500}
+              invisible={unknownsCount === 0}
+            >
+              {t('timeline.modeReview')}
+            </Badge>
+          }
+        />
+      </Box>
+      {isReviewMode ? (
+        <UnknownsPage />
+      ) : (
+        <>
       <PageHelp {...timelineHelpConfig} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('timeline.intro')}
@@ -263,6 +308,8 @@ export function TimelinePage() {
       <TimelineStats visits={filteredVisits ?? []} />
       <Divider sx={{ marginBottom: 4 }} />
       <Timeline visits={filteredVisits ?? []} />
+        </>
+      )}
     </>
   );
 }

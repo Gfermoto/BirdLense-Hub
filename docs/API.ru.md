@@ -93,6 +93,11 @@
 - **MCP** — опционально `MCP_TOKEN` в env. Заголовок `Authorization: Bearer <token>`.
 - **Processor API** — опционально `PROCESSOR_SECRET` в env. Заголовок `X-Processor-Token`.
 
+## Примечание по UI-маршрутам
+
+- Legacy-маршрут **`/unknowns`** сохранён для закладок и редиректит на **`/timeline?review=1`**.
+- Режим «На проверке» использует тот же API неизвестных (`GET /api/ui/unknowns`), а обычный режим Timeline — `GET /api/ui/timeline`.
+
 ---
 
 См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [ARCHITECTURE](./ARCHITECTURE.ru.md), [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md), [GLOSSARY](./GLOSSARY.ru.md).

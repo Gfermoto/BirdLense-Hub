@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Container from '@mui/material/Container';
@@ -32,7 +32,6 @@ const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.L
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
 );
-const UnknownsPage = lazy(() => import('./pages/Unknowns').then((m) => ({ default: m.UnknownsPage })));
 
 const theme = createTheme({
   palette: {
@@ -160,7 +159,7 @@ function App() {
                     <Route path="/live" element={<LivePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/species/:id" element={<SpeciesSummary />} />
-                    <Route path="/unknowns" element={<UnknownsPage />} />
+                    <Route path="/unknowns" element={<Navigate to="/timeline?review=1" replace />} />
                     <Route path="/system" element={<System />} />
                     <Route path="/library" element={<Library />} />
                   </Routes>

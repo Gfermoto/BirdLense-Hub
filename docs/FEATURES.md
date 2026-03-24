@@ -18,7 +18,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Frigate** | Bird Classification `sub_label` merged with video ML |
 | **Timeline** | Visits by date, playback, spectrograms |
 | **Overview** | Stats, activity charts |
-| **Species** | Species tree and per-species summary |
+| **Species** | Primary entry via Migration table (`/migration-calendar`) + per-species summary (`/species/:id`) |
 | **Weather** | OpenWeather or Home Assistant |
 | **Telegram** | Detection alerts, optional best-frame photo |
 | **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
@@ -45,7 +45,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | Feature | Description |
 |---------|-------------|
 | **Timeline: time of day** | Date picker + Morning / Day / Evening / Night (22–06) |
-| **Unknowns** | `/unknowns` — low-confidence detections; manual correction |
+| **Timeline review mode** | `/timeline?review=1` — low-confidence detections with manual correction; legacy `/unknowns` redirects |
 | **Playback speed** | 0.5×, 2× in player |
 | **Last bird widget** | Overview |
 | **PWA** | Install prompt, offline cache |
