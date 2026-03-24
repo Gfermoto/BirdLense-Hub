@@ -3,6 +3,7 @@ import shutil
 import secrets
 import csv
 import io
+import re
 from urllib.parse import quote
 from flask import request, session, Response
 import json as json_module
@@ -593,7 +594,21 @@ def register_routes(app):
         """Species activity by month — historical pattern for migration calendar."""
         start_year = request.args.get('start_year', type=int)
         end_year = request.args.get('end_year', type=int)
-        data = get_migration_calendar(db.session, start_year=start_year, end_year=end_year)
+        start_date = request.args.get('start_date', type=str)
+        end_date = request.args.get('end_date', type=str)
+        if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
+            return {'error': 'start_date must be YYYY-MM-DD'}, 400
+        if end_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', end_date):
+            return {'error': 'end_date must be YYYY-MM-DD'}, 400
+        if start_date and end_date and start_date > end_date:
+            return {'error': 'start_date must be <= end_date'}, 400
+        data = get_migration_calendar(
+            db.session,
+            start_year=start_year,
+            end_year=end_year,
+            start_date=start_date,
+            end_date=end_date,
+        )
         return data, 200
 
     @app.route('/api/ui/timeline', methods=['GET'])
