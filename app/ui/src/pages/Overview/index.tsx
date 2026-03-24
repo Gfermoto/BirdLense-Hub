@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -12,7 +13,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData, fetchWeather, downloadReportPdf, fetchRegionComparison } from '../../api/api';
+import { fetchOverviewData, fetchWeather, downloadReportPdf } from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -29,6 +30,7 @@ import { PageHelp } from '../../components/PageHelp';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
+import Link from '@mui/material/Link';
 
 const formatHour = (hour: number) => {
   const date = new Date();
@@ -56,13 +58,6 @@ export const Overview = () => {
   const { data: weather, error: errorWeather, refetch: refetchWeather } = useQuery({
     queryKey: ['weather'],
     queryFn: () => fetchWeather(),
-  });
-
-  const { data: regionComparison } = useQuery({
-    queryKey: ['region-comparison'],
-    queryFn: () => fetchRegionComparison(),
-    staleTime: 1000 * 60 * 10, // 10 min
-    retry: false,
   });
 
   if (isLoadingSightings)
@@ -339,91 +334,19 @@ export const Overview = () => {
           </Paper>
         </Grid>
 
-        {/* Region Comparison — в конце страницы, на всю ширину */}
+        {/* Region comparison moved to Migration page */}
         <Grid size={12} sx={{ mt: 3 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               {t('overview.regionComparison')}
             </Typography>
-            {regionComparison?.regionCode && regionComparison.regionTopCount > 0 ? (
-              <>
-                <Typography variant="body1">
-                  {t('overview.regionComparisonDesc', {
-                    userCount: regionComparison.userCount,
-                    regionTop: regionComparison.regionTopCount,
-                    matchCount: regionComparison.matchCount,
-                  })}
-                </Typography>
-                {regionComparison.matchedSpecies?.length > 0 && (
-                  <Box sx={{ mt: 1.5 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      {t('overview.regionComparisonMatched')}
-                    </Typography>
-                    <Box
-                      component="ul"
-                      sx={{
-                        m: 0,
-                        pl: 2.5,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 0.5,
-                        '& li': { display: 'inline' },
-                        '& li:not(:last-child)::after': { content: '" · "', color: 'text.secondary' },
-                      }}
-                    >
-                      {regionComparison.matchedSpecies.map((name) => (
-                        <li key={name}>
-                          <Typography component="span" variant="body2" fontWeight={500}>
-                            {name}
-                          </Typography>
-                        </li>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-                {regionComparison.regionTop?.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      {t('overview.regionComparisonTopList')}
-                    </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 0.75,
-                      }}
-                    >
-                      {regionComparison.regionTop.map((name, idx) => (
-                        <Typography
-                          key={name}
-                          component="span"
-                          variant="body2"
-                          sx={{
-                            px: 1,
-                            py: 0.25,
-                            borderRadius: 1,
-                            bgcolor: 'action.hover',
-                          }}
-                        >
-                          {idx + 1}. {name}
-                        </Typography>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                  {t('overview.regionComparisonHint', { region: regionComparison.regionCode })}
-                </Typography>
-              </>
-            ) : regionComparison?.regionCode ? (
-              <Typography variant="body2" color="text.secondary">
-                {t('overview.regionComparisonNoData', { region: regionComparison.regionCode })}
-              </Typography>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                {t('overview.regionComparisonConfigure')}
-              </Typography>
-            )}
+            <Typography variant="body2" color="text.secondary">
+              {t('overview.regionComparisonMoved')}{' '}
+              <Link component={RouterLink} to="/migration-calendar" underline="hover">
+                {t('nav.migrationCalendar')}
+              </Link>
+              .
+            </Typography>
           </Paper>
         </Grid>
       </Grid>
