@@ -40,6 +40,13 @@ test.describe('Smoke tests', () => {
     await expect(page.getByText(/Timeline|Записи|Select/i).first()).toBeVisible({ timeout: 15000 });
   });
 
+  test('Migration page shows region comparison block', async ({ page }) => {
+    await page.goto('/migration-calendar', { waitUntil: 'networkidle' });
+    await expect(page.getByText(/Region Comparison|Сравнение с регионом/i).first()).toBeVisible({
+      timeout: 15000,
+    });
+  });
+
   test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {
     await page.goto('/unknowns', { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(/\/timeline\?review=1/);

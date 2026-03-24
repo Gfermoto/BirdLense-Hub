@@ -99,9 +99,9 @@ bash scripts/github-project-add-backlog-consilium.sh
 **Подготовка перед реализацией ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [чеклист](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md).
 
 **Прогресс (март 2026):**
-- [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — инкременты 1/2 уже в коде: убран пункт «Неизвестные» из меню, legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + бейдж), обновлены OpenAPI + API тесты + smoke-тест редиректа.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — навигационная часть уже в коде: пункт «Каталог» убран из меню; Migration остаётся основным входом к видам (deep-link `/species/:id` сохранён).
-- Инкремент 3 (документация + финальная проверка/деплой + отчётность в issue/доске) в работе.
+- [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: пункт «Каталог» убран из меню, legacy `/species` редиректит на `/migration-calendar`, deep-link `/species/:id` сохранён.
+- [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — в работе: блок «Сравнение с регионом» перенесён с Overview на Migration; на Overview оставлена короткая ссылка-переход.
 
 | # | Issue | Кратко |
 |---|--------|--------|
