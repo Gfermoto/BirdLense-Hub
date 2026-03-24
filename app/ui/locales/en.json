@@ -447,7 +447,10 @@
   "migrationCalendar": {
     "title": "Migration Calendar",
     "description": "When each species typically appears at your feeder — based on your historical data. Rows and the Σ column are your species list for the selected year range (no separate checklist).",
+    "periodHint": "Period filters apply to the migration table (and related recognized/heard values), but not to the regional reference block below.",
     "species": "Species",
+    "startDate": "From date",
+    "endDate": "To date",
     "startYear": "From year",
     "endYear": "To year",
     "allYears": "All years",
