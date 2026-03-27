@@ -202,7 +202,8 @@ def build_dataset_zip(
     test_ratio: доля hold-out test (только при ready_for_train); иначе 0.
     split_seed: seed для детерминированного split.
     min_images_per_class: минимальный размер класса для включения в экспорт.
-    strict_quality: если True — отменить экспорт при дубликатах треков или leakage видео между сплитами.
+    strict_quality: если True — отменить экспорт при дубликатах треков, leakage видео между сплитами
+        или при наличии классов, не попавших в выгрузку из-за min_images_per_class (только ready_for_train).
     Returns (zip_bytes, error_message). On success error_message is None.
     """
     base = data_dir()
@@ -339,6 +340,11 @@ def build_dataset_zip(
                 ):
                     classes_txt.append(class_name)
             info['classes_skipped_too_small'] = sorted(skipped_small)
+            if strict_quality and skipped_small:
+                return None, (
+                    'strict_quality failed: classes below min_images_per_class (excluded): '
+                    + ', '.join(sorted(skipped_small))
+                )
             if classes_txt:
                 zf.writestr('classes.txt', '\n'.join(sorted(classes_txt)) + '\n')
         else:
