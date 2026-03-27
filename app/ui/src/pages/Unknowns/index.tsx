@@ -22,6 +22,7 @@ import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import Snackbar from '@mui/material/Snackbar';
+import Tooltip from '@mui/material/Tooltip';
 import {
   fetchUnknowns,
   fetchBirdDirectory,
@@ -156,24 +157,36 @@ function UnknownCard({
                 ))}
               </Select>
             </FormControl>
-            <Button
-              variant="contained"
-              size="small"
-              disabled={selectedSpeciesId === '' || correcting || !canEdit}
-              onClick={handleCorrect}
-              title={!canEdit ? t('unknowns.passwordRequired') : undefined}
+            <Tooltip title={!canEdit ? t('unknowns.passwordRequired') : ''}>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={selectedSpeciesId === '' || correcting || !canEdit}
+                  onClick={handleCorrect}
+                >
+                  {correcting ? '...' : t('unknowns.apply')}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                !canEdit
+                  ? t('unknowns.passwordRequired')
+                  : t('unknowns.confirmCorrectHelp')
+              }
             >
-              {correcting ? '...' : t('unknowns.apply')}
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={confirming || !canEdit}
-              onClick={handleConfirm}
-              title={!canEdit ? t('unknowns.passwordRequired') : t('unknowns.confirmCorrectHelp')}
-            >
-              {confirming ? '...' : t('unknowns.confirmCorrect')}
-            </Button>
+              <span>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={confirming || !canEdit}
+                  onClick={handleConfirm}
+                >
+                  {confirming ? '...' : t('unknowns.confirmCorrect')}
+                </Button>
+              </span>
+            </Tooltip>
             {!canEdit && (
               <Typography variant="caption" color="text.secondary">
                 {t('unknowns.passwordRequired')}
