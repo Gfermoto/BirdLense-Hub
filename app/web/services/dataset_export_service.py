@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import random
 import re
 import shutil
 import struct
@@ -116,11 +117,19 @@ def build_dataset_zip(
     start_date: str | None = None,
     end_date: str | None = None,
     only_manually_corrected: bool = False,
+    ready_for_train: bool = False,
+    val_ratio: float = 0.2,
+    split_seed: int = 42,
+    min_images_per_class: int = 1,
 ) -> tuple[bytes | None, str | None]:
     """
     Build ZIP archive from data/dataset/train and val (if exists).
     start_date, end_date: YYYY-MM-DD — только кадры из видео за период. None = все.
     only_manually_corrected: только кропы вручную исправленных детекций (правильные виды).
+    ready_for_train: автоматически собрать train/val из train (без внешнего скрипта).
+    val_ratio: доля валидации для ready_for_train.
+    split_seed: seed для детерминированного split.
+    min_images_per_class: минимальный размер класса для включения в экспорт.
     Returns (zip_bytes, error_message). On success error_message is None.
     """
     base = data_dir()
@@ -134,63 +143,123 @@ def build_dataset_zip(
     video_ids_ok = _video_ids_in_period(start_date, end_date)
     manual_tracks = _manually_corrected_video_tracks() if only_manually_corrected else None
 
+    if val_ratio < 0 or val_ratio >= 1:
+        return None, 'val_ratio must be in [0, 1)'
+    if min_images_per_class < 1:
+        return None, 'min_images_per_class must be >= 1'
+
     info = {
         'created_at': datetime.now(timezone.utc).isoformat(),
         'train': {},
         'val': {},
         'total_images': 0,
         'excluded_fullframe': 0,
+        'ready_for_train': bool(ready_for_train),
+        'val_ratio': float(val_ratio),
+        'split_seed': int(split_seed),
+        'min_images_per_class': int(min_images_per_class),
     }
+
+    def _iter_filtered_class_images(split_dir: str) -> dict[str, list[tuple[str, str]]]:
+        """
+        Return class->[(src_path, filename)] with period/manual/full-frame filters applied.
+        """
+        out: dict[str, list[tuple[str, str]]] = {}
+        if not os.path.isdir(split_dir):
+            return out
+        for class_name in sorted(os.listdir(split_dir)):
+            class_dir = os.path.join(split_dir, class_name)
+            if not os.path.isdir(class_dir):
+                continue
+            rows: list[tuple[str, str]] = []
+            for fname in sorted(os.listdir(class_dir)):
+                if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    continue
+                parts = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
+                if len(parts) >= 2:
+                    try:
+                        vid, tid = int(parts[0]), int(parts[1])
+                        if video_ids_ok is not None and vid not in video_ids_ok:
+                            continue
+                        if manual_tracks is not None and (vid, tid) not in manual_tracks:
+                            continue
+                    except (ValueError, IndexError):
+                        if video_ids_ok is not None or manual_tracks is not None:
+                            continue
+                elif len(parts) >= 1:
+                    if manual_tracks is not None:
+                        continue  # need video_id+track_id for manual filter
+                    if video_ids_ok is not None:
+                        try:
+                            if int(parts[0]) not in video_ids_ok:
+                                continue
+                        except (ValueError, IndexError):
+                            continue
+                src = os.path.join(class_dir, fname)
+                dims = _get_image_dimensions(src)
+                if dims and _is_likely_fullframe(dims[0], dims[1]):
+                    info['excluded_fullframe'] += 1
+                    logger.debug('Exclude full-frame from export: %s', src)
+                    continue
+                rows.append((src, fname))
+            if rows:
+                out[class_name] = rows
+        return out
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for split in ('train', 'val'):
-            split_dir = os.path.join(dataset_base, split)
-            if not os.path.isdir(split_dir):
-                continue
-            for class_name in sorted(os.listdir(split_dir)):
-                class_dir = os.path.join(split_dir, class_name)
-                if not os.path.isdir(class_dir):
+        if ready_for_train:
+            train_source = _iter_filtered_class_images(
+                os.path.join(dataset_base, 'train')
+            )
+            rng = random.Random(split_seed)
+            classes_txt: list[str] = []
+            for class_name, files in train_source.items():
+                if len(files) < min_images_per_class:
                     continue
-                count = 0
-                for fname in os.listdir(class_dir):
-                    if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
-                        continue
-                    parts = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
-                    if len(parts) >= 2:
-                        try:
-                            vid, tid = int(parts[0]), int(parts[1])
-                            if video_ids_ok is not None and vid not in video_ids_ok:
-                                continue
-                            if manual_tracks is not None and (vid, tid) not in manual_tracks:
-                                continue
-                        except (ValueError, IndexError):
-                            if video_ids_ok is not None or manual_tracks is not None:
-                                continue
-                    elif len(parts) >= 1:
-                        if manual_tracks is not None:
-                            continue  # need video_id+track_id for manual filter
-                        if video_ids_ok is not None:
-                            try:
-                                if int(parts[0]) not in video_ids_ok:
-                                    continue
-                            except (ValueError, IndexError):
-                                continue
-                    src = os.path.join(class_dir, fname)
-                    dims = _get_image_dimensions(src)
-                    if dims and _is_likely_fullframe(dims[0], dims[1]):
-                        info['excluded_fullframe'] += 1
-                        logger.debug('Exclude full-frame from export: %s', src)
-                        continue
-                    arcname = f'{split}/{class_name}/{fname}'
+                shuffled = files[:]
+                rng.shuffle(shuffled)
+                n_val = int(len(shuffled) * val_ratio)
+                if len(shuffled) > 1 and val_ratio > 0 and n_val == 0:
+                    n_val = 1
+                if n_val >= len(shuffled):
+                    n_val = len(shuffled) - 1
+                val_rows = shuffled[:n_val]
+                train_rows = shuffled[n_val:]
+                for src, fname in train_rows:
                     try:
-                        zf.write(src, arcname)
-                        count += 1
+                        zf.write(src, f'train/{class_name}/{fname}')
+                        info['train'][class_name] = info['train'].get(class_name, 0) + 1
+                        info['total_images'] += 1
                     except OSError as e:
                         logger.warning('Skip %s: %s', src, e)
-                if count > 0:
-                    info[split][class_name] = count
-                    info['total_images'] += count
+                for src, fname in val_rows:
+                    try:
+                        zf.write(src, f'val/{class_name}/{fname}')
+                        info['val'][class_name] = info['val'].get(class_name, 0) + 1
+                        info['total_images'] += 1
+                    except OSError as e:
+                        logger.warning('Skip %s: %s', src, e)
+                if info['train'].get(class_name, 0) > 0 or info['val'].get(class_name, 0) > 0:
+                    classes_txt.append(class_name)
+            if classes_txt:
+                zf.writestr('classes.txt', '\n'.join(sorted(classes_txt)) + '\n')
+        else:
+            for split in ('train', 'val'):
+                split_dir = os.path.join(dataset_base, split)
+                split_data = _iter_filtered_class_images(split_dir)
+                for class_name, rows in split_data.items():
+                    count = 0
+                    for src, fname in rows:
+                        arcname = f'{split}/{class_name}/{fname}'
+                        try:
+                            zf.write(src, arcname)
+                            count += 1
+                        except OSError as e:
+                            logger.warning('Skip %s: %s', src, e)
+                    if count > 0:
+                        info[split][class_name] = count
+                        info['total_images'] += count
 
         if info['total_images'] == 0:
             msg = 'No images in dataset. Enable "Save dataset crops" and record videos.'
@@ -313,10 +382,16 @@ def clean_dataset(
 
     valid_tracks: set[tuple[int, int]] | None = None
     if remove_orphaned:
-        from models import VideoSpecies
+        from models import VideoSpecies, Video, Species
         rows = VideoSpecies.query.filter(
             VideoSpecies.source == 'video',
-        ).with_entities(VideoSpecies.video_id, VideoSpecies.track_id).all()
+        ).join(
+            Video, Video.id == VideoSpecies.video_id
+        ).join(
+            Species, Species.id == VideoSpecies.species_id
+        ).with_entities(
+            VideoSpecies.video_id, VideoSpecies.track_id
+        ).all()
         valid_tracks = {(r[0], r[1] or 0) for r in rows}
 
     for class_name in os.listdir(train_dir):
@@ -412,7 +487,7 @@ def retro_export_all_video_detections(
     start_date, end_date: YYYY-MM-DD — период. None = все.
     only_manually_corrected: только вручную исправленные — гарантированно правильные виды.
     rebuild: если True — удалить crops за период и заново извлечь только кропы (гарантированно без full-frame).
-    Returns {saved, skipped, skipped_no_bbox, errors, deleted?}.
+    Returns {saved, skipped, skipped_no_bbox, skipped_orphaned, deleted_orphaned, errors, deleted?}.
     """
     from datetime import datetime, timezone, timedelta
     from models import VideoSpecies, Video
@@ -421,6 +496,8 @@ def retro_export_all_video_detections(
     saved = 0
     skipped = 0
     skipped_no_bbox = 0
+    skipped_orphaned = 0
+    deleted_orphaned = 0
     errors = []
     deleted = 0
 
@@ -432,7 +509,7 @@ def retro_export_all_video_detections(
     q = (
         VideoSpecies.query.filter(VideoSpecies.source == 'video')
         .filter(VideoSpecies.confidence >= min_confidence)
-        .join(Video, VideoSpecies.video_id == Video.id)
+        .outerjoin(Video, VideoSpecies.video_id == Video.id)
         .options(joinedload(VideoSpecies.video), joinedload(VideoSpecies.species))
     )
     if only_manually_corrected:
@@ -454,8 +531,15 @@ def retro_export_all_video_detections(
     from services.detection_crop_service import _bbox_for_offset
     q = q.order_by(VideoSpecies.video_id, VideoSpecies.id)
     for vs in q:
-        if not vs.video or not vs.video.video_path:
-            skipped += 1
+        if not vs.video or not vs.video.video_path or not vs.species:
+            skipped_orphaned += 1
+            try:
+                # Cleanup dangling detections so next runs don't revisit broken rows.
+                from models import db
+                db.session.delete(vs)
+                deleted_orphaned += 1
+            except Exception as e:
+                errors.append(f'orphan_cleanup_failed vs_id={getattr(vs, "id", "?")}: {e}')
             continue
         mid = vs.start_time + (vs.end_time - vs.start_time) / 2
         if not _bbox_for_offset(getattr(vs, 'frames', None), mid):
@@ -479,7 +563,22 @@ def retro_export_all_video_detections(
         else:
             errors.append(f"video_id={vs.video_id} vs_id={vs.id}")
 
-    result = {'saved': saved, 'skipped': skipped, 'skipped_no_bbox': skipped_no_bbox, 'errors': errors}
+    if deleted_orphaned:
+        try:
+            from models import db
+            db.session.commit()
+        except Exception as e:
+            from models import db
+            db.session.rollback()
+            errors.append(f'orphan_cleanup_commit_failed: {e}')
+    result = {
+        'saved': saved,
+        'skipped': skipped,
+        'skipped_no_bbox': skipped_no_bbox,
+        'skipped_orphaned': skipped_orphaned,
+        'deleted_orphaned': deleted_orphaned,
+        'errors': errors,
+    }
     if rebuild:
         result['deleted'] = deleted
     return result

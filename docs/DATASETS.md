@@ -17,6 +17,17 @@ Critical daily operator happy-path in `Library`:
 
 `System` metric "Unique visitors" is defined as the number of `SpeciesVisit` sessions in the selected period (visit sessions, not unique individual birds).
 
+### Train-ready export
+
+In `Library -> Export dataset`, enable **"Train-ready (auto train/val split, no post-script)"**.  
+The ZIP will include:
+- `train/<class>/...`
+- `val/<class>/...`
+- `classes.txt`
+- `dataset_info.json`
+
+This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yolo.py` step for the basic finetuning path.
+
 ---
 
 ## 1. Models

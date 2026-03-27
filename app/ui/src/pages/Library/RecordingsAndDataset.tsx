@@ -111,6 +111,7 @@ export const RecordingsAndDataset = () => {
     | null
   >(null);
   const [exportingDataset, setExportingDataset] = useState(false);
+  const [readyForTrain, setReadyForTrain] = useState(true);
   const [retroExporting, setRetroExporting] = useState(false);
   const [cleanDatasetLoading, setCleanDatasetLoading] = useState(false);
   const [retroRebuild, setRetroRebuild] = useState(false);
@@ -676,6 +677,7 @@ export const RecordingsAndDataset = () => {
                       start_date: operationsPeriod.start.format('YYYY-MM-DD'),
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
                       only_manually_corrected: onlyManuallyCorrected,
+                      ready_for_train: readyForTrain,
                     });
                   } catch (e) {
                     setError(
@@ -697,6 +699,17 @@ export const RecordingsAndDataset = () => {
               {exportingDataset && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={readyForTrain}
+                    onChange={(e) => setReadyForTrain(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={t('storage.readyForTrain')}
+                sx={{ alignSelf: 'flex-start' }}
+              />
               <FormControlLabel
                 control={
                   <Checkbox
