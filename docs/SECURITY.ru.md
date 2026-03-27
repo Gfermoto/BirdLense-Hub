@@ -43,6 +43,8 @@
 | **Средний** | `settings_password` в plain text. | Рассмотреть хеш (bcrypt/argon2). |
 | **Низкий** | `.env` в `.gitignore`. | Оставить как есть. |
 
+**Runbook для оператора:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) — перечень секретов, шаги ротации, проверка, откат, шаблон экстренной заметки ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
+
 ---
 
 ## 3. Path traversal (nginx)
@@ -141,6 +143,7 @@
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
 6. **Docker:** не root в контейнере.
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.
+8. **Ротация секретов:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) (операции в проде).
 
 ---
 

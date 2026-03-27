@@ -359,8 +359,10 @@ Coordinates and API keys. Settings → Advanced. Prefer env for keys: `OPENWEATH
 | `ebird_api_key` | eBird “Compare to region” |
 | `latitude`, `longitude` | Weather and eBird |
 
+**Operational rotation** (backup, restart, verification, rollback): [SECRETS_ROTATION.md](./SECRETS_ROTATION.md).
+
 ---
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [API](./API.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md)
+[INSTALL](./INSTALL.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [API](./API.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.md)
