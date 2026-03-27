@@ -333,7 +333,8 @@
     "timeMorning": "Утро (6–10)",
     "timeDay": "День (10–14)",
     "timeAfternoon": "День (14–18)",
-    "timeEvening": "Вечер (18–22)"
+    "timeEvening": "Вечер (18–22)",
+    "hourFilterChip": "Час: {{from}}–{{to}}"
   },
   "pwa": {
     "installPrompt": "Добавить BirdLense Hub на главный экран",

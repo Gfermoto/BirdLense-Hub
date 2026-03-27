@@ -127,6 +127,11 @@ def get_primary_video_for_visit(visit) -> object | None:
 def format_visit_for_timeline(visit) -> dict:
     """Format SpeciesVisit to timeline API format (detections, weather, species)."""
     video = get_primary_video_for_visit(visit)
+    video_duration_seconds = None
+    if video:
+        v0 = ensure_utc(video.start_time)
+        v1 = ensure_utc(video.end_time)
+        video_duration_seconds = max(0, round((v1 - v0).total_seconds()))
     detections = []
     total_recording_seconds = 0.0
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
@@ -150,6 +155,7 @@ def format_visit_for_timeline(visit) -> dict:
         'end_time': ensure_utc(visit.end_time).isoformat(),
         'max_simultaneous': visit.max_simultaneous,
         'total_recording_seconds': round(total_recording_seconds),
+        'video_duration_seconds': video_duration_seconds,
         'weather': {
             'temp': video.weather_temp if video else None,
             'clouds': video.weather_clouds if video else None,
@@ -235,6 +241,52 @@ import re
 import time
 from app_config.app_config import app_config
 from models import Species, db
+
+_wiki_meta_cache = {}
+_wiki_title_overrides = {
+    'cardinals, grosbeaks, and allies': 'Cardinalidae',
+    'frigatebirds, boobies, cormorants, darters, and allies': 'Suliformes',
+    'grouse, quail, and allies': 'Galliformes',
+    'gulls, terns, and allies': 'Laridae',
+    'mockingbirds, thrashers, and allies': 'Mimidae',
+    'new world sparrows and allies': 'Passerellidae',
+    'old world warblers': 'Sylviidae',
+    'pelicans, herons, ibises, and allies': 'Pelecaniformes',
+    'skuas and alcids': 'Alcidae',
+    'swifts and hummingbirds': 'Apodiformes',
+    'jacobin pigeon': 'Jacobin (pigeon)',
+    'jacobin pigeon ': 'Jacobin (pigeon)',
+    'grey headed fish eagle': 'Grey-headed fish eagle',
+}
+
+_manual_image_overrides = {
+    'jacobin pigeon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG',
+}
+
+
+def infer_metadata_source_fields(
+    species_name: str | None,
+    image_url: str | None,
+    source_url: str | None,
+) -> tuple[str | None, str | None]:
+    """
+    Infer canonical metadata source and source URL from known URL patterns.
+    """
+    img = (image_url or '').strip()
+    src = (source_url or '').strip()
+    img_l = img.lower()
+    src_l = src.lower()
+    title = ((species_name or '').strip() or 'bird').replace(' ', '_')
+
+    if (
+        'wikipedia.org' in img_l
+        or 'wikimedia.org' in img_l
+        or 'wikipedia.org' in src_l
+    ):
+        return 'wikipedia', (src or f'https://en.wikipedia.org/wiki/{title}')
+    if 'inaturalist.org' in img_l or 'inaturalist-open-data' in img_l or 'inaturalist.org' in src_l:
+        return 'inaturalist', (src or 'https://www.inaturalist.org/')
+    return None, source_url
 
 
 def _normalize_coord(v):
@@ -440,6 +492,31 @@ def _extract_common_for_hierarchy(species_name: str) -> str:
     return m.group(1).strip() if m else s
 
 
+def _extract_wiki_search_title(species_name: str) -> str:
+    """
+    Choose best-effort Wikipedia title.
+
+    - "Corvus cornix (Hooded Crow)" -> "Hooded Crow"
+    - "Bald Eagle (Adult, subadult)" -> "Bald Eagle"
+    """
+    if not species_name or not isinstance(species_name, str):
+        return species_name or ""
+    s = species_name.strip()
+    key = s.lower().strip()
+    if key in _wiki_title_overrides:
+        return _wiki_title_overrides[key]
+    m = re.match(r"^(.*?)\s*\(([^)]+)\)\s*$", s)
+    if not m:
+        return s
+    left = (m.group(1) or "").strip()
+    right = (m.group(2) or "").strip()
+    # Scientific binomial (Genus species) on the left -> use right common name.
+    if re.match(r"^[A-Z][a-z]+ [a-z][a-z-]+$", left):
+        return right or left or s
+    # Otherwise parentheses are usually morph/age/sex; use base species name.
+    return left or right or s
+
+
 def _load_hierarchy_parent_map():
     """Загрузить маппинг child -> parent из hierarchy_names.txt."""
     path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
@@ -518,21 +595,97 @@ def build_hierarchy_tree():
 
 def get_wikipedia_image_and_description(title):
     """Fetch image and description from Wikipedia. Returns (None, None) on any error."""
+    cache_key = (title or "").strip().lower()
+    if cache_key in _wiki_meta_cache:
+        return _wiki_meta_cache[cache_key]
     try:
-        url = f"https://en.wikipedia.org/w/api.php?action=query&prop=pageimages|pageprops|extracts&format=json&piprop=thumbnail&titles={title}&pithumbsize=300&redirects&exintro"
+        url = "https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "prop": "pageimages|pageprops|extracts",
+            "format": "json",
+            "piprop": "thumbnail",
+            "titles": title,
+            "pithumbsize": 300,
+            "redirects": 1,
+            "exintro": 1,
+        }
         headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
-        response = requests.get(url, timeout=10, headers=headers)
+        response = requests.get(url, params=params, timeout=10, headers=headers)
+        response.raise_for_status()
+        if 'json' not in (response.headers.get('Content-Type') or '').lower():
+            logging.warning("Wikipedia API non-JSON response for '%s' (content-type=%s)",
+                            title, response.headers.get('Content-Type'))
+            result = (None, None)
+            _wiki_meta_cache[cache_key] = result
+            return result
         data = response.json()
-        pages = list((data.get("query") or {}).get("pages") or {}).values()
+        pages_dict = (data.get("query") or {}).get("pages") or {}
+        pages = list(pages_dict.values())
         if not pages:
-            return None, None
+            result = (None, None)
+            _wiki_meta_cache[cache_key] = result
+            return result
         page = pages[0]
         image_url = page.get("thumbnail", {}).get("source")
         description = re.sub(r'<[^>]*>', '', page.get("extract", "")).strip() or None
-        return image_url, description
+        result = (image_url, description)
+        _wiki_meta_cache[cache_key] = result
+        return result
+    except requests.RequestException as e:
+        logging.warning(f"Wikipedia API HTTP failed for '{title}': {e}")
+        result = (None, None)
+        _wiki_meta_cache[cache_key] = result
+        return result
+    except ValueError as e:
+        logging.warning(f"Wikipedia API decode failed for '{title}': {e}")
+        result = (None, None)
+        _wiki_meta_cache[cache_key] = result
+        return result
     except Exception as e:
         logging.warning(f"Wikipedia API failed for '{title}': {e}")
-        return None, None
+        result = (None, None)
+        _wiki_meta_cache[cache_key] = result
+        return result
+
+
+def get_inaturalist_image_and_description(title):
+    """
+    Fallback metadata source via iNaturalist taxa API.
+    Returns (image_url, description, source_url) or (None, None, None).
+    """
+    try:
+        query = (title or "").strip()
+        if not query:
+            return None, None, None
+        url = "https://api.inaturalist.org/v1/taxa"
+        params = {
+            "q": query,
+            "per_page": 3,
+            "locale": "en",
+            "is_active": "true",
+        }
+        headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
+        response = requests.get(url, params=params, timeout=10, headers=headers)
+        response.raise_for_status()
+        data = response.json() or {}
+        results = data.get("results") or []
+        if not results:
+            return None, None, None
+        top = results[0]
+        image_url = ((top.get("default_photo") or {}).get("medium_url")
+                     or (top.get("default_photo") or {}).get("square_url"))
+        description = (top.get("wikipedia_summary")
+                       or (top.get("taxon_schemes_count") and top.get("name"))
+                       or None)
+        if description and isinstance(description, str):
+            description = description.strip() or None
+        taxon_id = top.get("id")
+        source_url = f"https://www.inaturalist.org/taxa/{taxon_id}" if taxon_id else None
+        return image_url, description, source_url
+    except Exception as e:
+        logging.warning("iNaturalist API failed for '%s': %s", title, e)
+        return None, None, None
 
 
 def update_species_info_from_wiki(sp):
@@ -544,20 +697,98 @@ def update_species_info_from_wiki(sp):
     """
     if sp.image_url and sp.description:
         return False
-    # Try common name first (Garrulus glandarius (Eurasian Jay) -> Eurasian Jay)
-    search_title = _extract_common_for_hierarchy(sp.name) or sp.name
+    metadata_source = None
+    metadata_source_url = None
+    # Prefer canonical wiki title from taxon registry when available.
+    taxon = getattr(sp, "taxon", None)
+    search_title = (getattr(taxon, "wiki_title", None) or "").strip()
+    if search_title:
+        search_title = _extract_wiki_search_title(search_title)
+    if not search_title:
+        # Robust extraction for both scientific/common and morph variants.
+        search_title = _extract_wiki_search_title(sp.name) or sp.name
     image_url, description = get_wikipedia_image_and_description(search_title)
-    if not image_url and search_title != sp.name:
-        # Fallback to scientific name
-        scientific = re.sub(r'\(.*\)', '', sp.name).strip()
-        if scientific:
-            image_url, desc2 = get_wikipedia_image_and_description(scientific)
-            if desc2 and not description:
-                description = desc2
+    if image_url or description:
+        metadata_source = 'wikipedia'
+        metadata_source_url = f"https://en.wikipedia.org/wiki/{search_title.replace(' ', '_')}"
+
+    # Fallback chain: scientific/common aliases for better wiki hit-rate.
+    scientific = re.sub(r'\(.*\)', '', sp.name).strip()
+    fallback_titles = []
+    if search_title != sp.name:
+        fallback_titles.append(sp.name)
+    if scientific and scientific not in (search_title, sp.name):
+        fallback_titles.append(scientific)
+    # Common problematic crow aliases.
+    if search_title.lower() == "hooded crow" and "Corvus cornix" not in fallback_titles:
+        fallback_titles.append("Corvus cornix")
+    if search_title.lower() == "corvus cornix" and "Hooded Crow" not in fallback_titles:
+        fallback_titles.append("Hooded Crow")
+    if "jacobin pigeon" in search_title.lower():
+        fallback_titles.extend(["Columba livia domestica", "Rock Dove"])
+
+    for alt in fallback_titles:
+        if image_url and description:
+            break
+        img2, desc2 = get_wikipedia_image_and_description(alt)
+        if img2 and not image_url:
+            image_url = img2
+            metadata_source = metadata_source or 'wikipedia'
+            metadata_source_url = metadata_source_url or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
+        if desc2 and not description:
+            description = desc2
+            metadata_source = metadata_source or 'wikipedia'
+            metadata_source_url = metadata_source_url or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
+
+    # Secondary source fallback: iNaturalist (photo + wikipedia_summary)
+    if not image_url or not description:
+        inat_titles = [search_title] + [t for t in fallback_titles if t != search_title]
+        for alt in inat_titles:
+            if image_url and description:
+                break
+            img3, desc3, src3 = get_inaturalist_image_and_description(alt)
+            if img3 and not image_url:
+                image_url = img3
+                metadata_source = metadata_source or 'inaturalist'
+                metadata_source_url = metadata_source_url or src3
+            if desc3 and not description:
+                description = desc3
+                metadata_source = metadata_source or 'inaturalist'
+                metadata_source_url = metadata_source_url or src3
+
+    # Final deterministic description fallback for taxonomy buckets / rare pages.
+    if not description:
+        title = _extract_wiki_search_title(sp.name) or sp.name
+        if "and allies" in (sp.name or "").lower():
+            description = (
+                f"{title} is a higher-level taxonomic bird group used in the BirdLense "
+                "hierarchy for organizing related species."
+            )
+        elif "(" in (sp.name or "") and ")" in (sp.name or ""):
+            base = (sp.name or "").split("(", 1)[0].strip() or title
+            description = (
+                f"{sp.name} is a morphology/age/sex variant entry for {base} in the "
+                "BirdLense species taxonomy."
+            )
+        else:
+            description = f"{title} is a bird taxon represented in the BirdLense registry."
+
+    if not image_url:
+        key = (sp.name or '').strip().lower()
+        image_url = _manual_image_overrides.get(key) or image_url
     if image_url and not sp.image_url:
         sp.image_url = image_url
     if description and not sp.description:
         sp.description = description
+    inferred_source, inferred_url = infer_metadata_source_fields(
+        getattr(sp, 'name', None),
+        image_url or getattr(sp, 'image_url', None),
+        metadata_source_url or getattr(sp, 'metadata_source_url', None),
+    )
+    if (metadata_source or inferred_source) and not getattr(sp, 'metadata_source', None):
+        sp.metadata_source = metadata_source or inferred_source
+    if (metadata_source_url or inferred_url) and not getattr(sp, 'metadata_source_url', None):
+        sp.metadata_source_url = metadata_source_url or inferred_url
     return bool(image_url or description)
 
 
