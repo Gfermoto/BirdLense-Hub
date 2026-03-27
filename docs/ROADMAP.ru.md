@@ -228,9 +228,9 @@ bash scripts/github-project-add-backlog-consilium.sh
 - Статус: **закрыто** (issue закрыты, карточки на доске переведены в Done, деплой выполнен).
 
 **Волна C (мелкие задачи и техдолг перед полировкой):**
-- [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) — счётчик уникальных посетителей.
+- [x] [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) — счётчик уникальных посетителей.
 - [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) — consistency tooltips/встроенных пояснений.
-- [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
+- [x] [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
 - [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
 
 **Критерий выхода из этапа "мелкие баги/хвосты":**
