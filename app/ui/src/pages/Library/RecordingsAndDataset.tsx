@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
+import Tooltip from '@mui/material/Tooltip';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -111,6 +112,8 @@ export const RecordingsAndDataset = () => {
     | null
   >(null);
   const [exportingDataset, setExportingDataset] = useState(false);
+  const [readyForTrain, setReadyForTrain] = useState(true);
+  const [includeTestSplit, setIncludeTestSplit] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
   const [cleanDatasetLoading, setCleanDatasetLoading] = useState(false);
   const [retroRebuild, setRetroRebuild] = useState(false);
@@ -130,6 +133,8 @@ export const RecordingsAndDataset = () => {
     end: dayjs(),
   }));
   const [onlyManuallyCorrected, setOnlyManuallyCorrected] = useState(false);
+  const POLL_INTERVAL_MS = 2000;
+  const POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2h for large historical batches
 
   const { refetch } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
@@ -235,12 +240,17 @@ export const RecordingsAndDataset = () => {
     { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
-      await axios.post(
-        `${BASE_API_URL}/system/regenerate-spectrograms`,
-        params || {},
-      );
-      for (let i = 0; i < 600; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
+      try {
+        await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {});
+      } catch (e) {
+        // 409 means a batch is already running; attach to its status stream.
+        if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
+          throw e;
+        }
+      }
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         const result = await pollRegenerateStatus();
         if (result) return result;
       }
@@ -261,10 +271,10 @@ export const RecordingsAndDataset = () => {
     },
     onError: (err: unknown) => {
       setSpectrogramProgress(null);
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error ||
-        (err instanceof Error ? err.message : t('storage.regenerateFailed'));
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: string } | undefined)?.error ||
+          err.message
+        : (err instanceof Error ? err.message : t('storage.regenerateFailed'));
       setError(msg);
     },
   });
@@ -275,12 +285,17 @@ export const RecordingsAndDataset = () => {
     { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
-      await axios.post(
-        `${BASE_API_URL}/system/regenerate-tracks`,
-        params || {},
-      );
-      for (let i = 0; i < 1800; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
+      try {
+        await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {});
+      } catch (e) {
+        // 409 means a batch is already running; attach to in-progress batch.
+        if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
+          throw e;
+        }
+      }
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         const result = await pollRegenerateTracksStatus();
         if (result) return result;
       }
@@ -303,9 +318,11 @@ export const RecordingsAndDataset = () => {
     },
     onError: (err) => {
       setTracksProgress(null);
-      setError(
-        err instanceof Error ? err.message : t('storage.regenerateTracksFailed'),
-      );
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: string } | undefined)?.error ||
+          err.message
+        : (err instanceof Error ? err.message : t('storage.regenerateTracksFailed'));
+      setError(msg);
     },
   });
 
@@ -516,6 +533,19 @@ export const RecordingsAndDataset = () => {
             </Stack>
           </Paper>
 
+          <Alert severity="info" sx={{ '& ol': { m: 0, pl: 2.5 } }}>
+            <AlertTitle>{t('library.datasetFlowTitle')}</AlertTitle>
+            <Typography variant="body2" color="inherit" sx={{ mb: 1 }}>
+              {t('library.datasetFlowIntro')}
+            </Typography>
+            <ol>
+              <li>{t('library.datasetFlowStep1')}</li>
+              <li>{t('library.datasetFlowStep2')}</li>
+              <li>{t('library.datasetFlowStep3')}</li>
+              <li>{t('library.datasetFlowStep4')}</li>
+            </ol>
+          </Alert>
+
           {/* 1. Импорт */}
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
@@ -649,6 +679,9 @@ export const RecordingsAndDataset = () => {
                       start_date: operationsPeriod.start.format('YYYY-MM-DD'),
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
                       only_manually_corrected: onlyManuallyCorrected,
+                      ready_for_train: readyForTrain,
+                      test_ratio:
+                        readyForTrain && includeTestSplit ? 0.1 : undefined,
                     });
                   } catch (e) {
                     setError(
@@ -673,6 +706,29 @@ export const RecordingsAndDataset = () => {
               <FormControlLabel
                 control={
                   <Checkbox
+                    checked={readyForTrain}
+                    onChange={(e) => setReadyForTrain(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={t('storage.readyForTrain')}
+                sx={{ alignSelf: 'flex-start' }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeTestSplit}
+                    onChange={(e) => setIncludeTestSplit(e.target.checked)}
+                    disabled={!readyForTrain}
+                    size="small"
+                  />
+                }
+                label={t('storage.includeTestSplit')}
+                sx={{ alignSelf: 'flex-start' }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
                     checked={retroRebuild}
                     onChange={(e) => setRetroRebuild(e.target.checked)}
                     size="small"
@@ -681,92 +737,100 @@ export const RecordingsAndDataset = () => {
                 label={t('storage.retroExportRebuild')}
                 sx={{ alignSelf: 'flex-start' }}
               />
-              <Button
-                variant="outlined"
-                disabled={retroExporting}
-                onClick={async () => {
-                  if (
-                    retroRebuild &&
-                    !window.confirm(t('storage.retroExportRebuildConfirm'))
-                  ) {
-                    return;
-                  }
-                  setRetroExporting(true);
-                  setError(null);
-                  setSuccess(null);
-                  try {
-                    const result = await retroExportDataset(
-                      0,
-                      {
-                        start_date: operationsPeriod.start.format('YYYY-MM-DD'),
-                        end_date: operationsPeriod.end.format('YYYY-MM-DD'),
-                      },
-                      onlyManuallyCorrected,
-                      retroRebuild,
-                    );
-                    setSuccess(result);
-                    refetch();
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : t('storage.retroExportFailed'),
-                    );
-                  } finally {
-                    setRetroExporting(false);
-                  }
-                }}
-                startIcon={<FolderOpenIcon />}
+              <Tooltip
                 title={
                   retroRebuild
                     ? t('storage.retroExportRebuildHint')
                     : t('storage.retroExportHint')
                 }
-                fullWidth
               >
-                {retroExporting
-                  ? t('storage.retroExporting')
-                  : retroRebuild
-                    ? t('storage.retroExportRebuild')
-                    : t('storage.retroExport')}
-              </Button>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={retroExporting}
+                    onClick={async () => {
+                      if (
+                        retroRebuild &&
+                        !window.confirm(t('storage.retroExportRebuildConfirm'))
+                      ) {
+                        return;
+                      }
+                      setRetroExporting(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const result = await retroExportDataset(
+                          0,
+                          {
+                            start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                            end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                          },
+                          onlyManuallyCorrected,
+                          retroRebuild,
+                        );
+                        setSuccess(result);
+                        refetch();
+                      } catch (e) {
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : t('storage.retroExportFailed'),
+                        );
+                      } finally {
+                        setRetroExporting(false);
+                      }
+                    }}
+                    startIcon={<FolderOpenIcon />}
+                    fullWidth
+                  >
+                    {retroExporting
+                      ? t('storage.retroExporting')
+                      : retroRebuild
+                        ? t('storage.retroExportRebuild')
+                        : t('storage.retroExport')}
+                  </Button>
+                </span>
+              </Tooltip>
               {retroExporting && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
-              <Button
-                variant="outlined"
-                disabled={cleanDatasetLoading}
-                onClick={async () => {
-                  if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
-                  setCleanDatasetLoading(true);
-                  setError(null);
-                  setSuccess(null);
-                  try {
-                    const result = await cleanDataset({
-                      dry_run: false,
-                      remove_fullframe: true,
-                      remove_orphaned: false,
-                    });
-                    setSuccess(result);
-                    refetch();
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : t('storage.retroExportFailed'),
-                    );
-                  } finally {
-                    setCleanDatasetLoading(false);
-                  }
-                }}
-                startIcon={<BuildIcon />}
-                title={t('storage.cleanDatasetHint')}
-                fullWidth
-              >
-                {cleanDatasetLoading
-                  ? t('storage.cleanDatasetLoading')
-                  : t('storage.cleanDataset')}
-              </Button>
+              <Tooltip title={t('storage.cleanDatasetHint')}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={cleanDatasetLoading}
+                    onClick={async () => {
+                      if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
+                      setCleanDatasetLoading(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const result = await cleanDataset({
+                          dry_run: false,
+                          remove_fullframe: true,
+                          remove_orphaned: false,
+                        });
+                        setSuccess(result);
+                        refetch();
+                      } catch (e) {
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : t('storage.retroExportFailed'),
+                        );
+                      } finally {
+                        setCleanDatasetLoading(false);
+                      }
+                    }}
+                    startIcon={<BuildIcon />}
+                    fullWidth
+                  >
+                    {cleanDatasetLoading
+                      ? t('storage.cleanDatasetLoading')
+                      : t('storage.cleanDataset')}
+                  </Button>
+                </span>
+              </Tooltip>
               {cleanDatasetLoading && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
@@ -779,23 +843,26 @@ export const RecordingsAndDataset = () => {
               {t('library.sectionDb')}
             </Typography>
             <Stack spacing={2}>
-              <Button
-                variant="outlined"
-                disabled={cleanOrphanedMutation.isPending}
-                onClick={() => {
-                  if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
-                    setError(null);
-                    cleanOrphanedMutation.mutate();
-                  }
-                }}
-                startIcon={<BuildIcon />}
-                title={t('storage.cleanOrphanedVisitsHint')}
-                fullWidth
-              >
-                {cleanOrphanedMutation.isPending
-                  ? t('storage.merging')
-                  : t('storage.cleanOrphanedVisits')}
-              </Button>
+              <Tooltip title={t('storage.cleanOrphanedVisitsHint')}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={cleanOrphanedMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
+                        setError(null);
+                        cleanOrphanedMutation.mutate();
+                      }
+                    }}
+                    startIcon={<BuildIcon />}
+                    fullWidth
+                  >
+                    {cleanOrphanedMutation.isPending
+                      ? t('storage.merging')
+                      : t('storage.cleanOrphanedVisits')}
+                  </Button>
+                </span>
+              </Tooltip>
               {cleanOrphanedMutation.isPending && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}

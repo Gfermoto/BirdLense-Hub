@@ -1,4 +1,5 @@
 import os
+import threading
 from datetime import datetime, timezone
 from util import notify_app_startup
 from flask import Flask
@@ -10,6 +11,11 @@ import routes.ui_system_routes
 import routes.processor_routes
 from models import db
 from seed.seed import seed
+from services.species_registry_service import (
+    ensure_species_registry_seeded,
+    backfill_species_taxa,
+    enrich_species_metadata_with_status,
+)
 
 # Set up logging
 logging.basicConfig(
@@ -64,7 +70,121 @@ def create_app():
             db.session.commit()
         except Exception:
             db.session.rollback()
+        # Add species.taxon_id if missing (registry migration)
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN taxon_id INTEGER"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        # Species metadata enrichment columns (migration)
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_status VARCHAR DEFAULT 'pending'"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_attempts INTEGER DEFAULT 0"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_error VARCHAR"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_source VARCHAR"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_source_url VARCHAR"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE species ADD COLUMN metadata_updated_at DATETIME"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         seed()
+        try:
+            seed_stats = ensure_species_registry_seeded()
+            logging.getLogger(__name__).info(
+                "species_registry seed: taxa_created=%s aliases_created=%s",
+                seed_stats.get("taxa_created", 0),
+                seed_stats.get("aliases_created", 0),
+            )
+            # Safe incremental backfill of existing species rows.
+            bf_stats = backfill_species_taxa(dry_run=False)
+            logging.getLogger(__name__).info(
+                "species_registry backfill: processed=%s matched=%s unresolved=%s",
+                bf_stats.get("processed", 0),
+                bf_stats.get("matched", 0),
+                bf_stats.get("unresolved", 0),
+            )
+        except Exception as e:
+            db.session.rollback()
+            logging.getLogger(__name__).warning("species_registry init skipped: %s", e)
+
+        # Optional metadata enrichment kickoff (disabled by default).
+        # Enable with SPECIES_METADATA_ENRICH_ON_START=1 for controlled maintenance runs.
+        try:
+            enrich_on_start = os.environ.get('SPECIES_METADATA_ENRICH_ON_START', '0').strip() in ('1', 'true', 'yes')
+            if not app.config.get('TESTING') and enrich_on_start:
+                marker = '/tmp/.birdlense_species_metadata_enrich_started'
+                if not os.path.exists(marker):
+                    try:
+                        open(marker, 'a').close()
+                    except OSError:
+                        pass
+
+                    def _background_enrich():
+                        with app.app_context():
+                            log = logging.getLogger(__name__)
+                            try:
+                                stats = enrich_species_metadata_with_status(
+                                    limit=300,
+                                    dry_run=False,
+                                    retry_failed_only=False,
+                                )
+                                log.info(
+                                    'species_metadata_enrich pass1: processed=%s updated=%s failed=%s',
+                                    stats.get('processed', 0),
+                                    stats.get('updated', 0),
+                                    stats.get('failed', 0),
+                                )
+                                retry_stats = enrich_species_metadata_with_status(
+                                    limit=300,
+                                    dry_run=False,
+                                    retry_failed_only=True,
+                                )
+                                log.info(
+                                    'species_metadata_enrich retry: processed=%s updated=%s failed=%s',
+                                    retry_stats.get('processed', 0),
+                                    retry_stats.get('updated', 0),
+                                    retry_stats.get('failed', 0),
+                                )
+                            except Exception as enrich_err:
+                                log.warning('species_metadata_enrich skipped: %s', enrich_err)
+
+                    threading.Thread(target=_background_enrich, daemon=True).start()
+        except Exception as e:
+            logging.getLogger(__name__).warning('species_metadata_enrich setup failed: %s', e)
     routes.ui_routes.register_routes(app)
     routes.ui_system_routes.register_routes(app)
     routes.processor_routes.register_routes(app)

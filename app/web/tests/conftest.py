@@ -10,6 +10,9 @@ os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 # Prevent MQTT/ESPHome connection attempts (would hang or fail in CI)
 os.environ.pop('MQTT_BROKER', None)
 os.environ.pop('ESPHOME_FEEDER_URL', None)
+os.environ.pop('OPENWEATHER_API_KEY', None)
+os.environ.pop('HA_TOKEN', None)
+os.environ.pop('HA_URL', None)
 
 # Add project root to path (app/ on host, or /app in Docker)
 _app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -24,10 +27,15 @@ if _parent not in sys.path and os.path.isdir(os.path.join(_parent, 'app_config')
 @pytest.fixture
 def app():
     """Create Flask app. Run: cd app && pytest web/tests, or in Docker: pytest tests/."""
+    from app_config.app_config import app_config
     try:
         from app import create_app
     except ImportError:
         from web.app import create_app
+    # Avoid external weather network calls in tests.
+    app_config.set('secrets.openweather_api_key', '')
+    app_config.set('weather.ha_token', '')
+    app_config.set('weather.ha_url', '')
     app = create_app()
     app.config['TESTING'] = True
     return app
