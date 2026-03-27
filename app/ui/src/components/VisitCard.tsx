@@ -21,7 +21,7 @@ import Share from '@mui/icons-material/Share';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { downloadDetectionCropForINaturalist } from '../api/api';
@@ -166,6 +166,7 @@ export const VisitCard = memo(function VisitCard({
 }: VisitCardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [expanded, setExpanded] = useState(false);
 
   const startDateTime = new Date(visit.start_time);
@@ -287,7 +288,13 @@ export const VisitCard = memo(function VisitCard({
                       key={`${detection.video_id}-${index}`}
                       detection={detection}
                       speciesName={visit.species.name}
-                      onClick={() => navigate(`/videos/${detection.video_id}`)}
+                      onClick={() =>
+                        navigate(`/videos/${detection.video_id}`, {
+                          state: {
+                            from: `${location.pathname}${location.search}`,
+                          },
+                        })
+                      }
                       isLastInGroup={index === group.length - 1}
                     />
                   ))}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -23,9 +23,20 @@ import { resolveImageUrl, deleteVideo } from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { BASE_API_URL } from '../../api/api';
 
+function safeInternalPath(from: unknown): string | null {
+  if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//')) {
+    return null;
+  }
+  if (from.includes('://') || from.includes('\\')) {
+    return null;
+  }
+  return from;
+}
+
 export const VideoInfo = ({ video }: { video: Video }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { unlocked } = useProtectedArea();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -50,11 +61,13 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         queryClient.invalidateQueries({ queryKey: ['bird-directory'] }),
         queryClient.invalidateQueries({ queryKey: ['speciesSummary'] }),
       ]);
-      // Prefer returning user to previous list context after deletion.
-      if (window.history.length > 1) {
-        navigate(-1);
+      const back = safeInternalPath(
+        (location.state as { from?: string } | null)?.from,
+      );
+      if (back) {
+        navigate(back, { replace: true });
       } else {
-        navigate('/timeline');
+        navigate('/library', { replace: true });
       }
     },
   });

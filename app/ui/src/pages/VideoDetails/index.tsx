@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchVideo, fetchVideoNeighbors } from '../../api/api';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -83,7 +83,9 @@ export const VideoDetails = () => {
                     disabled={!neighbors.previous_id}
                     onClick={() =>
                       neighbors.previous_id &&
-                      navigate(`/videos/${neighbors.previous_id}`)
+                      navigate(`/videos/${neighbors.previous_id}`, {
+                        state: listReturnState,
+                      })
                     }
                   >
                     <NavigateBeforeIcon />
@@ -107,7 +109,9 @@ export const VideoDetails = () => {
                     disabled={!neighbors.next_id}
                     onClick={() =>
                       neighbors.next_id &&
-                      navigate(`/videos/${neighbors.next_id}`)
+                      navigate(`/videos/${neighbors.next_id}`, {
+                        state: listReturnState,
+                      })
                     }
                   >
                     <NavigateNextIcon />
