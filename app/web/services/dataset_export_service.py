@@ -640,6 +640,7 @@ def retro_export_all_video_detections(
     """
     from datetime import datetime, timezone, timedelta
     from models import VideoSpecies, Video
+    from sqlalchemy import and_, or_
     from sqlalchemy.orm import joinedload
 
     saved = 0
@@ -663,10 +664,13 @@ def retro_export_all_video_detections(
     )
     if only_manually_corrected:
         q = q.filter(VideoSpecies.manually_corrected == True)
+    # Период по дате видео; строки без Video (сироты после retention/удаления) тоже
+    # включаем — иначе фильтр по Video.start_time их отсекает и cleanup не срабатывает (#158).
+    date_parts = []
     if start_date:
         try:
             dt_start = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-            q = q.filter(Video.start_time >= dt_start)
+            date_parts.append(Video.start_time >= dt_start)
         except ValueError:
             pass
     if end_date:
@@ -674,9 +678,12 @@ def retro_export_all_video_detections(
             dt_end = datetime.strptime(end_date, '%Y-%m-%d').replace(
                 tzinfo=timezone.utc
             ) + timedelta(days=1)
-            q = q.filter(Video.start_time < dt_end)
+            date_parts.append(Video.start_time < dt_end)
         except ValueError:
             pass
+    if date_parts:
+        in_period = date_parts[0] if len(date_parts) == 1 else and_(*date_parts)
+        q = q.filter(or_(Video.id.is_(None), in_period))
     from services.detection_crop_service import _bbox_for_offset
     q = q.order_by(VideoSpecies.video_id, VideoSpecies.id)
     for vs in q:

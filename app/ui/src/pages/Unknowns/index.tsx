@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -44,12 +44,14 @@ function UnknownCard({
   onCorrect,
   onConfirm,
   canEdit,
+  videoListReturnPath,
 }: {
   detection: UnknownDetection;
   speciesList: { id: number; name: string }[];
   onCorrect: (detectionId: number, speciesId: number) => void;
   onConfirm: (detectionId: number) => void;
   canEdit: boolean;
+  videoListReturnPath: string;
 }) {
   const { t } = useTranslation();
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
@@ -125,6 +127,7 @@ function UnknownCard({
           <CardActionArea
             component={Link}
             to={`/videos/${detection.video_id}`}
+            state={{ from: videoListReturnPath }}
             sx={{
               flexShrink: 0,
               borderRadius: 1,
@@ -202,6 +205,8 @@ function UnknownCard({
 export function UnknownsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const videoListReturnPath = `${location.pathname}${location.search}`;
   const queryClient = useQueryClient();
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -422,6 +427,7 @@ export function UnknownsPage() {
           onCorrect={handleCorrect}
           onConfirm={handleConfirm}
           canEdit={canEdit}
+          videoListReturnPath={videoListReturnPath}
         />
       ))}
       <Snackbar
@@ -445,7 +451,9 @@ export function UnknownsPage() {
               color="inherit"
               size="small"
               onClick={() => {
-                navigate(`/videos/${successVideoId}`);
+                navigate(`/videos/${successVideoId}`, {
+                  state: { from: videoListReturnPath },
+                });
                 clearSuccessSnackbar();
               }}
             >

@@ -3,6 +3,8 @@ import io
 import json
 import zipfile
 
+from sqlalchemy import text
+
 from models import db, Species, Video, VideoSpecies
 from services import dataset_export_service as des
 
@@ -27,6 +29,49 @@ class TestDatasetExportOrphans:
             assert result['skipped_orphaned'] >= 1
             assert result['deleted_orphaned'] >= 1
             assert db.session.get(VideoSpecies, orphan_id) is None
+
+    def test_retro_export_deletes_orphan_with_date_filter(self, app):
+        """#158: период не должен отсекать VideoSpecies без строки Video (сироты)."""
+        with app.app_context():
+            sp = Species(name='Orphan Test Bird')
+            db.session.add(sp)
+            db.session.flush()
+            t0 = datetime(2026, 2, 10, 12, 0, 0, tzinfo=timezone.utc)
+            vid = Video(
+                processor_version='t',
+                start_time=t0,
+                end_time=t0,
+                video_path='2026/02/10/120000/x.mp4',
+            )
+            db.session.add(vid)
+            db.session.flush()
+            vs = VideoSpecies(
+                video_id=vid.id,
+                species_id=sp.id,
+                start_time=0.0,
+                end_time=1.0,
+                confidence=0.9,
+                source='video',
+                track_id=1,
+            )
+            db.session.add(vs)
+            db.session.commit()
+            vs_id = vs.id
+            vid_pk = vid.id
+            # Имитация сироты как при отключённых FK в SQLite: строка Video удалена,
+            # VideoSpecies остаётся с несуществующим video_id.
+            db.session.execute(text('DELETE FROM video WHERE id = :i'), {'i': vid_pk})
+            db.session.commit()
+            assert db.session.get(Video, vid_pk) is None
+            assert db.session.get(VideoSpecies, vs_id) is not None
+
+            result = des.retro_export_all_video_detections(
+                min_confidence=0.0,
+                start_date='2026-02-01',
+                end_date='2026-02-28',
+            )
+            assert result['deleted_orphaned'] >= 1
+            assert db.session.get(VideoSpecies, vs_id) is None
 
     def test_clean_dataset_remove_orphaned_keeps_only_valid_tracks(self, app, tmp_path, monkeypatch):
         with app.app_context():

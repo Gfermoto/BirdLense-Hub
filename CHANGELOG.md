@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Волна A (bugs):** [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) ретроэкспорт с периодом подхватывает сирот без `Video`; retention каскадно удаляет `VideoSpecies`/`SpeciesVisit` как при API удалении записи. [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) poll regenerate spectrograms/tracks с timeout 120s. [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) после удаления видео — возврат по `state.from` или на `/library`.
 - **Dataset export:** при `strict_quality=1` и **ready_for_train** экспорт отменяется, если хотя бы один класс не прошёл `min_images_per_class` (явный отказ вместо тихого пропуска); чекбокс в Library; см. [DATASETS.ru.md](docs/DATASETS.ru.md).
 - **CodeQL / code scanning:** устранены открытые Python-алерты без «принятия риска» — `urlparse` для источников метаданных, линейный разбор скобок вместо ReDoS-регекса, `_safe_image_path_or_none` для Telegram crop, `mkstemp` в спектрограмме, редактирование URL в логах go2RTC; тесты `test_util_metadata.py`; см. [CODEQL.ru.md](docs/CODEQL.ru.md).
 - **Migration UI:** убран дублирующий блок «чеклист за год» над таблицей — те же виды и суммы уже есть в таблице миграции.
