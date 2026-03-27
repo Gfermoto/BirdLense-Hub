@@ -68,6 +68,7 @@
 | Корневой README | [project/root-readme.md](./project/root-readme.md) |
 | Правила доков | [Documentation.ru.md](./Documentation.ru.md) |
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) |
+| Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) |
 | Локализация | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |

@@ -85,7 +85,7 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 |-------|-----|
 | **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): keyboard navigation, focus order, contrast for Unknowns/Video/Migration (follow-up after i18n [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
 | **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
-| **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): documented rotation / operational path for `secrets.*` and related keys (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
 | **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
