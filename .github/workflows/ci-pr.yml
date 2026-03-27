@@ -29,6 +29,9 @@ jobs:
       - name: Install web test dependencies
         run: pip install -r web/requirements.txt
 
+      - name: VERSION sync (package.json, openapi, mkdocs)
+        run: cd .. && python3 scripts/check-docs-version.py
+
       - name: OpenAPI contract smoke tests
         run: python -m pytest web/tests/test_openapi_contract.py -q
 

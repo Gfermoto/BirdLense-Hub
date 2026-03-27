@@ -86,9 +86,10 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 | **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): keyboard navigation, focus order, contrast for Unknowns/Video/Migration (follow-up after i18n [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
 | **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
 | **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): documented rotation / operational path for `secrets.*` and related keys (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
-| **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): checklist to align VERSION/Docker/docs/release notes after dependency bumps. |
+| **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
 | **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
+| **Species canonical registry** | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) ✅: unified registry, name normalization, backfill, background metadata jobs, CI quality gate for the full dataset. |
 
 ### User wishes backlog (Mar 2026)
 
@@ -115,6 +116,34 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | Expand seed + document source (`seed.py`) |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Auto-fill / suggested mappings — name mismatches; see risks in issue |
+
+**New ideas (Mar 2026) — tracked as issues on the Project board:**
+
+| # | Theme | Issue | Priority / area |
+|---|--------|-------|-----------------|
+| 1 | System: unique visitor counter | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) ✅ | P3, web |
+| 2 | After deleting a recording, return to list not Home | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) ✅ | P2, web, bug |
+| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) | P2, processor |
+| 4 | “Daily pattern” chart: click should filter by hour | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) ✅ | P2, web, bug |
+| 5 | Recording duration mismatch (Home vs recording page) | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) ✅ | P2, web, bug |
+| 6 | Review counter not updating without full reload | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) ✅ | P2, web, bug |
+| 7 | Recording quality: pre-roll/post-roll for approach/departure | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) | P2, processor |
+| 8 | Re-export: orphan recognitions without species/recording | [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) ✅ | P1, processor, bug |
+| 9 | UX consistency: tooltips and inline help | [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) ✅ | P3, web |
+| 10 | Regenerate tracks: progress, 409, timeouts on large sets | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug |
+| 11 | Dataset UX: clear Library flow (DB maintenance + export) | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) ✅ | P2, docs + web |
+| 12 | Dataset pipeline: less post-script work before training | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) ✅ | P2, processor |
+| 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research |
+| 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research |
+| 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) | P3, web |
+| 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra |
+| 17 | Long-term: feeder / bird scales (auto-tare + object detection) | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) | P3, processor, research |
+
+**System initiative (P1):**
+
+- [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) — **Species Canonical Registry** epic: canonical registry, universal name resolver, history migration, metadata enrichment, CI invariants (not one-off per-species patches).
+- Phases closed: [#169](https://github.com/Gfermoto/BirdLense-Hub/issues/169) ✅ SSOT registry · [#170](https://github.com/Gfermoto/BirdLense-Hub/issues/170) ✅ universal resolver · [#171](https://github.com/Gfermoto/BirdLense-Hub/issues/171) ✅ backfill/repair · [#172](https://github.com/Gfermoto/BirdLense-Hub/issues/172) ✅ background metadata jobs · [#173](https://github.com/Gfermoto/BirdLense-Hub/issues/173) ✅ observability + CI quality gate.
+- Outcome (Mar 2026): production `processed=806`, `matched=806`, `unresolved=0` on startup; APIs `seed/backfill/unresolved/health/enrich`, async enrichment status, CI smoke for the registry.
 
 ---
 
@@ -162,7 +191,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 |----------|--------|
 | **Community** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), `good first issue` triage, docs feedback |
 | **Quality** | CI on PRs (UI build + MkDocs `--strict`), Dependabot / dependency hygiene |
-| **Docs** | Version banner in `mkdocs.yml` matches `VERSION`; interactive OpenAPI (Redoc) on the doc site |
+| **Docs** | `VERSION` aligned with `mkdocs.yml`, `app/ui/package.json`, and `app/web/openapi.yaml` (`scripts/check-docs-version.py`); interactive OpenAPI (Redoc) on the doc site |
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
 
 The **shipped archive** above is historical only. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).

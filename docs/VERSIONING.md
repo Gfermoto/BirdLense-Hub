@@ -30,9 +30,21 @@ Examples:
 | `app/ui/package.json` | UI package version |
 | `app/web/openapi.yaml` | API version in OpenAPI |
 
-Update **all three** on each release.
+Bump **the same version string** everywhere below (**[#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120)** checklist).
 
-Also update **`mkdocs.yml`**: `extra.site_version` must match `VERSION` (CI: `scripts/check-docs-version.py`). The visible banner is rendered from **`overrides/main.html`** (`announce` block), not from a `theme.announcement` key (Material ignores that in YAML).
+1. Root **`VERSION`**
+2. **`app/ui/package.json`** → `version`
+3. **`app/web/openapi.yaml`** → `info.version`
+4. **`mkdocs.yml`** → `extra.site_version` (and **`overrides/main.html`** banner if needed)
+5. **`CHANGELOG.md`**
+
+Verify from the repo root:
+
+```bash
+python3 scripts/check-docs-version.py
+```
+
+This checks `VERSION` against `mkdocs.yml`, `package.json`, and `openapi.yaml` (also run in CI before MkDocs). The site banner comes from **`overrides/main.html`** (`announce` block), not `theme.announcement` in YAML.
 
 ---
 

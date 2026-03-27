@@ -27,9 +27,23 @@
 | `app/ui/package.json` | Версия UI-пакета |
 | `app/web/openapi.yaml` | Версия API в OpenAPI |
 
-При релизе обновлять все три.
+При релизе обновлять все перечисленные ниже места **одной и той же** строкой версии.
 
-Также **`mkdocs.yml`**: `extra.site_version` должен совпадать с `VERSION` (CI: `scripts/check-docs-version.py`). Видимый баннер задаётся в **`overrides/main.html`** (блок `announce`), ключ `theme.announcement` в YAML Material не использует.
+**Чеклист перед коммитом релиза** ([#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120)):
+
+1. Корневой **`VERSION`**
+2. **`app/ui/package.json`** → поле `version`
+3. **`app/web/openapi.yaml`** → `info.version`
+4. **`mkdocs.yml`** → `extra.site_version` (и при необходимости **`overrides/main.html`** — баннер)
+5. **`CHANGELOG.md`** — секция `[Unreleased]` / новый заголовок версии
+
+Проверка одной командой из корня репозитория:
+
+```bash
+python3 scripts/check-docs-version.py
+```
+
+Скрипт сверяет `VERSION` с `mkdocs.yml`, `package.json` и `openapi.yaml` (в CI — перед сборкой MkDocs). Видимый баннер задаётся в **`overrides/main.html`** (блок `announce`); ключ `theme.announcement` в YAML Material не используется.
 
 ## Релизы и теги
 
