@@ -392,6 +392,7 @@
     "exportDataset": "Export dataset",
     "readyForTrain": "Train-ready (auto train/val split, no post-script)",
     "includeTestSplit": "Add test split (~10%) for hold-out",
+    "strictQualityExport": "Strict quality: abort if any class is below min size or data fails gates",
     "exporting": "Exporting...",
     "datasetExportFailed": "Dataset export failed",
     "retroExport": "Retro-export to dataset",

@@ -114,6 +114,7 @@ export const RecordingsAndDataset = () => {
   const [exportingDataset, setExportingDataset] = useState(false);
   const [readyForTrain, setReadyForTrain] = useState(true);
   const [includeTestSplit, setIncludeTestSplit] = useState(false);
+  const [strictQualityExport, setStrictQualityExport] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
   const [cleanDatasetLoading, setCleanDatasetLoading] = useState(false);
   const [retroRebuild, setRetroRebuild] = useState(false);
@@ -682,6 +683,8 @@ export const RecordingsAndDataset = () => {
                       ready_for_train: readyForTrain,
                       test_ratio:
                         readyForTrain && includeTestSplit ? 0.1 : undefined,
+                      strict_quality:
+                        readyForTrain && strictQualityExport ? true : undefined,
                     });
                   } catch (e) {
                     setError(
@@ -724,6 +727,18 @@ export const RecordingsAndDataset = () => {
                   />
                 }
                 label={t('storage.includeTestSplit')}
+                sx={{ alignSelf: 'flex-start' }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={strictQualityExport}
+                    onChange={(e) => setStrictQualityExport(e.target.checked)}
+                    disabled={!readyForTrain}
+                    size="small"
+                  />
+                }
+                label={t('storage.strictQualityExport')}
                 sx={{ alignSelf: 'flex-start' }}
               />
               <FormControlLabel

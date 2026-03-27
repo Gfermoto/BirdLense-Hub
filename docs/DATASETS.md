@@ -27,7 +27,7 @@ The ZIP will include:
 - `classes.txt`
 - `dataset_info.json` — export passport (`manifest.schema=birdlense_dataset_export_v2`, filters, `split_seed`, `fingerprint_sha256_16`) and a **`quality`** block: duplicate `(video_id, track_id)` rows and cross-split `video_id` leakage.
 
-API: `GET /api/ui/dataset/export` supports `test_ratio` and `strict_quality=1` (abort export when quality gates fail).
+API: `GET /api/ui/dataset/export` supports `test_ratio` and `strict_quality=1` (abort on duplicate tracks, cross-split video leakage, or — with **ready_for_train** — any class below `min_images_per_class`).
 
 This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yolo.py` step for the basic finetuning path.
 

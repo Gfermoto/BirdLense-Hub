@@ -154,3 +154,38 @@ class TestDatasetExportOrphans:
         )
         assert zip_bad is None
         assert err_bad and 'strict_quality' in err_bad
+
+    def test_strict_quality_rejects_skipped_small_classes(self, tmp_path, monkeypatch):
+        train_a = tmp_path / 'dataset' / 'train' / 'Enough'
+        train_b = tmp_path / 'dataset' / 'train' / 'Tiny'
+        train_a.mkdir(parents=True, exist_ok=True)
+        train_b.mkdir(parents=True, exist_ok=True)
+        for i in range(5):
+            (train_a / f'1_1_{i}.jpg').write_bytes(b'x')
+        (train_b / '2_1_0.jpg').write_bytes(b'y')
+        monkeypatch.setattr(des, 'data_dir', lambda: str(tmp_path))
+        monkeypatch.setattr(des, '_get_image_dimensions', lambda _p: None)
+
+        zip_ok, err_ok = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.2,
+            split_seed=1,
+            min_images_per_class=3,
+            strict_quality=False,
+        )
+        assert err_ok is None
+        meta = json.loads(
+            zipfile.ZipFile(io.BytesIO(zip_ok), 'r').read('dataset_info.json').decode(),
+        )
+        assert 'Tiny' in (meta.get('classes_skipped_too_small') or [])
+
+        zip_bad, err_bad = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.2,
+            split_seed=1,
+            min_images_per_class=3,
+            strict_quality=True,
+        )
+        assert zip_bad is None
+        assert err_bad and 'strict_quality' in err_bad
+        assert 'Tiny' in err_bad

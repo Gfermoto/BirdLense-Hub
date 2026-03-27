@@ -178,6 +178,7 @@ export const exportDataset = async (params?: {
   only_manually_corrected?: boolean;
   ready_for_train?: boolean;
   test_ratio?: number;
+  strict_quality?: boolean;
 }): Promise<void> => {
   const q = new URLSearchParams();
   if (params?.start_date) q.set('start_date', params.start_date);
@@ -187,6 +188,7 @@ export const exportDataset = async (params?: {
   if (params?.test_ratio != null && params.test_ratio > 0) {
     q.set('test_ratio', String(params.test_ratio));
   }
+  if (params?.strict_quality) q.set('strict_quality', '1');
   const url = `${BASE_API_URL}/dataset/export${q.toString() ? `?${q}` : ''}`;
   const res = await fetch(url, {
     credentials: 'include',
