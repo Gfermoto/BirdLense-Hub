@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Release hygiene ([#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120)):** `scripts/check-docs-version.py` сверяет корневой `VERSION` с `mkdocs.yml`, `app/ui/package.json` и `app/web/openapi.yaml`; чеклист в [VERSIONING.ru.md](docs/VERSIONING.ru.md) / [EN](docs/VERSIONING.md); шаг в CI `openapi-contract`.
+
 - **Species registry (backend):** сервис нормализации видов, API под админ/систему, smoke `test_species_registry.py` и шаг CI в `openapi-contract`; операторская дока в [TESTING.ru.md](docs/TESTING.ru.md).
 - **Dataset export (train-ready):** `dataset_info.json` v2 с `manifest` и `quality`, опциональный `test` split в UI, query `test_ratio` / `strict_quality` на `GET /api/ui/dataset/export`, smoke `test_dataset_export_service.py` в CI; описание в [DATASETS.ru.md](docs/DATASETS.ru.md).
 - **Документация:** подготовительный чеклист перед реализацией [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) / [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — [PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) / [EN](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md); ссылка из [ROADMAP](docs/ROADMAP.ru.md).
