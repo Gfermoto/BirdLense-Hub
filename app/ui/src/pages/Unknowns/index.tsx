@@ -239,6 +239,7 @@ export function UnknownsPage() {
       updateDetectionSpecies(detectionId, speciesId, 'unknowns'),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
@@ -262,6 +263,7 @@ export function UnknownsPage() {
     mutationFn: (detectionId: number) => confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });

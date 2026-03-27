@@ -333,7 +333,8 @@
     "timeMorning": "Morning (6–10)",
     "timeDay": "Midday (10–14)",
     "timeAfternoon": "Afternoon (14–18)",
-    "timeEvening": "Evening (18–22)"
+    "timeEvening": "Evening (18–22)",
+    "hourFilterChip": "Hour: {{from}}–{{to}}"
   },
   "pwa": {
     "installPrompt": "Add BirdLense Hub to your home screen",

@@ -92,9 +92,8 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
   const ringWidth = (size * 0.35) / (data.length + 1);
 
   const handleArcClick = (speciesId: number, hour: number) => {
-    const dateWithHour = date.hour(hour).minute(0).second(0);
     navigate(
-      `/timeline?speciesId=${speciesId}&date=${dateWithHour.toISOString()}`,
+      `/timeline?speciesId=${speciesId}&date=${date.format('YYYY-MM-DD')}&hour=${hour}`,
     );
   };
 

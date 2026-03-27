@@ -5,6 +5,8 @@ export interface SpeciesVisit {
   max_simultaneous: number;
   /** Сумма длительностей всех детекций (записей) в событии, секунды */
   total_recording_seconds?: number;
+  /** Длительность файла записи (как на странице видео), секунды */
+  video_duration_seconds?: number | null;
   weather?: {
     temp?: number;
     clouds?: number;
@@ -225,6 +227,8 @@ export interface Species {
   /** Relative path or full URL (Wikipedia) — use resolveImageUrl() */
   image_url: string | null;
   description: string | null;
+  metadata_source?: string | null;
+  metadata_source_url?: string | null;
   active: boolean;
   count?: number;
 }

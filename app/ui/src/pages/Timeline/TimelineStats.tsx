@@ -15,10 +15,13 @@ export const TimelineStats = memo(function TimelineStats({ visits }: { visits: S
     (acc, visit) => acc + visit.max_simultaneous,
     0,
   );
-  const recordingDurationSec = visits.reduce(
-    (acc, visit) => acc + (visit.total_recording_seconds ?? 0),
-    0,
-  );
+  const recordingDurationSec = visits.reduce((acc, visit) => {
+    const sec =
+      visit.video_duration_seconds != null && visit.video_duration_seconds > 0
+        ? visit.video_duration_seconds
+        : (visit.total_recording_seconds ?? 0);
+    return acc + sec;
+  }, 0);
 
   return (
     <Grid container spacing={3} mb={5}>

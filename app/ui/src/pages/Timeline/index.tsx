@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Timeline } from './Timeline';
 import { TimelineStats } from './TimelineStats';
@@ -30,7 +30,7 @@ import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
 import { PageHelp } from '../../components/PageHelp';
 import { timelineHelpConfig } from '../../page-help-config';
-import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
+import { getTimeRange, getHourTimeRange, type TimeOfDay } from '../../utils/timeUtils';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
@@ -57,12 +57,29 @@ function useFilteredVisits(
   );
 }
 
+function parseHourFromSearchParams(searchParams: URLSearchParams): number | null {
+  const hp = searchParams.get('hour');
+  if (hp != null && hp !== '') {
+    const p = parseInt(hp, 10);
+    if (Number.isFinite(p) && p >= 0 && p <= 23) return p;
+  }
+  const paramDate = searchParams.get('date');
+  if (paramDate && /T/.test(paramDate)) {
+    return dayjs(paramDate).hour();
+  }
+  return null;
+}
+
 export function TimelinePage() {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isReviewMode = searchParams.get('review') === '1';
+  const filterHour = useMemo(
+    () => parseHourFromSearchParams(searchParams),
+    [searchParams],
+  );
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
@@ -78,20 +95,36 @@ export function TimelinePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['speciesVisits', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
+    queryKey: [
+      'speciesVisits',
+      selectedDate?.format('YYYY-MM-DD'),
+      timeOfDay,
+      filterHour,
+    ],
     queryFn: () => {
       if (!selectedDate) return [];
-      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      const { start, end } =
+        filterHour !== null
+          ? getHourTimeRange(selectedDate, filterHour)
+          : getTimeRange(selectedDate, timeOfDay);
       return fetchTimeline(start, end);
     },
     enabled: !!selectedDate && !isReviewMode,
   });
 
   const { data: unknownsCount = 0 } = useQuery({
-    queryKey: ['unknowns-count', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
+    queryKey: [
+      'unknowns-count',
+      selectedDate?.format('YYYY-MM-DD'),
+      timeOfDay,
+      filterHour,
+    ],
     queryFn: async () => {
       if (!selectedDate) return 0;
-      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      const { start, end } =
+        filterHour !== null
+          ? getHourTimeRange(selectedDate, filterHour)
+          : getTimeRange(selectedDate, timeOfDay);
       const rows = await fetchUnknowns(start, end, 500);
       return rows.length;
     },
@@ -132,12 +165,21 @@ export function TimelinePage() {
     );
   };
 
+  const clearHourFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('hour');
+    setSearchParams(next, { replace: true });
+  };
+
   const handleExport = async (format: 'csv' | 'json' | 'ebird') => {
     if (!selectedDate) return;
     setExportAnchor(null);
     setExporting(true);
     try {
-      const { start, end } = getTimeRange(selectedDate, timeOfDay);
+      const { start, end } =
+        filterHour !== null
+          ? getHourTimeRange(selectedDate, filterHour)
+          : getTimeRange(selectedDate, timeOfDay);
       await exportTimeline(start, end, format);
     } catch (err) {
       console.error('Export failed:', err);
@@ -226,6 +268,18 @@ export function TimelinePage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('timeline.intro')}
       </Typography>
+      {filterHour !== null && (
+        <Chip
+          label={t('timeline.hourFilterChip', {
+            from: `${String(filterHour).padStart(2, '0')}:00`,
+            to: `${String(filterHour).padStart(2, '0')}:59`,
+          })}
+          onDelete={clearHourFilter}
+          sx={{ mb: 2 }}
+          color="secondary"
+          variant="outlined"
+        />
+      )}
       <Alert severity="info" sx={{ mb: 2 }}>
         {t('timeline.noRecords')}{' '}
         <Button
@@ -258,7 +312,15 @@ export function TimelinePage() {
           <Select
             labelId="timeofday-label"
             value={timeOfDay}
-            onChange={(e) => setTimeOfDay(e.target.value as TimeOfDay)}
+            disabled={filterHour !== null}
+            onChange={(e) => {
+              setTimeOfDay(e.target.value as TimeOfDay);
+              if (searchParams.get('hour')) {
+                const next = new URLSearchParams(searchParams);
+                next.delete('hour');
+                setSearchParams(next, { replace: true });
+              }
+            }}
             label={t('timeline.timeOfDay')}
           >
             <MenuItem value="all">{t('timeline.timeAllDay')}</MenuItem>
