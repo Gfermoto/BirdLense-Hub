@@ -74,6 +74,7 @@ Pick what matches you — you can read the rest as reference.
 |-------|----------|
 | How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
 | Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| **Secrets rotation (production ops)** | [SECRETS_ROTATION](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 | **Issues, board & roadmap process** | [ROADMAP](./ROADMAP.md) § *Triage* · [RU](./ROADMAP.ru.md); root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md) |
