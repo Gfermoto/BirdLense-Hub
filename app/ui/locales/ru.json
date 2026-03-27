@@ -392,6 +392,7 @@
     "exportDataset": "Экспорт датасета",
     "readyForTrain": "Готово к train (авто split train/val, без пост-скрипта)",
     "includeTestSplit": "Добавить test split (~10%) для hold-out",
+    "strictQualityExport": "Строгий режим: отменить выгрузку, если класс ниже min или сбой quality-gates",
     "exporting": "Экспорт...",
     "datasetExportFailed": "Ошибка экспорта датасета",
     "retroExport": "Ретроэкспорт в датасет",

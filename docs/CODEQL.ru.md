@@ -47,15 +47,15 @@ bash scripts/codeql-local.sh
 
 ### Пример результата ревью (security-extended)
 
-Прогон: Python `app/web` + UI после `npm run build`, наборы **python/javascript-security-extended**:
+Прогон: Python `app/web` + UI после `npm run build`, наборы **python/javascript-security-extended**.
+
+Исправления по открытым алертам (без «принятия риска»): парсинг хоста через **`urllib.parse.urlparse`** в `infer_metadata_source_fields`, линейный разбор скобок в **`_extract_common_for_hierarchy`**, явный **`_safe_image_path_or_none`** для `open`/`remove` в Telegram-уведомлениях, **`mkstemp`** вместо `mktemp` в `spectrogram.py`, редактирование URL в логах go2RTC.
 
 | Разбор | Правило | Файл | Комментарий |
 |--------|---------|------|-------------|
-| Низкий риск | `py/polynomial-redos` | `app/web/util.py` (~439) | Регекс для common name из `species_name`; ReDoS теоретически на злонамеренной строке, на практике — данные каталога видов. |
-| Вероятный FP | `py/path-injection` | `app/web/util.py` (~811, 917–919) | `open`/`remove` по `image_path`; перед `open` есть **`_is_safe_image_path`**. Анализатор не связывает путь с `remove` — можно закрыть как false positive в GitHub или вынести общий «безопасный путь». |
-| Низкий | `js/missing-origin-check` | `app/ui/public/sw.js` | `postMessage` для `SKIP_WAITING` без проверки origin; для PWA обычно приемлемо. Опционально: `if (event.origin !== self.origin) return;`. |
+| — | `js/missing-origin-check` | `app/ui/public/sw.js` | `postMessage` для `SKIP_WAITING` без проверки origin; для PWA обычно приемлемо. Опционально: `if (event.origin !== self.origin) return;`. |
 
-**Итого:** 4 + 1 срабатывание — без явных критических SQLi/XSS в этом прогоне; польза — **регулярный автоматический аудит** и вкладка **Security** на GitHub.
+**Итого:** польза — **регулярный автоматический аудит** и вкладка **Security** на GitHub. На PR может отображаться отдельный агрегат **Code scanning** (по открытым алертам); он не совпадает 1:1 с успехом job’ов workflow **CodeQL**.
 
 В **ruleset** ветки по умолчанию CodeQL **не** обязателен — его можно включить как required check отдельно.
 

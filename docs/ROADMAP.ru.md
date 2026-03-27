@@ -248,6 +248,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **Срез 1 ✅:** экспорт Hub — `dataset_info.json` v2 (`manifest` + `quality`), опциональный `test` split, параметр `strict_quality`; см. [DATASETS.ru.md](./DATASETS.ru.md). Влито в `dev`, PR в `main`: [#174](https://github.com/Gfermoto/BirdLense-Hub/pull/174).
 
+**Срез 2:** `strict_quality` дополняется отказом выгрузки, если класс отброшен из‑за `min_images_per_class` (без скрытого «недонабора» ярлыков); чекбокс в Library при «готово к train».
+
 
 | Приоритет        | Фокус                                                                                                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |

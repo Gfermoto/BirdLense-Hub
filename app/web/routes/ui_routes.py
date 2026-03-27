@@ -882,7 +882,8 @@ def register_routes(app):
         - only_manually_corrected (bool)
         - ready_for_train (bool): auto split from train into train/val/test
         - val_ratio (float), test_ratio (float), split_seed (int), min_images_per_class (int)
-        - strict_quality (bool): fail export on duplicate tracks or cross-split video leakage
+        - strict_quality (bool): fail on duplicate tracks, cross-split video leakage, or skipped classes
+          (below min_images_per_class when ready_for_train)
         """
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403

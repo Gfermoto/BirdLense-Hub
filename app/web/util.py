@@ -6,6 +6,7 @@ import secrets
 import threading
 import time
 from datetime import timedelta, datetime, timezone
+from urllib.parse import urlparse
 
 # Rate limit for verify-password: 5 failed attempts per 60 sec per IP
 _verify_password_attempts: dict = {}
@@ -97,6 +98,13 @@ def _is_safe_image_path(path: str) -> bool:
         return full.startswith(base) and os.path.isfile(full)
     except (OSError, ValueError):
         return False
+
+
+def _safe_image_path_or_none(path: str | None) -> str | None:
+    """Вернуть путь только после проверки (явный синг для потока данных CodeQL path-injection)."""
+    if not path or not isinstance(path, str):
+        return None
+    return path if _is_safe_image_path(path) else None
 
 
 def ensure_utc(dt: datetime) -> datetime:
@@ -264,6 +272,42 @@ _manual_image_overrides = {
 }
 
 
+def _url_hostname_lower(url: str) -> str | None:
+    """Разбор hostname без небезопасной подстроковой проверки URL (CodeQL py/incomplete-url-substring-sanitization)."""
+    u = (url or '').strip()
+    if not u:
+        return None
+    try:
+        parsed = urlparse(u if '://' in u else f'//{u}', allow_fragments=True)
+        h = (parsed.hostname or '').lower()
+        return h or None
+    except ValueError:
+        return None
+
+
+def _host_is_wikipedia_family(hostname: str | None) -> bool:
+    if not hostname:
+        return False
+    return hostname == 'wikipedia.org' or hostname.endswith(
+        '.wikipedia.org'
+    ) or hostname == 'wikimedia.org' or hostname.endswith('.wikimedia.org')
+
+
+def _host_is_inaturalist(hostname: str | None) -> bool:
+    if not hostname:
+        return False
+    return hostname == 'inaturalist.org' or hostname.endswith('.inaturalist.org')
+
+
+def _url_suggests_inaturalist_asset(url: str) -> bool:
+    """iNaturalist сайт или типичный open-data CDN (S3 и т.п.)."""
+    h = _url_hostname_lower(url)
+    if h and _host_is_inaturalist(h):
+        return True
+    low = url.lower()
+    return 'inaturalist-open-data' in low
+
+
 def infer_metadata_source_fields(
     species_name: str | None,
     image_url: str | None,
@@ -274,17 +318,14 @@ def infer_metadata_source_fields(
     """
     img = (image_url or '').strip()
     src = (source_url or '').strip()
-    img_l = img.lower()
-    src_l = src.lower()
     title = ((species_name or '').strip() or 'bird').replace(' ', '_')
 
-    if (
-        'wikipedia.org' in img_l
-        or 'wikimedia.org' in img_l
-        or 'wikipedia.org' in src_l
-    ):
+    img_host = _url_hostname_lower(img)
+    src_host = _url_hostname_lower(src)
+
+    if _host_is_wikipedia_family(img_host) or _host_is_wikipedia_family(src_host):
         return 'wikipedia', (src or f'https://en.wikipedia.org/wiki/{title}')
-    if 'inaturalist.org' in img_l or 'inaturalist-open-data' in img_l or 'inaturalist.org' in src_l:
+    if _url_suggests_inaturalist_asset(img) or _url_suggests_inaturalist_asset(src):
         return 'inaturalist', (src or 'https://www.inaturalist.org/')
     return None, source_url
 
@@ -488,8 +529,15 @@ def _extract_common_for_hierarchy(species_name: str) -> str:
     if not species_name or not isinstance(species_name, str):
         return species_name or ""
     s = species_name.strip()
-    m = re.match(r"^.+?\s*\(([^)]+)\)\s*$", s)
-    return m.group(1).strip() if m else s
+    if len(s) > 512:
+        s = s[:512]
+    if not s.endswith(')'):
+        return s
+    open_idx = s.rfind('(')
+    if open_idx <= 0:
+        return s
+    inner = s[open_idx + 1 : -1].strip()
+    return inner if inner else s
 
 
 def _extract_wiki_search_title(species_name: str) -> str:
@@ -1037,13 +1085,15 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
         image_to_send = None
         if send_photo and image_bytes and isinstance(image_bytes, bytes) and len(image_bytes) > 0:
             image_to_send = image_bytes
-        elif send_photo and image_path and _is_safe_image_path(image_path):
-            try:
-                with open(image_path, 'rb') as f:
-                    image_to_send = f.read()
-            except OSError as e:
-                logging.warning("Cannot read image for Telegram: %s", e)
-                image_to_send = None
+        elif send_photo and image_path:
+            safe_img_path = _safe_image_path_or_none(image_path)
+            if safe_img_path:
+                try:
+                    with open(safe_img_path, 'rb') as f:
+                        image_to_send = f.read()
+                except OSError as e:
+                    logging.warning("Cannot read image for Telegram: %s", e)
+                    image_to_send = None
         if image_to_send:
             image_to_send = _compress_image_for_telegram(image_to_send)
             view_stars = app_config.get('notifications.paid_media_view_star_count')
@@ -1145,9 +1195,10 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                     r = None
             if r is None:
                 return
-            if image_path and os.path.isfile(image_path):
+            safe_rm = _safe_image_path_or_none(image_path)
+            if safe_rm and os.path.isfile(safe_rm):
                 try:
-                    os.remove(image_path)
+                    os.remove(safe_rm)
                 except OSError:
                     pass
         else:
