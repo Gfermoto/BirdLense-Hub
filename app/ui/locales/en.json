@@ -391,6 +391,7 @@
     "spectrogramRegenStarted": "Spectrogram regeneration started in background",
     "exportDataset": "Export dataset",
     "readyForTrain": "Train-ready (auto train/val split, no post-script)",
+    "includeTestSplit": "Add test split (~10%) for hold-out",
     "exporting": "Exporting...",
     "datasetExportFailed": "Dataset export failed",
     "retroExport": "Retro-export to dataset",

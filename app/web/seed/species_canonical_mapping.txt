@@ -44,6 +44,9 @@ Eurasian Magpie|Eurasian Magpie
 
 Corvus corone (Carrion Crow)|Carrion Crow
 Carrion Crow|Carrion Crow
+Corvus cornix (Hooded Crow)|Hooded Crow
+Corvus cornix|Hooded Crow
+Hooded Crow|Hooded Crow
 
 Corvus frugilegus (Rook)|Rook
 Rook|Rook

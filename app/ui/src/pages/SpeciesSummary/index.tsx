@@ -305,6 +305,18 @@ const SpeciesSummaryPage = () => {
             >
               {data.species.description}
             </Typography>
+            {data.species.metadata_source_url && (
+              <Typography variant="caption" color="text.secondary">
+                Source:{' '}
+                <a
+                  href={data.species.metadata_source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {data.species.metadata_source || data.species.metadata_source_url}
+                </a>
+              </Typography>
+            )}
           </Grid>
         </Grid>
       </Paper>

@@ -42,6 +42,33 @@ cd app && make test-web
 
 В том числе **`TestVerifyPasswordRateLimit`**: после пяти неверных паролей к `POST /api/ui/settings/verify-password` за 60 с — ответ **429** и заголовок **`Retry-After`**, отдельные счётчики по `X-Real-IP`, сброс при успешном входе ([ACCESS_CONTROL.ru](./ACCESS_CONTROL.ru.md)).
 
+### Реестр видов (species registry) — quality gate
+
+В CI (job `openapi-contract`) запускается smoke-набор:
+
+```bash
+cd app
+python -m pytest web/tests/test_species_registry.py -q
+```
+
+Проверяется:
+
+- доступность API реестра (`seed`, `backfill`, `health`, async status);
+- целостность покрытия (`coverage_percent = 100.0` после backfill);
+- отсутствие регресса в базовой нормализации.
+
+Операционный контроль на инстансе:
+
+```bash
+# health snapshot реестра (требует admin-доступ)
+curl -s http://YOUR_HOST:8085/api/ui/system/species-registry/health
+
+# ручной backfill (если нужно вне автозапуска)
+curl -s -X POST http://YOUR_HOST:8085/api/ui/system/species-registry/backfill \
+  -H "Content-Type: application/json" \
+  -d '{"dry_run": false}'
+```
+
 ### Покрытие (coverage)
 
 ```bash

@@ -113,6 +113,7 @@ export const RecordingsAndDataset = () => {
   >(null);
   const [exportingDataset, setExportingDataset] = useState(false);
   const [readyForTrain, setReadyForTrain] = useState(true);
+  const [includeTestSplit, setIncludeTestSplit] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
   const [cleanDatasetLoading, setCleanDatasetLoading] = useState(false);
   const [retroRebuild, setRetroRebuild] = useState(false);
@@ -679,6 +680,8 @@ export const RecordingsAndDataset = () => {
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
                       only_manually_corrected: onlyManuallyCorrected,
                       ready_for_train: readyForTrain,
+                      test_ratio:
+                        readyForTrain && includeTestSplit ? 0.1 : undefined,
                     });
                   } catch (e) {
                     setError(
@@ -709,6 +712,18 @@ export const RecordingsAndDataset = () => {
                   />
                 }
                 label={t('storage.readyForTrain')}
+                sx={{ alignSelf: 'flex-start' }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeTestSplit}
+                    onChange={(e) => setIncludeTestSplit(e.target.checked)}
+                    disabled={!readyForTrain}
+                    size="small"
+                  />
+                }
+                label={t('storage.includeTestSplit')}
                 sx={{ alignSelf: 'flex-start' }}
               />
               <FormControlLabel

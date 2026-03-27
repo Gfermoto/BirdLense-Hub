@@ -91,6 +91,8 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
             'name': species.name,
             'image_url': species.image_url,
             'description': species.description,
+            'metadata_source': species.metadata_source,
+            'metadata_source_url': species.metadata_source_url,
             'active': species.active,
             'parent': {'id': species.parent.id, 'name': species.parent.name} if species.parent else None,
         },
@@ -109,7 +111,13 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
             'food': [{'name': n, 'count': int(c or 0)} for n, c in food_stats],
         },
         'subspecies': [{
-            'species': {'id': c.id, 'name': c.name, 'image_url': c.image_url},
+            'species': {
+                'id': c.id,
+                'name': c.name,
+                'image_url': c.image_url,
+                'metadata_source': c.metadata_source,
+                'metadata_source_url': c.metadata_source_url,
+            },
             'stats': {
                 'detections': {
                     'detections_24h': stats_24h.get(c.id, 0),

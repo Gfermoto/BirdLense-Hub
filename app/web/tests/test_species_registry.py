@@ -1,0 +1,92 @@
+import pytest
+
+from app_config.app_config import app_config
+from services.species_registry_service import resolve_species_name
+from services.visit_processor import VisitProcessor
+from models import Species, db
+
+
+@pytest.fixture(autouse=True)
+def _disable_settings_passwords_for_registry_tests():
+    """Registry system endpoints are protected; disable passwords for this suite."""
+    old_admin = app_config.get('general.settings_password')
+    old_contrib = app_config.get('general.contributor_password')
+    app_config.set('general.settings_password', '')
+    app_config.set('general.contributor_password', '')
+    try:
+        yield
+    finally:
+        app_config.set('general.settings_password', old_admin)
+        app_config.set('general.contributor_password', old_contrib)
+
+
+class TestSpeciesRegistryApi:
+    def test_species_registry_seed_endpoint(self, client):
+        r = client.post('/api/ui/system/species-registry/seed')
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body.get('ok') is True
+        assert 'taxa_created' in body
+        assert 'aliases_created' in body
+
+    def test_species_registry_backfill_endpoint_dry_run(self, client):
+        r = client.post('/api/ui/system/species-registry/backfill', json={'dry_run': True, 'limit': 50})
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body.get('ok') is True
+        assert body.get('dry_run') is True
+        assert 'processed' in body
+        assert 'matched' in body
+        assert 'unresolved' in body
+
+    def test_species_registry_health_endpoint(self, client):
+        r = client.get('/api/ui/system/species-registry/health')
+        assert r.status_code == 200
+        body = r.get_json()
+        assert 'species_total' in body
+        assert 'species_with_taxon' in body
+        assert 'coverage_percent' in body
+        assert body['species_with_taxon'] <= body['species_total']
+
+    def test_species_registry_backfill_reaches_full_coverage(self, client):
+        r = client.post('/api/ui/system/species-registry/backfill', json={'dry_run': False})
+        assert r.status_code == 200
+        stats = r.get_json()
+        assert stats.get('ok') is True
+        health = client.get('/api/ui/system/species-registry/health')
+        assert health.status_code == 200
+        hb = health.get_json()
+        assert hb['species_total'] >= 1
+        assert hb['coverage_percent'] == 100.0
+
+    def test_species_registry_async_enrichment_status(self, client):
+        start = client.post(
+            '/api/ui/system/species-registry/enrich-metadata/start',
+            json={'limit': 10, 'retry_failed_only': False},
+        )
+        assert start.status_code in (202, 409)
+        status = client.get('/api/ui/system/species-registry/enrich-metadata/status')
+        assert status.status_code == 200
+        body = status.get_json()
+        assert body.get('status') in ('idle', 'running', 'done', 'error')
+
+
+class TestSpeciesResolverIntegration:
+    def test_visit_processor_creates_canonical_hooded_crow(self, app):
+        with app.app_context():
+            vp = VisitProcessor(db, app.logger)
+            sp = vp._get_or_create_species('Corvus cornix (Hooded Crow)')
+            assert sp is not None
+            assert sp.name == 'Hooded Crow'
+            assert sp.taxon_id is not None
+
+    def test_unresolved_name_is_logged_and_reported(self, client, app):
+        with app.app_context():
+            r = resolve_species_name('Totally Unknown Bird XYZ', source='test_case')
+            assert r.found is False
+            db.session.commit()
+        api = client.get('/api/ui/system/species-registry/unresolved?limit=20')
+        assert api.status_code == 200
+        items = (api.get_json() or {}).get('items') or []
+        assert any('Totally Unknown Bird XYZ' in (i.get('raw_name') or '') for i in items)
+
