@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
+import Tooltip from '@mui/material/Tooltip';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -721,92 +722,100 @@ export const RecordingsAndDataset = () => {
                 label={t('storage.retroExportRebuild')}
                 sx={{ alignSelf: 'flex-start' }}
               />
-              <Button
-                variant="outlined"
-                disabled={retroExporting}
-                onClick={async () => {
-                  if (
-                    retroRebuild &&
-                    !window.confirm(t('storage.retroExportRebuildConfirm'))
-                  ) {
-                    return;
-                  }
-                  setRetroExporting(true);
-                  setError(null);
-                  setSuccess(null);
-                  try {
-                    const result = await retroExportDataset(
-                      0,
-                      {
-                        start_date: operationsPeriod.start.format('YYYY-MM-DD'),
-                        end_date: operationsPeriod.end.format('YYYY-MM-DD'),
-                      },
-                      onlyManuallyCorrected,
-                      retroRebuild,
-                    );
-                    setSuccess(result);
-                    refetch();
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : t('storage.retroExportFailed'),
-                    );
-                  } finally {
-                    setRetroExporting(false);
-                  }
-                }}
-                startIcon={<FolderOpenIcon />}
+              <Tooltip
                 title={
                   retroRebuild
                     ? t('storage.retroExportRebuildHint')
                     : t('storage.retroExportHint')
                 }
-                fullWidth
               >
-                {retroExporting
-                  ? t('storage.retroExporting')
-                  : retroRebuild
-                    ? t('storage.retroExportRebuild')
-                    : t('storage.retroExport')}
-              </Button>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={retroExporting}
+                    onClick={async () => {
+                      if (
+                        retroRebuild &&
+                        !window.confirm(t('storage.retroExportRebuildConfirm'))
+                      ) {
+                        return;
+                      }
+                      setRetroExporting(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const result = await retroExportDataset(
+                          0,
+                          {
+                            start_date: operationsPeriod.start.format('YYYY-MM-DD'),
+                            end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                          },
+                          onlyManuallyCorrected,
+                          retroRebuild,
+                        );
+                        setSuccess(result);
+                        refetch();
+                      } catch (e) {
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : t('storage.retroExportFailed'),
+                        );
+                      } finally {
+                        setRetroExporting(false);
+                      }
+                    }}
+                    startIcon={<FolderOpenIcon />}
+                    fullWidth
+                  >
+                    {retroExporting
+                      ? t('storage.retroExporting')
+                      : retroRebuild
+                        ? t('storage.retroExportRebuild')
+                        : t('storage.retroExport')}
+                  </Button>
+                </span>
+              </Tooltip>
               {retroExporting && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
-              <Button
-                variant="outlined"
-                disabled={cleanDatasetLoading}
-                onClick={async () => {
-                  if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
-                  setCleanDatasetLoading(true);
-                  setError(null);
-                  setSuccess(null);
-                  try {
-                    const result = await cleanDataset({
-                      dry_run: false,
-                      remove_fullframe: true,
-                      remove_orphaned: false,
-                    });
-                    setSuccess(result);
-                    refetch();
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : t('storage.retroExportFailed'),
-                    );
-                  } finally {
-                    setCleanDatasetLoading(false);
-                  }
-                }}
-                startIcon={<BuildIcon />}
-                title={t('storage.cleanDatasetHint')}
-                fullWidth
-              >
-                {cleanDatasetLoading
-                  ? t('storage.cleanDatasetLoading')
-                  : t('storage.cleanDataset')}
-              </Button>
+              <Tooltip title={t('storage.cleanDatasetHint')}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={cleanDatasetLoading}
+                    onClick={async () => {
+                      if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
+                      setCleanDatasetLoading(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const result = await cleanDataset({
+                          dry_run: false,
+                          remove_fullframe: true,
+                          remove_orphaned: false,
+                        });
+                        setSuccess(result);
+                        refetch();
+                      } catch (e) {
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : t('storage.retroExportFailed'),
+                        );
+                      } finally {
+                        setCleanDatasetLoading(false);
+                      }
+                    }}
+                    startIcon={<BuildIcon />}
+                    fullWidth
+                  >
+                    {cleanDatasetLoading
+                      ? t('storage.cleanDatasetLoading')
+                      : t('storage.cleanDataset')}
+                  </Button>
+                </span>
+              </Tooltip>
               {cleanDatasetLoading && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
@@ -819,23 +828,26 @@ export const RecordingsAndDataset = () => {
               {t('library.sectionDb')}
             </Typography>
             <Stack spacing={2}>
-              <Button
-                variant="outlined"
-                disabled={cleanOrphanedMutation.isPending}
-                onClick={() => {
-                  if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
-                    setError(null);
-                    cleanOrphanedMutation.mutate();
-                  }
-                }}
-                startIcon={<BuildIcon />}
-                title={t('storage.cleanOrphanedVisitsHint')}
-                fullWidth
-              >
-                {cleanOrphanedMutation.isPending
-                  ? t('storage.merging')
-                  : t('storage.cleanOrphanedVisits')}
-              </Button>
+              <Tooltip title={t('storage.cleanOrphanedVisitsHint')}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    disabled={cleanOrphanedMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
+                        setError(null);
+                        cleanOrphanedMutation.mutate();
+                      }
+                    }}
+                    startIcon={<BuildIcon />}
+                    fullWidth
+                  >
+                    {cleanOrphanedMutation.isPending
+                      ? t('storage.merging')
+                      : t('storage.cleanOrphanedVisits')}
+                  </Button>
+                </span>
+              </Tooltip>
               {cleanOrphanedMutation.isPending && (
                 <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
               )}
