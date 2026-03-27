@@ -234,7 +234,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
 
 **Критерий выхода из этапа "мелкие баги/хвосты":**
-- Все issue из волн A+B закрыты (закройте на GitHub #152/#158/#160 после мержа этого коммита).
+- Все issue из волн A+B закрыты (#152/#158/#160 — PR [#176](https://github.com/Gfermoto/BirdLense-Hub/pull/176)).
 - По волне C закрыты минимум 2 задачи с максимальной пользовательской ценностью.
 - `app/web/tests` зелёные, smoke после деплоя зелёный.
 
