@@ -40,6 +40,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       queryClient.removeQueries({ queryKey: ['video-neighbors', vid] });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['unknowns'] }),
+        queryClient.invalidateQueries({ queryKey: ['unknowns-count'] }),
         queryClient.invalidateQueries({ queryKey: ['videos'] }),
         queryClient.invalidateQueries({ queryKey: ['video-neighbors'] }),
         queryClient.invalidateQueries({ queryKey: ['timeline'] }),
@@ -49,7 +50,12 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         queryClient.invalidateQueries({ queryKey: ['bird-directory'] }),
         queryClient.invalidateQueries({ queryKey: ['speciesSummary'] }),
       ]);
-      navigate('/');
+      // Prefer returning user to previous list context after deletion.
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/timeline');
+      }
     },
   });
   const { processor_version, start_time, end_time, favorite, weather, food } =

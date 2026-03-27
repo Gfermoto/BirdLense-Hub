@@ -43,3 +43,13 @@ export function getTimeRange(date: Dayjs, timeOfDay: TimeOfDay): { start: Dayjs;
     end: startOfDay.hour(endHour).minute(0).second(0).millisecond(0).subtract(1, 'millisecond'),
   };
 }
+
+/** Один календарный час (локальное время) для суточного паттерна → таймлайн. */
+export function getHourTimeRange(date: Dayjs, hour: number): { start: Dayjs; end: Dayjs } {
+  const startOfDay = date.startOf('date');
+  const h = ((hour % 24) + 24) % 24;
+  return {
+    start: startOfDay.hour(h).minute(0).second(0).millisecond(0),
+    end: startOfDay.hour(h).minute(59).second(59).millisecond(999),
+  };
+}

@@ -114,6 +114,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
       // Тот же API, что на странице Unknowns — иначе при staleTime 5m список «Неизвестные» остаётся старым.
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
@@ -132,6 +133,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     onSuccess: (data) => {
       if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });

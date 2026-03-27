@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Species registry (backend):** сервис нормализации видов, API под админ/систему, smoke `test_species_registry.py` и шаг CI в `openapi-contract`; операторская дока в [TESTING.ru.md](docs/TESTING.ru.md).
+- **Dataset export (train-ready):** `dataset_info.json` v2 с `manifest` и `quality`, опциональный `test` split в UI, query `test_ratio` / `strict_quality` на `GET /api/ui/dataset/export`, smoke `test_dataset_export_service.py` в CI; описание в [DATASETS.ru.md](docs/DATASETS.ru.md).
 - **Документация:** подготовительный чеклист перед реализацией [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) / [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — [PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) / [EN](docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md); ссылка из [ROADMAP](docs/ROADMAP.ru.md).
 - **#54 (CI):** контрактный смоук OpenAPI — новый тест `app/web/tests/test_openapi_contract.py` и job `openapi-contract` в `.github/workflows/ci-pr.yml` (гейт на PR/push в `main`/`dev`).
 - **#55 (Migration):** life list / «виды за год» покрывается самой таблицей миграции (фильтр по годам + строки и столбец Σ); отдельный дублирующий блок-чеклист на странице убран.

@@ -243,19 +243,25 @@ export const VisitCard = memo(function VisitCard({
                 size="small"
                 sx={{ height: 28 }}
               />
-              {visit.total_recording_seconds != null && (
-                <Chip
-                  icon={
-                    <Box display="flex" alignItems="center">
-                      <VideoCall sx={{ fontSize: 18 }} />
-                    </Box>
-                  }
-                  label={formatDuration(visit.total_recording_seconds)}
-                  size="small"
-                  sx={{ height: 28 }}
-                  title={t('visitCard.recordingTime')}
-                />
-              )}
+              {(() => {
+                const sec =
+                  visit.video_duration_seconds != null && visit.video_duration_seconds > 0
+                    ? visit.video_duration_seconds
+                    : visit.total_recording_seconds;
+                return sec != null && sec > 0 ? (
+                  <Chip
+                    icon={
+                      <Box display="flex" alignItems="center">
+                        <VideoCall sx={{ fontSize: 18 }} />
+                      </Box>
+                    }
+                    label={formatDuration(sec)}
+                    size="small"
+                    sx={{ height: 28 }}
+                    title={t('visitCard.recordingTime')}
+                  />
+                ) : null;
+              })()}
               {visit.weather?.temp && (
                 <Chip
                   icon={

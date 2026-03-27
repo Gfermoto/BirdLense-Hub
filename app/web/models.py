@@ -67,11 +67,22 @@ video_bird_food_association = Table(
 class Species(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(unique=True, nullable=False)
+    taxon_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("species_taxon.id"), nullable=True)
     parent_id = mapped_column(Integer, ForeignKey("species.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False)
     image_url: Mapped[str] = mapped_column(String(), nullable=True)
     description: Mapped[str] = mapped_column(String(), nullable=True)
+    metadata_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default='pending', server_default='pending')
+    metadata_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default='0')
+    metadata_error: Mapped[str] = mapped_column(String(255), nullable=True)
+    metadata_source: Mapped[str] = mapped_column(String(64), nullable=True)
+    metadata_source_url: Mapped[str] = mapped_column(String(512), nullable=True)
+    metadata_updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True)
     active: Mapped[bool] = mapped_column(
         nullable=False, default=False, server_default="false")
     video_species: Mapped[List["VideoSpecies"]
@@ -81,9 +92,69 @@ class Species(db.Model):
         "Species", back_populates="children", remote_side=[id])
     species_visits: Mapped[List["SpeciesVisit"]
                            ] = relationship(back_populates="species")
+    taxon: Mapped["SpeciesTaxon"] = relationship(back_populates="species")
 
     __table_args__ = (
         Index('ix_species_parent_id', 'parent_id'),
+        Index('ix_species_taxon_id', 'taxon_id'),
+    )
+
+
+class SpeciesTaxon(db.Model):
+    """Canonical species record (single source of truth)."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    taxon_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    scientific_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    common_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    wiki_title: Mapped[str] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    aliases: Mapped[List["SpeciesAlias"]] = relationship(
+        back_populates="taxon", cascade="all, delete-orphan")
+    species: Mapped[List["Species"]] = relationship(back_populates="taxon")
+
+    __table_args__ = (
+        Index('ix_species_taxon_common_name', 'common_name'),
+        Index('ix_species_taxon_taxon_key', 'taxon_key'),
+    )
+
+
+class SpeciesAlias(db.Model):
+    """Alias -> canonical taxon mapping."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    alias: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    alias_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    taxon_id: Mapped[int] = mapped_column(Integer, ForeignKey("species_taxon.id"), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    taxon: Mapped["SpeciesTaxon"] = relationship(back_populates="aliases")
+
+    __table_args__ = (
+        Index('ix_species_alias_alias_key', 'alias_key'),
+    )
+
+
+class SpeciesUnresolvedName(db.Model):
+    """Log unresolved species names for triage and quality gates."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    raw_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(64), nullable=True)
+    reason: Mapped[str] = mapped_column(String(255), nullable=True)
+    first_seen_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
+    seen_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+
+    __table_args__ = (
+        Index('ix_species_unresolved_normalized_key', 'normalized_key'),
+        Index('ix_species_unresolved_last_seen_at', desc('last_seen_at')),
     )
 
 

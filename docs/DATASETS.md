@@ -6,6 +6,33 @@ Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAI
 
 ---
 
+## Library operational flow (Hub)
+
+Critical daily operator happy-path in `Library`:
+
+1. **Import from disk** (`Scan and import`).
+2. **Regenerate** for the period (`Spectrograms` -> `Tracks`).
+3. **Export dataset ZIP** (optional: `only manually corrected`).
+4. **Maintenance**: use `retro-export` for backfill and `clean dataset` for cleanup.
+
+`System` metric "Unique visitors" is defined as the number of `SpeciesVisit` sessions in the selected period (visit sessions, not unique individual birds).
+
+### Train-ready export
+
+In `Library -> Export dataset`, enable **"Train-ready (auto train/val split, no post-script)"**.  
+Optionally enable **"Add test split (~10%)"** to include `test/<class>/...` (hold-out).
+
+The ZIP will include:
+- `train/<class>/...`, `val/<class>/...`, and optionally `test/<class>/...`
+- `classes.txt`
+- `dataset_info.json` — export passport (`manifest.schema=birdlense_dataset_export_v2`, filters, `split_seed`, `fingerprint_sha256_16`) and a **`quality`** block: duplicate `(video_id, track_id)` rows and cross-split `video_id` leakage.
+
+API: `GET /api/ui/dataset/export` supports `test_ratio` and `strict_quality=1` (abort export when quality gates fail).
+
+This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yolo.py` step for the basic finetuning path.
+
+---
+
 ## 1. Models
 
 | Component | Version | Trained on |

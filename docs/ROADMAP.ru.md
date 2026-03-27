@@ -9,15 +9,15 @@
 ## Текущий стек
 
 
-|                 | Версия                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| **Ultralytics** | 8.4.21 (Docker base)                                                                       |
+|                 | Версия                                                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Ultralytics** | 8.4.21 (Docker base)                                                                                                 |
 | **Платформа**   | **только x86/amd64** (Intel или AMD, 64-bit). ARM / Apple Silicon / aarch64 — **не поддерживается и не планируется** |
-| **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей |
-| **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                             |
-| **US-модель**   | `best_US.pt` — NABirds (резерв)                                                            |
-| **React**       | 19.2.4                                                                                     |
-| **Vite**        | 6.4.1                                                                                      |
+| **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей                           |
+| **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                                                       |
+| **US-модель**   | `best_US.pt` — NABirds (резерв)                                                                                      |
+| **React**       | 19.2.4                                                                                                               |
+| **Vite**        | 6.4.1                                                                                                                |
 
 
 ---
@@ -47,31 +47,35 @@ bash scripts/github-project-add-backlog-consilium.sh
 Все открытые issues/PR: `bash scripts/github-project-import-open-items.sh`. Либо вручную в интерфейсе GitHub.
 Синхронизация статусов/assignee/чеклистов: `bash scripts/github-project-sync.sh --assign Gfermoto`.
 
-| # | Тема | Issue | Приоритет / зона |
-|---|------|-------|------------------|
-| 1 | Rate limit для настроек / auth API | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) ✅ `verify-password`, доки, тесты | P2, web |
-| 2 | Скан истории git на секреты | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) ✅ gitleaks-скрипт + SECURITY EN/RU | P3, infra, documentation |
-| 3 | Скрипт `export_birdlense_to_yolo.py` | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) ✅ экспорт в YOLO cls `train/val` | P2, processor |
-| 4 | Устойчивость MQTT, док по пропускам | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) ✅ reconnect backoff + доки | P2, processor |
-| 5 | UI: бэкап/восстановление SQLite | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) ✅ backup/restore в System + docs | P3, web |
-| 6 | i18n в UI | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) ✅ locale switch + пилотная `de` | P3, web |
-| 7 | CI: периодический smoke образа | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) ✅ workflow `Docker image smoke (published)` (`ghcr ... :latest` + `/api/ui/health`) | P3, infra |
-| 8 | CI: тесты контракта OpenAPI | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` в CI + `web/tests/test_openapi_contract.py` | P3, web |
-| 9 | Чеклист видов за год / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ страница Migration: фильтр по годам + таблица (строки и Σ) — без отдельного дублирующего списка | P3, web |
-| 10 | CORS demo → конфиг/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo-host вынесен из hardcoded CORS defaults в `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS` | P3, web |
-| 11 | Доки: примеры алертов Prometheus | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md) | P3, docs |
-| 12 | Галерея: не работает — разбор и починка (opt-in) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4 | P2, web, bug |
-| 13 | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) | P2, web |
-| 14 | Навигация по видео: подряд (напр. за день), без сброса в начало списка | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | P2, web |
-| 15 | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI | P3, web |
-| 16 | Overview: «Средняя длительность» считалась по визитам, а не по записям | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug |
+
+| #   | Тема                                                                                         | Issue                                                                                                                                                            | Приоритет / зона         |
+| --- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | Rate limit для настроек / auth API                                                           | [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46) ✅ `verify-password`, доки, тесты                                                                      | P2, web                  |
+| 2   | Скан истории git на секреты                                                                  | [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) ✅ gitleaks-скрипт + SECURITY EN/RU                                                                    | P3, infra, documentation |
+| 3   | Скрипт `export_birdlense_to_yolo.py`                                                         | [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) ✅ экспорт в YOLO cls `train/val`                                                                      | P2, processor            |
+| 4   | Устойчивость MQTT, док по пропускам                                                          | [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) ✅ reconnect backoff + доки                                                                            | P2, processor            |
+| 5   | UI: бэкап/восстановление SQLite                                                              | [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) ✅ backup/restore в System + docs                                                                      | P3, web                  |
+| 6   | i18n в UI                                                                                    | [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) ✅ locale switch + пилотная `de`                                                                       | P3, web                  |
+| 7   | CI: периодический smoke образа                                                               | [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) ✅ workflow `Docker image smoke (published)` (`ghcr ... :latest` + `/api/ui/health`)                   | P3, infra                |
+| 8   | CI: тесты контракта OpenAPI                                                                  | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` в CI + `web/tests/test_openapi_contract.py`                                      | P3, web                  |
+| 9   | Чеклист видов за год / life list                                                             | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ страница Migration: фильтр по годам + таблица (строки и Σ) — без отдельного дублирующего списка     | P3, web                  |
+| 10  | CORS demo → конфиг/env                                                                       | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo-host вынесен из hardcoded CORS defaults в `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`              | P3, web                  |
+| 11  | Доки: примеры алертов Prometheus                                                             | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md)                                      | P3, docs                 |
+| 12  | Галерея: не работает — разбор и починка (opt-in)                                             | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4                                                   | P2, web, bug             |
+| 13  | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео                          | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) | P2, web                  |
+| 14  | Навигация по видео: подряд (напр. за день), без сброса в начало списка                       | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6**                                                         | P2, web                  |
+| 15  | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI                                                          | P3, web                  |
+| 16  | Overview: «Средняя длительность» считалась по визитам, а не по записям                       | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug             |
+
 
 ### Триаж: Issue или Discussion
 
-| Куда | Когда |
-|------|--------|
-| **[Issue](https://github.com/Gfermoto/BirdLense-Hub/issues)** | Понятный объём, критерий готовности, метки `area:*` и приоритет — можно класть на **Project**. |
-| **[Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** | Идея на проработку, несколько вариантов, «делать или нет», сбор мнений до задачи. |
+
+| Куда                                                                     | Когда                                                                                          |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| **[Issue](https://github.com/Gfermoto/BirdLense-Hub/issues)**            | Понятный объём, критерий готовности, метки `area:`* и приоритет — можно класть на **Project**. |
+| **[Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions)** | Идея на проработку, несколько вариантов, «делать или нет», сбор мнений до задачи.              |
+
 
 **После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
@@ -83,14 +87,17 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 Темы уже оформлены в отдельные **Issues** и добавлены на доску; приоритизируются по слотам:
 
-| Тема | Зачем |
-|------|--------|
-| **Доступность (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): клавиатура, фокус, контраст для Unknowns/Video/Migration после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
-| **Расширение E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): не только смоук — логин, таймлайн, критичные настройки, коррекция видов. |
-| **Секреты в проде** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): документированная ротация / операционный путь для `secrets.*` (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
-| **Синхронизация версий стека** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): чеклист sync VERSION/Docker/docs/release notes после bump зависимостей. |
-| **Community / донаты в UI** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): UX-эксперименты поддержки проекта при сохранении ненавязчивости; базовая ссылка уже есть: `general.donate_url`. |
-| **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): ручные отметки «видел сам», заметки — отдельно от таблицы миграции; сейчас только беклог и планы в issue, без кода. |
+
+| Тема                                       | Зачем                                                                                                                                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Доступность (a11y)**                     | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): клавиатура, фокус, контраст для Unknowns/Video/Migration после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)).     |
+| **Расширение E2E (Playwright)**            | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): не только смоук — логин, таймлайн, критичные настройки, коррекция видов.                                                              |
+| **Секреты в проде**                        | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119): документированная ротация / операционный путь для `secrets.`* (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Синхронизация версий стека**             | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120): чеклист sync VERSION/Docker/docs/release notes после bump зависимостей.                                                               |
+| **Community / донаты в UI**                | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): UX-эксперименты поддержки проекта при сохранении ненавязчивости; базовая ссылка уже есть: `general.donate_url`.                       |
+| **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): ручные отметки «видел сам», заметки — отдельно от таблицы миграции; сейчас только беклог и планы в issue, без кода.                   |
+| **Системная база видов (канонизация)**     | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168): ✅ реализовано — единый реестр видов, нормализация по ID, backfill, фоновые metadata jobs и CI smoke quality-gate для всей базы.       |
+
 
 ### Пожелания пользователей (backlog, маркет 2026)
 
@@ -99,24 +106,58 @@ bash scripts/github-project-add-backlog-consilium.sh
 **Подготовка перед реализацией ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [чеклист](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md).
 
 **Прогресс (март 2026):**
+
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
 - [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: пункт «Каталог» убран из меню, legacy `/species` редиректит на `/migration-calendar`, deep-link `/species/:id` сохранён.
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — реализовано и закрыто: диаграмма распределения видов на Overview (сектор и легенда) ведёт в Timeline с фильтрами вида и даты.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — реализовано и закрыто: добавлен фильтр периода по датам (день-точность) для Migration; применяется к таблице, но не к региональному справочнику.
 
-| # | Issue | Кратко |
-|---|--------|--------|
-| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration |
-| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен) |
-| [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview, вторая диаграмма | Клик по виду → записи этого вида за сегодня |
-| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration = вход в каталог | **Каталог из меню убрать**; миграции — главный вход к видам; клики → `/species/:id`; режимы таблицы — вкладки на странице |
-| [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Неизвестные + Timeline | Убрать пункт «Неизвестные»; режим «на проверке» на странице записей (чип + бейдж, редирект старого URL) |
-| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов | Региональные = топ eBird + услышанные BirdNET |
-| [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Период на Migration | **Диапазон с точностью до дня**; таблица + услышанные/распознанные; не на регион |
-| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы | Расширить seed + документация источника (`seed.py`) |
-| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Автозаполнение/подсказки имён — иначе расхождения с каталогом; см. риски в issue |
+**Новые идеи (март 2026) — структурированы в issues и добавлены на доску Project:**
+
+
+| #   | Тема                                                                                                                                     | Issue                                                        | Приоритет / зона                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1   | System: счётчик уникальных посетителей                                                                                                   | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) | P3, web                                                      |
+| 2   | После удаления записи возвращать в список, а не на Home                                                                                  | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) | P2, web, bug                                                 |
+| 3   | Multi-camera confidence для камер одной локации                                                                                          | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) | P2, processor                                                |
+| 4   | «Суточный паттерн»: клик должен фильтровать по часу                                                                                      | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) | P2, web, bug                                                 |
+| 5   | Несоответствие длительности записи (Home vs страница записи)                                                                             | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) | P2, web, bug                                                 |
+| 6   | Счётчик «на проверке» не обновляется без F5                                                                                              | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) | P2, web, bug                                                 |
+| 7   | Recording quality: pre-roll/post-roll, чтобы не терять прилёты/отлёты                                                                    | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) | P2, processor                                                |
+| 8   | Реэкспорт: осиротевшие распознавания без вида и без записи                                                                               | [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) | P1, processor, bug                                           |
+| 9   | UX consistency: tooltips и встроенные пояснения                                                                                          | [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) | P3, web                                                      |
+| 10  | Regenerate tracks: прогресс, 409 и timeout на больших объёмах                                                                            | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) | P1, web, bug                                                 |
+| 11  | Dataset UX: понятный сценарий в Library (обслуживание БД и получение датасета)                                                           | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) | P2, docs + web                                               |
+| 12  | Dataset pipeline: уменьшить необходимость пост-скрипта перед обучением                                                                   | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) | P2, processor                                                |
+| 13  | Detector: добавить классы не-птиц (мыши, белки, кошки)                                                                                   | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research                                      |
+| 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research                                      |
+| 15  | Telegram: поддержка SOCKS5h proxy в UI и MTProto from telebot import apihelperapihelper.proxy = {'https': 'mtproto://host:port:secret'} | sudo bash                                                    | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) |
+| 16  | Интеграция с Heimdall                                                                                                                    | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra                                                    |
+| 17  | Дальний backlog: весы корма/птиц (auto-tare + object detection)                                                                          | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) | P3, processor, research                                      |
+
+
+**Системная инициатива (приоритет P1):**
+
+- [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) — эпик «Species Canonical Registry»: не точечные заплатки по отдельным видам, а надёжный контур для всей базы (канонический реестр, универсальный резолвер имён, миграция истории, metadata enrichment, CI-инварианты).
+- Фазы эпика закрыты:
+  - [#169](https://github.com/Gfermoto/BirdLense-Hub/issues/169) — SSOT-реестр видов (canonical registry) ✅
+  - [#170](https://github.com/Gfermoto/BirdLense-Hub/issues/170) — универсальный resolver имён для всех входов ✅
+  - [#171](https://github.com/Gfermoto/BirdLense-Hub/issues/171) — backfill + repair целостности исторических данных ✅
+  - [#172](https://github.com/Gfermoto/BirdLense-Hub/issues/172) — фоновые metadata jobs (image/description) ✅
+  - [#173](https://github.com/Gfermoto/BirdLense-Hub/issues/173) — наблюдаемость и CI quality-gate ✅
+- Финальный результат (март 2026): в проде `processed=806`, `matched=806`, `unresolved=0` при старте; добавлены API `seed/backfill/unresolved/health/enrich`, async enrichment status и CI smoke-тест реестра.
+
+
+| #                                                            | Issue                             | Кратко                                                                                     |
+| ------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration                                                     |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен)                    |
+| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов                     | Региональные = топ eBird + услышанные BirdNET                                              |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | Расширить seed + документация источника (`seed.py`)                                        |
+| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping`           | Автозаполнение/подсказки имён — иначе расхождения с каталогом; см. риски в issue           |
+
 
 ---
 
@@ -124,48 +165,97 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 Исторический чеклист **от простого к сложному** (все строки — ✅). Сверяйтесь с [FEATURES](./FEATURES.ru.md); **не** воспринимать таблицу как backlog задач.
 
-| Фича                                   | Описание                                                                                      | Сложность | Риск    |
-| -------------------------------------- | --------------------------------------------------------------------------------------------- | --------- | ------- |
-| ✅ Playback speed (0.5x, 2x)            | Кнопки в видеоплеере для замедления/ускорения просмотра                                       | Низкая    | Нет     |
-| ✅ Webhook (POST при детекции)          | POST на настраиваемый URL с JSON (вид, confidence, время) — для IFTTT, Zapier                 | Низкая    | Нет     |
-| ✅ CSV/JSON экспорт статистики          | Скачать визиты, виды, детекции для анализа в Excel/Python                                     | Низкая    | Нет     |
-| ✅ Виджет «Последняя птица» на Overview | Блок «Сегодня в 14:32 — Eurasian Jay» на главной                                              | Низкая    | Нет     |
-| ✅ Фильтр по времени суток в Timeline   | «Только утро (6–10)», «только вечер» — сузить список визитов                                  | Низкая    | Нет     |
-| ✅ PWA improvements                    | Install prompt «Добавить на главный экран», offline cache для статики                         | Низкая    | Нет     |
-| ✅ «Неизвестные» (низкий confidence)   | Отдельный список детекций с confidence < порога для ручной проверки и разметки                | Средняя   | Нет     |
-| ✅ PDF-отчёт                           | Месячный отчёт: N видов, топ-5, графики — скачать PDF. v0.1.8: брендинг, шапка/футер          | Средняя   | Нет     |
-| ✅ Bird song player (Xeno-canto)       | Кнопка «Воспроизвести песню» на карточке вида — аудио из Xeno-canto API                       | Средняя   | Нет     |
-| ✅ eBird export                         | Экспорт списка видов в формат eBird для загрузки в приложение                                 | Средняя   | Нет     |
-| ✅ Grafana/Prometheus метрики         | `/metrics`, `/api/metrics` — CPU, память, диск, GPU, detections, species, videos             | Средняя   | Нет     |
-| ✅ Confidence по виду                   | Разные пороги min_confidence для разных видов (редкие — ниже)                                 | Средняя   | Низкий  |
-| ✅ Экспорт в iNaturalist               | Кнопка «Отправить в iNaturalist» — crop + вид для citizen science                             | Средняя   | Нет     |
-| ✅ Web Push                             | Push-уведомления в браузере вместо/дополнение Telegram                                        | Средняя   | Низкий  |
-| ✅ Публичная галерея                   | Opt-in: загрузка лучших кадров на настраиваемый URL. См. [CONFIGURATION](./CONFIGURATION.ru.md) — Gallery | Высокая   | Средний |
-| ✅ Календарь миграций                  | «Вид X обычно появляется в марте» — по историческим данным                                    | Высокая   | Нет     |
-| ✅ Сравнение с регионом               | Карточка на Overview: ваши виды в топе региона + полный топ региона (eBird API)               | Высокая   | Средний |
-| ✅ Закат и рассвет на карточке погоды | Восход, закат, рассвет, сумерки, полдень — дуга солнца (в стиле Horizon Card) на выбранную дату в локации из настроек | Низкая    | Нет     |
-| ✅ Видео: предыдущий/следующий (день UTC) | Страница видео + `GET /api/ui/videos/:id/neighbors` ([#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82)) | Низкая | Нет |
+
+| Фича                                     | Описание                                                                                                              | Сложность | Риск    |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| ✅ Playback speed (0.5x, 2x)              | Кнопки в видеоплеере для замедления/ускорения просмотра                                                               | Низкая    | Нет     |
+| ✅ Webhook (POST при детекции)            | POST на настраиваемый URL с JSON (вид, confidence, время) — для IFTTT, Zapier                                         | Низкая    | Нет     |
+| ✅ CSV/JSON экспорт статистики            | Скачать визиты, виды, детекции для анализа в Excel/Python                                                             | Низкая    | Нет     |
+| ✅ Виджет «Последняя птица» на Overview   | Блок «Сегодня в 14:32 — Eurasian Jay» на главной                                                                      | Низкая    | Нет     |
+| ✅ Фильтр по времени суток в Timeline     | «Только утро (6–10)», «только вечер» — сузить список визитов                                                          | Низкая    | Нет     |
+| ✅ PWA improvements                       | Install prompt «Добавить на главный экран», offline cache для статики                                                 | Низкая    | Нет     |
+| ✅ «Неизвестные» (низкий confidence)      | Отдельный список детекций с confidence < порога для ручной проверки и разметки                                        | Средняя   | Нет     |
+| ✅ PDF-отчёт                              | Месячный отчёт: N видов, топ-5, графики — скачать PDF. v0.1.8: брендинг, шапка/футер                                  | Средняя   | Нет     |
+| ✅ Bird song player (Xeno-canto)          | Кнопка «Воспроизвести песню» на карточке вида — аудио из Xeno-canto API                                               | Средняя   | Нет     |
+| ✅ eBird export                           | Экспорт списка видов в формат eBird для загрузки в приложение                                                         | Средняя   | Нет     |
+| ✅ Grafana/Prometheus метрики             | `/metrics`, `/api/metrics` — CPU, память, диск, GPU, detections, species, videos                                      | Средняя   | Нет     |
+| ✅ Confidence по виду                     | Разные пороги min_confidence для разных видов (редкие — ниже)                                                         | Средняя   | Низкий  |
+| ✅ Экспорт в iNaturalist                  | Кнопка «Отправить в iNaturalist» — crop + вид для citizen science                                                     | Средняя   | Нет     |
+| ✅ Web Push                               | Push-уведомления в браузере вместо/дополнение Telegram                                                                | Средняя   | Низкий  |
+| ✅ Публичная галерея                      | Opt-in: загрузка лучших кадров на настраиваемый URL. См. [CONFIGURATION](./CONFIGURATION.ru.md) — Gallery             | Высокая   | Средний |
+| ✅ Календарь миграций                     | «Вид X обычно появляется в марте» — по историческим данным                                                            | Высокая   | Нет     |
+| ✅ Сравнение с регионом                   | Карточка на Overview: ваши виды в топе региона + полный топ региона (eBird API)                                       | Высокая   | Средний |
+| ✅ Закат и рассвет на карточке погоды     | Восход, закат, рассвет, сумерки, полдень — дуга солнца (в стиле Horizon Card) на выбранную дату в локации из настроек | Низкая    | Нет     |
+| ✅ Видео: предыдущий/следующий (день UTC) | Страница видео + `GET /api/ui/videos/:id/neighbors` ([#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82))      | Низкая    | Нет     |
+
 
 **Новые идеи:** [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) или Issue по таблице триажа выше.
 
 ### UX-улучшения (отгружено)
 
-| Улучшение | Статус |
-|-----------|--------|
-| Календарь активности (MonthPicker) | ✅ v0.1.8 |
-| Неизвестные — пустое состояние (подсказка) | ✅ |
+
+| Улучшение                                  | Статус   |
+| ------------------------------------------ | -------- |
+| Календарь активности (MonthPicker)         | ✅ v0.1.8 |
+| Неизвестные — пустое состояние (подсказка) | ✅        |
 | Неизвестные — время суток (как в Timeline) | ✅ v0.1.9 |
+
 
 ---
 
 ## Приоритеты на ближайшее время (публично)
 
-| Приоритет | Фокус |
-|-----------|--------|
-| **Сообщество** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), метка `good first issue`, обратная связь по докам |
-| **Качество** | CI на PR (сборка UI + MkDocs `--strict`), Dependabot / зависимости |
-| **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте |
-| **Релизы** | Теги + GitHub Release → semver-образ Docker + деплой Pages |
+### Фокус №1: закрыть мелкие баги и хвосты (до полировки)
+
+Перед любыми задачами по "полировке" UI/UX закрываем накопившийся operational backlog.
+Цель этапа: снизить шум, убрать регрессии и стабилизировать ежедневный сценарий работы.
+
+**Порядок работы (без распыления):**
+
+1. **Сначала баги P1/P2**, потом удобства и косметика.
+2. Закрываем задачи **волнами** по 3-5 issue, каждая волна завершается тестами и деплоем.
+3. Для каждой закрытой задачи: PR, комментарий в issue, перевод карточки в Done.
+
+**Волна A (критичные баги, first):**
+- [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) — реэкспорт: осиротевшие распознавания без вида/записи.
+- [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) — regenerate tracks: прогресс/409/timeout на объёмах.
+- [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) — возврат в список после удаления записи.
+
+**Волна B (P2 баги UX-логики):**
+- [x] [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) — фильтр по часу из "суточного паттерна".
+- [x] [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) — рассинхрон длительности записи (Home vs детали).
+- [x] [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) — счётчик "на проверке" без F5.
+- Статус: **закрыто** (issue закрыты, карточки на доске переведены в Done, деплой выполнен).
+
+**Волна C (мелкие задачи и техдолг перед полировкой):**
+- [x] [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) — счётчик уникальных посетителей.
+- [x] [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) — consistency tooltips/встроенных пояснений.
+- [x] [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
+- [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
+
+**Критерий выхода из этапа "мелкие баги/хвосты":**
+- Все issue из волн A+B закрыты.
+- По волне C закрыты минимум 2 задачи с максимальной пользовательской ценностью.
+- `app/web/tests` зелёные, smoke после деплоя зелёный.
+
+### Фокус №2: подготовка к дообучению (после bug-burndown)
+
+После закрытия волн A+B переходим к "Dataset Readiness":
+- канонический экспорт train/val/test + манифест версии датасета;
+- quality-gates (дубликаты, leakage, пустые классы, min per class);
+- воспроизводимость (паспорт датасета и фиксированные фильтры);
+- CI smoke на сборку и валидацию выгрузки.
+
+**Срез 1 ✅:** экспорт Hub — `dataset_info.json` v2 (`manifest` + `quality`), опциональный `test` split, параметр `strict_quality`; см. [DATASETS.ru.md](./DATASETS.ru.md). Влито в `dev`, PR в `main`: [#174](https://github.com/Gfermoto/BirdLense-Hub/pull/174).
+
+
+| Приоритет        | Фокус                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Сообщество**   | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), метка `good first issue`, обратная связь по докам |
+| **Качество**     | CI на PR (сборка UI + MkDocs `--strict`), Dependabot / зависимости                                                      |
+| **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте                                        |
+| **Релизы**       | Теги + GitHub Release → semver-образ Docker + деплой Pages                                                              |
+
 
 Таблица **архива** выше — только история. Активная работа — issues **консилиума** и блок **кандидатов**; сверяйтесь с [FEATURES](./FEATURES.ru.md).
 
