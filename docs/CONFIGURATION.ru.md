@@ -358,8 +358,10 @@ rule_files:
 | `ebird_api_key` | eBird API для сравнения с регионом (ebird.org/api/keygen) |
 | `latitude`, `longitude` | Координаты для погоды и eBird |
 
+**Ротация в проде** (бэкап, перезапуск, проверка, откат): [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md).
+
 ---
 
 ## См. также
 
-[INSTALL](./INSTALL.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [API](./API.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md)
+[INSTALL](./INSTALL.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [API](./API.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.ru.md)

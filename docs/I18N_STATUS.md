@@ -54,6 +54,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
 | SECURITY (analysis in docs/) | ✅ | ✅ |
+| SECRETS_ROTATION (ops runbook) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |
 | GOVERNANCE (process / observer) | ✅ | ✅ |
 | GITHUB_SETUP_GH | ✅ | ✅ (RU primary) |

@@ -43,6 +43,8 @@
 | **Medium** | `settings_password` in plain text. In default_config: *"Consider hashing for production"*. | Store hash (bcrypt/argon2). |
 | **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |
 
+**Operator runbook:** [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) — full inventory, rotation steps, verification, rollback, emergency note template ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
+
 ---
 
 ## 3. Path Traversal (nginx)
@@ -141,6 +143,7 @@ Current baseline (Mar 2026): scan of full git history completed with **no leaks 
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
 6. **Docker:** run container as non-privileged user.
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
+8. **Secret rotation:** follow [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (prod ops).
 
 ---
 

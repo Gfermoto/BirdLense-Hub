@@ -69,6 +69,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
 | Doc conventions | [Documentation.md](./Documentation.md) |
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
