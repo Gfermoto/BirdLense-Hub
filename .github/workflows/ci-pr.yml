@@ -38,6 +38,9 @@ jobs:
       - name: Dataset export smoke tests
         run: python -m pytest web/tests/test_dataset_export_service.py -q
 
+      - name: Util metadata / URL parsing tests
+        run: python -m pytest web/tests/test_util_metadata.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:

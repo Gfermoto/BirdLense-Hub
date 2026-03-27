@@ -31,9 +31,12 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
         return False
 
     wav_path = None
+    wav_fd = None
     try:
-        # Extract audio with ffmpeg
-        wav_path = tempfile.mktemp(suffix='.wav')
+        # Extract audio with ffmpeg (mkstemp — атомарное создание, без гонок как у mktemp)
+        wav_fd, wav_path = tempfile.mkstemp(suffix='.wav')
+        os.close(wav_fd)
+        wav_fd = None
         cmd = [
             'ffmpeg', '-y', '-loglevel', 'error',
             '-i', video_path,
@@ -75,6 +78,11 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
         logger.exception(f"Spectrogram generation failed: {e}")
         return False
     finally:
+        if wav_fd is not None:
+            try:
+                os.close(wav_fd)
+            except OSError:
+                pass
         if wav_path and os.path.isfile(wav_path):
             try:
                 os.remove(wav_path)

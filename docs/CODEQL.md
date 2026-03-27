@@ -36,9 +36,11 @@ Run **`scripts/codeql-local.sh`** (requires `gh`, `unzip`, Node **22+**, Python 
 
 ### Sample review (security-extended)
 
-Latest local run: **4** Python + **1** JavaScript finding — see the table in [CODEQL.ru.md](./CODEQL.ru.md) (Russian section “Пример результата ревью”) for triage notes (ReDoS on species regex, path-injection guarded by `_is_safe_image_path`, SW `postMessage` origin).
+Previously reported Python findings in `util.py`, `spectrogram.py`, and go2RTC logging were addressed in code (see [CODEQL.ru.md](./CODEQL.ru.md)); optional SW `postMessage` hardening remains documented there.
 
-CI does **not** need to be green in branch protection unless you add **CodeQL** as a required check in the repository ruleset.
+The PR **Code scanning** aggregate (open alerts) is separate from the **CodeQL** workflow job success; align branch rules accordingly.
+
+CI does **not** need to be green in branch protection unless you add **CodeQL** / code scanning as a required check in the repository ruleset.
 
 ## Related
 

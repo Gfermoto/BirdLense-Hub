@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **CodeQL / code scanning:** устранены открытые Python-алерты без «принятия риска» — `urlparse` для источников метаданных, линейный разбор скобок вместо ReDoS-регекса, `_safe_image_path_or_none` для Telegram crop, `mkstemp` в спектрограмме, редактирование URL в логах go2RTC; тесты `test_util_metadata.py`; см. [CODEQL.ru.md](docs/CODEQL.ru.md).
 - **Migration UI:** убран дублирующий блок «чеклист за год» над таблицей — те же виды и суммы уже есть в таблице миграции.
 - **#56 (CORS config):** demo-host удалён из hardcoded CORS defaults; теперь базовые non-localhost origins задаются через `CORS_DEFAULT_ORIGINS` (и runtime `CORS_ORIGINS`), что безопаснее для self-hosting.
 
