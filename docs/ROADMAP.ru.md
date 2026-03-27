@@ -231,7 +231,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [x] [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) — счётчик уникальных посетителей.
 - [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) — consistency tooltips/встроенных пояснений.
 - [x] [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
-- [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
+- [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
 
 **Критерий выхода из этапа "мелкие баги/хвосты":**
 - Все issue из волн A+B закрыты.
