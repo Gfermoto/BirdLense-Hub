@@ -42,6 +42,64 @@ class TestMetrics:
         assert 'birdlense_disk_used_percent' in body
         assert 'birdlense_detections_total' in body
 
+    def test_system_metrics_include_unique_visitors(self, app, client):
+        from models import db, Species, SpeciesVisit
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        with app.app_context():
+            sp = Species(name='Test species unique visitors')
+            db.session.add(sp)
+            db.session.flush()
+            db.session.add(SpeciesVisit(
+                species_id=sp.id,
+                start_time=now,
+                end_time=now,
+                max_simultaneous=1,
+            ))
+            db.session.commit()
+        r = client.get('/api/ui/system/metrics', query_string={'visitors_days': 7})
+        assert r.status_code == 200
+        assert 'visitors' in r.json
+        assert r.json['visitors']['period_days'] == 7
+        assert r.json['visitors']['method'] == 'species_visit_sessions'
+        assert isinstance(r.json['visitors']['unique_visits'], int)
+        assert r.json['visitors']['unique_visits'] >= 1
+
+
+class TestLibraryDatasetFlow:
+    """Smoke for critical Library dataset happy-path endpoints."""
+
+    def test_library_dataset_endpoints_smoke(self, app, client):
+        from app_config.app_config import app_config
+
+        with app.app_context():
+            old_admin = app_config.get('general.settings_password')
+            old_contrib = app_config.get('general.contributor_password')
+            app_config.set('general.settings_password', '')
+            app_config.set('general.contributor_password', '')
+            try:
+                r_stats = client.get('/api/ui/storage/stats')
+                assert r_stats.status_code == 200
+                assert isinstance(r_stats.json, list)
+
+                r_spec_status = client.get('/api/ui/system/regenerate-spectrograms/status')
+                assert r_spec_status.status_code == 200
+                assert 'status' in r_spec_status.json
+
+                r_tracks_status = client.get('/api/ui/system/regenerate-tracks/status')
+                assert r_tracks_status.status_code == 200
+                assert 'status' in r_tracks_status.json
+
+                r_clean = client.post('/api/ui/dataset/clean', json={
+                    'dry_run': True,
+                    'remove_fullframe': False,
+                    'remove_orphaned': False,
+                })
+                assert r_clean.status_code == 200
+                assert 'dry_run' in r_clean.json
+            finally:
+                app_config.set('general.settings_password', old_admin)
+                app_config.set('general.contributor_password', old_contrib)
+
 
 class TestTimelineExport:
     """Timeline export CSV/JSON."""

@@ -130,6 +130,8 @@ export const RecordingsAndDataset = () => {
     end: dayjs(),
   }));
   const [onlyManuallyCorrected, setOnlyManuallyCorrected] = useState(false);
+  const POLL_INTERVAL_MS = 2000;
+  const POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2h for large historical batches
 
   const { refetch } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
@@ -235,12 +237,17 @@ export const RecordingsAndDataset = () => {
     { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
-      await axios.post(
-        `${BASE_API_URL}/system/regenerate-spectrograms`,
-        params || {},
-      );
-      for (let i = 0; i < 600; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
+      try {
+        await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {});
+      } catch (e) {
+        // 409 means a batch is already running; attach to its status stream.
+        if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
+          throw e;
+        }
+      }
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         const result = await pollRegenerateStatus();
         if (result) return result;
       }
@@ -261,10 +268,10 @@ export const RecordingsAndDataset = () => {
     },
     onError: (err: unknown) => {
       setSpectrogramProgress(null);
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error ||
-        (err instanceof Error ? err.message : t('storage.regenerateFailed'));
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: string } | undefined)?.error ||
+          err.message
+        : (err instanceof Error ? err.message : t('storage.regenerateFailed'));
       setError(msg);
     },
   });
@@ -275,12 +282,17 @@ export const RecordingsAndDataset = () => {
     { force?: boolean; start_date?: string; end_date?: string }
   >({
     mutationFn: async (params) => {
-      await axios.post(
-        `${BASE_API_URL}/system/regenerate-tracks`,
-        params || {},
-      );
-      for (let i = 0; i < 1800; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
+      try {
+        await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {});
+      } catch (e) {
+        // 409 means a batch is already running; attach to in-progress batch.
+        if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
+          throw e;
+        }
+      }
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         const result = await pollRegenerateTracksStatus();
         if (result) return result;
       }
@@ -303,9 +315,11 @@ export const RecordingsAndDataset = () => {
     },
     onError: (err) => {
       setTracksProgress(null);
-      setError(
-        err instanceof Error ? err.message : t('storage.regenerateTracksFailed'),
-      );
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data as { error?: string } | undefined)?.error ||
+          err.message
+        : (err instanceof Error ? err.message : t('storage.regenerateTracksFailed'));
+      setError(msg);
     },
   });
 
@@ -515,6 +529,19 @@ export const RecordingsAndDataset = () => {
               />
             </Stack>
           </Paper>
+
+          <Alert severity="info" sx={{ '& ol': { m: 0, pl: 2.5 } }}>
+            <AlertTitle>{t('library.datasetFlowTitle')}</AlertTitle>
+            <Typography variant="body2" color="inherit" sx={{ mb: 1 }}>
+              {t('library.datasetFlowIntro')}
+            </Typography>
+            <ol>
+              <li>{t('library.datasetFlowStep1')}</li>
+              <li>{t('library.datasetFlowStep2')}</li>
+              <li>{t('library.datasetFlowStep3')}</li>
+              <li>{t('library.datasetFlowStep4')}</li>
+            </ol>
+          </Alert>
 
           {/* 1. Импорт */}
           <Paper sx={{ p: 2 }}>
