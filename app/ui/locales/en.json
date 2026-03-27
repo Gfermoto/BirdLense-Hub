@@ -28,7 +28,13 @@
     "sectionImport": "Import from disk",
     "sectionRegenerate": "Regenerate",
     "sectionDataset": "Dataset",
-    "sectionDb": "Database maintenance"
+    "sectionDb": "Database maintenance",
+    "datasetFlowTitle": "Operator flow (short)",
+    "datasetFlowIntro": "Run steps in order for predictable output.",
+    "datasetFlowStep1": "Import new recordings from disk.",
+    "datasetFlowStep2": "Regenerate spectrograms and tracks for the selected period.",
+    "datasetFlowStep3": "Export dataset ZIP (optionally only manually corrected detections).",
+    "datasetFlowStep4": "Use retro-export and clean dataset for backfill/cleanup."
   },
   "overview": {
     "lastBird": "Last bird today",
@@ -605,6 +611,11 @@
     "processorMqtt": "Processor MQTT (Frigate/BirdNET)",
     "gpu": "GPU",
     "gpuNoData": "No metrics (sysfs). If Intel recording fails, switch to CPU in Settings → Video.",
+    "uniqueVisitors": "Unique Visitors",
+    "uniqueVisitorsPeriod": "Metric period",
+    "lastDays_one": "Last {{count}} day",
+    "lastDays_other": "Last {{count}} days",
+    "uniqueVisitorsHint": "Uniqueness is counted as SpeciesVisit sessions over {{days}} day(s) (active days: {{activeDays}}).",
     "errorLoadMetrics": "Error loading system metrics",
     "usagePercent": "{{percent}}% Usage"
   },

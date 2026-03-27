@@ -11,6 +11,14 @@ import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import func, select, exists
 from services.retention_service import run_retention
+from services.species_registry_service import (
+    ensure_species_registry_seeded,
+    backfill_species_taxa,
+    enrich_species_metadata,
+    enrich_species_metadata_with_status,
+    species_registry_health,
+    unresolved_species_report,
+)
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
 
@@ -19,6 +27,8 @@ _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress
 _regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
 _regenerate_lock = threading.Lock()
 _regenerate_tracks_lock = threading.Lock()
+_species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_species_metadata_lock = threading.Lock()
 
 
 IMPORT_SPECIES_NAME = "Unknown"
@@ -26,7 +36,7 @@ LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 
 
-def _collect_system_metrics_dict(app):
+def _collect_system_metrics_dict(app, visitors_days: int = 7):
     """Собирает системные метрики (CPU, память, диск, GPU). Используется в system_metrics и /api/metrics."""
     cpu_percent = psutil.cpu_percent(interval=0.5)
     memory = psutil.virtual_memory()
@@ -78,6 +88,16 @@ def _collect_system_metrics_dict(app):
         except Exception as e:
             app.logger.warning("gpu_stats: %s", e)
 
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    days = max(1, min(int(visitors_days or 7), 365))
+    start_utc = now_utc - timedelta(days=days)
+    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
+        SpeciesVisit.start_time >= start_utc
+    ).scalar() or 0
+    active_days = db.session.query(
+        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
+    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
+
     return {
         'cpu': {'percent': cpu_percent},
         'memory': {
@@ -89,6 +109,12 @@ def _collect_system_metrics_dict(app):
         'encoding_used': encoding_used,
         'processor_mqtt': processor_mqtt,
         'gpu_percent': gpu_percent,
+        'visitors': {
+            'period_days': days,
+            'unique_visits': int(unique_visit_sessions),
+            'active_days': int(active_days),
+            'method': 'species_visit_sessions',
+        },
     }
 
 
@@ -161,7 +187,11 @@ def register_routes(app):
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
         try:
-            m = _collect_system_metrics_dict(app)
+            try:
+                visitors_days = int(request.args.get('visitors_days', '7'))
+            except (TypeError, ValueError):
+                visitors_days = 7
+            m = _collect_system_metrics_dict(app, visitors_days=visitors_days)
             return {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
@@ -170,6 +200,7 @@ def register_routes(app):
                 'encoding_used': m['encoding_used'],
                 'processor_mqtt': m['processor_mqtt'],
                 'gpu_percent': m['gpu_percent'],
+                'visitors': m['visitors'],
             }
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
@@ -987,4 +1018,149 @@ def register_routes(app):
         except Exception as e:
             db.session.rollback()
             app.logger.exception('Merge duplicate species failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/seed', methods=['POST'])
+    def seed_species_registry():
+        """Seed canonical species registry and aliases from mapping file."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            stats = ensure_species_registry_seeded()
+            return {'ok': True, **stats}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Seed species registry failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/backfill', methods=['POST'])
+    def run_species_registry_backfill():
+        """
+        Backfill existing Species rows with canonical taxon links.
+        body: {"dry_run": true|false, "limit": 500}
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            limit = payload.get('limit')
+            if limit is not None:
+                try:
+                    limit = int(limit)
+                except (ValueError, TypeError):
+                    return {'error': 'limit must be int'}, 400
+            stats = backfill_species_taxa(dry_run=dry_run, limit=limit)
+            return {'ok': True, **stats}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Species registry backfill failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/unresolved', methods=['GET'])
+    def get_unresolved_species_names():
+        """Top unresolved species names captured by resolver."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            raw_limit = request.args.get('limit', 100)
+            try:
+                limit = int(raw_limit)
+            except (ValueError, TypeError):
+                limit = 100
+            items = unresolved_species_report(limit=limit)
+            return {'items': items, 'count': len(items)}, 200
+        except Exception as e:
+            app.logger.exception('Unresolved species report failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/enrich-metadata', methods=['POST'])
+    def run_species_registry_metadata_enrichment():
+        """
+        Batch metadata enrichment for species cards.
+        body: {"dry_run": true|false, "limit": 200}
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            raw_limit = payload.get('limit', 200)
+            try:
+                limit = int(raw_limit)
+            except (TypeError, ValueError):
+                return {'error': 'limit must be int'}, 400
+            stats = enrich_species_metadata(limit=limit, dry_run=dry_run)
+            return {'ok': True, **stats}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Species metadata enrichment failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/enrich-metadata/start', methods=['POST'])
+    def start_species_registry_metadata_enrichment():
+        """
+        Start async enrichment batch.
+        body: {"limit": 300, "retry_failed_only": false}
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _species_metadata_lock:
+            if _species_metadata_status.get('status') == 'running':
+                return {'error': 'Enrichment already running', 'status': _species_metadata_status}, 409
+            payload = request.get_json(silent=True) or {}
+            try:
+                limit = int(payload.get('limit', 300))
+            except (ValueError, TypeError):
+                return {'error': 'limit must be int'}, 400
+            retry_failed_only = bool(payload.get('retry_failed_only', False))
+            _species_metadata_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': {'limit': limit, 'retry_failed_only': retry_failed_only},
+            })
+
+            def _run():
+                try:
+                    with app.app_context():
+                        stats = enrich_species_metadata_with_status(
+                            limit=limit,
+                            dry_run=False,
+                            retry_failed_only=retry_failed_only,
+                        )
+                    with _species_metadata_lock:
+                        _species_metadata_status.update({
+                            'status': 'done',
+                            'result': stats,
+                            'error': None,
+                        })
+                except Exception as e:
+                    with _species_metadata_lock:
+                        _species_metadata_status.update({
+                            'status': 'error',
+                            'result': None,
+                            'error': str(e),
+                        })
+
+            threading.Thread(target=_run, daemon=True).start()
+            return {'message': 'Species metadata enrichment started', 'status': _species_metadata_status}, 202
+
+    @app.route('/api/ui/system/species-registry/enrich-metadata/status', methods=['GET'])
+    def species_registry_metadata_enrichment_status():
+        """Get async enrichment status."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _species_metadata_lock:
+            return dict(_species_metadata_status), 200
+
+    @app.route('/api/ui/system/species-registry/health', methods=['GET'])
+    def get_species_registry_health():
+        """Registry rollout health metrics."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            return species_registry_health(), 200
+        except Exception as e:
+            app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500

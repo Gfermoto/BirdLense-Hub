@@ -6,6 +6,19 @@ Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAI
 
 ---
 
+## Library operational flow (Hub)
+
+Critical daily operator happy-path in `Library`:
+
+1. **Import from disk** (`Scan and import`).
+2. **Regenerate** for the period (`Spectrograms` -> `Tracks`).
+3. **Export dataset ZIP** (optional: `only manually corrected`).
+4. **Maintenance**: use `retro-export` for backfill and `clean dataset` for cleanup.
+
+`System` metric "Unique visitors" is defined as the number of `SpeciesVisit` sessions in the selected period (visit sessions, not unique individual birds).
+
+---
+
 ## 1. Models
 
 | Component | Version | Trained on |

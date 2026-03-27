@@ -28,7 +28,13 @@
     "sectionImport": "Импорт с диска",
     "sectionRegenerate": "Регенерация",
     "sectionDataset": "Датасет",
-    "sectionDb": "Обслуживание БД"
+    "sectionDb": "Обслуживание БД",
+    "datasetFlowTitle": "Операторский сценарий (коротко)",
+    "datasetFlowIntro": "Делайте шаги по порядку для предсказуемого результата.",
+    "datasetFlowStep1": "Импортируйте новые записи с диска.",
+    "datasetFlowStep2": "Пересоберите спектрограммы и треки за выбранный период.",
+    "datasetFlowStep3": "Экспортируйте ZIP датасета (при необходимости включите «только вручную подтверждённые»).",
+    "datasetFlowStep4": "При доэкспорте/чистке используйте retro-export и clean dataset."
   },
   "overview": {
     "lastBird": "Последняя птица сегодня",
@@ -605,6 +611,13 @@
     "processorMqtt": "MQTT процессора (Frigate/BirdNET)",
     "gpu": "GPU",
     "gpuNoData": "Метрики нет (sysfs). Если запись с Intel не идёт — в Настройках → Видео выберите CPU.",
+    "uniqueVisitors": "Уникальные посетители",
+    "uniqueVisitorsPeriod": "Период метрики",
+    "lastDays_one": "Последний {{count}} день",
+    "lastDays_few": "Последние {{count}} дня",
+    "lastDays_many": "Последние {{count}} дней",
+    "lastDays_other": "Последние {{count}} дней",
+    "uniqueVisitorsHint": "Уникальность считается как число сессий SpeciesVisit за {{days}} дн. (активных дней: {{activeDays}}).",
     "errorLoadMetrics": "Ошибка загрузки метрик системы",
     "usagePercent": "Использование {{percent}}%"
   },
