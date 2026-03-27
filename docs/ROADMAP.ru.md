@@ -246,7 +246,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - воспроизводимость (паспорт датасета и фиксированные фильтры);
 - CI smoke на сборку и валидацию выгрузки.
 
-**Срез 1 (в работе):** экспорт Hub — `dataset_info.json` v2 (`manifest` + `quality`), опциональный `test` split, параметр `strict_quality`; см. [DATASETS.ru.md](./DATASETS.ru.md).
+**Срез 1 ✅:** экспорт Hub — `dataset_info.json` v2 (`manifest` + `quality`), опциональный `test` split, параметр `strict_quality`; см. [DATASETS.ru.md](./DATASETS.ru.md). Влито в `dev`, PR в `main`: [#174](https://github.com/Gfermoto/BirdLense-Hub/pull/174).
 
 
 | Приоритет        | Фокус                                                                                                                   |
