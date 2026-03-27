@@ -217,9 +217,9 @@ bash scripts/github-project-add-backlog-consilium.sh
 3. Для каждой закрытой задачи: PR, комментарий в issue, перевод карточки в Done.
 
 **Волна A (критичные баги, first):**
-- [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) — реэкспорт: осиротевшие распознавания без вида/записи.
-- [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) — regenerate tracks: прогресс/409/timeout на объёмах.
-- [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) — возврат в список после удаления записи.
+- [x] [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) — реэкспорт: сироты попадают в выборку при фильтре дат; retention каскадно чистит детекции/визиты; тест `test_retro_export_deletes_orphan_with_date_filter`.
+- [x] [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) — poll regenerate spectrograms/tracks: `JOB_STATUS_POLL_TIMEOUT_MS` (120s); 409 → attach к job.
+- [x] [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) — после удаления записи: `state.from` или `/library`; `state` с Timeline/Unknowns и при листании соседей.
 
 **Волна B (P2 баги UX-логики):**
 - [x] [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) — фильтр по часу из "суточного паттерна".
@@ -234,7 +234,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
 
 **Критерий выхода из этапа "мелкие баги/хвосты":**
-- Все issue из волн A+B закрыты.
+- Все issue из волн A+B закрыты (закройте на GitHub #152/#158/#160 после мержа этого коммита).
 - По волне C закрыты минимум 2 задачи с максимальной пользовательской ценностью.
 - `app/web/tests` зелёные, smoke после деплоя зелёный.
 
@@ -248,7 +248,9 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **Срез 1 ✅:** экспорт Hub — `dataset_info.json` v2 (`manifest` + `quality`), опциональный `test` split, параметр `strict_quality`; см. [DATASETS.ru.md](./DATASETS.ru.md). Влито в `dev`, PR в `main`: [#174](https://github.com/Gfermoto/BirdLense-Hub/pull/174).
 
-**Срез 2:** `strict_quality` дополняется отказом выгрузки, если класс отброшен из‑за `min_images_per_class` (без скрытого «недонабора» ярлыков); чекбокс в Library при «готово к train».
+**Срез 2 ✅:** `strict_quality` дополняется отказом выгрузки, если класс отброшен из‑за `min_images_per_class` (без скрытого «недонабора» ярлыков); чекбокс в Library при «готово к train». PR [#175](https://github.com/Gfermoto/BirdLense-Hub/pull/175).
+
+**Фокус №2 (итог по плану):** train/val/test + манифест v2 + quality/leakage/strict + fingerprint + CI smokes + срез 2 — **закрыто в коде**; дальнейшее — только по новым issues.
 
 
 | Приоритет        | Фокус                                                                                                                   |

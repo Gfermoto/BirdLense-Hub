@@ -18,6 +18,9 @@ export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
 axios.defaults.timeout = 30000;
 
+/** Длинный timeout для опроса фоновых job (spectrogram / tracks): дефолт 30s рвёт poll на медленном ответе. */
+export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
+
 /**
  * Resolve image URL for display.
  * - Absolute (http/https) → as-is

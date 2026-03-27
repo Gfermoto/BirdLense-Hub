@@ -26,6 +26,7 @@ import MergeTypeIcon from '@mui/icons-material/MergeType';
 import BuildIcon from '@mui/icons-material/Build';
 import {
   BASE_API_URL,
+  JOB_STATUS_POLL_TIMEOUT_MS,
   exportDataset,
   retroExportDataset,
   cleanDataset,
@@ -154,7 +155,9 @@ export const RecordingsAndDataset = () => {
         result: RegenerateSpectrogramsResponse | null;
         error: string | null;
         progress?: { processed: number; total: number };
-      }>(`${BASE_API_URL}/system/regenerate-spectrograms/status`);
+      }>(`${BASE_API_URL}/system/regenerate-spectrograms/status`, {
+        timeout: JOB_STATUS_POLL_TIMEOUT_MS,
+      });
       if (data.progress && data.progress.total > 0) {
         setSpectrogramProgress({
           processed: data.progress.processed,
@@ -187,7 +190,9 @@ export const RecordingsAndDataset = () => {
           failed: number;
           skipped: number;
         };
-      }>(`${BASE_API_URL}/system/regenerate-tracks/status`);
+      }>(`${BASE_API_URL}/system/regenerate-tracks/status`, {
+        timeout: JOB_STATUS_POLL_TIMEOUT_MS,
+      });
       if (data.progress && data.progress.total > 0) {
         setTracksProgress({
           processed: data.progress.processed,
@@ -242,7 +247,9 @@ export const RecordingsAndDataset = () => {
   >({
     mutationFn: async (params) => {
       try {
-        await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {});
+        await axios.post(`${BASE_API_URL}/system/regenerate-spectrograms`, params || {}, {
+          timeout: JOB_STATUS_POLL_TIMEOUT_MS,
+        });
       } catch (e) {
         // 409 means a batch is already running; attach to its status stream.
         if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
@@ -287,7 +294,9 @@ export const RecordingsAndDataset = () => {
   >({
     mutationFn: async (params) => {
       try {
-        await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {});
+        await axios.post(`${BASE_API_URL}/system/regenerate-tracks`, params || {}, {
+          timeout: JOB_STATUS_POLL_TIMEOUT_MS,
+        });
       } catch (e) {
         // 409 means a batch is already running; attach to in-progress batch.
         if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
