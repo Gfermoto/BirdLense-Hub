@@ -391,6 +391,7 @@
     "spectrogramRegenStarted": "Генерация спектрограмм запущена в фоне",
     "exportDataset": "Экспорт датасета",
     "readyForTrain": "Готово к train (авто split train/val, без пост-скрипта)",
+    "includeTestSplit": "Добавить test split (~10%) для hold-out",
     "exporting": "Экспорт...",
     "datasetExportFailed": "Ошибка экспорта датасета",
     "retroExport": "Ретроэкспорт в датасет",

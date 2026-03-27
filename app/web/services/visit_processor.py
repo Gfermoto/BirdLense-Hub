@@ -3,6 +3,7 @@ from typing import List, Dict, Optional, Tuple
 import json
 from models import Video, Species, VideoSpecies, SpeciesVisit
 from util import update_species_info_from_wiki, get_parent_name_for_species
+from services.species_registry_service import resolve_species_name
 
 
 def _ensure_utc(dt: datetime) -> datetime:
@@ -178,20 +179,35 @@ class VisitProcessor:
             return None
         if normalized.lower() == 'bird':
             normalized = 'Bird'
-        species = Species.query.filter_by(name=normalized).first()
+        resolution = resolve_species_name(normalized, source="ingest")
+        canonical_name = resolution.taxon.common_name if resolution.found and resolution.taxon else normalized
+
+        species = Species.query.filter_by(name=canonical_name).first()
         if species:
+            if resolution.found and resolution.taxon and species.taxon_id != resolution.taxon.id:
+                species.taxon_id = resolution.taxon.id
             return species
         birds = Species.query.filter_by(name='Birds').first()
         parent_id = birds.id if birds else None
-        parent_name = get_parent_name_for_species(normalized)
+        parent_name = get_parent_name_for_species(canonical_name)
         if parent_name:
             parent_species = Species.query.filter_by(name=parent_name).first()
             if parent_species:
                 parent_id = parent_species.id
-        species = Species(name=normalized, parent_id=parent_id, active=False)
+        species = Species(
+            name=canonical_name,
+            parent_id=parent_id,
+            active=False,
+            taxon_id=resolution.taxon.id if resolution.found and resolution.taxon else None,
+        )
         self.db.session.add(species)
         self.db.session.flush()
-        self.logger.info(f'Created species "{normalized}" (parent_id={parent_id})')
+        self.logger.info(
+            'Created species "%s" (parent_id=%s, resolver_method=%s)',
+            canonical_name,
+            parent_id,
+            resolution.method,
+        )
         return species
 
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:

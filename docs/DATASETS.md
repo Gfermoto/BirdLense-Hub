@@ -20,11 +20,14 @@ Critical daily operator happy-path in `Library`:
 ### Train-ready export
 
 In `Library -> Export dataset`, enable **"Train-ready (auto train/val split, no post-script)"**.  
+Optionally enable **"Add test split (~10%)"** to include `test/<class>/...` (hold-out).
+
 The ZIP will include:
-- `train/<class>/...`
-- `val/<class>/...`
+- `train/<class>/...`, `val/<class>/...`, and optionally `test/<class>/...`
 - `classes.txt`
-- `dataset_info.json`
+- `dataset_info.json` — export passport (`manifest.schema=birdlense_dataset_export_v2`, filters, `split_seed`, `fingerprint_sha256_16`) and a **`quality`** block: duplicate `(video_id, track_id)` rows and cross-split `video_id` leakage.
+
+API: `GET /api/ui/dataset/export` supports `test_ratio` and `strict_quality=1` (abort export when quality gates fail).
 
 This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yolo.py` step for the basic finetuning path.
 

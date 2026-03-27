@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import io
+import json
 import zipfile
 
 from models import db, Species, Video, VideoSpecies
@@ -93,3 +94,63 @@ class TestDatasetExportOrphans:
         assert any(n.startswith('val/A/') for n in names)
         assert any(n.startswith('train/B/') for n in names)
         assert any(n.startswith('val/B/') for n in names)
+
+    def test_ready_for_train_test_split_and_manifest(self, tmp_path, monkeypatch):
+        train_a = tmp_path / 'dataset' / 'train' / 'A'
+        train_a.mkdir(parents=True, exist_ok=True)
+        for i in range(20):
+            (train_a / f'100_{i}_{i}.jpg').write_bytes(b'x')
+        monkeypatch.setattr(des, 'data_dir', lambda: str(tmp_path))
+        monkeypatch.setattr(des, '_get_image_dimensions', lambda _p: None)
+
+        zip_bytes, err = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.2,
+            test_ratio=0.15,
+            split_seed=7,
+            min_images_per_class=1,
+        )
+        assert err is None
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes), 'r')
+        names = set(zf.namelist())
+        assert any(n.startswith('test/A/') for n in names)
+        meta = json.loads(zf.read('dataset_info.json').decode())
+        assert meta['manifest']['schema'] == 'birdlense_dataset_export_v2'
+        assert 'fingerprint_sha256_16' in meta['manifest']
+        assert 'quality' in meta
+        assert meta['quality']['duplicate_track_count'] == 0
+
+    def test_strict_quality_rejects_duplicate_tracks(self, tmp_path, monkeypatch):
+        train_a = tmp_path / 'dataset' / 'train' / 'A'
+        train_a.mkdir(parents=True, exist_ok=True)
+        (train_a / '1_1_10.jpg').write_bytes(b'a')
+        (train_a / '1_1_11.jpg').write_bytes(b'b')
+        for i in range(10):
+            (train_a / f'9_{i}_{i}.jpg').write_bytes(b'x')
+        monkeypatch.setattr(des, 'data_dir', lambda: str(tmp_path))
+        monkeypatch.setattr(des, '_get_image_dimensions', lambda _p: None)
+
+        zip_ok, err_ok = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.2,
+            test_ratio=0.0,
+            split_seed=1,
+            min_images_per_class=1,
+            strict_quality=False,
+        )
+        assert err_ok is None
+        meta = json.loads(
+            zipfile.ZipFile(io.BytesIO(zip_ok), 'r').read('dataset_info.json').decode(),
+        )
+        assert meta['quality']['duplicate_track_count'] >= 1
+
+        zip_bad, err_bad = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.2,
+            test_ratio=0.0,
+            split_seed=1,
+            min_images_per_class=1,
+            strict_quality=True,
+        )
+        assert zip_bad is None
+        assert err_bad and 'strict_quality' in err_bad

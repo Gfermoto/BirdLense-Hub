@@ -1,5 +1,6 @@
 """Export dataset crops as ZIP archive and move on species correction."""
 import glob
+import hashlib
 import io
 import json
 import logging
@@ -70,6 +71,74 @@ def _is_likely_fullframe(width: int, height: int) -> bool:
     )
 
 
+def _parse_video_track_from_filename(fname: str) -> tuple[int, int] | None:
+    """Parse video_id and track_id from crop name ``{vid}_{tid}_{...}.jpg``."""
+    base = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
+    parts = base.split('_')
+    if len(parts) < 2:
+        return None
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+
+
+def _split_train_val_test(
+    shuffled: list,
+    test_ratio: float,
+    val_ratio: float,
+) -> tuple[list, list, list]:
+    """Deterministic 3-way split on a shuffled list. Ratios apply to remaining after test."""
+    n = len(shuffled)
+    n_test = int(n * test_ratio)
+    if n > 0 and n_test >= n:
+        n_test = max(0, n - 1)
+    rest = shuffled[n_test:]
+    rem = len(rest)
+    n_val = int(rem * val_ratio) if rem else 0
+    if rem > 1 and val_ratio > 0 and n_val == 0:
+        n_val = 1
+    if rem > 0 and n_val >= rem:
+        n_val = max(0, rem - 1)
+    test_rows = shuffled[:n_test]
+    val_rows = rest[:n_val]
+    train_rows = rest[n_val:]
+    return train_rows, val_rows, test_rows
+
+
+def _quality_report_from_entries(
+    entries: list[tuple[str, str, str]],
+) -> dict:
+    """
+    entries: (split, class_name, filename).
+    Detect duplicate (video_id, track_id) across export and video leakage across splits.
+    """
+    from collections import defaultdict
+
+    track_locations: dict[tuple[int, int], list[str]] = defaultdict(list)
+    videos_per_split: dict[str, set[int]] = defaultdict(set)
+    for split, _cls, fname in entries:
+        vt = _parse_video_track_from_filename(fname)
+        if vt:
+            track_locations[vt].append(f'{split}/{fname}')
+            videos_per_split[split].add(vt[0])
+    duplicate_tracks = sorted(
+        f'{a}_{b}' for (a, b), locs in track_locations.items() if len(locs) > 1
+    )
+    tr = videos_per_split.get('train', set())
+    va = videos_per_split.get('val', set())
+    te = videos_per_split.get('test', set())
+    return {
+        'duplicate_track_keys': duplicate_tracks,
+        'duplicate_track_count': len(duplicate_tracks),
+        'video_leakage': {
+            'train_val_shared': len(tr & va),
+            'train_test_shared': len(tr & te),
+            'val_test_shared': len(va & te),
+        },
+    }
+
+
 def _sanitize_dirname(name: str) -> str:
     """Sanitize species name for directory. Must match dataset_saver."""
     s = re.sub(r'[<>:"/\\|?*]', '_', str(name).strip())
@@ -119,8 +188,10 @@ def build_dataset_zip(
     only_manually_corrected: bool = False,
     ready_for_train: bool = False,
     val_ratio: float = 0.2,
+    test_ratio: float = 0.0,
     split_seed: int = 42,
     min_images_per_class: int = 1,
+    strict_quality: bool = False,
 ) -> tuple[bytes | None, str | None]:
     """
     Build ZIP archive from data/dataset/train and val (if exists).
@@ -128,8 +199,10 @@ def build_dataset_zip(
     only_manually_corrected: только кропы вручную исправленных детекций (правильные виды).
     ready_for_train: автоматически собрать train/val из train (без внешнего скрипта).
     val_ratio: доля валидации для ready_for_train.
+    test_ratio: доля hold-out test (только при ready_for_train); иначе 0.
     split_seed: seed для детерминированного split.
     min_images_per_class: минимальный размер класса для включения в экспорт.
+    strict_quality: если True — отменить экспорт при дубликатах треков или leakage видео между сплитами.
     Returns (zip_bytes, error_message). On success error_message is None.
     """
     base = data_dir()
@@ -145,6 +218,8 @@ def build_dataset_zip(
 
     if val_ratio < 0 or val_ratio >= 1:
         return None, 'val_ratio must be in [0, 1)'
+    if test_ratio < 0 or test_ratio >= 1:
+        return None, 'test_ratio must be in [0, 1)'
     if min_images_per_class < 1:
         return None, 'min_images_per_class must be >= 1'
 
@@ -152,13 +227,18 @@ def build_dataset_zip(
         'created_at': datetime.now(timezone.utc).isoformat(),
         'train': {},
         'val': {},
+        'test': {},
         'total_images': 0,
         'excluded_fullframe': 0,
         'ready_for_train': bool(ready_for_train),
         'val_ratio': float(val_ratio),
+        'test_ratio': float(test_ratio),
         'split_seed': int(split_seed),
         'min_images_per_class': int(min_images_per_class),
+        'classes_skipped_too_small': [],
     }
+    export_entries: list[tuple[str, str, str]] = []
+    skipped_small: list[str] = []
 
     def _iter_filtered_class_images(split_dir: str) -> dict[str, list[tuple[str, str]]]:
         """
@@ -216,36 +296,53 @@ def build_dataset_zip(
             classes_txt: list[str] = []
             for class_name, files in train_source.items():
                 if len(files) < min_images_per_class:
+                    skipped_small.append(class_name)
                     continue
                 shuffled = files[:]
                 rng.shuffle(shuffled)
-                n_val = int(len(shuffled) * val_ratio)
-                if len(shuffled) > 1 and val_ratio > 0 and n_val == 0:
-                    n_val = 1
-                if n_val >= len(shuffled):
-                    n_val = len(shuffled) - 1
-                val_rows = shuffled[:n_val]
-                train_rows = shuffled[n_val:]
-                for src, fname in train_rows:
+                tr_part, va_part, te_part = _split_train_val_test(
+                    shuffled, test_ratio, val_ratio,
+                )
+                if not tr_part and shuffled:
+                    if va_part:
+                        tr_part = [va_part.pop()]
+                    elif te_part:
+                        tr_part = [te_part.pop()]
+                for src, fname in tr_part:
                     try:
                         zf.write(src, f'train/{class_name}/{fname}')
+                        export_entries.append(('train', class_name, fname))
                         info['train'][class_name] = info['train'].get(class_name, 0) + 1
                         info['total_images'] += 1
                     except OSError as e:
                         logger.warning('Skip %s: %s', src, e)
-                for src, fname in val_rows:
+                for src, fname in va_part:
                     try:
                         zf.write(src, f'val/{class_name}/{fname}')
+                        export_entries.append(('val', class_name, fname))
                         info['val'][class_name] = info['val'].get(class_name, 0) + 1
                         info['total_images'] += 1
                     except OSError as e:
                         logger.warning('Skip %s: %s', src, e)
-                if info['train'].get(class_name, 0) > 0 or info['val'].get(class_name, 0) > 0:
+                for src, fname in te_part:
+                    try:
+                        zf.write(src, f'test/{class_name}/{fname}')
+                        export_entries.append(('test', class_name, fname))
+                        info['test'][class_name] = info['test'].get(class_name, 0) + 1
+                        info['total_images'] += 1
+                    except OSError as e:
+                        logger.warning('Skip %s: %s', src, e)
+                if (
+                    info['train'].get(class_name, 0) > 0
+                    or info['val'].get(class_name, 0) > 0
+                    or info['test'].get(class_name, 0) > 0
+                ):
                     classes_txt.append(class_name)
+            info['classes_skipped_too_small'] = sorted(skipped_small)
             if classes_txt:
                 zf.writestr('classes.txt', '\n'.join(sorted(classes_txt)) + '\n')
         else:
-            for split in ('train', 'val'):
+            for split in ('train', 'val', 'test'):
                 split_dir = os.path.join(dataset_base, split)
                 split_data = _iter_filtered_class_images(split_dir)
                 for class_name, rows in split_data.items():
@@ -254,6 +351,7 @@ def build_dataset_zip(
                         arcname = f'{split}/{class_name}/{fname}'
                         try:
                             zf.write(src, arcname)
+                            export_entries.append((split, class_name, fname))
                             count += 1
                         except OSError as e:
                             logger.warning('Skip %s: %s', src, e)
@@ -266,6 +364,51 @@ def build_dataset_zip(
             if info.get('excluded_fullframe', 0) > 0:
                 msg += f' Excluded {info["excluded_fullframe"]} suspected full-frame images.'
             return None, msg
+
+        quality = _quality_report_from_entries(export_entries)
+        info['quality'] = quality
+        info['manifest'] = {
+            'schema': 'birdlense_dataset_export_v2',
+            'filters': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'only_manually_corrected': only_manually_corrected,
+            },
+            'split_params': {
+                'ready_for_train': ready_for_train,
+                'val_ratio': val_ratio,
+                'test_ratio': test_ratio,
+                'split_seed': split_seed,
+                'min_images_per_class': min_images_per_class,
+            },
+        }
+        fp_src = json.dumps(
+            {
+                'filters': info['manifest']['filters'],
+                'split': info['manifest']['split_params'],
+                'counts': {
+                    'train': info['train'],
+                    'val': info['val'],
+                    'test': info['test'],
+                },
+            },
+            sort_keys=True,
+        )
+        info['manifest']['fingerprint_sha256_16'] = hashlib.sha256(
+            fp_src.encode(),
+        ).hexdigest()[:16]
+
+        vl = quality.get('video_leakage') or {}
+        if strict_quality and (
+            quality.get('duplicate_track_count', 0) > 0
+            or vl.get('train_val_shared', 0) > 0
+            or vl.get('train_test_shared', 0) > 0
+            or vl.get('val_test_shared', 0) > 0
+        ):
+            return None, (
+                'strict_quality failed: duplicate tracks or video leakage between splits. '
+                f'details={quality}'
+            )
 
         zf.writestr(
             'dataset_info.json',

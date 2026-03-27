@@ -32,6 +32,12 @@ jobs:
       - name: OpenAPI contract smoke tests
         run: python -m pytest web/tests/test_openapi_contract.py -q
 
+      - name: Species registry smoke tests
+        run: python -m pytest web/tests/test_species_registry.py -q
+
+      - name: Dataset export smoke tests
+        run: python -m pytest web/tests/test_dataset_export_service.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:

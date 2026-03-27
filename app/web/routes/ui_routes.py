@@ -880,8 +880,9 @@ def register_routes(app):
         Query params:
         - start_date, end_date (YYYY-MM-DD)
         - only_manually_corrected (bool)
-        - ready_for_train (bool): auto split from train into train/val
-        - val_ratio (float), split_seed (int), min_images_per_class (int)
+        - ready_for_train (bool): auto split from train into train/val/test
+        - val_ratio (float), test_ratio (float), split_seed (int), min_images_per_class (int)
+        - strict_quality (bool): fail export on duplicate tracks or cross-split video leakage
         """
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
@@ -889,10 +890,15 @@ def register_routes(app):
         end_date = request.args.get('end_date')
         only_manually_corrected = request.args.get('only_manually_corrected', '').lower() in ('1', 'true', 'yes')
         ready_for_train = request.args.get('ready_for_train', '').lower() in ('1', 'true', 'yes')
+        strict_quality = request.args.get('strict_quality', '').lower() in ('1', 'true', 'yes')
         try:
             val_ratio = float(request.args.get('val_ratio', '0.2'))
         except (TypeError, ValueError):
             val_ratio = 0.2
+        try:
+            test_ratio = float(request.args.get('test_ratio', '0'))
+        except (TypeError, ValueError):
+            test_ratio = 0.0
         try:
             split_seed = int(request.args.get('split_seed', '42'))
         except (TypeError, ValueError):
@@ -907,8 +913,10 @@ def register_routes(app):
             only_manually_corrected=only_manually_corrected,
             ready_for_train=ready_for_train,
             val_ratio=val_ratio,
+            test_ratio=test_ratio,
             split_seed=split_seed,
             min_images_per_class=min_images_per_class,
+            strict_quality=strict_quality,
         )
         if err:
             return {'error': err}, 404
