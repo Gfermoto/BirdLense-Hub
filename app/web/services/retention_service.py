@@ -7,10 +7,31 @@ import shutil
 from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
-from models import Video, db
+from models import SpeciesVisit, Video, VideoSpecies, db
 from util import recordings_dir
 
 logger = logging.getLogger(__name__)
+
+
+def _delete_video_row_cascade(video: Video) -> None:
+    """Удалить VideoSpecies и осиротевшие SpeciesVisit, затем Video (как в delete_video API)."""
+    video_id = video.id
+    visit_ids = {vs.species_visit_id for vs in video.video_species if vs.species_visit_id}
+    visits_to_delete = []
+    for vid in visit_ids:
+        other = VideoSpecies.query.filter(
+            VideoSpecies.species_visit_id == vid,
+            VideoSpecies.video_id != video_id,
+        ).first()
+        if not other:
+            visits_to_delete.append(vid)
+    for vs in list(video.video_species):
+        db.session.delete(vs)
+    for vid in visits_to_delete:
+        visit = db.session.get(SpeciesVisit, vid)
+        if visit:
+            db.session.delete(visit)
+    db.session.delete(video)
 
 
 def _get_recordings_size_gb():
@@ -56,7 +77,7 @@ def run_retention():
                                 deleted_size += os.path.getsize(fp)
                         shutil.rmtree(dir_path)
                         deleted_count += 1
-                db.session.delete(video)
+                _delete_video_row_cascade(video)
             except Exception as e:
                 logger.error(f"Retention delete failed for {video.video_path}: {e}")
         try:
@@ -109,7 +130,7 @@ def run_retention():
                             deleted_size += os.path.getsize(fp)
                     shutil.rmtree(dir_path)
                     deleted_count += 1
-                db.session.delete(oldest)
+                _delete_video_row_cascade(oldest)
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
