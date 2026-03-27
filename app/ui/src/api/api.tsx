@@ -176,11 +176,13 @@ export const exportDataset = async (params?: {
   start_date?: string;
   end_date?: string;
   only_manually_corrected?: boolean;
+  ready_for_train?: boolean;
 }): Promise<void> => {
   const q = new URLSearchParams();
   if (params?.start_date) q.set('start_date', params.start_date);
   if (params?.end_date) q.set('end_date', params.end_date);
   if (params?.only_manually_corrected) q.set('only_manually_corrected', '1');
+  if (params?.ready_for_train) q.set('ready_for_train', '1');
   const url = `${BASE_API_URL}/dataset/export${q.toString() ? `?${q}` : ''}`;
   const res = await fetch(url, {
     credentials: 'include',

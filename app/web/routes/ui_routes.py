@@ -252,7 +252,7 @@ def register_routes(app):
     @app.route('/api/ui/videos/<int:video_id>', methods=['GET'])
     def get_video_details(video_id):
         # Fetch the video from the database
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
 
         if not video:
             return {'error': 'Video not found'}, 404
@@ -314,7 +314,7 @@ def register_routes(app):
         - day_scope=local: использовать локальный день оператора (tz_offset_minutes)
         - cross_day=true: если в пределах дня соседей нет, вернуть ближайший из соседних суток
         """
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
 
@@ -418,7 +418,7 @@ def register_routes(app):
         """Удалить запись (видео, файл, связанные данные). Только для админа и помощника."""
         if not contributor_or_admin_access():
             return {'error': 'Access denied'}, 403
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
         try:
@@ -445,7 +445,7 @@ def register_routes(app):
             for vs in list(video.video_species):
                 db.session.delete(vs)
             for vid in visits_to_delete:
-                visit = SpeciesVisit.query.get(vid)
+                visit = db.session.get(SpeciesVisit, vid)
                 if visit:
                     db.session.delete(visit)
 
@@ -471,7 +471,7 @@ def register_routes(app):
         """Скачать видео. Только для админа и помощника (contributor_or_admin_access)."""
         if not contributor_or_admin_access():
             return {'error': 'Access denied'}, 403
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
         if not video or not video.video_path:
             return {'error': 'Video not found'}, 404
         from flask import send_file
@@ -496,7 +496,7 @@ def register_routes(app):
     @app.route('/api/ui/videos/<int:video_id>/stream', methods=['GET'])
     def stream_video(video_id):
         """Стриминг видео для воспроизведения в плеере (Range, Content-Type)."""
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
         if not video or not video.video_path:
             return {'error': 'Video not found'}, 404
         from flask import send_file
@@ -532,7 +532,7 @@ def register_routes(app):
 
     @app.route('/api/ui/birdfood/<int:birdfood_id>/toggle', methods=['PATCH'])
     def toggle_birdfood(birdfood_id):
-        bird_food = BirdFood.query.get(birdfood_id)
+        bird_food = db.session.get(BirdFood, birdfood_id)
         if not bird_food:
             return {'error': 'Bird food not found'}, 404
 
@@ -853,7 +853,7 @@ def register_routes(app):
         """Extract a frame from video for iNaturalist export. Returns JPEG."""
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
-        vs = VideoSpecies.query.get(detection_id)
+        vs = db.session.get(VideoSpecies, detection_id)
         if not vs:
             return {'error': 'Detection not found'}, 404
         if vs.source != 'video':
@@ -877,17 +877,38 @@ def register_routes(app):
     @app.route('/api/ui/dataset/export', methods=['GET'])
     def export_dataset():
         """Export dataset crops as ZIP (train/val + dataset_info.json).
-        Query params: start_date, end_date (YYYY-MM-DD), only_manually_corrected (bool).
+        Query params:
+        - start_date, end_date (YYYY-MM-DD)
+        - only_manually_corrected (bool)
+        - ready_for_train (bool): auto split from train into train/val
+        - val_ratio (float), split_seed (int), min_images_per_class (int)
         """
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         only_manually_corrected = request.args.get('only_manually_corrected', '').lower() in ('1', 'true', 'yes')
+        ready_for_train = request.args.get('ready_for_train', '').lower() in ('1', 'true', 'yes')
+        try:
+            val_ratio = float(request.args.get('val_ratio', '0.2'))
+        except (TypeError, ValueError):
+            val_ratio = 0.2
+        try:
+            split_seed = int(request.args.get('split_seed', '42'))
+        except (TypeError, ValueError):
+            split_seed = 42
+        try:
+            min_images_per_class = int(request.args.get('min_images_per_class', '1'))
+        except (TypeError, ValueError):
+            min_images_per_class = 1
         zip_bytes, err = build_dataset_zip(
             start_date=start_date,
             end_date=end_date,
             only_manually_corrected=only_manually_corrected,
+            ready_for_train=ready_for_train,
+            val_ratio=val_ratio,
+            split_seed=split_seed,
+            min_images_per_class=min_images_per_class,
         )
         if err:
             return {'error': err}, 404
@@ -946,7 +967,7 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         source = _normalize_correction_source((request.json or {}).get('source'))
 
-        vs = VideoSpecies.query.get(detection_id)
+        vs = db.session.get(VideoSpecies, detection_id)
         if not vs:
             return {'error': 'Detection not found'}, 404
 
@@ -1016,11 +1037,11 @@ def register_routes(app):
         except (TypeError, ValueError):
             return {'error': 'species_id must be an integer'}, 400
 
-        vs = VideoSpecies.query.get(detection_id)
+        vs = db.session.get(VideoSpecies, detection_id)
         if not vs:
             return {'error': 'Detection not found'}, 404
 
-        species = Species.query.get(species_id)
+        species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
 
@@ -1110,7 +1131,7 @@ def register_routes(app):
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
 
-        video = Video.query.get(video_id)
+        video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
 
@@ -1123,7 +1144,7 @@ def register_routes(app):
         except (TypeError, ValueError):
             return {'error': 'species_id must be an integer'}, 400
 
-        species = Species.query.get(species_id)
+        species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
 
@@ -1206,6 +1227,8 @@ def register_routes(app):
                 'created_at': species.Species.created_at.isoformat(),
                 'image_url': species.Species.image_url,
                 'description': species.Species.description,
+                'metadata_source': species.Species.metadata_source,
+                'metadata_source_url': species.Species.metadata_source_url,
                 'active': species.Species.active,
                 'count': species.count
             }
@@ -1384,7 +1407,7 @@ def register_routes(app):
     @app.route('/api/ui/species/<int:species_id>/xeno-canto', methods=['GET'])
     def get_species_xeno_canto(species_id):
         """Fetch bird song recordings from Xeno-canto for species."""
-        species = Species.query.get(species_id)
+        species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
         recordings = fetch_recordings(species.name, limit=5)
@@ -1398,7 +1421,7 @@ def register_routes(app):
 
     @app.route('/api/ui/species/<int:species_id>/summary', methods=['GET'])
     def get_species_summary(species_id):
-        species = Species.query.get(species_id)
+        species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
 
