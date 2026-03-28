@@ -35,8 +35,24 @@ IMPORT_SPECIES_NAME = "Unknown"
 LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 
-SYSTEM_METRICS_SAMPLE_INTERVAL_SEC = 30
-SYSTEM_METRICS_RETENTION_HOURS = 72
+
+def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
+    raw = os.environ.get(name, '').strip()
+    if not raw:
+        return default
+    try:
+        v = int(raw)
+    except ValueError:
+        return default
+    return max(min_v, min(max_v, v))
+
+
+SYSTEM_METRICS_SAMPLE_INTERVAL_SEC = _env_bounded_int(
+    'BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC', 30, min_v=10, max_v=600,
+)
+SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
+    'BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS', 72, min_v=6, max_v=720,
+)
 SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
 SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
 SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
