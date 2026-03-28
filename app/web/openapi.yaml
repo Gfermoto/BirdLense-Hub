@@ -791,6 +791,11 @@ components:
           type: string
         active:
           type: boolean
+        regional_scope:
+          type: boolean
+          description: >
+            True if species is in the eBird regional top (same source as Migration comparison)
+            or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter.
         count:
           type: integer
     BirdFamily:
