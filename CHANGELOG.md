@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Документация:** [FEATURES](docs/FEATURES.md) / [RU](docs/FEATURES.ru.md) и [API](docs/API.md) / [RU](docs/API.ru.md) — эндпоинты «Система»: live-метрики, `/system/metrics/history`, `/system/visitors`.
+
 - **Система / UI:** метрики хоста (`GET /api/ui/system/metrics`) отделены от статистики посетителей (`GET /api/ui/system/visitors?days=…`); смена периода посетителей больше не перезапускает опрос CPU; на странице «Система» — накопительные графики за сессию просмотра (опрос 5 с); убраны карточки кодирования/MQTT; ссылка «Поддержать» в шапке и мобильном меню скрыта на главной (остаётся карточка «Корм» и пункт в меню шестерёнки). Prometheus `/metrics` не выполняет лишних запросов по посетителям.
 
 - **Система / история метрик:** таблица `system_resource_sample`, фоновый sampler (~30 с, хранение 72 ч, отключается `DISABLE_SYSTEM_METRICS_SAMPLER`), `GET /api/ui/system/metrics/history`; графики на «Системе» — серия с сервера + «хвост» живого опроса, выбор окна 6/24/48 ч. Интервал и хранение: `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC`, `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS`; см. CONFIGURATION, `app/.env.example`.

@@ -64,7 +64,9 @@ Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 
 | Path | Method | Description |
 |------|--------|-------------|
-| `/api/ui/system/metrics` | GET | CPU, RAM, disk, GPU, encoding |
+| `/api/ui/system/metrics` | GET | Live snapshot: CPU, RAM, disk, GPU (`encoding` hints when GPU chart applies) |
+| `/api/ui/system/metrics/history` | GET | Downsampled time series for System charts (`?hours=`, `?max_points=`) |
+| `/api/ui/system/visitors` | GET | Unique visitor sessions over `?days=` (SpeciesVisit aggregate) |
 | `/api/ui/system/activity` | GET | Activity by day |
 | `/api/ui/storage/stats` | GET | Recording storage stats |
 | `/api/ui/storage/purge` | POST | Purge by date (**Admin**) |
