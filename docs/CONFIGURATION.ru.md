@@ -362,6 +362,16 @@ rule_files:
 
 ---
 
+## Корм для птиц (каталог по умолчанию)
+
+В приложении есть **встроенный список** типичных кормов (ориентация US + EU). **Источник в коде:** [`app/web/seed/seed.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/seed/seed.py) → `seed_bird_food()`. Поля `image_url` ссылаются на `data/images/food/*` в поставке.
+
+**Уже существующие БД:** при каждом старте `seed()` **добавляет только отсутствующие по имени** позиции каталога — обновление образа не создаёт дубликаты. Свой корм по-прежнему можно завести через **`GET` / `POST /api/ui/birdfood`** (см. [API.ru.md](./API.ru.md)).
+
+Задача: [issue #134](https://github.com/Gfermoto/BirdLense-Hub/issues/134).
+
+---
+
 ## См. также
 
 [INSTALL](./INSTALL.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [API](./API.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.ru.md)
