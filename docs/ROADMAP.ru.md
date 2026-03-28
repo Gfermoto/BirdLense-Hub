@@ -91,7 +91,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 | Тема                                       | Зачем                                                                                                                                                                                               |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Доступность (a11y)**                     | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): клавиатура, фокус, контраст для Unknowns/Video/Migration после i18n ([#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)).     |
+| **Доступность (a11y)**                     | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, фокус, контраст, axe E2E, [A11Y.ru.md](./A11Y.ru.md); дальнейшие улучшения — по новым issues.        |
 | **Расширение E2E (Playwright)**            | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): не только смоук — логин, таймлайн, критичные настройки, коррекция видов.                                                              |
 | **Секреты в проде**                        | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Синхронизация версий стека**             | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: чеклист и `python3 scripts/check-docs-version.py` — см. [VERSIONING.ru.md](./VERSIONING.ru.md).                                                               |
@@ -108,6 +108,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **Прогресс (март 2026):**
 
+- [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — baseline a11y и **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); см. [A11Y.ru.md](./A11Y.ru.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
 - [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: пункт «Каталог» убран из меню, legacy `/species` редиректит на `/migration-calendar`, deep-link `/species/:id` сохранён.
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
