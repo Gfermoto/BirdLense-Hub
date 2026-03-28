@@ -44,6 +44,9 @@ jobs:
       - name: Util metadata / URL parsing tests
         run: python -m pytest web/tests/test_util_metadata.py -q
 
+      - name: Bird food seed idempotency
+        run: python -m pytest web/tests/test_bird_food_seed.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:

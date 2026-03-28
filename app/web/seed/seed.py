@@ -2,6 +2,10 @@ from models import Species, BirdFood, db
 import logging
 from util import build_hierarchy_tree
 
+# Default BirdFood catalog (Settings / feeder). Curated by maintainers from common EU + US practice.
+# Image paths are under data/images/food/ (served as static paths in the app).
+# On each startup, `seed()` merges any missing rows by unique `name` (existing installs get new items).
+
 
 def dfs_traverse_and_insert(tree, parent_id=None):
     """
@@ -18,7 +22,8 @@ def dfs_traverse_and_insert(tree, parent_id=None):
         dfs_traverse_and_insert(children, species.id)
 
 
-def seed_bird_food():
+def seed_bird_food() -> int:
+    """Insert catalog BirdFood rows missing by `name`. Returns count inserted."""
     foods = [
         {
             'name': 'Black-oil Sunflower Seeds',
@@ -52,7 +57,7 @@ def seed_bird_food():
         },
         {
             'name': 'Nyjer',
-            'description': 'Small seed from Africa attracting finches including American Goldfinch, Pine Siskin, and Common Redpoll.',
+            'description': 'Small, oil-rich niger/thistle-type seed for specialist finches — e.g. American Goldfinch, European Goldfinch, Pine Siskin, Common Redpoll.',
             'image_url': 'data/images/food/nyjer.jpg',
         },
         {
@@ -69,12 +74,49 @@ def seed_bird_food():
             'name': 'Suet',
             'description': 'Beef kidney fat attractive to insect-eating birds. Available plain or in processed cakes with seeds.',
             'image_url': 'data/images/food/suet.jpg',
-        }
+        },
+        # Europe-focused additions (reuse bundled images where no separate asset exists)
+        {
+            'name': 'Fat balls (suet cakes)',
+            'description': 'Very common in European gardens: fat mixed with seeds or insects for tits, woodpeckers, robins, and blackbirds in cold weather.',
+            'image_url': 'data/images/food/suet.jpg',
+        },
+        {
+            'name': 'Hemp seed',
+            'description': 'Small oily seed for finches, siskins, and buntings. Use **hemp sold for bird feeding** (legal bird-food grade in the EU).',
+            'image_url': 'data/images/food/millets.jpg',
+        },
+        {
+            'name': 'Oats (uncooked)',
+            'description': 'Plain rolled/porridge oats for blackbirds, chaffinches, sparrows, and corvids. Avoid flavored or instant oats.',
+            'image_url': 'data/images/food/cracked-corn.jpg',
+        },
+        {
+            'name': 'Mixed wild bird seed',
+            'description': 'Typical shop blends (wheat, barley, millet, small seeds) for ground and table feeding — widely used across Europe.',
+            'image_url': 'data/images/food/millets.jpg',
+        },
+        {
+            'name': 'Rapeseed (canola)',
+            'description': 'Small dark seed often included in EU mixes; attracts finches and buntings when offered dry in feeders.',
+            'image_url': 'data/images/food/millets.jpg',
+        },
+        {
+            'name': 'Apple pieces',
+            'description': 'Fresh apple segments in winter help thrushes, blackbirds, and waxwings. Remove seeds if you prefer; no added sugar.',
+            'image_url': 'data/images/food/fruit.jpg',
+        },
     ]
 
+    existing = {row[0] for row in BirdFood.query.with_entities(BirdFood.name).all()}
+    added = 0
     for food_data in foods:
-        food = BirdFood(**food_data)
-        db.session.add(food)
+        if food_data['name'] in existing:
+            continue
+        db.session.add(BirdFood(**food_data))
+        existing.add(food_data['name'])
+        added += 1
+    return added
 
 
 def seed():
@@ -85,8 +127,9 @@ def seed():
         db.session.commit()
         logging.info('Species seeding complete.')
 
-    if not BirdFood.query.first():
-        logging.info('Seeding bird food data...')
-        seed_bird_food()
+    n_food = seed_bird_food()
+    if n_food:
+        logging.info('Bird food catalog: added %s new default row(s)', n_food)
         db.session.commit()
-        logging.info('Bird food seeding complete.')
+    elif not BirdFood.query.first():
+        logging.warning('Bird food catalog empty and nothing inserted — check seed_bird_food()')

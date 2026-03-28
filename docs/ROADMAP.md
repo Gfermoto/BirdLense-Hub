@@ -114,7 +114,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | Regional = eBird top + BirdNET-heard |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
-| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | Expand seed + document source (`seed.py`) |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Auto-fill / suggested mappings — name mismatches; see risks in issue |
 
 **New ideas (Mar 2026) — tracked as issues on the Project board:**
