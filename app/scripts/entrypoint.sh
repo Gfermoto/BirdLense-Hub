@@ -27,7 +27,8 @@ if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
 fi
 # Процессор в цикле: при перезапуске по флагу из UI контейнер не выходит, перезапускается только процесс
 while true; do
-  PYTHONPATH=/app python /app/processor/src/main.py || true
+  # /app/web — импорт services.ebird_region_service для авто-порогов регионального топа (#128)
+  PYTHONPATH=/app:/app/web python /app/processor/src/main.py || true
   echo "Processor exited, restarting in 2s..."
   sleep 2
 done

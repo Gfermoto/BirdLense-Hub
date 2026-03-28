@@ -106,8 +106,8 @@ Tracked as separate issues; acceptance criteria live in each issue.
 
 | # | Issue | Summary |
 |---|--------|--------|
-| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | Move block from Overview to Migration |
-| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | `species_confidence_overrides` from eBird top (delta must be in 0–1 scale, not literal −0.5) |
+| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | ✅ Compare-to-region on Migration (see progress above) |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | Extra sensitivity; **7-day** hint window (when BirdNET is configured) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
 | [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
