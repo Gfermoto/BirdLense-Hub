@@ -13,7 +13,8 @@
     "liveView": "Live View",
     "settings": "Settings",
     "system": "System",
-    "library": "Library"
+    "library": "Library",
+    "supportProject": "Support"
   },
   "library": {
     "activity": "Recording Activity",
@@ -163,7 +164,7 @@
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "donateUrl": "Support page URL",
-    "donateUrlHint": "Boosty, DonationAlerts, Ko-fi, project page. Button always visible.",
+    "donateUrlHint": "Boosty, DonationAlerts, Ko-fi, project page. When set: link in the top bar, gear menu, mobile menu, and Food card.",
     "go2rtcUrl": "Go2RTC URL",
     "go2rtcUrlHint": "Host: http://IP:1984",
     "go2rtcUser": "Go2RTC login",
