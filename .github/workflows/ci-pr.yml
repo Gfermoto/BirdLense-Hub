@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload Settings UI coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: settings-ui-coverage
           path: |

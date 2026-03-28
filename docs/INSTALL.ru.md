@@ -73,7 +73,7 @@ make deploy
 
 **Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
 
-**Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → автодеплой (self-hosted runner).
+**Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
