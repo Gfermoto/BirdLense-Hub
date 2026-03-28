@@ -73,7 +73,7 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server, Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
 
-**Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → auto-deploy (self-hosted runner).
+**Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
