@@ -290,6 +290,8 @@ Push-уведомления в браузере (дополнение или а�
 
 Настройки → Расширенные. Экспорт «Экспорт для eBird» в Timeline не требует API ключа. Ключ нужен для фичи «Сравнение с регионом».
 
+Подсказки для маппинга: в настройках у поля `ebird.species_mapping` кнопка подгружает региональный топ eBird и предлагает строки (регистр / нечёткое совпадение); `GET /api/ui/settings/ebird-species-mapping-suggestions` (тот же доступ, что у настроек). См. [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136).
+
 Фильтр **«Региональные»** в каталоге видов использует тот же региональный топ eBird, что и блок сравнения на Migration, **и** виды с хотя бы одной детекцией **BirdNET MQTT** (`detection_provider` = `birdnet_mqtt`). См. [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132).
 
 **Россия, Московская область:** `ebird.country=RU`, `ebird.state=MOS` (или `MO`). Регион для API: RU-MOS.

@@ -115,7 +115,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | ✅ Bird Directory «Regional» = eBird regional top + `birdnet_mqtt` detections; `regional_scope` on `GET /species`; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
-| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Auto-fill / suggested mappings — name mismatches; see risks in issue |
+| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | ✅ `GET /api/ui/settings/ebird-species-mapping-suggestions`, Settings UI button, shared eBird top cache; [CONFIGURATION.md](./CONFIGURATION.md) |
 
 **New ideas (Mar 2026) — tracked as issues on the Project board:**
 

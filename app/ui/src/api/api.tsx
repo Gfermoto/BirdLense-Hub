@@ -417,6 +417,29 @@ export const fetchSettings = async () => {
   return response.data;
 };
 
+export type EbirdMappingSuggestion = {
+  ebird_name: string;
+  birdlense_name: string | null;
+  kind: 'case_variant' | 'fuzzy' | 'unmatched';
+  score: number | null;
+};
+
+export type EbirdMappingSuggestionsResponse = {
+  region_code: string;
+  ebird_api_configured: boolean;
+  top_count: number;
+  suggestions: EbirdMappingSuggestion[];
+};
+
+export const fetchEbirdMappingSuggestions =
+  async (): Promise<EbirdMappingSuggestionsResponse> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/settings/ebird-species-mapping-suggestions`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
+
 export const updateSettings = async (settings: Settings) => {
   const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
     withCredentials: true,
