@@ -6,6 +6,8 @@ import pytest
 
 # Set test DB before any app imports
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+# Не поднимать фоновый sampler метрик в тестах (поток + psutil sleep).
+os.environ['DISABLE_SYSTEM_METRICS_SAMPLER'] = '1'
 
 # Prevent MQTT/ESPHome connection attempts (would hang or fail in CI)
 os.environ.pop('MQTT_BROKER', None)

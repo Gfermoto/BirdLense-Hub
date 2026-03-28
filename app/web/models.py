@@ -257,3 +257,18 @@ class SpeciesVisit(db.Model):
         Index('ix_speciesvisit_species_created_at',
               'species_id', desc('start_time')),
     )
+
+
+class SystemResourceSample(db.Model):
+    """Периодические снимки CPU/RAM/диск/GPU для графиков на странице «Система»."""
+    __tablename__ = 'system_resource_sample'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recorded_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False)
+    cpu_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    memory_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    disk_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    gpu_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    __table_args__ = (Index('ix_system_resource_sample_recorded_at', 'recorded_at'),)

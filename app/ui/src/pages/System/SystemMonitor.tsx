@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -14,68 +14,352 @@ import MenuItem from '@mui/material/MenuItem';
 import MemoryIcon from '@mui/icons-material/Memory';
 import StorageIcon from '@mui/icons-material/Storage';
 import SpeedIcon from '@mui/icons-material/Speed';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import CloudIcon from '@mui/icons-material/Cloud';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import GroupsIcon from '@mui/icons-material/Groups';
+import { LineChart } from '@mui/x-charts/LineChart';
 import { BASE_API_URL } from '../../api/api';
 
-interface MetricCardProps {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-  percent: number;
+const LIVE_TAIL_MAX = 48;
+const CARD_MIN_HEIGHT = 280;
+
+type ChartPoint = {
+  at: Date;
+  cpu: number;
+  memory: number;
+  disk: number;
+  gpu: number | null;
+};
+
+interface LiveMetrics {
+  cpu: { percent: number };
+  memory: { total: number; used: number; percent: number };
+  disk: { total: number; used: number; percent: number };
+  encoding: string;
+  gpu_percent: number | null;
 }
 
-const CARD_MIN_HEIGHT = 130;
+interface VisitorStats {
+  period_days: number;
+  unique_visits: number;
+  active_days: number;
+  method: string;
+}
 
-const MetricCard: React.FC<MetricCardProps> = ({
-  icon: Icon,
+interface HistorySample {
+  t: string;
+  cpu: number;
+  memory: number;
+  disk: number;
+  gpu: number | null;
+}
+
+interface MetricsHistoryResponse {
+  samples: HistorySample[];
+  sample_interval_seconds?: number;
+  retention_hours?: number;
+  hours_requested?: number;
+}
+
+type MetricKey = 'cpu' | 'memory' | 'disk' | 'gpu';
+
+function SparkMetricCard({
   title,
-  value,
-  percent,
-}) => (
-  <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
-    <CardContent>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Icon color="action" />
-        <Typography variant="h6">{title}</Typography>
-      </Box>
-      <LinearProgress
-        variant="determinate"
-        value={percent}
-        sx={{ mb: 2, height: 8, borderRadius: 1 }}
-      />
-      <Typography variant="body2" color="text.secondary">
-        {value}
-      </Typography>
-    </CardContent>
-  </Card>
-);
+  icon: Icon,
+  chartPoints,
+  metricKey,
+  collectingLabel,
+  currentText,
+  yMax = 100,
+}: {
+  title: string;
+  icon: React.ElementType;
+  chartPoints: ChartPoint[];
+  metricKey: MetricKey;
+  collectingLabel: string;
+  currentText: string;
+  yMax?: number;
+}) {
+  const times = useMemo(
+    () => chartPoints.map((p) => p.at),
+    [chartPoints],
+  );
+  const seriesData = useMemo(
+    () =>
+      chartPoints.map((p) => {
+        const v = p[metricKey];
+        return v == null ? null : v;
+      }),
+    [chartPoints, metricKey],
+  );
+  const hasChart = chartPoints.length >= 2;
+
+  return (
+    <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Icon color="action" />
+          <Typography variant="h6">{title}</Typography>
+        </Box>
+        <Box sx={{ width: '100%', height: 176, mb: 1 }}>
+          {hasChart ? (
+            <LineChart
+              hideLegend
+              skipAnimation
+              xAxis={[
+                {
+                  data: times,
+                  scaleType: 'time',
+                  valueFormatter: (d: Date) =>
+                    d.toLocaleTimeString(undefined, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  tickLabelStyle: { fontSize: 10 },
+                },
+              ]}
+              yAxis={[{ min: 0, max: yMax }]}
+              series={[
+                {
+                  data: seriesData,
+                  showMark: false,
+                  connectNulls: false,
+                },
+              ]}
+              height={176}
+              margin={{ top: 8, bottom: 24, left: 44, right: 12 }}
+            />
+          ) : (
+            <Box
+              sx={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                {collectingLabel}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+        <Typography variant="body2" color="text.secondary">
+          {currentText}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+}
 
 export const SystemMonitor = () => {
   const { t } = useTranslation();
   const [visitorsDays, setVisitorsDays] = useState<number>(7);
-  const { data, error, isLoading } = useQuery({
-    queryKey: ['systemMetrics', visitorsDays],
-    queryFn: async () => {
-      const response = await fetch(
-        `${BASE_API_URL}/system/metrics?visitors_days=${visitorsDays}`,
-      );
+  const [historyHours, setHistoryHours] = useState<number>(24);
+  const [liveTail, setLiveTail] = useState<ChartPoint[]>([]);
+
+  const liveQuery = useQuery({
+    queryKey: ['systemMetricsLive'],
+    queryFn: async (): Promise<LiveMetrics> => {
+      const response = await fetch(`${BASE_API_URL}/system/metrics`);
       if (!response.ok) throw new Error('Failed to fetch system metrics');
       return response.json();
     },
     refetchInterval: 5000,
   });
 
-  if (isLoading) return <LinearProgress />;
-  if (error)
-    return <Typography color="error">{t('system.errorLoadMetrics')}</Typography>;
+  const historyQuery = useQuery({
+    queryKey: ['systemMetricsHistory', historyHours],
+    queryFn: async (): Promise<MetricsHistoryResponse> => {
+      const response = await fetch(
+        `${BASE_API_URL}/system/metrics/history?hours=${historyHours}&max_points=500`,
+      );
+      if (!response.ok) throw new Error('Failed to fetch metrics history');
+      return response.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const visitorsQuery = useQuery({
+    queryKey: ['systemVisitors', visitorsDays],
+    queryFn: async (): Promise<VisitorStats> => {
+      const response = await fetch(
+        `${BASE_API_URL}/system/visitors?days=${visitorsDays}`,
+      );
+      if (!response.ok) throw new Error('Failed to fetch visitor stats');
+      return response.json();
+    },
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    setLiveTail([]);
+  }, [historyHours]);
+
+  useEffect(() => {
+    const live = liveQuery.data;
+    if (!live) return;
+    setLiveTail((prev) => {
+      const next: ChartPoint[] = [
+        ...prev,
+        {
+          at: new Date(),
+          cpu: live.cpu.percent,
+          memory: live.memory.percent,
+          disk: live.disk.percent,
+          gpu: live.gpu_percent,
+        },
+      ];
+      return next.length > LIVE_TAIL_MAX
+        ? next.slice(-LIVE_TAIL_MAX)
+        : next;
+    });
+  }, [liveQuery.dataUpdatedAt, liveQuery.data]);
+
+  const chartPoints = useMemo((): ChartPoint[] => {
+    const server: ChartPoint[] = (historyQuery.data?.samples ?? []).map(
+      (s) => ({
+        at: new Date(s.t),
+        cpu: s.cpu,
+        memory: s.memory,
+        disk: s.disk,
+        gpu: s.gpu,
+      }),
+    );
+    if (server.length === 0) return [...liveTail];
+    const lastServerMs = server[server.length - 1]!.at.getTime();
+    const tail = liveTail.filter((p) => p.at.getTime() > lastServerMs - 1000);
+    return [...server, ...tail];
+  }, [historyQuery.data?.samples, liveTail]);
+
+  const live = liveQuery.data;
+
+  if (liveQuery.isLoading) return <LinearProgress />;
+  if (liveQuery.error)
+    return (
+      <Typography color="error">{t('system.errorLoadMetrics')}</Typography>
+    );
+
+  if (!live) return null;
+
+  const showGpuCard =
+    live.encoding === 'intel' || live.gpu_percent != null;
+
+  const visitors = visitorsQuery.data;
+
+  const historySubtitle =
+    historyQuery.data?.retention_hours != null &&
+    historyQuery.data?.sample_interval_seconds != null
+      ? t('system.serverHistoryMeta', {
+          hours: historyHours,
+          retention: historyQuery.data.retention_hours,
+          interval: historyQuery.data.sample_interval_seconds,
+        })
+      : null;
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant="h5" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 1 }}>
         {t('system.resources')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {t('system.liveTrendHint')}
+      </Typography>
+      {historySubtitle ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {historySubtitle}
+        </Typography>
+      ) : (
+        <Box sx={{ mb: 2 }} />
+      )}
+
+      <Box
+        sx={{
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="metrics-history-hours-label">
+            {t('system.metricsHistoryWindow')}
+          </InputLabel>
+          <Select
+            labelId="metrics-history-hours-label"
+            value={historyHours}
+            label={t('system.metricsHistoryWindow')}
+            onChange={(e) => setHistoryHours(Number(e.target.value))}
+          >
+            <MenuItem value={6}>{t('system.history6h')}</MenuItem>
+            <MenuItem value={24}>{t('system.history24h')}</MenuItem>
+            <MenuItem value={48}>{t('system.history48h')}</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {historyQuery.isError ? (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {t('system.errorLoadHistory')}
+        </Typography>
+      ) : null}
+
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <SparkMetricCard
+            icon={SpeedIcon}
+            title={t('system.cpu')}
+            chartPoints={chartPoints}
+            metricKey="cpu"
+            collectingLabel={t('system.chartCollecting')}
+            currentText={t('system.usagePercent', { percent: live.cpu.percent })}
+            yMax={100}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <SparkMetricCard
+            icon={MemoryIcon}
+            title={t('system.memory')}
+            chartPoints={chartPoints}
+            metricKey="memory"
+            collectingLabel={t('system.chartCollecting')}
+            currentText={`${live.memory.used}GB / ${live.memory.total}GB (${live.memory.percent}%)`}
+            yMax={100}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <SparkMetricCard
+            icon={StorageIcon}
+            title={t('system.disk')}
+            chartPoints={chartPoints}
+            metricKey="disk"
+            collectingLabel={t('system.chartCollecting')}
+            currentText={`${live.disk.used}GB / ${live.disk.total}GB (${live.disk.percent}%)`}
+            yMax={100}
+          />
+        </Grid>
+
+        {showGpuCard ? (
+          <Grid size={{ xs: 12, md: 4 }}>
+            <SparkMetricCard
+              icon={DeveloperBoardIcon}
+              title={t('system.gpu')}
+              chartPoints={chartPoints}
+              metricKey="gpu"
+              collectingLabel={t('system.chartCollecting')}
+              currentText={
+                live.gpu_percent != null
+                  ? t('system.usagePercent', { percent: live.gpu_percent })
+                  : t('system.gpuNoData')
+              }
+              yMax={100}
+            />
+          </Grid>
+        ) : null}
+      </Grid>
+
+      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+        {t('system.uniqueVisitorsSection')}
       </Typography>
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
         <FormControl size="small" sx={{ minWidth: 220 }}>
@@ -95,146 +379,41 @@ export const SystemMonitor = () => {
         </FormControl>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
-            <CardContent>
-              <Box
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-              >
-                <SpeedIcon color="action" />
-                <Typography variant="h6">{t('system.cpu')}</Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={data.cpu.percent}
-                sx={{ mb: 2, height: 8, borderRadius: 1 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                {t('system.usagePercent', { percent: data.cpu.percent })}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            icon={MemoryIcon}
-            title={t('system.memory')}
-            value={`${data.memory.used}GB / ${data.memory.total}GB (${data.memory.percent}%)`}
-            percent={data.memory.percent}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <GroupsIcon color="action" />
-                <Typography variant="h6">{t('system.uniqueVisitors')}</Typography>
-              </Box>
-              <Typography variant="h4" sx={{ lineHeight: 1.2 }}>
-                {data.visitors?.unique_visits ?? 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                {t('system.uniqueVisitorsHint', {
-                  days: data.visitors?.period_days ?? visitorsDays,
-                  activeDays: data.visitors?.active_days ?? 0,
-                })}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <MetricCard
-            icon={StorageIcon}
-            title={t('system.disk')}
-            value={`${data.disk.used}GB / ${data.disk.total}GB (${data.disk.percent}%)`}
-            percent={data.disk.percent}
-          />
-        </Grid>
-
-        {data.encoding != null && (
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
+      {visitorsQuery.isLoading ? (
+        <LinearProgress />
+      ) : visitorsQuery.error ? (
+        <Typography color="error">{t('system.errorLoadVisitors')}</Typography>
+      ) : visitors ? (
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ minHeight: 140 }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <VideocamIcon color="action" />
-                  <Typography variant="h6">{t('system.encoding')}</Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {t('system.encodingUsed')}:{' '}
-                  {data.encoding_used === 'vaapi'
-                    ? t('system.encodingVaapi')
-                    : data.encoding_used === 'cpu'
-                      ? t('system.encodingCpu')
-                      : data.encoding === 'intel'
-                        ? t('system.encodingVaapi')
-                        : t('system.encodingCpu')}
-                </Typography>
-                {data.encoding === 'intel' && data.encoding_used === 'cpu' && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    {t('system.encodingGpuUnavailable')}
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
+                >
+                  <GroupsIcon color="action" />
+                  <Typography variant="h6">
+                    {t('system.uniqueVisitors')}
                   </Typography>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
-
-        {data.processor_mqtt != null && (
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <CloudIcon color="action" />
-                  <Typography variant="h6">{t('system.processorMqtt')}</Typography>
                 </Box>
-                <Typography variant="body2" color={data.processor_mqtt === 'ok' ? 'text.secondary' : 'error.main'}>
-                  {data.processor_mqtt === 'ok' ? t('status.mqttOk') : data.processor_mqtt === 'error' ? t('status.mqttError') : t('status.mqttUnknown')}
+                <Typography variant="h4" sx={{ lineHeight: 1.2 }}>
+                  {visitors.unique_visits}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  {t('system.uniqueVisitorsHint', {
+                    days: visitors.period_days ?? visitorsDays,
+                    activeDays: visitors.active_days ?? 0,
+                  })}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-        )}
-
-        {(data.encoding === 'intel' || data.gpu_percent != null) && (
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <DeveloperBoardIcon color="action" />
-                  <Typography variant="h6">{t('system.gpu')}</Typography>
-                </Box>
-                {data.gpu_percent != null ? (
-                  <>
-                    <LinearProgress
-                      variant="determinate"
-                      value={data.gpu_percent}
-                      sx={{ mb: 2, height: 8, borderRadius: 1 }}
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {t('system.usagePercent', { percent: data.gpu_percent })}
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <LinearProgress
-                      variant="determinate"
-                      value={0}
-                      sx={{ mb: 2, height: 8, borderRadius: 1, opacity: 0.4 }}
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {t('system.gpuNoData')}
-                    </Typography>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
-      </Grid>
+        </Grid>
+      ) : null}
     </Box>
   );
 };

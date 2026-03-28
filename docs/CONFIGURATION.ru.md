@@ -328,6 +328,16 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, дашборд по метрикам.
 
+### История метрик на странице «Система»
+
+Отдельно от Prometheus: в SQLite таблица `system_resource_sample`, фоновый sampler пишет снимки CPU/RAM/диск/GPU. UI запрашивает `GET /api/ui/system/metrics/history`.
+
+| Переменная окружения | По умолчанию | Диапазон | Назначение |
+|----------------------|--------------|----------|------------|
+| `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | `30` | 10–600 | Интервал между снимками (секунды) |
+| `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | `72` | 6–720 | Удаление записей старше (часы) |
+| `DISABLE_SYSTEM_METRICS_SAMPLER` | — | `1` / `true` | Не запускать sampler (тесты, отладка) |
+
 ### Алертинг (Prometheus + Alertmanager)
 
 Готовые примеры в репозитории (подстройте пороги и имя `job` под ваш `scrape_configs`):

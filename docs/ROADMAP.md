@@ -27,6 +27,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 - **Video prev/next (same UTC day)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) closed (**v0.2.6**): `GET /api/ui/videos/:id/neighbors` + arrows on video details (browse clips for that calendar day in UTC without losing list context).
 - **Overview mean recording duration** — [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) closed: metric is the average length of **one clip** (`Video`), not a visit aggregate; PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106).
 - **Public gallery (opt-in)** — [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) closed (v0.2.4): background upload runs inside **Flask app context**; troubleshooting in [CONFIGURATION](./CONFIGURATION.md) → Gallery.
+- **System: resource charts with server-side history** — SQLite `system_resource_sample`, `GET /api/ui/system/metrics/history`, UI windows 6/24/48 h plus live tail; tune with `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 
 ---
 
