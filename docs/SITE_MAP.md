@@ -42,6 +42,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
 | CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
 | Testing | [TESTING.md](./TESTING.md) |
+| Accessibility | [A11Y.md](./A11Y.md) · [RU](./A11Y.ru.md) |
 | UX: Unknowns vs video | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
 
 ---

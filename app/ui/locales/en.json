@@ -469,7 +469,8 @@
     "na": "N/A",
     "help": "Help",
     "language": "Language",
-    "iNaturalist": "Share to iNaturalist"
+    "iNaturalist": "Share to iNaturalist",
+    "skipToContent": "Skip to main content"
   },
   "migrationCalendar": {
     "title": "Migration Calendar",
@@ -482,7 +483,9 @@
     "endYear": "To year",
     "allYears": "All years",
     "noData": "No data yet. Record some bird visits to see monthly patterns.",
-    "errorLoad": "Error loading migration calendar."
+    "errorLoad": "Error loading migration calendar.",
+    "filterSectionTitle": "Filter migration data",
+    "tableCaption": "Species by month: visit counts per cell; last column is the row total."
   },
   "unknowns": {
     "title": "Unknowns",

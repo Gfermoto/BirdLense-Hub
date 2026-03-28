@@ -9,6 +9,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
+import { SkipToContent } from './components/SkipToContent';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
@@ -29,6 +30,12 @@ const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.L
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
 );
+
+/** Keyboard focus ring (WCAG 2.4.7); distinct from mouse-only :focus where supported. */
+const focusVisibleOutline = {
+  outline: '2px solid #5EEAD4',
+  outlineOffset: '2px',
+} as const;
 
 const theme = createTheme({
   palette: {
@@ -64,6 +71,13 @@ const theme = createTheme({
     button: { textTransform: 'none', fontWeight: 600 },
   },
   components: {
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          '&:focus-visible': focusVisibleOutline,
+        },
+      },
+    },
     MuiCssBaseline: {
       styleOverrides: {
         body: {
@@ -83,6 +97,7 @@ const theme = createTheme({
               backgroundColor: '#475569',
             },
         },
+        'a:focus-visible:not(.MuiButtonBase-root)': focusVisibleOutline,
       },
     },
     MuiCard: {
@@ -111,6 +126,31 @@ const theme = createTheme({
         },
       },
     },
+    /** White on primary.main (#10B981) fails WCAG AA for small text; emerald 700 is ≥4.5:1 vs white. */
+    MuiChip: {
+      styleOverrides: {
+        filledPrimary: {
+          backgroundColor: '#047857',
+          color: '#ffffff',
+          '&:hover': { backgroundColor: '#065f46' },
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        standardInfo: {
+          color: 'text.primary',
+          '& .MuiAlert-message .MuiButton-root': {
+            color: '#7dd3fc',
+          },
+        },
+      },
+    },
+    MuiCircularProgress: {
+      defaultProps: {
+        'aria-label': 'Loading',
+      },
+    },
   },
 });
 
@@ -134,10 +174,17 @@ function App() {
               display: 'flex',
               flexDirection: 'column',
               minHeight: '100vh',
+              position: 'relative',
             }}
           >
+            <SkipToContent />
             <Navigation />
-            <Box component="main" sx={{ flexGrow: 1, pb: 4 }}>
+            <Box
+              id="main-content"
+              component="main"
+              tabIndex={-1}
+              sx={{ flexGrow: 1, pb: 4, outline: 'none' }}
+            >
               <Container maxWidth="xl">
                 <Suspense
                   fallback={

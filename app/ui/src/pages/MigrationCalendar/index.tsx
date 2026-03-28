@@ -20,10 +20,7 @@ import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
 import dayjs from 'dayjs';
-
-/** Intensity 0–1 → opacity for cell background */
-const cellOpacity = (count: number, maxInRow: number) =>
-  maxInRow > 0 ? 0.15 + 0.65 * (count / maxInRow) : 0;
+import { visuallyHidden } from '@mui/utils';
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
@@ -99,8 +96,15 @@ export const MigrationCalendar = () => {
       <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
         {t('migrationCalendar.periodHint')}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <FilterListIcon fontSize="small" color="action" />
+      <Box
+        component="section"
+        aria-labelledby="migration-filters-heading"
+        sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}
+      >
+        <Typography id="migration-filters-heading" component="h2" sx={visuallyHidden}>
+          {t('migrationCalendar.filterSectionTitle')}
+        </Typography>
+        <FilterListIcon fontSize="small" color="action" aria-hidden />
         <TextField
           type="date"
           size="small"
@@ -153,6 +157,9 @@ export const MigrationCalendar = () => {
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table size="small" stickyHeader>
+          <caption style={visuallyHidden as React.CSSProperties}>
+            {t('migrationCalendar.tableCaption')}
+          </caption>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: 600, minWidth: 180 }}>
@@ -189,18 +196,27 @@ export const MigrationCalendar = () => {
                       {s.name}
                     </Link>
                   </TableCell>
-                  {s.monthly_counts.map((count, i) => (
-                    <TableCell
-                      key={i}
-                      align="center"
-                      sx={{
-                        bgcolor: `rgba(16, 185, 129, ${cellOpacity(count, maxInRow)})`,
-                        minWidth: 44,
-                      }}
-                    >
-                      {count > 0 ? count : '—'}
-                    </TableCell>
-                  ))}
+                  {s.monthly_counts.map((count, i) => {
+                    const intensity = maxInRow > 0 ? count / maxInRow : 0;
+                    return (
+                      <TableCell
+                        key={i}
+                        align="center"
+                        sx={{
+                          minWidth: 44,
+                          color: count > 0 ? 'text.primary' : 'text.secondary',
+                          borderLeft:
+                            count > 0
+                              ? `3px solid rgba(16, 185, 129, ${0.45 + 0.55 * intensity})`
+                              : '3px solid transparent',
+                          bgcolor:
+                            count > 0 ? `rgba(16, 185, 129, 0.08)` : 'transparent',
+                        }}
+                      >
+                        {count > 0 ? count : '—'}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell align="right" sx={{ fontWeight: 500 }}>
                     {s.total}
                   </TableCell>

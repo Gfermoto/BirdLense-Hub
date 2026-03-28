@@ -216,9 +216,9 @@ export function Navigation() {
                 to="/live"
                 selected={currentPath === '/live'}
                 sx={{
-                  color: '#ef4444',
+                  color: '#fca5a5',
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    backgroundColor: 'rgba(185, 28, 28, 0.2)',
                   },
                 }}
               >
@@ -342,8 +342,9 @@ export function Navigation() {
                 />
               }
               sx={{
-                bgcolor: currentPath === '/live' ? '#dc2626' : '#ef4444',
-                color: 'white',
+                /* red-700 / red-800: WCAG AA vs white text (≥4.5:1) */
+                bgcolor: currentPath === '/live' ? '#991b1b' : '#b91c1c',
+                color: '#ffffff',
                 px: 2.5,
                 py: 0.75,
                 borderRadius: '20px',
@@ -351,12 +352,12 @@ export function Navigation() {
                 textTransform: 'none',
                 boxShadow:
                   currentPath === '/live'
-                    ? '0 0 20px rgba(239, 68, 68, 0.5)'
-                    : '0 0 12px rgba(239, 68, 68, 0.3)',
+                    ? '0 0 20px rgba(185, 28, 28, 0.45)'
+                    : '0 0 12px rgba(185, 28, 28, 0.35)',
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  bgcolor: '#dc2626',
-                  boxShadow: '0 0 24px rgba(239, 68, 68, 0.6)',
+                  bgcolor: '#991b1b',
+                  boxShadow: '0 0 24px rgba(153, 27, 27, 0.55)',
                   transform: 'translateY(-1px)',
                 },
               }}
