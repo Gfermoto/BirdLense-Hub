@@ -87,7 +87,7 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 | **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
 | **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
-| **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121): support UX experiments with minimal operator-flow noise; `general.donate_url` already exists. |
+| **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121) ✅ MVP: `general.donate_url` drives links in Navigation (desktop + mobile + gear menu) and Food card; see [CONFIGURATION.md](./CONFIGURATION.md). Click analytics out of scope. |
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
 | **Species canonical registry** | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) ✅: unified registry, name normalization, backfill, background metadata jobs, CI quality gate for the full dataset. |
 

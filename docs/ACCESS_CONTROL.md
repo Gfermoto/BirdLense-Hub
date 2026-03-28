@@ -123,7 +123,7 @@ Tests: `TestVerifyPasswordRateLimit` in `app/web/tests/test_api.py` (run via `ma
 
 ## Future ideas (not roadmap commitments)
 
-Community / donation UX (leaderboards, “unlock with support”, badges) is listed under **Future work candidates** in [ROADMAP](./ROADMAP.md). Config hook `general.donate_url` already exists — see [CONFIGURATION](./CONFIGURATION.md).
+Community / donation UX (leaderboards, “unlock with support”, badges) is listed under **Future work candidates** in [ROADMAP](./ROADMAP.md). Config hook `general.donate_url` adds optional support links in the app chrome and Food card — see [CONFIGURATION](./CONFIGURATION.md).
 
 ---
 
