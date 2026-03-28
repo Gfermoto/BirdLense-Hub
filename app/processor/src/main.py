@@ -15,6 +15,7 @@ from motion_detectors.opencv_motion import OpenCVMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
+from ebird_regional_confidence import merge_species_confidence_overrides_with_ebird_top
 from fps_tracker import FPSTracker
 from api import API
 from dataset_saver import save_dataset_crops
@@ -318,14 +319,15 @@ def main():
             check_n = app_config.get('motion.check_every_n_frames', 1)
             motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture, check_every_n_frames=check_n)
 
+    merged_overrides = merge_species_confidence_overrides_with_ebird_top(
+        app_config)
     decision_maker = DecisionMaker(
         max_record_seconds=app_config.get('processor.max_record_seconds'),
         max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
         min_track_duration=app_config.get('processor.min_track_duration', 1),
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
-        species_confidence_overrides=app_config.get(
-            'processor.species_confidence_overrides') or {},
+        species_confidence_overrides=merged_overrides,
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []

@@ -14,6 +14,9 @@ def _build_detection_pipeline(app_config):
     from detection_strategy import SingleStageStrategy, TwoStageStrategy
     from frame_processor import FrameProcessor
     from decision_maker import DecisionMaker
+    from ebird_regional_confidence import (
+        merge_species_confidence_overrides_with_ebird_top,
+    )
 
     processor_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     strategy_type = app_config.get('processor.detection_strategy', 'single_stage')
@@ -49,14 +52,15 @@ def _build_detection_pipeline(app_config):
         tracker=tracker,
         save_images=False,
     )
+    merged_overrides = merge_species_confidence_overrides_with_ebird_top(
+        app_config)
     decision_maker = DecisionMaker(
         max_record_seconds=app_config.get('processor.max_record_seconds'),
         max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
         min_track_duration=app_config.get('processor.min_track_duration', 1),
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
-        species_confidence_overrides=app_config.get(
-            'processor.species_confidence_overrides') or {},
+        species_confidence_overrides=merged_overrides,
     )
     return frame_processor, decision_maker
 

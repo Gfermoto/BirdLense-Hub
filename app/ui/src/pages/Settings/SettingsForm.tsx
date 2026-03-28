@@ -1894,6 +1894,63 @@ export const SettingsForm = ({
                 }}
               </form.Field>
             </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {t('settings.ebirdRegionalTopConfidenceIntro')}
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="processor.ebird_regional_top_auto_confidence">
+                {(field) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={field.state.value ?? true}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                      />
+                    }
+                    label={t('settings.ebirdRegionalTopAutoConfidence')}
+                  />
+                )}
+              </form.Field>
+              <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                {t('settings.ebirdRegionalTopAutoConfidenceHint')}
+              </FormHelperText>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.ebird_regional_top_confidence_delta">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                    value={field.state.value ?? 0.05}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || 0.05)
+                    }
+                    label={t('settings.ebirdRegionalTopConfidenceDelta')}
+                    helperText={t('settings.ebirdRegionalTopConfidenceDeltaHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.ebird_regional_top_confidence_floor">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0.01, max: 1, step: 0.01 }}
+                    value={field.state.value ?? 0.05}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || 0.05)
+                    }
+                    label={t('settings.ebirdRegionalTopConfidenceFloor')}
+                    helperText={t('settings.ebirdRegionalTopConfidenceFloorHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <form.Field name="ui.unknown_confidence_threshold">
                 {(field) => (

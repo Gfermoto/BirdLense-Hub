@@ -48,7 +48,8 @@ deploy:
 # Тесты (в контейнере — нужны ultralytics, ncnn)
 # -v монтирует локальный код: тесты идут по коду на диске, а не по образу
 test:
-	docker compose run --rm -v $$(pwd):/app birdlense python -m unittest discover processor/tests -v
+	docker compose run --rm -v $$(pwd):/app birdlense \
+		env PYTHONPATH=/app:/app/web python -m unittest discover processor/tests -v
 
 test-web:
 	docker compose run --rm -v $$(pwd):/app birdlense python -m pytest web/tests/ -v
@@ -57,6 +58,7 @@ test-web:
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)
 test-coverage:
 	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
 		python -m coverage report -m'
@@ -64,6 +66,7 @@ test-coverage:
 # Покрытие + HTML-отчёт в app/htmlcov/
 test-report:
 	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
 		python -m coverage report -m && \
