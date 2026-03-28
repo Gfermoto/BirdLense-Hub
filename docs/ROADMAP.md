@@ -84,7 +84,7 @@ These themes are now tracked as dedicated **Issues** and added to the board; sch
 
 | Theme | Why |
 |-------|-----|
-| **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117): keyboard navigation, focus order, contrast for Unknowns/Video/Migration (follow-up after i18n [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52)). |
+| **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, focus, contrast, axe E2E, [A11Y.md](./A11Y.md); further work via new issues. |
 | **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
 | **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
@@ -99,6 +99,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 **Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md).
 
 **Progress update (Mar 2026):**
+- [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](./A11Y.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — shipped and closed: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + counter), OpenAPI + API tests + smoke redirect coverage.
 - [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: Catalog menu entry removed, legacy `/species` redirects to `/migration-calendar`, species deep links (`/species/:id`) preserved.
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
