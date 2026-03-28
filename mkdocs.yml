@@ -121,7 +121,7 @@ nav:
 
 extra:
   # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
-  site_version: "0.2.7"
+  site_version: "0.2.8"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub

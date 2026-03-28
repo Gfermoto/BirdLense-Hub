@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-03-28
+
+Накопительный релиз после **v0.2.7**: страница «Система» (метрики, история, посетители), донаты в UI, eBird/датасет/реестр видов и волна багфиксов. Merge: [#185](https://github.com/Gfermoto/BirdLense-Hub/pull/185).
+
 ### Changed
 
 - **Документация:** [FEATURES](docs/FEATURES.md) / [RU](docs/FEATURES.ru.md) и [API](docs/API.md) / [RU](docs/API.ru.md) — эндпоинты «Система»: live-метрики, `/system/metrics/history`, `/system/visitors`.
