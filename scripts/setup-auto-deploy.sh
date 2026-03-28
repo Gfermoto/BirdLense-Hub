@@ -39,7 +39,13 @@ if [ ! -f "$RUNNER_DIR/run.sh" ]; then
   echo "2. Установка GitHub Actions runner..."
   mkdir -p "$RUNNER_DIR"
   cd "$RUNNER_DIR"
-  curl -sL https://github.com/actions/runner/releases/download/v2.321.0/actions-runner-linux-x64-2.321.0.tar.gz | tar xz
+  RUNNER_VER="$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')"
+  if [ -z "$RUNNER_VER" ]; then
+    echo "   Ошибка: не удалось получить версию runner с GitHub API." >&2
+    exit 1
+  fi
+  echo "   Версия: $RUNNER_VER"
+  curl -fsSL "https://github.com/actions/runner/releases/download/v${RUNNER_VER}/actions-runner-linux-x64-${RUNNER_VER}.tar.gz" | tar xz
   echo "   Скачано."
 else
   echo "2. Runner уже установлен"
@@ -54,7 +60,8 @@ read -p "Введи токен (или Enter чтобы пропустить): "
 
 if [ -n "$TOKEN" ]; then
   cd "$RUNNER_DIR"
-  ./config.sh --url "https://github.com/${REPO}" --token "$TOKEN" --labels birdlense --work _work
+  [ "$(id -u)" = 0 ] && export RUNNER_ALLOW_RUNASROOT=1
+  ./config.sh --url "https://github.com/${REPO}" --token "$TOKEN" --labels birdlense --work _work --unattended --replace
   ./svc.sh install
   ./svc.sh start
   echo "   Runner установлен как сервис."
