@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Региональный топ eBird: авто-пороги классификатора ([#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128)):** процессор подмешивает в эффективные `species_confidence_overrides` виды из топа региона (после `ebird.species_mapping`) с порогом `max(floor, min_confidence_to_process − delta)`; ручные строки важнее; ключи `processor.ebird_regional_top_*`; `PYTHONPATH` процессора включает `/app/web`; см. [CONFIGURATION.md](docs/CONFIGURATION.md).
+
 - **eBird species mapping hints ([#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136)):** `GET /api/ui/settings/ebird-species-mapping-suggestions` и кнопка в настройках — подсказки строк для `ebird.species_mapping` по региональному топу eBird vs каталог; общий кэш топа с фильтром «Региональные» в `ebird_region_service`; см. [CONFIGURATION.md](docs/CONFIGURATION.md).
 
 - **Bird Directory regional filter ([#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132)):** «Региональные» строятся по топу eBird для региона из настроек (как Migration) и по видам с детекциями BirdNET MQTT; в ответе `GET /api/ui/species` — `regional_scope`; кэш списка eBird ~30 мин; дока в [CONFIGURATION.md](docs/CONFIGURATION.md).

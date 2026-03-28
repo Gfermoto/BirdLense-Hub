@@ -65,6 +65,9 @@
 | `min_track_duration` | Мин. длительность трека (сек). По умолчанию 2 — меньше ложных срабатываний |
 | `min_confidence_to_process` | Мин. confidence трека (0.10 по умолчанию). 0.03 — больше детекций, 0.10 — строже |
 | `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
+| `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
+| `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
+| `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.05`). |
 | `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |

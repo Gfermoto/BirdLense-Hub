@@ -21,6 +21,12 @@ processor:
   min_confidence_to_process: 0.30  # Классификатор (вид). 0.30 = 30% по умолчанию
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
+  # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
+  ebird_regional_top_auto_confidence: true
+  # Вычитается из min_confidence_to_process для каждого вида из топа (после ebird.species_mapping)
+  ebird_regional_top_confidence_delta: 0.05
+  # Нижняя граница авто-порога (не ниже)
+  ebird_regional_top_confidence_floor: 0.05
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
