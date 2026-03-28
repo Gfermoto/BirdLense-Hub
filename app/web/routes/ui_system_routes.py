@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request, Response, send_file
 import shutil
-from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
-from sqlalchemy import func, select, exists
+from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit, SystemResourceSample
+from sqlalchemy import func, select, exists, delete
 from services.retention_service import run_retention
 from services.species_registry_service import (
     ensure_species_registry_seeded,
@@ -34,6 +34,78 @@ _species_metadata_lock = threading.Lock()
 IMPORT_SPECIES_NAME = "Unknown"
 LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
+
+SYSTEM_METRICS_SAMPLE_INTERVAL_SEC = 30
+SYSTEM_METRICS_RETENTION_HOURS = 72
+SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
+SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
+SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
+
+_sampler_lock = threading.Lock()
+_sampler_started = False
+
+
+def _downsample_evenly(items, max_n: int):
+    """Равномерно проредить список до max_n элементов (сохраняем концы)."""
+    n = len(items)
+    if n <= max_n or max_n < 2:
+        return items
+    out = []
+    for i in range(max_n):
+        idx = int(round(i * (n - 1) / (max_n - 1)))
+        out.append(items[idx])
+    return out
+
+
+def _record_system_resource_sample(app) -> None:
+    m = _collect_live_system_metrics(app)
+    now = datetime.now(timezone.utc)
+    row = SystemResourceSample(
+        recorded_at=now,
+        cpu_percent=float(m['cpu']['percent']),
+        memory_percent=float(m['memory']['percent']),
+        disk_percent=float(m['disk']['percent']),
+        gpu_percent=float(m['gpu_percent']) if m['gpu_percent'] is not None else None,
+    )
+    db.session.add(row)
+    cutoff = now - timedelta(hours=SYSTEM_METRICS_RETENTION_HOURS)
+    db.session.execute(
+        delete(SystemResourceSample).where(SystemResourceSample.recorded_at < cutoff)
+    )
+    db.session.commit()
+
+
+def _system_metrics_sampler_worker(app):
+    import time
+    while True:
+        try:
+            with app.app_context():
+                _record_system_resource_sample(app)
+        except Exception as e:
+            app.logger.warning('system metrics sampler: %s', e)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+        time.sleep(SYSTEM_METRICS_SAMPLE_INTERVAL_SEC)
+
+
+def _start_system_metrics_sampler(app):
+    global _sampler_started
+    if os.environ.get('DISABLE_SYSTEM_METRICS_SAMPLER', '').strip().lower() in (
+        '1', 'true', 'yes',
+    ):
+        return
+    with _sampler_lock:
+        if _sampler_started:
+            return
+        _sampler_started = True
+    threading.Thread(
+        target=_system_metrics_sampler_worker,
+        args=(app,),
+        name='system-metrics-sampler',
+        daemon=True,
+    ).start()
 
 
 def _collect_visitor_stats(visitors_days: int = 7) -> dict:
@@ -198,6 +270,49 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error getting visitor stats: {str(e)}")
             return {'error': 'Failed to get visitor stats'}, 500
+
+    @app.route('/api/ui/system/metrics/history', methods=['GET'])
+    def system_metrics_history():
+        """Серверная история снимков (см. фоновый sampler), с прореживанием для графика."""
+        try:
+            try:
+                hours = int(request.args.get('hours', '24'))
+            except (TypeError, ValueError):
+                hours = 24
+            hours = max(1, min(hours, SYSTEM_METRICS_HISTORY_MAX_HOURS))
+            try:
+                max_points = int(
+                    request.args.get('max_points', str(SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS)),
+                )
+            except (TypeError, ValueError):
+                max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
+            max_points = max(50, min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP))
+            now = datetime.now(timezone.utc)
+            start = now - timedelta(hours=hours)
+            rows = db.session.scalars(
+                select(SystemResourceSample)
+                .where(SystemResourceSample.recorded_at >= start)
+                .order_by(SystemResourceSample.recorded_at.asc())
+            ).all()
+            rows = _downsample_evenly(rows, max_points)
+            return {
+                'samples': [
+                    {
+                        't': r.recorded_at.isoformat(),
+                        'cpu': round(r.cpu_percent, 2),
+                        'memory': round(r.memory_percent, 2),
+                        'disk': round(r.disk_percent, 2),
+                        'gpu': None if r.gpu_percent is None else round(r.gpu_percent, 2),
+                    }
+                    for r in rows
+                ],
+                'sample_interval_seconds': SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+                'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
+                'hours_requested': hours,
+            }
+        except Exception as e:
+            app.logger.error(f"Error getting system metrics history: {str(e)}")
+            return {'error': 'Failed to get system metrics history'}, 500
 
     @app.route('/api/ui/system/logs', methods=['GET'])
     def get_processor_logs():
@@ -1157,3 +1272,5 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500
+
+    _start_system_metrics_sampler(app)

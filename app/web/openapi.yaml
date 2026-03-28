@@ -501,6 +501,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /system/metrics/history:
+    get:
+      summary: System metrics time series
+      description: |
+        Downsampled samples from SQLite (`system_resource_sample`), written by a background thread (~30 s). Used for System page charts.
+      parameters:
+        - in: query
+          name: hours
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+            default: 24
+        - in: query
+          name: max_points
+          required: false
+          schema:
+            type: integer
+            minimum: 50
+            maximum: 2000
+            default: 500
+      responses:
+        "200":
+          description: Metric samples
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemMetricsHistory"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /system/visitors:
     get:
       summary: Visitor statistics over a period
@@ -1003,6 +1038,34 @@ components:
           type: integer
         method:
           type: string
+    SystemMetricsHistorySample:
+      type: object
+      properties:
+        t:
+          type: string
+          format: date-time
+        cpu:
+          type: number
+        memory:
+          type: number
+        disk:
+          type: number
+        gpu:
+          type: number
+          nullable: true
+    SystemMetricsHistory:
+      type: object
+      properties:
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/SystemMetricsHistorySample"
+        sample_interval_seconds:
+          type: integer
+        retention_hours:
+          type: integer
+        hours_requested:
+          type: integer
     ActivityLogEntry:
       type: object
       properties:

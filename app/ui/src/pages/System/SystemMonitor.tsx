@@ -19,10 +19,11 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { BASE_API_URL } from '../../api/api';
 
-const HISTORY_MAX = 72;
+const LIVE_TAIL_MAX = 48;
 const CARD_MIN_HEIGHT = 280;
 
-type HistoryPoint = {
+type ChartPoint = {
+  at: Date;
   cpu: number;
   memory: number;
   disk: number;
@@ -44,26 +45,53 @@ interface VisitorStats {
   method: string;
 }
 
+interface HistorySample {
+  t: string;
+  cpu: number;
+  memory: number;
+  disk: number;
+  gpu: number | null;
+}
+
+interface MetricsHistoryResponse {
+  samples: HistorySample[];
+  sample_interval_seconds?: number;
+  retention_hours?: number;
+  hours_requested?: number;
+}
+
+type MetricKey = 'cpu' | 'memory' | 'disk' | 'gpu';
+
 function SparkMetricCard({
   title,
   icon: Icon,
-  seriesData,
+  chartPoints,
+  metricKey,
   collectingLabel,
   currentText,
   yMax = 100,
 }: {
   title: string;
   icon: React.ElementType;
-  seriesData: (number | null)[];
+  chartPoints: ChartPoint[];
+  metricKey: MetricKey;
   collectingLabel: string;
   currentText: string;
   yMax?: number;
 }) {
-  const xData = useMemo(
-    () => Array.from({ length: seriesData.length }, (_, i) => i),
-    [seriesData.length],
+  const times = useMemo(
+    () => chartPoints.map((p) => p.at),
+    [chartPoints],
   );
-  const hasChart = seriesData.length >= 2;
+  const seriesData = useMemo(
+    () =>
+      chartPoints.map((p) => {
+        const v = p[metricKey];
+        return v == null ? null : v;
+      }),
+    [chartPoints, metricKey],
+  );
+  const hasChart = chartPoints.length >= 2;
 
   return (
     <Card sx={{ minHeight: CARD_MIN_HEIGHT }}>
@@ -79,10 +107,14 @@ function SparkMetricCard({
               skipAnimation
               xAxis={[
                 {
-                  data: xData,
-                  scaleType: 'linear',
-                  tickLabelStyle: { fontSize: 0 },
-                  tickSize: 0,
+                  data: times,
+                  scaleType: 'time',
+                  valueFormatter: (d: Date) =>
+                    d.toLocaleTimeString(undefined, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  tickLabelStyle: { fontSize: 10 },
                 },
               ]}
               yAxis={[{ min: 0, max: yMax }]}
@@ -94,7 +126,7 @@ function SparkMetricCard({
                 },
               ]}
               height={176}
-              margin={{ top: 8, bottom: 16, left: 44, right: 12 }}
+              margin={{ top: 8, bottom: 24, left: 44, right: 12 }}
             />
           ) : (
             <Box
@@ -122,7 +154,8 @@ function SparkMetricCard({
 export const SystemMonitor = () => {
   const { t } = useTranslation();
   const [visitorsDays, setVisitorsDays] = useState<number>(7);
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [historyHours, setHistoryHours] = useState<number>(24);
+  const [liveTail, setLiveTail] = useState<ChartPoint[]>([]);
 
   const liveQuery = useQuery({
     queryKey: ['systemMetricsLive'],
@@ -132,6 +165,18 @@ export const SystemMonitor = () => {
       return response.json();
     },
     refetchInterval: 5000,
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ['systemMetricsHistory', historyHours],
+    queryFn: async (): Promise<MetricsHistoryResponse> => {
+      const response = await fetch(
+        `${BASE_API_URL}/system/metrics/history?hours=${historyHours}&max_points=500`,
+      );
+      if (!response.ok) throw new Error('Failed to fetch metrics history');
+      return response.json();
+    },
+    staleTime: 60_000,
   });
 
   const visitorsQuery = useQuery({
@@ -147,40 +192,46 @@ export const SystemMonitor = () => {
   });
 
   useEffect(() => {
+    setLiveTail([]);
+  }, [historyHours]);
+
+  useEffect(() => {
     const live = liveQuery.data;
     if (!live) return;
-    setHistory((prev) => {
-      const next: HistoryPoint[] = [
+    setLiveTail((prev) => {
+      const next: ChartPoint[] = [
         ...prev,
         {
+          at: new Date(),
           cpu: live.cpu.percent,
           memory: live.memory.percent,
           disk: live.disk.percent,
           gpu: live.gpu_percent,
         },
       ];
-      return next.length > HISTORY_MAX ? next.slice(-HISTORY_MAX) : next;
+      return next.length > LIVE_TAIL_MAX
+        ? next.slice(-LIVE_TAIL_MAX)
+        : next;
     });
   }, [liveQuery.dataUpdatedAt, liveQuery.data]);
 
-  const live = liveQuery.data;
+  const chartPoints = useMemo((): ChartPoint[] => {
+    const server: ChartPoint[] = (historyQuery.data?.samples ?? []).map(
+      (s) => ({
+        at: new Date(s.t),
+        cpu: s.cpu,
+        memory: s.memory,
+        disk: s.disk,
+        gpu: s.gpu,
+      }),
+    );
+    if (server.length === 0) return [...liveTail];
+    const lastServerMs = server[server.length - 1]!.at.getTime();
+    const tail = liveTail.filter((p) => p.at.getTime() > lastServerMs - 1000);
+    return [...server, ...tail];
+  }, [historyQuery.data?.samples, liveTail]);
 
-  const cpuSeries = useMemo(
-    () => history.map((h) => h.cpu),
-    [history],
-  );
-  const memSeries = useMemo(
-    () => history.map((h) => h.memory),
-    [history],
-  );
-  const diskSeries = useMemo(
-    () => history.map((h) => h.disk),
-    [history],
-  );
-  const gpuSeries = useMemo(
-    () => history.map((h) => (h.gpu == null ? null : h.gpu)),
-    [history],
-  );
+  const live = liveQuery.data;
 
   if (liveQuery.isLoading) return <LinearProgress />;
   if (liveQuery.error)
@@ -195,21 +246,71 @@ export const SystemMonitor = () => {
 
   const visitors = visitorsQuery.data;
 
+  const historySubtitle =
+    historyQuery.data?.retention_hours != null &&
+    historyQuery.data?.sample_interval_seconds != null
+      ? t('system.serverHistoryMeta', {
+          hours: historyHours,
+          retention: historyQuery.data.retention_hours,
+          interval: historyQuery.data.sample_interval_seconds,
+        })
+      : null;
+
   return (
     <Box sx={{ width: '100%' }}>
       <Typography variant="h5" sx={{ mb: 1 }}>
         {t('system.resources')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {t('system.liveTrendHint')}
       </Typography>
+      {historySubtitle ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {historySubtitle}
+        </Typography>
+      ) : (
+        <Box sx={{ mb: 2 }} />
+      )}
+
+      <Box
+        sx={{
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="metrics-history-hours-label">
+            {t('system.metricsHistoryWindow')}
+          </InputLabel>
+          <Select
+            labelId="metrics-history-hours-label"
+            value={historyHours}
+            label={t('system.metricsHistoryWindow')}
+            onChange={(e) => setHistoryHours(Number(e.target.value))}
+          >
+            <MenuItem value={6}>{t('system.history6h')}</MenuItem>
+            <MenuItem value={24}>{t('system.history24h')}</MenuItem>
+            <MenuItem value={48}>{t('system.history48h')}</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {historyQuery.isError ? (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {t('system.errorLoadHistory')}
+        </Typography>
+      ) : null}
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>
           <SparkMetricCard
             icon={SpeedIcon}
             title={t('system.cpu')}
-            seriesData={cpuSeries}
+            chartPoints={chartPoints}
+            metricKey="cpu"
             collectingLabel={t('system.chartCollecting')}
             currentText={t('system.usagePercent', { percent: live.cpu.percent })}
             yMax={100}
@@ -219,7 +320,8 @@ export const SystemMonitor = () => {
           <SparkMetricCard
             icon={MemoryIcon}
             title={t('system.memory')}
-            seriesData={memSeries}
+            chartPoints={chartPoints}
+            metricKey="memory"
             collectingLabel={t('system.chartCollecting')}
             currentText={`${live.memory.used}GB / ${live.memory.total}GB (${live.memory.percent}%)`}
             yMax={100}
@@ -229,7 +331,8 @@ export const SystemMonitor = () => {
           <SparkMetricCard
             icon={StorageIcon}
             title={t('system.disk')}
-            seriesData={diskSeries}
+            chartPoints={chartPoints}
+            metricKey="disk"
             collectingLabel={t('system.chartCollecting')}
             currentText={`${live.disk.used}GB / ${live.disk.total}GB (${live.disk.percent}%)`}
             yMax={100}
@@ -241,7 +344,8 @@ export const SystemMonitor = () => {
             <SparkMetricCard
               icon={DeveloperBoardIcon}
               title={t('system.gpu')}
-              seriesData={gpuSeries}
+              chartPoints={chartPoints}
+              metricKey="gpu"
               collectingLabel={t('system.chartCollecting')}
               currentText={
                 live.gpu_percent != null

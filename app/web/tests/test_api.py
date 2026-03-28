@@ -70,6 +70,29 @@ class TestMetrics:
         assert isinstance(r.json['unique_visits'], int)
         assert r.json['unique_visits'] >= 1
 
+    def test_system_metrics_history_endpoint(self, app, client):
+        from models import db, SystemResourceSample
+        now = datetime.now(timezone.utc)
+        with app.app_context():
+            db.session.add(SystemResourceSample(
+                recorded_at=now,
+                cpu_percent=11.5,
+                memory_percent=44.0,
+                disk_percent=55.0,
+                gpu_percent=None,
+            ))
+            db.session.commit()
+        r = client.get('/api/ui/system/metrics/history', query_string={'hours': 24})
+        assert r.status_code == 200
+        body = r.json
+        assert 'samples' in body
+        assert len(body['samples']) >= 1
+        s0 = body['samples'][0]
+        assert s0['cpu'] == 11.5
+        assert 't' in s0
+        assert 'sample_interval_seconds' in body
+        assert 'retention_hours' in body
+
 
 class TestLibraryDatasetFlow:
     """Smoke for critical Library dataset happy-path endpoints."""
