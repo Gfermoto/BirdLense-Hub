@@ -41,8 +41,13 @@ const StatusDot = ({
 
   return (
     <Tooltip title={tooltip}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Icon sx={{ fontSize: 18, color }} />
+      <Box
+        component="span"
+        role="img"
+        aria-label={tooltip}
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+      >
+        <Icon sx={{ fontSize: 18, color }} aria-hidden />
       </Box>
     </Tooltip>
   );

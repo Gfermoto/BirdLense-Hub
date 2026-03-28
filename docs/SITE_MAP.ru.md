@@ -42,6 +42,7 @@
 | Локальная разработка | [LOCAL_DEV.ru.md](./LOCAL_DEV.ru.md) |
 | CodeQL (CI) | [CODEQL.ru.md](./CODEQL.ru.md) |
 | Тесты | [TESTING.ru.md](./TESTING.ru.md) |
+| Доступность | [A11Y.ru.md](./A11Y.ru.md) · [EN](./A11Y.md) |
 
 ---
 

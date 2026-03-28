@@ -9,6 +9,7 @@
     "test:api": "playwright test --grep @api"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.52.0"
   }
 }
