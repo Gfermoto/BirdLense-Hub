@@ -13,7 +13,8 @@
     "liveView": "Прямой эфир",
     "settings": "Настройки",
     "system": "Система",
-    "library": "Библиотека"
+    "library": "Библиотека",
+    "supportProject": "Поддержать"
   },
   "library": {
     "activity": "Активность записей",
@@ -163,7 +164,7 @@
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "donateUrl": "Ссылка для поддержки",
-    "donateUrlHint": "Boosty, DonationAlerts, Ko-fi, страница проекта. Кнопка всегда видна.",
+    "donateUrlHint": "Boosty, DonationAlerts, Ko-fi, страница проекта. Если задано: ссылка в шапке, меню шестерёнки, мобильном меню и карточке «Корм».",
     "go2rtcUrl": "Go2RTC URL",
     "go2rtcUrlHint": "Хост: http://IP:1984",
     "go2rtcUser": "Go2RTC логин",

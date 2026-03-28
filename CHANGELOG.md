@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Donation / support surfaces ([#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121)):** при заданном `general.donate_url` ссылка «Support» / «Поддержать» в шапке (desktop), в мобильном меню и в меню шестерёнки; общий кэш `feed-info` с карточкой Food на Overview; i18n EN/RU/DE; [CONFIGURATION](docs/CONFIGURATION.md) / [ACCESS_CONTROL](docs/ACCESS_CONTROL.md).
+
 - **Bird food catalog ([#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134)):** расширен дефолтный список кормов (в т.ч. EU: fat balls, hemp seed, oats, mixes, rapeseed, apple); `seed_bird_food()` идемпотентно добавляет только отсутствующие по `name`; дока в [CONFIGURATION.md](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md); тест `test_bird_food_seed.py`.
 
 - **Production secrets runbook ([#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)):** [SECRETS_ROTATION.md](docs/SECRETS_ROTATION.md) / [RU](docs/SECRETS_ROTATION.ru.md) — перечень env/YAML, порядок ротации, проверка, откат, шаблон экстренной заметки; ссылки из [SECURITY.md](docs/SECURITY.md), [CONFIGURATION.md](docs/CONFIGURATION.md), MkDocs nav.

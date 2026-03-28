@@ -20,6 +20,8 @@ import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
+import { useQuery } from '@tanstack/react-query';
+import { fetchFeedInfo } from '../api/api';
 
 // Pulse animation for the live indicator
 const pulse = keyframes`
@@ -88,6 +90,13 @@ export function Navigation() {
     React.useState(false);
   const [pendingAction, setPendingAction] =
     React.useState<PendingAction | null>(null);
+
+  const { data: feedInfo } = useQuery({
+    queryKey: ['feed-info'],
+    queryFn: fetchFeedInfo,
+    staleTime: 1000 * 30,
+  });
+  const donateUrl = feedInfo?.donate_url?.trim() || '';
 
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
@@ -243,6 +252,18 @@ export function Navigation() {
                 {t('nav.library')}
               </MenuItem>
 
+              {donateUrl ? (
+                <MenuItem
+                  component="a"
+                  href={donateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleMobileMenuClose}
+                >
+                  {t('nav.supportProject')}
+                </MenuItem>
+              ) : null}
+
               {/* Mobile: Status + Language */}
               <Divider />
               <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -349,6 +370,28 @@ export function Navigation() {
             {/* Language Switcher */}
             <LanguageSwitcher />
 
+            {donateUrl ? (
+              <Button
+                component="a"
+                href={donateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.88)',
+                  textTransform: 'none',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  minWidth: 'auto',
+                  px: 1,
+                  py: 0.5,
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
+                }}
+              >
+                {t('nav.supportProject')}
+              </Button>
+            ) : null}
+
             {/* Settings Icon */}
             <IconButton
               ref={gearButtonRef}
@@ -409,6 +452,20 @@ export function Navigation() {
             >
               {t('nav.library')}
             </MenuItem>
+            {donateUrl ? (
+              <>
+                <Divider />
+                <MenuItem
+                  component="a"
+                  href={donateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleSettingsMenuClose}
+                >
+                  {t('nav.supportProject')}
+                </MenuItem>
+              </>
+            ) : null}
           </Menu>
         </Toolbar>
       </Container>
