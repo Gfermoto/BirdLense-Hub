@@ -230,6 +230,8 @@ export interface Species {
   metadata_source?: string | null;
   metadata_source_url?: string | null;
   active: boolean;
+  /** eBird regional top ∪ BirdNET-heard (Bird Directory filter). */
+  regional_scope?: boolean;
   count?: number;
 }
 

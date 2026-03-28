@@ -66,6 +66,11 @@ def _ebird_to_birdlense(name: str) -> str:
     return mapping.get(name, name)
 
 
+def ebird_common_to_birdlense_name(name: str) -> str:
+    """Public alias for species matching (Bird Directory, filters)."""
+    return _ebird_to_birdlense(name)
+
+
 def get_region_comparison(user_species_names: list[str]) -> dict | None:
     """Compare user's species with region top.
 
