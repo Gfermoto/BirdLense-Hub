@@ -1,5 +1,6 @@
 """eBird API: regional species for comparison with user's feeder."""
 import logging
+import time
 from collections import Counter
 
 import httpx
@@ -58,6 +59,28 @@ def get_region_top_species(api_key: str, region_code: str) -> list[str]:
         if com:
             counter[com] += 1
     return [name for name, _ in counter.most_common(TOP_N)]
+
+
+# Shared cache so Bird Directory regional scope and mapping suggestions do not duplicate HTTP.
+_REGION_TOP_CACHE: dict[tuple[str, str], tuple[float, list[str]]] = {}
+_REGION_TOP_TTL_SEC = 1800.0
+
+
+def get_region_top_species_cached(api_key: str, region_code: str) -> list[str]:
+    """Same as ``get_region_top_species`` but cached ~30 min per region and key suffix."""
+    now = time.monotonic()
+    key_suffix = api_key[-12:] if len(api_key) >= 12 else api_key
+    key = (region_code, key_suffix)
+    ent = _REGION_TOP_CACHE.get(key)
+    if ent is not None and (now - ent[0]) < _REGION_TOP_TTL_SEC:
+        return ent[1]
+    try:
+        top = get_region_top_species(api_key, region_code)
+    except Exception as e:
+        logger.warning('eBird regional top fetch failed: %s', e)
+        top = []
+    _REGION_TOP_CACHE[key] = (now, top)
+    return top
 
 
 def _ebird_to_birdlense(name: str) -> str:
