@@ -29,6 +29,7 @@
 - **Видео: предыдущий/следующий ролик (тот же день UTC)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) закрыт (**v0.2.6**): `GET /api/ui/videos/:id/neighbors` и стрелки на странице видео.
 - **Overview: средняя длительность записи** — [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) закрыт: метрика = средняя длительность одного ролика (`Video`), не агрегат визита; PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106).
 - **Публичная галерея (opt-in)** — [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) закрыт (v0.2.4): фоновая загрузка в **app context** Flask; разбор проблем — [CONFIGURATION.ru](./CONFIGURATION.ru.md) → Gallery.
+- **Система: графики ресурсов с историей на сервере** — SQLite `system_resource_sample`, `GET /api/ui/system/metrics/history`, UI с окном 6/24/48 ч и живым хвостом; настройки `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION.ru](./CONFIGURATION.ru.md) → Prometheus / Grafana.
 
 ---
 

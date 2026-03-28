@@ -35,6 +35,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Region comparison** | `GET /api/ui/region-comparison` — your species vs regional eBird top list (Overview) | 0.1.9 |
 | **PDF report** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
 | **Prometheus** | `GET /metrics`, `GET /api/metrics` | 0.1.3 |
+| **System metrics history** | `GET /api/ui/system/metrics/history` — SQLite samples for hub UI charts | — |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
 | **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + `dataset_info.json` | 0.1.5 |
 
@@ -56,6 +57,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
 | **Download video** | Video details — Admin/Contributor after password |
 | **Video prev/next** | Same UTC calendar day: arrows + counter on video details; `GET /api/ui/videos/:id/neighbors` |
+| **System: resources & visitors** | `/system` charts (server history + live tail, window 6/24/48 h), unique visitors over selectable period; tune via `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) |
 
 ---
 
@@ -98,6 +100,9 @@ Full reference: [CONFIGURATION](./CONFIGURATION.md).
 | GET | `/api/ui/videos/:id/download` | Download clip (role-gated) |
 | GET | `/api/ui/videos/:id/neighbors` | Previous/next video IDs for the same UTC day as `start_time` |
 | GET | `/api/ui/dataset/export` | Dataset ZIP |
+| GET | `/api/ui/system/metrics` | Live CPU / RAM / disk / GPU |
+| GET | `/api/ui/system/metrics/history` | Metrics time series for UI (`hours`, `max_points`) |
+| GET | `/api/ui/system/visitors` | Visitor stats (`days`) |
 | GET | `/api/ui/migration-calendar` | Migration calendar data |
 | GET | `/api/ui/report/pdf` | PDF report |
 | GET | `/api/ui/species/:id/xeno-canto` | Xeno-canto proxy |

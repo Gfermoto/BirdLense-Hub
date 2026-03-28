@@ -329,6 +329,16 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, dashboard from metrics.
 
+### System page metrics history
+
+Separate from Prometheus: SQLite table `system_resource_sample`, background sampler stores CPU/RAM/disk/GPU snapshots. The UI calls `GET /api/ui/system/metrics/history`.
+
+| Environment variable | Default | Range | Purpose |
+|---------------------|---------|-------|---------|
+| `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | `30` | 10–600 | Seconds between samples |
+| `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | `72` | 6–720 | Drop rows older than this (hours) |
+| `DISABLE_SYSTEM_METRICS_SAMPLER` | — | `1` / `true` | Disable sampler (tests, debugging) |
+
 ### Alerting (Prometheus + Alertmanager)
 
 Ready-made examples live in the repo (tune thresholds and job labels to match your scrape config):

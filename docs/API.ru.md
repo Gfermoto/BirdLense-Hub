@@ -62,7 +62,9 @@
 
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
-| `/system/metrics` | GET | CPU, память, диск, GPU, encoding |
+| `/system/metrics` | GET | Мгновенный снимок: CPU, память, диск, GPU (`encoding` — подсказка для графика GPU) |
+| `/system/metrics/history` | GET | Временной ряд для графиков (`?hours=`, `?max_points=`), снимки в SQLite |
+| `/system/visitors` | GET | Уникальные сессии посетителей за `?days=` (агрегат SpeciesVisit) |
 | `/system/activity` | GET | Активность по дням |
 | `/storage/stats` | GET | Статистика записей |
 | `/storage/purge` | POST | Удаление записей по дате |

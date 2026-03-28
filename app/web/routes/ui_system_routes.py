@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request, Response, send_file
 import shutil
-from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit
-from sqlalchemy import func, select, exists
+from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit, SystemResourceSample
+from sqlalchemy import func, select, exists, delete
 from services.retention_service import run_retention
 from services.species_registry_service import (
     ensure_species_registry_seeded,
@@ -36,8 +36,115 @@ LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 
 
-def _collect_system_metrics_dict(app, visitors_days: int = 7):
-    """Собирает системные метрики (CPU, память, диск, GPU). Используется в system_metrics и /api/metrics."""
+def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
+    raw = os.environ.get(name, '').strip()
+    if not raw:
+        return default
+    try:
+        v = int(raw)
+    except ValueError:
+        return default
+    return max(min_v, min(max_v, v))
+
+
+SYSTEM_METRICS_SAMPLE_INTERVAL_SEC = _env_bounded_int(
+    'BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC', 30, min_v=10, max_v=600,
+)
+SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
+    'BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS', 72, min_v=6, max_v=720,
+)
+SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
+SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
+SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
+
+_sampler_lock = threading.Lock()
+_sampler_started = False
+
+
+def _downsample_evenly(items, max_n: int):
+    """Равномерно проредить список до max_n элементов (сохраняем концы)."""
+    n = len(items)
+    if n <= max_n or max_n < 2:
+        return items
+    out = []
+    for i in range(max_n):
+        idx = int(round(i * (n - 1) / (max_n - 1)))
+        out.append(items[idx])
+    return out
+
+
+def _record_system_resource_sample(app) -> None:
+    m = _collect_live_system_metrics(app)
+    now = datetime.now(timezone.utc)
+    row = SystemResourceSample(
+        recorded_at=now,
+        cpu_percent=float(m['cpu']['percent']),
+        memory_percent=float(m['memory']['percent']),
+        disk_percent=float(m['disk']['percent']),
+        gpu_percent=float(m['gpu_percent']) if m['gpu_percent'] is not None else None,
+    )
+    db.session.add(row)
+    cutoff = now - timedelta(hours=SYSTEM_METRICS_RETENTION_HOURS)
+    db.session.execute(
+        delete(SystemResourceSample).where(SystemResourceSample.recorded_at < cutoff)
+    )
+    db.session.commit()
+
+
+def _system_metrics_sampler_worker(app):
+    import time
+    while True:
+        try:
+            with app.app_context():
+                _record_system_resource_sample(app)
+        except Exception as e:
+            app.logger.warning('system metrics sampler: %s', e)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+        time.sleep(SYSTEM_METRICS_SAMPLE_INTERVAL_SEC)
+
+
+def _start_system_metrics_sampler(app):
+    global _sampler_started
+    if os.environ.get('DISABLE_SYSTEM_METRICS_SAMPLER', '').strip().lower() in (
+        '1', 'true', 'yes',
+    ):
+        return
+    with _sampler_lock:
+        if _sampler_started:
+            return
+        _sampler_started = True
+    threading.Thread(
+        target=_system_metrics_sampler_worker,
+        args=(app,),
+        name='system-metrics-sampler',
+        daemon=True,
+    ).start()
+
+
+def _collect_visitor_stats(visitors_days: int = 7) -> dict:
+    """Агрегаты посетителей по БД (не системные мгновенные метрики)."""
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    days = max(1, min(int(visitors_days or 7), 365))
+    start_utc = now_utc - timedelta(days=days)
+    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
+        SpeciesVisit.start_time >= start_utc
+    ).scalar() or 0
+    active_days = db.session.query(
+        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
+    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
+    return {
+        'period_days': days,
+        'unique_visits': int(unique_visit_sessions),
+        'active_days': int(active_days),
+        'method': 'species_visit_sessions',
+    }
+
+
+def _collect_live_system_metrics(app):
+    """Мгновенный снимок: CPU, память, диск, GPU (без запросов к БД по посетителям)."""
     cpu_percent = psutil.cpu_percent(interval=0.5)
     memory = psutil.virtual_memory()
     memory_total_gb = round(memory.total / (1024**3), 1)
@@ -47,23 +154,6 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
     disk_total_gb = round(disk.total / (1024**3), 1)
     disk_used_gb = round(disk.used / (1024**3), 1)
     disk_percent = disk.percent
-
-    encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
-    if encoding not in ('cpu', 'intel'):
-        encoding = 'cpu'
-    encoding_used = None
-    processor_mqtt = None
-    last_hb = ActivityLog.query.filter_by(type='heartbeat').order_by(
-        ActivityLog.updated_at.desc()
-    ).first()
-    if last_hb and last_hb.data:
-        try:
-            import json as _json
-            data = _json.loads(last_hb.data) if isinstance(last_hb.data, str) else last_hb.data
-            encoding_used = data.get('encoding_used')
-            processor_mqtt = 'ok' if data.get('mqtt_connected') is True else ('error' if data.get('mqtt_connected') is False else None)
-        except (TypeError, ValueError):
-            pass
 
     gpu_percent = None
     for path in ('/sys/class/drm/card0/device/gpu_busy_percent',
@@ -80,23 +170,16 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
                 break
         except (OSError, ValueError):
             continue
-    intel_gpu = encoding == 'intel' or os.path.exists('/dev/dri/renderD128')
+    encoding_setting = (app_config.get('video.encoding') or 'cpu').strip().lower()
+    if encoding_setting not in ('cpu', 'intel'):
+        encoding_setting = 'cpu'
+    intel_gpu = encoding_setting == 'intel' or os.path.exists('/dev/dri/renderD128')
     if gpu_percent is None and intel_gpu:
         try:
             from gpu_stats import get_intel_gpu_percent
             gpu_percent = get_intel_gpu_percent()
         except Exception as e:
             app.logger.warning("gpu_stats: %s", e)
-
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    days = max(1, min(int(visitors_days or 7), 365))
-    start_utc = now_utc - timedelta(days=days)
-    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
-        SpeciesVisit.start_time >= start_utc
-    ).scalar() or 0
-    active_days = db.session.query(
-        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
-    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
 
     return {
         'cpu': {'percent': cpu_percent},
@@ -105,16 +188,8 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
             'total_bytes': memory.total, 'used_bytes': memory.used,
         },
         'disk': {'total': disk_total_gb, 'used': disk_used_gb, 'percent': disk_percent},
-        'encoding': encoding,
-        'encoding_used': encoding_used,
-        'processor_mqtt': processor_mqtt,
+        'encoding': encoding_setting,
         'gpu_percent': gpu_percent,
-        'visitors': {
-            'period_days': days,
-            'unique_visits': int(unique_visit_sessions),
-            'active_days': int(active_days),
-            'method': 'species_visit_sessions',
-        },
     }
 
 
@@ -126,7 +201,7 @@ def register_routes(app):
         return db.engine.url.database
 
     def _prometheus_metrics_body(app):
-        sys_m = _collect_system_metrics_dict(app)
+        sys_m = _collect_live_system_metrics(app)
         detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
@@ -186,25 +261,74 @@ def register_routes(app):
 
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
+        """Мгновенные метрики хоста (опрос UI). Без агрегатов посетителей — см. /api/ui/system/visitors."""
         try:
-            try:
-                visitors_days = int(request.args.get('visitors_days', '7'))
-            except (TypeError, ValueError):
-                visitors_days = 7
-            m = _collect_system_metrics_dict(app, visitors_days=visitors_days)
+            m = _collect_live_system_metrics(app)
             return {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
                 'disk': m['disk'],
                 'encoding': m['encoding'],
-                'encoding_used': m['encoding_used'],
-                'processor_mqtt': m['processor_mqtt'],
                 'gpu_percent': m['gpu_percent'],
-                'visitors': m['visitors'],
             }
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/visitors', methods=['GET'])
+    def system_visitors():
+        try:
+            try:
+                days = int(request.args.get('days', '7'))
+            except (TypeError, ValueError):
+                days = 7
+            return _collect_visitor_stats(days)
+        except Exception as e:
+            app.logger.error(f"Error getting visitor stats: {str(e)}")
+            return {'error': 'Failed to get visitor stats'}, 500
+
+    @app.route('/api/ui/system/metrics/history', methods=['GET'])
+    def system_metrics_history():
+        """Серверная история снимков (см. фоновый sampler), с прореживанием для графика."""
+        try:
+            try:
+                hours = int(request.args.get('hours', '24'))
+            except (TypeError, ValueError):
+                hours = 24
+            hours = max(1, min(hours, SYSTEM_METRICS_HISTORY_MAX_HOURS))
+            try:
+                max_points = int(
+                    request.args.get('max_points', str(SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS)),
+                )
+            except (TypeError, ValueError):
+                max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
+            max_points = max(50, min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP))
+            now = datetime.now(timezone.utc)
+            start = now - timedelta(hours=hours)
+            rows = db.session.scalars(
+                select(SystemResourceSample)
+                .where(SystemResourceSample.recorded_at >= start)
+                .order_by(SystemResourceSample.recorded_at.asc())
+            ).all()
+            rows = _downsample_evenly(rows, max_points)
+            return {
+                'samples': [
+                    {
+                        't': r.recorded_at.isoformat(),
+                        'cpu': round(r.cpu_percent, 2),
+                        'memory': round(r.memory_percent, 2),
+                        'disk': round(r.disk_percent, 2),
+                        'gpu': None if r.gpu_percent is None else round(r.gpu_percent, 2),
+                    }
+                    for r in rows
+                ],
+                'sample_interval_seconds': SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+                'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
+                'hours_requested': hours,
+            }
+        except Exception as e:
+            app.logger.error(f"Error getting system metrics history: {str(e)}")
+            return {'error': 'Failed to get system metrics history'}, 500
 
     @app.route('/api/ui/system/logs', methods=['GET'])
     def get_processor_logs():
@@ -1164,3 +1288,5 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500
+
+    _start_system_metrics_sampler(app)
