@@ -20,6 +20,7 @@ import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
 import dayjs from 'dayjs';
+import { visuallyHidden } from '@mui/utils';
 
 /** Intensity 0–1 → opacity for cell background */
 const cellOpacity = (count: number, maxInRow: number) =>
@@ -99,8 +100,15 @@ export const MigrationCalendar = () => {
       <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
         {t('migrationCalendar.periodHint')}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <FilterListIcon fontSize="small" color="action" />
+      <Box
+        component="section"
+        aria-labelledby="migration-filters-heading"
+        sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}
+      >
+        <Typography id="migration-filters-heading" component="h2" sx={visuallyHidden}>
+          {t('migrationCalendar.filterSectionTitle')}
+        </Typography>
+        <FilterListIcon fontSize="small" color="action" aria-hidden />
         <TextField
           type="date"
           size="small"
@@ -153,6 +161,9 @@ export const MigrationCalendar = () => {
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table size="small" stickyHeader>
+          <caption style={visuallyHidden as React.CSSProperties}>
+            {t('migrationCalendar.tableCaption')}
+          </caption>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: 600, minWidth: 180 }}>
