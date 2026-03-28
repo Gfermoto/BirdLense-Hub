@@ -1346,6 +1346,15 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         return app_config.mask_config_for_api(app_config.config), 200
 
+    @app.route('/api/ui/settings/ebird-species-mapping-suggestions', methods=['GET'])
+    def ebird_species_mapping_suggestions():
+        """Regional eBird top vs Species catalog; same access as GET /settings."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.ebird_mapping_suggestions import build_ebird_mapping_suggestions
+
+        return build_ebird_mapping_suggestions(), 200
+
     @app.route('/api/ui/settings', methods=['PATCH'])
     def update_settings():
         if not settings_check_access():

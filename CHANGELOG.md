@@ -8,7 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Доки деплоя / MCP:** основная площадка в правилах и примерах — LAN **192.168.1.11:22**, UI **http://192.168.1.11:8085/**, MCP **`http://192.168.1.11:8085/mcp`**; публичный хост birdlense.eyera.info оставлен как альтернатива в `deploy.local.sh.example` и MCP_SETUP.
+
 ### Added
+
+- **eBird species mapping hints ([#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136)):** `GET /api/ui/settings/ebird-species-mapping-suggestions` и кнопка в настройках — подсказки строк для `ebird.species_mapping` по региональному топу eBird vs каталог; общий кэш топа с фильтром «Региональные» в `ebird_region_service`; см. [CONFIGURATION.md](docs/CONFIGURATION.md).
 
 - **Bird Directory regional filter ([#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132)):** «Региональные» строятся по топу eBird для региона из настроек (как Migration) и по видам с детекциями BirdNET MQTT; в ответе `GET /api/ui/species` — `regional_scope`; кэш списка eBird ~30 мин; дока в [CONFIGURATION.md](docs/CONFIGURATION.md).
 
