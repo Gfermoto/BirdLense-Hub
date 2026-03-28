@@ -1,17 +1,21 @@
 ---
-description: Деплой BirdLense Hub (SSH 185.218.111.196:2222, UI birdlense.eyera.info)
+description: Деплой BirdLense Hub (LAN 192.168.1.11:22, UI :8085, MCP /mcp)
 alwaysApply: true
 ---
 
 # Деплой BirdLense Hub
 
-## Критично
+## Критично (текущая площадка)
 
-**Сервер SSH: 185.218.111.196, порт 2222.** Деплой ВСЕГДА выполнять на него.
+**SSH:** `192.168.1.11`, порт **22** (пользователь по вашей схеме на сервере, часто `root`).
 
-**Веб-интерфейс (прод):** https://birdlense.eyera.info/ (TLS за reverse proxy; приложение в контейнере по-прежнему слушает внутри **8085** снаружи хоста — см. `BIRDLENSE_PORT` на сервере).
+**Веб-UI:** http://192.168.1.11:8085/ (порт хаба по умолчанию — **8085**, см. `BIRDLENSE_PORT`).
 
-**После любых изменений в коде — запускать деплой.** Не запускать автоматически при открытии проекта — только по явному запросу.
+**MCP:** тот же хост и порт, путь **`http://192.168.1.11:8085/mcp`** (Bearer — `MCP_TOKEN` / настройки MCP в UI).
+
+Переопределения без коммита: **`scripts/deploy.local.sh`** (шаблон: `deploy.local.sh.example`) — `DEPLOY_HOST`, `DEPLOY_URL`, при необходимости `DEPLOY_REMOTE_DIR`.
+
+**После изменений в коде** — по запросу: `make deploy` из корня репозитория. Не запускать автоматически при открытии проекта.
 
 ## Команда деплоя
 
@@ -31,19 +35,22 @@ make deploy
 - `./app/data/db/birdlense.db` — SQLite
 - `./app/app_config/` — default_config синхронизируется; **user_config.yaml не перезаписывается**
 
-## SSH
+## SSH (пример `~/.ssh/config`)
 
-`ssh birdlense` — Host в ~/.ssh/config:
 ```
-Host birdlense
-  HostName 185.218.111.196
-  Port 2222
+Host birdlense-lan
+  HostName 192.168.1.11
+  Port 22
   User root
 ```
 
+Тогда в `deploy.local.sh`: `export DEPLOY_HOST="birdlense-lan"`.
+
+Или сразу: `export DEPLOY_HOST="root@192.168.1.11"` (порт 22 по умолчанию).
+
 ## Порт
 
-По умолчанию 8085. `BIRDLENSE_PORT=8080 make start` на сервере.
+По умолчанию **8085**. На сервере: `BIRDLENSE_PORT=8080 make start` и т.п.
 
 ## Записи не видны
 
@@ -54,4 +61,8 @@ Host birdlense
 
 - `app/data/` — записи и БД
 - `app/app_config/user_config.yaml` — настройки
-- Старые контейнеры (nginx, processor, web) — удаляются перед деплоем
+- Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
+
+## Другая площадка (публичный хост)
+
+Ранее использовались **185.218.111.196:2222** и **https://birdlense.eyera.info/** — задайте их в своём `deploy.local.sh`, если деплой снова на тот сервер.
