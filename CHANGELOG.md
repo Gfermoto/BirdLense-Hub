@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); `requests` **2.33.0** в `app/web/requirements.txt` и `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
 
+- **CI / Deploy:** шаг **Verify** — порт из `BIRDLENSE_PORT` в `app/.env` на сервере (иначе 8085), пауза 10 с и до **36** попыток `curl` с интервалом 5 с после `make pull` (старт контейнера и приложения).
+
 ## [0.2.9] - 2026-03-28
 
 Релиз доступности и регрессионных проверок. Merge: [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), закрыт [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117).

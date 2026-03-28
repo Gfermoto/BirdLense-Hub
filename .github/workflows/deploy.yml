@@ -50,13 +50,31 @@ jobs:
 
       - name: Verify
         run: |
-          sleep 8
-          if curl -sf http://127.0.0.1:8085/api/ui/health; then
-            echo "Health OK"
-          else
-            echo "::error::Health check failed (curl http://127.0.0.1:8085/api/ui/health)"
-            exit 1
+          set -euo pipefail
+          DEPLOY_DIR="${DEPLOY_DIR:-/root/BirdLense}"
+          ENV_FILE="$DEPLOY_DIR/app/.env"
+          PORT=8085
+          if [ -f "$ENV_FILE" ]; then
+            V=$(grep -E '^[[:space:]]*BIRDLENSE_PORT=' "$ENV_FILE" | tail -1 || true)
+            if [ -n "$V" ]; then
+              PORT="${V#*=}"
+              PORT="${PORT//\"/}"
+              PORT="${PORT//\'/}"
+            fi
           fi
+          URL="http://127.0.0.1:${PORT}/api/ui/health"
+          echo "Health check: $URL"
+          sleep 10
+          for i in $(seq 1 36); do
+            if curl -sf "$URL"; then
+              echo "Health OK (attempt $i)"
+              exit 0
+            fi
+            echo "Health not ready, attempt $i/36 …"
+            sleep 5
+          done
+          echo "::error::Health check failed after retries ($URL)"
+          exit 1
 
       - name: Test recognition (optional)
         if: success()
