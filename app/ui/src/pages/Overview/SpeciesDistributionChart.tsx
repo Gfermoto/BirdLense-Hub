@@ -100,7 +100,17 @@ export const SpeciesDistributionChart: React.FC<
         {pieData.map((item) => (
           <Box
             key={String(item.id)}
+            data-testid="overview-species-legend-chip"
             onClick={() => navigateToTimelineForSpecies(Number(item.id))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigateToTimelineForSpecies(Number(item.id));
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={item.label}
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -112,6 +122,10 @@ export const SpeciesDistributionChart: React.FC<
               borderColor: 'divider',
               cursor: 'pointer',
               '&:hover': { bgcolor: 'action.hover' },
+              '&:focus-visible': {
+                outline: '2px solid #5EEAD4',
+                outlineOffset: 2,
+              },
             }}
           >
             <Box
