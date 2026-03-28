@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`.
 
+- **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); `requests` **2.33.0** в `app/web/requirements.txt` и `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
+
 ## [0.2.9] - 2026-03-28
 
 Релиз доступности и регрессионных проверок. Merge: [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), закрыт [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117).
