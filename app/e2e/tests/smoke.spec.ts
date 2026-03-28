@@ -49,8 +49,12 @@ test.describe('Smoke tests', () => {
 
   test('Overview species chart click opens timeline with species filter', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    const firstSlice = page.locator('svg path[style*="cursor: pointer"]').first();
-    await firstSlice.click();
+    const chips = page.getByTestId('overview-species-legend-chip');
+    const n = await chips.count();
+    if (n === 0) {
+      test.skip(true, 'Overview has no species distribution data in this environment');
+    }
+    await chips.first().click();
     await expect(page).toHaveURL(/\/timeline\?speciesId=\d+&date=/);
   });
 

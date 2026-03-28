@@ -27,7 +27,8 @@
     "close": "Schließen",
     "delete": "Löschen",
     "help": "Hilfe",
-    "language": "Sprache"
+    "language": "Sprache",
+    "skipToContent": "Zum Hauptinhalt springen"
   },
   "settings": {
     "save": "Einstellungen speichern"

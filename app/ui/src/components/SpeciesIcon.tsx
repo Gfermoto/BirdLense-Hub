@@ -24,6 +24,7 @@ export const SpeciesIcon: React.FC<SpeciesIconProps> = ({
   return (
     <Avatar
       src={src}
+      imgProps={src ? { alt: speciesName } : undefined}
       sx={{
         width: size,
         height: size,

@@ -63,6 +63,7 @@ nav:
       - Local development: LOCAL_DEV.md
       - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
+      - Accessibility: A11Y.md
       - "UX: Unknowns vs video correction": UX_UNKNOWN_VIDEO_CORRECTION.md
   - "ML & project":
       - Training: TRAINING.md
