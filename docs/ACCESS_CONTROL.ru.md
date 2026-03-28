@@ -149,7 +149,7 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 
 ### Технические заготовки
 
-- `general.donate_url` — ссылка на страницу донатов.
+- `general.donate_url` — опциональные ссылки поддержки в шапке, меню и карточке «Корм» (см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md)).
 - `general.community_stats_enabled` — показывать ли рейтинг помощников.
 - В БД: `SpeciesVisit` или отдельная таблица `contributor_actions` для учёта (опционально).
 
