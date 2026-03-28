@@ -290,6 +290,8 @@ Browser push (addition or alternative to Telegram). Requires HTTPS (or localhost
 
 Settings → Advanced. Timeline “Export for eBird” does **not** need API key. Key is for “Compare to region”.
 
+The Bird Directory filter **Regional** uses the same regional species list (eBird top in your `ebird.*` region) **plus** any species with a **BirdNET MQTT** detection (`detection_provider` = `birdnet_mqtt` in stored detections). See [issue #132](https://github.com/Gfermoto/BirdLense-Hub/issues/132).
+
 **Example Russia, Moscow Oblast:** `ebird.country=RU`, `ebird.state=MOS` (or `MO`). API region: `RU-MOS`.
 
 ---

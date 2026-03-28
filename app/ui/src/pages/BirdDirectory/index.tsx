@@ -25,6 +25,7 @@ type FilterType = 'all' | 'regional' | 'observed';
 
 interface NestedSpecies extends Species {
   children: NestedSpecies[];
+  regional_scope?: boolean;
 }
 
 // Convert flat species list to nested tree structure
@@ -64,11 +65,22 @@ const convertToNested = (speciesList: Species[]): NestedSpecies[] => {
   return result[0]?.children || [];
 };
 
+const parentRegionalContext = (
+  s: NestedSpecies,
+  filter: FilterType,
+  hasRegionalParent: boolean,
+): boolean => {
+  if (filter === 'regional') {
+    return Boolean(s.regional_scope) || hasRegionalParent;
+  }
+  return s.active || hasRegionalParent;
+};
+
 // Filter tree by filter type
 const filterNestedSpecies = (
   species: NestedSpecies[],
   filter: FilterType,
-  hasActiveParent = false,
+  hasRegionalParent = false,
 ): NestedSpecies[] => {
   return species
     .map((s) => ({
@@ -76,12 +88,16 @@ const filterNestedSpecies = (
       children: filterNestedSpecies(
         s.children,
         filter,
-        s.active || hasActiveParent,
+        parentRegionalContext(s, filter, hasRegionalParent),
       ),
     }))
     .filter((s) => {
       if (filter === 'regional')
-        return hasActiveParent || s.active || s.children.length > 0;
+        return (
+          hasRegionalParent ||
+          Boolean(s.regional_scope) ||
+          s.children.length > 0
+        );
       if (filter === 'observed')
         return (s.count || 0) > 0 || s.children.length > 0;
       return true;
@@ -274,6 +290,7 @@ export const BirdDirectory = () => {
           expandedIds={expandedIds}
           onToggleExpand={handleToggleExpand}
           searchQuery={searchQuery}
+          highlightField={filter === 'regional' ? 'regional_scope' : 'active'}
         />
       )}
     </>

@@ -10,8 +10,19 @@ interface NestedSpecies {
   id: number;
   name: string;
   active: boolean;
+  regional_scope?: boolean;
   count?: number;
   children: NestedSpecies[];
+}
+
+export type DirectoryHighlightField = 'active' | 'regional_scope';
+
+function nodeInHighlight(
+  node: NestedSpecies,
+  field: DirectoryHighlightField,
+): boolean {
+  if (field === 'regional_scope') return Boolean(node.regional_scope);
+  return node.active;
 }
 
 interface BirdDirectoryTreeViewProps {
@@ -19,25 +30,30 @@ interface BirdDirectoryTreeViewProps {
   expandedIds: Set<number>;
   onToggleExpand: (id: number) => void;
   searchQuery?: string;
+  /** Which flag drives links / parent propagation (regional filter uses regional_scope). */
+  highlightField?: DirectoryHighlightField;
 }
 
 const TreeItem = ({
   node,
-  parentActive = false,
+  parentHighlight = false,
   expandedIds,
   onToggleExpand,
   searchQuery = '',
+  highlightField = 'active',
 }: {
   node: NestedSpecies;
-  parentActive?: boolean;
+  parentHighlight?: boolean;
   expandedIds: Set<number>;
   onToggleExpand: (id: number) => void;
   searchQuery?: string;
+  highlightField?: DirectoryHighlightField;
 }) => {
   const hasChildren = node.children.length > 0;
-  // Clickable if: active, has active parent, or is a leaf with observations
+  const selfHighlight = nodeInHighlight(node, highlightField);
   const isLeafWithObservations = !hasChildren && (node.count || 0) > 0;
-  const isClickable = node.active || parentActive || isLeafWithObservations;
+  const isClickable =
+    selfHighlight || parentHighlight || isLeafWithObservations;
   const expanded = expandedIds.has(node.id);
 
   // Highlight matching text
@@ -137,10 +153,11 @@ const TreeItem = ({
             <TreeItem
               key={child.id}
               node={child}
-              parentActive={node.active || parentActive}
+              parentHighlight={selfHighlight || parentHighlight}
               expandedIds={expandedIds}
               onToggleExpand={onToggleExpand}
               searchQuery={searchQuery}
+              highlightField={highlightField}
             />
           ))}
         </ul>
@@ -154,6 +171,7 @@ export const BirdDirectoryTreeView = ({
   expandedIds,
   onToggleExpand,
   searchQuery,
+  highlightField = 'active',
 }: BirdDirectoryTreeViewProps) => {
   return (
     <Box
@@ -178,6 +196,7 @@ export const BirdDirectoryTreeView = ({
             expandedIds={expandedIds}
             onToggleExpand={onToggleExpand}
             searchQuery={searchQuery}
+            highlightField={highlightField}
           />
         ))}
       </ul>
