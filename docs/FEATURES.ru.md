@@ -37,6 +37,7 @@
 | **Сравнение с регионом** | `GET /api/ui/region-comparison` — ваши виды vs топ eBird региона (Overview) | 0.1.9 |
 | **PDF-отчёт** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
 | **Prometheus** | `GET /metrics`, `GET /api/metrics` | 0.1.3 |
+| **История метрик (UI)** | `GET /api/ui/system/metrics/history` — снимки в SQLite для графиков в хабе | — |
 | **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
 | **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + dataset_info.json | 0.1.5 |
 
@@ -58,6 +59,7 @@
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
 | **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
 | **Предыдущий/следующий ролик** | Тот же календарный день UTC: стрелки и счётчик на странице видео; `GET /api/ui/videos/:id/neighbors` |
+| **Система: ресурсы и посетители** | `/system`: графики CPU/RAM/диск/GPU (история на сервере + живой хвост, окно 6/24/48 ч), уникальные посетители за период; `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.ru.md) |
 
 ---
 
@@ -98,6 +100,9 @@
 | GET | `/api/ui/videos/:id/download` | Скачать видео (Admin/Contributor) |
 | GET | `/api/ui/videos/:id/neighbors` | ID предыдущего/следующего ролика за тот же день UTC, что и `start_time` |
 | GET | `/api/ui/dataset/export` | ZIP датасета (train/val + dataset_info.json) |
+| GET | `/api/ui/system/metrics` | Мгновенные CPU / RAM / диск / GPU |
+| GET | `/api/ui/system/metrics/history` | Ряд метрик для UI (`hours`, `max_points`) |
+| GET | `/api/ui/system/visitors` | Статистика посетителей (`days`) |
 | GET | `/api/ui/migration-calendar` | Агрегация визитов по виду и месяцу для календаря миграций |
 | GET | `/api/ui/report/pdf` | PDF-отчёт |
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
