@@ -97,6 +97,8 @@ export function Navigation() {
     staleTime: 1000 * 30,
   });
   const donateUrl = feedInfo?.donate_url?.trim() || '';
+  /** На главной ссылка уже в карточке «Корм» — не дублируем в шапке и в мобильном меню. */
+  const showAppBarDonate = Boolean(donateUrl) && currentPath !== '/';
 
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
@@ -252,7 +254,7 @@ export function Navigation() {
                 {t('nav.library')}
               </MenuItem>
 
-              {donateUrl ? (
+              {showAppBarDonate ? (
                 <MenuItem
                   component="a"
                   href={donateUrl}
@@ -370,7 +372,7 @@ export function Navigation() {
             {/* Language Switcher */}
             <LanguageSwitcher />
 
-            {donateUrl ? (
+            {showAppBarDonate ? (
               <Button
                 component="a"
                 href={donateUrl}

@@ -36,8 +36,27 @@ LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 
 
-def _collect_system_metrics_dict(app, visitors_days: int = 7):
-    """Собирает системные метрики (CPU, память, диск, GPU). Используется в system_metrics и /api/metrics."""
+def _collect_visitor_stats(visitors_days: int = 7) -> dict:
+    """Агрегаты посетителей по БД (не системные мгновенные метрики)."""
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    days = max(1, min(int(visitors_days or 7), 365))
+    start_utc = now_utc - timedelta(days=days)
+    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
+        SpeciesVisit.start_time >= start_utc
+    ).scalar() or 0
+    active_days = db.session.query(
+        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
+    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
+    return {
+        'period_days': days,
+        'unique_visits': int(unique_visit_sessions),
+        'active_days': int(active_days),
+        'method': 'species_visit_sessions',
+    }
+
+
+def _collect_live_system_metrics(app):
+    """Мгновенный снимок: CPU, память, диск, GPU (без запросов к БД по посетителям)."""
     cpu_percent = psutil.cpu_percent(interval=0.5)
     memory = psutil.virtual_memory()
     memory_total_gb = round(memory.total / (1024**3), 1)
@@ -47,23 +66,6 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
     disk_total_gb = round(disk.total / (1024**3), 1)
     disk_used_gb = round(disk.used / (1024**3), 1)
     disk_percent = disk.percent
-
-    encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
-    if encoding not in ('cpu', 'intel'):
-        encoding = 'cpu'
-    encoding_used = None
-    processor_mqtt = None
-    last_hb = ActivityLog.query.filter_by(type='heartbeat').order_by(
-        ActivityLog.updated_at.desc()
-    ).first()
-    if last_hb and last_hb.data:
-        try:
-            import json as _json
-            data = _json.loads(last_hb.data) if isinstance(last_hb.data, str) else last_hb.data
-            encoding_used = data.get('encoding_used')
-            processor_mqtt = 'ok' if data.get('mqtt_connected') is True else ('error' if data.get('mqtt_connected') is False else None)
-        except (TypeError, ValueError):
-            pass
 
     gpu_percent = None
     for path in ('/sys/class/drm/card0/device/gpu_busy_percent',
@@ -80,23 +82,16 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
                 break
         except (OSError, ValueError):
             continue
-    intel_gpu = encoding == 'intel' or os.path.exists('/dev/dri/renderD128')
+    encoding_setting = (app_config.get('video.encoding') or 'cpu').strip().lower()
+    if encoding_setting not in ('cpu', 'intel'):
+        encoding_setting = 'cpu'
+    intel_gpu = encoding_setting == 'intel' or os.path.exists('/dev/dri/renderD128')
     if gpu_percent is None and intel_gpu:
         try:
             from gpu_stats import get_intel_gpu_percent
             gpu_percent = get_intel_gpu_percent()
         except Exception as e:
             app.logger.warning("gpu_stats: %s", e)
-
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    days = max(1, min(int(visitors_days or 7), 365))
-    start_utc = now_utc - timedelta(days=days)
-    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
-        SpeciesVisit.start_time >= start_utc
-    ).scalar() or 0
-    active_days = db.session.query(
-        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
-    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
 
     return {
         'cpu': {'percent': cpu_percent},
@@ -105,16 +100,8 @@ def _collect_system_metrics_dict(app, visitors_days: int = 7):
             'total_bytes': memory.total, 'used_bytes': memory.used,
         },
         'disk': {'total': disk_total_gb, 'used': disk_used_gb, 'percent': disk_percent},
-        'encoding': encoding,
-        'encoding_used': encoding_used,
-        'processor_mqtt': processor_mqtt,
+        'encoding': encoding_setting,
         'gpu_percent': gpu_percent,
-        'visitors': {
-            'period_days': days,
-            'unique_visits': int(unique_visit_sessions),
-            'active_days': int(active_days),
-            'method': 'species_visit_sessions',
-        },
     }
 
 
@@ -126,7 +113,7 @@ def register_routes(app):
         return db.engine.url.database
 
     def _prometheus_metrics_body(app):
-        sys_m = _collect_system_metrics_dict(app)
+        sys_m = _collect_live_system_metrics(app)
         detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
@@ -186,25 +173,31 @@ def register_routes(app):
 
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
+        """Мгновенные метрики хоста (опрос UI). Без агрегатов посетителей — см. /api/ui/system/visitors."""
         try:
-            try:
-                visitors_days = int(request.args.get('visitors_days', '7'))
-            except (TypeError, ValueError):
-                visitors_days = 7
-            m = _collect_system_metrics_dict(app, visitors_days=visitors_days)
+            m = _collect_live_system_metrics(app)
             return {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
                 'disk': m['disk'],
                 'encoding': m['encoding'],
-                'encoding_used': m['encoding_used'],
-                'processor_mqtt': m['processor_mqtt'],
                 'gpu_percent': m['gpu_percent'],
-                'visitors': m['visitors'],
             }
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/visitors', methods=['GET'])
+    def system_visitors():
+        try:
+            try:
+                days = int(request.args.get('days', '7'))
+            except (TypeError, ValueError):
+                days = 7
+            return _collect_visitor_stats(days)
+        except Exception as e:
+            app.logger.error(f"Error getting visitor stats: {str(e)}")
+            return {'error': 'Failed to get visitor stats'}, 500
 
     @app.route('/api/ui/system/logs', methods=['GET'])
     def get_processor_logs():

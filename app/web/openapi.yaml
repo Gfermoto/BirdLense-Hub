@@ -485,9 +485,9 @@ paths:
                 $ref: "#/components/schemas/Error"
   /system/metrics:
     get:
-      summary: Get system metrics
+      summary: Get live system metrics
       description: |
-        Retrieve system metrics, including CPU, memory, and disk usage. This is useful for monitoring the health and performance of the BirdLense Hub system.
+        Instant host snapshot (CPU, memory, disk, optional GPU). Polled by the System page; no database aggregates. Visitor statistics are on `GET /system/visitors`.
       responses:
         "200":
           description: System metrics
@@ -495,6 +495,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SystemMetrics"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/visitors:
+    get:
+      summary: Visitor statistics over a period
+      description: |
+        SpeciesVisit-based unique session counts for the selected day window. Independent of live host metrics.
+      parameters:
+        - in: query
+          name: days
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 7
+      responses:
+        "200":
+          description: Visitor aggregate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitorStats"
         "500":
           description: Error
           content:
@@ -946,6 +973,10 @@ components:
               type: number
             percent:
               type: number
+            total_bytes:
+              type: integer
+            used_bytes:
+              type: integer
         disk:
           type: object
           properties:
@@ -955,6 +986,23 @@ components:
               type: number
             percent:
               type: number
+        encoding:
+          type: string
+          description: Video encoding setting (cpu or intel); hints whether GPU chart may apply.
+        gpu_percent:
+          type: number
+          nullable: true
+    VisitorStats:
+      type: object
+      properties:
+        period_days:
+          type: integer
+        unique_visits:
+          type: integer
+        active_days:
+          type: integer
+        method:
+          type: string
     ActivityLogEntry:
       type: object
       properties:
