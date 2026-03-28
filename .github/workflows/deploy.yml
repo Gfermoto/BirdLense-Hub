@@ -1,5 +1,6 @@
 # Автодеплой при push в main.
-# Требует: self-hosted runner на сервере BirdLense (см. scripts/setup-auto-deploy.sh)
+# Требует: self-hosted runner на сервере BirdLense (см. scripts/setup-auto-deploy.sh).
+# Если workflow «висит» в Queued: runner offline или не зарегистрирован с метками self-hosted + birdlense.
 
 name: Deploy
 
@@ -8,9 +9,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: [self-hosted, birdlense]
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -42,7 +51,12 @@ jobs:
       - name: Verify
         run: |
           sleep 8
-          curl -sf http://127.0.0.1:8085/api/ui/health && echo " OK" || echo " FAIL"
+          if curl -sf http://127.0.0.1:8085/api/ui/health; then
+            echo "Health OK"
+          else
+            echo "::error::Health check failed (curl http://127.0.0.1:8085/api/ui/health)"
+            exit 1
+          fi
 
       - name: Test recognition (optional)
         if: success()
