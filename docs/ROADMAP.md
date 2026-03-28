@@ -112,7 +112,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
 | [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
-| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | Regional = eBird top + BirdNET-heard |
+| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | ✅ Bird Directory «Regional» = eBird regional top + `birdnet_mqtt` detections; `regional_scope` on `GET /species`; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | Auto-fill / suggested mappings — name mismatches; see risks in issue |

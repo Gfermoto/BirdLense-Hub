@@ -50,6 +50,7 @@ from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
 from services.migration_calendar_service import get_migration_calendar
 from services.ebird_region_service import get_region_comparison
+from services.species_regional_scope import compute_regional_scope_species_ids
 
 UNKNOWNS_LIMIT_MAX = 500
 
@@ -1227,6 +1228,8 @@ def register_routes(app):
         species_list = query.group_by(
             Species.id).order_by(Species.name.asc()).all()
 
+        regional_scope_ids = compute_regional_scope_species_ids()
+
         # Construct the response
         return [
             {
@@ -1239,6 +1242,7 @@ def register_routes(app):
                 'metadata_source': species.Species.metadata_source,
                 'metadata_source_url': species.Species.metadata_source_url,
                 'active': species.Species.active,
+                'regional_scope': species.Species.id in regional_scope_ids,
                 'count': species.count
             }
             for species in species_list

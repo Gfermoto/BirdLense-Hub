@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Bird Directory regional filter ([#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132)):** «Региональные» строятся по топу eBird для региона из настроек (как Migration) и по видам с детекциями BirdNET MQTT; в ответе `GET /api/ui/species` — `regional_scope`; кэш списка eBird ~30 мин; дока в [CONFIGURATION.md](docs/CONFIGURATION.md).
+
 - **Donation / support surfaces ([#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121)):** при заданном `general.donate_url` ссылка «Support» / «Поддержать» в шапке (desktop), в мобильном меню и в меню шестерёнки; общий кэш `feed-info` с карточкой Food на Overview; i18n EN/RU/DE; [CONFIGURATION](docs/CONFIGURATION.md) / [ACCESS_CONTROL](docs/ACCESS_CONTROL.md).
 
 - **Bird food catalog ([#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134)):** расширен дефолтный список кормов (в т.ч. EU: fat balls, hemp seed, oats, mixes, rapeseed, apple); `seed_bird_food()` идемпотентно добавляет только отсутствующие по `name`; дока в [CONFIGURATION.md](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md); тест `test_bird_food_seed.py`.

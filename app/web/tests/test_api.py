@@ -495,6 +495,54 @@ class TestReportPdf:
         assert r.status_code == 400
 
 
+class TestSpeciesRegionalScope:
+    def test_species_list_includes_regional_scope_boolean(self, client):
+        r = client.get('/api/ui/species')
+        assert r.status_code == 200
+        data = r.json
+        assert isinstance(data, list)
+        for row in data[:5]:
+            assert 'regional_scope' in row
+            assert isinstance(row['regional_scope'], bool)
+
+    def test_regional_scope_true_for_birdnet_detection(self, app, client):
+        from datetime import datetime, timezone
+        from models import Species, Video, VideoSpecies, db
+
+        with app.app_context():
+            sp = Species.query.filter(Species.parent_id.isnot(None)).first()
+            if sp is None:
+                import pytest
+                pytest.skip('no leaf species in test DB')
+            v = Video(
+                processor_version='test',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path='contract/test_clip.mp4',
+            )
+            db.session.add(v)
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=v.id,
+                    species_id=sp.id,
+                    start_time=0.0,
+                    end_time=1.0,
+                    confidence=0.95,
+                    source='audio',
+                    detection_provider='birdnet_mqtt',
+                )
+            )
+            db.session.commit()
+            sid = sp.id
+
+        r = client.get('/api/ui/species')
+        assert r.status_code == 200
+        row = next((x for x in r.json if x['id'] == sid), None)
+        assert row is not None
+        assert row['regional_scope'] is True
+
+
 class TestSpeciesXenoCanto:
     def test_xeno_canto_404_for_unknown_species(self, client):
         r = client.get('/api/ui/species/999999/xeno-canto')
