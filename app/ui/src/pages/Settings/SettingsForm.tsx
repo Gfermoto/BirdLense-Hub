@@ -9,7 +9,16 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import { Settings } from '../../types';
-import { fetchCoordinatesByZip, fetchVapidPublicKey, subscribePush, updateSettings, sendTestNotification } from '../../api/api';
+import axios from 'axios';
+import {
+  fetchCoordinatesByZip,
+  fetchEbirdMappingSuggestions,
+  fetchVapidPublicKey,
+  subscribePush,
+  updateSettings,
+  sendTestNotification,
+  type EbirdMappingSuggestionsResponse,
+} from '../../api/api';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -23,6 +32,12 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import CircularProgress from '@mui/material/CircularProgress';
 import { PasswordField } from '../../components/PasswordField';
 
 /** Блок настроек одного сервиса — подсветка и заголовок */
@@ -272,6 +287,40 @@ export const SettingsForm = ({
     defaultValues: currentSettings,
     onSubmit: ({ value }) => onSubmit(value),
   });
+
+  const [ebirdSuggestLoading, setEbirdSuggestLoading] = useState(false);
+  const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(null);
+  const [ebirdSuggestData, setEbirdSuggestData] =
+    useState<EbirdMappingSuggestionsResponse | null>(null);
+
+  const loadEbirdMappingSuggestions = async () => {
+    setEbirdSuggestLoading(true);
+    setEbirdSuggestError(null);
+    try {
+      const data = await fetchEbirdMappingSuggestions();
+      setEbirdSuggestData(data);
+    } catch (err: unknown) {
+      let msg = t('settings.ebirdMappingSuggestFailed');
+      if (axios.isAxiosError(err)) {
+        const d = err.response?.data as { error?: string } | undefined;
+        if (d?.error) msg = d.error;
+        else if (err.message) msg = err.message;
+      } else if (err instanceof Error && err.message) msg = err.message;
+      setEbirdSuggestError(msg);
+    } finally {
+      setEbirdSuggestLoading(false);
+    }
+  };
+
+  const applyEbirdMappingSuggestion = (ebirdName: string, birdlenseName: string) => {
+    const cur = form.getFieldValue('ebird.species_mapping');
+    const base =
+      cur && typeof cur === 'object' && !Array.isArray(cur)
+        ? { ...cur }
+        : {};
+    base[ebirdName] = birdlenseName;
+    form.setFieldValue('ebird.species_mapping', base);
+  };
 
   const handleZipLookup = async () => {
     const zip = form.getFieldValue('secrets.zip');
@@ -1565,6 +1614,86 @@ export const SettingsForm = ({
                   );
                 }}
               </form.Field>
+              <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  disabled={ebirdSuggestLoading}
+                  onClick={loadEbirdMappingSuggestions}
+                  startIcon={
+                    ebirdSuggestLoading ? <CircularProgress size={14} color="inherit" /> : undefined
+                  }
+                >
+                  {t('settings.ebirdMappingSuggestLoad')}
+                </Button>
+                {ebirdSuggestData && ebirdSuggestData.ebird_api_configured && (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('settings.ebirdMappingSuggestRegion', {
+                      region: ebirdSuggestData.region_code,
+                      count: ebirdSuggestData.top_count,
+                    })}
+                  </Typography>
+                )}
+              </Box>
+              {ebirdSuggestError && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {ebirdSuggestError}
+                </Alert>
+              )}
+              {ebirdSuggestData && !ebirdSuggestData.ebird_api_configured && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  {t('settings.ebirdMappingSuggestNoKey')}
+                </Alert>
+              )}
+              {ebirdSuggestData &&
+                ebirdSuggestData.ebird_api_configured &&
+                ebirdSuggestData.suggestions.length > 0 && (
+                  <Table size="small" sx={{ mt: 1.5 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t('settings.ebirdMappingColEbird')}</TableCell>
+                        <TableCell>{t('settings.ebirdMappingColBirdlense')}</TableCell>
+                        <TableCell align="right">{t('settings.ebirdMappingColAction')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ebirdSuggestData.suggestions.map((row) => (
+                        <TableRow key={row.ebird_name}>
+                          <TableCell>{row.ebird_name}</TableCell>
+                          <TableCell>
+                            {row.birdlense_name ?? '—'}
+                            {row.kind === 'fuzzy' && row.score != null && (
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                                ({row.score})
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell align="right">
+                            {row.birdlense_name ? (
+                              <Button
+                                type="button"
+                                size="small"
+                                onClick={() =>
+                                  applyEbirdMappingSuggestion(row.ebird_name, row.birdlense_name as string)
+                                }
+                              >
+                                {t('settings.ebirdMappingApply')}
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              {ebirdSuggestData &&
+                ebirdSuggestData.ebird_api_configured &&
+                ebirdSuggestData.suggestions.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {t('settings.ebirdMappingSuggestEmpty')}
+                  </Typography>
+                )}
             </Grid>
             </Grid>
           </ServiceBlock>

@@ -411,6 +411,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /settings/ebird-species-mapping-suggestions:
+    get:
+      summary: eBird species mapping suggestions
+      description: |
+        Lists regional eBird top species that do not match a catalog Species name after the current
+        ``ebird.species_mapping``. Suggests case fixes or fuzzy matches. Requires the same access as GET /settings.
+      responses:
+        "200":
+          description: Suggestion list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EbirdMappingSuggestionsResponse"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /species/{species_id}/summary:
     get:
       summary: Get summary for a species
@@ -980,6 +999,34 @@ components:
           type: integer
         totalSize:
           type: integer
+    EbirdMappingSuggestion:
+      type: object
+      properties:
+        ebird_name:
+          type: string
+        birdlense_name:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          enum: [case_variant, fuzzy, unmatched]
+        score:
+          type: number
+          format: float
+          nullable: true
+    EbirdMappingSuggestionsResponse:
+      type: object
+      properties:
+        region_code:
+          type: string
+        ebird_api_configured:
+          type: boolean
+        top_count:
+          type: integer
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/EbirdMappingSuggestion"
     Settings:
       type: object
       properties:
