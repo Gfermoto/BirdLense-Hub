@@ -151,8 +151,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 | #                                                            | Issue                             | Кратко                                                                                     |
 | ------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------ |
-| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | Перенести блок с Overview на Migration                                                     |
-| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
+| [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | ✅ блок «Сравнение с регионом» на Migration (см. прогресс выше)                               |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | ✅ merge в процессоре + настройки; дельта/пол от `min_confidence_to_process`; ручные overrides важнее; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен)                    |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов                     | ✅ каталог: «Региональные» = топ eBird + детекции `birdnet_mqtt`; поле `regional_scope` в `GET /species`; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | ✅ расширен `seed.py` + идемпотентное слияние по имени; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → «Корм» |

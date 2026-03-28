@@ -114,6 +114,10 @@ export interface Settings {
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
     species_confidence_overrides?: Record<string, number>; // Per-species thresholds (rare species — lower)
+    /** Lower classifier threshold for eBird regional top species (#128); manual overrides win */
+    ebird_regional_top_auto_confidence?: boolean;
+    ebird_regional_top_confidence_delta?: number;
+    ebird_regional_top_confidence_floor?: number;
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     included_bird_families: string[]; // List of bird families to use in detections
   };
