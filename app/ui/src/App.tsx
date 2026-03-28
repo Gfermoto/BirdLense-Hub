@@ -126,6 +126,31 @@ const theme = createTheme({
         },
       },
     },
+    /** White on primary.main (#10B981) fails WCAG AA for small text; emerald 700 is ≥4.5:1 vs white. */
+    MuiChip: {
+      styleOverrides: {
+        filledPrimary: {
+          backgroundColor: '#047857',
+          color: '#ffffff',
+          '&:hover': { backgroundColor: '#065f46' },
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        standardInfo: {
+          color: 'text.primary',
+          '& .MuiAlert-message .MuiButton-root': {
+            color: '#7dd3fc',
+          },
+        },
+      },
+    },
+    MuiCircularProgress: {
+      defaultProps: {
+        'aria-label': 'Loading',
+      },
+    },
   },
 });
 

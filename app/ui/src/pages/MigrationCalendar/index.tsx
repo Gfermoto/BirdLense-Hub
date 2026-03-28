@@ -22,10 +22,6 @@ import { PageHelp } from '../../components/PageHelp';
 import dayjs from 'dayjs';
 import { visuallyHidden } from '@mui/utils';
 
-/** Intensity 0–1 → opacity for cell background */
-const cellOpacity = (count: number, maxInRow: number) =>
-  maxInRow > 0 ? 0.15 + 0.65 * (count / maxInRow) : 0;
-
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
 
@@ -200,18 +196,27 @@ export const MigrationCalendar = () => {
                       {s.name}
                     </Link>
                   </TableCell>
-                  {s.monthly_counts.map((count, i) => (
-                    <TableCell
-                      key={i}
-                      align="center"
-                      sx={{
-                        bgcolor: `rgba(16, 185, 129, ${cellOpacity(count, maxInRow)})`,
-                        minWidth: 44,
-                      }}
-                    >
-                      {count > 0 ? count : '—'}
-                    </TableCell>
-                  ))}
+                  {s.monthly_counts.map((count, i) => {
+                    const intensity = maxInRow > 0 ? count / maxInRow : 0;
+                    return (
+                      <TableCell
+                        key={i}
+                        align="center"
+                        sx={{
+                          minWidth: 44,
+                          color: count > 0 ? 'text.primary' : 'text.secondary',
+                          borderLeft:
+                            count > 0
+                              ? `3px solid rgba(16, 185, 129, ${0.45 + 0.55 * intensity})`
+                              : '3px solid transparent',
+                          bgcolor:
+                            count > 0 ? `rgba(16, 185, 129, 0.08)` : 'transparent',
+                        }}
+                      >
+                        {count > 0 ? count : '—'}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell align="right" sx={{ fontWeight: 500 }}>
                     {s.total}
                   </TableCell>
