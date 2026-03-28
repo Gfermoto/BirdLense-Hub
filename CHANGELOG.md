@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-03-28
+
+Релиз доступности и регрессионных проверок. Merge: [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), закрыт [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117).
+
 ### Added
 
 - **Accessibility ([#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117)):** skip link to `#main-content`, shared `:focus-visible` ring in the MUI theme, migration table `caption` and labeled filter region, status dots as `role="img"` with `aria-label`, darker Live button for WCAG contrast; E2E axe scans in `app/e2e/tests/a11y.spec.ts` (`@axe-core/playwright`); [A11Y.md](docs/A11Y.md) / [RU](docs/A11Y.ru.md). Follow-up: `filledPrimary` Chip color (#047857), info `Alert` link/button contrast, migration heatmap cells (border + light tint), `Avatar` `imgProps.alt`, default `aria-label` on `CircularProgress`, overview species legend chips (`data-testid` + keyboard) for stable E2E.
