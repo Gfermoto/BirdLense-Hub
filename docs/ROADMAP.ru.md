@@ -155,7 +155,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | `species_confidence_overrides` из eBird top (нужна дельта в 0–1, не «минус 0.5» буквально) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен)                    |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов                     | Региональные = топ eBird + услышанные BirdNET                                              |
-| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | Расширить seed + документация источника (`seed.py`)                                        |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | ✅ расширен `seed.py` + идемпотентное слияние по имени; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → «Корм» |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping`           | Автозаполнение/подсказки имён — иначе расхождения с каталогом; см. риски в issue           |
 
 
