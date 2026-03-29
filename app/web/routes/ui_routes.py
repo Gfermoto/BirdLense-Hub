@@ -51,8 +51,20 @@ from services.species_summary_service import build_species_summary
 from services.migration_calendar_service import get_migration_calendar
 from services.ebird_region_service import get_region_comparison
 from services.species_regional_scope import compute_regional_scope_species_ids
+from services.cache import cache_get, cache_set, cache_delete_prefix
+from services.http_response_cache import bust_response_caches
 
 UNKNOWNS_LIMIT_MAX = 500
+
+# TTL процессного кэша (секунды); при смене настроек — инвалидация в PATCH /settings
+_CACHE_STATUS_SEC = 5
+_CACHE_SPECIES_LIST_SEC = 45
+_CACHE_SPECIES_OBSERVED_SEC = 45
+_CACHE_BIRD_FAMILIES_SEC = 300
+_CACHE_MIGRATION_SEC = 120
+_CACHE_TIMELINE_SEC = 20
+_CACHE_UNKNOWNS_SEC = 12
+_CACHE_DETECTION_FRAMES_SEC = 45
 
 
 def register_routes(app):
@@ -133,6 +145,9 @@ def register_routes(app):
     @app.route('/api/ui/status', methods=['GET'])
     def component_status():
         """Component status for UI indicators (Video/MQTT/YOLO)."""
+        hit, cached = cache_get('component_status:v1')
+        if hit:
+            return cached
         from datetime import datetime, timezone, timedelta
         from models import ActivityLog
         # Processor heartbeat: last activity_log of type heartbeat (процессор шлёт каждые 60 сек)
@@ -176,7 +191,7 @@ def register_routes(app):
             except (TypeError, ValueError):
                 pass
         yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else 'unknown'
-        return {
+        payload = {
             'web': 'ok',
             'processor': 'ok' if processor_ok else 'offline',
             'video': video_display,
@@ -187,6 +202,8 @@ def register_routes(app):
             'trigger_display': trigger_display,
             'birdnet_url': birdnet_url or None,
         }
+        cache_set('component_status:v1', payload, _CACHE_STATUS_SEC)
+        return payload
 
     @app.route('/api/ui/status/debug', methods=['GET'])
     def status_debug():
@@ -210,7 +227,6 @@ def register_routes(app):
     def feed_info():
         """Last dispense time, donate URL, feed source. No auth required."""
         from app_config.app_config import app_config
-        app_config.reload()
         donate_url = (app_config.get('general.donate_url') or '').strip()
         feed_source = app_config.get('feed.source', 'mqtt')
         return {
@@ -252,8 +268,15 @@ def register_routes(app):
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['GET'])
     def get_video_details(video_id):
-        # Fetch the video from the database
-        video = db.session.get(Video, video_id)
+        video = (
+            db.session.query(Video)
+            .options(
+                joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.food),
+            )
+            .filter(Video.id == video_id)
+            .first()
+        )
 
         if not video:
             return {'error': 'Video not found'}, 404
@@ -415,7 +438,16 @@ def register_routes(app):
     @app.route('/api/ui/videos/<int:video_id>/detection-frames', methods=['GET'])
     def get_video_detection_frames(video_id):
         """Покадровые bbox для оверлея треков. Тяжёлый JSON — не смешиваем с GET /videos/:id."""
-        video = db.session.get(Video, video_id)
+        ck = f"detection_frames:{video_id}"
+        hit, cached = cache_get(ck)
+        if hit:
+            return cached, 200
+        video = (
+            db.session.query(Video)
+            .options(joinedload(Video.video_species))
+            .filter(Video.id == video_id)
+            .first()
+        )
         if not video:
             return {'error': 'Video not found'}, 404
         tracks = []
@@ -433,7 +465,9 @@ def register_routes(app):
                 'end_time': vs.end_time,
                 'frames': frames,
             })
-        return {'tracks': tracks}, 200
+        body = {'tracks': tracks}
+        cache_set(ck, body, _CACHE_DETECTION_FRAMES_SEC)
+        return body, 200
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
     def delete_video(video_id):
@@ -473,6 +507,7 @@ def register_routes(app):
 
             db.session.delete(video)
             db.session.commit()
+            bust_response_caches()
 
             # Файлы — только после успешного коммита БД (иначе при rollback запись пропала с диска)
             if recording_dir:
@@ -628,6 +663,10 @@ def register_routes(app):
             return {'error': 'end_date must be YYYY-MM-DD'}, 400
         if start_date and end_date and start_date > end_date:
             return {'error': 'start_date must be <= end_date'}, 400
+        mck = f"migration_cal:{start_year}:{end_year}:{start_date}:{end_date}"
+        hit, mcached = cache_get(mck)
+        if hit:
+            return mcached, 200
         data = get_migration_calendar(
             db.session,
             start_year=start_year,
@@ -635,6 +674,7 @@ def register_routes(app):
             start_date=start_date,
             end_date=end_date,
         )
+        cache_set(mck, data, _CACHE_MIGRATION_SEC)
         return data, 200
 
     @app.route('/api/ui/timeline', methods=['GET'])
@@ -646,6 +686,11 @@ def register_routes(app):
         # Validate query parameters
         if not start_time or not end_time:
             return {'error': 'Both start_time and end_time are required'}, 400
+
+        tck = f"timeline:{start_time}:{end_time}"
+        hit, tcached = cache_get(tck)
+        if hit:
+            return tcached
 
         try:
             start_time = parse_utc_timestamp(start_time)
@@ -675,6 +720,7 @@ def register_routes(app):
         )
 
         response = [format_visit_for_timeline(visit) for visit in visits]
+        cache_set(tck, response, _CACHE_TIMELINE_SEC)
         return response
 
     @app.route('/api/ui/timeline/export', methods=['GET'])
@@ -835,6 +881,11 @@ def register_routes(app):
         threshold = float(app_config.get('ui.unknown_confidence_threshold') or 0.5)
         threshold = max(0.0, min(1.0, threshold))
 
+        uck = f"unknowns:{start_time}:{end_time}:{limit}:{threshold}"
+        hit, uc = cache_get(uck)
+        if hit:
+            return uc
+
         # Bird без вида или низкий confidence — показываем в Unknowns.
         # Исключаем manually_corrected: пользователь уже проверил/исправил — убираем из списка.
         rows = (
@@ -872,6 +923,7 @@ def register_routes(app):
                 'image_url': vs.species.image_url,
             })
 
+        cache_set(uck, result, _CACHE_UNKNOWNS_SEC)
         return result
 
     @app.route('/api/ui/detections/<int:detection_id>/crop', methods=['GET'])
@@ -1011,6 +1063,7 @@ def register_routes(app):
         for v in to_confirm:
             v.manually_corrected = True
         db.session.commit()
+        bust_response_caches()
         _write_correction_activity(
             action='confirm_species',
             source=source,
@@ -1130,6 +1183,7 @@ def register_routes(app):
             vp._update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
+        bust_response_caches()
 
         # Move dataset crops to new species dir when user corrects species.
         # If no file to move (processor didn't save), retro-export: extract from video.
@@ -1233,6 +1287,7 @@ def register_routes(app):
             vp._update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
+        bust_response_caches()
         updated_count = len(to_update)
         return {
             'message': f'All {updated_count} detections merged to {species.name}',
@@ -1242,6 +1297,9 @@ def register_routes(app):
 
     @app.route('/api/ui/species', methods=['GET'])
     def get_all_species():
+        hit, scached = cache_get('species_list:v1')
+        if hit:
+            return scached
         # Build base query - get sum of max_simultaneous birds from SpeciesVisit
         query = db.session.query(
             Species,
@@ -1255,8 +1313,7 @@ def register_routes(app):
 
         regional_scope_ids = compute_regional_scope_species_ids()
 
-        # Construct the response
-        return [
+        result = [
             {
                 'id': species.Species.id,
                 'name': species.Species.name,
@@ -1272,10 +1329,15 @@ def register_routes(app):
             }
             for species in species_list
         ]
+        cache_set('species_list:v1', result, _CACHE_SPECIES_LIST_SEC)
+        return result
 
     @app.route('/api/ui/species/observed', methods=['GET'])
     def get_observed_species():
         """Lightweight: only species with count > 0 (for Settings exclude list)."""
+        hit, oc = cache_get('species_observed:v1')
+        if hit:
+            return oc
         subq = db.session.query(
             SpeciesVisit.species_id,
             func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label('count')
@@ -1285,11 +1347,16 @@ def register_routes(app):
         rows = db.session.query(Species, subq.c.count).join(
             subq, Species.id == subq.c.species_id
         ).order_by(Species.name.asc()).all()
-        return [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
+        out = [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
+        cache_set('species_observed:v1', out, _CACHE_SPECIES_OBSERVED_SEC)
+        return out
 
     @app.route('/api/ui/bird_families', methods=['GET'])
     def get_bird_families():
         """Get all bird families (categories one level below 'Birds')"""
+        hit, fc = cache_get('bird_families:v1')
+        if hit:
+            return fc
         try:
             birds_category = Species.query.filter_by(name="Birds").first()
             if not birds_category:
@@ -1297,10 +1364,12 @@ def register_routes(app):
 
             families = Species.query.filter_by(
                 parent_id=birds_category.id).all()
-            return [{
+            payload = [{
                 'id': family.id,
                 'name': family.name,
             } for family in families]
+            cache_set('bird_families:v1', payload, _CACHE_BIRD_FAMILIES_SEC)
+            return payload
 
         except Exception as e:
             app.logger.error(f"Error fetching bird families: {str(e)}")
@@ -1411,8 +1480,7 @@ def register_routes(app):
             # Save the updated configuration back to the user config file
             app_config.save()
 
-            # eBird API key may have changed — invalidate region-comparison cache
-            from services.cache import cache_delete_prefix
+            bust_response_caches()
             cache_delete_prefix('ebird_region_comparison:')
 
             # Return the updated configuration (masked)
@@ -1461,20 +1529,30 @@ def register_routes(app):
     @app.route('/api/ui/species/<int:species_id>/xeno-canto', methods=['GET'])
     def get_species_xeno_canto(species_id):
         """Fetch bird song recordings from Xeno-canto for species."""
+        xck = f"xeno_canto:{species_id}"
+        hit, xc = cache_get(xck)
+        if hit:
+            return xc, 200
         species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
         recordings = fetch_recordings(species.name, limit=5)
         term = _search_term_from_species_name(species.name) or species.name
         search_url = f"https://xeno-canto.org/explore?query={quote(term)}" if term else None
-        return {
+        body = {
             'recordings': recordings,
             'species_name': species.name,
             'xeno_canto_search_url': search_url,
-        }, 200
+        }
+        cache_set(xck, body, 600)
+        return body, 200
 
     @app.route('/api/ui/species/<int:species_id>/summary', methods=['GET'])
     def get_species_summary(species_id):
+        sck = f"species_summary:{species_id}"
+        hit, sc = cache_get(sck)
+        if hit:
+            return sc
         species = db.session.get(Species, species_id)
         if not species:
             return {'error': 'Species not found'}, 404
@@ -1491,4 +1569,6 @@ def register_routes(app):
             app.logger.warning('get_species_summary: wiki update skipped for %s: %s', species_id, e)
             db.session.rollback()
 
-        return build_species_summary(db.session, species, children, all_species_ids)
+        out = build_species_summary(db.session, species, children, all_species_ids)
+        cache_set(sck, out, 30)
+        return out

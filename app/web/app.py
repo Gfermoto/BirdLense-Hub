@@ -5,7 +5,8 @@ from util import notify_app_startup
 from flask import Flask
 from flask_cors import CORS
 import logging
-from sqlalchemy import text
+from sqlalchemy import text, event
+from sqlalchemy.engine import Engine
 import routes.ui_routes
 import routes.ui_system_routes
 import routes.processor_routes
@@ -52,6 +53,23 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": cors_origins, "supports_credentials": True}})
 
     db.init_app(app)
+
+    @event.listens_for(Engine, "connect")
+    def _sqlite_optimize(dbapi_connection, _connection_record):
+        """Чтения параллельнее записи; кэш страниц — меньше I/O на большой БД."""
+        try:
+            import sqlite3
+        except ImportError:
+            return
+        if not isinstance(dbapi_connection, sqlite3.Connection):
+            return
+        cur = dbapi_connection.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA synchronous=NORMAL")
+        cur.execute("PRAGMA cache_size=-64000")
+        cur.execute("PRAGMA temp_store=MEMORY")
+        cur.close()
+
     with app.app_context():
         db.create_all()
         # Add detection_provider column if missing (migration)

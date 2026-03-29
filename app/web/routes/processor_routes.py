@@ -10,6 +10,7 @@ from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
+from services.http_response_cache import bust_response_caches
 import requests
 
 
@@ -104,6 +105,7 @@ def register_routes(app):
             visit_processor.process_detections(video, species_list)
 
             db.session.commit()
+            bust_response_caches()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get('webhook.url') or '').strip()

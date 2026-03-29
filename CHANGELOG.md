@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Performance
 
+- **Gunicorn:** `gthread` + **8** потоков (переменная `GUNICORN_THREADS`), `--timeout 0` — воркер не рвёт долгие стримы; параллельные запросы при одном процессе.
+- **SQLite:** `check_same_thread=False`, таймаут подключения 30 с; при старте соединения — **WAL**, `synchronous=NORMAL`, `cache_size` ~64 MiB, `temp_store=MEMORY`.
+- **Nginx:** **gzip** для JSON/JS/CSS/XML; **upstream keepalive** к Gunicorn (`proxy_http_version 1.1`, пустой `Connection`); **open_file_cache** для статики.
+- **Кэш ответов API (TTL):** `/status` 5 с; `/species` 45 с; `/species/observed` 45 с; `/bird_families` 300 с; `/migration-calendar` 120 с; `/timeline` 20 с; `/unknowns` 12 с; `/detection-frames` 45 с; `/species/:id/summary` 30 с; Xeno-Canto 600 с. **Сброс кэша:** `services/http_response_cache.bust_response_caches()` — после PATCH настроек, правок детекций, merge видов, удаления видео и **POST `/api/processor/videos`** (новая запись).
+- **Убран `app_config.reload()`** из `GET /api/ui/feed/info` на каждый запрос.
+- **React Query:** `refetchOnWindowFocus: false`, `retry: 1`, `gcTime` 15 мин — меньше лишних запросов при переключении вкладок.
 - **Страница видео / стриминг:** GET `/api/ui/videos/:id` больше не включает покадровые `frames` (часто мегабайты JSON) — оверлей треков подгружает `GET /api/ui/videos/:id/detection-frames` параллельно; плеер и метаданные появляются сразу после лёгкого ответа. Nginx: для `/api/ui/videos/*/stream` отключены `proxy_buffering` и `proxy_request_buffering`, увеличены таймауты чтения/отдачи — быстрее старт MP4 по HTTP Range.
 - **Backend кэширование:** новый `services/cache.py` — потокобезопасный процессный TTL-кэш. `/api/ui/overview` кэшируется 60 с (тяжёлый SQL с 24 CASE-выражениями), `/api/ui/region-comparison` — 4 ч; кэш инвалидируется при сохранении настроек. Убран `app_config.reload()` на каждый запрос к region-comparison.
 - **React Query staleTime:** `staleTime=5 мин` на 4 редко-изменяемых запроса (bird-directory, species, observed) — меньше лишних refetch.
