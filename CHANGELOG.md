@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Performance
 
+- **Страница видео / стриминг:** GET `/api/ui/videos/:id` больше не включает покадровые `frames` (часто мегабайты JSON) — оверлей треков подгружает `GET /api/ui/videos/:id/detection-frames` параллельно; плеер и метаданные появляются сразу после лёгкого ответа. Nginx: для `/api/ui/videos/*/stream` отключены `proxy_buffering` и `proxy_request_buffering`, увеличены таймауты чтения/отдачи — быстрее старт MP4 по HTTP Range.
 - **Backend кэширование:** новый `services/cache.py` — потокобезопасный процессный TTL-кэш. `/api/ui/overview` кэшируется 60 с (тяжёлый SQL с 24 CASE-выражениями), `/api/ui/region-comparison` — 4 ч; кэш инвалидируется при сохранении настроек. Убран `app_config.reload()` на каждый запрос к region-comparison.
 - **React Query staleTime:** `staleTime=5 мин` на 4 редко-изменяемых запроса (bird-directory, species, observed) — меньше лишних refetch.
 

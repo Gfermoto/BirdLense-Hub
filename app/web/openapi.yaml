@@ -104,7 +104,7 @@ paths:
     get:
       summary: Get video details
       description: |
-        Retrieve detailed information about a specific video recording, including detected species, food present, and weather at the time. Use this to analyze or display individual bird visit events.
+        Retrieve detailed information about a specific video recording, including detected species, food present, and weather at the time. Per-frame track geometry (bbox) is not included here — use GET /videos/{video_id}/detection-frames to avoid multi-megabyte JSON on the initial page load.
       parameters:
         - in: path
           name: video_id
@@ -118,6 +118,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoDetails"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /videos/{video_id}/detection-frames:
+    get:
+      summary: Per-detection track frames (bbox over time)
+      description: |
+        Returns bbox keyframes for each VideoSpecies row that has stored frame data. Large payload — intended to load after the main video details response. IDs match `species[].id` from GET /videos/{video_id}.
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Track frame lists keyed by detection id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tracks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: VideoSpecies row id
+                        species_id:
+                          type: integer
+                        start_time:
+                          type: number
+                        end_time:
+                          type: number
+                        frames:
+                          type: array
+                          description: Time-normalized bbox keyframes
         "404":
           description: Video not found
           content:

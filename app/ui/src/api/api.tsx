@@ -6,6 +6,7 @@ import {
   SpeciesSummary,
   OverviewData,
   Species,
+  TrackFrame,
 } from '../types';
 import axios from 'axios';
 
@@ -136,6 +137,20 @@ export const fetchRegionComparison = async (): Promise<{
 export const fetchVideo = async (id: string) => {
   const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
   return response.data;
+};
+
+/** Покадровые bbox — отдельно от GET /videos/:id (лёгкая первая отрисовка страницы). */
+export const fetchVideoDetectionFrames = async (id: string) => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/detection-frames`);
+  return response.data as {
+    tracks: Array<{
+      id: number;
+      species_id: number;
+      start_time: number;
+      end_time: number;
+      frames: TrackFrame[];
+    }>;
+  };
 };
 
 /** Prev/next video IDs for the selected day scope. */
