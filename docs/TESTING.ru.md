@@ -115,11 +115,19 @@ E2E проверяют UI и API на работающем экземпляре.
 - **smoke.spec.ts**: загрузка главной, навигация, Settings, Live
 - **api.spec.ts**: `/api/ui/health`, `/api/ui/status`, `/api/ui/settings`, `/api/ui/cameras`, `/api/ui/weather`, `/api/ui/feed/dispense`
 - **settings.spec.ts**: форма настроек, секции Video/MQTT, Feed
+- **migration.spec.ts**: фильтр «С года» / From year на странице Migration (и сброс на «Все годы»); при пустой БД без таблицы миграции тесты помечаются **skip**
 
 **Только API-тесты (без браузера):**
 
 ```bash
 cd app/e2e && npm test -- --grep @api
+```
+
+**Отладка одного файла / UI mode:**
+
+```bash
+cd app/e2e && npx playwright test tests/migration.spec.ts
+cd app/e2e && npx playwright test --debug tests/migration.spec.ts
 ```
 
 **CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **раз в неделю** и по **workflow_dispatch**; в ruleset **не required** — для отлова регрессий без Playwright на каждом PR.

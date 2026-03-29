@@ -58,9 +58,11 @@ E2E runs against a **live** instance (UI + API).
 3. Remote: `cd app && BASE_URL=http://YOUR_HOST:8085 make test-e2e`
 4. **Settings password:** set `E2E_SETTINGS_PASSWORD=...` for a full run. Without it, Settings tests and `GET /api/ui/settings` are **skipped**.
 
-**Suites:** `smoke.spec.ts` (home, nav, Settings, Live), `api.spec.ts` (health, status, settings, cameras, weather, feed dispense), `settings.spec.ts` (form, Video/MQTT/Feed sections).
+**Suites:** `smoke.spec.ts` (home, nav, Settings, Live), `api.spec.ts` (health, status, settings, cameras, weather, feed dispense), `settings.spec.ts` (form, Video/MQTT/Feed sections), `migration.spec.ts` (Migration **From year** filter + reset to **All years**; **skipped** if the calendar has no species table / empty DB).
 
 API-only (no browser): `cd app/e2e && npm test -- --grep @api`
+
+Debug one file / UI mode: `cd app/e2e && npx playwright test tests/migration.spec.ts` or `npx playwright test --debug tests/migration.spec.ts`.
 
 **Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **weekly** and on **workflow_dispatch** — not a required check; use it to catch regressions without running Playwright on every PR.
 
