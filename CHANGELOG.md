@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **E2E ([#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118)):** `app/e2e/tests/migration.spec.ts` — фильтр года на Migration и сброс на «все годы»; [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md) — отладка отдельного файла (`playwright test` / `--debug`).
+
 ### Changed
 
 - **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`.
