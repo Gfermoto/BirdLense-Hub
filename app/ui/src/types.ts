@@ -105,7 +105,7 @@ export interface Settings {
     settings_password?: string;
     contributor_password?: string;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
-    /** URL донатов: только иконка в шапке; правка через YAML, не через эту форму */
+    /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
     donate_url?: string;
   };
   performance?: {

@@ -164,7 +164,7 @@
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "donateUrl": "Ссылка для поддержки",
-    "donateUrlHint": "Не в этой форме — при необходимости правьте general.donate_url в user_config.yaml. Если задано: только иконка-сердце в шапке (рядом с языком и настройками).",
+    "donateUrlHint": "Эта ссылка открывается при нажатии на единственную иконку-сердце в шапке (между языком и настройками). Не дублируется в карточке «Корм» и в меню шестерёнки.",
     "accordionPerformance": "Производительность / кэш API",
     "accordionPerformanceDesc": "Redis для TTL-кэша тяжёлых ответов API. В Docker Redis уже в compose; можно отключить или задать свой URL.",
     "performanceRedisEnabled": "Использовать Redis для кэша API",
