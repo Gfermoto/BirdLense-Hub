@@ -21,6 +21,8 @@ from services.species_registry_service import (
 )
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
+from services.cache import cache_get, cache_set
+from services.http_response_cache import bust_system_response_caches, bust_response_caches
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -56,6 +58,12 @@ SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
 SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
 SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
 SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
+
+_CACHE_SYSTEM_METRICS_SEC = 2.5
+_CACHE_SYSTEM_VISITORS_SEC = 25
+_CACHE_SYSTEM_METRICS_HIST_SEC = 12
+_CACHE_STORAGE_STATS_SEC = 45
+_CACHE_SYSTEM_ACTIVITY_SEC = 50
 
 _sampler_lock = threading.Lock()
 _sampler_started = False
@@ -262,15 +270,20 @@ def register_routes(app):
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
         """Мгновенные метрики хоста (опрос UI). Без агрегатов посетителей — см. /api/ui/system/visitors."""
+        hit, cached = cache_get('system_metrics:snapshot')
+        if hit:
+            return cached
         try:
             m = _collect_live_system_metrics(app)
-            return {
+            payload = {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
                 'disk': m['disk'],
                 'encoding': m['encoding'],
                 'gpu_percent': m['gpu_percent'],
             }
+            cache_set('system_metrics:snapshot', payload, _CACHE_SYSTEM_METRICS_SEC)
+            return payload
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
@@ -282,7 +295,13 @@ def register_routes(app):
                 days = int(request.args.get('days', '7'))
             except (TypeError, ValueError):
                 days = 7
-            return _collect_visitor_stats(days)
+            vck = f'system_visitors:{days}'
+            hit, vc = cache_get(vck)
+            if hit:
+                return vc
+            out = _collect_visitor_stats(days)
+            cache_set(vck, out, _CACHE_SYSTEM_VISITORS_SEC)
+            return out
         except Exception as e:
             app.logger.error(f"Error getting visitor stats: {str(e)}")
             return {'error': 'Failed to get visitor stats'}, 500
@@ -303,6 +322,10 @@ def register_routes(app):
             except (TypeError, ValueError):
                 max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
             max_points = max(50, min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP))
+            hck = f'system_metrics_hist:{hours}:{max_points}'
+            hit, hc = cache_get(hck)
+            if hit:
+                return hc
             now = datetime.now(timezone.utc)
             start = now - timedelta(hours=hours)
             rows = db.session.scalars(
@@ -311,7 +334,7 @@ def register_routes(app):
                 .order_by(SystemResourceSample.recorded_at.asc())
             ).all()
             rows = _downsample_evenly(rows, max_points)
-            return {
+            payload = {
                 'samples': [
                     {
                         't': r.recorded_at.isoformat(),
@@ -326,6 +349,8 @@ def register_routes(app):
                 'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
                 'hours_requested': hours,
             }
+            cache_set(hck, payload, _CACHE_SYSTEM_METRICS_HIST_SEC)
+            return payload
         except Exception as e:
             app.logger.error(f"Error getting system metrics history: {str(e)}")
             return {'error': 'Failed to get system metrics history'}, 500
@@ -361,6 +386,10 @@ def register_routes(app):
                 raise ValueError('Year or month out of range')
         except ValueError:
             return {'error': 'Invalid month format, use YYYY-MM'}, 400
+        ack = f'system_activity:{month}'
+        hit, ac = cache_get(ack)
+        if hit:
+            return ac
         end_date = (start_date.replace(day=1) +
                     timedelta(days=32)).replace(day=1)
 
@@ -378,11 +407,13 @@ def register_routes(app):
             func.strftime('%Y-%m-%d', ActivityLog.created_at)
         ).all()
 
-        return [{
+        out = [{
             'date': day,
             # convert to hours
             'totalUptime': round(duration / 3600, 1) if duration else 0
         } for day, duration in activities]
+        cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
+        return out
 
     def get_day_storage_info(day_path):
         """Get total size and file count for a day directory including all timestamp subdirs"""
@@ -413,7 +444,12 @@ def register_routes(app):
 
     @app.route('/api/ui/storage/stats', methods=['GET'])
     def get_storage_stats():
+        sck = 'storage_stats:v1'
+        hit, sc = cache_get(sck)
+        if hit:
+            return sc, 200
         if not os.path.exists(recordings_dir()):
+            cache_set(sck, [], 30)
             return [], 200
 
         stats = []
@@ -448,6 +484,7 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error scanning recordings directory: {e}")
 
+        cache_set(sck, stats, _CACHE_STORAGE_STATS_SEC)
         return stats, 200
 
     @app.route('/api/ui/storage/purge', methods=['POST'])
@@ -505,6 +542,7 @@ def register_routes(app):
                 if not os.listdir(year_path):
                     os.rmdir(year_path)
 
+            bust_system_response_caches()
             return {
                 'message': f'Successfully deleted {deleted_count} files',
                 'deletedCount': deleted_count,
@@ -594,6 +632,7 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         try:
             count, size = run_retention()
+            bust_system_response_caches()
             return {
                 'message': f'Deleted {count} recordings',
                 'deletedCount': count,
@@ -1033,6 +1072,8 @@ def register_routes(app):
                                 continue
 
             db.session.commit()
+            bust_response_caches()
+            bust_system_response_caches()
 
             # Auto-start spectrogram regeneration for newly imported videos (если не запущена)
             spectrogram_started = False
@@ -1085,6 +1126,7 @@ def register_routes(app):
                     vs.species_id = vs.species_visit.species_id
                     synced += 1
             db.session.commit()
+            bust_response_caches()
             return {
                 'orphaned': orphaned,
                 'synced': synced,
@@ -1138,6 +1180,7 @@ def register_routes(app):
                     db.session.delete(other)
                     merged += 1
             db.session.commit()
+            bust_response_caches()
             return {'merged': merged, 'details': details, 'message': f'Merged {merged} duplicate species'}, 200
         except Exception as e:
             db.session.rollback()

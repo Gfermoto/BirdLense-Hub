@@ -28,15 +28,18 @@ class Config:
     _database_url = os.getenv('DATABASE_URL', f'sqlite:///{db_path}')
     SQLALCHEMY_DATABASE_URI = _database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    # gthread + SQLite: потоки с одним файлом БД (WAL в app.py + check_same_thread=False)
-    SQLALCHEMY_ENGINE_OPTIONS = (
-        {
+    # SQLite: gthread + WAL (app.py). PostgreSQL: пул соединений под нагрузку.
+    if _database_url.startswith('sqlite:'):
+        SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_pre_ping': True,
             'connect_args': {'check_same_thread': False, 'timeout': 30},
         }
-        if _database_url.startswith('sqlite:')
-        else {'pool_pre_ping': True}
-    )
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_size': int(os.getenv('SQLALCHEMY_POOL_SIZE', '5')),
+            'max_overflow': int(os.getenv('SQLALCHEMY_MAX_OVERFLOW', '15')),
+        }
     SECRET_KEY = _SECRET_KEY
     # Optional built-in CORS origins (comma-separated). Keep empty by default for self-hosters.
     CORS_DEFAULT_ORIGINS = os.getenv('CORS_DEFAULT_ORIGINS', '')

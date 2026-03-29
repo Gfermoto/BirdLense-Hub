@@ -4,10 +4,18 @@ set -e
 GO2RTC_UPSTREAM=$(python3 /app/scripts/get_go2rtc_upstream.py)
 GO2RTC_UPSTREAM="${GO2RTC_UPSTREAM//[$'\r\n']/}"
 BIRDLENSE_PORT="${BIRDLENSE_PORT:-8080}"
+# Brotli: модуль из Dockerfile (ngx_brotli) или сторонний load_module
+BROTLI_BLOCK=""
+if [ -f /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so ]; then
+  BROTLI_BLOCK="  brotli on; brotli_comp_level 5; brotli_types application/json application/javascript text/css text/plain text/xml application/xml;"
+fi
+export BROTLI_BLOCK
 python3 -c '
+import os
 t=open("/etc/nginx/conf.d/default.conf.template").read()
 t=t.replace("__GO2RTC_UPSTREAM__", __import__("sys").argv[1])
 t=t.replace("__BIRDLENSE_PORT__", __import__("sys").argv[2])
+t=t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
 open("/etc/nginx/conf.d/default.conf","w").write(t)
 ' "$GO2RTC_UPSTREAM" "$BIRDLENSE_PORT"
 
