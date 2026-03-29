@@ -1016,7 +1016,8 @@ def notify_app_startup(app=None):
     in data_dir with recent mtime). Skips when already sent in this container run (marker in
     /tmp — survives worker restarts but not container restart) to avoid TG spam.
     Marker is created BEFORE notify() so that if we crash during send, we don't send again."""
-    if app and app.config.get('TESTING'):
+    import os as _os
+    if _os.environ.get('FLASK_TESTING') or (app and app.config.get('TESTING')):
         return
     sent_marker = '/tmp/.birdlense_startup_notify_sent'  # not in volume → one send per container
     try:

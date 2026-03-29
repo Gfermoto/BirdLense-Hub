@@ -72,11 +72,13 @@ def register_routes(app):
             return {'error': 'Invalid datetime format'}, 400
 
         species_list = data.get('species', []) or []
+        if not species_list:
+            return {'error': 'Missing species'}, 400
         # Отсечь детекции с низким confidence (4% и т.п.)
         min_conf = float(app_config.get('detection.min_confidence_to_store') or 0.05)
         species_list = [s for s in species_list if float(s.get('confidence') or 0) >= min_conf]
-        if not species_list and not data.get('species'):
-            return {'error': 'Missing species'}, 400
+        if not species_list:
+            return {'error': 'All species below min_confidence_to_store threshold'}, 400
 
         video_path = (data.get('video_path') or '').strip()
         if not VIDEO_PATH_RE.match(video_path):
