@@ -160,6 +160,9 @@ function App() {
     defaultOptions: {
       queries: {
         staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 15,
+        refetchOnWindowFocus: false,
+        retry: 1,
       },
     },
   });

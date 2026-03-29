@@ -563,6 +563,10 @@ class TestSpeciesRegionalScope:
             db.session.commit()
             sid = sp.id
 
+        # Прямой commit в БД минует processor — сбросить TTL-кэш списка видов
+        from services.http_response_cache import bust_response_caches
+        bust_response_caches()
+
         r = client.get('/api/ui/species')
         assert r.status_code == 200
         row = next((x for x in r.json if x['id'] == sid), None)
