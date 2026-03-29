@@ -1,0 +1,530 @@
+import { useTranslation } from 'react-i18next';
+import type { ReactFormExtendedApi } from '@tanstack/react-form';
+import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid2';
+import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import FormHelperText from '@mui/material/FormHelperText';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ServiceBlock } from '../shared/ServiceBlock';
+import type { Settings } from '../../../types';
+
+type Props = {
+  form: ReactFormExtendedApi<Settings, undefined>;
+};
+
+export function ProcessorSection({ form }: Props) {
+  const { t } = useTranslation();
+
+  const resolutions = [
+    { label: t('settings.resolutionFullHD'), width: 1920, height: 1080 },
+    { label: t('settings.resolutionHD'), width: 1280, height: 720 },
+    { label: t('settings.resolutionVGA'), width: 640, height: 480 },
+  ];
+
+  return (
+    <Accordion>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        {t('settings.accordionProcessor')}
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+          <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+            {t('settings.accordionProcessor')}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionProcessorDesc')}
+          </Typography>
+
+          <ServiceBlock title={t('settings.confidenceThresholdsTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.confidenceThresholdsDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <form.Field name="processor.min_confidence_binary">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0.05, max: 0.9, step: 0.05 }}
+                      value={field.state.value ?? 0.15}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.confidenceDetector')}
+                      helperText={t('settings.confidenceDetectorHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <form.Field name="processor.min_confidence_to_process">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 1, step: 0.05 }}
+                      value={field.state.value ?? 0.30}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.confidenceClassifier')}
+                      helperText={t('settings.confidenceClassifierHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <form.Field name="processor.dataset_min_confidence">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 1, step: 0.05 }}
+                      value={field.state.value ?? 0.50}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.confidenceDataset')}
+                      helperText={t('settings.confidenceDatasetHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceProcessor')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.max_record_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      value={field.state.value ?? 60}
+                      onChange={(e) => field.handleChange(Number(e.target.value))}
+                      label={t('settings.maxRecordSeconds')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.max_inactive_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      value={field.state.value ?? 10}
+                      onChange={(e) => field.handleChange(Number(e.target.value))}
+                      label={t('settings.inactiveSeconds')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.min_track_duration">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      value={field.state.value ?? 3}
+                      onChange={(e) => field.handleChange(Number(e.target.value))}
+                      label={t('settings.minTrackDuration')}
+                      helperText={t('settings.minTrackDurationHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.post_record_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 120, step: 1 }}
+                      value={field.state.value ?? 0}
+                      onChange={(e) =>
+                        field.handleChange(Math.max(0, Math.min(120, Number(e.target.value) || 0)))
+                      }
+                      label={t('settings.postRecordSeconds')}
+                      helperText={t('settings.postRecordSecondsHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.processorMultiCameraBirdnetTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.processorMultiCameraBirdnetDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.multi_camera_groups">
+                  {(field) => {
+                    const val = field.state.value;
+                    const str = Array.isArray(val)
+                      ? (val as string[][])
+                          .map((g) =>
+                            Array.isArray(g)
+                              ? g.map((s) => String(s).trim()).filter(Boolean).join(', ')
+                              : '',
+                          )
+                          .filter(Boolean)
+                          .join('\n')
+                      : '';
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        value={str}
+                        onChange={(e) => {
+                          const lines = e.target.value.split('\n');
+                          const groups: string[][] = [];
+                          for (const line of lines) {
+                            const ids = line
+                              .split(',')
+                              .map((s) => s.trim())
+                              .filter(Boolean);
+                            if (ids.length) groups.push(ids);
+                          }
+                          field.handleChange(groups.length ? groups : []);
+                        }}
+                        label={t('settings.multiCameraGroups')}
+                        placeholder="BirdBox, Forest"
+                        helperText={t('settings.multiCameraGroupsHint')}
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.multi_camera_confidence_boost">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                      value={field.state.value ?? 0.05}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 0.05)}
+                      label={t('settings.multiCameraConfidenceBoost')}
+                      helperText={t('settings.multiCameraConfidenceBoostHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.birdnet_mqtt_auto_confidence">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.birdnetMqttAutoConfidence')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.birdnetMqttAutoConfidenceHint')}
+                </FormHelperText>
+              </Grid>
+              <form.Subscribe selector={(state) => state.values.processor?.birdnet_mqtt_auto_confidence}>
+                {(birdnetBias) =>
+                  birdnetBias ? (
+                    <>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="processor.birdnet_mqtt_bias_window_seconds">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 10, max: 3600, step: 10 }}
+                              value={field.state.value ?? 120}
+                              onChange={(e) =>
+                                field.handleChange(
+                                  Math.max(10, Math.min(3600, Number(e.target.value) || 120)),
+                                )
+                              }
+                              label={t('settings.birdnetMqttBiasWindow')}
+                              helperText={t('settings.birdnetMqttBiasWindowHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="processor.birdnet_mqtt_bias_delta">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                              value={field.state.value ?? 0.05}
+                              onChange={(e) => field.handleChange(Number(e.target.value) || 0.05)}
+                              label={t('settings.birdnetMqttBiasDelta')}
+                              helperText={t('settings.birdnetMqttBiasDeltaHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <form.Field name="processor.birdnet_mqtt_bias_floor">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0.01, max: 1, step: 0.01 }}
+                              value={field.state.value ?? 0.05}
+                              onChange={(e) => field.handleChange(Number(e.target.value) || 0.05)}
+                              label={t('settings.birdnetMqttBiasFloor')}
+                              helperText={t('settings.birdnetMqttBiasFloorHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                    </>
+                  ) : null
+                }
+              </form.Subscribe>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.confidenceAdvanced')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.species_confidence_overrides">
+                  {(field) => {
+                    const val = field.state.value;
+                    const str =
+                      val && typeof val === 'object' && !Array.isArray(val)
+                        ? Object.entries(val)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join('\n')
+                        : '';
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        value={str}
+                        onChange={(e) => {
+                          const lines = e.target.value.split('\n').filter(Boolean);
+                          const obj: Record<string, number> = {};
+                          for (const line of lines) {
+                            const idx = line.indexOf(':');
+                            if (idx > 0) {
+                              const k = line.slice(0, idx).trim();
+                              const v = parseFloat(line.slice(idx + 1).trim());
+                              if (!isNaN(v) && v >= 0 && v <= 1) obj[k] = v;
+                            }
+                          }
+                          field.handleChange(Object.keys(obj).length ? obj : {});
+                        }}
+                        label={t('settings.speciesConfidenceOverrides')}
+                        placeholder="Pileated Woodpecker: 0.05"
+                        helperText={t('settings.speciesConfidenceOverridesHint')}
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('settings.ebirdRegionalTopConfidenceIntro')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.ebird_regional_top_auto_confidence">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? true}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.ebirdRegionalTopAutoConfidence')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.ebirdRegionalTopAutoConfidenceHint')}
+                </FormHelperText>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.ebird_regional_top_confidence_delta">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                      value={field.state.value ?? 0.05}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 0.05)}
+                      label={t('settings.ebirdRegionalTopConfidenceDelta')}
+                      helperText={t('settings.ebirdRegionalTopConfidenceDeltaHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.ebird_regional_top_confidence_floor">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0.01, max: 1, step: 0.01 }}
+                      value={field.state.value ?? 0.05}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 0.05)}
+                      label={t('settings.ebirdRegionalTopConfidenceFloor')}
+                      helperText={t('settings.ebirdRegionalTopConfidenceFloorHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="ui.unknown_confidence_threshold">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 1, step: 0.05 }}
+                      value={field.state.value ?? 0.5}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.unknownConfidenceThreshold')}
+                      helperText={t('settings.unknownConfidenceThresholdHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceProcessor')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.spectrogram_px_per_sec">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      value={field.state.value ?? 200}
+                      onChange={(e) => field.handleChange(Number(e.target.value))}
+                      label={t('settings.spectrogramDetail')}
+                      helperText={t('settings.spectrogramDetailHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.tracker">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.objectTracker')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.save_dataset_crops">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!field.state.value}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.saveDatasetCrops')}
+                      />
+                      <FormHelperText>{t('settings.saveDatasetCropsHelp')}</FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceFrigate')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="motion.frigate_label_exclude">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={(field.state.value || []).join(', ')}
+                      onChange={(e) =>
+                        field.handleChange(
+                          (e.target.value || '')
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      label={t('settings.frigateLabelExclude')}
+                      placeholder="cat, dog"
+                      helperText={t('settings.frigateLabelExcludeHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceVideo')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="video.video_width">
+                  {(widthField) => (
+                    <form.Field name="video.video_height">
+                      {(heightField) => {
+                        const w = widthField.state.value;
+                        const h = heightField.state.value;
+                        const sel = resolutions.find((r) => r.width === w && r.height === h);
+                        return (
+                          <FormControl fullWidth>
+                            <InputLabel id="settings-resolution-label">{t('settings.resolution')}</InputLabel>
+                            <Select
+                              labelId="settings-resolution-label"
+                              value={sel ? `${sel.width}x${sel.height}` : ''}
+                              label={t('settings.resolution')}
+                              onChange={(e) => {
+                                const [a, b] = (e.target.value as string).split('x').map(Number);
+                                widthField.handleChange(a);
+                                heightField.handleChange(b);
+                              }}
+                            >
+                              {resolutions.map((r) => (
+                                <MenuItem key={r.label} value={`${r.width}x${r.height}`}>
+                                  {r.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            <FormHelperText>{t('settings.resolutionHint')}</FormHelperText>
+                          </FormControl>
+                        );
+                      }}
+                    </form.Field>
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+        </Box>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
