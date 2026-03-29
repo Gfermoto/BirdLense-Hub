@@ -65,6 +65,7 @@ def _build_detection_pipeline(app_config):
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
         species_confidence_overrides=merged_overrides,
+        post_record_seconds=app_config.get('processor.post_record_seconds', 0),
     )
     return frame_processor, decision_maker
 

@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Processor ([#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157)):** `processor.post_record_seconds` — post-roll: увеличивает паузу без детекций перед остановкой записи (сумма с `max_inactive_seconds`).
+- **Processor ([#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129)):** опционально `processor.birdnet_mqtt_auto_confidence` и параметры окна/дельты — более низкий порог классификатора для видов из недавних сообщений BirdNET по MQTT (по умолчанию выкл.).
+- **Processor ([#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153)):** `processor.multi_camera_groups` + `multi_camera_confidence_boost` — при Frigate-событиях одного вида с двух камер из группы прибавка к `confidence` после merge.
 - **Roadmap:** пункт консилиума **№17** — стратегия детекции (two_stage vs single_stage+COCO, пороги в `user_config`, дообучение бинарника); блок в [ROADMAP.ru.md](docs/ROADMAP.ru.md) / [EN](docs/ROADMAP.md), связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163). Дополнено: **чеклист «не забыть»** перед/после консилиума; раздел **«Завершение задач → тестирование оператором»** (`#completion-then-operator-testing`).
 - **E2E ([#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118)):** `app/e2e/tests/migration.spec.ts` — фильтр года на Migration и сброс на «все годы»; [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md) — отладка отдельного файла (`playwright test` / `--debug`).
 

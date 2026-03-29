@@ -16,9 +16,16 @@ class DecisionMaker():
         min_track_duration=2,
         min_confidence_to_process=None,
         species_confidence_overrides=None,
+        post_record_seconds=0,
     ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
+        try:
+            pr = float(post_record_seconds or 0)
+        except (TypeError, ValueError):
+            pr = 0.0
+        # post-roll: extend «no detection» tail after last activity (#157)
+        self._effective_max_inactive = float(max_inactive_seconds or 0) + max(0.0, min(pr, 120.0))
         self.min_track_duration = min_track_duration
         self.min_confidence_to_process = (
             min_confidence_to_process
@@ -54,7 +61,7 @@ class DecisionMaker():
         reached_max_record_seconds = (
             time.time() - self.start_time) >= self.max_record_seconds
         reached_max_inactive_seconds = self.inactive_start_time and (
-            time.time() - self.inactive_start_time) >= self.max_inactive_seconds
+            time.time() - self.inactive_start_time) >= self._effective_max_inactive
         decision = reached_max_inactive_seconds or reached_max_record_seconds
         self.stop_recording_decided = decision
         return decision

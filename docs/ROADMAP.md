@@ -130,12 +130,13 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
+- [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
 
 | # | Issue | Summary |
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | ✅ Compare-to-region on Migration (see progress above) |
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](./CONFIGURATION.md) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | Extra sensitivity; **7-day** hint window (when BirdNET is configured) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | ✅ Lower classifier thresholds for species in recent BirdNET MQTT: `birdnet_mqtt_auto_confidence` + window/delta; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
 | [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
@@ -150,11 +151,11 @@ Tracked as separate issues; acceptance criteria live in each issue.
 |---|--------|-------|-----------------|
 | 1 | System: unique visitor counter | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) ✅ | P3, web |
 | 2 | After deleting a recording, return to list not Home | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) ✅ | P2, web, bug |
-| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) | P2, processor |
+| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) ✅ `multi_camera_groups` + boost after merge; [CONFIGURATION.md](./CONFIGURATION.md) | P2, processor |
 | 4 | “Daily pattern” chart: click should filter by hour | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) ✅ | P2, web, bug |
 | 5 | Recording duration mismatch (Home vs recording page) | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) ✅ | P2, web, bug |
 | 6 | Review counter not updating without full reload | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) ✅ | P2, web, bug |
-| 7 | Recording quality: pre-roll/post-roll for approach/departure | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) | P2, processor |
+| 7 | Recording quality: pre-roll/post-roll for approach/departure | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) ✅ `processor.post_record_seconds` (recording tail); pre-roll remains `video.pre_record_seconds` (Go2RTC — see issue) | P2, processor |
 | 8 | Re-export: orphan recognitions without species/recording | [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) ✅ | P1, processor, bug |
 | 9 | UX consistency: tooltips and inline help | [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) ✅ | P3, web |
 | 10 | Regenerate tracks: progress, 409, timeouts on large sets | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug |

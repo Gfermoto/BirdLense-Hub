@@ -62,12 +62,19 @@
 | `tracker` | Конфиг трекера (bytetrack.yaml) |
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
+| `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_track_duration` | Мин. длительность трека (сек). По умолчанию 2 — меньше ложных срабатываний |
 | `min_confidence_to_process` | Мин. confidence трека (0.10 по умолчанию). 0.03 — больше детекций, 0.10 — строже |
 | `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
 | `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.05`). |
+| `birdnet_mqtt_auto_confidence` | Если **true**, для видов из **недавних** сообщений BirdNET по MQTT подмешиваются более низкие пороги классификатора (как у eBird-топа). По умолчанию **false**. Ручные `species_confidence_overrides` важнее. См. [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
+| `birdnet_mqtt_bias_window_seconds` | Окно назад от момента старта записи для учёта видов BirdNET (сек, по умолчанию 120). |
+| `birdnet_mqtt_bias_delta` | Вычитается из `min_confidence_to_process` для авто-видов из BirdNET (по умолчанию `0.05`). |
+| `birdnet_mqtt_bias_floor` | Нижняя граница авто-порога для BirdNET (по умолчанию `0.05`). |
+| `multi_camera_groups` | Список групп `id` камер Frigate одной локации, например `[["BirdBox","Forest"]]`. См. [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
+| `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.05`, не выше 1.0). |
 | `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `single_stage_coco_animals_only_auto` | По умолчанию **true**: при **ровно 80** классах COCO (`yolov8n.pt` и т.п.) — только **животные** (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe): без **person** и без предметов. **false** — для своей 80-классовой модели. Устаревший ключ `single_stage_coco_bird_only_auto` читается, если этот не задан. |
