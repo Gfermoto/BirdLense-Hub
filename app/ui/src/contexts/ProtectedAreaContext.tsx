@@ -53,6 +53,8 @@ export function ProtectedAreaProvider({
     queryFn: checkSettingsAccess,
     enabled: !!requiresPassword,
     retry: false,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const setUnlocked = useCallback((value: boolean, role?: 'admin' | 'contributor') => {

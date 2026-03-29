@@ -379,6 +379,7 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
     }
     return { unlocked: false };
   } catch (e: unknown) {
+    // Legacy servers returned 403 when locked; treat as locked.
     if (axios.isAxiosError(e) && e.response?.status === 403) {
       return { unlocked: false };
     }
