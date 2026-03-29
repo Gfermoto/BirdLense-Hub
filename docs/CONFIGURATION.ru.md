@@ -26,7 +26,7 @@
 | Переменная | Описание |
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
-| `REDIS_URL` | Опционально. Общий TTL-кэш тяжёлых ответов API при нескольких воркерах Gunicorn или репликах. Пример: `redis://redis:6379/0`. Без переменной — кэш в памяти процесса. |
+| `REDIS_URL` | В **Docker** по умолчанию задаётся в `docker-compose.yml`: `redis://redis:6379/0` (контейнер `birdlense-redis`). Для своего Redis — переопределите в `app/.env`. Без URL (локальный запуск без compose) — кэш в памяти процесса. |
 | `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. |
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |

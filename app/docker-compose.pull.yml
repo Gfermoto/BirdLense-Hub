@@ -2,9 +2,23 @@
 # docker compose -f docker-compose.pull.yml up -d
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: birdlense-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   birdlense:
     image: ghcr.io/gfermoto/birdlense-hub:latest
     container_name: birdlense
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${BIRDLENSE_PORT:-8085}:8080"
     volumes:
@@ -12,6 +26,7 @@ services:
       - ./app_config:/app/app_config
     environment:
       - DATA_DIR=/app/data
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
       - GO2RTC_URL=${GO2RTC_URL:-}

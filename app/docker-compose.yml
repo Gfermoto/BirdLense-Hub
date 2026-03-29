@@ -1,14 +1,28 @@
-# BirdLense Hub — один контейнер (web + processor в одном образе)
+# BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
 # Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без devices — всегда CPU.
 # Intel GPU: см. docker-compose.intel.example.yml → скопировать в docker-compose.override.yml на хосте с Intel.
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: birdlense-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   birdlense:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: birdlense
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${BIRDLENSE_PORT:-8085}:8080"
     volumes:
@@ -18,6 +32,8 @@ services:
       - .env
     environment:
       - DATA_DIR=/app/data
+      # Кэш TTL в app (см. services/cache.py). Переопределите в .env, если Redis снаружи.
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
