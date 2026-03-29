@@ -869,6 +869,14 @@ def _get_telegram_api_base():
     return base or 'https://api.telegram.org'
 
 
+def _telegram_http_proxies():
+    """Прокси для исходящих запросов к Telegram (SOCKS5h, HTTP). Пусто — без прокси."""
+    url = (app_config.get('notifications.telegram_proxy_url') or '').strip()
+    if not url:
+        return None
+    return {'http': url, 'https': url}
+
+
 def _telegram_timeouts():
     """(timeout_text, timeout_media) — текст легче, медиа тяжелее. В РФ таймауты большие (блокировки)."""
     t = int(app_config.get('notifications.telegram_timeout') or 300)
@@ -881,6 +889,9 @@ def _telegram_request(method, url, timeout, retries=None, **kwargs):
     retries = retries or int(app_config.get('notifications.telegram_retries') or 3)
     retries = max(1, min(5, retries))
     last_exc = None
+    proxies = _telegram_http_proxies()
+    if proxies and 'proxies' not in kwargs:
+        kwargs = {**kwargs, 'proxies': proxies}
     for attempt in range(retries):
         try:
             r = requests.request(method, url, timeout=timeout, **kwargs)

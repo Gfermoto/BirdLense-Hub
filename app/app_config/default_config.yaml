@@ -176,6 +176,8 @@ notifications:
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
+  # Исходящие запросы к Telegram API через SOCKS5h/HTTP (Tor, локальный прокси). Пусто — напрямую.
+  telegram_proxy_url: ""      # например socks5h://127.0.0.1:9050
   telegram_timeout: 300      # Таймаут сек (в РФ блокировки — ставить 300+). Текст: timeout/2
   telegram_retries: 5        # Повторы при таймауте/сетевой ошибке
   compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
@@ -208,6 +210,12 @@ gallery:
   upload_url: ""  # URL API галереи для приёма кадров (multipart/form-data)
   min_confidence: 0.5
   only_manually_corrected: false
+
+# Доп. интеграции (MQTT и т.д.). Процессор пока не читает весы — ключи для UI и будущей логики (#167).
+integrations:
+  scales:
+    enabled: false
+    mqtt_topic: ""  # например birdlense/feeder/weight
 
 # UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
 ui:

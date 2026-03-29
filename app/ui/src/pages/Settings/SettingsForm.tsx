@@ -969,6 +969,120 @@ export const SettingsForm = ({
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle2" sx={{ mt: 0.5 }}>
+                  {t('settings.telegramNetworkTitle')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="notifications.telegram_proxy_url">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.telegramProxyUrl')}
+                      placeholder="socks5h://127.0.0.1:9050"
+                      helperText={t('settings.telegramProxyUrlHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="notifications.telegram_api_base">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.telegramApiBase')}
+                      helperText={t('settings.telegramApiBaseHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.telegram_timeout">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 30, max: 600, step: 10 }}
+                      value={field.state.value ?? 300}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(30, Math.min(600, Number(e.target.value) || 300)),
+                        )
+                      }
+                      label={t('settings.telegramTimeout')}
+                      helperText={t('settings.telegramTimeoutHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.telegram_retries">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 1, max: 5, step: 1 }}
+                      value={field.state.value ?? 5}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(1, Math.min(5, Number(e.target.value) || 5)),
+                        )
+                      }
+                      label={t('settings.telegramRetries')}
+                      helperText={t('settings.telegramRetriesHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.compress_photo_over_kb">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 10000, step: 50 }}
+                      value={field.state.value ?? 400}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(0, Math.min(10000, Number(e.target.value) || 0)),
+                        )
+                      }
+                      label={t('settings.telegramCompressOverKb')}
+                      helperText={t('settings.telegramCompressOverKbHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="notifications.telegram_max_side_px">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 4096, step: 64 }}
+                      value={field.state.value ?? 1024}
+                      onChange={(e) =>
+                        field.handleChange(
+                          Math.max(0, Math.min(4096, Number(e.target.value) || 0)),
+                        )
+                      }
+                      label={t('settings.telegramMaxSidePx')}
+                      helperText={t('settings.telegramMaxSidePxHint')}
+                      disabled={!notificationsEnabled}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="notifications.message_thread_id">
                   {(field) => (
@@ -1521,6 +1635,43 @@ export const SettingsForm = ({
             </Grid>
           </ServiceBlock>
 
+          <ServiceBlock title={t('settings.serviceScales')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.serviceScalesDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="integrations.scales.enabled">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value ?? false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.scalesEnabled')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="integrations.scales.mqtt_topic">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.scalesMqttTopic')}
+                      placeholder="birdlense/feeder/weight"
+                      helperText={t('settings.scalesMqttTopicHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
           <ServiceBlock title={t('settings.serviceEbird')}>
             <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
@@ -1855,6 +2006,167 @@ export const SettingsForm = ({
                 )}
               </form.Field>
             </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.post_record_seconds">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 120, step: 1 }}
+                    value={field.state.value ?? 0}
+                    onChange={(e) =>
+                      field.handleChange(
+                        Math.max(0, Math.min(120, Number(e.target.value) || 0)),
+                      )
+                    }
+                    label={t('settings.postRecordSeconds')}
+                    helperText={t('settings.postRecordSecondsHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.processorMultiCameraBirdnetTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.processorMultiCameraBirdnetDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="processor.multi_camera_groups">
+                {(field) => {
+                  const val = field.state.value;
+                  const str = Array.isArray(val)
+                    ? (val as string[][])
+                        .map((g) => (Array.isArray(g) ? g.map((s) => String(s).trim()).filter(Boolean).join(', ') : ''))
+                        .filter(Boolean)
+                        .join('\n')
+                    : '';
+                  return (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      value={str}
+                      onChange={(e) => {
+                        const lines = e.target.value.split('\n');
+                        const groups: string[][] = [];
+                        for (const line of lines) {
+                          const ids = line
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          if (ids.length) groups.push(ids);
+                        }
+                        field.handleChange(groups.length ? groups : []);
+                      }}
+                      label={t('settings.multiCameraGroups')}
+                      placeholder="BirdBox, Forest"
+                      helperText={t('settings.multiCameraGroupsHint')}
+                    />
+                  );
+                }}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <form.Field name="processor.multi_camera_confidence_boost">
+                {(field) => (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                    value={field.state.value ?? 0.05}
+                    onChange={(e) =>
+                      field.handleChange(Number(e.target.value) || 0.05)
+                    }
+                    label={t('settings.multiCameraConfidenceBoost')}
+                    helperText={t('settings.multiCameraConfidenceBoostHint')}
+                  />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="processor.birdnet_mqtt_auto_confidence">
+                {(field) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={field.state.value ?? false}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                      />
+                    }
+                    label={t('settings.birdnetMqttAutoConfidence')}
+                  />
+                )}
+              </form.Field>
+              <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                {t('settings.birdnetMqttAutoConfidenceHint')}
+              </FormHelperText>
+            </Grid>
+            <form.Subscribe
+              selector={(state) => state.values.processor?.birdnet_mqtt_auto_confidence}
+            >
+              {(birdnetBias) =>
+                birdnetBias ? (
+                  <>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <form.Field name="processor.birdnet_mqtt_bias_window_seconds">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 10, max: 3600, step: 10 }}
+                            value={field.state.value ?? 120}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(10, Math.min(3600, Number(e.target.value) || 120)),
+                              )
+                            }
+                            label={t('settings.birdnetMqttBiasWindow')}
+                            helperText={t('settings.birdnetMqttBiasWindowHint')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <form.Field name="processor.birdnet_mqtt_bias_delta">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0, max: 0.5, step: 0.01 }}
+                            value={field.state.value ?? 0.05}
+                            onChange={(e) =>
+                              field.handleChange(Number(e.target.value) || 0.05)
+                            }
+                            label={t('settings.birdnetMqttBiasDelta')}
+                            helperText={t('settings.birdnetMqttBiasDeltaHint')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <form.Field name="processor.birdnet_mqtt_bias_floor">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0.01, max: 1, step: 0.01 }}
+                            value={field.state.value ?? 0.05}
+                            onChange={(e) =>
+                              field.handleChange(Number(e.target.value) || 0.05)
+                            }
+                            label={t('settings.birdnetMqttBiasFloor')}
+                            helperText={t('settings.birdnetMqttBiasFloorHint')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                  </>
+                ) : null
+              }
+            </form.Subscribe>
             </Grid>
           </ServiceBlock>
 

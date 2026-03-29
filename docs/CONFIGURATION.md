@@ -210,6 +210,15 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 ---
 
+## Integrations (reserved)
+
+| Key | Description |
+|-----|-------------|
+| `integrations.scales.enabled` | Placeholder for smart-scale / feeder weight MQTT (default **false**). |
+| `integrations.scales.mqtt_topic` | MQTT topic to store for future processing (Hub does not consume weight yet; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). |
+
+---
+
 ## Notifications (Telegram)
 
 | Key | Description |
@@ -218,6 +227,12 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `notifications.telegram_bot_token` | Bot token (@BotFather → `/newbot`) |
 | `notifications.telegram_chat_id` | Chat or channel id (e.g. `-1001234567890`) |
 | `notifications.base_url` | Hub URL for links (“Open Live”) |
+| `notifications.telegram_proxy_url` | Outgoing proxy for Bot API calls (`socks5h://…`, `http://…`). Empty = direct. Web image includes `requests[socks]`. |
+| `notifications.telegram_api_base` | Empty = `https://api.telegram.org`; or your HTTPS reverse proxy base |
+| `notifications.telegram_timeout` | Max timeout seconds for Telegram requests (text uses half) |
+| `notifications.telegram_retries` | Retry count on timeout/connection errors |
+| `notifications.compress_photo_over_kb` | Compress JPEG when larger than N KB (0 = off) |
+| `notifications.telegram_max_side_px` | Max image side in px before send (0 = no resize) |
 | `notifications.message_thread_id` | Forum topic id |
 | `notifications.disable_notification` | Silent messages |
 | `notifications.protect_content` | Disallow forward/save |
