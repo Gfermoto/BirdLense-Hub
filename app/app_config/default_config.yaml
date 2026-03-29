@@ -8,7 +8,7 @@ general:
   contributor_password: ""
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
-  # Ссылка на страницу пожертвований (Ko-fi, Buy Me a Coffee и т.д.). Пусто — кнопка не показывается.
+  # Ссылка на донаты: только иконка в шапке (не в настройках UI). Пусто — скрыто.
   donate_url: ""
 
 # Video/Audio processor settings
@@ -18,17 +18,17 @@ processor:
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  min_track_duration: 3  # сек; треки короче отбрасываются. 2 — больше треков, 3 — меньше ложных
-  min_confidence_binary: 0.15  # Детектор «птица/не птица». 0.15 = 15% по умолчанию
-  min_confidence_to_process: 0.30  # Классификатор (вид). 0.30 = 30% по умолчанию
+  min_track_duration: 4  # сек; короче — отброс (меньше ложных «мельканий»)
+  min_confidence_binary: 0.22  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
+  min_confidence_to_process: 0.36  # Классификатор (голосование × средняя уверенность)
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после ebird.species_mapping)
-  ebird_regional_top_confidence_delta: 0.05
+  ebird_regional_top_confidence_delta: 0.03
   # Нижняя граница авто-порога (не ниже)
-  ebird_regional_top_confidence_floor: 0.05
+  ebird_regional_top_confidence_floor: 0.08
   # BirdNET MQTT: снизить порог классификатора для видов из недавних сообщений (#129). Выкл. по умолчанию — без регрессии без MQTT.
   birdnet_mqtt_auto_confidence: false
   birdnet_mqtt_bias_window_seconds: 120
@@ -36,7 +36,7 @@ processor:
   birdnet_mqtt_bias_floor: 0.05
   # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
   multi_camera_groups: []  # например: [["BirdBox","Forest"]]
-  multi_camera_confidence_boost: 0.05
+  multi_camera_confidence_boost: 0.03
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
@@ -51,7 +51,7 @@ processor:
   save_images: false
   # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
   save_dataset_crops: false
-  dataset_min_confidence: 0.5
+  dataset_min_confidence: 0.55
   detection_strategy: "two_stage"
   models:
     # Продакшен: x86/amd64 + веса .pt (PyTorch). single_stage (NCNN) — опционально на amd64; ARM не поддерживается.
@@ -83,7 +83,7 @@ video:
 motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
-  check_every_n_frames: 1
+  check_every_n_frames: 2
   frigate_camera_filter: []  # from cameras list; frigate/events
   frigate_label_filter: ["bird", "Bird"]
   frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
@@ -105,14 +105,14 @@ mqtt:
 
 # Detection merging (YOLO + Frigate + BirdNET)
 detection:
-  merge_window_seconds: 8
+  merge_window_seconds: 6
   dedup_window_seconds: 60
   # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
   one_per_species: true
   # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
   source_priority: ["yolo", "frigate", "birdnet"]
   # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
-  min_confidence_to_store: 0.30
+  min_confidence_to_store: 0.36
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
@@ -162,7 +162,7 @@ weather:
   source: openweather
   ha_url: "http://homeassistant:8123"
   ha_entity_id: "weather.home"
-  # ha_token: ""  # Long-Lived Access Token; HA_TOKEN in env overrides
+  ha_token: ""  # Long-Lived Access Token; HA_TOKEN в env переопределяет
 
 # Retention
 retention:
@@ -176,8 +176,8 @@ notifications:
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
-  # Исходящие запросы к Telegram API через SOCKS5h/HTTP (Tor, локальный прокси). Пусто — напрямую.
-  telegram_proxy_url: ""      # например socks5h://127.0.0.1:9050
+  # Исходящие к Bot API: SOCKS5h или HTTP(S)-прокси. MTProto-прокси сюда не подставляются (Bot API — HTTPS).
+  telegram_proxy_url: ""      # socks5h://127.0.0.1:9050 или http://127.0.0.1:8118
   telegram_timeout: 300      # Таймаут сек (в РФ блокировки — ставить 300+). Текст: timeout/2
   telegram_retries: 5        # Повторы при таймауте/сетевой ошибке
   compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
@@ -208,18 +208,27 @@ webhook:
 gallery:
   enabled: false
   upload_url: ""  # URL API галереи для приёма кадров (multipart/form-data)
-  min_confidence: 0.5
+  min_confidence: 0.55
   only_manually_corrected: false
 
-# Доп. интеграции (MQTT и т.д.). Процессор пока не читает весы — ключи для UI и будущей логики (#167).
+# Весы у кормушки: MQTT (топик состояния) или сущность Home Assistant.
+# Совместимо с ESPHome/HA (напр. github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection).
 integrations:
   scales:
     enabled: false
-    mqtt_topic: ""  # например birdlense/feeder/weight
+    source: mqtt  # mqtt | homeassistant
+    mqtt_topic: ""  # ESPHome: homeassistant/sensor/<id>/state или свой топик с числом / JSON
+    homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
+    unit: kg  # kg | g — единица для отображения и записи из MQTT
+
+# Кэш API: Redis (docker-compose) можно выключить или задать URL в UI (перекрывает REDIS_URL из env).
+performance:
+  cache_redis_enabled: true
+  redis_url: ""  # непусто — использовать вместо REDIS_URL; секрет — маскируется в API
 
 # UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
 ui:
-  unknown_confidence_threshold: 0.5  # 0.0–1.0; детекции с confidence < порога попадают в «Неизвестные»
+  unknown_confidence_threshold: 0.48  # чуть строже отбор в «Неизвестные» при новых порогах детектора
 
 # MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
 mcp:

@@ -103,8 +103,23 @@ export interface Settings {
     enable_notifications: boolean;
     notification_excluded_species: string[];
     settings_password?: string;
+    contributor_password?: string;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
-    donate_url?: string; // Donation page (Ko-fi, etc.); empty = no button
+    /** URL донатов: только иконка в шапке; правка через YAML, не через эту форму */
+    donate_url?: string;
+  };
+  performance?: {
+    cache_redis_enabled?: boolean;
+    redis_url?: string;
+  };
+  integrations?: {
+    scales?: {
+      enabled?: boolean;
+      source?: 'mqtt' | 'homeassistant';
+      mqtt_topic?: string;
+      homeassistant_entity_id?: string;
+      unit?: 'kg' | 'g';
+    };
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
@@ -171,7 +186,7 @@ export interface Settings {
     source?: 'openweather' | 'homeassistant';
     ha_url?: string;
     ha_entity_id?: string;
-    ha_token?: string;
+    ha_token?: string; // LLAT для HA (погода и весы)
   };
   ebird?: {
     country?: string;

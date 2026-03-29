@@ -188,8 +188,16 @@ export function Navigation() {
             </Typography>
           </Box>
 
-          {/* Mobile Menu */}
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+          {/* Mobile: menu | logo | donate icon (только шапка, без пункта в drawer) */}
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: { xs: 'flex', md: 'none' },
+              alignItems: 'center',
+              minWidth: 0,
+              gap: 0.5,
+            }}
+          >
             <IconButton
               size="large"
               onClick={(e) => setMobileMenuAnchor(e.currentTarget)}
@@ -272,26 +280,6 @@ export function Navigation() {
                 {t('nav.library')}
               </MenuItem>
 
-              {showAppBarDonate ? (
-                <MenuItem
-                  component="a"
-                  href={donateUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleMobileMenuClose}
-                >
-                  <FavoriteIcon
-                    sx={{
-                      mr: 1,
-                      fontSize: 20,
-                      color: '#fca5a5',
-                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
-                    }}
-                  />
-                  {t('nav.supportProject')}
-                </MenuItem>
-              ) : null}
-
               {/* Mobile: Status + Language */}
               <Divider />
               <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -299,27 +287,54 @@ export function Navigation() {
                 <LanguageSwitcher />
               </Box>
             </Menu>
-          </Box>
 
-          {/* Logo Section - Mobile (Clickable) */}
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              alignItems: 'center',
-              textDecoration: 'none',
-              color: 'inherit',
-            }}
-          >
             <Box
-              component="img"
-              src={logoUrl}
-              alt="BirdLense Hub Logo"
-              sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5 }}
-            />
-            <Typography variant="h6">{t('common.appName')}</Typography>
+              component={Link}
+              to="/"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                textDecoration: 'none',
+                color: 'inherit',
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                component="img"
+                src={logoUrl}
+                alt="BirdLense Hub Logo"
+                sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5, flexShrink: 0 }}
+              />
+              <Typography variant="h6" noWrap>
+                {t('common.appName')}
+              </Typography>
+            </Box>
+
+            {showAppBarDonate ? (
+              <IconButton
+                component="a"
+                href={donateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                color="inherit"
+                aria-label={t('nav.supportProject')}
+                sx={{
+                  flexShrink: 0,
+                  color: 'rgba(255, 255, 255, 0.92)',
+                }}
+              >
+                <FavoriteIcon
+                  sx={{
+                    fontSize: 22,
+                    color: '#fca5a5',
+                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                  }}
+                />
+              </IconButton>
+            ) : null}
           </Box>
 
           {/* Desktop Navigation - Pill Style */}
@@ -484,28 +499,6 @@ export function Navigation() {
             >
               {t('nav.library')}
             </MenuItem>
-            {donateUrl ? (
-              <>
-                <Divider />
-                <MenuItem
-                  component="a"
-                  href={donateUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleSettingsMenuClose}
-                >
-                  <FavoriteIcon
-                    sx={{
-                      mr: 1,
-                      fontSize: 20,
-                      color: 'error.light',
-                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
-                    }}
-                  />
-                  {t('nav.supportProject')}
-                </MenuItem>
-              </>
-            ) : null}
           </Menu>
         </Toolbar>
       </Container>

@@ -208,6 +208,15 @@ def main():
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
+    _data_dir = os.environ.get('DATA_DIR', 'data')
+    scales_topic_arg = None
+    scales_unit_arg = 'kg'
+    if app_config.get('integrations.scales.enabled'):
+        scales_unit_arg = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
+        src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
+        mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
+        if src == 'mqtt' and mq_st:
+            scales_topic_arg = mq_st
     frigate_camera_filter = (
         app_config.get('motion.frigate_camera_filter')
         or app_config.get('mqtt.frigate_camera_filter')
@@ -245,6 +254,9 @@ def main():
             base_url=app_config.get('notifications.base_url', ''),
             reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
             reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
+            scales_topic=scales_topic_arg,
+            scales_data_dir=_data_dir if scales_topic_arg else None,
+            scales_unit=scales_unit_arg,
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator

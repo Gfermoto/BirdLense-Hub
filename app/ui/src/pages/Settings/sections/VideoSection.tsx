@@ -9,6 +9,8 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormHelperText from '@mui/material/FormHelperText';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import Alert from '@mui/material/Alert';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -285,6 +287,108 @@ export function VideoSection({ form }: Props) {
                 )}
               </form.Subscribe>
             </Grid>
+
+            <Box sx={{ mt: 3 }}>
+            <ServiceBlock title={t('settings.serviceScales')}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('settings.serviceScalesDesc')}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12 }}>
+                  <form.Field name="integrations.scales.enabled">
+                    {(field) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.state.value ?? false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.scalesEnabled')}
+                      />
+                    )}
+                  </form.Field>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <form.Field name="integrations.scales.source">
+                    {(field) => (
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-scales-src">{t('settings.scalesSource')}</InputLabel>
+                        <Select
+                          labelId="settings-scales-src"
+                          value={field.state.value ?? 'mqtt'}
+                          label={t('settings.scalesSource')}
+                          onChange={(e) =>
+                            field.handleChange(e.target.value as 'mqtt' | 'homeassistant')
+                          }
+                        >
+                          <MenuItem value="mqtt">{t('settings.scalesSourceMqtt')}</MenuItem>
+                          <MenuItem value="homeassistant">{t('settings.scalesSourceHa')}</MenuItem>
+                        </Select>
+                        <FormHelperText>{t('settings.scalesSourceHint')}</FormHelperText>
+                      </FormControl>
+                    )}
+                  </form.Field>
+                </Grid>
+                <form.Subscribe selector={(s) => s.values.integrations?.scales?.source}>
+                  {(src) => (
+                    <>
+                      {(src ?? 'mqtt') === 'mqtt' && (
+                        <Grid size={{ xs: 12 }}>
+                          <form.Field name="integrations.scales.mqtt_topic">
+                            {(field) => (
+                              <TextField
+                                fullWidth
+                                value={field.state.value ?? ''}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                label={t('settings.scalesMqttTopic')}
+                                placeholder="homeassistant/sensor/feeder_scale_weight/state"
+                                helperText={t('settings.scalesMqttTopicHint')}
+                              />
+                            )}
+                          </form.Field>
+                        </Grid>
+                      )}
+                      {src === 'homeassistant' && (
+                        <Grid size={{ xs: 12 }}>
+                          <form.Field name="integrations.scales.homeassistant_entity_id">
+                            {(field) => (
+                              <TextField
+                                fullWidth
+                                value={field.state.value ?? ''}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                label={t('settings.scalesHaEntity')}
+                                placeholder="sensor.smart_scale_weight"
+                                helperText={t('settings.scalesHaEntityHint')}
+                              />
+                            )}
+                          </form.Field>
+                        </Grid>
+                      )}
+                    </>
+                  )}
+                </form.Subscribe>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="integrations.scales.unit">
+                    {(field) => (
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-scales-unit">{t('settings.scalesUnit')}</InputLabel>
+                        <Select
+                          labelId="settings-scales-unit"
+                          value={field.state.value ?? 'kg'}
+                          label={t('settings.scalesUnit')}
+                          onChange={(e) => field.handleChange(e.target.value as 'kg' | 'g')}
+                        >
+                          <MenuItem value="kg">kg</MenuItem>
+                          <MenuItem value="g">g</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </form.Field>
+                </Grid>
+              </Grid>
+            </ServiceBlock>
+            </Box>
           </Box>
         </AccordionDetails>
       </Accordion>

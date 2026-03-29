@@ -53,43 +53,6 @@ export function IntegrationsSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
-          <ServiceBlock title={t('settings.serviceScales')}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('settings.serviceScalesDesc')}
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <form.Field name="integrations.scales.enabled">
-                  {(field) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.state.value ?? false}
-                          onChange={(e) => field.handleChange(e.target.checked)}
-                        />
-                      }
-                      label={t('settings.scalesEnabled')}
-                    />
-                  )}
-                </form.Field>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <form.Field name="integrations.scales.mqtt_topic">
-                  {(field) => (
-                    <TextField
-                      fullWidth
-                      value={field.state.value ?? ''}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      label={t('settings.scalesMqttTopic')}
-                      placeholder="birdlense/feeder/weight"
-                      helperText={t('settings.scalesMqttTopicHint')}
-                    />
-                  )}
-                </form.Field>
-              </Grid>
-            </Grid>
-          </ServiceBlock>
-
           <ServiceBlock title="MCP">
             <Grid container spacing={2}>
               <Grid size={{ xs: 12 }}>

@@ -1,4 +1,4 @@
-"""TTL-кэш ответов: in-memory или Redis (REDIS_URL) для нескольких воркеров/реплик."""
+"""TTL-кэш ответов: in-memory или Redis (настройки UI / REDIS_URL)."""
 from __future__ import annotations
 
 import json
@@ -18,12 +18,34 @@ _redis_client = None  # lazy: Redis | False
 _redis_warned = False
 
 
+def reset_redis_client() -> None:
+    """Сбросить клиент Redis (после смены URL или выключения в настройках)."""
+    global _redis_client, _redis_warned
+    _redis_client = None
+    _redis_warned = False
+
+
+def _redis_url_effective() -> str:
+    """URL Redis: performance.redis_url в UI, иначе env REDIS_URL. Пусто если выключено в UI."""
+    try:
+        from app_config.app_config import app_config
+
+        if app_config.get("performance.cache_redis_enabled", True) is False:
+            return ""
+        u = (app_config.get("performance.redis_url") or "").strip()
+        if u:
+            return u
+    except Exception:
+        pass
+    return (os.environ.get("REDIS_URL") or "").strip()
+
+
 def _redis():
     """Lazy Redis client; False = отключён; None = ещё не пробовали."""
     global _redis_client, _redis_warned
     if _redis_client is not None:
         return _redis_client if _redis_client is not False else None
-    url = (os.environ.get("REDIS_URL") or "").strip()
+    url = _redis_url_effective()
     if not url:
         _redis_client = False
         return None
@@ -44,7 +66,7 @@ def _redis():
             import logging
 
             logging.getLogger(__name__).warning(
-                "REDIS_URL задан, но подключение к Redis не удалось (%s) — используется in-memory кэш.",
+                "Redis недоступен (%s) — используется in-memory кэш.",
                 e,
             )
             _redis_warned = True

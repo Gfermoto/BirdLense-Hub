@@ -225,14 +225,18 @@ def register_routes(app):
 
     @app.route('/api/ui/feed/info', methods=['GET'])
     def feed_info():
-        """Last dispense time, donate URL, feed source. No auth required."""
+        """Last dispense time, donate URL, feed source, optional scale weight. No auth required."""
         from app_config.app_config import app_config
+        from services.feeder_scale import get_feeder_scale_snapshot
+
         donate_url = (app_config.get('general.donate_url') or '').strip()
         feed_source = app_config.get('feed.source', 'mqtt')
+        scale = get_feeder_scale_snapshot()
         return {
             'last_dispense_at': get_last_dispense(),
             'donate_url': donate_url or None,
             'feed_source': feed_source,
+            'scale': scale,
         }, 200
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])
@@ -1482,6 +1486,9 @@ def register_routes(app):
 
             bust_response_caches()
             cache_delete_prefix('ebird_region_comparison:')
+            from services.cache import reset_redis_client
+
+            reset_redis_client()
 
             # Return the updated configuration (masked)
             return app_config.mask_config_for_api(app_config.config)
