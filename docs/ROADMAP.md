@@ -64,6 +64,21 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 14 | Video navigation: sequential browse (e.g. same day), no list reset | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | `area:web`, P2 |
 | 15 | Video neighbors: local TZ, cross-day jump, docs clarity (follow-up to #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ local day + `cross_day` + API/UI docs | `area:web`, P3 |
 | 16 | Overview: “mean duration” used visit span instead of per-recording average | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ mean over `Video` rows (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); RU/EN labels | `area:web`, P3, `bug` |
+| 17 | Detection: false positives and inanimate objects — strategy (two_stage vs single_stage+COCO, thresholds, weights) | Consilium: [§ below](#detection-strategy-consilium) · ties to [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML |
+
+### Detection strategy consilium {#detection-strategy-consilium}
+
+**Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production.
+
+**Context:** with `detection_strategy: two_stage` and values in `user_config.yaml`, behavior **does not** match **single_stage** + typical COCO, where the default **animals-only** auto-filter applies (`processor.single_stage_coco_animals_only_auto` — excludes person and inanimate COCO classes). Deploying code does not overwrite `user_config.yaml`.
+
+**Options to compare (combinations allowed):**
+
+- keep **two_stage** and tune **`min_confidence_binary`** / **`min_confidence_to_process`**, and/or retrain/replace the binary detector;
+- move to **single_stage** + COCO (or another detect model) and rely on the animal filter / custom classes;
+- factor in Frigate / extra motion triggers.
+
+See [CONFIGURATION.md](./CONFIGURATION.md) (processor, motion). Non-bird classes overlap [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — consilium should decide one epic vs child issues.
 
 ### Triage: Issue vs. Discussion
 
@@ -135,7 +150,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 10 | Regenerate tracks: progress, 409, timeouts on large sets | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug |
 | 11 | Dataset UX: clear Library flow (DB maintenance + export) | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) ✅ | P2, docs + web |
 | 12 | Dataset pipeline: less post-script work before training | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) ✅ | P2, processor |
-| 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research |
+| 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) · see consilium [item 17](#detection-strategy-consilium) | P3, processor, research |
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) | P3, web |
 | 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra |
