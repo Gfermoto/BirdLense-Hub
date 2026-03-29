@@ -35,6 +35,7 @@ export const Settings: React.FC = () => {
   const { data: observedSpecies, isLoading: isLoadingObserved } = useQuery({
     queryKey: ['species', 'observed'],
     queryFn: fetchObservedSpecies,
+    staleTime: 5 * 60 * 1000,
   });
 
   const updateMutation = useMutation({

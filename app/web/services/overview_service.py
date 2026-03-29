@@ -4,10 +4,16 @@ from sqlalchemy import func, case, distinct
 
 from models import Video, Species, SpeciesVisit, VideoSpecies
 from util import ensure_utc, GENERIC_BIRD_SPECIES
+from services.cache import cache_get, cache_set
 
 
 def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> dict:
     """Build overview payload: topSpecies, stats, hourlyTemperature, lastDetection."""
+    cache_key = f"overview:{start_of_day.isoformat()}:{end_of_day.isoformat()}"
+    found, cached_result = cache_get(cache_key)
+    if found:
+        return cached_result
+
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -159,9 +165,11 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
             'start_time': et.isoformat() if et else None,
         }
 
-    return {
+    result = {
         'topSpecies': top_species,
         'stats': stats,
         'hourlyTemperature': hourly_temperature,
         'lastDetection': last_detection,
     }
+    cache_set(cache_key, result, ttl_seconds=60)
+    return result

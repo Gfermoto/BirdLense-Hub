@@ -105,6 +105,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const { data: speciesList = [] } = useQuery({
     queryKey: ['species'],
     queryFn: () => fetchBirdDirectory(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const correctMutation = useMutation({

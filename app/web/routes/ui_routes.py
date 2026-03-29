@@ -583,8 +583,6 @@ def register_routes(app):
     @app.route('/api/ui/region-comparison', methods=['GET'])
     def get_region_comparison_route():
         """Compare user's observed species with eBird region top. Requires secrets.ebird_api_key."""
-        from app_config.app_config import app_config
-        app_config.reload()  # подхватить ключ после сохранения в настройках
         observed = (
             db.session.query(Species.name)
             .join(SpeciesVisit, SpeciesVisit.species_id == Species.id)
@@ -1391,6 +1389,10 @@ def register_routes(app):
 
             # Save the updated configuration back to the user config file
             app_config.save()
+
+            # eBird API key may have changed — invalidate region-comparison cache
+            from services.cache import cache_delete_prefix
+            cache_delete_prefix('ebird_region_comparison:')
 
             # Return the updated configuration (masked)
             return app_config.mask_config_for_api(app_config.config)

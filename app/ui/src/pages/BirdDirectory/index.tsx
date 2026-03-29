@@ -165,6 +165,7 @@ export const BirdDirectory = () => {
   } = useQuery({
     queryKey: ['bird-directory'],
     queryFn: fetchBirdDirectory,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Process data once

@@ -227,6 +227,7 @@ export function UnknownsPage() {
   const { data: speciesList = [] } = useQuery({
     queryKey: ['species'],
     queryFn: () => fetchBirdDirectory(),
+    staleTime: 5 * 60 * 1000,
   });
   const { data: recentCorrections = [] } = useQuery({
     queryKey: ['corrections-recent'],
