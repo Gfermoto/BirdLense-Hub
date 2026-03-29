@@ -732,7 +732,9 @@
   },
   "errors": {
     "loadVideo": "Failed to load video",
-    "loadSightings": "Error loading sightings data."
+    "loadSightings": "Error loading sightings data.",
+    "unexpectedError": "Something went wrong",
+    "retry": "Try again"
   },
   "time": {
     "sec": "sec",

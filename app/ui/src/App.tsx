@@ -13,6 +13,7 @@ import { SkipToContent } from './components/SkipToContent';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
@@ -193,6 +194,7 @@ function App() {
                     </Box>
                   }
                 >
+                  <ErrorBoundary>
                   <Routes>
                     <Route path="/" element={<Overview />} />
                     <Route path="/timeline" element={<TimelinePage />} />
@@ -207,6 +209,7 @@ function App() {
                     <Route path="/system" element={<System />} />
                     <Route path="/library" element={<Library />} />
                   </Routes>
+                  </ErrorBoundary>
                 </Suspense>
               </Container>
             </Box>
