@@ -30,6 +30,9 @@ processor:
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
+  # single_stage + стандартный COCO (ровно 80 классов): детектить только класс bird (иначе нож, туалет и т.д.).
+  # Для кастомных детекторов с 80 классами, но не COCO — выставьте false.
+  single_stage_coco_bird_only_auto: true
   included_bird_families:
     - "Perching Birds"
     - "Pigeons and Doves"

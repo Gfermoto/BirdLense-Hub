@@ -474,11 +474,9 @@ class TestSettingsEndpoints:
 
     def test_settings_check_access_returns_status(self, client):
         r = client.get('/api/ui/settings/check-access')
-        assert r.status_code in (200, 403)
-        if r.status_code == 200:
-            assert 'unlocked' in r.json
-        else:
-            assert 'error' in r.json
+        assert r.status_code == 200
+        assert 'unlocked' in r.json
+        assert r.json['unlocked'] in (True, False)
 
 
 class TestStatusDebug:

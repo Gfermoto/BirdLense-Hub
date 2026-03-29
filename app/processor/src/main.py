@@ -364,7 +364,10 @@ def main():
             single_path = 'yolov8n.pt'
         detection_strategy = SingleStageStrategy(
             model_path=single_path,
-            regional_species=regional_species
+            regional_species=regional_species,
+            coco_bird_only_auto=app_config.get(
+                'processor.single_stage_coco_bird_only_auto', True
+            ),
         )
 
     tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'

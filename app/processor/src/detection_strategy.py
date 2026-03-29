@@ -61,22 +61,47 @@ class DetectionStrategy(ABC):
         return True
 
 class SingleStageStrategy(DetectionStrategy):
-    def __init__(self, model_path: str, regional_species: Optional[List[str]] = None, min_center_dist: float = 0.1):
+    def __init__(
+        self,
+        model_path: str,
+        regional_species: Optional[List[str]] = None,
+        min_center_dist: float = 0.1,
+        coco_bird_only_auto: bool = True,
+    ):
         super().__init__(min_center_dist)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.model = YOLO(model_path, task="detect")
         self.regional_species = regional_species
         self.classes = None
-        
+
         if self.regional_species:
-             self.logger.info(f'Initializing with regional species filters: {self.regional_species}')
-             self.classes = [id for id, label in self.model.names.items() if any(
-                reg_species in label for reg_species in self.regional_species)]
-             
-             # Log the actual class names that are enabled
-             enabled_classes = [self.model.names[id] for id in self.classes]
-             self.logger.info(f'Regional species filters active: {len(self.classes)} classes enabled.')
-             self.logger.info(f'Enabled classes: {enabled_classes}')
+            self.logger.info(f'Initializing with regional species filters: {self.regional_species}')
+            self.classes = [
+                id
+                for id, label in self.model.names.items()
+                if any(reg_species in label for reg_species in self.regional_species)
+            ]
+
+            # Log the actual class names that are enabled
+            enabled_classes = [self.model.names[id] for id in self.classes]
+            self.logger.info(f'Regional species filters active: {len(self.classes)} classes enabled.')
+            self.logger.info(f'Enabled classes: {enabled_classes}')
+        elif coco_bird_only_auto:
+            # yolov8n.pt (COCO): 80 classes including knife, toilet, … — keep bird only.
+            names = self.model.names
+            if isinstance(names, dict) and len(names) == 80:
+                bird_ids = [
+                    cid
+                    for cid, label in names.items()
+                    if str(label).strip().lower() == 'bird'
+                ]
+                if bird_ids:
+                    self.classes = bird_ids
+                    self.logger.info(
+                        'Single-stage COCO model (80 classes): detection limited to class "bird" only '
+                        '(processor.single_stage_coco_bird_only_auto). '
+                        'Set false in config to allow all COCO classes.'
+                    )
 
         # Warmup
         self.model.track(np.zeros((640, 640, 3)), tracker="bytetrack.yaml", persist=True, verbose=False)

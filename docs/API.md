@@ -33,7 +33,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/settings` | GET/PATCH | Read/update settings |
 | `/settings/requires-password` | GET | Whether a password is configured |
 | `/settings/verify-password` | POST | Unlock session (`password` → `role`: `admin` \| `contributor`). **401** if wrong password; **429** + `Retry-After` after 5 failed attempts / 60s per IP — see [ACCESS_CONTROL](./ACCESS_CONTROL.md) |
-| `/settings/check-access` | GET | Admin gate (200/403) |
+| `/settings/check-access` | GET | Session unlock state: `{ unlocked, role? }` — always **200** (locked → `unlocked: false`; no red 403 in browser for probes) |
 | `/unknowns` | GET | Low-confidence detections (`start_time`, `end_time`, `limit`) |
 | `/region-comparison` | GET | Your species vs regional eBird (needs `secrets.ebird_api_key`) |
 | `/detections/:id` | PATCH | Correct species (`species_id`) — Contributor+ |
