@@ -70,7 +70,7 @@
 | `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.05`). |
 | `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
-| `single_stage_coco_bird_only_auto` | По умолчанию **true**: если single_stage загрузил модель с **ровно 80** классами (типичный COCO, напр. `yolov8n.pt`), детекция только класса **bird** — иначе в записях появляются посторонние объекты (нож, посуда и т.д.). Для нестандартной 80-классовой модели выставьте **false**. |
+| `single_stage_coco_animals_only_auto` | По умолчанию **true**: при **ровно 80** классах COCO (`yolov8n.pt` и т.п.) — только **животные** (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe): без **person** и без предметов. **false** — для своей 80-классовой модели. Устаревший ключ `single_stage_coco_bird_only_auto` читается, если этот не задан. |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
 | `save_images` | Сохранять кадры детекций |
 | `detection_strategy` | `single_stage` или `two_stage` |

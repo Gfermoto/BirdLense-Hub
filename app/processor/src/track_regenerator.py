@@ -41,12 +41,13 @@ def _build_detection_pipeline(app_config):
             single_path = os.path.join(processor_root, single_path)
         if not os.path.isfile(single_path):
             single_path = 'yolov8n.pt'
+        _coco_anim = app_config.get('processor.single_stage_coco_animals_only_auto')
+        if _coco_anim is None:
+            _coco_anim = app_config.get('processor.single_stage_coco_bird_only_auto', True)
         detection_strategy = SingleStageStrategy(
             model_path=single_path,
             regional_species=regional_species,
-            coco_bird_only_auto=app_config.get(
-                'processor.single_stage_coco_bird_only_auto', True
-            ),
+            coco_animals_only_auto=bool(_coco_anim),
         )
 
     tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'

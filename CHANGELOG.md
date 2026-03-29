@@ -11,10 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **UI / доступ:** `GET /api/ui/settings/check-access` всегда отвечает **200** с `{ unlocked: false }`, если сессия не разблокирована (раньше **403** — шум в консоли браузера). Защищённые POST/PATCH по-прежнему возвращают 403 без сессии.
-- **Processor:** при **single_stage** и модели с **80 классами COCO** (fallback `yolov8n.pt` и т.п.) детекция по умолчанию ограничена классом **bird** (`processor.single_stage_coco_bird_only_auto`, по умолчанию true) — меньше ложных «нож/туалет/посуда». Отключение: `single_stage_coco_bird_only_auto: false` в `user_config.yaml`.
+- **Processor:** при **single_stage** и **80 классах COCO** детекция по умолчанию только **животные** классы (без person и без предметов): `processor.single_stage_coco_animals_only_auto` (по умолчанию true; читается и устаревший `single_stage_coco_bird_only_auto`, если новый ключ не задан).
 
 ### Changed
 
+- **UI:** Migration — режим периода «по годам» **или** «по датам» (без одновременного показа четырёх полей). «Поддержать» в шапке на **всех** страницах (включая главную): **сердце** с анимацией пульса, то же в мобильном меню и в меню шестерёнки.
 - **UI:** запрос `settings-check-access` в React Query — `staleTime` 60 с, меньше лишних refetch при навигации.
 - **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`.
 - **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); `requests` **2.33.0** в `app/web/requirements.txt` и `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
