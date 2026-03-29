@@ -497,6 +497,8 @@ def register_routes(app):
     @app.route('/api/ui/videos/<int:video_id>/stream', methods=['GET'])
     def stream_video(video_id):
         """Стриминг видео для воспроизведения в плеере (Range, Content-Type)."""
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
         video = db.session.get(Video, video_id)
         if not video or not video.video_path:
             return {'error': 'Video not found'}, 404
@@ -516,6 +518,8 @@ def register_routes(app):
 
     @app.route('/api/ui/birdfood', methods=['POST'])
     def add_birdfood():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         data = request.json
         name = data.get('name')
         if not name:
@@ -533,6 +537,8 @@ def register_routes(app):
 
     @app.route('/api/ui/birdfood/<int:birdfood_id>/toggle', methods=['PATCH'])
     def toggle_birdfood(birdfood_id):
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         bird_food = db.session.get(BirdFood, birdfood_id)
         if not bird_food:
             return {'error': 'Bird food not found'}, 404

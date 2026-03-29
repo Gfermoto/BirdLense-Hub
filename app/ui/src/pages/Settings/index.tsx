@@ -49,6 +49,10 @@ export const Settings: React.FC = () => {
           : { type: 'error', textKey: 'settings.restartFailed', apiMessage: result.message },
       );
     },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : t('settings.saveError');
+      setRestartMessage({ type: 'error', textKey: 'settings.saveError', apiMessage: msg });
+    },
   });
 
   const isLoading = isLoadingSettings || isLoadingObserved;

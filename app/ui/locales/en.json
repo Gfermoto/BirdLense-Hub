@@ -359,7 +359,8 @@
     "restartInfo": "After saving, the processor restarts automatically to apply changes.",
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
-    "savedRestarting": "Settings saved. Processor is restarting."
+    "savedRestarting": "Settings saved. Processor is restarting.",
+    "saveError": "Failed to save settings. Check your connection or try again."
   },
   "live": {
     "title": "Live — all cameras",
