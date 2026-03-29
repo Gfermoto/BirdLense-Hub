@@ -474,8 +474,11 @@
   },
   "migrationCalendar": {
     "title": "Migration Calendar",
-    "description": "When each species typically appears at your feeder — based on your historical data. Rows and the Σ column are your species list for the selected year range (no separate checklist).",
-    "periodHint": "Period filters apply to the migration table (and related recognized/heard values), but not to the regional reference block below.",
+    "description": "When each species typically appears at your feeder — based on your historical data. Rows and the Σ column are your species list for the selected period (no separate checklist). Period filters apply to the table only, not to the regional reference block below.",
+    "periodHint": "Switch between year range and exact dates — only one mode is active at a time.",
+    "periodModeYears": "By years",
+    "periodModeDates": "By dates",
+    "periodModeAria": "Migration table period filter mode",
     "species": "Species",
     "startDate": "From date",
     "endDate": "To date",

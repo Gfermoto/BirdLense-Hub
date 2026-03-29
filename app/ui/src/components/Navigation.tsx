@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import Divider from '@mui/material/Divider';
 import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
@@ -35,6 +36,24 @@ const pulse = keyframes`
   }
   100% {
     opacity: 1;
+    transform: scale(1);
+  }
+`;
+
+const heartbeat = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.2);
+  }
+  40% {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  70% {
     transform: scale(1);
   }
 `;
@@ -97,8 +116,7 @@ export function Navigation() {
     staleTime: 1000 * 30,
   });
   const donateUrl = feedInfo?.donate_url?.trim() || '';
-  /** На главной ссылка уже в карточке «Корм» — не дублируем в шапке и в мобильном меню. */
-  const showAppBarDonate = Boolean(donateUrl) && currentPath !== '/';
+  const showAppBarDonate = Boolean(donateUrl);
 
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
@@ -262,6 +280,14 @@ export function Navigation() {
                   rel="noopener noreferrer"
                   onClick={handleMobileMenuClose}
                 >
+                  <FavoriteIcon
+                    sx={{
+                      mr: 1,
+                      fontSize: 20,
+                      color: '#fca5a5',
+                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    }}
+                  />
                   {t('nav.supportProject')}
                 </MenuItem>
               ) : null}
@@ -374,25 +400,28 @@ export function Navigation() {
             <LanguageSwitcher />
 
             {showAppBarDonate ? (
-              <Button
+              <IconButton
                 component="a"
                 href={donateUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 size="small"
+                color="inherit"
+                aria-label={t('nav.supportProject')}
+                title={t('nav.supportProject')}
                 sx={{
-                  color: 'rgba(255, 255, 255, 0.88)',
-                  textTransform: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  minWidth: 'auto',
-                  px: 1,
-                  py: 0.5,
+                  color: 'rgba(255, 255, 255, 0.92)',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
                 }}
               >
-                {t('nav.supportProject')}
-              </Button>
+                <FavoriteIcon
+                  sx={{
+                    fontSize: 22,
+                    color: '#fca5a5',
+                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                  }}
+                />
+              </IconButton>
             ) : null}
 
             {/* Settings Icon */}
@@ -465,6 +494,14 @@ export function Navigation() {
                   rel="noopener noreferrer"
                   onClick={handleSettingsMenuClose}
                 >
+                  <FavoriteIcon
+                    sx={{
+                      mr: 1,
+                      fontSize: 20,
+                      color: 'error.light',
+                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    }}
+                  />
                   {t('nav.supportProject')}
                 </MenuItem>
               </>

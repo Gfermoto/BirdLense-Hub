@@ -8,6 +8,23 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
+# Ultralytics YOLO COCO (80 classes): животные без person и без «вещей».
+_COCO_ANIMAL_CLASS_NAMES = frozenset(
+    {
+        'bird',
+        'cat',
+        'dog',
+        'horse',
+        'sheep',
+        'cow',
+        'elephant',
+        'bear',
+        'zebra',
+        'giraffe',
+    }
+)
+
+
 @dataclass
 class DetectionResult:
     """Одна детекция: track_id, вид, confidence, bbox, crop (опционально)."""
@@ -66,7 +83,7 @@ class SingleStageStrategy(DetectionStrategy):
         model_path: str,
         regional_species: Optional[List[str]] = None,
         min_center_dist: float = 0.1,
-        coco_bird_only_auto: bool = True,
+        coco_animals_only_auto: bool = True,
     ):
         super().__init__(min_center_dist)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -86,21 +103,22 @@ class SingleStageStrategy(DetectionStrategy):
             enabled_classes = [self.model.names[id] for id in self.classes]
             self.logger.info(f'Regional species filters active: {len(self.classes)} classes enabled.')
             self.logger.info(f'Enabled classes: {enabled_classes}')
-        elif coco_bird_only_auto:
-            # yolov8n.pt (COCO): 80 classes including knife, toilet, … — keep bird only.
+        elif coco_animals_only_auto:
+            # yolov8n.pt (COCO): 80 classes — оставляем только животных (не person, не нож/туалет и т.д.).
             names = self.model.names
             if isinstance(names, dict) and len(names) == 80:
-                bird_ids = [
+                animal_ids = [
                     cid
                     for cid, label in names.items()
-                    if str(label).strip().lower() == 'bird'
+                    if str(label).strip().lower() in _COCO_ANIMAL_CLASS_NAMES
                 ]
-                if bird_ids:
-                    self.classes = bird_ids
+                if animal_ids:
+                    self.classes = animal_ids
                     self.logger.info(
-                        'Single-stage COCO model (80 classes): detection limited to class "bird" only '
-                        '(processor.single_stage_coco_bird_only_auto). '
-                        'Set false in config to allow all COCO classes.'
+                        'Single-stage COCO (80 classes): detection limited to animal classes %s '
+                        '(processor.single_stage_coco_animals_only_auto). '
+                        'Set false to allow all COCO classes.',
+                        sorted(_COCO_ANIMAL_CLASS_NAMES),
                     )
 
         # Warmup

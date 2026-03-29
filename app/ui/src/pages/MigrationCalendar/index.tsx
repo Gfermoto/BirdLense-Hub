@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -25,26 +27,46 @@ import { visuallyHidden } from '@mui/utils';
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
 
+type PeriodMode = 'years' | 'dates';
+
 export const MigrationCalendar = () => {
   const { t } = useTranslation();
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('years');
   const [startYear, setStartYear] = useState<number | ''>('');
   const [endYear, setEndYear] = useState<number | ''>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
+  const handlePeriodMode = (_: React.MouseEvent<HTMLElement>, value: PeriodMode | null) => {
+    if (value === null) return;
+    setPeriodMode(value);
+    if (value === 'years') {
+      setStartDate('');
+      setEndDate('');
+    } else {
+      setStartYear('');
+      setEndYear('');
+    }
+  };
+
   const params = useMemo(() => {
-    const s = startYear === '' ? undefined : startYear;
-    const e = endYear === '' ? undefined : endYear;
+    if (periodMode === 'years') {
+      const s = startYear === '' ? undefined : startYear;
+      const e = endYear === '' ? undefined : endYear;
+      if (s === undefined && e === undefined) return undefined;
+      return {
+        start_year: s ?? undefined,
+        end_year: e ?? undefined,
+      };
+    }
     const sd = startDate || undefined;
     const ed = endDate || undefined;
-    if (s === undefined && e === undefined && !sd && !ed) return undefined;
+    if (!sd && !ed) return undefined;
     return {
-      start_year: s ?? undefined,
-      end_year: e ?? undefined,
       start_date: sd,
       end_date: ed,
     };
-  }, [startYear, endYear, startDate, endDate]);
+  }, [periodMode, startYear, endYear, startDate, endDate]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
@@ -93,67 +115,87 @@ export const MigrationCalendar = () => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('migrationCalendar.description')}
       </Typography>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
-        {t('migrationCalendar.periodHint')}
-      </Typography>
       <Box
         component="section"
         aria-labelledby="migration-filters-heading"
-        sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}
+        sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}
       >
         <Typography id="migration-filters-heading" component="h2" sx={visuallyHidden}>
           {t('migrationCalendar.filterSectionTitle')}
         </Typography>
-        <FilterListIcon fontSize="small" color="action" aria-hidden />
-        <TextField
-          type="date"
-          size="small"
-          label={t('migrationCalendar.startDate')}
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          inputProps={{ max: endDate || dayjs().format('YYYY-MM-DD') }}
-          InputLabelProps={{ shrink: true }}
-          sx={{ minWidth: 170 }}
-        />
-        <TextField
-          type="date"
-          size="small"
-          label={t('migrationCalendar.endDate')}
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          inputProps={{
-            min: startDate || undefined,
-            max: dayjs().format('YYYY-MM-DD'),
-          }}
-          InputLabelProps={{ shrink: true }}
-          sx={{ minWidth: 170 }}
-        />
-        <TextField
-          select
-          size="small"
-          label={t('migrationCalendar.startYear')}
-          value={startYear}
-          onChange={(e) => setStartYear(e.target.value === '' ? '' : Number(e.target.value))}
-          sx={{ minWidth: 100 }}
-        >
-          <MenuItem value="">{t('migrationCalendar.allYears')}</MenuItem>
-          {YEAR_OPTIONS.map((y) => (
-            <MenuItem key={y} value={y}>{y}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label={t('migrationCalendar.endYear')}
-          value={endYear}
-          onChange={(e) => setEndYear(e.target.value === '' ? '' : Number(e.target.value))}
-          sx={{ minWidth: 100 }}
-        >
-          <MenuItem value="">{t('migrationCalendar.allYears')}</MenuItem>
-          {YEAR_OPTIONS.map((y) => (
-            <MenuItem key={y} value={y}>{y}</MenuItem>
-          ))}
-        </TextField>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+          <FilterListIcon fontSize="small" color="action" aria-hidden />
+          <ToggleButtonGroup
+            value={periodMode}
+            exclusive
+            size="small"
+            color="primary"
+            onChange={handlePeriodMode}
+            aria-label={t('migrationCalendar.periodModeAria')}
+          >
+            <ToggleButton value="years">{t('migrationCalendar.periodModeYears')}</ToggleButton>
+            <ToggleButton value="dates">{t('migrationCalendar.periodModeDates')}</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        {periodMode === 'years' ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              select
+              size="small"
+              label={t('migrationCalendar.startYear')}
+              value={startYear}
+              onChange={(e) => setStartYear(e.target.value === '' ? '' : Number(e.target.value))}
+              sx={{ minWidth: 100 }}
+            >
+              <MenuItem value="">{t('migrationCalendar.allYears')}</MenuItem>
+              {YEAR_OPTIONS.map((y) => (
+                <MenuItem key={y} value={y}>{y}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label={t('migrationCalendar.endYear')}
+              value={endYear}
+              onChange={(e) => setEndYear(e.target.value === '' ? '' : Number(e.target.value))}
+              sx={{ minWidth: 100 }}
+            >
+              <MenuItem value="">{t('migrationCalendar.allYears')}</MenuItem>
+              {YEAR_OPTIONS.map((y) => (
+                <MenuItem key={y} value={y}>{y}</MenuItem>
+              ))}
+            </TextField>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              type="date"
+              size="small"
+              label={t('migrationCalendar.startDate')}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              inputProps={{ max: endDate || dayjs().format('YYYY-MM-DD') }}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 170 }}
+            />
+            <TextField
+              type="date"
+              size="small"
+              label={t('migrationCalendar.endDate')}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              inputProps={{
+                min: startDate || undefined,
+                max: dayjs().format('YYYY-MM-DD'),
+              }}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 170 }}
+            />
+          </Box>
+        )}
+        <Typography variant="caption" color="text.secondary" display="block">
+          {t('migrationCalendar.periodHint')}
+        </Typography>
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table size="small" stickyHeader>
