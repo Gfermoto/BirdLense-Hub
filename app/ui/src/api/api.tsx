@@ -463,7 +463,12 @@ export const fetchEbirdMappingSuggestions =
   };
 
 export const updateSettings = async (settings: Settings) => {
-  const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
+  const payload = JSON.parse(JSON.stringify(settings)) as Record<string, unknown>;
+  const perf = payload.performance as Record<string, unknown> | undefined;
+  if (perf && typeof perf === 'object') {
+    delete perf.redis_url_effective_masked;
+  }
+  const response = await axios.patch(`${BASE_API_URL}/settings`, payload, {
     withCredentials: true,
   });
   return response.data;

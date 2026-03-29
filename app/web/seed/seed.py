@@ -104,7 +104,7 @@ def seed_bird_food() -> int:
         {
             'name': 'Apple pieces',
             'description': 'Fresh apple segments in winter help thrushes, blackbirds, and waxwings. Remove seeds if you prefer; no added sugar.',
-            'image_url': 'data/images/food/fruit.jpg',
+            'image_url': 'data/images/food/apple-pieces.svg',
         },
     ]
 
@@ -119,6 +119,15 @@ def seed_bird_food() -> int:
     return added
 
 
+def _migrate_apple_pieces_image() -> bool:
+    """Старые установки: Apple pieces указывали на общий fruit.jpg — заменить на яблочную иллюстрацию."""
+    row = BirdFood.query.filter_by(name='Apple pieces').first()
+    if not row or row.image_url != 'data/images/food/fruit.jpg':
+        return False
+    row.image_url = 'data/images/food/apple-pieces.svg'
+    return True
+
+
 def seed():
     if not Species.query.first():
         logging.info('Seeding species hierarchy data...')
@@ -128,8 +137,12 @@ def seed():
         logging.info('Species seeding complete.')
 
     n_food = seed_bird_food()
-    if n_food:
-        logging.info('Bird food catalog: added %s new default row(s)', n_food)
+    migrated_apple = _migrate_apple_pieces_image()
+    if n_food or migrated_apple:
+        if n_food:
+            logging.info('Bird food catalog: added %s new default row(s)', n_food)
+        if migrated_apple:
+            logging.info('Bird food: Apple pieces image updated to apple-pieces.svg')
         db.session.commit()
     elif not BirdFood.query.first():
         logging.warning('Bird food catalog empty and nothing inserted — check seed_bird_food()')

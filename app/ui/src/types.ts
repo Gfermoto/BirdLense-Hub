@@ -111,6 +111,8 @@ export interface Settings {
   performance?: {
     cache_redis_enabled?: boolean;
     redis_url?: string;
+    /** Только ответ GET /settings: фактический URL кэша (пароль замаскирован), не сохранять */
+    redis_url_effective_masked?: string;
   };
   integrations?: {
     scales?: {
