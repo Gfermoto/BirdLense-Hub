@@ -26,6 +26,10 @@
 | Переменная | Описание |
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
+| `REDIS_URL` | Опционально. Общий TTL-кэш тяжёлых ответов API при нескольких воркерах Gunicorn или репликах. Пример: `redis://redis:6379/0`. Без переменной — кэш в памяти процесса. |
+| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. |
+| `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
+| `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
