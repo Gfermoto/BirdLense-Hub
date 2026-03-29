@@ -331,18 +331,44 @@ export function GeneralSection({ form }: Props) {
                 </FormHelperText>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <form.Field name="performance.redis_url">
-                  {(field) => (
-                    <TextField
-                      fullWidth
-                      value={field.state.value ?? ''}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      label={t('settings.performanceRedisUrl')}
-                      placeholder="redis://redis:6379/0"
-                      helperText={t('settings.performanceRedisUrlHint')}
-                    />
+                <form.Subscribe
+                  selector={(s) => s.values.performance?.redis_url_effective_masked ?? ''}
+                >
+                  {(effectiveMasked) => (
+                    <form.Field name="performance.redis_url">
+                      {(field) => {
+                        const raw = (field.state.value ?? '').trim();
+                        const placeholder =
+                          !raw && effectiveMasked
+                            ? effectiveMasked
+                            : 'redis://redis:6379/0';
+                        return (
+                          <TextField
+                            fullWidth
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label={t('settings.performanceRedisUrl')}
+                            placeholder={placeholder}
+                            helperText={
+                              <>
+                                <Box component="span" display="block">
+                                  {t('settings.performanceRedisUrlHint')}
+                                </Box>
+                                {effectiveMasked ? (
+                                  <Box component="span" display="block" sx={{ mt: 0.5 }}>
+                                    {t('settings.performanceRedisEffectiveNow', {
+                                      url: effectiveMasked,
+                                    })}
+                                  </Box>
+                                ) : null}
+                              </>
+                            }
+                          />
+                        );
+                      }}
+                    </form.Field>
                   )}
-                </form.Field>
+                </form.Subscribe>
               </Grid>
             </Grid>
           </Box>

@@ -40,6 +40,38 @@ def _redis_url_effective() -> str:
     return (os.environ.get("REDIS_URL") or "").strip()
 
 
+def mask_redis_url(url: str) -> str:
+    """Пароль в redis URL заменяется на ***, схема/хост/порт/путь сохраняются."""
+    u = (url or "").strip()
+    if not u:
+        return ""
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+
+        p = urlsplit(u)
+        if not p.scheme or not p.netloc:
+            return u
+        host = p.hostname or ""
+        port = f":{p.port}" if p.port else ""
+        if p.username is not None or p.password is not None:
+            user = p.username or ""
+            auth = user + (":***" if p.password else "") + "@"
+        else:
+            auth = ""
+        netloc = f"{auth}{host}{port}"
+        return urlunsplit((p.scheme, netloc, p.path or "", p.query, p.fragment))
+    except Exception:
+        return "***"
+
+
+def redis_url_effective_masked_for_api() -> str:
+    """Фактический URL кэша для UI (в т.ч. из REDIS_URL), с маскировкой секрета."""
+    eff = _redis_url_effective()
+    if not eff:
+        return ""
+    return mask_redis_url(eff)
+
+
 def _redis():
     """Lazy Redis client; False = отключён; None = ещё не пробовали."""
     global _redis_client, _redis_warned

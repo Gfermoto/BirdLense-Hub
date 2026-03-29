@@ -10,14 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API.
+- **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API; в **GET /settings** добавлено read-only поле `performance.redis_url_effective_masked` — фактический URL (в т.ч. из `REDIS_URL`), пароль замаскирован; в форме — placeholder и строка «Сейчас используется».
 - **Весы у кормушки:** `integrations.scales` — источник MQTT (топик с числом/JSON, совместимо с ESPHome/HA) или сущность Home Assistant; отображение веса на главной в карточке кормушки; процессор пишет `data/feeder_scale_state.json`.
 
 ### Changed
 
 - **Донаты:** только иконка в шапке (рядом с языком и настройками); убраны из карточки «Корм» и из меню шестерёнки; **URL по-прежнему в настройках** (Общие → ссылка для поддержки).
 - **Telegram:** подсказка про MTProto vs Bot API (HTTPS); прокси — SOCKS5h или HTTP(S).
-- **Пороги детекции (меньше ложных записей):** `min_confidence_binary` 0.22, `min_confidence_to_process` 0.36, `min_track_duration` 4, `detection.min_confidence_to_store` 0.36, `merge_window_seconds` 6, OpenCV `check_every_n_frames` 2; смягчены авто-пороги eBird-топа и multi-camera boost; выше пороги датасета/галереи и «Неизвестные».
+- **Пороги детекции (дефолты):** `min_track_duration` 5, `min_confidence_binary` 0.25, `min_confidence_to_process` 0.40, `detection.min_confidence_to_store` 0.40 (ранее — 4 / 0.22 / 0.36 / 0.36). Установленный **`user_config.yaml` по-прежнему перекрывает** `default_config.yaml` — при старых значениях в файле пользователя обновите секции `processor` / `detection` вручную или удалите ключи для подхвата дефолтов.
+- **Обзор:** подсказки при наведении на все карточки ключевой статистики (раньше только «Время записи»).
+- **Локализация / кормушка:** «Реле кормушки» → «Кормушка» (раздел настроек про выдачу корма, весы и реле).
+- **Каталог корма:** для «Apple pieces» отдельное изображение `data/images/food/apple-pieces.svg`; при старте запись с `fruit.jpg` обновляется на новый путь.
 
 ### Performance
 
@@ -39,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Статус MQTT в шапке:** при работающем процессоре индикатор берёт **`mqtt_connected` из heartbeat** (тот же клиент, что Frigate/BirdNET). Дополнительно: проверка из веб-процесса ждёт до ~2 с после `loop_start()` и нормализует `mqtt.port` в int — меньше ложных «ошибок» из-за гонки.
 - **UI (страница видео):** кнопки «предыдущая / следующая запись» не работали из‑за обращения к несуществующей переменной `listReturnState` (**ReferenceError** в обработчике). Исправлено: `useLocation()`, сохранение `state.from` при переходе к соседним роликам (как с Timeline / Unknowns). Журнал проверок: [VERIFICATION.ru.md](docs/VERIFICATION.ru.md) / [EN](docs/VERIFICATION.md).
 - **UI / доступ:** `GET /api/ui/settings/check-access` всегда отвечает **200** с `{ unlocked: false }`, если сессия не разблокирована (раньше **403** — шум в консоли браузера). Защищённые POST/PATCH по-прежнему возвращают 403 без сессии.
 - **Processor:** при **single_stage** и **80 классах COCO** детекция по умолчанию только **животные** классы (без person и без предметов): `processor.single_stage_coco_animals_only_auto` (по умолчанию true; читается и устаревший `single_stage_coco_bird_only_auto`, если новый ключ не задан).

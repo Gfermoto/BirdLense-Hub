@@ -164,14 +164,23 @@ def register_routes(app):
                 processor_ok = updated >= cutoff
             except (TypeError, ValueError):
                 processor_ok = False
+        heartbeat_data = None
+        if last_heartbeat and last_heartbeat.data:
+            try:
+                heartbeat_data = json_module.loads(last_heartbeat.data) if isinstance(last_heartbeat.data, str) else last_heartbeat.data
+            except (TypeError, ValueError):
+                pass
         mqtt_status = check_mqtt_connected()
         esphome_status = check_esphome_reachable()
         feed_source = app_config.get('feed.source', 'mqtt')
         motion_source = app_config.get('motion.source', 'opencv')
         mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
-        # MQTT: Frigate + BirdNET всегда при настроенном брокере; feed — при feed.source=mqtt
+        # Источник правды — процессор (Frigate/BirdNET); веб-клиент birdlense_feed часто «error» из-за гонки loop_start.
         if mqtt_broker:
-            mqtt_display = mqtt_status
+            if processor_ok and isinstance(heartbeat_data, dict) and 'mqtt_connected' in heartbeat_data:
+                mqtt_display = 'ok' if heartbeat_data.get('mqtt_connected') else 'error'
+            else:
+                mqtt_display = mqtt_status
         elif feed_source == 'mqtt':
             mqtt_display = mqtt_status
         else:
@@ -184,12 +193,6 @@ def register_routes(app):
         # Video: реальная проверка через go2rtc snapshot
         video_display = check_video_reachable()
         # YOLO: из heartbeat процессора (last_yolo_ok_at в пределах 5 мин)
-        heartbeat_data = None
-        if last_heartbeat and last_heartbeat.data:
-            try:
-                heartbeat_data = json_module.loads(last_heartbeat.data) if isinstance(last_heartbeat.data, str) else last_heartbeat.data
-            except (TypeError, ValueError):
-                pass
         yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else 'unknown'
         payload = {
             'web': 'ok',
@@ -1445,7 +1448,12 @@ def register_routes(app):
     def get_settings():
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        return app_config.mask_config_for_api(app_config.config), 200
+        from services.cache import redis_url_effective_masked_for_api
+
+        cfg = app_config.mask_config_for_api(app_config.config)
+        perf = cfg.setdefault('performance', {})
+        perf['redis_url_effective_masked'] = redis_url_effective_masked_for_api()
+        return cfg, 200
 
     @app.route('/api/ui/settings/ebird-species-mapping-suggestions', methods=['GET'])
     def ebird_species_mapping_suggestions():
@@ -1465,6 +1473,9 @@ def register_routes(app):
             updates = request.json
             if not updates:
                 return {"error": "No data provided for update"}, 400
+
+            if isinstance(updates.get('performance'), dict):
+                updates['performance'].pop('redis_url_effective_masked', None)
 
             # Filter out empty cameras before merge
             if 'video' in updates and 'cameras' in updates['video']:
