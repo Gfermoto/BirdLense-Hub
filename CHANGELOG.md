@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Performance
+
+- **Backend кэширование:** новый `services/cache.py` — потокобезопасный процессный TTL-кэш. `/api/ui/overview` кэшируется 60 с (тяжёлый SQL с 24 CASE-выражениями), `/api/ui/region-comparison` — 4 ч; кэш инвалидируется при сохранении настроек. Убран `app_config.reload()` на каждый запрос к region-comparison.
+- **React Query staleTime:** `staleTime=5 мин` на 4 редко-изменяемых запроса (bird-directory, species, observed) — меньше лишних refetch.
+
+### Refactored
+
+- **`util.py` → 3 модуля:** `auth.py` (аутентификация и rate-limit), `notifications.py` (Telegram + Web Push), `weather_service.py` (WeatherFetcher / HAWeatherFetcher / fetch_weather). `util.py` сохраняет re-exports — все существующие импорты работают без изменений. Убраны ~591 строк дублирования.
+- **`SettingsForm.tsx` → секции:** `sections/GeneralSection`, `VideoSection`, `ProcessorSection`, `NotificationsSection`, `EBirdSection`, `IntegrationsSection`; `shared/ServiceBlock`, `CamerasListField`. Главный файл стал оркестратором (< 120 строк).
+- **React Error Boundary:** `components/ErrorBoundary.tsx` + оборачивает `<Routes>` в `App.tsx` — несломанный рендер при runtime-ошибках в дочерних страницах.
+
 ### Fixed
 
 - **UI (страница видео):** кнопки «предыдущая / следующая запись» не работали из‑за обращения к несуществующей переменной `listReturnState` (**ReferenceError** в обработчике). Исправлено: `useLocation()`, сохранение `state.from` при переходе к соседним роликам (как с Timeline / Unknowns). Журнал проверок: [VERIFICATION.ru.md](docs/VERIFICATION.ru.md) / [EN](docs/VERIFICATION.md).
