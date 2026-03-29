@@ -164,7 +164,7 @@
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "donateUrl": "Support page URL",
-    "donateUrlHint": "Not in this form — edit general.donate_url in user_config.yaml if needed. When set: heart icon in the top bar only (next to language / settings).",
+    "donateUrlHint": "Opens when users tap the single heart icon in the top bar (next to language / settings). Not shown on the Food card or in the gear menu.",
     "accordionPerformance": "Performance / API cache",
     "accordionPerformanceDesc": "Redis TTL cache for heavy API responses. In Docker, Redis runs by default; you can turn it off or set a custom URL.",
     "performanceRedisEnabled": "Use Redis for API cache",

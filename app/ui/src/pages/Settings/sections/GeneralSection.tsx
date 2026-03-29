@@ -281,6 +281,20 @@ export function GeneralSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <form.Field name="general.donate_url">
+                    {(field) => (
+                      <TextField
+                        fullWidth
+                        value={field.state.value ?? ''}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        label={t('settings.donateUrl')}
+                        placeholder="https://ko-fi.com/..."
+                        helperText={t('settings.donateUrlHint')}
+                      />
+                    )}
+                  </form.Field>
+                </Grid>
               </Grid>
             </ServiceBlock>
           </Box>
