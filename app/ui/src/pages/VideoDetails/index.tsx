@@ -1,7 +1,12 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchVideo, fetchVideoNeighbors } from '../../api/api';
+import {
+  fetchVideo,
+  fetchVideoNeighbors,
+  fetchVideoDetectionFrames,
+} from '../../api/api';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
@@ -56,6 +61,28 @@ export const VideoDetails = () => {
     queryFn: () => fetchVideoNeighbors(params.id as string),
     enabled: Boolean(params.id),
   });
+
+  const { data: detectionFrames } = useQuery({
+    queryKey: ['video-detection-frames', params.id],
+    queryFn: () => fetchVideoDetectionFrames(params.id as string),
+    enabled: Boolean(params.id),
+  });
+
+  const displayVideo = useMemo((): Video | undefined => {
+    if (!video) return undefined;
+    const tracks = detectionFrames?.tracks;
+    if (!tracks?.length) return video as Video;
+    const byDetId = new Map(tracks.map((t) => [t.id, t.frames]));
+    return {
+      ...(video as Video),
+      species: (video as Video).species.map((s) => {
+        const detId = s.id;
+        if (detId === undefined) return s;
+        const frames = byDetId.get(detId);
+        return frames ? { ...s, frames } : s;
+      }),
+    };
+  }, [video, detectionFrames]);
 
   if (isLoading)
     return (
@@ -154,15 +181,15 @@ export const VideoDetails = () => {
               </Tooltip>
             </Stack>
           )}
-          <VideoPlayer video={video as Video} />
+          <VideoPlayer video={(displayVideo ?? video) as Video} />
           <DetectedSpecies
-            species={(video as Video).species}
+            species={(displayVideo ?? (video as Video)).species}
             videoId={(video as Video).id}
           />
         </Grid>
         {/* Video Info Column */}
         <Grid size={{ xs: 12, lg: 4 }}>
-          <VideoInfo video={video as Video} />
+          <VideoInfo video={(displayVideo ?? video) as Video} />
         </Grid>
       </Grid>
     </>

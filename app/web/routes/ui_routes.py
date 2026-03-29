@@ -272,9 +272,7 @@ def register_routes(app):
             }
             if vs.detection_provider:
                 data['detection_provider'] = vs.detection_provider
-            # Always include frames if available
-            if vs.frames:
-                data['frames'] = json_module.loads(vs.frames)
+            # Кадры треков (bbox) — отдельно GET .../detection-frames (payload может быть МБ)
             return data
 
         video_json = {
@@ -413,6 +411,29 @@ def register_routes(app):
             'index': idx,
             'total': len(ids),
         }, 200
+
+    @app.route('/api/ui/videos/<int:video_id>/detection-frames', methods=['GET'])
+    def get_video_detection_frames(video_id):
+        """Покадровые bbox для оверлея треков. Тяжёлый JSON — не смешиваем с GET /videos/:id."""
+        video = db.session.get(Video, video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+        tracks = []
+        for vs in video.video_species:
+            if not vs.frames:
+                continue
+            try:
+                frames = json_module.loads(vs.frames)
+            except (TypeError, ValueError):
+                continue
+            tracks.append({
+                'id': vs.id,
+                'species_id': vs.species_id,
+                'start_time': vs.start_time,
+                'end_time': vs.end_time,
+                'frames': frames,
+            })
+        return {'tracks': tracks}, 200
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
     def delete_video(video_id):

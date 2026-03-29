@@ -501,6 +501,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
           <video
             ref={videoRef}
             src={`${BASE_API_URL}/videos/${video.id}/stream`}
+            preload="auto"
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
             onError={() => setError(t('errors.loadVideo'))}
