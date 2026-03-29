@@ -210,6 +210,15 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 ---
 
+## Интеграции (зарезервировано)
+
+| Ключ | Описание |
+|------|----------|
+| `integrations.scales.enabled` | Заготовка под MQTT-весы / кормушку (по умолчанию **false**). |
+| `integrations.scales.mqtt_topic` | Топик MQTT для будущей обработки (Hub пока не читает вес; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). |
+
+---
+
 ## Notifications (Telegram)
 
 | Ключ | Описание |
@@ -218,6 +227,12 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `notifications.telegram_bot_token` | Токен бота (@BotFather → /newbot) |
 | `notifications.telegram_chat_id` | ID чата или канала (например -1001234567890) |
 | `notifications.base_url` | URL Hub для ссылок (кнопка «Open Live») |
+| `notifications.telegram_proxy_url` | Исходящий прокси к Bot API (`socks5h://…`, `http://…`). Пусто — напрямую. В образе web — `requests[socks]`. |
+| `notifications.telegram_api_base` | Пусто — `https://api.telegram.org`; иначе база вашего HTTPS-прокси |
+| `notifications.telegram_timeout` | Таймаут запросов к Telegram (сек; для текста используется половина) |
+| `notifications.telegram_retries` | Число повторов при таймауте/ошибке сети |
+| `notifications.compress_photo_over_kb` | Сжимать JPEG больше N КБ (0 — не по размеру) |
+| `notifications.telegram_max_side_px` | Макс. сторона кадра в пикселях перед отправкой (0 — не менять) |
 | `notifications.message_thread_id` | ID топика в канале с форумом |
 | `notifications.disable_notification` | Тихие сообщения (без звука) |
 | `notifications.protect_content` | Запретить пересылку и сохранение |

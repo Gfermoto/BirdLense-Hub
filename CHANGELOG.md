@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **UI:** Migration — режим периода «по годам» **или** «по датам» (без одновременного показа четырёх полей). «Поддержать» в шапке на **всех** страницах (включая главную): **сердце** с анимацией пульса, то же в мобильном меню и в меню шестерёнки.
 - **UI:** запрос `settings-check-access` в React Query — `staleTime` 60 с, меньше лишних refetch при навигации.
 - **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`.
-- **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); `requests` **2.33.0** в `app/web/requirements.txt` и `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
+- **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); **`requests[socks]==2.33.0`** в `app/web/requirements.txt` (SOCKS-прокси для Telegram); `requests` **2.33.0** в `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
 - **CI / Deploy:** шаг **Verify** — порт из `BIRDLENSE_PORT` в `app/.env` на сервере (иначе 8085), пауза 10 с и до **36** попыток `curl` с интервалом 5 с после `make pull` (старт контейнера и приложения).
 
 ### Changed
@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Settings / UI:** поля в веб-настройках для прокси и сети Telegram (`notifications.telegram_proxy_url`, API base, таймауты, сжатие фото); post-roll и блок «несколько камер + BirdNET MQTT» (`processor.*`); зарезервированные **весы** `integrations.scales.*` (топик сохраняется, обработка — позже, [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). Web: зависимость **`requests[socks]`** для SOCKS5h.
 - **Processor ([#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157)):** `processor.post_record_seconds` — post-roll: увеличивает паузу без детекций перед остановкой записи (сумма с `max_inactive_seconds`).
 - **Processor ([#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129)):** опционально `processor.birdnet_mqtt_auto_confidence` и параметры окна/дельты — более низкий порог классификатора для видов из недавних сообщений BirdNET по MQTT (по умолчанию выкл.).
 - **Processor ([#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153)):** `processor.multi_camera_groups` + `multi_camera_confidence_boost` — при Frigate-событиях одного вида с двух камер из группы прибавка к `confidence` после merge.

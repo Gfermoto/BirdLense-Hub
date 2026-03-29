@@ -63,41 +63,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Storage/performance-sensitive low-level switch.",
         "next_step": "Consider exposing with explicit storage warning in UI.",
     },
-    "processor.post_record_seconds": {
-        "category": "advanced",
-        "reason": "Recording tail (#157); tuned with max_inactive_seconds in YAML.",
-        "next_step": "Optional Processor advanced field after operator feedback.",
-    },
-    "processor.birdnet_mqtt_auto_confidence": {
-        "category": "advanced",
-        "reason": "BirdNET MQTT classifier bias (#129); default off.",
-        "next_step": "Optional toggle under MQTT/BirdNET when presets exist.",
-    },
-    "processor.birdnet_mqtt_bias_window_seconds": {
-        "category": "advanced",
-        "reason": "Companion to birdnet_mqtt_auto_confidence.",
-        "next_step": "Expose with BirdNET bias UI.",
-    },
-    "processor.birdnet_mqtt_bias_delta": {
-        "category": "advanced",
-        "reason": "Companion to birdnet_mqtt_auto_confidence.",
-        "next_step": "Expose with BirdNET bias UI.",
-    },
-    "processor.birdnet_mqtt_bias_floor": {
-        "category": "advanced",
-        "reason": "Companion to birdnet_mqtt_auto_confidence.",
-        "next_step": "Expose with BirdNET bias UI.",
-    },
-    "processor.multi_camera_groups": {
-        "category": "advanced",
-        "reason": "Frigate multi-camera boost (#153); YAML list of groups.",
-        "next_step": "Structured editor when multi-camera UX is designed.",
-    },
-    "processor.multi_camera_confidence_boost": {
-        "category": "advanced",
-        "reason": "Companion to multi_camera_groups.",
-        "next_step": "Expose with multi-camera UI.",
-    },
     "processor.single_stage_coco_animals_only_auto": {
         "category": "advanced",
         "reason": "COCO 80-class detect filter; deployment tuning.",
@@ -146,31 +111,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "next_step": "Evaluate as optional control in Processor -> Advanced.",
     },
     # Ops/security-sensitive/infra-generated values.
-    "notifications.telegram_api_base": {
-        "category": "ops-only",
-        "reason": "Network/proxy endpoint; ops-level setting.",
-        "next_step": "Keep config-level.",
-    },
-    "notifications.telegram_timeout": {
-        "category": "ops-only",
-        "reason": "Network resilience tuning; ops-level setting.",
-        "next_step": "Keep config-level.",
-    },
-    "notifications.telegram_retries": {
-        "category": "ops-only",
-        "reason": "Network resilience tuning; ops-level setting.",
-        "next_step": "Keep config-level.",
-    },
-    "notifications.compress_photo_over_kb": {
-        "category": "advanced",
-        "reason": "Low-level delivery optimization; config-level.",
-        "next_step": "Consider exposing under Telegram advanced controls.",
-    },
-    "notifications.telegram_max_side_px": {
-        "category": "advanced",
-        "reason": "Low-level delivery optimization; config-level.",
-        "next_step": "Consider exposing under Telegram advanced controls.",
-    },
     "web_push.enabled": {
         "category": "backend-managed",
         "reason": "Derived by backend from subscriptions.",
