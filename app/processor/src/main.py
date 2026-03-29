@@ -16,6 +16,8 @@ from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
 from ebird_regional_confidence import merge_species_confidence_overrides_with_ebird_top
+from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
+from multi_camera_confidence import apply_multi_camera_confidence_boost
 from fps_tracker import FPSTracker
 from api import API
 from dataset_saver import save_dataset_crops
@@ -328,6 +330,7 @@ def main():
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
         species_confidence_overrides=merged_overrides,
+        post_record_seconds=app_config.get('processor.post_record_seconds', 0),
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
@@ -386,6 +389,11 @@ def main():
         if not motion_detector.detect():
             continue
         api.notify_motion()
+
+        session_overrides = merge_birdnet_mqtt_bias_into_overrides(
+            merged_overrides, app_config, mqtt_aggregator
+        )
+        decision_maker.species_confidence_overrides = session_overrides
 
         # Multi-camera: use triggered camera (MQTT) or default (OpenCV)
         camera_id = (
@@ -498,6 +506,8 @@ def main():
                 video_list, mqtt_events, start_time, end_time,
                 merge_window, dedup_window, one_per_species=one_per_species,
                 source_priority=source_priority)
+            video_detections = apply_multi_camera_confidence_boost(
+                video_detections, mqtt_events, app_config)
 
             # Отсечь детекции с низким confidence (4% и т.п.)
             min_conf_store = float(app_config.get('detection.min_confidence_to_store') or 0.05)

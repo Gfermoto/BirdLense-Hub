@@ -16,6 +16,8 @@ processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
   max_inactive_seconds: 10
+  # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
+  post_record_seconds: 0
   min_track_duration: 3  # сек; треки короче отбрасываются. 2 — больше треков, 3 — меньше ложных
   min_confidence_binary: 0.15  # Детектор «птица/не птица». 0.15 = 15% по умолчанию
   min_confidence_to_process: 0.30  # Классификатор (вид). 0.30 = 30% по умолчанию
@@ -27,6 +29,14 @@ processor:
   ebird_regional_top_confidence_delta: 0.05
   # Нижняя граница авто-порога (не ниже)
   ebird_regional_top_confidence_floor: 0.05
+  # BirdNET MQTT: снизить порог классификатора для видов из недавних сообщений (#129). Выкл. по умолчанию — без регрессии без MQTT.
+  birdnet_mqtt_auto_confidence: false
+  birdnet_mqtt_bias_window_seconds: 120
+  birdnet_mqtt_bias_delta: 0.05
+  birdnet_mqtt_bias_floor: 0.05
+  # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
+  multi_camera_groups: []  # например: [["BirdBox","Forest"]]
+  multi_camera_confidence_boost: 0.05
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
