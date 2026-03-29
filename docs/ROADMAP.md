@@ -68,7 +68,7 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 
 ### Detection strategy consilium {#detection-strategy-consilium}
 
-**Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production.
+**Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production. By default this runs **after** the current development wave is closed and basic manual acceptance; see [§ Finish work, then operator testing](#completion-then-operator-testing).
 
 **Context:** with `detection_strategy: two_stage` and values in `user_config.yaml`, behavior **does not** match **single_stage** + typical COCO, where the default **animals-only** auto-filter applies (`processor.single_stage_coco_animals_only_auto` — excludes person and inanimate COCO classes). Deploying code does not overwrite `user_config.yaml`.
 
@@ -79,6 +79,16 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 - factor in Frigate / extra motion triggers.
 
 See [CONFIGURATION.md](./CONFIGURATION.md) (processor, motion). Non-bird classes overlap [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — consilium should decide one epic vs child issues.
+
+**Do not forget (checklist):**
+
+| Step | Action |
+|------|--------|
+| 1 | Capture the live hub **`processor`** snippet from `user_config.yaml`: `detection_strategy`, `models.binary` / `models.classifier` / `models.single_stage`, `min_confidence_binary`, `min_confidence_to_process`, `single_stage_coco_animals_only_auto`. |
+| 2 | Note **symptoms**: what triggers false positives / non-animal detections (scene, time of day, weather when possible). |
+| 3 | At the consilium, pick an approach (two_stage + thresholds/model **or** single_stage + COCO/custom **or** Frigate hybrid, etc.) and **write the decision** into Issue(s) (one epic or children). |
+| 4 | After the decision: update **this ROADMAP** (row 17 — outcome or link to closed issue), **CONFIGURATION** / examples if keys change; on the server **edit `user_config.yaml` manually** if needed (**deploy does not overwrite it**). |
+| 5 | Keep in sync with [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) by explicit choice: one workstream or separate cross-linked issues. |
 
 ### Triage: Issue vs. Discussion
 
@@ -199,6 +209,14 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | Activity month picker | Shipped (v0.1.8) |
 | Unknowns empty state | Shipped |
 | Unknowns time-of-day filter | Shipped (v0.1.9) |
+
+---
+
+## Work order: finish in-flight work, then operator testing {#completion-then-operator-testing}
+
+**Agreement:** first **complete** the agreed slice of work (open issues in the current wave / **BirdLense Hub — Roadmap** milestone: PR merged, issue **closed**, **`make deploy`** if needed, CI green). **Then** the operator runs **manual testing** on the live hub and files **feedback as new issues** (or flags regressions on an existing issue) — without growing the same wave in parallel.
+
+**Backlog vs acceptance:** rows in **New ideas** without ✅ are **future queue**; only items **explicitly in progress** on the board count toward “ready for acceptance”. The **detection consilium** ([item 17](#detection-strategy-consilium)) runs **after** the current wave stabilizes unless the board decides otherwise.
 
 ---
 
