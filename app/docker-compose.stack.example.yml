@@ -1,12 +1,12 @@
-# Пример: BirdLense + Redis (общий TTL-кэш API) + PostgreSQL (высокая запись).
-# Скопируйте в docker-compose.override.yml или подключите: docker compose -f docker-compose.yml -f docker-compose.stack.example.yml up -d
-# Миграция данных с SQLite на PostgreSQL — вручную (дамп/импорт или свежая БД).
+# Пример: PostgreSQL к основному docker-compose.yml.
+# Redis уже поднимается в docker-compose.yml по умолчанию.
+#
+# Запуск:
+#   docker compose -f docker-compose.yml -f docker-compose.stack.example.yml up -d
+#
+# Миграция данных с SQLite на PostgreSQL — отдельно (дамп/импорт или новая БД).
 
 services:
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-
   postgres:
     image: postgres:16-alpine
     environment:
@@ -24,12 +24,11 @@ services:
 
   birdlense:
     depends_on:
+      redis:
+        condition: service_healthy
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     environment:
-      REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+psycopg://birdlense:${POSTGRES_PASSWORD:-change_me_in_env}@postgres:5432/birdlense
       SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-5}
       SQLALCHEMY_MAX_OVERFLOW: ${SQLALCHEMY_MAX_OVERFLOW:-15}

@@ -26,8 +26,8 @@ if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_UR
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
 fi
 
-# 0. Остановка текущего контейнера (один контейнер birdlense)
-echo "0. Остановка контейнера..."
+# 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
+echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
 
 # 0.5. Убедиться, что rsync есть на сервере (для надёжной синхронизации)
