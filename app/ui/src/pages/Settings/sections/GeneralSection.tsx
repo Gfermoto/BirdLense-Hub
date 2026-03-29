@@ -267,7 +267,7 @@ export function GeneralSection({ form }: Props) {
 
             <ServiceBlock title={t('settings.serviceGeneral')}>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid size={{ xs: 12 }}>
                   <form.Field name="general.birdnet_url">
                     {(field) => (
                       <TextField
@@ -281,22 +281,56 @@ export function GeneralSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <form.Field name="general.donate_url">
-                    {(field) => (
-                      <TextField
-                        fullWidth
-                        value={field.state.value ?? ''}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        label={t('settings.donateUrl')}
-                        placeholder="https://ko-fi.com/..."
-                        helperText={t('settings.donateUrlHint')}
-                      />
-                    )}
-                  </form.Field>
-                </Grid>
               </Grid>
             </ServiceBlock>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ========== Производительность / Redis ========== */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {t('settings.accordionPerformance')}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.accordionPerformanceDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="performance.cache_redis_enabled">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value !== false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.performanceRedisEnabled')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.performanceRedisEnabledHint')}
+                </FormHelperText>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="performance.redis_url">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.performanceRedisUrl')}
+                      placeholder="redis://redis:6379/0"
+                      helperText={t('settings.performanceRedisUrlHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
           </Box>
         </AccordionDetails>
       </Accordion>

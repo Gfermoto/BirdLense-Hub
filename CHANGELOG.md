@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API.
+- **Весы у кормушки:** `integrations.scales` — источник MQTT (топик с числом/JSON, совместимо с ESPHome/HA) или сущность Home Assistant; отображение веса на главной в карточке кормушки; процессор пишет `data/feeder_scale_state.json`.
+
+### Changed
+
+- **Донаты:** только иконка в шапке (рядом с языком и настройками); убраны из карточки «Корм», из формы настроек и из меню шестерёнки; ссылка по-прежнему задаётся в `general.donate_url` (YAML).
+- **Telegram:** подсказка про MTProto vs Bot API (HTTPS); прокси — SOCKS5h или HTTP(S).
+- **Пороги детекции (меньше ложных записей):** `min_confidence_binary` 0.22, `min_confidence_to_process` 0.36, `min_track_duration` 4, `detection.min_confidence_to_store` 0.36, `merge_window_seconds` 6, OpenCV `check_every_n_frames` 2; смягчены авто-пороги eBird-топа и multi-camera boost; выше пороги датасета/галереи и «Неизвестные».
+
 ### Performance
 
 - **Gunicorn:** `gthread` + **8** потоков (переменная `GUNICORN_THREADS`), `--timeout 0` — воркер не рвёт долгие стримы; параллельные запросы при одном процессе.

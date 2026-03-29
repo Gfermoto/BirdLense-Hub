@@ -269,6 +269,11 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                         </form.Field>
                       </Grid>
                       <Grid size={{ xs: 12 }}>
+                        <Alert severity="info" sx={{ py: 1 }}>
+                          {t('settings.telegramMtprotoNote')}
+                        </Alert>
+                      </Grid>
+                      <Grid size={{ xs: 12 }}>
                         <form.Field name="notifications.telegram_api_base">
                           {(field) => (
                             <TextField

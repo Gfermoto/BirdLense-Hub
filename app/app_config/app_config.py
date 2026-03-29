@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset({
+    'performance.redis_url',
     'general.settings_password',
     'general.contributor_password',
     'notifications.telegram_bot_token',

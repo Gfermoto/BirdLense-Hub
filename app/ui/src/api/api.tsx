@@ -345,6 +345,12 @@ export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
   donate_url: string | null;
   feed_source?: string;
+  scale?: {
+    weight: number;
+    unit?: string;
+    updated_at?: string;
+    source?: string;
+  } | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/feed/info`);
   return response.data;
