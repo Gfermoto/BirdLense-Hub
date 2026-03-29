@@ -67,6 +67,22 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 14  | Навигация по видео: подряд (напр. за день), без сброса в начало списка                       | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6**                                                         | P2, web                  |
 | 15  | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI                                                          | P3, web                  |
 | 16  | Overview: «Средняя длительность» считалась по визитам, а не по записям                       | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug             |
+| 17  | Детекция: ложные срабатывания и «не-животное» — стратегия (two_stage / single_stage+COCO, пороги, веса) | Консилиум: [§ ниже](#detection-strategy-consilium) · связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML        |
+
+
+### Консилиум: стратегия детекции {#detection-strategy-consilium}
+
+**Задача:** собрать консилиум (продукт/оператор, ML, платформа) и зафиксировать решение, как на проде снижать **ложные срабатывания** и детекции **неодушевлённых объектов**.
+
+**Контекст:** при `detection_strategy: two_stage` и настройках в `user_config.yaml` поведение **не** совпадает с режимом **single_stage** + типичный COCO, где по умолчанию включён авто-фильтр **только животные** (`processor.single_stage_coco_animals_only_auto` — без person и без «вещей»). Деплой кода не подменяет `user_config.yaml`.
+
+**Варианты для сравнения (не исключая комбинации):**
+
+- оставить **two_stage** и подкрутить **`min_confidence_binary`** / **`min_confidence_to_process`**, при необходимости дообучить или заменить бинарный детектор;
+- перейти на **single_stage** + COCO (или иная detect-модель) и опереться на фильтр животных / свои классы;
+- учесть сценарии с Frigate / дополнительными триггерами.
+
+Документация по ключам: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (processor, motion). Расширение классов «не только птицы» пересекается с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — на консилиуме решить, ведём ли одну эпик-задачу или выделяем дочерние issues.
 
 
 ### Триаж: Issue или Discussion
@@ -132,7 +148,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 10  | Regenerate tracks: прогресс, 409 и timeout на больших объёмах                                                                            | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug                                                 |
 | 11  | Dataset UX: понятный сценарий в Library (обслуживание БД и получение датасета)                                                           | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) ✅ | P2, docs + web                                               |
 | 12  | Dataset pipeline: уменьшить необходимость пост-скрипта перед обучением                                                                   | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) ✅ | P2, processor                                                |
-| 13  | Detector: добавить классы не-птиц (мыши, белки, кошки)                                                                                   | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research                                      |
+| 13  | Detector: добавить классы не-птиц (мыши, белки, кошки)                                                                                   | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) · см. консилиум [п.17](#detection-strategy-consilium) | P3, processor, research                                      |
 | 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research                                      |
 | 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) | P3, web                                                      |
 | 16  | Интеграция с Heimdall                                                                                                                    | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra                                                    |
