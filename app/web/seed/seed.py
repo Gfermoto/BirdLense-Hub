@@ -1,7 +1,9 @@
 import logging
 import os
 
-from models import Species, BirdFood, db
+from sqlalchemy import delete, func
+
+from models import Species, BirdFood, db, video_bird_food_association
 from util import build_hierarchy_tree
 
 # Default BirdFood catalog (Settings / feeder). Curated by maintainers from common EU + US practice.
@@ -103,11 +105,6 @@ def seed_bird_food() -> int:
             'description': 'Small dark seed often included in EU mixes; attracts finches and buntings when offered dry in feeders.',
             'image_url': 'data/images/food/millets.jpg',
         },
-        {
-            'name': 'Apple pieces',
-            'description': 'Fresh apple segments in winter help thrushes, blackbirds, and waxwings. Remove seeds if you prefer; no added sugar.',
-            'image_url': 'data/images/food/apple-pieces.svg',
-        },
     ]
 
     existing = {row[0] for row in BirdFood.query.with_entities(BirdFood.name).all()}
@@ -131,19 +128,22 @@ def _food_asset_exists(image_url: str | None) -> bool:
     return os.path.isfile(os.path.abspath(os.path.join(base_dir, rel)))
 
 
-def _migrate_apple_pieces_image() -> bool:
-    """Старые установки: Apple pieces указывали на общий fruit.jpg — заменить на яблочную иллюстрацию."""
-    row = BirdFood.query.filter_by(name='Apple pieces').first()
-    if not row:
+def _remove_legacy_apple_pieces_bird_food() -> bool:
+    """Убрать позицию «Apple pieces» из каталога корма (в т.ч. старые БД)."""
+    rows = BirdFood.query.filter(
+        func.lower(func.trim(BirdFood.name)) == 'apple pieces',
+    ).all()
+    if not rows:
         return False
-    target = 'data/images/food/apple-pieces.svg'
-    current = row.image_url
-    if current == target:
-        return False
-    if current in ('', None, 'data/images/food/fruit.jpg') or not _food_asset_exists(current):
-        row.image_url = target
-        return True
-    return False
+    for row in rows:
+        fid = row.id
+        db.session.execute(
+            delete(video_bird_food_association).where(
+                video_bird_food_association.c.birdfood_id == fid,
+            ),
+        )
+        db.session.delete(row)
+    return True
 
 
 def seed():
@@ -155,12 +155,12 @@ def seed():
         logging.info('Species seeding complete.')
 
     n_food = seed_bird_food()
-    migrated_apple = _migrate_apple_pieces_image()
-    if n_food or migrated_apple:
+    removed_apple = _remove_legacy_apple_pieces_bird_food()
+    if n_food or removed_apple:
         if n_food:
             logging.info('Bird food catalog: added %s new default row(s)', n_food)
-        if migrated_apple:
-            logging.info('Bird food: Apple pieces image updated to apple-pieces.svg')
+        if removed_apple:
+            logging.info('Bird food: removed legacy «Apple pieces» row(s)')
         db.session.commit()
     elif not BirdFood.query.first():
         logging.warning('Bird food catalog empty and nothing inserted — check seed_bird_food()')

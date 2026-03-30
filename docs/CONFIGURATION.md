@@ -467,7 +467,7 @@ Coordinates and API keys. Settings → Advanced. Prefer env for keys: `OPENWEATH
 
 The app ships a **curated default list** of feeder foods (US + EU-oriented names and hints). **Source of truth in code:** [`app/web/seed/seed.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/seed/seed.py) → `seed_bird_food()`. Image paths point at `data/images/food/*` in the app bundle.
 
-**Existing databases:** on each startup, `seed()` **merges** any catalog entries **missing by `name`** — upgrades pick up new defaults without duplicating rows. Operators can still add custom foods via **`GET` / `POST /api/ui/birdfood`** (see [API.md](./API.md)).
+**Existing databases:** on each startup, `seed()` **merges** any catalog entries **missing by `name`** — upgrades pick up new defaults without duplicating rows. The legacy catalog row **Apple pieces** is **removed** on startup (see `seed.py`), including clearing `video_bird_food_association` links. Operators can still add custom foods via **`GET` / `POST /api/ui/birdfood`** (see [API.md](./API.md)).
 
 Tracked as [issue #134](https://github.com/Gfermoto/BirdLense-Hub/issues/134).
 
