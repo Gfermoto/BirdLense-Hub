@@ -190,6 +190,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 | `dedup_window_seconds` | Gap > N s = new visit (60 s) |
 | `one_per_species` | One result per species (true) |
 | `source_priority` | On conflict: `["yolo", "frigate", "birdnet"]` |
+| `cross_source_confidence_bonus` | When MQTT (Frigate/BirdNET) first merges into an existing YOLO detection, add this to confidence once (cap 1.0). Default **0.02** — small lift without retraining. Set `0` to disable. |
 | `min_confidence_to_store` | Min confidence (0.05) |
 | `species_mapping` | Species name mapping |
 

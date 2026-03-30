@@ -114,6 +114,8 @@ detection:
   one_per_species: true
   # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
   source_priority: ["yolo", "frigate", "birdnet"]
+  # Без дообучения: при первом совпадении вида с MQTT (Frigate/BirdNET) и YOLO — разово +bonus к confidence (потолок 1.0)
+  cross_source_confidence_bonus: 0.02
   # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
   min_confidence_to_store: 0.36
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.

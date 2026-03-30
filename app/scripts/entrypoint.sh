@@ -19,6 +19,12 @@ t=t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
 open("/etc/nginx/conf.d/default.conf","w").write(t)
 ' "$GO2RTC_UPSTREAM" "$BIRDLENSE_PORT"
 
+# Образ не содержит записей/БД, но включает data/images — подмешиваем в примонтированный ./data
+if [ -d /app/_bundled_data/images ]; then
+  mkdir -p /app/data/images
+  cp -a /app/_bundled_data/images/. /app/data/images/
+fi
+
 nginx &
 sleep 1
 # gthread: несколько одновременных запросов к SQLite (WAL + check_same_thread=False в config)

@@ -39,6 +39,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Статические изображения каталога (корм и т.д.) — копируются в volume при старте из entrypoint
+COPY data/images /app/_bundled_data/images
+
 # Web + processor + scripts
 COPY web/ ./web/
 COPY processor/ ./processor/

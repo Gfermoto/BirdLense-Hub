@@ -690,6 +690,18 @@ class TestMigrationCalendar:
         assert r.status_code == 400
         assert 'error' in r.json
 
+    def test_migration_calendar_catalog_full_and_evidence_video(self, client):
+        r = client.get(
+            '/api/ui/migration-calendar',
+            query_string={'catalog': 'full', 'evidence': 'video'},
+        )
+        assert r.status_code == 200
+        assert 'species' in r.json
+
+    def test_migration_calendar_rejects_bad_catalog(self, client):
+        r = client.get('/api/ui/migration-calendar', query_string={'catalog': 'maybe'})
+        assert r.status_code == 400
+
 
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):
