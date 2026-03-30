@@ -118,6 +118,18 @@ def extract_detection_frame_cropped(
         return None
 
 
+def extract_detection_frame_cropped_or_full(
+    video_path: str, offset_sec: float, bbox_norm: list[float] | None
+) -> bytes | None:
+    """
+    Prefer bbox crop; if crop fails or bbox missing, return full JPEG frame at offset (community uploads).
+    """
+    cropped = extract_detection_frame_cropped(video_path, offset_sec, bbox_norm)
+    if cropped:
+        return cropped
+    return extract_detection_frame(video_path, offset_sec)
+
+
 def crop_filename(species_name: str, start_time_str: str) -> str:
     """Generate filename for iNaturalist: Species_Name_YYYY-MM-DD_HHMMSS.jpg"""
     # start_time_str is ISO like "2024-03-15T14:32:00+00:00"

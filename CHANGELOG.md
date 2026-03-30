@@ -16,6 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **System / observability:** карточка «Наблюдаемость уведомлений» — счётчики `notify_preview_24h` и подсказка по URL экспорта метрик Hub для Heimdall/Grafana; `GET /api/ui/system/observability` (с авторизацией настроек), `GET /api/metrics/summary` (JSON, тот же смысл, что и `/metrics`).
+- **Docs / Heimdall:** явно описано направление данных: метрики **отдаёт Hub** (`/metrics`, `/api/metrics/summary`), в Heimdall добавляют ссылку на хаб; поле `heimdall_url` — только проверка доступности Heimdall **с сервера Hub**; про `http://heimdall.local` и резолв из Docker.
+- **Gallery:** нормализация JPEG (мин. размер, ограничение стороны) и fallback на **полный кадр**, если кроп по bbox не удался — ближе к надёжности Telegram-превью.
 - **Telegram / прокси:** выбор типа — **без прокси**, **SOCKS5 / HTTP (URL)** или **MTProto** (сервер, порт, секрет hex как в приложении Telegram). MTProto-режим отправляет сообщения через **Telethon** (нативный MTProto); нужны **api_id** и **api_hash** с https://my.telegram.org или переменные `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` в окружении. Зависимость: `telethon`. Paid Media (Stars) в MTProto-режиме не поддерживается — отправляется обычное фото.
 - **Ops / Telegram:** `scripts/manage-telegram-proxy-rotation.sh` и make-таргеты для установки cron-авторотации (по умолчанию каждые 6 часов). Ротация запускает `scripts/refresh-telegram-proxy.sh` на самом сервере (`BIRDLENSE_PROXY_LOCAL=1`), выбирает лучший рабочий SOCKS5 и обновляет `user_config.yaml` только при изменении.
 - **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API; в **GET /settings** добавлено read-only поле `performance.redis_url_effective_masked` — фактический URL (в т.ч. из `REDIS_URL`), пароль замаскирован; в форме — placeholder и строка «Сейчас используется».

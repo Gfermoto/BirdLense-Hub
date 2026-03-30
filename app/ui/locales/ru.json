@@ -169,7 +169,7 @@
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "heimdallUrl": "Ссылка на Heimdall",
-    "heimdallUrlHint": "URL панели Heimdall для серверной проверки доступности и метаданных в разделе System.",
+    "heimdallUrlHint": "Любой URL Heimdall, который резолвится с хоста Hub (например http://heimdall.local или IP в LAN). Для Docker: имя должно быть доступно из контейнера (extra_hosts, общая сеть). Метрики BirdLense для Heimdall — отдельно: System → «Наблюдаемость» (/metrics, /api/metrics/summary).",
     "donateUrl": "Ссылка для поддержки",
     "donateUrlHint": "Эта ссылка открывается при нажатии на единственную иконку-сердце в шапке (между языком и настройками). Не дублируется в карточке «Корм» и в меню шестерёнки.",
     "accordionPerformance": "Производительность / кэш API",
@@ -747,7 +747,19 @@
     "ok": "доступен",
     "unreachable": "недоступен",
     "deprecatedKeysFound": "Обнаружены устаревшие ключи ({{count}})",
-    "unknownKeysFound": "Обнаружены неизвестные ключи ({{count}})"
+    "unknownKeysFound": "Обнаружены неизвестные ключи ({{count}})",
+    "observabilityTitle": "Наблюдаемость уведомлений",
+    "observabilityHint": "Счётчики источника превью Telegram за 24 ч. Ниже — URL экспорта метрик Hub для Heimdall/Grafana.",
+    "observabilityLoadError": "Не удалось загрузить данные наблюдаемости",
+    "hubMetricsForHeimdall": "Экспорт метрик Hub (для виджетов Heimdall)",
+    "hubMetricsHeimdallNote": "Укажите полный URL вашего BirdLense (например http://192.168.1.11:8085/metrics). Hub отдаёт метрики наружу; Heimdall «смотрит» на Hub, а не наоборот.",
+    "previewSource": {
+      "best_frame": "best_frame",
+      "bbox_crop": "bbox_crop",
+      "full_frame": "full_frame",
+      "none": "none",
+      "unknown": "unknown"
+    }
   },
   "food": {
     "food": "Корм",

@@ -8,10 +8,72 @@ import requests
 from app_config.app_config import app_config
 from services.detection_crop_service import (
     _bbox_for_offset,
-    extract_detection_frame_cropped,
+    extract_detection_frame_cropped_or_full,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_jpeg_for_gallery(jpeg_bytes: bytes) -> bytes:
+    """Same constraints as Telegram: min edge, reasonable size — community-facing images."""
+    if not jpeg_bytes:
+        return jpeg_bytes
+    max_side = 1280
+    try:
+        from PIL import Image
+        import io
+
+        img = Image.open(io.BytesIO(jpeg_bytes))
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        w, h = img.size
+        if min(w, h) < 64:
+            ratio = 64 / float(min(w, h))
+            img = img.resize(
+                (max(64, int(w * ratio)), max(64, int(h * ratio))),
+                Image.Resampling.LANCZOS,
+            )
+            w, h = img.size
+        if max(w, h) > max_side:
+            ratio = max_side / float(max(w, h))
+            img = img.resize(
+                (max(1, int(w * ratio)), max(1, int(h * ratio))),
+                Image.Resampling.LANCZOS,
+            )
+        buf = io.BytesIO()
+        img.save(buf, 'JPEG', quality=88, optimize=True)
+        return buf.getvalue()
+    except Exception as e:
+        logger.debug("Gallery JPEG normalize (PIL) failed: %s", e)
+    try:
+        import cv2
+        import numpy as np
+
+        arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return jpeg_bytes
+        h, w = img.shape[:2]
+        if min(h, w) < 64:
+            ratio = 64.0 / float(min(h, w))
+            img = cv2.resize(
+                img,
+                (max(64, int(w * ratio)), max(64, int(h * ratio))),
+                interpolation=cv2.INTER_CUBIC,
+            )
+            h, w = img.shape[:2]
+        if max(w, h) > max_side:
+            ratio = max_side / float(max(w, h))
+            img = cv2.resize(
+                img,
+                (max(1, int(w * ratio)), max(1, int(h * ratio))),
+                interpolation=cv2.INTER_AREA,
+            )
+        ok, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+        return enc.tobytes() if ok else jpeg_bytes
+    except Exception as e:
+        logger.debug("Gallery JPEG normalize (cv2) failed: %s", e)
+    return jpeg_bytes
 
 
 def _get_location_metadata():
@@ -32,7 +94,10 @@ def _upload_video_species_to_gallery(vs, video, species_name: str) -> bool:
     bbox = _bbox_for_offset(getattr(vs, 'frames', None), offset)
     if not bbox:
         return False
-    jpeg_bytes = extract_detection_frame_cropped(video.video_path, offset, bbox)
+    jpeg_bytes = extract_detection_frame_cropped_or_full(video.video_path, offset, bbox)
+    if not jpeg_bytes:
+        return False
+    jpeg_bytes = _normalize_jpeg_for_gallery(jpeg_bytes)
     if not jpeg_bytes:
         return False
 

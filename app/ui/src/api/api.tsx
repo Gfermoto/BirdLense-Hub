@@ -425,6 +425,22 @@ export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
   return response.data;
 };
 
+export type ObservabilityPayload = {
+  notify_preview_24h: Record<string, number>;
+  hub_metrics: {
+    prometheus_text: string;
+    prometheus_text_alt: string;
+    json_summary: string;
+  };
+};
+
+export const fetchObservability = async (): Promise<ObservabilityPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/system/observability`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export type CheckAccessResult =
   | { unlocked: true; role?: 'admin' | 'contributor' }
   | { unlocked: false; error?: 'network' };

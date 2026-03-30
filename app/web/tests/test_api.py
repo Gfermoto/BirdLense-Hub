@@ -42,6 +42,16 @@ class TestMetrics:
         assert 'birdlense_disk_used_percent' in body
         assert 'birdlense_detections_total' in body
 
+    def test_metrics_summary_json(self, client):
+        r = client.get('/api/metrics/summary')
+        assert r.status_code == 200
+        assert r.is_json
+        data = r.get_json()
+        assert data.get('service') == 'birdlense-hub'
+        assert 'notify_preview_24h' in data
+        assert 'detections_total' in data
+        assert isinstance(data['notify_preview_24h'], dict)
+
     def test_system_metrics_live_only(self, client):
         r = client.get('/api/ui/system/metrics')
         assert r.status_code == 200
