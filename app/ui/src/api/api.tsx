@@ -703,6 +703,40 @@ export const fetchSpeciesDataQuality = async (): Promise<SpeciesDataQualityRepor
   return response.data;
 };
 
+export interface ClassifierDatasetAlignmentReport {
+  classifier_weights_path: string;
+  classifier_weights_resolved: string;
+  classifier_readable: boolean;
+  classifier_error: string | null;
+  classifier_class_count: number;
+  in_classifier_not_in_catalog: string[];
+  in_classifier_not_in_catalog_count: number;
+  in_catalog_not_in_classifier: Array<{ id: number; name: string }>;
+  in_catalog_not_in_classifier_count: number;
+  dataset_folder_count: number;
+  dataset_folders_without_catalog_match: string[];
+  dataset_folders_without_catalog_match_count: number;
+  dataset_folders_species_not_in_classifier: Array<{
+    folder: string;
+    species_id: number;
+    species_name: string;
+  }>;
+  dataset_folders_species_not_in_classifier_count: number;
+  species_with_video_detections: number;
+  catalog_species_total: number;
+  catalog_classifier_dataset_aligned?: boolean;
+  hints?: Record<string, string>;
+}
+
+export const fetchClassifierDatasetAlignment =
+  async (): Promise<ClassifierDatasetAlignmentReport> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment`,
+      { params: { classifier_limit: 400, catalog_limit: 300, dataset_limit: 150 } },
+    );
+    return response.data;
+  };
+
 /** Lightweight: only species with count > 0 (for Settings exclude list). */
 export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: string; count: number }>> => {
   const response = await axios.get(`${BASE_API_URL}/species/observed`);

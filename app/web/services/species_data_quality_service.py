@@ -163,6 +163,9 @@ def build_data_quality_report(
             'merge_duplicates_endpoint': 'POST /api/ui/system/merge-duplicate-species',
             'per_video_merge': 'POST /api/ui/videos/<id>/merge-species',
             'registry_health': 'GET /api/ui/system/species-registry/health',
+            'classifier_catalog_dataset_alignment': (
+                'GET /api/ui/system/species-registry/classifier-dataset-alignment'
+            ),
         },
     }
 
