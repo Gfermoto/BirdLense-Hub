@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Documentation
+
+- **CONFIGURATION / Telegram:** раздел «если my.telegram.org выдаёт ERROR» — обход через SOCKS/HTTP или без прокси без api_id; уточнены ключи `telegram_proxy_type` и MTProto.
+
 ### Added
 
 - **Telegram / прокси:** выбор типа — **без прокси**, **SOCKS5 / HTTP (URL)** или **MTProto** (сервер, порт, секрет hex как в приложении Telegram). MTProto-режим отправляет сообщения через **Telethon** (нативный MTProto); нужны **api_id** и **api_hash** с https://my.telegram.org или переменные `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` в окружении. Зависимость: `telethon`. Paid Media (Stars) в MTProto-режиме не поддерживается — отправляется обычное фото.
