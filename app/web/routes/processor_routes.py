@@ -1,10 +1,14 @@
+import ipaddress
 import json
 import os
 import re
 import secrets
+import socket
 import threading
 from flask import request
 from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse
+
 from models import ActivityLog, db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
@@ -25,6 +29,49 @@ def _run_gallery_upload_thread(flask_app, video_id: int):
 
 # Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
 VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+
+
+def _is_public_ip(ip: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return not any((
+        addr.is_private,
+        addr.is_loopback,
+        addr.is_link_local,
+        addr.is_multicast,
+        addr.is_reserved,
+        addr.is_unspecified,
+    ))
+
+
+def _is_safe_webhook_url(url: str) -> bool:
+    raw = (url or '').strip()
+    if not raw:
+        return False
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return False
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    host = (parsed.hostname or '').strip()
+    if not host:
+        return False
+    if host.lower() == 'localhost':
+        return False
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        addr = info[4][0]
+        if not _is_public_ip(addr):
+            return False
+    return True
 
 
 def _fire_webhook(url: str, species_list: list, start_time: datetime, logger):
@@ -110,11 +157,14 @@ def register_routes(app):
             # Webhook: fire-and-forget
             webhook_url = (app_config.get('webhook.url') or '').strip()
             if webhook_url and species_list:
-                threading.Thread(
-                    target=_fire_webhook,
-                    args=(webhook_url, species_list, start_time, app.logger),
-                    daemon=True,
-                ).start()
+                if _is_safe_webhook_url(webhook_url):
+                    threading.Thread(
+                        target=_fire_webhook,
+                        args=(webhook_url, species_list, start_time, app.logger),
+                        daemon=True,
+                    ).start()
+                else:
+                    app.logger.warning('Unsafe webhook.url blocked: %s', webhook_url)
 
             # Публичная галерея: opt-in загрузка кадров (отдельный поток с app context — иначе SQLAlchemy вне контекста)
             if app_config.get('gallery.enabled') and (app_config.get('gallery.upload_url') or '').strip():
@@ -170,20 +220,24 @@ def register_routes(app):
         link = (data.get('link') or 'live')
         preview_source = (data.get('preview_source') or 'unknown')
         image_bytes = None
+        image_status = 'missing'
         if image_base64:
             try:
                 import base64
                 image_bytes = base64.b64decode(image_base64)
             except Exception as e:
                 app.logger.warning("Failed to decode image_base64 for notify: %s", e)
+                image_status = 'decode_failed'
         if image_base64 and not image_bytes:
             app.logger.warning("notify/detections: image_base64 present but decode produced empty bytes")
+            image_status = 'decode_failed'
         elif not image_base64:
             app.logger.info(
                 "notify/detections: no image for %s (preview_source=%s)",
                 detection,
                 preview_source,
             )
+            image_status = 'missing'
         else:
             app.logger.info(
                 "notify/detections: image present for %s (preview_source=%s, bytes=%s)",
@@ -191,14 +245,25 @@ def register_routes(app):
                 preview_source,
                 len(image_bytes or b''),
             )
+            image_status = 'present'
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:
             lower = detection.lower()
             icon = "chipmunk" if any(s in lower for s in (
                 "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
-            notify(f"{detection} Detected", tags=icon, image_path=image_path,
-                  image_bytes=image_bytes, link=link, timestamp=datetime.now(timezone.utc))
+            notify_result = notify(
+                f"{detection} Detected",
+                tags=icon,
+                image_path=image_path,
+                image_bytes=image_bytes,
+                link=link,
+                timestamp=datetime.now(timezone.utc),
+                fallback_reason_hint='decode_failed' if image_status == 'decode_failed' else None,
+            ) or {}
+            fallback_reason = notify_result.get('fallback_reason')
+            if image_status == 'decode_failed':
+                fallback_reason = 'decode_failed'
             try:
                 db.session.add(ActivityLog(
                     type='notify_preview',
@@ -206,6 +271,12 @@ def register_routes(app):
                         'species': detection,
                         'preview_source': preview_source,
                         'has_image': bool(image_bytes),
+                        'image_status': image_status,
+                        'telegram_delivery': notify_result.get('telegram_delivery', 'unknown'),
+                        'photo_requested': bool(notify_result.get('photo_requested', False)),
+                        'photo_available': bool(notify_result.get('photo_available', False)),
+                        'photo_sent': bool(notify_result.get('photo_sent', False)),
+                        'fallback_reason': fallback_reason,
                     }),
                 ))
                 db.session.commit()

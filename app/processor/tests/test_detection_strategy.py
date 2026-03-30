@@ -134,5 +134,68 @@ class TestDetectionStrategy(unittest.TestCase):
         self.logger.info(f"Blurred image variance: {variance}")
         self.assertTrue(is_blurry, "Blurred image should be detected as blurry")
 
+    def test_coco_auto_filter_constant_is_bird_only(self):
+        if SingleStageStrategy is None:
+            self.skipTest("SingleStageStrategy not available (import failed).")
+        from detection_strategy import _COCO_BIRD_ONLY_CLASS_NAMES
+
+        self.assertEqual(_COCO_BIRD_ONLY_CLASS_NAMES, frozenset({'bird'}))
+
+    def test_single_stage_skips_frame_when_tracker_ids_absent(self):
+        if SingleStageStrategy is None:
+            self.skipTest("SingleStageStrategy not available (import failed).")
+
+        class _Boxes:
+            id = None
+
+            def __len__(self):
+                return 1
+
+        class _Result:
+            boxes = _Boxes()
+
+        strategy = SingleStageStrategy.__new__(SingleStageStrategy)
+        strategy.model = type(
+            'FakeModel',
+            (),
+            {
+                'track': lambda *args, **kwargs: [_Result()],
+                'names': {0: 'bird'},
+            },
+        )()
+        strategy.classes = None
+
+        results = strategy.detect(np.zeros((128, 128, 3), dtype=np.uint8), 'bytetrack.yaml', 0.1)
+
+        self.assertEqual(results, [])
+
+    def test_two_stage_skips_frame_when_tracker_ids_absent(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+
+        class _Boxes:
+            id = None
+
+            def __len__(self):
+                return 1
+
+        class _Result:
+            boxes = _Boxes()
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            'FakeBinaryModel',
+            (),
+            {
+                'track': lambda *args, **kwargs: [_Result()],
+            },
+        )()
+        strategy._classification_index = 0
+        strategy.max_blur_checks = 3
+
+        results = strategy.detect(np.zeros((128, 128, 3), dtype=np.uint8), 'bytetrack.yaml', 0.1)
+
+        self.assertEqual(results, [])
+
 if __name__ == '__main__':
     unittest.main()

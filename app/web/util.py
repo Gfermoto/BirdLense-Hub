@@ -64,10 +64,14 @@ def client_ip_for_rate_limit(request) -> str:
         except ValueError:
             return None
 
-    for hdr in ('X-Real-IP', 'X-Forwarded-For'):
-        parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
-        if parsed:
-            return parsed
+    trusted_proxy = (os.environ.get('TRUSTED_PROXY') or '').strip().lower() in (
+        '1', 'true', 'yes',
+    )
+    if trusted_proxy:
+        for hdr in ('X-Real-IP', 'X-Forwarded-For'):
+            parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
+            if parsed:
+                return parsed
     ra = (getattr(request, 'remote_addr', None) or '').strip()
     return ra or 'unknown'
 
@@ -303,8 +307,10 @@ def infer_metadata_source_fields(
 
     if _host_is_wikipedia_family(img_host) or _host_is_wikipedia_family(src_host):
         return 'wikipedia', (src or f'https://en.wikipedia.org/wiki/{title}')
+    if _host_is_inaturalist(src_host) or _host_is_inaturalist(img_host):
+        return 'inaturalist', (src or img)
     if _url_suggests_inaturalist_asset(img) or _url_suggests_inaturalist_asset(src):
-        return 'inaturalist', (src or 'https://www.inaturalist.org/')
+        return 'inaturalist', None
     return None, source_url
 
 
@@ -539,6 +545,7 @@ def get_inaturalist_image_and_description(title):
             "per_page": 3,
             "locale": "en",
             "is_active": "true",
+            "iconic_taxa": "Aves",
         }
         headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
         response = requests.get(url, params=params, timeout=10, headers=headers)
@@ -547,7 +554,12 @@ def get_inaturalist_image_and_description(title):
         results = data.get("results") or []
         if not results:
             return None, None, None
-        top = results[0]
+        top = next(
+            (row for row in results if (row.get("iconic_taxon_name") or "") == "Aves"),
+            None,
+        )
+        if not top:
+            return None, None, None
         image_url = ((top.get("default_photo") or {}).get("medium_url")
                      or (top.get("default_photo") or {}).get("square_url"))
         description = (top.get("wikipedia_summary")

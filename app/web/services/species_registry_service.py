@@ -305,6 +305,45 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
     }
 
 
+def repair_recently_reset_species_metadata(
+    limit: int = 500,
+    dry_run: bool = True,
+) -> dict:
+    """
+    Restore images for rows that lost them during a bad cleanup pass.
+    Targets only species that still have a description but no image.
+    """
+    q = Species.query.filter(
+        Species.image_url.is_(None),
+        Species.description.isnot(None),
+    ).order_by(Species.id.asc()).limit(max(1, min(limit, 5000)))
+
+    processed = 0
+    repaired = 0
+    failed = 0
+    for sp in q.all():
+        processed += 1
+        try:
+            before_img = bool(sp.image_url)
+            update_species_info_from_wiki(sp)
+            if sp.image_url and not before_img:
+                repaired += 1
+        except Exception:
+            failed += 1
+
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+
+    return {
+        "processed": processed,
+        "repaired": repaired,
+        "failed": failed,
+        "dry_run": dry_run,
+    }
+
+
 def enrich_species_metadata_with_status(
     limit: int = 100,
     dry_run: bool = True,

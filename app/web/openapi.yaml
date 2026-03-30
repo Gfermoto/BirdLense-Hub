@@ -476,7 +476,9 @@ paths:
     get:
       summary: Get summary for a species
       description: |
-        Retrieve the detailed summary for a specific species, including detection statistics, recent visits, and environmental correlations. This is useful for in-depth analysis of a species' behavior and trends.
+        Retrieve the detailed summary for a specific species (read-only: does not run wiki/metadata
+        enrichment or change the database). Use System → species registry enrichment jobs to refresh
+        images and descriptions. Includes coarse ``metadata_trust`` for UI disclosure.
       parameters:
         - in: path
           name: species_id
@@ -942,6 +944,25 @@ components:
               type: string
             description:
               type: string
+            metadata_status:
+              type: string
+              description: Registry enrichment status (pending, ok, error, not_found, …).
+            metadata_trust:
+              type: string
+              enum:
+                - low_confidence
+                - registry_verified
+                - registry_bound
+                - unbound
+              description: >
+                Coarse trust hint: unbound = no canonical taxon link; registry_verified = taxon + ok metadata;
+                low_confidence = failed or missing enrichment.
+            metadata_source:
+              type: string
+              nullable: true
+            metadata_source_url:
+              type: string
+              nullable: true
             active:
               type: boolean
             parent:
@@ -1013,6 +1034,16 @@ components:
                     type: string
                   image_url:
                     type: string
+                  metadata_status:
+                    type: string
+                  metadata_trust:
+                    type: string
+                  metadata_source:
+                    type: string
+                    nullable: true
+                  metadata_source_url:
+                    type: string
+                    nullable: true
               stats:
                 type: object
                 properties:

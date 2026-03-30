@@ -22,12 +22,14 @@ def get_migration_calendar(
     start_year, end_year: filter by year (inclusive). None = no filter.
     start_date, end_date: filter by date (inclusive, YYYY-MM-DD, UTC).
     catalog: ``active`` — только виды с ненулевой активностью; ``full`` — весь каталог видов (нули в клетках).
-    evidence: ``all`` — все визиты (камера и слияние с BirdNET в тех же сессиях); ``video`` — только визиты,
-        где есть хотя бы одна **видео**-детекция (строго «наблюдали на камере»).
+    evidence: ``all`` — все визиты; ``camera``/``video`` — только визиты с видео-детекцией;
+        ``birdnet`` — только визиты, где есть audio/BirdNET-детекция.
     """
     if catalog not in ('active', 'full'):
         catalog = 'active'
-    if evidence not in ('all', 'video'):
+    if evidence == 'video':
+        evidence = 'camera'
+    if evidence not in ('all', 'camera', 'birdnet'):
         evidence = 'all'
 
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
@@ -47,7 +49,7 @@ def get_migration_calendar(
         )
         filters.append(SpeciesVisit.start_time <= end_dt)
 
-    if evidence == 'video':
+    if evidence == 'camera':
         vid_visits = (
             select(SpeciesVisit.id)
             .join(VideoSpecies, VideoSpecies.species_visit_id == SpeciesVisit.id)
@@ -55,6 +57,17 @@ def get_migration_calendar(
             .distinct()
         )
         filters.append(SpeciesVisit.id.in_(vid_visits))
+    elif evidence == 'birdnet':
+        birdnet_visits = (
+            select(SpeciesVisit.id)
+            .join(VideoSpecies, VideoSpecies.species_visit_id == SpeciesVisit.id)
+            .where(
+                (VideoSpecies.detection_provider == 'birdnet_mqtt')
+                | (VideoSpecies.source == 'audio')
+            )
+            .distinct()
+        )
+        filters.append(SpeciesVisit.id.in_(birdnet_visits))
 
     # Per species: count visits per month (all years in range combined)
     month_expr = func.strftime('%m', SpeciesVisit.start_time)

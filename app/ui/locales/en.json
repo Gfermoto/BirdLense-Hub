@@ -466,9 +466,14 @@
     "regenerateTracksPeriod": "Regenerate tracks — period",
     "regenerateTracksPeriodHelp": "Only videos within this period will be processed.",
     "operationsPeriod": "Period for operations",
+    "presetLast7Days": "Last 7 days",
+    "presetLast30Days": "Last 30 days",
+    "presetAllTime": "All time",
     "onlyManuallyCorrected": "Only manually corrected",
     "periodFrom": "From",
     "periodTo": "To",
+    "archiveRangeSummary": "Archive on disk: {{start}} - {{end}} (calendar span {{spanDays}} days, {{recordedDays}} days with files, {{files}} files, {{size}}). The “All time” preset uses exactly this span.",
+    "archiveRangeUnavailable": "No archive range detected on disk yet. The “All time” preset becomes available after recordings appear.",
     "regeneratingProgress": "{{processed}}/{{total}}",
     "regeneratingSpectrograms": "Generating spectrograms...",
     "regeneratingTracks": "Regenerating tracks...",
@@ -500,6 +505,11 @@
     "cleanDatasetSuccess": "Deleted: {{fullframe}} full-frame, {{orphaned}} orphaned",
     "cleanDatasetDryRun": "Found: {{fullframe}} full-frame, {{orphaned}} orphaned (preview mode)",
     "cleanDatasetLoading": "Cleaning…",
+    "heavyOpsTitle": "What is heavy",
+    "heavyOpsIntro": "The “all time” range is safe, but runtime depends on archive size. The heaviest operations are:",
+    "heavyOpsSpectrograms": "Regenerate spectrograms: re-reads source videos and recomputes audio assets.",
+    "heavyOpsTracks": "Regenerate tracks: the heaviest option because it walks video frames again.",
+    "heavyOpsDataset": "Dataset export/retro-export: reads the archive and builds a ZIP; best run after import and corrections, not during peak recording time.",
     "mergeDuplicateSpecies": "Merge duplicate species",
     "cleanOrphanedVisits": "Fix counters",
     "cleanOrphanedVisitsHint": "Removes orphaned visits and syncs data. Fixes incorrect counts in calendar and directory after corrections.",
@@ -564,8 +574,9 @@
     "catalogFull": "Full catalog (zeros in empty cells)",
     "evidenceLabel": "Count visits",
     "evidenceAll": "All (camera + BirdNET in same sessions)",
-    "evidenceVideo": "Video detections only (camera)",
-    "catalogEvidenceHint": "«Full catalog» lists every species in the DB. «Video only» drops visits with no video detection row. Pure audio not attached to a visit is omitted today (ingest limitation). Related planning: #125.",
+    "evidenceCamera": "Camera only",
+    "evidenceBirdnet": "BirdNET only",
+    "catalogEvidenceHint": "“Full catalog” lists every species in the DB. “Camera only” keeps visits with a video detection row, while “BirdNET only” keeps visits with an audio/BirdNET detection row. Pure audio not attached to a visit is still omitted today.",
     "errorLoad": "Error loading migration calendar.",
     "filterSectionTitle": "Filter migration data",
     "tableCaption": "Species by month: visit counts per cell; last column is the row total."
@@ -758,8 +769,11 @@
     "deprecatedKeysFound": "Deprecated keys found ({{count}})",
     "unknownKeysFound": "Unknown keys found ({{count}})",
     "observabilityTitle": "Notification observability",
-    "observabilityHint": "Telegram preview source counts for the last 24 hours. Below: Hub metric export URLs for Heimdall/Grafana.",
+    "observabilityHint": "For the last 24 hours, show Telegram preview source, delivery outcome, and fallback reason counts. Below: Hub metric export URLs for Heimdall/Grafana.",
     "observabilityLoadError": "Failed to load observability data",
+    "observabilityPreviewTitle": "Preview sources",
+    "observabilityDeliveryTitle": "Delivery outcomes",
+    "observabilityFallbackTitle": "Fallback reasons",
     "hubMetricsForHeimdall": "Hub metric export (for Heimdall widgets)",
     "hubMetricsHeimdallNote": "Use your BirdLense base URL (e.g. http://192.168.1.11:8085/metrics). Hub exposes metrics outward; Heimdall points to Hub.",
     "previewSource": {
@@ -767,6 +781,28 @@
       "bbox_crop": "bbox_crop",
       "full_frame": "full_frame",
       "none": "none",
+      "unknown": "unknown"
+    },
+    "delivery": {
+      "photo": "photo",
+      "text_fallback": "text after photo failure",
+      "text": "text only",
+      "failed": "delivery failed",
+      "skipped": "skipped",
+      "unknown": "unknown"
+    },
+    "fallbackReason": {
+      "none": "no fallback",
+      "no_preview": "no preview",
+      "decode_failed": "base64 decode failed",
+      "telegram_photo_failed": "sendPhoto failed",
+      "notifications_disabled": "notifications disabled",
+      "telegram_not_configured": "Telegram not configured",
+      "config_disabled": "photo disabled in settings",
+      "unsafe_path": "unsafe file path",
+      "read_failed": "file read failed",
+      "telegram_text_failed": "text fallback failed",
+      "unexpected_error": "unexpected error",
       "unknown": "unknown"
     }
   },
@@ -844,6 +880,16 @@
         { "title": "Active Status", "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections." },
         { "title": "Food Information", "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations" },
         { "title": "Food Effectiveness", "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy." }
+      ]
+    },
+    "library": {
+      "title": "Library and dataset",
+      "description": "Import archived recordings, rebuild derived assets, and prepare datasets for retraining. The “Period for operations” block controls which date range is sent to the heavier background jobs.",
+      "details": [
+        { "title": "The “All time” preset", "content": "BirdLense derives the archive range from recordings found on disk and fills the date fields for you. This is the safe way to target the entire archive without guessing dates manually." },
+        { "title": "Recommended order", "content": "Typical flow: 1) scan and import new recordings, 2) regenerate spectrograms or tracks for the needed range, 3) export or retro-export the dataset." },
+        { "title": "Heaviest operations", "content": "Track regeneration is the heaviest because it walks video frames again. Spectrogram regeneration is lighter but still reads the archive. Dataset export mostly packages already prepared files into ZIP." },
+        { "title": "How to avoid overload", "content": "If the archive is large, start with the last 7 or 30 days. Use the “All time” range when the device is idle and you have time to let the background job finish." }
       ]
     },
     "timeline": {
