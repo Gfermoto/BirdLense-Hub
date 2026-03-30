@@ -4,6 +4,7 @@ from sqlalchemy import func, and_, select
 
 from models import Species, SpeciesVisit, VideoSpecies
 from util import GENERIC_BIRD_SPECIES
+from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 
 
 def get_migration_calendar(
@@ -31,6 +32,8 @@ def get_migration_calendar(
         evidence = 'camera'
     if evidence not in ('all', 'camera', 'birdnet'):
         evidence = 'all'
+
+    suspect_ids = species_ids_to_exclude_from_bird_catalog(session)
 
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     filters = [exclude_bird]
@@ -99,9 +102,12 @@ def get_migration_calendar(
             pass
 
     if catalog == 'full':
-        all_species = session.query(Species.id, Species.name, Species.image_url).filter(
+        q = session.query(Species.id, Species.name, Species.image_url).filter(
             exclude_bird,
-        ).all()
+        )
+        if suspect_ids:
+            q = q.filter(~Species.id.in_(suspect_ids))
+        all_species = q.all()
         for sid, name, image_url in all_species:
             if sid not in species_data:
                 species_data[sid] = {
@@ -110,6 +116,12 @@ def get_migration_calendar(
                     'image_url': image_url,
                     'monthly_counts': [0] * 12,
                 }
+
+    if suspect_ids:
+        species_data = {
+            k: v for k, v in species_data.items()
+            if k not in suspect_ids
+        }
 
     species_list = [{**v, 'total': sum(v['monthly_counts'])} for v in species_data.values()]
     if catalog == 'active':

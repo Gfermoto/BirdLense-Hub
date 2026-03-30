@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Каталог видов / качество данных:** `species_suspect_blocklist.txt` — скрытие не-птиц и «вещей» в справочнике (`GET /api/ui/species?exclude_suspects=1`), карточка System «Качество каталога», `GET /api/ui/system/species-registry/data-quality` (отчёт, дубликаты имён для merge). Календарь миграции исключает те же строки; кэш `migration_cal:v2`.
 - **Deploy / статика:** rsync больше не исключает весь `app/data` — на сервер попадает `app/data/images` (иконки корма и т.д.); записи и БД по-прежнему в `app/data/recordings`, `app/data/db`. В образе — `data/images` в `/_bundled_data` и копирование в `/app/data/images` при старте контейнера (fallback).
 - **Миграции / UI+API:** фильтры «только с активностью» vs «весь каталог» (`catalog`) и «все визиты» vs «только с видео-детекцией» (`evidence`). Связь с планом [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125).
 - **Детекция без дообучения:** `detection.cross_source_confidence_bonus` (по умолчанию 0.02) — одноразовый бонус к confidence при первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию.

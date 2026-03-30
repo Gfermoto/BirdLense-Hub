@@ -188,6 +188,8 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 
+**Catalog quality:** `app/web/seed/species_suspect_blocklist.txt` lists terms used to hide non-bird / object rows in the Bird Directory (`GET /api/ui/species?exclude_suspects=1`, default in UI). Full report (suspects, duplicate-name merge candidates): System → “Species catalog data quality” or `GET /api/ui/system/species-registry/data-quality` (settings password).
+
 | Key | Description |
 |-----|-------------|
 | `merge_window_seconds` | MQTT merge window (8 s) |

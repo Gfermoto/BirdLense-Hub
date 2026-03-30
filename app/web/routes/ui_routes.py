@@ -47,6 +47,7 @@ from services.dataset_export_service import (
 )
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
+from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.migration_calendar_service import get_migration_calendar
 from services.ebird_region_service import get_region_comparison
 from services.species_regional_scope import compute_regional_scope_species_ids
@@ -679,7 +680,10 @@ def register_routes(app):
             return {'error': 'end_date must be YYYY-MM-DD'}, 400
         if start_date and end_date and start_date > end_date:
             return {'error': 'start_date must be <= end_date'}, 400
-        mck = f"migration_cal:{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}"
+        mck = (
+            f"migration_cal:v2:{start_year}:{end_year}:{start_date}:{end_date}:"
+            f"{catalog}:{evidence}"
+        )
         hit, mcached = cache_get(mck)
         if hit:
             return mcached, 200
@@ -1330,7 +1334,10 @@ def register_routes(app):
 
     @app.route('/api/ui/species', methods=['GET'])
     def get_all_species():
-        hit, scached = cache_get('species_list:v1')
+        exclude_suspects = request.args.get(
+            'exclude_suspects', '').strip().lower() in ('1', 'true', 'yes')
+        cache_key = f'species_list:v3:ex{1 if exclude_suspects else 0}'
+        hit, scached = cache_get(cache_key)
         if hit:
             return scached
         # Build base query - get sum of max_simultaneous birds from SpeciesVisit
@@ -1343,6 +1350,10 @@ def register_routes(app):
         # Group by species and order by name
         species_list = query.group_by(
             Species.id).order_by(Species.name.asc()).all()
+
+        if exclude_suspects:
+            bad_ids = species_ids_to_exclude_from_bird_catalog(db.session)
+            species_list = [s for s in species_list if s.Species.id not in bad_ids]
 
         regional_scope_ids = compute_regional_scope_species_ids()
 
@@ -1362,7 +1373,7 @@ def register_routes(app):
             }
             for species in species_list
         ]
-        cache_set('species_list:v1', result, _CACHE_SPECIES_LIST_SEC)
+        cache_set(cache_key, result, _CACHE_SPECIES_LIST_SEC)
         return result
 
     @app.route('/api/ui/species/observed', methods=['GET'])
