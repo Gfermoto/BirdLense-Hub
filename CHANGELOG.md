@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **CONFIGURATION / Telegram:** раздел «если my.telegram.org выдаёт ERROR» — обход через SOCKS/HTTP или без прокси без api_id; уточнены ключи `telegram_proxy_type` и MTProto.
 - **CONFIGURATION / Telegram:** добавлены простые команды для авто-ротации прокси на сервере: `make proxy-rotation-install`, `make proxy-rotation-status`, `make proxy-rotation-remove`.
+- **INSTALL / docs index:** добавлен короткий путь «one-command setup» для Telegram proxy autorotate в `INSTALL(.ru).md` и `docs/README(.ru).md` (установка, статус, отключение, one-shot).
 
 ### Added
 
