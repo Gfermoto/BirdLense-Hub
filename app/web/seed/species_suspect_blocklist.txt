@@ -1,0 +1,68 @@
+# Non-bird / object-like catalog entries (COCO, household, vehicles).
+# Matching: whole normalized species name OR taxon common name equals a line;
+# OR any whitespace-separated token (length >= 5) equals a line.
+# Lines starting with # are ignored. Empty lines ignored.
+
+knife
+bowl
+toilet
+plate
+fork
+spoon
+sink
+microwave
+refrigerator
+oven
+keyboard
+laptop
+scissors
+umbrella
+handbag
+tie
+suitcase
+frisbee
+skis
+snowboard
+kite
+skateboard
+surfboard
+vase
+teddy bear
+hair drier
+toothbrush
+cell phone
+remote
+traffic light
+fire hydrant
+stop sign
+parking meter
+bench
+elephant
+bear
+zebra
+giraffe
+cow
+sheep
+horse
+bicycle
+motorcycle
+bus
+train
+truck
+car
+airplane
+boat
+person
+woman
+man
+baby
+couch
+bed
+dining table
+potted plant
+tv
+mouse
+cat
+dog
+birdfeeder
+bird feeder

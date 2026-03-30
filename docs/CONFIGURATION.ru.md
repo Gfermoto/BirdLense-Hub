@@ -188,6 +188,8 @@
 
 **Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 
+**Качество каталога:** `app/web/seed/species_suspect_blocklist.txt` — термины для скрытия не-птиц/объектов в справочнике (`GET /api/ui/species?exclude_suspects=1`, по умолчанию в UI). Полный отчёт (подозрительные строки, дубликаты имён для слияния): System → карточка «Качество каталога видов» или `GET /api/ui/system/species-registry/data-quality` (с паролем настроек).
+
 | Ключ | Описание |
 |------|----------|
 | `merge_window_seconds` | Окно слияния MQTT (8 сек) |

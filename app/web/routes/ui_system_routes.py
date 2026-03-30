@@ -1595,4 +1595,26 @@ def register_routes(app):
             app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500
 
+    @app.route('/api/ui/system/species-registry/data-quality', methods=['GET'])
+    def species_registry_data_quality():
+        """Отчёт по мусорным/не-птица строкам каталога и дубликатам имён (слияние)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_data_quality_service import build_data_quality_report
+
+        suspect_limit = request.args.get('suspect_limit', type=int) or 400
+        suspect_limit = max(50, min(suspect_limit, 2000))
+        dup_limit = request.args.get('duplicate_limit', type=int) or 80
+        dup_limit = max(10, min(dup_limit, 500))
+        try:
+            body = build_data_quality_report(
+                db.session,
+                suspect_limit=suspect_limit,
+                duplicate_group_limit=dup_limit,
+            )
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Species data quality report failed: %s', e)
+            return {'error': str(e)}, 500
+
     _start_system_metrics_sampler(app)

@@ -377,6 +377,14 @@ paths:
       summary: List all species
       description: |
         Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
+        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+      parameters:
+        - in: query
+          name: exclude_suspects
+          required: false
+          schema:
+            type: boolean
+          description: If true, filter out catalog rows flagged by the data-quality blocklist.
       responses:
         "200":
           description: List of species
