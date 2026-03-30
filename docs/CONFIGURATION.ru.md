@@ -53,7 +53,9 @@
 | `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)) |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
-| `donate_url` | Ссылка на поддержку. Если задана: ссылка в **шапке**, в меню **шестерёнки** и **мобильном** меню, плюс карточка «Корм» на Overview ([#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121)). Пусто — без лишних ссылок (на карточке — неактивная заглушка). |
+| `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
+| `heimdall_url` | Ссылка на Heimdall Dashboard. Пусто — ссылка скрыта. |
+| `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
 **Платформы:** РФ — [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru), ЮMoney. За рубежом — Ko-fi, GitHub Sponsors, Patreon. Настройки → General → вставить URL страницы.
 

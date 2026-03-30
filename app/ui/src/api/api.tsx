@@ -336,6 +336,7 @@ export const fetchStatus = async (): Promise<{
   motion_source?: string;
   trigger_display?: string;
   birdnet_url?: string | null;
+  heimdall_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;
@@ -384,6 +385,35 @@ export const fetchSettingsRequiresPassword = async (): Promise<RequiresPasswordR
     requires: response.data?.requires === true,
     has_contributor_tier: response.data?.has_contributor_tier === true,
   };
+};
+
+export type ConfigAudit = {
+  deprecated_keys_present: string[];
+  unknown_keys: string[];
+  telegram: {
+    proxy_type: string;
+    send_photo: boolean;
+  };
+  gallery: {
+    enabled: boolean;
+    upload_url: string | null;
+    min_confidence?: number;
+  };
+  mapping: {
+    gray_to_grey_ok: boolean;
+    pairs: Record<string, string | undefined>;
+  };
+  heimdall: {
+    url: string | null;
+    configured: boolean;
+  };
+};
+
+export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
+  const response = await axios.get(`${BASE_API_URL}/system/config-audit`, {
+    withCredentials: true,
+  });
+  return response.data;
 };
 
 export type CheckAccessResult =

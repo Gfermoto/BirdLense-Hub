@@ -80,3 +80,9 @@ Brambling|Brambling
 
 Sturnus vulgaris (Common Starling)|Common Starling
 Common Starling|Common Starling
+
+# Gray/Grey harmonization (US/eBird names -> project canonical)
+Gray-headed Woodpecker|Grey-headed Woodpecker
+Grey-headed Woodpecker|Grey-headed Woodpecker
+Great Gray Shrike|Great Grey Shrike
+Great Grey Shrike|Great Grey Shrike
