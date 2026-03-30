@@ -79,8 +79,8 @@ def _check_restart_flag():
         raise SystemExit(0)
 
 
-def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str | None:
-    """Encode preview for notifications: prefer best_frame, fallback to crop from saved video by track frame."""
+def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
+    """Return (image_base64, source): best_frame | bbox_crop | full_frame | none."""
     try:
         import base64
         import numpy as np
@@ -89,13 +89,13 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str 
         if isinstance(bf, np.ndarray):
             ok, buf = cv2.imencode('.jpg', bf)
             if ok and buf is not None:
-                return base64.b64encode(buf.tobytes()).decode('ascii')
+                return base64.b64encode(buf.tobytes()).decode('ascii'), 'best_frame'
     except Exception as e:
         logging.warning("Encode best_frame for notify failed: %s", e)
 
     frames = detection.get('frames') or []
     if not video_file_path:
-        return None
+        return None, 'none'
 
     def _pick_timestamp() -> float:
         try:
@@ -114,7 +114,7 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str 
     cap = cv2.VideoCapture(video_file_path)
     try:
         if not cap.isOpened():
-            return None
+            return None, 'none'
 
         def _read_at(ts: float):
             fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
@@ -127,7 +127,7 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str 
 
         frame = _read_at(t) or _read_at(0.0)
         if frame is None:
-            return None
+            return None, 'none'
         h, w = frame.shape[:2]
         # Primary fallback: bbox crop when available.
         if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
@@ -140,17 +140,17 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str 
                 ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
                 if ok and buf is not None:
                     import base64
-                    return base64.b64encode(buf.tobytes()).decode('ascii')
+                    return base64.b64encode(buf.tobytes()).decode('ascii'), 'bbox_crop'
 
         # Secondary fallback: full frame (avoid empty notifications even without bbox).
         ok, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
         if not ok or buf is None:
-            return None
+            return None, 'none'
         import base64
-        return base64.b64encode(buf.tobytes()).decode('ascii')
+        return base64.b64encode(buf.tobytes()).decode('ascii'), 'full_frame'
     except Exception as e:
         logging.warning("Encode video crop for notify failed: %s", e)
-        return None
+        return None, 'none'
     finally:
         cap.release()
 
@@ -637,14 +637,33 @@ def main():
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
-                        image_base64 = _encode_notify_preview_base64(d, video_output)
+                        image_base64, preview_source = _encode_notify_preview_base64(d, video_output)
                         if image_base64 is None:
                             logging.info(
-                                "Notify %s without photo: no preview (provider=%s)",
-                                sn, d.get('detection_provider', 'unknown'))
+                                "Notify %s without photo: no preview (provider=%s, source=%s)",
+                                sn, d.get('detection_provider', 'unknown'), preview_source)
+                        else:
+                            logging.info("Notify preview source: %s (%s)", preview_source, sn)
                         try:
                             link = f"videos/{video_id}" if video_id else "live"
-                            api.notify_species(sn, image_base64=image_base64, link=link)
+                            api.notify_species(
+                                sn,
+                                image_base64=image_base64,
+                                link=link,
+                                preview_source=preview_source,
+                            )
+                            try:
+                                api.activity_log(
+                                    type='notify_preview',
+                                    data={
+                                        'species': sn,
+                                        'video_id': video_id,
+                                        'preview_source': preview_source,
+                                        'has_image': bool(image_base64),
+                                    },
+                                )
+                            except Exception as e:
+                                logging.warning("notify_preview activity_log failed: %s", e)
                         except Exception as e:
                             resp = getattr(e, 'response', None)
                             hint = ''
