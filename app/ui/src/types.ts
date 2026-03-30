@@ -172,6 +172,19 @@ export interface Settings {
     telegram_bot_token?: string;
     telegram_chat_id?: string;
     base_url?: string;
+    /** none | socks_http | mtproto */
+    telegram_proxy_type?: string;
+    telegram_proxy_url?: string;
+    telegram_mtproto_host?: string;
+    telegram_mtproto_port?: number;
+    telegram_mtproto_secret?: string;
+    telegram_api_id?: number;
+    telegram_api_hash?: string;
+    telegram_api_base?: string;
+    telegram_timeout?: number;
+    telegram_retries?: number;
+    compress_photo_over_kb?: number;
+    telegram_max_side_px?: number;
     message_thread_id?: string;
     disable_notification?: boolean;
     protect_content?: boolean;

@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import ListItemText from '@mui/material/ListItemText';
@@ -254,25 +255,149 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                         </Typography>
                       </Grid>
                       <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.telegram_proxy_url">
+                        <form.Field name="notifications.telegram_proxy_type">
                           {(field) => (
-                            <TextField
-                              fullWidth
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              label={t('settings.telegramProxyUrl')}
-                              placeholder="socks5h://127.0.0.1:9050"
-                              helperText={t('settings.telegramProxyUrlHint')}
-                              disabled={!notificationsEnabled}
-                            />
+                            <FormControl fullWidth disabled={!notificationsEnabled}>
+                              <InputLabel id="tg-proxy-type-label">
+                                {t('settings.telegramProxyType')}
+                              </InputLabel>
+                              <Select
+                                labelId="tg-proxy-type-label"
+                                label={t('settings.telegramProxyType')}
+                                value={field.state.value ?? 'socks_http'}
+                                onChange={(e) => field.handleChange(e.target.value as string)}
+                              >
+                                <MenuItem value="none">{t('settings.telegramProxyTypeNone')}</MenuItem>
+                                <MenuItem value="socks_http">
+                                  {t('settings.telegramProxyTypeSocksHttp')}
+                                </MenuItem>
+                                <MenuItem value="mtproto">
+                                  {t('settings.telegramProxyTypeMtproto')}
+                                </MenuItem>
+                              </Select>
+                              <FormHelperText>{t('settings.telegramProxyTypeHint')}</FormHelperText>
+                            </FormControl>
                           )}
                         </form.Field>
                       </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <Alert severity="info" sx={{ py: 1 }}>
-                          {t('settings.telegramMtprotoNote')}
-                        </Alert>
-                      </Grid>
+                      <form.Subscribe
+                        selector={(s) => s.values.notifications?.telegram_proxy_type ?? 'socks_http'}
+                      >
+                        {(proxyType) => (
+                          <>
+                            {(proxyType === 'socks_http' || !proxyType) && (
+                              <Grid size={{ xs: 12 }}>
+                                <form.Field name="notifications.telegram_proxy_url">
+                                  {(field) => (
+                                    <TextField
+                                      fullWidth
+                                      value={field.state.value ?? ''}
+                                      onChange={(e) => field.handleChange(e.target.value)}
+                                      label={t('settings.telegramProxyUrl')}
+                                      placeholder="socks5h://127.0.0.1:9050"
+                                      helperText={t('settings.telegramProxyUrlHint')}
+                                      disabled={!notificationsEnabled}
+                                    />
+                                  )}
+                                </form.Field>
+                              </Grid>
+                            )}
+                            {proxyType === 'mtproto' && (
+                              <>
+                                <Grid size={{ xs: 12 }}>
+                                  <Alert severity="info" sx={{ py: 1 }}>
+                                    {t('settings.telegramMtprotoApiHint')}
+                                  </Alert>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 8 }}>
+                                  <form.Field name="notifications.telegram_mtproto_host">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={field.state.value ?? ''}
+                                        onChange={(e) => field.handleChange(e.target.value)}
+                                        label={t('settings.telegramMtprotoHost')}
+                                        placeholder="proxy.example.com"
+                                        disabled={!notificationsEnabled}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 4 }}>
+                                  <form.Field name="notifications.telegram_mtproto_port">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        type="number"
+                                        inputProps={{ min: 1, max: 65535 }}
+                                        value={field.state.value ?? 443}
+                                        onChange={(e) =>
+                                          field.handleChange(
+                                            Math.max(
+                                              1,
+                                              Math.min(65535, Number(e.target.value) || 443),
+                                            ),
+                                          )
+                                        }
+                                        label={t('settings.telegramMtprotoPort')}
+                                        disabled={!notificationsEnabled}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                  <form.Field name="notifications.telegram_mtproto_secret">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        multiline
+                                        minRows={2}
+                                        value={field.state.value ?? ''}
+                                        onChange={(e) => field.handleChange(e.target.value)}
+                                        label={t('settings.telegramMtprotoSecret')}
+                                        placeholder="ee… / dd…"
+                                        helperText={t('settings.telegramMtprotoSecretHint')}
+                                        disabled={!notificationsEnabled}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="notifications.telegram_api_id">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        type="number"
+                                        inputProps={{ min: 0, step: 1 }}
+                                        value={field.state.value ?? 0}
+                                        onChange={(e) =>
+                                          field.handleChange(Math.max(0, Number(e.target.value) || 0))
+                                        }
+                                        label={t('settings.telegramApiId')}
+                                        helperText={t('settings.telegramApiIdHint')}
+                                        disabled={!notificationsEnabled}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="notifications.telegram_api_hash">
+                                    {(field) => (
+                                      <PasswordField
+                                        value={field.state.value ?? ''}
+                                        onChange={(v) => field.handleChange(v)}
+                                        label={t('settings.telegramApiHash')}
+                                        helperText={t('settings.telegramApiHashHint')}
+                                        disabled={!notificationsEnabled}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </form.Subscribe>
                       <Grid size={{ xs: 12 }}>
                         <form.Field name="notifications.telegram_api_base">
                           {(field) => (

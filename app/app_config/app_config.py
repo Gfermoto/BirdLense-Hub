@@ -14,6 +14,8 @@ SENSITIVE_KEYS = frozenset({
     'general.settings_password',
     'general.contributor_password',
     'notifications.telegram_bot_token',
+    'notifications.telegram_mtproto_secret',
+    'notifications.telegram_api_hash',
     'web_push.vapid_private_key',
     'mqtt.password',
     'video.go2rtc_password',
