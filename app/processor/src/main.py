@@ -94,36 +94,56 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str 
         logging.warning("Encode best_frame for notify failed: %s", e)
 
     frames = detection.get('frames') or []
-    if not frames or not video_file_path:
+    if not video_file_path:
         return None
-    mid = frames[len(frames) // 2] if isinstance(frames, list) else None
-    if not isinstance(mid, dict):
-        return None
-    bbox = mid.get('bbox')
-    t = float(mid.get('t') or detection.get('start_time') or 0)
-    if not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
-        return None
+
+    def _pick_timestamp() -> float:
+        try:
+            st = float(detection.get('start_time') or 0)
+            et = float(detection.get('end_time') or st)
+            if et > st:
+                return st + (et - st) * 0.5
+            return st
+        except Exception:
+            return 0.0
+
+    mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
+    bbox = mid.get('bbox') if isinstance(mid, dict) else None
+    t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
+
     cap = cv2.VideoCapture(video_file_path)
     try:
         if not cap.isOpened():
             return None
-        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-        if fps > 0.01:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(t * fps)))
-        else:
-            cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, t * 1000.0))
-        ok, frame = cap.read()
-        if not ok or frame is None:
+
+        def _read_at(ts: float):
+            fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+            if fps > 0.01:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(ts * fps)))
+            else:
+                cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
+            ok_local, frame_local = cap.read()
+            return frame_local if ok_local else None
+
+        frame = _read_at(t) or _read_at(0.0)
+        if frame is None:
             return None
         h, w = frame.shape[:2]
-        x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
-        y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
-        x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
-        y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
-        crop = frame[y1:y2, x1:x2]
-        if crop.size == 0:
-            return None
-        ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        # Primary fallback: bbox crop when available.
+        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+            x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
+            y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
+            x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
+            y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
+            crop = frame[y1:y2, x1:x2]
+            if crop.size > 0:
+                ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                if ok and buf is not None:
+                    import base64
+                    return base64.b64encode(buf.tobytes()).decode('ascii')
+
+        # Secondary fallback: full frame (avoid empty notifications even without bbox).
+        ok, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
         if not ok or buf is None:
             return None
         import base64

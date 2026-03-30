@@ -54,7 +54,7 @@
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
-| `heimdall_url` | Ссылка на Heimdall Dashboard. Пусто — ссылка скрыта. |
+| `heimdall_url` | Ссылка на Heimdall Dashboard. Используется для серверной проверки доступности/метаданных в разделе System (без отдельной кнопки/ссылки в шапке/футере). |
 | `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
 **Платформы:** РФ — [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru), ЮMoney. За рубежом — Ko-fi, GitHub Sponsors, Patreon. Настройки → General → вставить URL страницы.

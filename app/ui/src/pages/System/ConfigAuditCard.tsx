@@ -66,6 +66,14 @@ export function ConfigAuditCard() {
         <Typography variant="body2" sx={{ mb: 1.5 }}>
           <strong>{t('system.heimdallUrl')}:</strong> {data.heimdall.url || '—'}
         </Typography>
+        {data.heimdall.probe ? (
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
+            <strong>{t('system.heimdallProbe')}:</strong>{' '}
+            {data.heimdall.probe.reachable
+              ? `${t('system.ok')} (${data.heimdall.probe.http_status ?? '200'}, ${data.heimdall.probe.latency_ms ?? '-'}ms${data.heimdall.probe.title ? `, ${data.heimdall.probe.title}` : ''})`
+              : `${t('system.unreachable')} (${data.heimdall.probe.error || data.heimdall.probe.http_status || 'n/a'})`}
+          </Typography>
+        ) : null}
 
         {data.deprecated_keys_present.length > 0 && (
           <Alert severity="warning" sx={{ mb: 1 }}>

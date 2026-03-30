@@ -20,6 +20,7 @@ from services.species_registry_service import (
     species_registry_health,
     unresolved_species_report,
 )
+from services.heimdall_service import probe_heimdall
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
 from services.cache import cache_get, cache_set
@@ -361,6 +362,7 @@ def register_routes(app):
             'heimdall': {
                 'url': (app_config.get('general.heimdall_url') or '').strip() or None,
                 'configured': bool((app_config.get('general.heimdall_url') or '').strip()),
+                'probe': probe_heimdall((app_config.get('general.heimdall_url') or '').strip()),
             },
         }
 
