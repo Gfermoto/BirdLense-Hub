@@ -16,6 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Deploy / статика:** rsync больше не исключает весь `app/data` — на сервер попадает `app/data/images` (иконки корма и т.д.); записи и БД по-прежнему в `app/data/recordings`, `app/data/db`. В образе — `data/images` в `/_bundled_data` и копирование в `/app/data/images` при старте контейнера (fallback).
+- **Миграции / UI+API:** фильтры «только с активностью» vs «весь каталог» (`catalog`) и «все визиты» vs «только с видео-детекцией» (`evidence`). Связь с планом [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125).
+- **Детекция без дообучения:** `detection.cross_source_confidence_bonus` (по умолчанию 0.02) — одноразовый бонус к confidence при первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию.
 - **System / observability:** карточка «Наблюдаемость уведомлений» — счётчики `notify_preview_24h` и подсказка по URL экспорта метрик Hub для Heimdall/Grafana; `GET /api/ui/system/observability` (с авторизацией настроек), `GET /api/metrics/summary` (JSON, тот же смысл, что и `/metrics`).
 - **Docs / Heimdall:** явно описано направление данных: метрики **отдаёт Hub** (`/metrics`, `/api/metrics/summary`), в Heimdall добавляют ссылку на хаб; поле `heimdall_url` — только проверка доступности Heimdall **с сервера Hub**; про `http://heimdall.local` и резолв из Docker.
 - **Gallery:** нормализация JPEG (мин. размер, ограничение стороны) и fallback на **полный кадр**, если кроп по bbox не удался — ближе к надёжности Telegram-превью.

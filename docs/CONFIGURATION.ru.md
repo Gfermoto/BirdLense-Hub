@@ -190,6 +190,7 @@
 | `dedup_window_seconds` | Разрыв > N сек = разные визиты (60 сек) |
 | `one_per_species` | Один результат на вид (true) |
 | `source_priority` | При конфликте: `["yolo", "frigate", "birdnet"]` |
+| `cross_source_confidence_bonus` | При первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию — разово прибавить к confidence (потолок 1.0). По умолчанию **0.02**, без дообучения. `0` — выключить. |
 | `min_confidence_to_store` | Мин. confidence (0.05) |
 | `species_mapping` | Маппинг названий видов |
 

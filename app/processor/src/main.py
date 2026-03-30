@@ -590,10 +590,13 @@ def main():
                     **d, 'species_name': sn, 'species': sn,
                     'source': 'video', 'detection_provider': 'yolo'
                 })
+            cross_bonus = float(
+                app_config.get('detection.cross_source_confidence_bonus') or 0)
             video_detections = merge_detections(
                 video_list, mqtt_events, start_time, end_time,
                 merge_window, dedup_window, one_per_species=one_per_species,
-                source_priority=source_priority)
+                source_priority=source_priority,
+                cross_source_confidence_bonus=cross_bonus)
             video_detections = apply_multi_camera_confidence_boost(
                 video_detections, mqtt_events, app_config)
 

@@ -36,6 +36,8 @@ export const MigrationCalendar = () => {
   const [endYear, setEndYear] = useState<number | ''>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [catalogMode, setCatalogMode] = useState<'active' | 'full'>('active');
+  const [evidenceMode, setEvidenceMode] = useState<'all' | 'video'>('all');
 
   const handlePeriodMode = (_: React.MouseEvent<HTMLElement>, value: PeriodMode | null) => {
     if (value === null) return;
@@ -50,23 +52,41 @@ export const MigrationCalendar = () => {
   };
 
   const params = useMemo(() => {
+    let base: {
+      start_year?: number;
+      end_year?: number;
+      start_date?: string;
+      end_date?: string;
+      catalog?: 'active' | 'full';
+      evidence?: 'all' | 'video';
+    } = {
+      catalog: catalogMode,
+      evidence: evidenceMode,
+    };
     if (periodMode === 'years') {
       const s = startYear === '' ? undefined : startYear;
       const e = endYear === '' ? undefined : endYear;
-      if (s === undefined && e === undefined) return undefined;
-      return {
+      if (s === undefined && e === undefined) {
+        return base;
+      }
+      base = {
+        ...base,
         start_year: s ?? undefined,
         end_year: e ?? undefined,
       };
+      return base;
     }
     const sd = startDate || undefined;
     const ed = endDate || undefined;
-    if (!sd && !ed) return undefined;
+    if (!sd && !ed) {
+      return base;
+    }
     return {
+      ...base,
       start_date: sd,
       end_date: ed,
     };
-  }, [periodMode, startYear, endYear, startDate, endDate]);
+  }, [periodMode, startYear, endYear, startDate, endDate, catalogMode, evidenceMode]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
@@ -103,7 +123,11 @@ export const MigrationCalendar = () => {
       <Box sx={{ py: 4 }}>
         <PageHelp configKey="migrationCalendar" />
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">{t('migrationCalendar.noData')}</Typography>
+          <Typography color="text.secondary">
+            {catalogMode === 'full'
+              ? t('migrationCalendar.noSpeciesInDb')
+              : t('migrationCalendar.noData')}
+          </Typography>
         </Paper>
       </Box>
     );
@@ -195,6 +219,33 @@ export const MigrationCalendar = () => {
         )}
         <Typography variant="caption" color="text.secondary" display="block">
           {t('migrationCalendar.periodHint')}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mt: 1 }}>
+          <TextField
+            select
+            size="small"
+            label={t('migrationCalendar.catalogLabel')}
+            value={catalogMode}
+            onChange={(e) => setCatalogMode(e.target.value as 'active' | 'full')}
+            sx={{ minWidth: 220 }}
+          >
+            <MenuItem value="active">{t('migrationCalendar.catalogActive')}</MenuItem>
+            <MenuItem value="full">{t('migrationCalendar.catalogFull')}</MenuItem>
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label={t('migrationCalendar.evidenceLabel')}
+            value={evidenceMode}
+            onChange={(e) => setEvidenceMode(e.target.value as 'all' | 'video')}
+            sx={{ minWidth: 260 }}
+          >
+            <MenuItem value="all">{t('migrationCalendar.evidenceAll')}</MenuItem>
+            <MenuItem value="video">{t('migrationCalendar.evidenceVideo')}</MenuItem>
+          </TextField>
+        </Box>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+          {t('migrationCalendar.catalogEvidenceHint')}
         </Typography>
       </Box>
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>

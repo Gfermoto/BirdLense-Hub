@@ -42,7 +42,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/push/vapid-public` | GET | Web Push VAPID public key |
 | `/push/subscribe` | POST | Register push subscription |
 | `/report/pdf` | GET | Monthly PDF (`month=YYYY-MM` or time range) |
-| `/migration-calendar` | GET | Visits aggregated by species × month |
+| `/migration-calendar` | GET | Visits aggregated by species × month. Query: `catalog`=`active`\|`full`, `evidence`=`all`\|`video`, plus optional year/date filters |
 | `/species/:id/xeno-canto` | GET | Xeno-canto clips for species |
 | `/species/:id/summary` | GET | Species summary |
 | `/restart-processor` | POST | Restart processor (**Admin**) |

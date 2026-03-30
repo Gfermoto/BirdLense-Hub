@@ -666,13 +666,19 @@ def register_routes(app):
         end_year = request.args.get('end_year', type=int)
         start_date = request.args.get('start_date', type=str)
         end_date = request.args.get('end_date', type=str)
+        catalog = (request.args.get('catalog') or 'active').strip().lower()
+        evidence = (request.args.get('evidence') or 'all').strip().lower()
+        if catalog not in ('active', 'full'):
+            return {'error': 'catalog must be active or full'}, 400
+        if evidence not in ('all', 'video'):
+            return {'error': 'evidence must be all or video'}, 400
         if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
             return {'error': 'start_date must be YYYY-MM-DD'}, 400
         if end_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', end_date):
             return {'error': 'end_date must be YYYY-MM-DD'}, 400
         if start_date and end_date and start_date > end_date:
             return {'error': 'start_date must be <= end_date'}, 400
-        mck = f"migration_cal:{start_year}:{end_year}:{start_date}:{end_date}"
+        mck = f"migration_cal:{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}"
         hit, mcached = cache_get(mck)
         if hit:
             return mcached, 200
@@ -682,6 +688,8 @@ def register_routes(app):
             end_year=end_year,
             start_date=start_date,
             end_date=end_date,
+            catalog=catalog,
+            evidence=evidence,
         )
         cache_set(mck, data, _CACHE_MIGRATION_SEC)
         return data, 200
