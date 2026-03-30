@@ -241,7 +241,7 @@
     "notificationsBaseUrlHint": "http://birdlense.local:8085 — ссылка в сообщениях",
     "telegramNetworkTitle": "Доставка в Telegram (сеть)",
     "telegramProxyType": "Тип прокси",
-    "telegramProxyTypeHint": "Как в Telegram: без прокси, SOCKS/HTTP для Bot API или MTProto (сервер, порт, секрет).",
+    "telegramProxyTypeHint": "Нет ключей с my.telegram.org? Выберите «SOCKS5 / HTTP» или «Без прокси» — api_id не нужен. MTProto только если есть api_id+api_hash с сайта Telegram.",
     "telegramProxyTypeNone": "Без прокси",
     "telegramProxyTypeSocksHttp": "SOCKS5 / HTTP (URL)",
     "telegramProxyTypeMtproto": "MTProto (сервер, порт, секрет)",

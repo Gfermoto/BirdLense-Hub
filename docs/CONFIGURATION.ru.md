@@ -232,7 +232,10 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `notifications.telegram_bot_token` | Токен бота (@BotFather → /newbot) |
 | `notifications.telegram_chat_id` | ID чата или канала (например -1001234567890) |
 | `notifications.base_url` | URL Hub для ссылок (кнопка «Open Live») |
-| `notifications.telegram_proxy_url` | Исходящий прокси к Bot API (`socks5h://…`, `http://…`). Пусто — напрямую. В образе web — `requests[socks]`. |
+| `notifications.telegram_proxy_type` | `none` — без прокси; `socks_http` — URL ниже (обычный случай); `mtproto` — сервер/порт/секрет как в приложении Telegram + **api_id/api_hash** |
+| `notifications.telegram_proxy_url` | При `socks_http`: прокси к Bot API (`socks5h://…`, `http://…`). Пусто — напрямую. В образе web — `requests[socks]`. |
+| `notifications.telegram_mtproto_host` / `telegram_mtproto_port` / `telegram_mtproto_secret` | Только при `mtproto`; секрет — hex из приложения Telegram |
+| `notifications.telegram_api_id` / `telegram_api_hash` | Только при `mtproto`; выдаётся на **https://my.telegram.org** → API development tools (или env `TELEGRAM_API_ID` / `TELEGRAM_API_HASH`) |
 | `notifications.telegram_api_base` | Пусто — `https://api.telegram.org`; иначе база вашего HTTPS-прокси |
 | `notifications.telegram_timeout` | Таймаут запросов к Telegram (сек; для текста используется половина) |
 | `notifications.telegram_retries` | Число повторов при таймауте/ошибке сети |
@@ -254,6 +257,14 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `processor.dataset_min_confidence` | Мин. confidence (0.0–1.0) для сохранения кадра в датасет. По умолчанию 0.5 |
 
 **Telegram Bot API 9.4/9.5:** кнопки с эмодзи и стилем (primary), динамическое время `<tg-time format="r">`, большие превью ссылок (`link_preview_large`).
+
+### Если my.telegram.org выдаёт ERROR и не даёт создать приложение
+
+Сайт **https://my.telegram.org** — сервис Telegram; BirdLense на него не влияет. Часто ломается из части сетей (без VPN/с VPN, капча, лимиты).
+
+**Что делать без api_id / api_hash:** не используйте тип прокси **MTProto** в настройках Hub. Выберите **SOCKS5 / HTTP** и укажите URL любого прокси, через который ваш сервер **достучится до `https://api.telegram.org` по HTTPS** (например свой `socks5h://…` на VPS или дома), либо **без прокси**, если доступ к Bot API уже есть. Для этого **пары api_id/api_hash не требуется** — достаточно токена бота и `chat_id`.
+
+Режим **MTProto** в Hub нужен только если вы **намеренно** шлёте трафик через **MTProto-прокси** (как в клиенте Telegram); он технически завязан на Telethon и **обязателен** api_id+api_hash с my.telegram.org — без работающего сайта этот путь недоступен, пока вы не получите ключи другим способом (другая сеть, VPN, другое устройство, помощь знакомого).
 
 ### Кастомные эмодзи на кнопках (Premium)
 
