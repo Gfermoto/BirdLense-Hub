@@ -92,6 +92,15 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
 
+# 1.6 Идемпотентные значения в app/.env для production (только если строки ещё не заданы).
+# TRUSTED_PROXY=1 — rate limit и логика IP за nginx; CLEANUP — убрать legacy-плейсхолдеры импорта при старте.
+if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  echo "1.6 Production .env defaults (append if missing)..."
+  ssh ${SSH_OPTS} "${HOST}" "F=\"${REMOTE_DIR}/app/.env\"; touch \"\$F\"; \
+    grep -qE '^TRUSTED_PROXY=' \"\$F\" || echo 'TRUSTED_PROXY=1' >> \"\$F\"; \
+    grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
+fi
+
 # 1.8 Intel GPU: на сервере с /dev/dri/renderD128 — создать/обновить override (devices + sysfs для метрик GPU)
 echo "1.8 Проверка Intel GPU на сервере..."
 ssh ${SSH_OPTS} "${HOST}" "cd ${REMOTE_DIR}/app && \
