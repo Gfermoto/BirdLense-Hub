@@ -61,20 +61,44 @@ class TestBirdFoodSeed:
 
             assert missing == []
 
-    def test_migrate_apple_pieces_image_repairs_missing_or_legacy_path(self, app):
-        from models import BirdFood, db
-        from seed.seed import _migrate_apple_pieces_image
+    def test_remove_legacy_apple_pieces_deletes_row_and_association(self, app):
+        from models import BirdFood, Video, db, video_bird_food_association
 
         with app.app_context():
+            from datetime import datetime, timezone
+            from seed.seed import _remove_legacy_apple_pieces_bird_food
+
             BirdFood.query.delete()
+            Video.query.delete()
             db.session.commit()
-            row = BirdFood(
+            apple = BirdFood(
                 name='Apple pieces',
-                description='legacy row',
-                image_url='',
+                description='legacy',
+                image_url='data/images/food/apple-pieces.svg',
             )
-            db.session.add(row)
+            db.session.add(apple)
+            db.session.flush()
+            v = Video(
+                processor_version='t',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path='x/y.mp4',
+            )
+            db.session.add(v)
+            db.session.flush()
+            db.session.execute(
+                video_bird_food_association.insert().values(
+                    video_id=v.id,
+                    birdfood_id=apple.id,
+                ),
+            )
             db.session.commit()
 
-            assert _migrate_apple_pieces_image() is True
-            assert row.image_url == 'data/images/food/apple-pieces.svg'
+            assert _remove_legacy_apple_pieces_bird_food() is True
+            db.session.commit()
+            assert BirdFood.query.filter_by(name='Apple pieces').first() is None
+            assert db.session.execute(
+                video_bird_food_association.select().where(
+                    video_bird_food_association.c.video_id == v.id,
+                ),
+            ).first() is None
