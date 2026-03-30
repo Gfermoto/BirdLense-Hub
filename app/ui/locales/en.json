@@ -169,7 +169,7 @@
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "heimdallUrl": "Heimdall URL",
-    "heimdallUrlHint": "Heimdall dashboard URL used for server-side reachability/info probe on the System page.",
+    "heimdallUrlHint": "Any Heimdall URL resolvable from the Hub host (e.g. http://heimdall.local or a LAN IP). For Docker, ensure the hostname resolves inside the container (extra_hosts, shared network). For BirdLense metrics in Heimdall, see System → Observability (/metrics, /api/metrics/summary).",
     "donateUrl": "Support page URL",
     "donateUrlHint": "Opens when users tap the single heart icon in the top bar (next to language / settings). Not shown on the Food card or in the gear menu.",
     "accordionPerformance": "Performance / API cache",
@@ -745,7 +745,19 @@
     "ok": "reachable",
     "unreachable": "unreachable",
     "deprecatedKeysFound": "Deprecated keys found ({{count}})",
-    "unknownKeysFound": "Unknown keys found ({{count}})"
+    "unknownKeysFound": "Unknown keys found ({{count}})",
+    "observabilityTitle": "Notification observability",
+    "observabilityHint": "Telegram preview source counts for the last 24 hours. Below: Hub metric export URLs for Heimdall/Grafana.",
+    "observabilityLoadError": "Failed to load observability data",
+    "hubMetricsForHeimdall": "Hub metric export (for Heimdall widgets)",
+    "hubMetricsHeimdallNote": "Use your BirdLense base URL (e.g. http://192.168.1.11:8085/metrics). Hub exposes metrics outward; Heimdall points to Hub.",
+    "previewSource": {
+      "best_frame": "best_frame",
+      "bbox_crop": "bbox_crop",
+      "full_frame": "full_frame",
+      "none": "none",
+      "unknown": "unknown"
+    }
   },
   "food": {
     "food": "Food",

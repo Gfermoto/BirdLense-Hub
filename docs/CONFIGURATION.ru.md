@@ -54,10 +54,19 @@
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
-| `heimdall_url` | Ссылка на Heimdall Dashboard. Используется для серверной проверки доступности/метаданных в разделе System (без отдельной кнопки/ссылки в шапке/футере). |
+| `heimdall_url` | Базовый URL Heimdall только для **проверки с Hub** (раздел System). Можно указать `http://heimdall.local`, если имя резолвится **с хоста/контейнера Hub** (Docker: общая сеть, `extra_hosts`, DNS в LAN). Это **не** настройка «Heimdall читает Hub» — см. ниже. |
 | `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
 **Платформы:** РФ — [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru), ЮMoney. За рубежом — Ko-fi, GitHub Sponsors, Patreon. Настройки → General → вставить URL страницы.
+
+### Heimdall и метрики Hub (направление данных)
+
+- **Heimdall → Hub:** Чтобы в Heimdall отображалось состояние BirdLense, в Heimdall добавьте внешнюю ссылку или плитку на ваш хаб, например:
+  - текст Prometheus: `http://<хост>:<порт>/metrics` или `/api/metrics`
+  - JSON (те же счётчики): `http://<хост>:<порт>/api/metrics/summary`
+- **Hub → Heimdall:** Поле `heimdall_url` нужно только чтобы **Hub проверял** доступность Heimdall с сервера (latency, HTTP, заголовок). Это не замена экспорта метрик из Hub.
+
+На странице «Система» эти URL также показаны в блоке **Наблюдаемость уведомлений** (после входа в настройки).
 
 ---
 
@@ -214,6 +223,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 - **Адрес `upload_url`:** полный URL **POST** приёмника (multipart). Сервер должен отвечать **200, 201 или 204**. Проверьте с машины, где крутится Hub: `docker exec birdlense curl -sS -o /dev/null -w '%{http_code}' -X POST …` или временный тестовый контейнер из репозитория.
 - **URL из Docker:** хост в `upload_url` должен быть доступен **из контейнера web** (например `http://gallery-test:5000/api/upload` с `docker-compose.gallery-test.yml`). **`http://127.0.0.1:…` на хосте** из контейнера часто указывает **на сам контейнер**, а не на ваш ПК.
 - **Логи:** в логе web — `Gallery upload:` (успех), `Gallery upload failed` (код ответа), `Gallery: video N — нет строк для загрузки` (условия фильтра не выполнены), `Gallery upload thread failed` (исключение в потоке).
+- **Качество картинки:** кадр по-прежнему извлекается из записи; добавлена **нормализация JPEG** (минимальный размер, ограничение по длинной стороне), как для «капризных» приёмников. Если кроп по bbox не получился — отправляется **полный кадр** в середине клипа (аналогично fallback для Telegram).
 
 ---
 

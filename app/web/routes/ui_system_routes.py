@@ -8,7 +8,7 @@ import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
-from flask import request, Response, send_file
+from flask import request, Response, send_file, jsonify
 import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit, SystemResourceSample
 from sqlalchemy import func, select, exists, delete
@@ -236,11 +236,7 @@ def register_routes(app):
             return None
         return db.engine.url.database
 
-    def _prometheus_metrics_body(app):
-        sys_m = _collect_live_system_metrics(app)
-        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
-        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
-        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+    def _notify_preview_by_source_24h():
         now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
         preview_since = now_utc - timedelta(hours=24)
         preview_rows = (
@@ -261,6 +257,14 @@ def register_routes(app):
             if src not in preview_by_source:
                 src = 'unknown'
             preview_by_source[src] += 1
+        return preview_by_source
+
+    def _prometheus_metrics_body(app):
+        sys_m = _collect_live_system_metrics(app)
+        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+        preview_by_source = _notify_preview_by_source_24h()
         lines = [
             '# HELP birdlense_cpu_usage_percent CPU usage',
             '# TYPE birdlense_cpu_usage_percent gauge',
@@ -298,6 +302,34 @@ def register_routes(app):
                 f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
             ])
         return '\n'.join(lines) + '\n'
+
+    @app.route('/api/metrics/summary', methods=['GET'])
+    def metrics_summary_json():
+        """JSON snapshot for Grafana/Heimdall widgets or external monitors (same data as /metrics)."""
+        try:
+            sys_m = _collect_live_system_metrics(app)
+            detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+            species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+            videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+            preview = _notify_preview_by_source_24h()
+            payload = {
+                'service': 'birdlense-hub',
+                'cpu_usage_percent': float(sys_m['cpu']['percent']),
+                'memory_used_percent': float(sys_m['memory']['percent']),
+                'memory_used_bytes': int(sys_m['memory']['used_bytes']),
+                'memory_total_bytes': int(sys_m['memory']['total_bytes']),
+                'disk_used_percent': float(sys_m['disk']['percent']),
+                'detections_total': int(detections),
+                'species_count': int(species_count),
+                'videos_total': int(videos_count),
+                'notify_preview_24h': preview,
+            }
+            if sys_m['gpu_percent'] is not None:
+                payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
+            return jsonify(payload)
+        except Exception as e:
+            app.logger.error('metrics summary: %s', e)
+            return jsonify({'error': 'Failed to build metrics summary'}), 500
 
     @app.route('/api/metrics', methods=['GET'])
     def prometheus_metrics_api():
@@ -339,6 +371,25 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/observability', methods=['GET'])
+    def system_observability():
+        """Telegram preview-source counts + URLs for exporting Hub metrics (Heimdall/Grafana)."""
+        if not settings_check_access():
+            return {'error': 'Unauthorized'}, 401
+        try:
+            preview = _notify_preview_by_source_24h()
+            return {
+                'notify_preview_24h': preview,
+                'hub_metrics': {
+                    'prometheus_text': '/metrics',
+                    'prometheus_text_alt': '/api/metrics',
+                    'json_summary': '/api/metrics/summary',
+                },
+            }
+        except Exception as e:
+            app.logger.error('observability: %s', e)
+            return {'error': 'Failed'}, 500
 
     @app.route('/api/ui/system/config-audit', methods=['GET'])
     def system_config_audit():
