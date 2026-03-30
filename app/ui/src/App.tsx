@@ -47,6 +47,8 @@ const theme = createTheme({
     },
     primary: {
       main: '#10B981', // Emerald 500
+      /** Текст/иконки на сплошной заливке primary — WCAG AA для обычного текста */
+      dark: '#047857',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -142,6 +144,9 @@ const theme = createTheme({
         standardInfo: {
           color: 'text.primary',
           '& .MuiAlert-message .MuiButton-root': {
+            color: '#7dd3fc',
+          },
+          '& .MuiAlert-message a': {
             color: '#7dd3fc',
           },
         },

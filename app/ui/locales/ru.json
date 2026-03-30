@@ -427,7 +427,9 @@
     "timeDay": "День (10–14)",
     "timeAfternoon": "День (14–18)",
     "timeEvening": "Вечер (18–22)",
-    "hourFilterChip": "Час: {{from}}–{{to}}"
+    "hourFilterChip": "Час: {{from}}–{{to}}",
+    "expandVisitDetails": "Развернуть детали визита",
+    "collapseVisitDetails": "Свернуть детали визита"
   },
   "pwa": {
     "installPrompt": "Добавить BirdLense Hub на главный экран",
@@ -602,6 +604,7 @@
   "overviewExtra": {
     "temperature": "Температура",
     "allSpecies": "Все виды",
+    "hourlyChartSpecies": "Вид (активность по часам)",
     "detections": "Обнаружения"
   },
   "video": {

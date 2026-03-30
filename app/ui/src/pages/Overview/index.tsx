@@ -145,7 +145,7 @@ export const Overview = () => {
             <Paper
               sx={{
                 p: 2,
-                bgcolor: 'primary.main',
+                bgcolor: 'primary.dark',
                 color: 'primary.contrastText',
                 display: 'flex',
                 alignItems: 'center',
@@ -154,10 +154,10 @@ export const Overview = () => {
             >
               <BirdIcon size={40} />
               <Box>
-                <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
+                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.92)' }}>
                   {t('overview.lastBird')}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#ffffff' }}>
                   {(dayjs(overviewData.lastDetection.start_time ?? undefined).isValid()
                     ? dayjs(overviewData.lastDetection.start_time).format('HH:mm')
                     : '—')}{' '}
