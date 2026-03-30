@@ -167,6 +167,7 @@ def register_routes(app):
         detection = data.get('detection')
         image_path = data.get('image_path')
         image_base64 = data.get('image_base64')
+        link = (data.get('link') or 'live')
         image_bytes = None
         if image_base64:
             try:
@@ -185,7 +186,7 @@ def register_routes(app):
             icon = "chipmunk" if any(s in lower for s in (
                 "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
             notify(f"{detection} Detected", tags=icon, image_path=image_path,
-                  image_bytes=image_bytes, timestamp=datetime.now(timezone.utc))
+                  image_bytes=image_bytes, link=link, timestamp=datetime.now(timezone.utc))
         return {'message': f'Successfully received notification of {detection}'}, 200
 
     @app.route('/api/processor/notify/motion', methods=['POST'])
