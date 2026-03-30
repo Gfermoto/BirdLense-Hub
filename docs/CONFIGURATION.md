@@ -273,10 +273,17 @@ Proxy check example (expect `404`/`401` from Telegram API — this is normal and
 
 ⚠️ Public proxies are unstable and unsafe for long-term production use; prefer your own SOCKS5/HTTPS proxy.
 
-Auto-select best proxy on production server:
+Auto-select best proxy on production server (one-shot):
 `make refresh-telegram-proxy`
 
+Scheduled auto-rotation (easy setup):
+- Install server cron (default every 6 hours): `make proxy-rotation-install`
+- Check status and recent logs: `make proxy-rotation-status`
+- Remove schedule: `make proxy-rotation-remove`
+
 The script `scripts/refresh-telegram-proxy.sh` tests proxies from the Hub host, picks the fastest working one, updates `notifications.telegram_proxy_type=socks_http` and `notifications.telegram_proxy_url`, makes a `user_config.yaml` backup, and restarts containers only when the selected proxy changes.
+
+> Important: after updating repository scripts, run `make deploy` once, then install schedule.
 
 ### Custom emoji on buttons (Premium)
 
