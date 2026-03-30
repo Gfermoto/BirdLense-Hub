@@ -8,21 +8,20 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
-# Ultralytics YOLO COCO (80 classes): животные без person и без «вещей».
-_COCO_ANIMAL_CLASS_NAMES = frozenset(
-    {
-        'bird',
-        'cat',
-        'dog',
-        'horse',
-        'sheep',
-        'cow',
-        'elephant',
-        'bear',
-        'zebra',
-        'giraffe',
-    }
-)
+# Ultralytics YOLO COCO (80 classes): в режиме single-stage только «bird».
+# Иначе cat/dog/лошадь попадали в БД как «виды» и размывали каталог наблюдений.
+# Полный набор COCO — только при ``coco_animals_only_auto=False`` (см. настройки процессора).
+_COCO_BIRD_ONLY_CLASS_NAMES = frozenset({'bird'})
+
+
+def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
+    """ByteTrack иногда возвращает ``boxes.id is None`` на первом реальном кадре — повтор без нового кадра."""
+    results = model.track(frame, **kwargs)
+    if not results or len(results[0].boxes) == 0:
+        return results
+    if results[0].boxes.id is None:
+        results = model.track(frame, **kwargs)
+    return results
 
 
 @dataclass
@@ -104,37 +103,45 @@ class SingleStageStrategy(DetectionStrategy):
             self.logger.info(f'Regional species filters active: {len(self.classes)} classes enabled.')
             self.logger.info(f'Enabled classes: {enabled_classes}')
         elif coco_animals_only_auto:
-            # yolov8n.pt (COCO): 80 classes — оставляем только животных (не person, не нож/туалет и т.д.).
+            # yolov8n.pt (COCO): 80 classes — только птица, чтобы не писать в визиты млекопитающих.
             names = self.model.names
             if isinstance(names, dict) and len(names) == 80:
-                animal_ids = [
+                bird_ids = [
                     cid
                     for cid, label in names.items()
-                    if str(label).strip().lower() in _COCO_ANIMAL_CLASS_NAMES
+                    if str(label).strip().lower() in _COCO_BIRD_ONLY_CLASS_NAMES
                 ]
-                if animal_ids:
-                    self.classes = animal_ids
+                if bird_ids:
+                    self.classes = bird_ids
                     self.logger.info(
-                        'Single-stage COCO (80 classes): detection limited to animal classes %s '
+                        'Single-stage COCO (80 classes): detection limited to bird class only %s '
                         '(processor.single_stage_coco_animals_only_auto). '
-                        'Set false to allow all COCO classes.',
-                        sorted(_COCO_ANIMAL_CLASS_NAMES),
+                        'Set false for full COCO (not recommended for bird catalog).',
+                        sorted(_COCO_BIRD_ONLY_CLASS_NAMES),
                     )
 
         # Warmup
         self.model.track(np.zeros((640, 640, 3)), tracker="bytetrack.yaml", persist=True, verbose=False)
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
-        results = self.model.track(
-            frame, persist=True, conf=min_confidence,
-            classes=self.classes, tracker=tracker_config, verbose=False)
+        results = _track_maybe_retry(
+            self.model,
+            frame,
+            persist=True,
+            conf=min_confidence,
+            classes=self.classes,
+            tracker=tracker_config,
+            verbose=False,
+        )
         
         if not results or len(results[0].boxes) == 0:
             return []
 
         boxes = results[0].boxes
-        # boxes.id can be None on first frame (ByteTrack has no previous frames to match)
-        track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else list(range(len(boxes)))
+        # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
+        if boxes.id is None:
+            return []
+        track_ids = boxes.id.int().cpu().tolist()
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
         xyxyn = boxes.xyxyn.cpu().numpy()
@@ -238,15 +245,24 @@ class TwoStageStrategy(DetectionStrategy):
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
         """Binary detect → фильтр валидности → round-robin классификация одного бокса на кадр."""
-        results = self.binary_model.track(
-            frame, persist=True, conf=min_confidence, verbose=False, imgsz=320, tracker=tracker_config)
+        results = _track_maybe_retry(
+            self.binary_model,
+            frame,
+            persist=True,
+            conf=min_confidence,
+            verbose=False,
+            imgsz=320,
+            tracker=tracker_config,
+        )
             
         if not results or len(results[0].boxes) == 0:
             return []
 
         boxes = results[0].boxes
-        # boxes.id can be None on first frame (ByteTrack has no previous frames to match)
-        track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else list(range(len(boxes)))
+        # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
+        if boxes.id is None:
+            return []
+        track_ids = boxes.id.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
         xyxyn = boxes.xyxyn.cpu().numpy() # normalized for output
         xyxy = boxes.xyxy.cpu().numpy()   # absolute for cropping

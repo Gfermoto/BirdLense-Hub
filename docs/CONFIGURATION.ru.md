@@ -40,6 +40,10 @@
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT (если не в конфиге) |
 | `HA_TOKEN` | Токен Home Assistant |
 | `GO2RTC_URL` | URL Go2RTC (если не в конфиге) |
+| `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA` | `1` — при старте выполнять привязку видов к реестру (`backfill`); по умолчанию выкл.; иначе: `POST /api/ui/system/species-registry/backfill` |
+| `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
+| `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
+| `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
 
 См. `app/.env.example`. Секреты генерируются при `make setup` (вызывается из `make start`/`make pull`).
 
@@ -244,7 +248,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `general.enable_notifications` | Включить уведомления |
 | `notifications.telegram_bot_token` | Токен бота (@BotFather → /newbot) |
 | `notifications.telegram_chat_id` | ID чата или канала (например -1001234567890) |
-| `notifications.base_url` | URL Hub для ссылок (кнопка «Open Live») |
+| `notifications.base_url` | URL Hub для ссылок на видео/Live. Если пусто, относительные ссылки не превратятся в полный URL, а Telegram link preview будет менее полезен |
 | `notifications.telegram_proxy_type` | `none` — без прокси; `socks_http` — URL ниже (обычный случай); `mtproto` — сервер/порт/секрет как в приложении Telegram + **api_id/api_hash** |
 | `notifications.telegram_proxy_url` | При `socks_http`: прокси к Bot API (`socks5h://…`, `http://…`). Пусто — напрямую. В образе web — `requests[socks]`. |
 | `notifications.telegram_mtproto_host` / `telegram_mtproto_port` / `telegram_mtproto_secret` | Только при `mtproto`; секрет — hex из приложения Telegram |
@@ -257,7 +261,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `notifications.message_thread_id` | ID топика в канале с форумом |
 | `notifications.disable_notification` | Тихие сообщения (без звука) |
 | `notifications.protect_content` | Запретить пересылку и сохранение |
-| `notifications.link_preview_large` | true: большие превью ссылок (Bot API 9.4), ссылка добавляется в текст |
+| `notifications.link_preview_large` | true: большие превью ссылок (Bot API 9.4), ссылка добавляется в текст/подпись. Это дополнение к фото, а не замена `sendPhoto` |
 | `notifications.use_custom_emoji` | true: icon_custom_emoji_id на кнопках (требует Premium у владельца бота) |
 | `notifications.custom_emoji_id_bird` | ID кастомного эмодзи для птиц (из @Stickers) |
 | `notifications.custom_emoji_id_chipmunk` | ID для белок |
@@ -265,9 +269,11 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `notifications.paid_media_view_star_count` | Stars за просмотр фото (0=бесплатно, 1–25000). sendPaidMedia |
 | `notifications.paid_media_forward_star_count` | При бесплатном просмотре: 0=разрешить пересылку, >0=запретить. При платном — пересылка включена. |
 | `general.notification_excluded_species` | Виды, исключённые из уведомлений |
-| `processor.save_images` | При true — отправлять фото детекции в Telegram |
+| `processor.save_images` | При true — сохранять кадры детекций на диск для отладки. На отправку фото в Telegram не влияет |
 | `processor.save_dataset_crops` | При true — сохранять best_frame в `data/dataset/train/<Species>/` для экспорта и дообучения |
 | `processor.dataset_min_confidence` | Мин. confidence (0.0–1.0) для сохранения кадра в датасет. По умолчанию 0.5 |
+
+**Как BirdLense отправляет Telegram-уведомление:** сначала пытается отправить именно **фото** (`sendPhoto` / MTProto media) из `best_frame`; если его нет — из bbox-crop по видео; если и это не удалось — полный кадр. При ошибке Telegram или битом превью делается fallback на текстовое сообщение со ссылкой/кнопкой, а причина fallback пишется в наблюдаемость (System → Observability).
 
 **Telegram Bot API 9.4/9.5:** кнопки с эмодзи и стилем (primary), динамическое время `<tg-time format="r">`, большие превью ссылок (`link_preview_large`).
 
@@ -333,7 +339,7 @@ Push-уведомления в браузере (дополнение или а�
 
 **Настройка:** Настройки → Уведомления → «Включить Web Push». Браузер запросит разрешение; подписка сохраняется на сервере. При детекции вида push отправляется всем подписчикам.
 
-**Требования:** HTTPS (или localhost), включённые уведомления (`general.enable_notifications`), `notifications.base_url` для ссылки в push.
+**Требования:** HTTPS (или localhost), включённые уведомления (`general.enable_notifications`), `notifications.base_url` для ссылки в push. Подписка через UI теперь требует тот же доступ, что и настройки (`settings_check_access()`), чтобы посторонний клиент в сети не мог молча включить `web_push.enabled`.
 
 ## UI
 
@@ -348,6 +354,10 @@ Push-уведомления в браузере (дополнение или а�
 | Ключ | Описание |
 |------|----------|
 | `url` | URL для POST при каждой детекции. JSON: species, confidence, time, source. Для IFTTT, Zapier, своих скриптов |
+
+**Ограничения безопасности:** разрешены только `http`/`https` URL. Приватные / loopback / link-local адреса (`127.0.0.1`, `192.168.x.x`, `10.x.x.x`, `localhost` и т.п.) блокируются, чтобы webhook не использовался как SSRF-прокси во внутреннюю сеть.
+
+**Trusted proxy:** если Gunicorn стоит за доверенным reverse proxy и нужно учитывать `X-Real-IP` / `X-Forwarded-For` для rate-limit, задайте `TRUSTED_PROXY=1`. Без этого BirdLense берёт IP только из `remote_addr`.
 
 ---
 

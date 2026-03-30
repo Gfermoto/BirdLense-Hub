@@ -1,5 +1,7 @@
-from models import Species, BirdFood, db
 import logging
+import os
+
+from models import Species, BirdFood, db
 from util import build_hierarchy_tree
 
 # Default BirdFood catalog (Settings / feeder). Curated by maintainers from common EU + US practice.
@@ -119,13 +121,29 @@ def seed_bird_food() -> int:
     return added
 
 
+def _food_asset_exists(image_url: str | None) -> bool:
+    if not image_url or not isinstance(image_url, str):
+        return False
+    if image_url.startswith('http://') or image_url.startswith('https://'):
+        return True
+    rel = image_url.lstrip('/')
+    base_dir = os.path.join(os.path.dirname(__file__), '..', '..')
+    return os.path.isfile(os.path.abspath(os.path.join(base_dir, rel)))
+
+
 def _migrate_apple_pieces_image() -> bool:
     """Старые установки: Apple pieces указывали на общий fruit.jpg — заменить на яблочную иллюстрацию."""
     row = BirdFood.query.filter_by(name='Apple pieces').first()
-    if not row or row.image_url != 'data/images/food/fruit.jpg':
+    if not row:
         return False
-    row.image_url = 'data/images/food/apple-pieces.svg'
-    return True
+    target = 'data/images/food/apple-pieces.svg'
+    current = row.image_url
+    if current == target:
+        return False
+    if current in ('', None, 'data/images/food/fruit.jpg') or not _food_asset_exists(current):
+        row.image_url = target
+        return True
+    return False
 
 
 def seed():

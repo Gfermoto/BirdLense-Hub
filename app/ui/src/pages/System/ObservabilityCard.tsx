@@ -12,6 +12,21 @@ import {
 import { fetchObservability } from '../../api/api';
 
 const PREVIEW_ORDER = ['best_frame', 'bbox_crop', 'full_frame', 'none', 'unknown'] as const;
+const DELIVERY_ORDER = ['photo', 'text_fallback', 'text', 'failed', 'skipped', 'unknown'] as const;
+const FALLBACK_ORDER = [
+  'none',
+  'no_preview',
+  'decode_failed',
+  'telegram_photo_failed',
+  'notifications_disabled',
+  'telegram_not_configured',
+  'config_disabled',
+  'unsafe_path',
+  'read_failed',
+  'telegram_text_failed',
+  'unexpected_error',
+  'unknown',
+] as const;
 
 export function ObservabilityCard() {
   const { t } = useTranslation();
@@ -28,6 +43,8 @@ export function ObservabilityCard() {
   if (error || !data) return <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>;
 
   const counts = data.notify_preview_24h || {};
+  const fallbackCounts = data.notify_fallback_24h || {};
+  const deliveryCounts = data.notify_delivery_24h || {};
 
   return (
     <Card>
@@ -39,6 +56,9 @@ export function ObservabilityCard() {
           {t('system.observabilityHint')}
         </Typography>
 
+        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+          {t('system.observabilityPreviewTitle')}
+        </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           {PREVIEW_ORDER.map((key) => (
             <Chip
@@ -46,6 +66,34 @@ export function ObservabilityCard() {
               size="small"
               variant="outlined"
               label={`${t(`system.previewSource.${key}`)}: ${counts[key] ?? 0}`}
+            />
+          ))}
+        </Box>
+
+        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+          {t('system.observabilityDeliveryTitle')}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {DELIVERY_ORDER.map((key) => (
+            <Chip
+              key={key}
+              size="small"
+              variant="outlined"
+              label={`${t(`system.delivery.${key}`)}: ${deliveryCounts[key] ?? 0}`}
+            />
+          ))}
+        </Box>
+
+        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+          {t('system.observabilityFallbackTitle')}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {FALLBACK_ORDER.map((key) => (
+            <Chip
+              key={key}
+              size="small"
+              variant="outlined"
+              label={`${t(`system.fallbackReason.${key}`)}: ${fallbackCounts[key] ?? 0}`}
             />
           ))}
         </Box>

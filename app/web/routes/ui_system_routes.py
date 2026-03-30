@@ -48,6 +48,58 @@ DEPRECATED_USER_CONFIG_KEYS = (
 )
 
 
+def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
+    species = getattr(vs, 'species', None)
+    species_name = getattr(species, 'name', None)
+    frames = (getattr(vs, 'frames', None) or '').strip()
+    return (
+        getattr(vs, 'detection_provider', None) == 'legacy'
+        and species_name == IMPORT_SPECIES_NAME
+        and float(getattr(vs, 'confidence', 0) or 0) <= 0
+        and getattr(vs, 'source', None) == 'video'
+        and not bool(getattr(vs, 'manually_corrected', False))
+        and getattr(vs, 'track_id', None) is None
+        and not frames
+        and float(getattr(vs, 'start_time', 0) or 0) == 0
+        and float(getattr(vs, 'end_time', 0) or 0) == 30
+    )
+
+
+def _cleanup_legacy_import_placeholders() -> tuple[int, int]:
+    """Remove synthetic Unknown/legacy detections created by old disk-import flow."""
+    rows = (
+        db.session.query(VideoSpecies)
+        .join(Species)
+        .filter(
+            VideoSpecies.detection_provider == 'legacy',
+            Species.name == IMPORT_SPECIES_NAME,
+        )
+        .all()
+    )
+    placeholder_rows = [vs for vs in rows if _is_legacy_import_placeholder(vs)]
+    if not placeholder_rows:
+        return 0, 0
+
+    visit_ids = {vs.species_visit_id for vs in placeholder_rows if vs.species_visit_id}
+    for vs in placeholder_rows:
+        db.session.delete(vs)
+    db.session.flush()
+
+    cleaned_visits = 0
+    for visit_id in visit_ids:
+        other = VideoSpecies.query.filter(
+            VideoSpecies.species_visit_id == visit_id,
+        ).first()
+        if other:
+            continue
+        visit = db.session.get(SpeciesVisit, visit_id)
+        if visit:
+            db.session.delete(visit)
+            cleaned_visits += 1
+
+    return len(placeholder_rows), cleaned_visits
+
+
 def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
     raw = os.environ.get(name, '').strip()
     if not raw:
@@ -236,28 +288,76 @@ def register_routes(app):
             return None
         return db.engine.url.database
 
-    def _notify_preview_by_source_24h():
+    def _notify_preview_rows_24h():
         now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
         preview_since = now_utc - timedelta(hours=24)
-        preview_rows = (
+        return (
             db.session.query(ActivityLog)
             .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
             .all()
         )
+
+    def _activity_log_payload(row):
+        try:
+            return row.data if isinstance(row.data, dict) else (
+                json.loads(row.data) if row.data else {}
+            )
+        except Exception:
+            return {}
+
+    def _notify_preview_by_source_24h():
+        preview_rows = _notify_preview_rows_24h()
         preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
         for row in preview_rows:
             src = 'unknown'
-            try:
-                payload = row.data if isinstance(row.data, dict) else (
-                    json.loads(row.data) if row.data else {}
-                )
-                src = str((payload or {}).get('preview_source') or 'unknown')
-            except Exception:
-                src = 'unknown'
+            payload = _activity_log_payload(row)
+            src = str((payload or {}).get('preview_source') or 'unknown')
             if src not in preview_by_source:
                 src = 'unknown'
             preview_by_source[src] += 1
         return preview_by_source
+
+    def _notify_fallback_by_reason_24h():
+        preview_rows = _notify_preview_rows_24h()
+        by_reason = {
+            'none': 0,
+            'no_preview': 0,
+            'decode_failed': 0,
+            'telegram_photo_failed': 0,
+            'notifications_disabled': 0,
+            'telegram_not_configured': 0,
+            'config_disabled': 0,
+            'unsafe_path': 0,
+            'read_failed': 0,
+            'telegram_text_failed': 0,
+            'unexpected_error': 0,
+            'unknown': 0,
+        }
+        for row in preview_rows:
+            payload = _activity_log_payload(row)
+            reason = str((payload or {}).get('fallback_reason') or 'none')
+            if reason not in by_reason:
+                reason = 'unknown'
+            by_reason[reason] += 1
+        return by_reason
+
+    def _notify_delivery_24h():
+        preview_rows = _notify_preview_rows_24h()
+        by_delivery = {
+            'photo': 0,
+            'text': 0,
+            'text_fallback': 0,
+            'failed': 0,
+            'skipped': 0,
+            'unknown': 0,
+        }
+        for row in preview_rows:
+            payload = _activity_log_payload(row)
+            delivery = str((payload or {}).get('telegram_delivery') or 'unknown')
+            if delivery not in by_delivery:
+                delivery = 'unknown'
+            by_delivery[delivery] += 1
+        return by_delivery
 
     def _prometheus_metrics_body(app):
         sys_m = _collect_live_system_metrics(app)
@@ -265,6 +365,8 @@ def register_routes(app):
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
         preview_by_source = _notify_preview_by_source_24h()
+        fallback_by_reason = _notify_fallback_by_reason_24h()
+        delivery_counts = _notify_delivery_24h()
         lines = [
             '# HELP birdlense_cpu_usage_percent CPU usage',
             '# TYPE birdlense_cpu_usage_percent gauge',
@@ -295,6 +397,18 @@ def register_routes(app):
         ]
         for src, count in preview_by_source.items():
             lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
+        lines.extend([
+            '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
+            '# TYPE birdlense_notify_fallback_24h gauge',
+        ])
+        for reason, count in fallback_by_reason.items():
+            lines.append(f'birdlense_notify_fallback_24h{{reason="{reason}"}} {count}')
+        lines.extend([
+            '# HELP birdlense_notify_delivery_24h Notification delivery outcome counts for last 24h',
+            '# TYPE birdlense_notify_delivery_24h gauge',
+        ])
+        for delivery, count in delivery_counts.items():
+            lines.append(f'birdlense_notify_delivery_24h{{delivery="{delivery}"}} {count}')
         if sys_m['gpu_percent'] is not None:
             lines.extend([
                 '# HELP birdlense_gpu_usage_percent GPU usage',
@@ -312,6 +426,8 @@ def register_routes(app):
             species_count = db.session.query(VideoSpecies.species_id).distinct().count()
             videos_count = db.session.query(func.count(Video.id)).scalar() or 0
             preview = _notify_preview_by_source_24h()
+            fallback = _notify_fallback_by_reason_24h()
+            delivery = _notify_delivery_24h()
             payload = {
                 'service': 'birdlense-hub',
                 'cpu_usage_percent': float(sys_m['cpu']['percent']),
@@ -323,6 +439,8 @@ def register_routes(app):
                 'species_count': int(species_count),
                 'videos_total': int(videos_count),
                 'notify_preview_24h': preview,
+                'notify_fallback_24h': fallback,
+                'notify_delivery_24h': delivery,
             }
             if sys_m['gpu_percent'] is not None:
                 payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
@@ -379,8 +497,12 @@ def register_routes(app):
             return {'error': 'Unauthorized'}, 401
         try:
             preview = _notify_preview_by_source_24h()
+            fallback = _notify_fallback_by_reason_24h()
+            delivery = _notify_delivery_24h()
             return {
                 'notify_preview_24h': preview,
+                'notify_fallback_24h': fallback,
+                'notify_delivery_24h': delivery,
                 'hub_metrics': {
                     'prometheus_text': '/metrics',
                     'prometheus_text_alt': '/api/metrics',
@@ -1126,22 +1248,21 @@ def register_routes(app):
         if not os.path.exists(recordings_dir()):
             return {'imported': 0, 'message': 'No recordings directory'}, 200
 
-        species = Species.query.filter_by(name=IMPORT_SPECIES_NAME).first()
-        if not species:
-            species = Species(name=IMPORT_SPECIES_NAME, active=False)
-            db.session.add(species)
-            db.session.flush()
-
         existing_paths = {
             v.video_path for v in db.session.query(Video.video_path).all()
         }
         imported = 0
+        cleaned_legacy_placeholders = 0
+        cleaned_legacy_visits = 0
         # YYYY/MM/DD/HHMMSS или YYYY/MM/DD/HH-MM-SS
         pattern = re.compile(
             r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$'
         )
 
         try:
+            cleaned_legacy_placeholders, cleaned_legacy_visits = (
+                _cleanup_legacy_import_placeholders()
+            )
             rec_dir = recordings_dir()
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
@@ -1194,29 +1315,6 @@ def register_routes(app):
                                         spectrogram_path=spectrogram,
                                     )
                                     db.session.add(video)
-                                    db.session.flush()
-
-                                    visit = SpeciesVisit(
-                                        species_id=species.id,
-                                        start_time=start_time,
-                                        end_time=end_time,
-                                        max_simultaneous=1,
-                                    )
-                                    db.session.add(visit)
-                                    db.session.flush()
-
-                                vs = VideoSpecies(
-                                    video_id=video.id,
-                                    species_id=species.id,
-                                    species_visit_id=visit.id,
-                                    start_time=0,
-                                    end_time=30,
-                                    confidence=0,
-                                    source='video',
-                                    detection_provider='legacy',
-                                    created_at=start_time,
-                                )
-                                db.session.add(vs)
                                 existing_paths.add(rel_path)
                                 imported += 1
                             except Exception as e:
@@ -1234,13 +1332,24 @@ def register_routes(app):
             if imported > 0:
                 with _regenerate_lock:
                     if _regenerate_status['status'] != 'running':
-                        t = threading.Thread(target=_run_regenerate_spectrograms, args=(False,), daemon=True)
+                        t = threading.Thread(
+                            target=_run_regenerate_spectrograms,
+                            args=(False, None, None),
+                            daemon=True,
+                        )
                         t.start()
                         spectrogram_started = True
 
+            message = f'Imported {imported} recordings'
+            if cleaned_legacy_placeholders:
+                message += (
+                    f'; cleaned {cleaned_legacy_placeholders} legacy placeholders'
+                )
             return {
                 'imported': imported,
-                'message': f'Imported {imported} recordings',
+                'cleaned_legacy_placeholders': cleaned_legacy_placeholders,
+                'cleaned_legacy_visits': cleaned_legacy_visits,
+                'message': message,
                 'spectrogramRegenerationStarted': spectrogram_started,
             }, 200
         except Exception as e:

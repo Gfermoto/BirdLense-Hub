@@ -106,10 +106,13 @@ def _payload_for_telegram_multipart(payload):
     return out
 
 
-def _compress_image_for_telegram(image_bytes):
+def _compress_image_for_telegram(image_bytes, aggressive=False):
     """Сжать и/или уменьшить JPEG для Telegram. В уведомлениях уже шлём кропы (bounding box) с процессора."""
     max_side = int(app_config.get('notifications.telegram_max_side_px') or 0)
     limit_kb = int(app_config.get('notifications.compress_photo_over_kb') or 0)
+    if aggressive:
+        max_side = min(max_side or 1280, 1280)
+        limit_kb = min(limit_kb or 512, 512)
     # Даже без явного resize/compress нормализуем слишком маленькие/битые превью:
     # Telegram иногда отвечает IMAGE_PROCESS_FAILED на экзотичных кропах.
     try:
@@ -131,11 +134,12 @@ def _compress_image_for_telegram(image_bytes):
             img = img.resize(new_size, Image.Resampling.LANCZOS)
             logging.debug("Telegram: resized to %s (max_side=%s)", new_size, max_side)
         buf = io.BytesIO()
-        img.save(buf, 'JPEG', quality=85, optimize=True)
+        quality = 72 if aggressive else 85
+        img.save(buf, 'JPEG', quality=quality, optimize=True)
         out = buf.getvalue()
         if limit_kb > 0 and len(out) > limit_kb * 1024:
             buf2 = io.BytesIO()
-            img.save(buf2, 'JPEG', quality=78, optimize=True)
+            img.save(buf2, 'JPEG', quality=68 if aggressive else 78, optimize=True)
             out = buf2.getvalue()
         if len(out) < len(image_bytes):
             logging.debug("Telegram: %d -> %d bytes", len(image_bytes), len(out))
@@ -159,12 +163,12 @@ def _compress_image_for_telegram(image_bytes):
         if max_side > 0 and max(w, h) > max_side:
             ratio = max_side / float(max(w, h))
             img = cv2.resize(img, (max(1, int(w * ratio)), max(1, int(h * ratio))), interpolation=cv2.INTER_AREA)
-        ok, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        ok, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 72 if aggressive else 85])
         if not ok:
             return image_bytes
         out = enc.tobytes()
         if limit_kb > 0 and len(out) > limit_kb * 1024:
-            ok2, enc2 = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 78])
+            ok2, enc2 = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 68 if aggressive else 78])
             if ok2:
                 out = enc2.tobytes()
         return out
@@ -181,6 +185,21 @@ def _telegram_message_thread_id_int():
         return int(thread_id)
     except (ValueError, TypeError):
         return None
+
+
+def _telegram_fallback_note(reason):
+    notes = {
+        'no_preview': 'photo unavailable: no preview generated',
+        'decode_failed': 'photo unavailable: preview decode failed',
+        'telegram_photo_failed': 'photo unavailable: Telegram rejected media',
+        'config_disabled': 'photo unavailable: photo sending disabled',
+        'unsafe_path': 'photo unavailable: unsafe file path',
+        'read_failed': 'photo unavailable: preview file read failed',
+    }
+    note = notes.get(reason)
+    if not note:
+        return ''
+    return f'\n\n<i>{note}</i>'
 
 
 def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
@@ -267,6 +286,11 @@ def notify_app_startup(app=None):
     import os as _os
     if _os.environ.get('FLASK_TESTING') or (app and app.config.get('TESTING')):
         return
+    if (_os.environ.get('BIRDLENSE_NOTIFY_APP_STARTUP') or '1').strip().lower() in (
+        '0', 'false', 'no',
+    ):
+        logging.info('notify_app_startup: skip (BIRDLENSE_NOTIFY_APP_STARTUP disabled)')
+        return
     sent_marker = '/tmp/.birdlense_startup_notify_sent'  # not in volume → one send per container
     try:
         if os.path.exists(sent_marker):
@@ -300,22 +324,52 @@ def notify_app_startup(app=None):
         # Web Push / DB (PushSubscription) need Flask application context
         if app is not None:
             with app.app_context():
-                notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+                notify(
+                    "App is UP!",
+                    link=None,
+                    tags="rocket",
+                    timestamp=datetime.now(timezone.utc),
+                    send_photo_override=False,
+                )
         else:
-            notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
+            notify(
+                "App is UP!",
+                link=None,
+                tags="rocket",
+                timestamp=datetime.now(timezone.utc),
+                send_photo_override=False,
+            )
     except Exception as e:
         logging.warning("notify_app_startup failed: %s", e)
 
 
-def notify(message, link="live", tags=None, image_path=None, image_bytes=None, timestamp=None):
+def notify(
+    message,
+    link='live',
+    tags=None,
+    image_path=None,
+    image_bytes=None,
+    timestamp=None,
+    fallback_reason_hint=None,
+    send_photo_override=None,
+):
     """Send notification via Telegram and/or Web Push. Requires token+chat_id or Web Push subscribers.
 
     image_path: path to image file (must pass _is_safe_image_path when used).
     image_bytes: raw JPEG bytes (alternative to image_path, preferred when processor sends base64).
     timestamp: datetime or Unix int for dynamic time <t:unix:R> (Bot API 9.5).
     """
+    result = {
+        'telegram_delivery': 'skipped',
+        'photo_requested': False,
+        'photo_available': False,
+        'photo_sent': False,
+        'fallback_reason': None,
+        'link_url': None,
+    }
     if not app_config.get('general.enable_notifications'):
-        return
+        result['fallback_reason'] = 'notifications_disabled'
+        return result
     # Web Push (параллельно с Telegram)
     try:
         from services.web_push_service import send_web_push
@@ -327,12 +381,14 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
     token = (app_config.get('notifications.telegram_bot_token') or '').strip()
     chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
     if not token or not chat_id:
-        return
+        result['fallback_reason'] = 'telegram_not_configured'
+        return result
     base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
     if isinstance(link, str) and (link.startswith('http://') or link.startswith('https://')):
         link_url = link
     else:
         link_url = f"{base_url}/{str(link).lstrip('/')}" if base_url and link else None
+    result['link_url'] = link_url
     text = message
     button_emoji = '▶'
     button_tags = tags
@@ -345,8 +401,13 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
         text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
     try:
         send_photo = app_config.get('notifications.send_photo', True)
+        if send_photo_override is not None:
+            send_photo = bool(send_photo_override)
+        intentional_text_only = send_photo_override is False
+        result['photo_requested'] = bool(send_photo)
         # Prefer image_bytes (from processor base64) — не зависит от общего файлового пространства
         image_to_send = None
+        image_issue = None
         if send_photo and image_bytes and isinstance(image_bytes, bytes) and len(image_bytes) > 0:
             image_to_send = image_bytes
         elif send_photo and image_path:
@@ -360,6 +421,14 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 except OSError as e:
                     logging.warning("Cannot read image for Telegram: %s", e)
                     image_to_send = None
+                    image_issue = 'read_failed'
+            else:
+                image_issue = 'unsafe_path'
+        elif not send_photo:
+            image_issue = None if intentional_text_only else 'config_disabled'
+        else:
+            image_issue = 'no_preview'
+        result['photo_available'] = bool(image_to_send)
         if image_to_send:
             image_to_send = _compress_image_for_telegram(image_to_send)
             view_stars = app_config.get('notifications.paid_media_view_star_count')
@@ -393,6 +462,8 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
             )
             photo_failed = False
             r = None
+            photo_failure_text = None
+            aggressive_photo = None
 
             if _telegram_proxy_mode() == 'mtproto':
                 from telegram_mtproto import mtproto_send
@@ -421,54 +492,57 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 )
                 photo_failed = not r.ok
             else:
-                payload = {
-                    'chat_id': chat_id,
-                    'caption': caption,
-                    'parse_mode': 'HTML',
-                    'disable_notification': app_config.get(
-                        'notifications.disable_notification', False),
-                    'protect_content': protect,
-                }
-                if link_url and app_config.get('notifications.link_preview_large', False):
-                    payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
-                tid = _telegram_message_thread_id_int()
-                if tid is not None:
-                    payload['message_thread_id'] = tid
-                if link_url:
-                    custom_id = _get_button_custom_emoji_id(button_tags)
-                    payload['reply_markup'] = {
-                        'inline_keyboard': [[_telegram_button_open_live(
-                            link_url, button_emoji, 'primary',
-                            icon_custom_emoji_id=custom_id)]]
+                def _bot_api_send_photo(photo_bytes):
+                    payload = {
+                        'chat_id': chat_id,
+                        'caption': caption,
+                        'parse_mode': 'HTML',
+                        'disable_notification': app_config.get(
+                            'notifications.disable_notification', False),
+                        'protect_content': protect,
                     }
+                    if link_url and app_config.get('notifications.link_preview_large', False):
+                        payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
+                    tid = _telegram_message_thread_id_int()
+                    if tid is not None:
+                        payload['message_thread_id'] = tid
+                    if link_url:
+                        custom_id = _get_button_custom_emoji_id(button_tags)
+                        payload['reply_markup'] = {
+                            'inline_keyboard': [[_telegram_button_open_live(
+                                link_url, button_emoji, 'primary',
+                                icon_custom_emoji_id=custom_id)]]
+                        }
 
-                base = _get_telegram_api_base()
-                try:
+                    base = _get_telegram_api_base()
                     data = _payload_for_telegram_multipart(payload)
                     if view_stars > 0:
                         data['star_count'] = view_stars
                         data['media'] = json.dumps([
                             {'type': 'photo', 'media': 'attach://photo'}
                         ])
-                        r = _telegram_request(
+                        return _telegram_request(
                             'POST', f"{base}/bot{token}/sendPaidMedia",
                             timeout=timeout_media,
                             data=data,
-                            files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                            files={'photo': ('photo.jpg', photo_bytes, 'image/jpeg')},
                         )
-                    else:
-                        r = _telegram_request(
-                            'POST', f"{base}/bot{token}/sendPhoto",
-                            timeout=timeout_media,
-                            data=data,
-                            files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                        )
+                    return _telegram_request(
+                        'POST', f"{base}/bot{token}/sendPhoto",
+                        timeout=timeout_media,
+                        data=data,
+                        files={'photo': ('photo.jpg', photo_bytes, 'image/jpeg')},
+                    )
+
+                try:
+                    r = _bot_api_send_photo(image_to_send)
                 except (requests.Timeout, requests.ConnectionError, OSError) as e:
                     logging.warning(
                         "Telegram photo failed (timeout/network): %s — fallback to text",
                         e,
                     )
                     photo_failed = True
+                    photo_failure_text = str(e)
             if r is not None and not r.ok:
                 logging.warning(
                     "Telegram sendPhoto HTTP %s: %s",
@@ -476,17 +550,45 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                     (r.text or "")[:500],
                 )
                 photo_failed = True
+                photo_failure_text = (r.text or "")[:500]
+            if (
+                photo_failed
+                and _telegram_proxy_mode() != 'mtproto'
+                and photo_failure_text
+                and 'IMAGE_PROCESS_FAILED' in photo_failure_text
+            ):
+                aggressive_photo = _compress_image_for_telegram(image_to_send, aggressive=True)
+                if aggressive_photo and aggressive_photo != image_to_send:
+                    logging.warning("Telegram: retrying photo with aggressive JPEG normalization")
+                    try:
+                        r = _bot_api_send_photo(aggressive_photo)
+                        if r is not None and r.ok:
+                            photo_failed = False
+                            photo_failure_text = None
+                        elif r is not None:
+                            photo_failure_text = (r.text or "")[:500]
+                    except (requests.Timeout, requests.ConnectionError, OSError) as e:
+                        photo_failure_text = str(e)
             if photo_failed:
+                result['fallback_reason'] = 'telegram_photo_failed'
+                fallback_text = f'{text}{_telegram_fallback_note(result["fallback_reason"])}'
                 try:
                     r = _telegram_send_message(
-                        token, chat_id, text, link=link_url,
+                        token, chat_id, fallback_text, link=link_url,
                         button_emoji=button_emoji, button_style='primary',
                         button_tags=button_tags)
+                    result['telegram_delivery'] = 'text_fallback'
                 except requests.RequestException as fallback_e:
                     logging.warning("Telegram text fallback also failed: %s", fallback_e)
                     r = None
+                    result['telegram_delivery'] = 'failed'
+                    result['fallback_reason'] = 'telegram_text_failed'
+            else:
+                result['telegram_delivery'] = 'photo'
+                result['photo_sent'] = True
             if r is None:
-                return
+                result['fallback_reason'] = result['fallback_reason'] or 'telegram_text_failed'
+                return result
             # Lazy import to avoid circular dependency
             from util import _safe_image_path_or_none
             safe_rm = _safe_image_path_or_none(image_path)
@@ -496,15 +598,26 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 except OSError:
                     pass
         else:
+            if result['fallback_reason'] is None and not intentional_text_only:
+                result['fallback_reason'] = fallback_reason_hint or image_issue or 'no_preview'
+            fallback_text = text
+            if result['fallback_reason']:
+                fallback_text = f'{text}{_telegram_fallback_note(result["fallback_reason"])}'
             r = _telegram_send_message(
-                token, chat_id, text, link=link_url,
+                token, chat_id, fallback_text, link=link_url,
                 button_emoji=button_emoji, button_style='primary',
                 button_tags=button_tags)
+            result['telegram_delivery'] = 'text'
         if r is not None and not r.ok:
             logging.warning(
                 "Telegram notify failed: %s %s",
                 r.status_code,
                 (getattr(r, "text", "") or "")[:300],
             )
+            result['telegram_delivery'] = 'failed'
+            result['fallback_reason'] = result['fallback_reason'] or 'telegram_text_failed'
     except Exception as e:
         logging.warning("Telegram notify error: %s", e)
+        result['telegram_delivery'] = 'failed'
+        result['fallback_reason'] = result['fallback_reason'] or 'unexpected_error'
+    return result

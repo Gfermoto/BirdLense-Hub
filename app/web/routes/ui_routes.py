@@ -15,7 +15,6 @@ from util import (
     data_dir,
     fetch_weather,
     fetch_sun_times,
-    update_species_info_from_wiki,
     ensure_utc,
     parse_utc_timestamp,
     get_primary_video_for_visit,
@@ -107,6 +106,8 @@ def register_routes(app):
     @app.route('/api/ui/push/subscribe', methods=['POST'])
     def push_subscribe():
         """Register a Web Push subscription. Requires web_push.enabled and general.enable_notifications."""
+        if not settings_check_access():
+            return {'error': 'Unauthorized'}, 401
         if not app_config.get('general.enable_notifications'):
             return {'error': 'Notifications disabled'}, 400
         data = request.json or {}
@@ -115,7 +116,7 @@ def register_routes(app):
             return {'error': 'subscription required'}, 400
         endpoint = (sub.get('endpoint') or '').strip()
         keys = sub.get('keys') or {}
-        p256dh = (keys.get('p256dh') or keys.get('p256dh') or '').strip()
+        p256dh = (keys.get('p256dh') or '').strip()
         auth = (keys.get('auth') or '').strip()
         if not endpoint or not p256dh or not auth:
             return {'error': 'subscription.endpoint and subscription.keys (p256dh, auth) required'}, 400
@@ -670,8 +671,8 @@ def register_routes(app):
         evidence = (request.args.get('evidence') or 'all').strip().lower()
         if catalog not in ('active', 'full'):
             return {'error': 'catalog must be active or full'}, 400
-        if evidence not in ('all', 'video'):
-            return {'error': 'evidence must be all or video'}, 400
+        if evidence not in ('all', 'video', 'camera', 'birdnet'):
+            return {'error': 'evidence must be all, video, camera or birdnet'}, 400
         if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
             return {'error': 'start_date must be YYYY-MM-DD'}, 400
         if end_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', end_date):
@@ -919,12 +920,25 @@ def register_routes(app):
                 ),
             )
             .order_by(VideoSpecies.created_at.desc())
-            .limit(limit)
+            .limit(limit * 3)
             .all()
         )
 
         result = []
         for vs in rows:
+            frames = (vs.frames or '').strip() if getattr(vs, 'frames', None) else ''
+            if (
+                vs.detection_provider == 'legacy'
+                and vs.species.name == 'Unknown'
+                and float(vs.confidence or 0) <= 0
+                and vs.source == 'video'
+                and not vs.manually_corrected
+                and vs.track_id is None
+                and not frames
+                and float(vs.start_time or 0) == 0
+                and float(vs.end_time or 0) == 30
+            ):
+                continue
             video_start = ensure_utc(vs.video.start_time)
             det_time = video_start + timedelta(seconds=vs.start_time)
             result.append({
@@ -939,6 +953,8 @@ def register_routes(app):
                 'detection_provider': vs.detection_provider,
                 'image_url': vs.species.image_url,
             })
+            if len(result) >= limit:
+                break
 
         cache_set(uck, result, _CACHE_UNKNOWNS_SEC)
         return result
@@ -1588,15 +1604,7 @@ def register_routes(app):
         children = Species.query.filter_by(parent_id=species_id).all()
         all_species_ids = [species.id] + [c.id for c in children]
 
-        # Wikipedia не должен ломать страницу вида при сетевой ошибке / сбое commit
-        try:
-            if update_species_info_from_wiki(species):
-                db.session.add(species)
-                db.session.commit()
-        except Exception as e:
-            app.logger.warning('get_species_summary: wiki update skipped for %s: %s', species_id, e)
-            db.session.rollback()
-
+        # GET не мутирует БД: enrichment через System / отдельные задачи (см. audit containment).
         out = build_species_summary(db.session, species, children, all_species_ids)
         cache_set(sck, out, 30)
         return out

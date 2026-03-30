@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -138,7 +138,7 @@ export const RecordingsAndDataset = () => {
   const POLL_INTERVAL_MS = 2000;
   const POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2h for large historical batches
 
-  const { refetch } = useQuery<StorageStats[]>({
+  const { data: storageStats = [], refetch } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
     queryFn: async () => {
       const { data } = await axios.get<StorageStats[]>(
@@ -147,6 +147,45 @@ export const RecordingsAndDataset = () => {
       return data;
     },
   });
+
+  const storageRange = useMemo(() => {
+    if (!storageStats.length) return null;
+    const sorted = [...storageStats].sort((a, b) => a.date.localeCompare(b.date));
+    const first = sorted[0]?.date;
+    const last = sorted[sorted.length - 1]?.date;
+    if (!first || !last) return null;
+    return {
+      start: dayjs(first),
+      end: dayjs(last),
+      recordedDays: sorted.length,
+      spanDays: dayjs(last).diff(dayjs(first), 'day') + 1,
+      totalFiles: sorted.reduce((sum, item) => sum + (item.fileCount || 0), 0),
+      totalSize: sorted.reduce((sum, item) => sum + (item.totalSize || 0), 0),
+    };
+  }, [storageStats]);
+
+  const applyPreset = useCallback(
+    (preset: 'last7' | 'last30' | 'all') => {
+      const today = storageRange?.end || dayjs();
+      if (preset === 'all' && storageRange) {
+        setOperationsPeriod({
+          start: storageRange.start,
+          end: storageRange.end,
+        });
+        return;
+      }
+      const days = preset === 'last30' ? 30 : 7;
+      const rawStart = today.subtract(days - 1, 'day');
+      const boundedStart = storageRange && rawStart.isBefore(storageRange.start)
+        ? storageRange.start
+        : rawStart;
+      setOperationsPeriod({
+        start: boundedStart,
+        end: today,
+      });
+    },
+    [storageRange],
+  );
 
   const pollRegenerateStatus = useCallback(
     async (): Promise<RegenerateSpectrogramsResponse | null> => {
@@ -508,6 +547,22 @@ export const RecordingsAndDataset = () => {
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               {t('storage.operationsPeriod')}
             </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+              <Button size="small" variant="outlined" onClick={() => applyPreset('last7')}>
+                {t('storage.presetLast7Days')}
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => applyPreset('last30')}>
+                {t('storage.presetLast30Days')}
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => applyPreset('all')}
+                disabled={!storageRange}
+              >
+                {t('storage.presetAllTime')}
+              </Button>
+            </Stack>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
               <DatePicker
                 label={t('storage.periodFrom')}
@@ -515,6 +570,7 @@ export const RecordingsAndDataset = () => {
                 onChange={(v) =>
                   v && setOperationsPeriod((p) => ({ ...p, start: v }))
                 }
+                minDate={storageRange?.start}
                 maxDate={operationsPeriod.end}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
               />
@@ -525,7 +581,7 @@ export const RecordingsAndDataset = () => {
                   v && setOperationsPeriod((p) => ({ ...p, end: v }))
                 }
                 minDate={operationsPeriod.start}
-                maxDate={dayjs()}
+                maxDate={storageRange?.end || dayjs()}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
               />
               <FormControlLabel
@@ -541,6 +597,18 @@ export const RecordingsAndDataset = () => {
                 label={t('storage.onlyManuallyCorrected')}
               />
             </Stack>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+              {storageRange
+                ? t('storage.archiveRangeSummary', {
+                    start: storageRange.start.format('YYYY-MM-DD'),
+                    end: storageRange.end.format('YYYY-MM-DD'),
+                    spanDays: storageRange.spanDays,
+                    recordedDays: storageRange.recordedDays,
+                    files: storageRange.totalFiles,
+                    size: formatBytes(storageRange.totalSize),
+                  })
+                : t('storage.archiveRangeUnavailable')}
+            </Typography>
           </Paper>
 
           <Alert severity="info" sx={{ '& ol': { m: 0, pl: 2.5 } }}>
@@ -554,6 +622,18 @@ export const RecordingsAndDataset = () => {
               <li>{t('library.datasetFlowStep3')}</li>
               <li>{t('library.datasetFlowStep4')}</li>
             </ol>
+          </Alert>
+
+          <Alert severity="warning" sx={{ '& ul': { m: 0, pl: 2.5 } }}>
+            <AlertTitle>{t('storage.heavyOpsTitle')}</AlertTitle>
+            <Typography variant="body2" color="inherit" sx={{ mb: 1 }}>
+              {t('storage.heavyOpsIntro')}
+            </Typography>
+            <ul>
+              <li>{t('storage.heavyOpsSpectrograms')}</li>
+              <li>{t('storage.heavyOpsTracks')}</li>
+              <li>{t('storage.heavyOpsDataset')}</li>
+            </ul>
           </Alert>
 
           {/* 1. Импорт */}

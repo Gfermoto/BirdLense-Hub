@@ -141,3 +141,26 @@ jobs:
 
       - name: Web API tests (pytest)
         run: make test-web
+
+      - name: E2E smoke (Playwright, local compose)
+        env:
+          BIRDLENSE_PORT: "8085"
+        run: |
+          set -euo pipefail
+          docker compose up -d
+          cleanup() { docker compose down; }
+          trap cleanup EXIT
+          BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
+          for i in $(seq 1 60); do
+            if curl -sf "${BASE}/api/ui/health" >/dev/null; then
+              echo "hub healthy"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf "${BASE}/api/ui/health" >/dev/null
+          cd e2e
+          npm ci
+          npx playwright install --with-deps chromium
+          BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
+        working-directory: app

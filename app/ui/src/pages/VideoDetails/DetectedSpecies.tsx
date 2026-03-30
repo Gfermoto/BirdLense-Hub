@@ -362,7 +362,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
               <CardActions sx={{ pt: 0, flexWrap: 'wrap', gap: 0.5 }}>
                 <Button
                   size="small"
-                  component={Link}
+                  component={RouterLink}
                   to={`/species/${group.species_id}`}
                 >
                   {t('video.learnMore')}

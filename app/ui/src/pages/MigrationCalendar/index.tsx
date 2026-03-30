@@ -37,7 +37,7 @@ export const MigrationCalendar = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [catalogMode, setCatalogMode] = useState<'active' | 'full'>('active');
-  const [evidenceMode, setEvidenceMode] = useState<'all' | 'video'>('all');
+  const [evidenceMode, setEvidenceMode] = useState<'all' | 'camera' | 'birdnet'>('all');
 
   const handlePeriodMode = (_: React.MouseEvent<HTMLElement>, value: PeriodMode | null) => {
     if (value === null) return;
@@ -58,7 +58,7 @@ export const MigrationCalendar = () => {
       start_date?: string;
       end_date?: string;
       catalog?: 'active' | 'full';
-      evidence?: 'all' | 'video';
+      evidence?: 'all' | 'camera' | 'birdnet';
     } = {
       catalog: catalogMode,
       evidence: evidenceMode,
@@ -117,21 +117,6 @@ export const MigrationCalendar = () => {
   }
 
   const { species, month_labels } = data;
-
-  if (species.length === 0) {
-    return (
-      <Box sx={{ py: 4 }}>
-        <PageHelp configKey="migrationCalendar" />
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">
-            {catalogMode === 'full'
-              ? t('migrationCalendar.noSpeciesInDb')
-              : t('migrationCalendar.noData')}
-          </Typography>
-        </Paper>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ py: 2 }}>
@@ -237,88 +222,99 @@ export const MigrationCalendar = () => {
             size="small"
             label={t('migrationCalendar.evidenceLabel')}
             value={evidenceMode}
-            onChange={(e) => setEvidenceMode(e.target.value as 'all' | 'video')}
+            onChange={(e) => setEvidenceMode(e.target.value as 'all' | 'camera' | 'birdnet')}
             sx={{ minWidth: 260 }}
           >
             <MenuItem value="all">{t('migrationCalendar.evidenceAll')}</MenuItem>
-            <MenuItem value="video">{t('migrationCalendar.evidenceVideo')}</MenuItem>
+            <MenuItem value="camera">{t('migrationCalendar.evidenceCamera')}</MenuItem>
+            <MenuItem value="birdnet">{t('migrationCalendar.evidenceBirdnet')}</MenuItem>
           </TextField>
         </Box>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
           {t('migrationCalendar.catalogEvidenceHint')}
         </Typography>
       </Box>
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        <Table size="small" stickyHeader>
-          <caption style={visuallyHidden as React.CSSProperties}>
-            {t('migrationCalendar.tableCaption')}
-          </caption>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600, minWidth: 180 }}>
-                {t('migrationCalendar.species')}
-              </TableCell>
-              {month_labels.map((m) => (
-                <TableCell key={m} align="center" sx={{ fontWeight: 600, minWidth: 44 }}>
-                  {m}
+      {species.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="text.secondary">
+            {catalogMode === 'full'
+              ? t('migrationCalendar.noSpeciesInDb')
+              : t('migrationCalendar.noData')}
+          </Typography>
+        </Paper>
+      ) : (
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table size="small" stickyHeader>
+            <caption style={visuallyHidden as React.CSSProperties}>
+              {t('migrationCalendar.tableCaption')}
+            </caption>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, minWidth: 180 }}>
+                  {t('migrationCalendar.species')}
                 </TableCell>
-              ))}
-              <TableCell align="right" sx={{ fontWeight: 600 }}>
-                Σ
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {species.map((s) => {
-              const maxInRow = Math.max(...s.monthly_counts, 1);
-              return (
-                <TableRow key={s.id} hover>
-                  <TableCell sx={{ verticalAlign: 'middle' }}>
-                    <Link
-                      component={RouterLink}
-                      to={`/species/${s.id}`}
-                      underline="hover"
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        color: 'inherit',
-                      }}
-                    >
-                      <SpeciesIcon speciesName={s.name} imageUrl={s.image_url} size={32} />
-                      {s.name}
-                    </Link>
+                {month_labels.map((m) => (
+                  <TableCell key={m} align="center" sx={{ fontWeight: 600, minWidth: 44 }}>
+                    {m}
                   </TableCell>
-                  {s.monthly_counts.map((count, i) => {
-                    const intensity = maxInRow > 0 ? count / maxInRow : 0;
-                    return (
-                      <TableCell
-                        key={i}
-                        align="center"
+                ))}
+                <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  Σ
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {species.map((s) => {
+                const maxInRow = Math.max(...s.monthly_counts, 1);
+                return (
+                  <TableRow key={s.id} hover>
+                    <TableCell sx={{ verticalAlign: 'middle' }}>
+                      <Link
+                        component={RouterLink}
+                        to={`/species/${s.id}`}
+                        underline="hover"
                         sx={{
-                          minWidth: 44,
-                          color: count > 0 ? 'text.primary' : 'text.secondary',
-                          borderLeft:
-                            count > 0
-                              ? `3px solid rgba(16, 185, 129, ${0.45 + 0.55 * intensity})`
-                              : '3px solid transparent',
-                          bgcolor:
-                            count > 0 ? `rgba(16, 185, 129, 0.08)` : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          color: 'inherit',
                         }}
                       >
-                        {count > 0 ? count : '—'}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell align="right" sx={{ fontWeight: 500 }}>
-                    {s.total}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        <SpeciesIcon speciesName={s.name} imageUrl={s.image_url} size={32} />
+                        {s.name}
+                      </Link>
+                    </TableCell>
+                    {s.monthly_counts.map((count, i) => {
+                      const intensity = maxInRow > 0 ? count / maxInRow : 0;
+                      return (
+                        <TableCell
+                          key={i}
+                          align="center"
+                          sx={{
+                            minWidth: 44,
+                            color: count > 0 ? 'text.primary' : 'text.secondary',
+                            borderLeft:
+                              count > 0
+                                ? `3px solid rgba(16, 185, 129, ${0.45 + 0.55 * intensity})`
+                                : '3px solid transparent',
+                            bgcolor:
+                              count > 0 ? `rgba(16, 185, 129, 0.08)` : 'transparent',
+                          }}
+                        >
+                          {count > 0 ? count : '—'}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {s.total}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <Paper sx={{ p: 2, mt: 2 }}>
         <Typography variant="h6" gutterBottom>

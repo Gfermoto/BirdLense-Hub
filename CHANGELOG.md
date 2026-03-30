@@ -31,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Старт Hub / containment:** тяжёлые мутации БД на старте по умолчанию выключены — `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA`, `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT`, `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA`; Telegram «App is UP!» — `BIRDLENSE_NOTIFY_APP_STARTUP=0`. См. CONFIGURATION.
+- **GET `/api/ui/species/:id/summary`:** только чтение (без Wikipedia/commit); в ответе `metadata_status` и `metadata_trust`.
+- **Processor:** single-stage COCO — только класс `bird`; при `boxes.id is None` повторный `track` на том же кадре; зависимость `lap` для ByteTrack; ESLint — `ignores` для `dist`/`node_modules`.
+- **CI (PR):** после web-тестов — E2E smoke Playwright против локального `docker compose up`.
+
 - **Донаты:** только иконка в шапке (рядом с языком и настройками); убраны из карточки «Корм» и из меню шестерёнки; **URL по-прежнему в настройках** (Общие → ссылка для поддержки).
 - **Системная нормализация Gray/Grey:** добавлены канонические пары в `detection.species_mapping` и `species_canonical_mapping.txt` (`Gray-headed Woodpecker`/`Great Gray Shrike` → `Grey-*`), чтобы исключить рассинхрон имён между источниками.
 - **Telegram:** подсказка про MTProto vs Bot API (HTTPS); прокси — SOCKS5h или HTTP(S).

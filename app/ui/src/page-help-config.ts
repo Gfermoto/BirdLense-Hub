@@ -29,3 +29,8 @@ export const unknownsHelpConfig: PageHelpConfig = {
   configKey: 'unknowns',
   dialogMaxWidth: 'md',
 } as const;
+
+export const libraryHelpConfig: PageHelpConfig = {
+  configKey: 'library',
+  dialogMaxWidth: 'md',
+} as const;

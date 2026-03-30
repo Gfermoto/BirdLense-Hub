@@ -427,6 +427,8 @@ export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
 
 export type ObservabilityPayload = {
   notify_preview_24h: Record<string, number>;
+  notify_fallback_24h: Record<string, number>;
+  notify_delivery_24h: Record<string, number>;
   hub_metrics: {
     prometheus_text: string;
     prometheus_text_alt: string;
@@ -689,7 +691,7 @@ export const fetchMigrationCalendar = async (params?: {
   start_date?: string;
   end_date?: string;
   catalog?: 'active' | 'full';
-  evidence?: 'all' | 'video';
+  evidence?: 'all' | 'camera' | 'birdnet' | 'video';
 }): Promise<MigrationCalendarData> => {
   const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
     params: params || {},
