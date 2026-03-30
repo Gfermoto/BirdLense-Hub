@@ -16,15 +16,16 @@ import requests
 from app_config.app_config import app_config
 
 
-def _telegram_button_open_live(link, emoji='📺', style='primary', icon_custom_emoji_id=None):
-    """Inline button 'Open Live' with emoji and style (Bot API 9.4+).
+def _telegram_button_open_live(link, emoji='▶', style='primary', icon_custom_emoji_id=None):
+    """Inline button 'Open' with emoji and style (Bot API 9.4+).
     icon_custom_emoji_id: optional, для Premium — кастомный эмодзи вместо Unicode.
     """
-    btn = {'text': 'Open Live', 'url': link, 'style': style}
+    label = 'Open video' if '/videos/' in (link or '') else 'Open live'
+    btn = {'text': label, 'url': link, 'style': style}
     if icon_custom_emoji_id:
         btn['icon_custom_emoji_id'] = icon_custom_emoji_id
     else:
-        btn['text'] = f'{emoji} Open Live'
+        btn['text'] = f'{emoji} {label}'
     return btn
 
 
@@ -328,14 +329,16 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
     if not token or not chat_id:
         return
     base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
-    link_url = f"{base_url}/{link}" if base_url else None
+    if isinstance(link, str) and (link.startswith('http://') or link.startswith('https://')):
+        link_url = link
+    else:
+        link_url = f"{base_url}/{str(link).lstrip('/')}" if base_url and link else None
     text = message
-    button_emoji = '📺'
+    button_emoji = '▶'
     button_tags = tags
-    if tags:
-        emoji = {'chipmunk': '🐿️', 'bird': '🐦', 'rocket': '🚀'}.get(tags, '🐦')
-        text = f"{emoji} {message}"
-        button_emoji = emoji if tags in ('chipmunk', 'bird') else '📺'
+    # Less visual noise in messages: no leading species emoji in caption/text.
+    if tags == 'rocket':
+        text = f"🚀 {message}"
     if timestamp is not None:
         unix_ts = int(timestamp.timestamp()) if hasattr(timestamp, 'timestamp') else int(timestamp)
         # Bot API 9.5: <tg-time> — динамическое время в часовом поясе подписчика

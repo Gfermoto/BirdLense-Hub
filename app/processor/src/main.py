@@ -79,6 +79,62 @@ def _check_restart_flag():
         raise SystemExit(0)
 
 
+def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> str | None:
+    """Encode preview for notifications: prefer best_frame, fallback to crop from saved video by track frame."""
+    try:
+        import base64
+        import numpy as np
+
+        bf = detection.get('best_frame')
+        if isinstance(bf, np.ndarray):
+            ok, buf = cv2.imencode('.jpg', bf)
+            if ok and buf is not None:
+                return base64.b64encode(buf.tobytes()).decode('ascii')
+    except Exception as e:
+        logging.warning("Encode best_frame for notify failed: %s", e)
+
+    frames = detection.get('frames') or []
+    if not frames or not video_file_path:
+        return None
+    mid = frames[len(frames) // 2] if isinstance(frames, list) else None
+    if not isinstance(mid, dict):
+        return None
+    bbox = mid.get('bbox')
+    t = float(mid.get('t') or detection.get('start_time') or 0)
+    if not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
+        return None
+    cap = cv2.VideoCapture(video_file_path)
+    try:
+        if not cap.isOpened():
+            return None
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        if fps > 0.01:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(t * fps)))
+        else:
+            cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, t * 1000.0))
+        ok, frame = cap.read()
+        if not ok or frame is None:
+            return None
+        h, w = frame.shape[:2]
+        x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
+        y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
+        x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
+        y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
+        crop = frame[y1:y2, x1:x2]
+        if crop.size == 0:
+            return None
+        ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        if not ok or buf is None:
+            return None
+        import base64
+        return base64.b64encode(buf.tobytes()).decode('ascii')
+    except Exception as e:
+        logging.warning("Encode video crop for notify failed: %s", e)
+        return None
+    finally:
+        cap.release()
+
+
 # Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
 _heartbeat_mqtt_ref = [None]
 
@@ -561,24 +617,14 @@ def main():
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
-                        image_base64 = None
-                        bf = d.get('best_frame')
-                        if bf is not None:
-                            try:
-                                import base64
-                                import numpy as np
-                                if isinstance(bf, np.ndarray):
-                                    ok, buf = cv2.imencode('.jpg', bf)
-                                    if ok and buf is not None:
-                                        image_base64 = base64.b64encode(buf.tobytes()).decode('ascii')
-                            except Exception as e:
-                                logging.warning("Encode best_frame for notify failed: %s", e)
-                        if image_base64 is None and bf is None:
+                        image_base64 = _encode_notify_preview_base64(d, video_output)
+                        if image_base64 is None:
                             logging.info(
-                                "Notify %s without photo: no best_frame (source=%s)",
+                                "Notify %s without photo: no preview (provider=%s)",
                                 sn, d.get('detection_provider', 'unknown'))
                         try:
-                            api.notify_species(sn, image_base64=image_base64)
+                            link = f"videos/{video_id}" if video_id else "live"
+                            api.notify_species(sn, image_base64=image_base64, link=link)
                         except Exception as e:
                             resp = getattr(e, 'response', None)
                             hint = ''
