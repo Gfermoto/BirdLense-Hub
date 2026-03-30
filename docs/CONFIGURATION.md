@@ -232,7 +232,10 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `notifications.telegram_bot_token` | Bot token (@BotFather → `/newbot`) |
 | `notifications.telegram_chat_id` | Chat or channel id (e.g. `-1001234567890`) |
 | `notifications.base_url` | Hub URL for links (“Open Live”) |
-| `notifications.telegram_proxy_url` | Outgoing proxy for Bot API calls (`socks5h://…`, `http://…`). Empty = direct. Web image includes `requests[socks]`. |
+| `notifications.telegram_proxy_type` | `none` — no proxy; `socks_http` — URL below (typical); `mtproto` — server/port/secret like the Telegram app + **api_id/api_hash** |
+| `notifications.telegram_proxy_url` | With `socks_http`: proxy for Bot API (`socks5h://…`, `http://…`). Empty = direct. Web image includes `requests[socks]`. |
+| `notifications.telegram_mtproto_host` / `telegram_mtproto_port` / `telegram_mtproto_secret` | Only for `mtproto`; secret is hex from the Telegram app |
+| `notifications.telegram_api_id` / `telegram_api_hash` | Only for `mtproto`; from **https://my.telegram.org** → API development tools (or env `TELEGRAM_API_ID` / `TELEGRAM_API_HASH`) |
 | `notifications.telegram_api_base` | Empty = `https://api.telegram.org`; or your HTTPS reverse proxy base |
 | `notifications.telegram_timeout` | Max timeout seconds for Telegram requests (text uses half) |
 | `notifications.telegram_retries` | Retry count on timeout/connection errors |
@@ -254,6 +257,14 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `processor.dataset_min_confidence` | Min confidence (0.0–1.0) for dataset crop. Default 0.5 |
 
 **Telegram Bot API 9.4/9.5:** styled buttons, `<tg-time format="r">`, large previews (`link_preview_large`).
+
+### If my.telegram.org shows ERROR (cannot create app / get keys)
+
+**https://my.telegram.org** is run by Telegram; BirdLense cannot fix it. It often fails from some networks (VPN on/off, captcha, rate limits).
+
+**Without api_id / api_hash:** do **not** use **MTProto** proxy type in Hub. Choose **SOCKS5 / HTTP** and set a proxy URL so your server can reach **`https://api.telegram.org` over HTTPS** (e.g. your own `socks5h://…`), or **no proxy** if Bot API is already reachable. **No api_id/api_hash needed** — bot token and `chat_id` are enough.
+
+**MTProto** mode is only for traffic via an **MTProto proxy** (like the Telegram app). It uses Telethon and **requires** api_id+api_hash from my.telegram.org. If the site keeps failing, use SOCKS/HTTP (or direct) until you can obtain keys (other network, VPN, device, or help from someone who can open the site).
 
 ### Custom emoji on buttons (Premium)
 
