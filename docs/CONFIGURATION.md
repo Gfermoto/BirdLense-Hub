@@ -266,7 +266,19 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 **MTProto** mode is only for traffic via an **MTProto proxy** (like the Telegram app). It uses Telethon and **requires** api_id+api_hash from my.telegram.org. If the site keeps failing, use SOCKS/HTTP (or direct) until you can obtain keys (other network, VPN, device, or help from someone who can open the site).
 
-A practical public SOCKS5 source for quick testing: [ProxyGenerator](https://github.com/proxygenerator1/ProxyGenerator).\n\nProxy check example (expect `404`/`401` from Telegram API — this is normal and means the path to Telegram works):\n`curl --proxy socks5h://IP:PORT --max-time 12 -s -o /dev/null -w "%{http_code}" https://api.telegram.org/botINVALID/getMe`\n\n⚠️ Public proxies are unstable and unsafe for long-term production use; prefer your own SOCKS5/HTTPS proxy.\n\n### Custom emoji on buttons (Premium)
+A practical public SOCKS5 source for quick testing: [ProxyGenerator](https://github.com/proxygenerator1/ProxyGenerator).
+
+Proxy check example (expect `404`/`401` from Telegram API — this is normal and means the path to Telegram works):
+`curl --proxy socks5h://IP:PORT --max-time 12 -s -o /dev/null -w "%{http_code}" https://api.telegram.org/botINVALID/getMe`
+
+⚠️ Public proxies are unstable and unsafe for long-term production use; prefer your own SOCKS5/HTTPS proxy.
+
+Auto-select best proxy on production server:
+`make refresh-telegram-proxy`
+
+The script `scripts/refresh-telegram-proxy.sh` tests proxies from the Hub host, picks the fastest working one, updates `notifications.telegram_proxy_type=socks_http` and `notifications.telegram_proxy_url`, makes a `user_config.yaml` backup, and restarts containers only when the selected proxy changes.
+
+### Custom emoji on buttons (Premium)
 
 `use_custom_emoji` and id fields control button emoji:
 

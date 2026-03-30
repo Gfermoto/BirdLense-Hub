@@ -266,7 +266,19 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 Режим **MTProto** в Hub нужен только если вы **намеренно** шлёте трафик через **MTProto-прокси** (как в клиенте Telegram); он технически завязан на Telethon и **обязателен** api_id+api_hash с my.telegram.org — без работающего сайта этот путь недоступен, пока вы не получите ключи другим способом (другая сеть, VPN, другое устройство, помощь знакомого).
 
-Проверенный источник публичных SOCKS5-списков (для быстрого подбора): [ProxyGenerator](https://github.com/proxygenerator1/ProxyGenerator).\n\nПример проверки прокси (ожидаем `404`/`401` от Telegram API — это нормально, значит канал до Telegram работает):\n`curl --proxy socks5h://IP:PORT --max-time 12 -s -o /dev/null -w "%{http_code}" https://api.telegram.org/botINVALID/getMe`\n\n⚠️ Публичные прокси нестабильны и небезопасны для долгой эксплуатации; предпочтительнее свой SOCKS5/HTTPS-прокси.\n\n### Кастомные эмодзи на кнопках (Premium)
+Проверенный источник публичных SOCKS5-списков (для быстрого подбора): [ProxyGenerator](https://github.com/proxygenerator1/ProxyGenerator).
+
+Пример проверки прокси (ожидаем `404`/`401` от Telegram API — это нормально, значит канал до Telegram работает):
+`curl --proxy socks5h://IP:PORT --max-time 12 -s -o /dev/null -w "%{http_code}" https://api.telegram.org/botINVALID/getMe`
+
+⚠️ Публичные прокси нестабильны и небезопасны для долгой эксплуатации; предпочтительнее свой SOCKS5/HTTPS-прокси.
+
+Автоподбор лучшего прокси на прод-сервере:
+`make refresh-telegram-proxy`
+
+Скрипт `scripts/refresh-telegram-proxy.sh` тестирует прокси с самого хоста Hub, выбирает самый быстрый рабочий, обновляет `notifications.telegram_proxy_type=socks_http` и `notifications.telegram_proxy_url`, делает backup `user_config.yaml` и перезапускает контейнер только при изменении.
+
+### Кастомные эмодзи на кнопках (Premium)
 
 Переключатель `use_custom_emoji` и поля ID управляют отображением эмодзи на кнопках в сообщениях:
 
