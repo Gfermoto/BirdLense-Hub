@@ -251,7 +251,7 @@
     "telegramMtprotoPort": "Порт MTProto",
     "telegramMtprotoSecret": "Секрет (hex)",
     "telegramMtprotoSecretHint": "Строка из приложения Telegram (начинается с ee или dd). Хранится как секрет, в API маскируется.",
-    "telegramMtprotoApiHint": "Для MTProto укажите api_id и api_hash с https://my.telegram.org (раздел API development tools) или задайте TELEGRAM_API_ID и TELEGRAM_API_HASH в окружении контейнера.",
+    "telegramMtprotoApiHint": "Для MTProto нужны api_id и api_hash с https://my.telegram.org → API development tools (или TELEGRAM_API_ID / TELEGRAM_API_HASH в .env контейнера). Если сайт Telegram выдаёт ошибку: VPN/другой браузер/мобильный интернет, зайти позже или с другого устройства — сбои my.telegram.org из части сетей бывают часто.",
     "telegramApiId": "Telegram api_id",
     "telegramApiIdHint": "Целое число с my.telegram.org (не токен бота).",
     "telegramApiHash": "Telegram api_hash",

@@ -251,7 +251,7 @@
     "telegramMtprotoPort": "MTProto port",
     "telegramMtprotoSecret": "Secret (hex)",
     "telegramMtprotoSecretHint": "Hex string from the Telegram app (often starts with ee or dd). Masked in the API.",
-    "telegramMtprotoApiHint": "For MTProto, set api_id and api_hash from https://my.telegram.org (API development tools), or TELEGRAM_API_ID / TELEGRAM_API_HASH in the container environment.",
+    "telegramMtprotoApiHint": "MTProto needs api_id and api_hash from https://my.telegram.org → API development tools (or TELEGRAM_API_ID / TELEGRAM_API_HASH in the container .env). If the Telegram site shows an error: try VPN, another browser, mobile data, or later — my.telegram.org is often flaky from some networks.",
     "telegramApiId": "Telegram api_id",
     "telegramApiIdHint": "Integer from my.telegram.org (not the bot token).",
     "telegramApiHash": "Telegram api_hash",

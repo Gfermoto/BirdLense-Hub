@@ -14,6 +14,46 @@ from typing import Any, Optional, Union
 logger = logging.getLogger(__name__)
 
 
+def _parse_api_id(val) -> int:
+    """Из конфига/YAML api_id может прийти как int, float или строка «12345.0»."""
+    if val is None or val == "":
+        return 0
+    if isinstance(val, bool):
+        return 0
+    if isinstance(val, int):
+        return val if val > 0 else 0
+    if isinstance(val, float):
+        try:
+            i = int(val)
+            return i if i > 0 else 0
+        except (ValueError, OverflowError):
+            return 0
+    s = str(val).strip()
+    if not s:
+        return 0
+    try:
+        i = int(float(s))
+        return i if i > 0 else 0
+    except (ValueError, TypeError, OverflowError):
+        return 0
+
+
+def _parse_port(val) -> int:
+    if val is None or val == "":
+        return 0
+    if isinstance(val, (int, float)):
+        try:
+            p = int(val)
+            return p if 1 <= p <= 65535 else 0
+        except (ValueError, OverflowError):
+            return 0
+    try:
+        p = int(float(str(val).strip()))
+        return p if 1 <= p <= 65535 else 0
+    except (ValueError, TypeError, OverflowError):
+        return 0
+
+
 class _TelegramHttpShim:
     """Минимальная совместимость с requests.Response для notify()."""
 
@@ -35,15 +75,13 @@ class _TelegramHttpShim:
 
 def _telegram_api_credentials():
     """(api_id:int, api_hash:str) или (0, '')."""
-    try:
-        raw_id = os.environ.get("TELEGRAM_API_ID") or ""
-        if not raw_id.strip():
-            from app_config.app_config import app_config
+    raw_env = (os.environ.get("TELEGRAM_API_ID") or "").strip()
+    if raw_env:
+        api_id = _parse_api_id(raw_env)
+    else:
+        from app_config.app_config import app_config
 
-            raw_id = str(app_config.get("notifications.telegram_api_id") or "").strip()
-        api_id = int(raw_id) if raw_id else 0
-    except (TypeError, ValueError):
-        api_id = 0
+        api_id = _parse_api_id(app_config.get("notifications.telegram_api_id"))
     api_hash = (os.environ.get("TELEGRAM_API_HASH") or "").strip()
     if not api_hash:
         from app_config.app_config import app_config
@@ -120,12 +158,8 @@ async def _mtproto_send_inner(
         )
 
     host = (app_config.get("notifications.telegram_mtproto_host") or "").strip()
-    port_raw = app_config.get("notifications.telegram_mtproto_port")
+    port = _parse_port(app_config.get("notifications.telegram_mtproto_port"))
     secret = (app_config.get("notifications.telegram_mtproto_secret") or "").strip()
-    try:
-        port = int(port_raw)
-    except (TypeError, ValueError):
-        port = 0
     if not host or port <= 0 or not secret:
         return _TelegramHttpShim(
             False,
