@@ -199,6 +199,18 @@ def register_routes(app):
                 "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
             notify(f"{detection} Detected", tags=icon, image_path=image_path,
                   image_bytes=image_bytes, link=link, timestamp=datetime.now(timezone.utc))
+            try:
+                db.session.add(ActivityLog(
+                    type='notify_preview',
+                    data=json.dumps({
+                        'species': detection,
+                        'preview_source': preview_source,
+                        'has_image': bool(image_bytes),
+                    }),
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
         return {'message': f'Successfully received notification of {detection}'}, 200
 
     @app.route('/api/processor/notify/motion', methods=['POST'])
