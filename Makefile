@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy
+.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove
 
 deploy:
 	@./scripts/deploy.sh
@@ -25,3 +25,15 @@ diagnose:
 # Подобрать рабочий SOCKS5-прокси для Telegram API и применить на сервере
 refresh-telegram-proxy:
 	@./scripts/refresh-telegram-proxy.sh
+
+# Поставить cron-авторотацию прокси на сервере (по умолчанию каждые 6 часов)
+proxy-rotation-install:
+	@./scripts/manage-telegram-proxy-rotation.sh install
+
+# Проверить cron и последние логи ротации на сервере
+proxy-rotation-status:
+	@./scripts/manage-telegram-proxy-rotation.sh status
+
+# Удалить cron-авторотацию прокси на сервере
+proxy-rotation-remove:
+	@./scripts/manage-telegram-proxy-rotation.sh remove
