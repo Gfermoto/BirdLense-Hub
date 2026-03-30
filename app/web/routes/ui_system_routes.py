@@ -3,6 +3,7 @@ import re
 import threading
 import sqlite3
 import tempfile
+import json
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
@@ -240,6 +241,26 @@ def register_routes(app):
         detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        preview_since = now_utc - timedelta(hours=24)
+        preview_rows = (
+            db.session.query(ActivityLog)
+            .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
+            .all()
+        )
+        preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
+        for row in preview_rows:
+            src = 'unknown'
+            try:
+                payload = row.data if isinstance(row.data, dict) else (
+                    json.loads(row.data) if row.data else {}
+                )
+                src = str((payload or {}).get('preview_source') or 'unknown')
+            except Exception:
+                src = 'unknown'
+            if src not in preview_by_source:
+                src = 'unknown'
+            preview_by_source[src] += 1
         lines = [
             '# HELP birdlense_cpu_usage_percent CPU usage',
             '# TYPE birdlense_cpu_usage_percent gauge',
@@ -265,7 +286,11 @@ def register_routes(app):
             '# HELP birdlense_videos_total Total number of recorded videos',
             '# TYPE birdlense_videos_total counter',
             f'birdlense_videos_total {videos_count}',
+            '# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h',
+            '# TYPE birdlense_notify_preview_24h gauge',
         ]
+        for src, count in preview_by_source.items():
+            lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
         if sys_m['gpu_percent'] is not None:
             lines.extend([
                 '# HELP birdlense_gpu_usage_percent GPU usage',

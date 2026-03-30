@@ -168,6 +168,7 @@ def register_routes(app):
         image_path = data.get('image_path')
         image_base64 = data.get('image_base64')
         link = (data.get('link') or 'live')
+        preview_source = (data.get('preview_source') or 'unknown')
         image_bytes = None
         if image_base64:
             try:
@@ -178,7 +179,18 @@ def register_routes(app):
         if image_base64 and not image_bytes:
             app.logger.warning("notify/detections: image_base64 present but decode produced empty bytes")
         elif not image_base64:
-            app.logger.info("notify/detections: no image for %s (processor sent no best_frame)", detection)
+            app.logger.info(
+                "notify/detections: no image for %s (preview_source=%s)",
+                detection,
+                preview_source,
+            )
+        else:
+            app.logger.info(
+                "notify/detections: image present for %s (preview_source=%s, bytes=%s)",
+                detection,
+                preview_source,
+                len(image_bytes or b''),
+            )
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:

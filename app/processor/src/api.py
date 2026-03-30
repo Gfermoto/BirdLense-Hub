@@ -56,7 +56,9 @@ class API():
         # No need for try/except here since _send_request handles errors
         self._send_request('POST', 'notify/motion', {})
 
-    def notify_species(self, species, image_path=None, image_base64=None, link=None):
+    def notify_species(
+        self, species, image_path=None, image_base64=None, link=None, preview_source=None
+    ):
         payload = {'detection': species}
         if image_base64:
             payload['image_base64'] = image_base64
@@ -64,6 +66,8 @@ class API():
             payload['image_path'] = image_path
         if link:
             payload['link'] = link
+        if preview_source:
+            payload['preview_source'] = preview_source
         self._send_request('POST', 'notify/detections', payload)
 
     def create_video(self, species_video, species_audio, start_time, end_time, video_path, spectrogram_path):
