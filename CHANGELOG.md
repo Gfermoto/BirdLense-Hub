@@ -20,10 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Ops / Telegram:** `scripts/manage-telegram-proxy-rotation.sh` и make-таргеты для установки cron-авторотации (по умолчанию каждые 6 часов). Ротация запускает `scripts/refresh-telegram-proxy.sh` на самом сервере (`BIRDLENSE_PROXY_LOCAL=1`), выбирает лучший рабочий SOCKS5 и обновляет `user_config.yaml` только при изменении.
 - **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API; в **GET /settings** добавлено read-only поле `performance.redis_url_effective_masked` — фактический URL (в т.ч. из `REDIS_URL`), пароль замаскирован; в форме — placeholder и строка «Сейчас используется».
 - **Весы у кормушки:** `integrations.scales` — источник MQTT (топик с числом/JSON, совместимо с ESPHome/HA) или сущность Home Assistant; отображение веса на главной в карточке кормушки; процессор пишет `data/feeder_scale_state.json`.
+- **Heimdall integration:** новый ключ `general.heimdall_url` (Settings → General), ссылка на Heimdall отображается в футере при непустом URL.
+- **System UI / ревизия:** новая карточка «Ревизия конфигурации» на странице System (`/api/ui/system/config-audit`) — показывает deprecated/unknown keys, Telegram photo/proxy, gallery URL и статус Gray/Grey mapping.
 
 ### Changed
 
 - **Донаты:** только иконка в шапке (рядом с языком и настройками); убраны из карточки «Корм» и из меню шестерёнки; **URL по-прежнему в настройках** (Общие → ссылка для поддержки).
+- **Системная нормализация Gray/Grey:** добавлены канонические пары в `detection.species_mapping` и `species_canonical_mapping.txt` (`Gray-headed Woodpecker`/`Great Gray Shrike` → `Grey-*`), чтобы исключить рассинхрон имён между источниками.
 - **Telegram:** подсказка про MTProto vs Bot API (HTTPS); прокси — SOCKS5h или HTTP(S).
 - **Пороги детекции (дефолты в репо):** снова нейтральные значения `min_track_duration` 4, `min_confidence_binary` 0.22, `min_confidence_to_process` 0.36, `detection.min_confidence_to_store` 0.36 (без лишнего ужесточения). Продакшен-хаб настраивается **`user_config.yaml` на сервере** (не в git): там заданы рабочие пороги под площадку.
 - **Обзор:** подсказки при наведении на все карточки ключевой статистики (раньше только «Время записи»).

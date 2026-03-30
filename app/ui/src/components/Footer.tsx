@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { fetchStatus } from '../api/api';
 import birdnetLogoUrl from '../assets/birdnet-logo.svg';
 
@@ -14,6 +15,7 @@ export function Footer() {
     queryFn: fetchStatus,
   });
   const birdnetUrl = status?.birdnet_url?.trim();
+  const heimdallUrl = status?.heimdall_url?.trim();
 
   return (
     <Box
@@ -86,6 +88,34 @@ export function Footer() {
                 sx={{ height: 18, width: 18, opacity: 0.85 }}
               />
               BirdNET
+            </Link>
+            <Typography variant="body2" sx={{ color: 'text.secondary', opacity: 0.5 }}>
+              ·
+            </Typography>
+          </>
+        )}
+        {heimdallUrl && (
+          <>
+            <Link
+              href={heimdallUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                color: 'text.secondary',
+                textDecoration: 'none',
+                fontSize: '0.8rem',
+                transition: 'color 0.2s',
+                '&:hover': {
+                  color: 'primary.main',
+                },
+              }}
+              title="Heimdall"
+            >
+              <DashboardIcon sx={{ fontSize: '1rem' }} />
+              Heimdall
             </Link>
             <Typography variant="body2" sx={{ color: 'text.secondary', opacity: 0.5 }}>
               ·

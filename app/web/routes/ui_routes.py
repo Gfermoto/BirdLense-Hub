@@ -188,6 +188,7 @@ def register_routes(app):
         # ESPHome: show real status if feed source is esphome
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
         birdnet_url = (app_config.get('general.birdnet_url') or '').strip()
+        heimdall_url = (app_config.get('general.heimdall_url') or '').strip()
         # Триггер для отображения: frigate → mqtt (триггер идёт через MQTT)
         trigger_display = 'mqtt' if motion_source == 'frigate' else motion_source
         # Video: реальная проверка через go2rtc snapshot
@@ -204,6 +205,7 @@ def register_routes(app):
             'motion_source': motion_source,
             'trigger_display': trigger_display,
             'birdnet_url': birdnet_url or None,
+            'heimdall_url': heimdall_url or None,
         }
         cache_set('component_status:v1', payload, _CACHE_STATUS_SEC)
         return payload

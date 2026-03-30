@@ -8,6 +8,8 @@ general:
   contributor_password: ""
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
+  # Ссылка на Heimdall Dashboard. Пусто — ссылка Heimdall в UI скрыта.
+  heimdall_url: ""
   # Ссылка на донаты: задаётся в Настройках → Общие; в UI только иконка-сердце в шапке. Пусто — скрыто.
   donate_url: ""
 
@@ -147,6 +149,11 @@ detection:
     "Linaria cannabina (Common Linnet)": "Common Linnet"
     "Fringilla montifringilla (Brambling)": "Brambling"
     "Sturnus vulgaris (Common Starling)": "Common Starling"
+    # Gray/Grey harmonization (US/eBird vs UK/EU naming)
+    "Gray-headed Woodpecker": "Grey-headed Woodpecker"
+    "Grey-headed Woodpecker": "Grey-headed Woodpecker"
+    "Great Gray Shrike": "Great Grey Shrike"
+    "Great Grey Shrike": "Great Grey Shrike"
 
 # Feeder control: mqtt (Tasmota) | esphome. Relay on for duration_seconds.
 # esphome_type: switch (turn_on/turn_off) | button (press — если реле управляется кнопкой/скриптом)

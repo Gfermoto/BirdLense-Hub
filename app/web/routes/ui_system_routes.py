@@ -3,6 +3,7 @@ import re
 import threading
 import sqlite3
 import tempfile
+import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
@@ -36,6 +37,13 @@ _species_metadata_lock = threading.Lock()
 IMPORT_SPECIES_NAME = "Unknown"
 LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
+DEPRECATED_USER_CONFIG_KEYS = (
+    'notifications.enabled',
+    'notifications.excluded_species',
+    'notifications.rate_limit_per_minute',
+    'processor.detection_device',
+    'processor.detection_frame_interval',
+)
 
 
 def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
@@ -202,6 +210,24 @@ def _collect_live_system_metrics(app):
 
 
 def register_routes(app):
+    def _flatten_keys(d: dict, prefix: str = '') -> set[str]:
+        out = set()
+        if not isinstance(d, dict):
+            return out
+        for k, v in d.items():
+            p = f'{prefix}.{k}' if prefix else str(k)
+            out.add(p)
+            if isinstance(v, dict):
+                out |= _flatten_keys(v, p)
+        return out
+
+    def _safe_get_user_config_dict() -> dict:
+        try:
+            with open(app_config.user_config_file, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            return {}
+
     def _sqlite_db_path() -> str | None:
         uri = str(db.engine.url)
         if not uri.startswith('sqlite:///'):
@@ -287,6 +313,56 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/config-audit', methods=['GET'])
+    def system_config_audit():
+        if not settings_check_access():
+            return {'error': 'Unauthorized'}, 401
+        user_cfg = _safe_get_user_config_dict()
+        default_only = {}
+        try:
+            with open(app_config.default_config_file, 'r', encoding='utf-8') as f:
+                default_only = yaml.safe_load(f) or {}
+        except Exception:
+            pass
+        user_keys = _flatten_keys(user_cfg)
+        default_keys = _flatten_keys(default_only)
+        unknown_keys = sorted([k for k in user_keys if k not in default_keys and not k.startswith('camera.')])
+        deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
+
+        notif = app_config.get('notifications', {}) or {}
+        gallery_enabled = bool(app_config.get('gallery.enabled'))
+        gallery_url = (app_config.get('gallery.upload_url') or '').strip()
+        mapping = app_config.get('ebird.species_mapping') or {}
+        gray_pairs = {
+            'Gray-headed Woodpecker': mapping.get('Gray-headed Woodpecker'),
+            'Great Gray Shrike': mapping.get('Great Gray Shrike'),
+        }
+        gray_to_grey_ok = (
+            gray_pairs.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
+            and gray_pairs.get('Great Gray Shrike') == 'Great Grey Shrike'
+        )
+        return {
+            'deprecated_keys_present': deprecated_present,
+            'unknown_keys': unknown_keys,
+            'telegram': {
+                'proxy_type': (notif.get('telegram_proxy_type') or 'none'),
+                'send_photo': bool(notif.get('send_photo')),
+            },
+            'gallery': {
+                'enabled': gallery_enabled,
+                'upload_url': gallery_url or None,
+                'min_confidence': app_config.get('gallery.min_confidence'),
+            },
+            'mapping': {
+                'gray_to_grey_ok': gray_to_grey_ok,
+                'pairs': gray_pairs,
+            },
+            'heimdall': {
+                'url': (app_config.get('general.heimdall_url') or '').strip() or None,
+                'configured': bool((app_config.get('general.heimdall_url') or '').strip()),
+            },
+        }
 
     @app.route('/api/ui/system/visitors', methods=['GET'])
     def system_visitors():

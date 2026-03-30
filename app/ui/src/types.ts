@@ -105,6 +105,7 @@ export interface Settings {
     settings_password?: string;
     contributor_password?: string;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
+    heimdall_url?: string; // URL to Heimdall dashboard; empty = no link in UI
     /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
     donate_url?: string;
   };
