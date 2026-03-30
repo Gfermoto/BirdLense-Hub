@@ -229,6 +229,10 @@ export const VisitCard = memo(function VisitCard({
                 size="small"
                 onClick={() => setExpanded(!expanded)}
                 sx={{ mt: -0.5 }}
+                aria-expanded={expanded}
+                aria-label={
+                  expanded ? t('timeline.collapseVisitDetails') : t('timeline.expandVisitDetails')
+                }
               >
                 {expanded ? <ExpandLess /> : <ExpandMore />}
               </IconButton>

@@ -4,6 +4,7 @@ import { OverviewTopSpecies } from '../../types';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
@@ -63,9 +64,18 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
   return (
     <Box sx={{ width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="hourly-activity-species-label">
+            {t('overviewExtra.hourlyChartSpecies')}
+          </InputLabel>
           <Select
+            id="hourly-activity-species-select"
+            labelId="hourly-activity-species-label"
+            label={t('overviewExtra.hourlyChartSpecies')}
             value={selectedSpecies}
+            inputProps={{
+              'aria-label': t('overviewExtra.hourlyChartSpecies'),
+            }}
             onChange={(e) =>
               setSelectedSpecies(e.target.value as number | 'all')
             }

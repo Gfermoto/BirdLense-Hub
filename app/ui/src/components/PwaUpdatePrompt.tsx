@@ -28,24 +28,32 @@ export function PwaUpdatePrompt() {
     setShowRefresh(false);
   };
 
+  const snackbarContentSx = {
+    bgcolor: '#1e293b',
+    color: '#f8fafc',
+    '& .MuiSnackbarContent-action': { color: '#f8fafc' },
+  } as const;
+
   return (
     <>
       <Snackbar
         open={showRefresh}
         message={t('pwa.updateAvailable')}
         action={
-          <Button color="primary" size="small" onClick={handleRefresh}>
+          <Button color="inherit" size="small" onClick={handleRefresh} sx={{ fontWeight: 600 }}>
             {t('pwa.refresh')}
           </Button>
         }
         onClose={() => setShowRefresh(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={{ sx: snackbarContentSx }}
       />
       <Snackbar
         open={showOffline}
         message={t('pwa.offlineReady')}
         onClose={() => setShowOffline(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={{ sx: snackbarContentSx }}
       />
     </>
   );
