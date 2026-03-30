@@ -4,6 +4,7 @@ import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
 import { SpeciesDataQualityCard } from './SpeciesDataQualityCard';
+import { ClassifierDatasetAlignmentCard } from './ClassifierDatasetAlignmentCard';
 import { ProcessorLogs } from './ProcessorLogs';
 import { StorageOverview } from './StorageOverview';
 import { Box, Divider } from '@mui/material';
@@ -35,6 +36,12 @@ export const System: React.FC = () => {
 
         <Box>
           <SpeciesDataQualityCard />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box>
+          <ClassifierDatasetAlignmentCard />
         </Box>
 
         <Divider sx={{ my: 3 }} />

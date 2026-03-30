@@ -1617,4 +1617,27 @@ def register_routes(app):
             app.logger.exception('Species data quality report failed: %s', e)
             return {'error': str(e)}, 500
 
+    @app.route('/api/ui/system/species-registry/classifier-dataset-alignment', methods=['GET'])
+    def species_registry_classifier_dataset_alignment():
+        """Классы классификатора (best.pt) ↔ каталог Species ↔ папки data/dataset."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_dataset_alignment_service import build_classifier_dataset_alignment_report
+
+        clf_lim = request.args.get('classifier_limit', type=int) or 600
+        cat_lim = request.args.get('catalog_limit', type=int) or 400
+        ds_lim = request.args.get('dataset_limit', type=int) or 200
+        try:
+            body = build_classifier_dataset_alignment_report(
+                db.session,
+                app_config.get,
+                classifier_limit=clf_lim,
+                catalog_limit=cat_lim,
+                dataset_limit=ds_lim,
+            )
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Classifier/dataset alignment report failed: %s', e)
+            return {'error': str(e)}, 500
+
     _start_system_metrics_sampler(app)
