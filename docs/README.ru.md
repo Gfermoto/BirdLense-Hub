@@ -92,6 +92,7 @@
 |------|---------|
 | Локально | `cd app && make local` → http://localhost:8085 |
 | Web-тесты | `cd app && make test-web` |
+| Telegram proxy autorotate | `make proxy-rotation-install` (статус: `make proxy-rotation-status`) |
 | Полный индекс | Вы здесь ✓ |
 | Предпросмотр статического сайта | `pip install -r requirements-docs.txt && mkdocs serve` ([подробности](./Documentation.ru.md)) |
 

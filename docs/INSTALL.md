@@ -77,6 +77,27 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
+### Telegram proxy autorotate (one command)
+
+After the first successful `make deploy` (so scripts are present on the server):
+
+```bash
+cd BirdLense-Hub
+make proxy-rotation-install
+```
+
+Done: a server cron job will rotate Telegram SOCKS5 proxy every 6 hours and apply changes only when the best proxy actually changes.
+
+Useful commands:
+
+```bash
+make proxy-rotation-status   # show schedule and recent logs
+make proxy-rotation-remove   # disable autorotate
+make refresh-telegram-proxy  # one-shot proxy selection now
+```
+
+If `status` shows `not installed`, verify `scripts/deploy.local.sh` (`DEPLOY_HOST` / `DEPLOY_SSH_PORT`) and run install again.
+
 ---
 
 ## Verification
