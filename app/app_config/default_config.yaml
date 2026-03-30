@@ -19,9 +19,9 @@ processor:
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  min_track_duration: 5  # сек; короче — отброс (меньше ложных «мельканий»)
-  min_confidence_binary: 0.25  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
-  min_confidence_to_process: 0.40  # Классификатор (голосование × средняя уверенность)
+  min_track_duration: 4  # сек; короче — отброс (меньше ложных «мельканий»)
+  min_confidence_binary: 0.22  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
+  min_confidence_to_process: 0.36  # Классификатор (голосование × средняя уверенность)
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
@@ -113,7 +113,7 @@ detection:
   # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
   source_priority: ["yolo", "frigate", "birdnet"]
   # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
-  min_confidence_to_store: 0.40
+  min_confidence_to_store: 0.36
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
