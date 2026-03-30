@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs docs-site diagnose
+.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy
 
 deploy:
 	@./scripts/deploy.sh
@@ -21,3 +21,7 @@ docs-site:
 # Диагностика перезапусков на сервере (ssh birdlense)
 diagnose:
 	@./scripts/diagnose.sh
+
+# Подобрать рабочий SOCKS5-прокси для Telegram API и применить на сервере
+refresh-telegram-proxy:
+	@./scripts/refresh-telegram-proxy.sh
