@@ -45,8 +45,17 @@ def _get_telegram_api_base():
     return base or 'https://api.telegram.org'
 
 
+def _telegram_proxy_mode():
+    """none | socks_http | mtproto — см. notifications.telegram_proxy_type."""
+    from telegram_mtproto import telegram_proxy_type
+
+    return telegram_proxy_type()
+
+
 def _telegram_http_proxies():
     """Прокси для исходящих запросов к Telegram (SOCKS5h, HTTP). Пусто — без прокси."""
+    if _telegram_proxy_mode() != 'socks_http':
+        return None
     url = (app_config.get('notifications.telegram_proxy_url') or '').strip()
     if not url:
         return None
@@ -129,9 +138,40 @@ def _compress_image_for_telegram(image_bytes):
     return image_bytes
 
 
+def _telegram_message_thread_id_int():
+    thread_id = app_config.get('notifications.message_thread_id')
+    if thread_id is None or thread_id == '':
+        return None
+    try:
+        return int(thread_id)
+    except (ValueError, TypeError):
+        return None
+
+
 def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
                            button_style='primary', button_tags=None, **kwargs):
     """Build and send Telegram message with HTML, keyboard, options."""
+    if _telegram_proxy_mode() == 'mtproto':
+        from telegram_mtproto import mtproto_send
+
+        timeout_text, _ = _telegram_timeouts()
+        retries = int(app_config.get('notifications.telegram_retries') or 3)
+        retries = max(1, min(5, retries))
+        return mtproto_send(
+            token=token,
+            chat_id=str(chat_id),
+            text=text,
+            link_url=link,
+            button_emoji=button_emoji,
+            image_bytes=None,
+            caption='',
+            disable_notification=app_config.get('notifications.disable_notification', False),
+            link_preview_large=bool(app_config.get('notifications.link_preview_large', False)),
+            message_thread_id=_telegram_message_thread_id_int(),
+            timeout_sec=timeout_text,
+            request_retries=retries,
+        )
+
     link_preview = {'is_disabled': True}
     if link and app_config.get('notifications.link_preview_large', False):
         link_preview = {'is_disabled': False, 'prefer_large_media': True}
@@ -147,12 +187,9 @@ def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
             'notifications.protect_content', False),
         'link_preview_options': link_preview,
     }
-    thread_id = app_config.get('notifications.message_thread_id')
-    if thread_id is not None and thread_id != '':
-        try:
-            payload['message_thread_id'] = int(thread_id)
-        except (ValueError, TypeError):
-            pass
+    tid = _telegram_message_thread_id_int()
+    if tid is not None:
+        payload['message_thread_id'] = tid
     if link:
         custom_id = _get_button_custom_emoji_id(button_tags)
         payload['reply_markup'] = {
@@ -182,7 +219,7 @@ def notify_telegram_test(message="Test notification from BirdLense"):
         err = r.json() if r.text else {}
         desc = err.get('description', r.text[:200] if r.text else str(r.status_code))
         return False, desc
-    except requests.RequestException as e:
+    except Exception as e:
         return False, str(e)
 
 
@@ -310,31 +347,7 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
             caption = text
             if link_url and app_config.get('notifications.link_preview_large', False):
                 caption = f"{text}\n\n{link_url}"
-            payload = {
-                'chat_id': chat_id,
-                'caption': caption,
-                'parse_mode': 'HTML',
-                'disable_notification': app_config.get(
-                    'notifications.disable_notification', False),
-                'protect_content': protect,
-            }
-            if link_url and app_config.get('notifications.link_preview_large', False):
-                payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
-            thread_id = app_config.get('notifications.message_thread_id')
-            if thread_id not in (None, ''):
-                try:
-                    payload['message_thread_id'] = int(thread_id)
-                except (ValueError, TypeError):
-                    pass
-            if link_url:
-                custom_id = _get_button_custom_emoji_id(button_tags)
-                payload['reply_markup'] = {
-                    'inline_keyboard': [[_telegram_button_open_live(
-                        link_url, button_emoji, 'primary',
-                        icon_custom_emoji_id=custom_id)]]
-                }
 
-            base = _get_telegram_api_base()
             _, timeout_media = _telegram_timeouts()
             logging.info(
                 "Telegram: sending photo (%d bytes), timeout=%ds",
@@ -343,32 +356,82 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
             )
             photo_failed = False
             r = None
-            try:
-                data = _payload_for_telegram_multipart(payload)
+
+            if _telegram_proxy_mode() == 'mtproto':
+                from telegram_mtproto import mtproto_send
+
                 if view_stars > 0:
-                    data['star_count'] = view_stars
-                    data['media'] = json.dumps([
-                        {'type': 'photo', 'media': 'attach://photo'}
-                    ])
-                    r = _telegram_request(
-                        'POST', f"{base}/bot{token}/sendPaidMedia",
-                        timeout=timeout_media,
-                        data=data,
-                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                    logging.warning(
+                        "Telegram MTProto: paid media (Stars) через Telethon не поддерживается — обычное фото",
                     )
-                else:
-                    r = _telegram_request(
-                        'POST', f"{base}/bot{token}/sendPhoto",
-                        timeout=timeout_media,
-                        data=data,
-                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                    )
-            except (requests.Timeout, requests.ConnectionError, OSError) as e:
-                logging.warning(
-                    "Telegram photo failed (timeout/network): %s — fallback to text",
-                    e,
+                retries = int(app_config.get('notifications.telegram_retries') or 3)
+                retries = max(1, min(5, retries))
+                r = mtproto_send(
+                    token=token,
+                    chat_id=str(chat_id),
+                    text=text,
+                    link_url=link_url,
+                    button_emoji=button_emoji,
+                    image_bytes=image_to_send,
+                    caption=caption,
+                    disable_notification=app_config.get(
+                        'notifications.disable_notification', False),
+                    link_preview_large=bool(app_config.get(
+                        'notifications.link_preview_large', False)),
+                    message_thread_id=_telegram_message_thread_id_int(),
+                    timeout_sec=timeout_media,
+                    request_retries=retries,
                 )
-                photo_failed = True
+                photo_failed = not r.ok
+            else:
+                payload = {
+                    'chat_id': chat_id,
+                    'caption': caption,
+                    'parse_mode': 'HTML',
+                    'disable_notification': app_config.get(
+                        'notifications.disable_notification', False),
+                    'protect_content': protect,
+                }
+                if link_url and app_config.get('notifications.link_preview_large', False):
+                    payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
+                tid = _telegram_message_thread_id_int()
+                if tid is not None:
+                    payload['message_thread_id'] = tid
+                if link_url:
+                    custom_id = _get_button_custom_emoji_id(button_tags)
+                    payload['reply_markup'] = {
+                        'inline_keyboard': [[_telegram_button_open_live(
+                            link_url, button_emoji, 'primary',
+                            icon_custom_emoji_id=custom_id)]]
+                    }
+
+                base = _get_telegram_api_base()
+                try:
+                    data = _payload_for_telegram_multipart(payload)
+                    if view_stars > 0:
+                        data['star_count'] = view_stars
+                        data['media'] = json.dumps([
+                            {'type': 'photo', 'media': 'attach://photo'}
+                        ])
+                        r = _telegram_request(
+                            'POST', f"{base}/bot{token}/sendPaidMedia",
+                            timeout=timeout_media,
+                            data=data,
+                            files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                        )
+                    else:
+                        r = _telegram_request(
+                            'POST', f"{base}/bot{token}/sendPhoto",
+                            timeout=timeout_media,
+                            data=data,
+                            files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
+                        )
+                except (requests.Timeout, requests.ConnectionError, OSError) as e:
+                    logging.warning(
+                        "Telegram photo failed (timeout/network): %s — fallback to text",
+                        e,
+                    )
+                    photo_failed = True
             if r is not None and not r.ok:
                 logging.warning(
                     "Telegram sendPhoto HTTP %s: %s",
@@ -406,5 +469,5 @@ def notify(message, link="live", tags=None, image_path=None, image_bytes=None, t
                 r.status_code,
                 (getattr(r, "text", "") or "")[:300],
             )
-    except requests.RequestException as e:
+    except Exception as e:
         logging.warning("Telegram notify error: %s", e)

@@ -177,8 +177,16 @@ notifications:
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
-  # Исходящие к Bot API: SOCKS5h или HTTP(S)-прокси. MTProto-прокси сюда не подставляются (Bot API — HTTPS).
+  # Тип прокси: none | socks_http | mtproto (как в приложении Telegram: сервер/порт/секрет).
+  telegram_proxy_type: socks_http
+  # При socks_http — SOCKS5h или HTTP(S) для HTTPS-запросов к api.telegram.org
   telegram_proxy_url: ""      # socks5h://127.0.0.1:9050 или http://127.0.0.1:8118
+  # При mtproto — отдельные поля + telegram_api_id / telegram_api_hash (my.telegram.org)
+  telegram_mtproto_host: ""
+  telegram_mtproto_port: 443
+  telegram_mtproto_secret: ""  # hex из приложения (ee/dd…); маскируется в API
+  telegram_api_id: 0           # целое, или env TELEGRAM_API_ID
+  telegram_api_hash: ""       # строка, или env TELEGRAM_API_HASH
   telegram_timeout: 300      # Таймаут сек (в РФ блокировки — ставить 300+). Текст: timeout/2
   telegram_retries: 5        # Повторы при таймауте/сетевой ошибке
   compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
