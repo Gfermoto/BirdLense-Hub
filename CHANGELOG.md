@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **Telegram MTProto:** корректный разбор `telegram_api_id` и порта прокси из YAML/чисел (в т.ч. `12345.0`), чтобы после сохранения настроек не «терялся» api_id.
+- **Telegram preview:** нормализация фото перед отправкой (`Pillow` + fallback через `OpenCV`) и upscaling очень маленьких кропов (минимум 64px), чтобы снизить ошибки Bot API `IMAGE_PROCESS_FAILED`.
 - **Статус MQTT в шапке:** при работающем процессоре индикатор берёт **`mqtt_connected` из heartbeat** (тот же клиент, что Frigate/BirdNET). Дополнительно: проверка из веб-процесса ждёт до ~2 с после `loop_start()` и нормализует `mqtt.port` в int — меньше ложных «ошибок» из-за гонки.
 - **UI (страница видео):** кнопки «предыдущая / следующая запись» не работали из‑за обращения к несуществующей переменной `listReturnState` (**ReferenceError** в обработчике). Исправлено: `useLocation()`, сохранение `state.from` при переходе к соседним роликам (как с Timeline / Unknowns). Журнал проверок: [VERIFICATION.ru.md](docs/VERIFICATION.ru.md) / [EN](docs/VERIFICATION.md).
 - **UI / доступ:** `GET /api/ui/settings/check-access` всегда отвечает **200** с `{ unlocked: false }`, если сессия не разблокирована (раньше **403** — шум в консоли браузера). Защищённые POST/PATCH по-прежнему возвращают 403 без сессии.

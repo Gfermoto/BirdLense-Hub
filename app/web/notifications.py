@@ -109,8 +109,8 @@ def _compress_image_for_telegram(image_bytes):
     """Сжать и/или уменьшить JPEG для Telegram. В уведомлениях уже шлём кропы (bounding box) с процессора."""
     max_side = int(app_config.get('notifications.telegram_max_side_px') or 0)
     limit_kb = int(app_config.get('notifications.compress_photo_over_kb') or 0)
-    if max_side <= 0 and (limit_kb <= 0 or len(image_bytes) <= limit_kb * 1024):
-        return image_bytes
+    # Даже без явного resize/compress нормализуем слишком маленькие/битые превью:
+    # Telegram иногда отвечает IMAGE_PROCESS_FAILED на экзотичных кропах.
     try:
         from PIL import Image
         import io
@@ -118,6 +118,12 @@ def _compress_image_for_telegram(image_bytes):
         if img.mode in ('RGBA', 'P'):
             img = img.convert('RGB')
         w, h = img.size
+        # Слишком маленькие кропы Telegram может отвергать; поднимаем минимум.
+        if min(w, h) < 64:
+            ratio = 64 / float(min(w, h))
+            new_size = (max(64, int(w * ratio)), max(64, int(h * ratio)))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            w, h = img.size
         if max_side > 0 and max(w, h) > max_side:
             ratio = max_side / max(w, h)
             new_size = (int(w * ratio), int(h * ratio))
@@ -134,7 +140,35 @@ def _compress_image_for_telegram(image_bytes):
             logging.debug("Telegram: %d -> %d bytes", len(image_bytes), len(out))
         return out
     except Exception as e:
-        logging.debug("Telegram image process skip: %s", e)
+        logging.debug("Telegram image process (PIL) failed: %s", e)
+    # Fallback для окружений без Pillow или при битом EXIF: пробуем OpenCV decode/encode.
+    try:
+        import cv2
+        import numpy as np
+
+        arr = np.frombuffer(image_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return image_bytes
+        h, w = img.shape[:2]
+        if min(h, w) < 64:
+            ratio = 64.0 / float(min(h, w))
+            img = cv2.resize(img, (max(64, int(w * ratio)), max(64, int(h * ratio))), interpolation=cv2.INTER_CUBIC)
+            h, w = img.shape[:2]
+        if max_side > 0 and max(w, h) > max_side:
+            ratio = max_side / float(max(w, h))
+            img = cv2.resize(img, (max(1, int(w * ratio)), max(1, int(h * ratio))), interpolation=cv2.INTER_AREA)
+        ok, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        if not ok:
+            return image_bytes
+        out = enc.tobytes()
+        if limit_kb > 0 and len(out) > limit_kb * 1024:
+            ok2, enc2 = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 78])
+            if ok2:
+                out = enc2.tobytes()
+        return out
+    except Exception as e:
+        logging.debug("Telegram image process (cv2) failed: %s", e)
     return image_bytes
 
 
