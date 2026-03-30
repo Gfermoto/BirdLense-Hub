@@ -169,7 +169,7 @@
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "heimdallUrl": "Ссылка на Heimdall",
-    "heimdallUrlHint": "URL панели Heimdall. Пусто — ссылка скрывается в футере.",
+    "heimdallUrlHint": "URL панели Heimdall для серверной проверки доступности и метаданных в разделе System.",
     "donateUrl": "Ссылка для поддержки",
     "donateUrlHint": "Эта ссылка открывается при нажатии на единственную иконку-сердце в шапке (между языком и настройками). Не дублируется в карточке «Корм» и в меню шестерёнки.",
     "accordionPerformance": "Производительность / кэш API",
@@ -743,6 +743,9 @@
     "telegramProxyType": "Тип Telegram proxy",
     "galleryUrl": "URL галереи",
     "heimdallUrl": "URL Heimdall",
+    "heimdallProbe": "Проверка Heimdall с сервера",
+    "ok": "доступен",
+    "unreachable": "недоступен",
     "deprecatedKeysFound": "Обнаружены устаревшие ключи ({{count}})",
     "unknownKeysFound": "Обнаружены неизвестные ключи ({{count}})"
   },

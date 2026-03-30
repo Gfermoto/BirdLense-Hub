@@ -169,7 +169,7 @@
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "heimdallUrl": "Heimdall URL",
-    "heimdallUrlHint": "URL to Heimdall dashboard. Empty — link hidden in footer.",
+    "heimdallUrlHint": "Heimdall dashboard URL used for server-side reachability/info probe on the System page.",
     "donateUrl": "Support page URL",
     "donateUrlHint": "Opens when users tap the single heart icon in the top bar (next to language / settings). Not shown on the Food card or in the gear menu.",
     "accordionPerformance": "Performance / API cache",
@@ -741,6 +741,9 @@
     "telegramProxyType": "Telegram proxy type",
     "galleryUrl": "Gallery URL",
     "heimdallUrl": "Heimdall URL",
+    "heimdallProbe": "Heimdall probe from server",
+    "ok": "reachable",
+    "unreachable": "unreachable",
     "deprecatedKeysFound": "Deprecated keys found ({{count}})",
     "unknownKeysFound": "Unknown keys found ({{count}})"
   },

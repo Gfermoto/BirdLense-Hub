@@ -406,6 +406,15 @@ export type ConfigAudit = {
   heimdall: {
     url: string | null;
     configured: boolean;
+    probe?: {
+      configured: boolean;
+      reachable: boolean;
+      http_status?: number | null;
+      latency_ms?: number | null;
+      title?: string | null;
+      version?: string | null;
+      error?: string | null;
+    };
   };
 };
 
