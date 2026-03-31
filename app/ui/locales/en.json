@@ -30,12 +30,12 @@
     "sectionRegenerate": "Regenerate",
     "sectionDataset": "Dataset",
     "sectionDb": "Database maintenance",
-    "datasetFlowTitle": "Operator flow (short)",
-    "datasetFlowIntro": "Run steps in order for predictable output.",
-    "datasetFlowStep1": "Import new recordings from disk.",
-    "datasetFlowStep2": "Regenerate spectrograms and tracks for the selected period.",
-    "datasetFlowStep3": "Export dataset ZIP (optionally only manually corrected detections).",
-    "datasetFlowStep4": "Use retro-export and clean dataset for backfill/cleanup."
+    "datasetFlowTitle": "Dataset prep (simple order)",
+    "datasetFlowIntro": "For a normal cycle, use only 4 buttons: \"Scan and import\" -> \"Regenerate spectrograms\" -> \"Regenerate tracks\" -> \"Export dataset\". Other buttons are service/maintenance tools and can be skipped.",
+    "datasetFlowStep1": "Import: click \"Scan and import\".",
+    "datasetFlowStep2": "Period: choose Last 7/30 days or All time, then run spectrogram regeneration.",
+    "datasetFlowStep3": "Tracks: run \"Regenerate tracks\" (for big archives, run overnight and split by periods).",
+    "datasetFlowStep4": "Export: click \"Export dataset\". Use \"Retro-export\" and \"Clean dataset\" only for recovery/cleanup."
   },
   "overview": {
     "lastBird": "Last bird today",
