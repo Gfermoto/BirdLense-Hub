@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опция `--ignore-direct-image-429` и меньше воркеров в PR, чтобы прогон не падал на массовом **429** от Wikimedia при параллельных запросах из GitHub Actions.
+
 ## [0.2.10] - 2026-03-31
 
 Накопительный релиз после v0.2.9: каталог/реестр, производительность, Telegram/MTProto, CI/E2E, перегенерация треков. Merge: [#196](https://github.com/Gfermoto/BirdLense-Hub/pull/196).
