@@ -31,6 +31,11 @@ class CardIssue:
     details: str
 
 
+def _is_direct_image_429(issue: CardIssue) -> bool:
+    """Wikimedia and similar hosts often return 429 under parallel CI fetches."""
+    return issue.issue == 'image_direct_unreachable' and 'status=429' in issue.details
+
+
 def _ok_image_status(code: int) -> bool:
     return 200 <= code < 400
 
@@ -104,6 +109,11 @@ def main() -> int:
     p.add_argument('--workers', type=int, default=12)
     p.add_argument('--limit', type=int, default=0, help='check only first N species (0 = all)')
     p.add_argument('--report-path', default='', help='optional JSON report output path')
+    p.add_argument(
+        '--ignore-direct-image-429',
+        action='store_true',
+        help='Exit 0 if remaining issues would only be direct image checks with HTTP 429 (rate limit).',
+    )
     args = p.parse_args()
 
     base = args.base_url.rstrip('/')
@@ -135,7 +145,10 @@ def main() -> int:
             os.makedirs(out_dir, exist_ok=True)
         with open(args.report_path, 'w', encoding='utf-8') as f:
             f.write(payload + '\n')
-    return 1 if issues else 0
+    fail_issues = issues
+    if args.ignore_direct_image_429:
+        fail_issues = [i for i in issues if not _is_direct_image_429(i)]
+    return 1 if fail_issues else 0
 
 
 if __name__ == '__main__':
