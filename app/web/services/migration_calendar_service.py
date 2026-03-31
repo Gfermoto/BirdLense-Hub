@@ -2,9 +2,9 @@
 from datetime import datetime, timezone
 import os
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func
 
-from models import Species, SpeciesVisit, VideoSpecies
+from models import Species, SpeciesVisit
 from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_names,
     species_name_match_norm_keys,
@@ -66,8 +66,7 @@ def get_migration_calendar(
              ``dataset`` — виды, присутствующие в data/dataset/*;
              ``full_eu`` — полный каталог из allowlist EU.
              Legacy aliases: ``active`` -> ``observed``, ``full`` -> ``full_eu``.
-    evidence: ``all`` — все визиты; ``camera``/``video`` — только визиты с видео-детекцией;
-        ``birdnet`` — только визиты, где есть audio/BirdNET-детекция.
+    evidence: legacy field, ignored for catalog output.
     """
     catalog = (catalog or 'observed').strip().lower()
     if catalog == 'active':
@@ -76,10 +75,8 @@ def get_migration_calendar(
         catalog = 'full_eu'
     if catalog not in ('observed', 'dataset', 'full_eu'):
         catalog = 'observed'
-    if evidence == 'video':
-        evidence = 'camera'
-    if evidence not in ('all', 'camera', 'birdnet'):
-        evidence = 'all'
+    # Evidence split (camera vs BirdNET) is intentionally disabled in catalog.
+    evidence = 'all'
 
     suspect_ids = species_ids_to_exclude_from_bird_catalog(session)
 
@@ -99,26 +96,6 @@ def get_migration_calendar(
             hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc,
         )
         filters.append(SpeciesVisit.start_time <= end_dt)
-
-    if evidence == 'camera':
-        vid_visits = (
-            select(SpeciesVisit.id)
-            .join(VideoSpecies, VideoSpecies.species_visit_id == SpeciesVisit.id)
-            .where(VideoSpecies.source == 'video')
-            .distinct()
-        )
-        filters.append(SpeciesVisit.id.in_(vid_visits))
-    elif evidence == 'birdnet':
-        birdnet_visits = (
-            select(SpeciesVisit.id)
-            .join(VideoSpecies, VideoSpecies.species_visit_id == SpeciesVisit.id)
-            .where(
-                (VideoSpecies.detection_provider == 'birdnet_mqtt')
-                | (VideoSpecies.source == 'audio')
-            )
-            .distinct()
-        )
-        filters.append(SpeciesVisit.id.in_(birdnet_visits))
 
     # Per species: count visits per month (all years in range combined)
     month_expr = func.strftime('%m', SpeciesVisit.start_time)

@@ -721,11 +721,9 @@ def register_routes(app):
         start_date = request.args.get('start_date', type=str)
         end_date = request.args.get('end_date', type=str)
         catalog = (request.args.get('catalog') or 'observed').strip().lower()
-        evidence = (request.args.get('evidence') or 'all').strip().lower()
+        evidence = 'all'
         if catalog not in ('observed', 'dataset', 'full_eu', 'active', 'full'):
             return {'error': 'catalog must be observed, dataset or full_eu'}, 400
-        if evidence not in ('all', 'video', 'camera', 'birdnet'):
-            return {'error': 'evidence must be all, video, camera or birdnet'}, 400
         if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
             return {'error': 'start_date must be YYYY-MM-DD'}, 400
         if end_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', end_date):

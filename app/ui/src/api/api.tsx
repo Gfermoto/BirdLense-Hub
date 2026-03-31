@@ -830,7 +830,6 @@ export const fetchMigrationCalendar = async (params?: {
   start_date?: string;
   end_date?: string;
   catalog?: 'observed' | 'dataset' | 'full_eu' | 'active' | 'full';
-  evidence?: 'all' | 'camera' | 'birdnet' | 'video';
 }): Promise<MigrationCalendarData> => {
   const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
     params: params || {},
