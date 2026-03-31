@@ -30,12 +30,12 @@
     "sectionRegenerate": "Regenerate",
     "sectionDataset": "Dataset",
     "sectionDb": "Database maintenance",
-    "datasetFlowTitle": "Dataset prep (simple order)",
-    "datasetFlowIntro": "For a normal cycle, use only 4 buttons: \"Scan and import\" -> \"Regenerate spectrograms\" -> \"Regenerate tracks\" -> \"Export dataset\". Other buttons are service/maintenance tools and can be skipped.",
-    "datasetFlowStep1": "Import: click \"Scan and import\".",
-    "datasetFlowStep2": "Period: choose Last 7/30 days or All time, then run track regeneration.",
-    "datasetFlowStep3": "Tracks: run \"Regenerate tracks\" (for big archives, run overnight and split by periods).",
-    "datasetFlowStep4": "Export: click \"Export dataset\". Use \"Retro-export\" and \"Clean dataset\" only for recovery/cleanup."
+    "datasetFlowTitle": "Dataset preparation",
+    "datasetFlowIntro": "Typical path: import recordings → regenerate tracks if needed → export dataset. Spectrograms are not required for crops or training; use them only if you rely on the BirdNET-over-MQTT flow and want updated spectrogram images. Retro-export and clean-dataset are optional maintenance, not part of the minimal loop.",
+    "datasetFlowStep1": "Import: \"Scan and import\" picks up new files under the recordings archive.",
+    "datasetFlowStep2": "Period and filters: set the date range above; for tracks you can limit species so only videos that already have those detections are queued.",
+    "datasetFlowStep3": "Tracks: \"Regenerate tracks\" when detections/bboxes in the DB must be rebuilt (after setting changes or bad frames). Large archives: run overnight and slice by period.",
+    "datasetFlowStep4": "Crops on disk: use \"Retro-export\" from saved detections if needed, then \"Export dataset\" (ZIP). \"Clean dataset\" only when you intentionally remove bad or orphaned files under train/."
   },
   "overview": {
     "lastBird": "Last bird today",
@@ -521,7 +521,7 @@
     "cleanDatasetLoading": "Cleaning…",
     "heavyOpsTitle": "What is heavy",
     "heavyOpsIntro": "The “all time” range is safe, but runtime depends on archive size. The heaviest operations are:",
-    "heavyOpsSpectrograms": "Regenerate spectrograms: re-reads source videos and recomputes audio assets.",
+    "heavyOpsSpectrograms": "Regenerate spectrograms: heavy video/audio pass; not needed for YOLO crop export.",
     "heavyOpsTracks": "Regenerate tracks: the heaviest option because it walks video frames again.",
     "heavyOpsDataset": "Dataset export/retro-export: reads the archive and builds a ZIP; best run after import and corrections, not during peak recording time.",
     "mergeDuplicateSpecies": "Merge duplicate species",
