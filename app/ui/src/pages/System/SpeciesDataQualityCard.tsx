@@ -83,9 +83,22 @@ export function SpeciesDataQualityCard() {
                 variant="outlined"
                 label={t('system.catalogFullEuCount', { n: coverage.full_eu_species_count })}
               />
+              <Chip
+                size="small"
+                color={coverage.tuning_candidate_count > 0 ? 'warning' : 'default'}
+                label={t('system.catalogTuningCandidates', { n: coverage.tuning_candidate_count })}
+              />
             </>
           )}
         </Box>
+
+        {coverage && coverage.tuning_candidate_count > 0 && (
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+            {t('system.catalogTuningHint')}
+            {' '}
+            {coverage.tuning_candidates.slice(0, 8).map((x) => x.name).join(', ')}
+          </Typography>
+        )}
 
         {(data.duplicate_name_groups?.length ?? 0) > 0 && (
           <>

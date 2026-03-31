@@ -769,6 +769,8 @@
     "catalogObservedCount": "Наблюдаемые: {{n}}",
     "catalogDatasetCount": "В датасете: {{n}}",
     "catalogFullEuCount": "Полный EU: {{n}}",
+    "catalogTuningCandidates": "К тюнингу: {{n}}",
+    "catalogTuningHint": "Кандидаты на дообучение (наблюдались вручную, но ещё не в dataset):",
     "speciesDataQualityBlocklist": "Правил скрытия подписей: {{n}}",
     "speciesDataQualitySuspectTable": "Подозрительные записи (фрагмент)",
     "speciesDataQualityDupesTable": "Одинаковое нормализованное имя (кандидаты на merge)",
