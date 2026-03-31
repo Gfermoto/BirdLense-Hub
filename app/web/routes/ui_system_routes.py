@@ -1419,19 +1419,30 @@ def register_routes(app):
                                     vs.frames = json.dumps(detections[best_idx]['frames'])
                                     used_det_indices.add(best_idx)
                             db.session.flush()
-                            to_delete = [
-                                vs for vs in video.video_species
-                                if not vs.manually_corrected
-                                and (not species_scope or vs.species_id in species_scope)
-                            ]
-                            for vs in to_delete:
-                                db.session.delete(vs)
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
                             if species_scope:
                                 unmatched = [
                                     d for d in unmatched
                                     if _resolved_species_id_for_det(d) in species_scope
                                 ]
+                            if species_scope:
+                                ids_touched = {
+                                    _resolved_species_id_for_det(d)
+                                    for d in unmatched
+                                }
+                                ids_touched &= species_scope
+                                to_delete = [
+                                    vs for vs in video.video_species
+                                    if not vs.manually_corrected
+                                    and vs.species_id in ids_touched
+                                ]
+                            else:
+                                to_delete = [
+                                    vs for vs in video.video_species
+                                    if not vs.manually_corrected
+                                ]
+                            for vs in to_delete:
+                                db.session.delete(vs)
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
                             frames_updated += 1
@@ -1441,11 +1452,17 @@ def register_routes(app):
                                 'reason': 'has_manual_corrections',
                             })
                         elif species_scope:
-                            VideoSpecies.query.filter(
-                                VideoSpecies.video_id == video.id,
-                                VideoSpecies.species_id.in_(species_ids_f),
-                                VideoSpecies.manually_corrected.is_(False),
-                            ).delete(synchronize_session=False)
+                            ids_touched = {
+                                _resolved_species_id_for_det(d)
+                                for d in scoped_detections
+                            }
+                            ids_touched &= species_scope
+                            if ids_touched:
+                                VideoSpecies.query.filter(
+                                    VideoSpecies.video_id == video.id,
+                                    VideoSpecies.species_id.in_(ids_touched),
+                                    VideoSpecies.manually_corrected.is_(False),
+                                ).delete(synchronize_session=False)
                             visit_processor.process_detections(video, scoped_detections)
                             generated += 1
                         else:
