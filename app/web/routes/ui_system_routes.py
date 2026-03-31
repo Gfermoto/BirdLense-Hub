@@ -1156,11 +1156,17 @@ def register_routes(app):
                 import sys
                 from datetime import datetime, timezone, timedelta
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
-                from track_regenerator import process_video_for_tracks
+                from track_regenerator import (
+                    build_detection_pipeline,
+                    process_video_for_tracks,
+                )
                 from services.visit_processor import VisitProcessor
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
                 lores_size = (640, 640)
+                frame_step = int(
+                    app_config.get('processor.track_regen_frame_step') or 1
+                )
 
                 if force:
                     q = Video.query
@@ -1196,6 +1202,8 @@ def register_routes(app):
 
                 visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
+                # Reuse YOLO+tracker pipeline across all videos in the batch.
+                frame_processor, decision_maker = build_detection_pipeline(app_config)
 
                 for video in videos:
                     if not video.video_path:
@@ -1216,7 +1224,11 @@ def register_routes(app):
 
                     try:
                         detections = process_video_for_tracks(
-                            full_video, lores_size
+                            full_video,
+                            lores_size,
+                            frame_processor=frame_processor,
+                            decision_maker=decision_maker,
+                            frame_step=frame_step,
                         )
                         if not detections:
                             skipped += 1

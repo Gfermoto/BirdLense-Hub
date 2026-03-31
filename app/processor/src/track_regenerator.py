@@ -9,7 +9,7 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
-def _build_detection_pipeline(app_config):
+def build_detection_pipeline(app_config):
     """Build detection_strategy, frame_processor, decision_maker from config."""
     from detection_strategy import SingleStageStrategy, TwoStageStrategy
     from frame_processor import FrameProcessor
@@ -70,7 +70,13 @@ def _build_detection_pipeline(app_config):
     return frame_processor, decision_maker
 
 
-def process_video_for_tracks(video_path: str, lores_size=(640, 640)):
+def process_video_for_tracks(
+    video_path: str,
+    lores_size=(640, 640),
+    frame_processor=None,
+    decision_maker=None,
+    frame_step: int = 1,
+):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
     Each detection: {species_name, start_time, end_time, confidence, track_id, frames, ...}
@@ -81,9 +87,11 @@ def process_video_for_tracks(video_path: str, lores_size=(640, 640)):
         logger.warning(f"Video not found: {video_path}")
         return []
 
-    frame_processor, decision_maker = _build_detection_pipeline(app_config)
+    if frame_processor is None or decision_maker is None:
+        frame_processor, decision_maker = build_detection_pipeline(app_config)
     frame_processor.reset()
     decision_maker.reset()
+    frame_step = max(1, int(frame_step or 1))
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -97,10 +105,13 @@ def process_video_for_tracks(video_path: str, lores_size=(640, 640)):
             ret, frame = cap.read()
             if not ret:
                 break
-            frame_time_sec = frame_count / fps
-            frame_resized = cv2.resize(frame, lores_size)
-            has_detections = frame_processor.run(frame_resized, frame_time=frame_time_sec)
-            decision_maker.update_has_detections(has_detections)
+            if frame_count % frame_step == 0:
+                frame_time_sec = frame_count / fps
+                frame_resized = cv2.resize(frame, lores_size)
+                has_detections = frame_processor.run(
+                    frame_resized, frame_time=frame_time_sec
+                )
+                decision_maker.update_has_detections(has_detections)
             frame_count += 1
     finally:
         cap.release()
@@ -118,5 +129,11 @@ def process_video_for_tracks(video_path: str, lores_size=(640, 640)):
             'source': 'video',
             'detection_provider': 'yolo',
         })
-    logger.info(f"Track regen: {video_path} -> {len(detections)} detections, {frame_count} frames")
+    logger.info(
+        "Track regen: %s -> %s detections, %s frames, frame_step=%s",
+        video_path,
+        len(detections),
+        frame_count,
+        frame_step,
+    )
     return detections
