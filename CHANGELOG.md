@@ -34,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Видео в UI:** поток `/api/ui/videos/:id/stream` по умолчанию доступен гостям (как в ACCESS_CONTROL); опционально `general.require_auth_for_video_stream: true` для прежней блокировки.
+- **System / каталог:** карточки качества каталога и согласования классификатора свёрнуты в аккордеон «Диагностика каталога»; смягчены подсказки в UI.
 - **Старт Hub / containment:** тяжёлые мутации БД на старте по умолчанию выключены — `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA`, `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT`, `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA`; Telegram «App is UP!» — `BIRDLENSE_NOTIFY_APP_STARTUP=0`. См. CONFIGURATION.
 - **GET `/api/ui/species/:id/summary`:** только чтение (без Wikipedia/commit); в ответе `metadata_status` и `metadata_trust`.
 - **Processor:** single-stage COCO — только класс `bird`; при `boxes.id is None` повторный `track` на том же кадре; зависимость `lap` для ByteTrack; ESLint — `ignores` для `dist`/`node_modules`.

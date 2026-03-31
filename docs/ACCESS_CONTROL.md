@@ -44,6 +44,7 @@ Exact UI gates follow `settings_check_access()` (admin) and `contributor_or_admi
 | Action | Allowed |
 |--------|:-------:|
 | Overview, Timeline, Live, species pages | ✅ |
+| Play video on recording page (`/api/ui/videos/:id/stream`) | ✅ (unless `general.require_auth_for_video_stream` is true) |
 | PDF report, timeline CSV/JSON/eBird (if you expose them without lock) | ✅* |
 | Correct species / Unknowns | ❌ |
 | iNaturalist export crop | ❌ |

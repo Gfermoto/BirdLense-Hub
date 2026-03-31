@@ -1,4 +1,7 @@
 general:
+  # Поток видео в UI (/api/ui/videos/:id/stream): false — гости могут смотреть (см. ACCESS_CONTROL Viewer).
+  # true — только Contributor/Admin (старое поведение).
+  require_auth_for_video_stream: false
   enable_notifications: false
   notification_excluded_species: []
   # Пароль для доступа к настройкам (Admin). Пусто — без пароля.
