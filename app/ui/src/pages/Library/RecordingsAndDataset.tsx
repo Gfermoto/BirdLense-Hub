@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -9,10 +9,15 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -30,6 +35,7 @@ import {
   exportDataset,
   retroExportDataset,
   cleanDataset,
+  fetchTrackRegenSpeciesOptions,
 } from '../../api/api';
 
 interface StorageStats {
@@ -50,6 +56,16 @@ interface ScanResponse {
   spectrogramRegenerationStarted?: boolean;
 }
 
+interface TrackRegenParams {
+  frame_step: number;
+  lores_px: number;
+  detection_strategy: string;
+  max_runtime_sec: number;
+  species_ids?: number[];
+  species_partial_regen?: boolean;
+  ignore_regional_species?: boolean;
+}
+
 interface RegenerateSpectrogramsResponse {
   generated: number;
   failed: number;
@@ -57,6 +73,13 @@ interface RegenerateSpectrogramsResponse {
   message: string;
   frames_updated?: number;
   tracks?: boolean;
+  regen_params?: TrackRegenParams;
+  precise_rerun_candidate_count?: number;
+  precise_rerun_candidates?: Array<{
+    video_id: number;
+    video_path: string | null;
+    reason: string;
+  }>;
 }
 
 interface MergeSpeciesResponse {
@@ -126,7 +149,17 @@ export const RecordingsAndDataset = () => {
   const [tracksProgress, setTracksProgress] = useState<{
     processed: number;
     total: number;
+    current_video?: string | null;
+    regen_params?: TrackRegenParams;
   } | null>(null);
+  const [preciseRerunCandidates, setPreciseRerunCandidates] = useState<Array<{
+    video_id: number;
+    video_path: string | null;
+    reason: string;
+  }>>([]);
+  const [preciseRerunFilter, setPreciseRerunFilter] = useState<'all' | 'problematic' | 'manual'>('all');
+  const [trackRegenPreset, setTrackRegenPreset] = useState<'accurate' | 'fast'>('fast');
+  const [trackRegenSpeciesIds, setTrackRegenSpeciesIds] = useState<number[]>([]);
   const [operationsPeriod, setOperationsPeriod] = useState<{
     start: Dayjs;
     end: Dayjs;
@@ -137,8 +170,35 @@ export const RecordingsAndDataset = () => {
   const [onlyManuallyCorrected, setOnlyManuallyCorrected] = useState(false);
   const POLL_INTERVAL_MS = 2000;
   const POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2h for large historical batches
+  const problematicReasons = new Set([
+    'processing_failed',
+    'video_file_missing',
+    'missing_video_path',
+    'no_detections_fast_run',
+    'no_detections_for_selected_species',
+  ]);
+  const manualReasons = new Set(['has_manual_corrections']);
 
-  const { refetch } = useQuery<StorageStats[]>({
+  const preciseCandidatesByReason = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const c of preciseRerunCandidates) {
+      const key = c.reason || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+    }
+    return Object.entries(acc).sort((a, b) => b[1] - a[1]);
+  }, [preciseRerunCandidates]);
+
+  const filteredPreciseCandidates = useMemo(() => {
+    if (preciseRerunFilter === 'problematic') {
+      return preciseRerunCandidates.filter((c) => problematicReasons.has(c.reason));
+    }
+    if (preciseRerunFilter === 'manual') {
+      return preciseRerunCandidates.filter((c) => manualReasons.has(c.reason));
+    }
+    return preciseRerunCandidates;
+  }, [preciseRerunCandidates, preciseRerunFilter]);
+
+  const { data: storageStats = [], refetch } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
     queryFn: async () => {
       const { data } = await axios.get<StorageStats[]>(
@@ -147,6 +207,65 @@ export const RecordingsAndDataset = () => {
       return data;
     },
   });
+
+  const { data: trackRegenSpeciesOptions = [] } = useQuery({
+    queryKey: ['species', 'track-regen-options'],
+    queryFn: fetchTrackRegenSpeciesOptions,
+    staleTime: 60_000,
+  });
+
+  const storageRange = useMemo(() => {
+    if (!storageStats.length) return null;
+    const sorted = [...storageStats].sort((a, b) => a.date.localeCompare(b.date));
+    const first = sorted[0]?.date;
+    const last = sorted[sorted.length - 1]?.date;
+    if (!first || !last) return null;
+    return {
+      start: dayjs(first),
+      end: dayjs(last),
+      recordedDays: sorted.length,
+      spanDays: dayjs(last).diff(dayjs(first), 'day') + 1,
+      totalFiles: sorted.reduce((sum, item) => sum + (item.fileCount || 0), 0),
+      totalSize: sorted.reduce((sum, item) => sum + (item.totalSize || 0), 0),
+    };
+  }, [storageStats]);
+
+  /** With species filter, regen queue joins VideoSpecies — use full library span from stats
+   *  so rare clips outside the default «last week» are not dropped. */
+  const trackRegenDateRange = useMemo(() => {
+    if (trackRegenSpeciesIds.length > 0 && storageRange) {
+      return { start: storageRange.start, end: storageRange.end };
+    }
+    return { start: operationsPeriod.start, end: operationsPeriod.end };
+  }, [
+    trackRegenSpeciesIds.length,
+    storageRange,
+    operationsPeriod.start,
+    operationsPeriod.end,
+  ]);
+
+  const applyPreset = useCallback(
+    (preset: 'last7' | 'last30' | 'all') => {
+      const today = storageRange?.end || dayjs();
+      if (preset === 'all' && storageRange) {
+        setOperationsPeriod({
+          start: storageRange.start,
+          end: storageRange.end,
+        });
+        return;
+      }
+      const days = preset === 'last30' ? 30 : 7;
+      const rawStart = today.subtract(days - 1, 'day');
+      const boundedStart = storageRange && rawStart.isBefore(storageRange.start)
+        ? storageRange.start
+        : rawStart;
+      setOperationsPeriod({
+        start: boundedStart,
+        end: today,
+      });
+    },
+    [storageRange],
+  );
 
   const pollRegenerateStatus = useCallback(
     async (): Promise<RegenerateSpectrogramsResponse | null> => {
@@ -189,6 +308,8 @@ export const RecordingsAndDataset = () => {
           generated: number;
           failed: number;
           skipped: number;
+          current_video?: string | null;
+          regen_params?: TrackRegenParams;
         };
       }>(`${BASE_API_URL}/system/regenerate-tracks/status`, {
         timeout: JOB_STATUS_POLL_TIMEOUT_MS,
@@ -197,6 +318,8 @@ export const RecordingsAndDataset = () => {
         setTracksProgress({
           processed: data.progress.processed,
           total: data.progress.total,
+          current_video: data.progress.current_video || null,
+          regen_params: data.progress.regen_params,
         });
       }
       if (data.status === 'done' && data.result) {
@@ -290,7 +413,14 @@ export const RecordingsAndDataset = () => {
   const regenerateTracksMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
-    { force?: boolean; start_date?: string; end_date?: string }
+    {
+      force?: boolean;
+      start_date?: string;
+      end_date?: string;
+      frame_step?: number;
+      video_ids?: number[];
+      species_ids?: number[];
+    }
   >({
     mutationFn: async (params) => {
       try {
@@ -319,8 +449,11 @@ export const RecordingsAndDataset = () => {
         failed: data.failed,
         skipped: data.skipped,
         frames_updated: data.frames_updated,
+        precise_rerun_candidate_count: data.precise_rerun_candidate_count,
+        precise_rerun_candidates: data.precise_rerun_candidates,
         tracks: true,
       });
+      setPreciseRerunCandidates(data.precise_rerun_candidates || []);
       refetch();
       queryClient.invalidateQueries({ queryKey: ['videos'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
@@ -498,6 +631,15 @@ export const RecordingsAndDataset = () => {
                         size: formatBytes(success.deletedSize),
                       })
                     : t('storage.imported', { count: success.deletedCount })}
+          {'tracks' in success &&
+            success.tracks &&
+            (success.precise_rerun_candidate_count || 0) > 0 && (
+              <Typography variant="body2" sx={{ mt: 0.75 }}>
+                {t('storage.regenerateTracksPreciseCandidatesFound', {
+                  count: success.precise_rerun_candidate_count || 0,
+                })}
+              </Typography>
+            )}
         </Alert>
       )}
 
@@ -508,6 +650,22 @@ export const RecordingsAndDataset = () => {
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               {t('storage.operationsPeriod')}
             </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+              <Button size="small" variant="outlined" onClick={() => applyPreset('last7')}>
+                {t('storage.presetLast7Days')}
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => applyPreset('last30')}>
+                {t('storage.presetLast30Days')}
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => applyPreset('all')}
+                disabled={!storageRange}
+              >
+                {t('storage.presetAllTime')}
+              </Button>
+            </Stack>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
               <DatePicker
                 label={t('storage.periodFrom')}
@@ -515,6 +673,7 @@ export const RecordingsAndDataset = () => {
                 onChange={(v) =>
                   v && setOperationsPeriod((p) => ({ ...p, start: v }))
                 }
+                minDate={storageRange?.start}
                 maxDate={operationsPeriod.end}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
               />
@@ -525,7 +684,7 @@ export const RecordingsAndDataset = () => {
                   v && setOperationsPeriod((p) => ({ ...p, end: v }))
                 }
                 minDate={operationsPeriod.start}
-                maxDate={dayjs()}
+                maxDate={storageRange?.end || dayjs()}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
               />
               <FormControlLabel
@@ -541,6 +700,18 @@ export const RecordingsAndDataset = () => {
                 label={t('storage.onlyManuallyCorrected')}
               />
             </Stack>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+              {storageRange
+                ? t('storage.archiveRangeSummary', {
+                    start: storageRange.start.format('YYYY-MM-DD'),
+                    end: storageRange.end.format('YYYY-MM-DD'),
+                    spanDays: storageRange.spanDays,
+                    recordedDays: storageRange.recordedDays,
+                    files: storageRange.totalFiles,
+                    size: formatBytes(storageRange.totalSize),
+                  })
+                : t('storage.archiveRangeUnavailable')}
+            </Typography>
           </Paper>
 
           <Alert severity="info" sx={{ '& ol': { m: 0, pl: 2.5 } }}>
@@ -554,6 +725,18 @@ export const RecordingsAndDataset = () => {
               <li>{t('library.datasetFlowStep3')}</li>
               <li>{t('library.datasetFlowStep4')}</li>
             </ol>
+          </Alert>
+
+          <Alert severity="warning" sx={{ '& ul': { m: 0, pl: 2.5 } }}>
+            <AlertTitle>{t('storage.heavyOpsTitle')}</AlertTitle>
+            <Typography variant="body2" color="inherit" sx={{ mb: 1 }}>
+              {t('storage.heavyOpsIntro')}
+            </Typography>
+            <ul>
+              <li>{t('storage.heavyOpsSpectrograms')}</li>
+              <li>{t('storage.heavyOpsTracks')}</li>
+              <li>{t('storage.heavyOpsDataset')}</li>
+            </ul>
           </Alert>
 
           {/* 1. Импорт */}
@@ -589,6 +772,7 @@ export const RecordingsAndDataset = () => {
               <Box>
                 <Button
                   variant="outlined"
+                  color="error"
                   disabled={regenerateMutation.isPending}
                   onClick={() =>
                     regenerateMutation.mutate({
@@ -629,13 +813,68 @@ export const RecordingsAndDataset = () => {
                 )}
               </Box>
               <Box>
+                <Autocomplete
+                  multiple
+                  options={trackRegenSpeciesOptions}
+                  getOptionLabel={(o) => o.name}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  value={trackRegenSpeciesOptions.filter((o) =>
+                    trackRegenSpeciesIds.includes(o.id),
+                  )}
+                  onChange={(_, v) => setTrackRegenSpeciesIds(v.map((x) => x.id))}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={t('storage.trackRegenSpeciesLabel')}
+                      placeholder={t('storage.trackRegenSpeciesPlaceholder')}
+                      size="small"
+                    />
+                  )}
+                  sx={{ mb: 1 }}
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  {t('storage.trackRegenSpeciesHint')}
+                </Typography>
+                {trackRegenSpeciesIds.length > 0 && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    {storageRange
+                      ? t('storage.trackRegenSpeciesPeriodNote')
+                      : t('storage.trackRegenSpeciesPeriodNoStats')}
+                  </Typography>
+                )}
+                <Stack spacing={1} sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('storage.regenerateTracksPresetLabel')}
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={trackRegenPreset}
+                    onChange={(_, value) => {
+                      if (value) setTrackRegenPreset(value);
+                    }}
+                    aria-label={t('storage.regenerateTracksPresetLabel')}
+                  >
+                    <ToggleButton value="accurate">
+                      {t('storage.regenerateTracksPresetAccurate')}
+                    </ToggleButton>
+                    <ToggleButton value="fast">
+                      {t('storage.regenerateTracksPresetFast')}
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
                 <Button
                   variant="outlined"
+                  color="error"
                   disabled={regenerateTracksMutation.isPending}
                   onClick={() =>
                     regenerateTracksMutation.mutate({
-                      start_date: operationsPeriod.start.format('YYYY-MM-DD'),
-                      end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                      start_date: trackRegenDateRange.start.format('YYYY-MM-DD'),
+                      end_date: trackRegenDateRange.end.format('YYYY-MM-DD'),
+                      frame_step: trackRegenPreset === 'fast' ? 6 : 1,
+                      ...(trackRegenSpeciesIds.length
+                        ? { species_ids: [...trackRegenSpeciesIds] }
+                        : {}),
                     })
                   }
                   startIcon={<RouteIcon />}
@@ -666,7 +905,130 @@ export const RecordingsAndDataset = () => {
                         {t('storage.regeneratingProgress', tracksProgress)}
                       </Typography>
                     )}
+                    {tracksProgress?.current_video && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {t('storage.regeneratingCurrentVideo', {
+                          video: tracksProgress.current_video,
+                        })}
+                      </Typography>
+                    )}
+                    {tracksProgress?.regen_params && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('storage.regenerateTracksEffectiveParams', {
+                            step: tracksProgress.regen_params.frame_step,
+                            px: tracksProgress.regen_params.lores_px,
+                            strategy: tracksProgress.regen_params.detection_strategy,
+                            timeout: tracksProgress.regen_params.max_runtime_sec,
+                          })}
+                        </Typography>
+                        {(tracksProgress.regen_params.species_ids?.length || 0) > 0 && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('storage.regenerateTracksSpeciesFilterActive', {
+                              count: tracksProgress.regen_params.species_ids!.length,
+                            })}
+                          </Typography>
+                        )}
+                        {tracksProgress.regen_params.ignore_regional_species && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('storage.regenerateTracksFullClassScope')}
+                          </Typography>
+                        )}
+                      </>
+                    )}
                   </Box>
+                )}
+                {preciseRerunCandidates.length > 0 && (
+                  <Stack spacing={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('storage.regenerateTracksPreciseCandidatesFound', {
+                        count: preciseRerunCandidates.length,
+                      })}
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'all' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('all')}
+                      >
+                        {t('common.all')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'problematic' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('problematic')}
+                      >
+                        {t('storage.preciseFilterProblematic')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'manual' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('manual')}
+                      >
+                        {t('storage.preciseFilterManual')}
+                      </Button>
+                    </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {preciseCandidatesByReason.map(([reason, count]) => (
+                        <Chip
+                          key={reason}
+                          size="small"
+                          label={`${reason}: ${count}`}
+                          variant="outlined"
+                        />
+                      ))}
+                    </Stack>
+                    <Button
+                      variant="text"
+                      color="error"
+                      disabled={
+                        regenerateTracksMutation.isPending ||
+                        filteredPreciseCandidates.length === 0
+                      }
+                      onClick={() =>
+                        regenerateTracksMutation.mutate({
+                          frame_step: 1,
+                          video_ids: filteredPreciseCandidates.map((x) => x.video_id),
+                          ...(trackRegenSpeciesIds.length
+                            ? { species_ids: [...trackRegenSpeciesIds] }
+                            : {}),
+                        })
+                      }
+                      fullWidth
+                    >
+                      {t('storage.regenerateTracksRunPreciseCandidates', {
+                        count: filteredPreciseCandidates.length,
+                      })}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        const blob = new Blob(
+                          [
+                            JSON.stringify(
+                              {
+                                generated_at: new Date().toISOString(),
+                                filter: preciseRerunFilter,
+                                candidates: filteredPreciseCandidates,
+                              },
+                              null,
+                              2,
+                            ),
+                          ],
+                          { type: 'application/json' },
+                        );
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'track_regen_precise_candidates.json';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      {t('storage.downloadPreciseCandidates')}
+                    </Button>
+                  </Stack>
                 )}
               </Box>
             </Stack>
@@ -756,10 +1118,16 @@ export const RecordingsAndDataset = () => {
                     checked={retroRebuild}
                     onChange={(e) => setRetroRebuild(e.target.checked)}
                     size="small"
+                    color="error"
                   />
                 }
                 label={t('storage.retroExportRebuild')}
-                sx={{ alignSelf: 'flex-start' }}
+                sx={{
+                  alignSelf: 'flex-start',
+                  '& .MuiFormControlLabel-label': retroRebuild
+                    ? { color: 'error.main', fontWeight: 600 }
+                    : undefined,
+                }}
               />
               <Tooltip
                 title={
@@ -771,6 +1139,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color={retroRebuild ? 'error' : 'primary'}
                     disabled={retroExporting}
                     onClick={async () => {
                       if (
@@ -822,6 +1191,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color="error"
                     disabled={cleanDatasetLoading}
                     onClick={async () => {
                       if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
@@ -871,6 +1241,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color="error"
                     disabled={cleanOrphanedMutation.isPending}
                     onClick={() => {
                       if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
@@ -892,6 +1263,7 @@ export const RecordingsAndDataset = () => {
               )}
               <Button
                 variant="outlined"
+                color="error"
                 disabled={mergeSpeciesMutation.isPending}
                 onClick={() => {
                   if (window.confirm(t('storage.mergeSpeciesConfirm'))) {

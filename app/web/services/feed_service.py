@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -77,7 +78,11 @@ def _get_mqtt_client():
         client.username_pw_set(username, password)
     client.on_disconnect = _on_feed_disconnect
     try:
-        port = app_config.get('mqtt.port', 1883)
+        raw_port = app_config.get('mqtt.port', 1883)
+        try:
+            port = int(raw_port)
+        except (TypeError, ValueError):
+            port = 1883
         client.connect(broker, port, 60)
         client.loop_start()
         _mqtt_client = client
@@ -96,7 +101,12 @@ def check_mqtt_connected():
     if not client:
         return 'error'
     try:
-        return 'ok' if client.is_connected() else 'error'
+        # loop_start() is async; дать paho время на TCP + CONNACK
+        for _ in range(40):
+            if client.is_connected():
+                return 'ok'
+            time.sleep(0.05)
+        return 'error' if not client.is_connected() else 'ok'
     except Exception:
         return 'error'
 

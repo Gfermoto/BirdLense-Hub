@@ -53,7 +53,7 @@ class TestGalleryUploadService:
             fake_post,
         )
         monkeypatch.setattr(
-            'services.gallery_upload_service.extract_detection_frame_cropped',
+            'services.gallery_upload_service.extract_detection_frame_cropped_or_full',
             lambda *a, **k: b'\xff\xd8\xff\xd9',
         )
 

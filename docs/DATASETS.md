@@ -15,6 +15,15 @@ Critical daily operator happy-path in `Library`:
 3. **Export dataset ZIP** (optional: `only manually corrected`).
 4. **Maintenance**: use `retro-export` for backfill and `clean dataset` for cleanup.
 
+### The “All time” range
+
+`Library` now includes an **“All time”** preset. It does not guess from the calendar; it derives the range from recordings actually present on disk (`storage/stats`), so it can safely target the whole archive without manual date hunting.
+
+Practical guidance:
+- start with the **last 7 or 30 days** if you want to estimate runtime first;
+- use **“All time”** when the device is idle and not busy with live capture;
+- on very large archives, **track regeneration** is usually the heaviest operation, then **spectrogram regeneration**; dataset ZIP export is usually lighter when crops already exist.
+
 `System` metric "Unique visitors" is defined as the number of `SpeciesVisit` sessions in the selected period (visit sessions, not unique individual birds).
 
 ### Train-ready export

@@ -1,9 +1,49 @@
 """Migration calendar: species activity by month (historical data)."""
 from datetime import datetime, timezone
-from sqlalchemy import func, and_
+import os
+
+from sqlalchemy import and_, func
 
 from models import Species, SpeciesVisit
-from util import GENERIC_BIRD_SPECIES
+from services.species_catalog_allowlist_service import (
+    load_catalog_allowlist_names,
+    species_name_match_norm_keys,
+)
+from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
+from util import GENERIC_BIRD_SPECIES, data_dir
+
+
+def _norm_key(name: str) -> str:
+    return ' '.join((name or '').strip().lower().replace('_', ' ').replace('-', ' ').split())
+
+
+def _dataset_class_names(app_config_get=None) -> set[str]:
+    web_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    repo_root = os.path.abspath(os.path.join(web_root, '..', '..'))
+    candidates = [
+        os.path.join(data_dir(), 'dataset'),
+        os.path.join(repo_root, 'datasets', 'merged_cls'),
+    ]
+    out: set[str] = set()
+    for base in candidates:
+        for split in ('train', 'val'):
+            root = os.path.join(base, split)
+            if not os.path.isdir(root):
+                continue
+            try:
+                for entry in os.listdir(root):
+                    if os.path.isdir(os.path.join(root, entry)):
+                        out.add(_folder_display_name(entry))
+            except OSError:
+                continue
+    allow_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
+    if allow_names:
+        out.update(str(x).strip() for x in allow_names if str(x).strip())
+    return out
+
+
+def _folder_display_name(folder: str) -> str:
+    return ' '.join((folder or '').replace('_', ' ').split()).strip()
 
 
 def get_migration_calendar(
@@ -12,13 +52,34 @@ def get_migration_calendar(
     end_year: int | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
+    *,
+    catalog: str = 'observed',
+    evidence: str = 'all',
+    app_config_get=None,
 ) -> dict:
     """
     Aggregate SpeciesVisit by species and month (1-12).
     Returns species list with monthly visit counts for heatmap/calendar.
     start_year, end_year: filter by year (inclusive). None = no filter.
     start_date, end_date: filter by date (inclusive, YYYY-MM-DD, UTC).
+    catalog: ``observed`` — только виды с ненулевой активностью;
+             ``dataset`` — виды, присутствующие в data/dataset/*;
+             ``full_eu`` — полный каталог из allowlist EU.
+             Legacy aliases: ``active`` -> ``observed``, ``full`` -> ``full_eu``.
+    evidence: legacy field, ignored for catalog output.
     """
+    catalog = (catalog or 'observed').strip().lower()
+    if catalog == 'active':
+        catalog = 'observed'
+    elif catalog == 'full':
+        catalog = 'full_eu'
+    if catalog not in ('observed', 'dataset', 'full_eu'):
+        catalog = 'observed'
+    # Evidence split (camera vs BirdNET) is intentionally disabled in catalog.
+    evidence = 'all'
+
+    suspect_ids = species_ids_to_exclude_from_bird_catalog(session)
+
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     filters = [exclude_bird]
     if start_year is not None:
@@ -65,15 +126,93 @@ def get_migration_calendar(
         except (ValueError, TypeError):
             pass
 
-    # Sort by total visits descending, only species with at least one visit
-    species_list = [
-        {**v, 'total': sum(v['monthly_counts'])}
-        for v in species_data.values()
-        if sum(v['monthly_counts']) > 0
-    ]
-    species_list.sort(key=lambda s: s['total'], reverse=True)
+    q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
+    if suspect_ids:
+        q = q.filter(~Species.id.in_(suspect_ids))
+    all_db_species = q.all()
+
+    db_by_norm: dict[str, tuple[int, str, str | None]] = {}
+    for sid, sname, simg in all_db_species:
+        for mk in species_name_match_norm_keys(sname or ''):
+            db_by_norm.setdefault(mk, (sid, sname, simg))
+
+    if catalog == 'full_eu':
+        allowlist_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
+        if allowlist_names:
+            for aname in allowlist_names:
+                match = None
+                for mk in species_name_match_norm_keys(aname):
+                    if mk in db_by_norm:
+                        match = db_by_norm[mk]
+                        break
+                if match:
+                    sid, sname, simg = match
+                    if sid not in species_data:
+                        species_data[sid] = {
+                            'id': sid,
+                            'name': sname,
+                            'image_url': simg,
+                            'monthly_counts': [0] * 12,
+                        }
+                else:
+                    # Keep in full EU view even if DB row is missing.
+                    key = f"__allowlist__{_norm_key(aname)}"
+                    species_data.setdefault(key, {
+                        'id': None,
+                        'name': aname,
+                        'image_url': None,
+                        'monthly_counts': [0] * 12,
+                    })
+        else:
+            # Legacy fallback when allowlist is not configured.
+            for sid, sname, simg in all_db_species:
+                species_data.setdefault(sid, {
+                    'id': sid,
+                    'name': sname,
+                    'image_url': simg,
+                    'monthly_counts': [0] * 12,
+                })
+
+    elif catalog == 'dataset':
+        for folder in sorted(_dataset_class_names(app_config_get)):
+            match = None
+            for mk in species_name_match_norm_keys(_folder_display_name(folder)):
+                if mk in db_by_norm:
+                    match = db_by_norm[mk]
+                    break
+            if match:
+                sid, sname, simg = match
+                if sid not in species_data:
+                    species_data[sid] = {
+                        'id': sid,
+                        'name': sname,
+                        'image_url': simg,
+                        'monthly_counts': [0] * 12,
+                    }
+            else:
+                # Keep unmatched folders visible: local dataset may include classes
+                # not yet materialized in Species table.
+                key = f"__dataset__{_norm_key(folder)}"
+                species_data.setdefault(key, {
+                    'id': None,
+                    'name': _folder_display_name(folder),
+                    'image_url': None,
+                    'monthly_counts': [0] * 12,
+                })
+
+    if suspect_ids:
+        species_data = {
+            k: v for k, v in species_data.items()
+            if not isinstance(k, int) or k not in suspect_ids
+        }
+
+    species_list = [{**v, 'total': sum(v['monthly_counts'])} for v in species_data.values()]
+    if catalog == 'observed':
+        species_list = [s for s in species_list if s['total'] > 0]
+    species_list.sort(key=lambda s: (-s['total'], (s['name'] or '').lower()))
 
     return {
+        'catalog': catalog,
         'species': species_list,
         'month_labels': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     }

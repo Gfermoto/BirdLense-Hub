@@ -6,6 +6,7 @@ import {
   SpeciesSummary,
   OverviewData,
   Species,
+  TrackFrame,
 } from '../types';
 import axios from 'axios';
 
@@ -30,7 +31,15 @@ export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
  */
 export const resolveImageUrl = (url: string | null | undefined): string | undefined => {
   if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Do not proxy Wikimedia: server-side proxy can be rate-limited by shared IP.
+    // Keep browser direct-load for Wikimedia and proxy only iNaturalist-hosted links.
+    const lower = url.toLowerCase();
+    const needsProxy = lower.includes('inaturalist');
+    if (!needsProxy) return url;
+    const base = BASE_URL || '';
+    return `${base ? `${base}` : ''}/api/ui/species-image?url=${encodeURIComponent(url)}`;
+  }
   if (url.startsWith('data:')) {
     const m = url.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i);
     return m ? url : undefined;
@@ -136,6 +145,20 @@ export const fetchRegionComparison = async (): Promise<{
 export const fetchVideo = async (id: string) => {
   const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
   return response.data;
+};
+
+/** Покадровые bbox — отдельно от GET /videos/:id (лёгкая первая отрисовка страницы). */
+export const fetchVideoDetectionFrames = async (id: string) => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/detection-frames`);
+  return response.data as {
+    tracks: Array<{
+      id: number | null;
+      species_id: number;
+      start_time: number;
+      end_time: number;
+      frames: TrackFrame[];
+    }>;
+  };
 };
 
 /** Prev/next video IDs for the selected day scope. */
@@ -321,6 +344,7 @@ export const fetchStatus = async (): Promise<{
   motion_source?: string;
   trigger_display?: string;
   birdnet_url?: string | null;
+  heimdall_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;
@@ -330,6 +354,12 @@ export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
   donate_url: string | null;
   feed_source?: string;
+  scale?: {
+    weight: number;
+    unit?: string;
+    updated_at?: string;
+    source?: string;
+  } | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/feed/info`);
   return response.data;
@@ -365,6 +395,62 @@ export const fetchSettingsRequiresPassword = async (): Promise<RequiresPasswordR
   };
 };
 
+export type ConfigAudit = {
+  deprecated_keys_present: string[];
+  unknown_keys: string[];
+  telegram: {
+    proxy_type: string;
+    send_photo: boolean;
+  };
+  gallery: {
+    enabled: boolean;
+    upload_url: string | null;
+    min_confidence?: number;
+  };
+  mapping: {
+    gray_to_grey_ok: boolean;
+    pairs: Record<string, string | undefined>;
+  };
+  heimdall: {
+    url: string | null;
+    configured: boolean;
+    probe?: {
+      configured: boolean;
+      reachable: boolean;
+      http_status?: number | null;
+      latency_ms?: number | null;
+      title?: string | null;
+      version?: string | null;
+      error?: string | null;
+    };
+  };
+};
+
+export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
+  const response = await axios.get(`${BASE_API_URL}/system/config-audit`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export type ObservabilityPayload = {
+  notify_preview_24h: Record<string, number>;
+  notify_fallback_24h: Record<string, number>;
+  notify_delivery_24h: Record<string, number>;
+  hub_metrics: {
+    prometheus_text: string;
+    prometheus_text_alt: string;
+    json_summary: string;
+  };
+};
+
+export const fetchObservability = async (): Promise<ObservabilityPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/system/observability`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export type CheckAccessResult =
   | { unlocked: true; role?: 'admin' | 'contributor' }
   | { unlocked: false; error?: 'network' };
@@ -379,6 +465,7 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
     }
     return { unlocked: false };
   } catch (e: unknown) {
+    // Legacy servers returned 403 when locked; treat as locked.
     if (axios.isAxiosError(e) && e.response?.status === 403) {
       return { unlocked: false };
     }
@@ -441,7 +528,12 @@ export const fetchEbirdMappingSuggestions =
   };
 
 export const updateSettings = async (settings: Settings) => {
-  const response = await axios.patch(`${BASE_API_URL}/settings`, settings, {
+  const payload = JSON.parse(JSON.stringify(settings)) as Record<string, unknown>;
+  const perf = payload.performance as Record<string, unknown> | undefined;
+  if (perf && typeof perf === 'object') {
+    delete perf.redis_url_effective_masked;
+  }
+  const response = await axios.patch(`${BASE_API_URL}/settings`, payload, {
     withCredentials: true,
   });
   return response.data;
@@ -580,7 +672,137 @@ export const fetchCoordinatesByZip = async (
 };
 
 export const fetchBirdDirectory = async (): Promise<Species[]> => {
-  const response = await axios.get(`${BASE_API_URL}/species`);
+  const response = await axios.get(`${BASE_API_URL}/species`, {
+    params: { exclude_suspects: 1 },
+  });
+  return response.data;
+};
+
+export interface SpeciesDataQualityReport {
+  species_total: number;
+  duplicate_name_group_count: number;
+  duplicate_name_groups: Array<{
+    normalized_name: string;
+    count: number;
+    species: Array<{ id: number; name: string }>;
+  }>;
+  hints: Record<string, string>;
+}
+
+export const fetchSpeciesDataQuality = async (): Promise<SpeciesDataQualityReport> => {
+  const response = await axios.get(`${BASE_API_URL}/system/species-registry/data-quality`, {
+    params: { suspect_limit: 500, duplicate_limit: 100 },
+  });
+  return response.data;
+};
+
+export interface ClassifierDatasetAlignmentReport {
+  classifier_weights_path: string;
+  classifier_weights_resolved: string;
+  classifier_readable: boolean;
+  classifier_error: string | null;
+  classifier_class_count: number;
+  in_classifier_not_in_catalog: string[];
+  in_classifier_not_in_catalog_count: number;
+  in_catalog_not_in_classifier: Array<{ id: number; name: string }>;
+  in_catalog_not_in_classifier_count: number;
+  dataset_folder_count: number;
+  dataset_folders_without_catalog_match: string[];
+  dataset_folders_without_catalog_match_count: number;
+  dataset_folders_species_not_in_classifier: Array<{
+    folder: string;
+    species_id: number;
+    species_name: string;
+  }>;
+  dataset_folders_species_not_in_classifier_count: number;
+  species_with_video_detections: number;
+  catalog_species_total: number;
+  catalog_classifier_dataset_aligned?: boolean;
+  hints?: Record<string, string>;
+}
+
+export interface CatalogCoverageMetrics {
+  observed_species_count: number;
+  dataset_species_count: number;
+  full_eu_species_count: number;
+  observed_in_full_eu_count: number;
+  dataset_in_full_eu_count: number;
+  observed_vs_full_eu_percent: number;
+  dataset_vs_full_eu_percent: number;
+  observed_in_dataset_count: number;
+  observed_in_dataset_percent: number;
+  tuning_candidate_count: number;
+  tuning_candidates: Array<{ id: number; name: string }>;
+}
+
+export interface CatalogCardsCoverageSnapshot {
+  allowlist_total: number;
+  species_matched: number;
+  with_image: number;
+  with_description: number;
+  complete_cards: number;
+  completion_percent: number;
+}
+
+export interface CatalogRepairStatus {
+  status: 'idle' | 'running' | 'done' | 'error';
+  result: null | {
+    checked: number;
+    metadata_fixed: number;
+    images_replaced_from_inat: number;
+    still_missing: number;
+    dry_run: boolean;
+    auto?: boolean;
+    coverage_after?: CatalogCardsCoverageSnapshot;
+  };
+  error: string | null;
+  progress: null | {
+    auto?: boolean;
+    limit: number;
+    coverage_before?: CatalogCardsCoverageSnapshot;
+  };
+  coverage_now: CatalogCardsCoverageSnapshot;
+  schedule?: {
+    autorun_enabled: boolean;
+    interval_min: number;
+    limit: number;
+    next_run_in_sec: number;
+  };
+}
+
+export const fetchClassifierDatasetAlignment =
+  async (): Promise<ClassifierDatasetAlignmentReport> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment`,
+      { params: { classifier_limit: 400, catalog_limit: 300, dataset_limit: 150 } },
+    );
+    return response.data;
+  };
+
+export const fetchCatalogCoverageMetrics =
+  async (): Promise<CatalogCoverageMetrics> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/coverage-metrics`,
+    );
+    return response.data;
+  };
+
+export const fetchCatalogRepairStatus = async (): Promise<CatalogRepairStatus> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/system/species-registry/repair-cards/status`,
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const startCatalogRepair = async (
+  limit = 6000,
+): Promise<{ message: string; status: CatalogRepairStatus }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/species-registry/repair-cards/start`,
+    { limit },
+    { withCredentials: true },
+  );
   return response.data;
 };
 
@@ -590,15 +812,24 @@ export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: 
   return response.data;
 };
 
+/** Species present on recordings (VideoSpecies); use for track regen picker. */
+export const fetchTrackRegenSpeciesOptions = async (): Promise<
+  Array<{ id: number; name: string; count: number }>
+> => {
+  const response = await axios.get(`${BASE_API_URL}/species/track-regen-options`);
+  return response.data;
+};
+
 export interface MigrationCalendarData {
   species: Array<{
-    id: number;
+    id: number | null;
     name: string;
     image_url: string | null;
     monthly_counts: number[];
     total: number;
   }>;
   month_labels: string[];
+  catalog?: 'observed' | 'dataset' | 'full_eu';
 }
 
 export const fetchMigrationCalendar = async (params?: {
@@ -606,6 +837,7 @@ export const fetchMigrationCalendar = async (params?: {
   end_year?: number;
   start_date?: string;
   end_date?: string;
+  catalog?: 'observed' | 'dataset' | 'full_eu' | 'active' | 'full';
 }): Promise<MigrationCalendarData> => {
   const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
     params: params || {},
@@ -632,6 +864,51 @@ export const fetchSpeciesSummary = async (
 ): Promise<SpeciesSummary> => {
   const response = await axios.get(
     `${BASE_API_URL}/species/${speciesId}/summary`,
+  );
+  return response.data;
+};
+
+export interface TuningTargetEntry {
+  id: number;
+  name: string;
+  observed_count: number;
+  in_dataset: boolean;
+  in_full_catalog: boolean;
+}
+
+export interface TuningTargetsResponse {
+  ids: number[];
+  targets: TuningTargetEntry[];
+}
+
+export const fetchTuningTargets = async (): Promise<TuningTargetsResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/species/tuning-targets`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const setSpeciesTuningTarget = async (
+  speciesId: number,
+  enabled: boolean,
+): Promise<{ ok: boolean; species_id: number; enabled: boolean; tuning_target_species_ids: number[] }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/species/${speciesId}/tuning-target`,
+    { enabled },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const fetchTuningTargetsExport = async (
+  format: 'json' | 'csv' = 'json',
+): Promise<{ count: number; targets: Array<{ id: number; name: string }> }> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/system/species-registry/tuning-targets/export`,
+    {
+      params: { format },
+      withCredentials: true,
+    },
   );
   return response.data;
 };

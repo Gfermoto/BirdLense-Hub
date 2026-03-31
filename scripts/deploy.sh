@@ -1,7 +1,7 @@
 #!/bin/bash
 # Деплой BirdLense Hub
 # Локальные настройки (IP, URL) — в scripts/deploy.local.sh (не коммитить)
-# Критично: НЕ перезаписываем data и app_config на сервере
+# Критично: не трогаем recordings/db/dataset в app/data; статические images синхронизируем. user_config не перезаписываем.
 # Сам следит и исправляет: rsync на сервере, повтор при сбоях
 
 set -e
@@ -15,14 +15,19 @@ REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
 SYNC_RETRIES="${SYNC_RETRIES:-3}"
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
-SSH_OPTS="-o ServerAliveInterval=30 -o ServerAliveCountMax=60"
+# Порт через DEPLOY_SSH_PORT (по умолчанию 22)
+_PORT_OPT=""
+if [ -n "${DEPLOY_SSH_PORT:-}" ] && [ "${DEPLOY_SSH_PORT}" != "22" ]; then
+  _PORT_OPT="-p ${DEPLOY_SSH_PORT}"
+fi
+SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
 fi
 
-# 0. Остановка текущего контейнера (один контейнер birdlense)
-echo "0. Остановка контейнера..."
+# 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
+echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
 
 # 0.5. Убедиться, что rsync есть на сервере (для надёжной синхронизации)
@@ -39,10 +44,11 @@ cd "$(dirname "$0")/.."
 (cd app/ui && npm run build) || { echo "Ошибка: сборка UI не удалась"; exit 1; }
 
 # 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
-# БЕЗ app/data (recordings, db). БЕЗ app_config/user_config.yaml (настройки на сервере)
+# app/data: синхронизируем статику (images), НЕ трогаем recordings, db, dataset (тяжёлые/локальные)
 echo "1. Синхронизация кода..."
 RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data/recordings --exclude=app/data/db --exclude=app/data/dataset"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
@@ -84,6 +90,15 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
      [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV}\"; \
      printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
+fi
+
+# 1.6 Идемпотентные значения в app/.env для production (только если строки ещё не заданы).
+# TRUSTED_PROXY=1 — rate limit и логика IP за nginx; CLEANUP — убрать legacy-плейсхолдеры импорта при старте.
+if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  echo "1.6 Production .env defaults (append if missing)..."
+  ssh ${SSH_OPTS} "${HOST}" "F=\"${REMOTE_DIR}/app/.env\"; touch \"\$F\"; \
+    grep -qE '^TRUSTED_PROXY=' \"\$F\" || echo 'TRUSTED_PROXY=1' >> \"\$F\"; \
+    grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
 # 1.8 Intel GPU: на сервере с /dev/dri/renderD128 — создать/обновить override (devices + sysfs для метрик GPU)

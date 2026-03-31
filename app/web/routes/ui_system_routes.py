@@ -3,10 +3,14 @@ import re
 import threading
 import sqlite3
 import tempfile
+import json
+import io
+import csv
+import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
-from flask import request, Response, send_file
+from flask import request, Response, send_file, jsonify
 import shutil
 from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit, SystemResourceSample
 from sqlalchemy import func, select, exists, delete
@@ -16,11 +20,18 @@ from services.species_registry_service import (
     backfill_species_taxa,
     enrich_species_metadata,
     enrich_species_metadata_with_status,
+    ensure_allowlist_species_materialized,
+    repair_catalog_cards,
+    catalog_cards_coverage_snapshot,
     species_registry_health,
     unresolved_species_report,
+    resolve_species_name,
 )
+from services.heimdall_service import probe_heimdall
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
+from services.cache import cache_get, cache_set
+from services.http_response_cache import bust_system_response_caches, bust_response_caches
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -29,11 +40,73 @@ _regenerate_lock = threading.Lock()
 _regenerate_tracks_lock = threading.Lock()
 _species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
 _species_metadata_lock = threading.Lock()
+_catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_catalog_cards_lock = threading.Lock()
+_catalog_cards_next_run_ts = 0.0
 
 
 IMPORT_SPECIES_NAME = "Unknown"
 LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
+DEPRECATED_USER_CONFIG_KEYS = (
+    'notifications.enabled',
+    'notifications.excluded_species',
+    'notifications.rate_limit_per_minute',
+    'processor.detection_device',
+    'processor.detection_frame_interval',
+)
+
+
+def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
+    species = getattr(vs, 'species', None)
+    species_name = getattr(species, 'name', None)
+    frames = (getattr(vs, 'frames', None) or '').strip()
+    return (
+        getattr(vs, 'detection_provider', None) == 'legacy'
+        and species_name == IMPORT_SPECIES_NAME
+        and float(getattr(vs, 'confidence', 0) or 0) <= 0
+        and getattr(vs, 'source', None) == 'video'
+        and not bool(getattr(vs, 'manually_corrected', False))
+        and getattr(vs, 'track_id', None) is None
+        and not frames
+        and float(getattr(vs, 'start_time', 0) or 0) == 0
+        and float(getattr(vs, 'end_time', 0) or 0) == 30
+    )
+
+
+def _cleanup_legacy_import_placeholders() -> tuple[int, int]:
+    """Remove synthetic Unknown/legacy detections created by old disk-import flow."""
+    rows = (
+        db.session.query(VideoSpecies)
+        .join(Species)
+        .filter(
+            VideoSpecies.detection_provider == 'legacy',
+            Species.name == IMPORT_SPECIES_NAME,
+        )
+        .all()
+    )
+    placeholder_rows = [vs for vs in rows if _is_legacy_import_placeholder(vs)]
+    if not placeholder_rows:
+        return 0, 0
+
+    visit_ids = {vs.species_visit_id for vs in placeholder_rows if vs.species_visit_id}
+    for vs in placeholder_rows:
+        db.session.delete(vs)
+    db.session.flush()
+
+    cleaned_visits = 0
+    for visit_id in visit_ids:
+        other = VideoSpecies.query.filter(
+            VideoSpecies.species_visit_id == visit_id,
+        ).first()
+        if other:
+            continue
+        visit = db.session.get(SpeciesVisit, visit_id)
+        if visit:
+            db.session.delete(visit)
+            cleaned_visits += 1
+
+    return len(placeholder_rows), cleaned_visits
 
 
 def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
@@ -56,6 +129,22 @@ SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
 SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
 SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
 SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
+CATALOG_REPAIR_AUTORUN_ENABLED = os.environ.get(
+    'BIRDLENSE_CATALOG_REPAIR_AUTORUN',
+    '1',
+).strip().lower() in ('1', 'true', 'yes')
+CATALOG_REPAIR_INTERVAL_MIN = _env_bounded_int(
+    'BIRDLENSE_CATALOG_REPAIR_INTERVAL_MIN', 180, min_v=15, max_v=1440,
+)
+CATALOG_REPAIR_LIMIT = _env_bounded_int(
+    'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
+)
+
+_CACHE_SYSTEM_METRICS_SEC = 2.5
+_CACHE_SYSTEM_VISITORS_SEC = 25
+_CACHE_SYSTEM_METRICS_HIST_SEC = 12
+_CACHE_STORAGE_STATS_SEC = 45
+_CACHE_SYSTEM_ACTIVITY_SEC = 50
 
 _sampler_lock = threading.Lock()
 _sampler_started = False
@@ -97,6 +186,7 @@ def _system_metrics_sampler_worker(app):
         try:
             with app.app_context():
                 _record_system_resource_sample(app)
+                _maybe_run_catalog_cards_repair(app)
         except Exception as e:
             app.logger.warning('system metrics sampler: %s', e)
             try:
@@ -104,6 +194,64 @@ def _system_metrics_sampler_worker(app):
             except Exception:
                 pass
         time.sleep(SYSTEM_METRICS_SAMPLE_INTERVAL_SEC)
+
+
+def _maybe_run_catalog_cards_repair(app) -> None:
+    global _catalog_cards_next_run_ts
+    if not CATALOG_REPAIR_AUTORUN_ENABLED:
+        return
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if _catalog_cards_next_run_ts and now_ts < _catalog_cards_next_run_ts:
+        return
+    with _catalog_cards_lock:
+        if _catalog_cards_status.get('status') == 'running':
+            return
+        _catalog_cards_status.update({
+            'status': 'running',
+            'result': None,
+            'error': None,
+            'progress': {
+                'auto': True,
+                'limit': CATALOG_REPAIR_LIMIT,
+                'coverage_before': catalog_cards_coverage_snapshot(app_config.get),
+            },
+        })
+    try:
+        result = repair_catalog_cards(
+            app_config.get,
+            dry_run=False,
+            limit=CATALOG_REPAIR_LIMIT,
+        )
+        coverage_after = catalog_cards_coverage_snapshot(app_config.get)
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
+                'status': 'done',
+                'result': {**result, 'auto': True, 'coverage_after': coverage_after},
+                'error': None,
+            })
+    except Exception as e:
+        db.session.rollback()
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
+                'status': 'error',
+                'result': None,
+                'error': str(e),
+            })
+    finally:
+        _catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
+
+
+def _catalog_cards_schedule_state() -> dict:
+    now_ts = datetime.now(timezone.utc).timestamp()
+    next_in = 0
+    if _catalog_cards_next_run_ts > now_ts:
+        next_in = int(_catalog_cards_next_run_ts - now_ts)
+    return {
+        'autorun_enabled': CATALOG_REPAIR_AUTORUN_ENABLED,
+        'interval_min': CATALOG_REPAIR_INTERVAL_MIN,
+        'limit': CATALOG_REPAIR_LIMIT,
+        'next_run_in_sec': next_in,
+    }
 
 
 def _start_system_metrics_sampler(app):
@@ -194,17 +342,141 @@ def _collect_live_system_metrics(app):
 
 
 def register_routes(app):
+    def _parse_video_ids(payload) -> list[int]:
+        raw = (payload or {}).get('video_ids')
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError('video_ids must be an array of integers')
+        out: list[int] = []
+        for x in raw:
+            try:
+                v = int(x)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                out.append(v)
+        return sorted(set(out))
+
+    def _parse_species_ids(payload) -> list[int]:
+        raw = (payload or {}).get('species_ids')
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError('species_ids must be an array of integers')
+        out: list[int] = []
+        for x in raw:
+            try:
+                v = int(x)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                out.append(v)
+        return sorted(set(out))
+
+    def _flatten_keys(d: dict, prefix: str = '') -> set[str]:
+        out = set()
+        if not isinstance(d, dict):
+            return out
+        for k, v in d.items():
+            p = f'{prefix}.{k}' if prefix else str(k)
+            out.add(p)
+            if isinstance(v, dict):
+                out |= _flatten_keys(v, p)
+        return out
+
+    def _safe_get_user_config_dict() -> dict:
+        try:
+            with open(app_config.user_config_file, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            return {}
+
     def _sqlite_db_path() -> str | None:
         uri = str(db.engine.url)
         if not uri.startswith('sqlite:///'):
             return None
         return db.engine.url.database
 
+    def _notify_preview_rows_24h():
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        preview_since = now_utc - timedelta(hours=24)
+        return (
+            db.session.query(ActivityLog)
+            .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
+            .all()
+        )
+
+    def _activity_log_payload(row):
+        try:
+            return row.data if isinstance(row.data, dict) else (
+                json.loads(row.data) if row.data else {}
+            )
+        except Exception:
+            return {}
+
+    def _notify_preview_by_source_24h():
+        preview_rows = _notify_preview_rows_24h()
+        preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
+        for row in preview_rows:
+            src = 'unknown'
+            payload = _activity_log_payload(row)
+            src = str((payload or {}).get('preview_source') or 'unknown')
+            if src not in preview_by_source:
+                src = 'unknown'
+            preview_by_source[src] += 1
+        return preview_by_source
+
+    def _notify_fallback_by_reason_24h():
+        preview_rows = _notify_preview_rows_24h()
+        by_reason = {
+            'none': 0,
+            'no_preview': 0,
+            'decode_failed': 0,
+            'telegram_photo_failed': 0,
+            'notifications_disabled': 0,
+            'telegram_not_configured': 0,
+            'config_disabled': 0,
+            'unsafe_path': 0,
+            'read_failed': 0,
+            'telegram_text_failed': 0,
+            'unexpected_error': 0,
+            'unknown': 0,
+        }
+        for row in preview_rows:
+            payload = _activity_log_payload(row)
+            reason = str((payload or {}).get('fallback_reason') or 'none')
+            if reason not in by_reason:
+                reason = 'unknown'
+            by_reason[reason] += 1
+        return by_reason
+
+    def _notify_delivery_24h():
+        preview_rows = _notify_preview_rows_24h()
+        by_delivery = {
+            'photo': 0,
+            'text': 0,
+            'text_fallback': 0,
+            'failed': 0,
+            'skipped': 0,
+            'unknown': 0,
+        }
+        for row in preview_rows:
+            payload = _activity_log_payload(row)
+            delivery = str((payload or {}).get('telegram_delivery') or 'unknown')
+            if delivery not in by_delivery:
+                delivery = 'unknown'
+            by_delivery[delivery] += 1
+        return by_delivery
+
     def _prometheus_metrics_body(app):
         sys_m = _collect_live_system_metrics(app)
         detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+        preview_by_source = _notify_preview_by_source_24h()
+        fallback_by_reason = _notify_fallback_by_reason_24h()
+        delivery_counts = _notify_delivery_24h()
         lines = [
             '# HELP birdlense_cpu_usage_percent CPU usage',
             '# TYPE birdlense_cpu_usage_percent gauge',
@@ -230,7 +502,23 @@ def register_routes(app):
             '# HELP birdlense_videos_total Total number of recorded videos',
             '# TYPE birdlense_videos_total counter',
             f'birdlense_videos_total {videos_count}',
+            '# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h',
+            '# TYPE birdlense_notify_preview_24h gauge',
         ]
+        for src, count in preview_by_source.items():
+            lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
+        lines.extend([
+            '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
+            '# TYPE birdlense_notify_fallback_24h gauge',
+        ])
+        for reason, count in fallback_by_reason.items():
+            lines.append(f'birdlense_notify_fallback_24h{{reason="{reason}"}} {count}')
+        lines.extend([
+            '# HELP birdlense_notify_delivery_24h Notification delivery outcome counts for last 24h',
+            '# TYPE birdlense_notify_delivery_24h gauge',
+        ])
+        for delivery, count in delivery_counts.items():
+            lines.append(f'birdlense_notify_delivery_24h{{delivery="{delivery}"}} {count}')
         if sys_m['gpu_percent'] is not None:
             lines.extend([
                 '# HELP birdlense_gpu_usage_percent GPU usage',
@@ -238,6 +526,38 @@ def register_routes(app):
                 f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
             ])
         return '\n'.join(lines) + '\n'
+
+    @app.route('/api/metrics/summary', methods=['GET'])
+    def metrics_summary_json():
+        """JSON snapshot for Grafana/Heimdall widgets or external monitors (same data as /metrics)."""
+        try:
+            sys_m = _collect_live_system_metrics(app)
+            detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+            species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+            videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+            preview = _notify_preview_by_source_24h()
+            fallback = _notify_fallback_by_reason_24h()
+            delivery = _notify_delivery_24h()
+            payload = {
+                'service': 'birdlense-hub',
+                'cpu_usage_percent': float(sys_m['cpu']['percent']),
+                'memory_used_percent': float(sys_m['memory']['percent']),
+                'memory_used_bytes': int(sys_m['memory']['used_bytes']),
+                'memory_total_bytes': int(sys_m['memory']['total_bytes']),
+                'disk_used_percent': float(sys_m['disk']['percent']),
+                'detections_total': int(detections),
+                'species_count': int(species_count),
+                'videos_total': int(videos_count),
+                'notify_preview_24h': preview,
+                'notify_fallback_24h': fallback,
+                'notify_delivery_24h': delivery,
+            }
+            if sys_m['gpu_percent'] is not None:
+                payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
+            return jsonify(payload)
+        except Exception as e:
+            app.logger.error('metrics summary: %s', e)
+            return jsonify({'error': 'Failed to build metrics summary'}), 500
 
     @app.route('/api/metrics', methods=['GET'])
     def prometheus_metrics_api():
@@ -262,18 +582,101 @@ def register_routes(app):
     @app.route('/api/ui/system/metrics', methods=['GET'])
     def system_metrics():
         """Мгновенные метрики хоста (опрос UI). Без агрегатов посетителей — см. /api/ui/system/visitors."""
+        hit, cached = cache_get('system_metrics:snapshot')
+        if hit:
+            return cached
         try:
             m = _collect_live_system_metrics(app)
-            return {
+            payload = {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
                 'disk': m['disk'],
                 'encoding': m['encoding'],
                 'gpu_percent': m['gpu_percent'],
             }
+            cache_set('system_metrics:snapshot', payload, _CACHE_SYSTEM_METRICS_SEC)
+            return payload
         except Exception as e:
             app.logger.error(f"Error getting system metrics: {str(e)}")
             return {'error': 'Failed to get system metrics'}, 500
+
+    @app.route('/api/ui/system/observability', methods=['GET'])
+    def system_observability():
+        """Telegram preview-source counts + URLs for exporting Hub metrics (Heimdall/Grafana)."""
+        if not settings_check_access():
+            return {'error': 'Unauthorized'}, 401
+        try:
+            preview = _notify_preview_by_source_24h()
+            fallback = _notify_fallback_by_reason_24h()
+            delivery = _notify_delivery_24h()
+            return {
+                'notify_preview_24h': preview,
+                'notify_fallback_24h': fallback,
+                'notify_delivery_24h': delivery,
+                'hub_metrics': {
+                    'prometheus_text': '/metrics',
+                    'prometheus_text_alt': '/api/metrics',
+                    'json_summary': '/api/metrics/summary',
+                },
+            }
+        except Exception as e:
+            app.logger.error('observability: %s', e)
+            return {'error': 'Failed'}, 500
+
+    @app.route('/api/ui/system/config-audit', methods=['GET'])
+    def system_config_audit():
+        if not settings_check_access():
+            return {'error': 'Unauthorized'}, 401
+        user_cfg = _safe_get_user_config_dict()
+        default_only = {}
+        try:
+            with open(app_config.default_config_file, 'r', encoding='utf-8') as f:
+                default_only = yaml.safe_load(f) or {}
+        except Exception:
+            pass
+        user_keys = _flatten_keys(user_cfg)
+        default_keys = _flatten_keys(default_only)
+        unknown_keys = sorted([k for k in user_keys if k not in default_keys and not k.startswith('camera.')])
+        deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
+
+        notif = app_config.get('notifications', {}) or {}
+        gallery_enabled = bool(app_config.get('gallery.enabled'))
+        gallery_url = (app_config.get('gallery.upload_url') or '').strip()
+        # Gray/Grey harmonization now lives in detection.species_mapping; check there.
+        # Also accept old ebird.species_mapping for backwards compat.
+        detection_map = app_config.get('detection.species_mapping') or {}
+        ebird_map = app_config.get('ebird.species_mapping') or {}
+        combined_map = {**detection_map, **ebird_map}
+        gray_pairs = {
+            'Gray-headed Woodpecker': combined_map.get('Gray-headed Woodpecker'),
+            'Great Gray Shrike': combined_map.get('Great Gray Shrike'),
+        }
+        gray_to_grey_ok = (
+            gray_pairs.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
+            and gray_pairs.get('Great Gray Shrike') == 'Great Grey Shrike'
+        )
+        return {
+            'deprecated_keys_present': deprecated_present,
+            'unknown_keys': unknown_keys,
+            'telegram': {
+                'proxy_type': (notif.get('telegram_proxy_type') or 'none'),
+                'send_photo': bool(notif.get('send_photo')),
+            },
+            'gallery': {
+                'enabled': gallery_enabled,
+                'upload_url': gallery_url or None,
+                'min_confidence': app_config.get('gallery.min_confidence'),
+            },
+            'mapping': {
+                'gray_to_grey_ok': gray_to_grey_ok,
+                'pairs': gray_pairs,
+            },
+            'heimdall': {
+                'url': (app_config.get('general.heimdall_url') or '').strip() or None,
+                'configured': bool((app_config.get('general.heimdall_url') or '').strip()),
+                'probe': probe_heimdall((app_config.get('general.heimdall_url') or '').strip()),
+            },
+        }
 
     @app.route('/api/ui/system/visitors', methods=['GET'])
     def system_visitors():
@@ -282,7 +685,13 @@ def register_routes(app):
                 days = int(request.args.get('days', '7'))
             except (TypeError, ValueError):
                 days = 7
-            return _collect_visitor_stats(days)
+            vck = f'system_visitors:{days}'
+            hit, vc = cache_get(vck)
+            if hit:
+                return vc
+            out = _collect_visitor_stats(days)
+            cache_set(vck, out, _CACHE_SYSTEM_VISITORS_SEC)
+            return out
         except Exception as e:
             app.logger.error(f"Error getting visitor stats: {str(e)}")
             return {'error': 'Failed to get visitor stats'}, 500
@@ -303,6 +712,10 @@ def register_routes(app):
             except (TypeError, ValueError):
                 max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
             max_points = max(50, min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP))
+            hck = f'system_metrics_hist:{hours}:{max_points}'
+            hit, hc = cache_get(hck)
+            if hit:
+                return hc
             now = datetime.now(timezone.utc)
             start = now - timedelta(hours=hours)
             rows = db.session.scalars(
@@ -311,7 +724,7 @@ def register_routes(app):
                 .order_by(SystemResourceSample.recorded_at.asc())
             ).all()
             rows = _downsample_evenly(rows, max_points)
-            return {
+            payload = {
                 'samples': [
                     {
                         't': r.recorded_at.isoformat(),
@@ -326,6 +739,8 @@ def register_routes(app):
                 'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
                 'hours_requested': hours,
             }
+            cache_set(hck, payload, _CACHE_SYSTEM_METRICS_HIST_SEC)
+            return payload
         except Exception as e:
             app.logger.error(f"Error getting system metrics history: {str(e)}")
             return {'error': 'Failed to get system metrics history'}, 500
@@ -361,6 +776,10 @@ def register_routes(app):
                 raise ValueError('Year or month out of range')
         except ValueError:
             return {'error': 'Invalid month format, use YYYY-MM'}, 400
+        ack = f'system_activity:{month}'
+        hit, ac = cache_get(ack)
+        if hit:
+            return ac
         end_date = (start_date.replace(day=1) +
                     timedelta(days=32)).replace(day=1)
 
@@ -378,11 +797,13 @@ def register_routes(app):
             func.strftime('%Y-%m-%d', ActivityLog.created_at)
         ).all()
 
-        return [{
+        out = [{
             'date': day,
             # convert to hours
             'totalUptime': round(duration / 3600, 1) if duration else 0
         } for day, duration in activities]
+        cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
+        return out
 
     def get_day_storage_info(day_path):
         """Get total size and file count for a day directory including all timestamp subdirs"""
@@ -413,7 +834,12 @@ def register_routes(app):
 
     @app.route('/api/ui/storage/stats', methods=['GET'])
     def get_storage_stats():
+        sck = 'storage_stats:v1'
+        hit, sc = cache_get(sck)
+        if hit:
+            return sc, 200
         if not os.path.exists(recordings_dir()):
+            cache_set(sck, [], 30)
             return [], 200
 
         stats = []
@@ -448,6 +874,7 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error scanning recordings directory: {e}")
 
+        cache_set(sck, stats, _CACHE_STORAGE_STATS_SEC)
         return stats, 200
 
     @app.route('/api/ui/storage/purge', methods=['POST'])
@@ -505,6 +932,7 @@ def register_routes(app):
                 if not os.listdir(year_path):
                     os.rmdir(year_path)
 
+            bust_system_response_caches()
             return {
                 'message': f'Successfully deleted {deleted_count} files',
                 'deletedCount': deleted_count,
@@ -594,6 +1022,7 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         try:
             count, size = run_retention()
+            bust_system_response_caches()
             return {
                 'message': f'Deleted {count} recordings',
                 'deletedCount': count,
@@ -746,28 +1175,84 @@ def register_routes(app):
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
         return _regenerate_status, 200
 
-    def _run_regenerate_tracks(force: bool, start_date: str | None, end_date: str | None):
+    def _run_regenerate_tracks(
+        force: bool,
+        start_date: str | None,
+        end_date: str | None,
+        frame_step_override: int | None = None,
+        video_ids: list[int] | None = None,
+        species_ids: list[int] | None = None,
+    ):
         """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks.
         start_date, end_date: YYYY-MM-DD — период. None = все.
+        species_ids: если задан — только видео, где есть детекция хотя бы одного из видов.
         """
         global _regenerate_tracks_status
         _regenerate_tracks_status = {
             'status': 'running', 'result': None, 'error': None,
-            'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
+            'progress': {
+                'processed': 0,
+                'total': 0,
+                'generated': 0,
+                'failed': 0,
+                'skipped': 0,
+                'current_video': None,
+            },
         }
         try:
             with app.app_context():
                 import sys
                 from datetime import datetime, timezone, timedelta
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
-                from track_regenerator import process_video_for_tracks
+                from track_regenerator import (
+                    build_detection_pipeline,
+                    process_video_for_tracks,
+                )
                 from services.visit_processor import VisitProcessor
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
-                lores_size = (640, 640)
+                lores_px = int(app_config.get('processor.track_regen_lores_px') or 640)
+                lores_px = max(320, min(lores_px, 960))
+                lores_size = (lores_px, lores_px)
+                frame_step = int(
+                    frame_step_override
+                    or app_config.get('processor.track_regen_frame_step')
+                    or 1
+                )
+                frame_step = max(1, min(frame_step, 30))
+                regen_strategy = (
+                    app_config.get('processor.track_regen_detection_strategy')
+                    or app_config.get('processor.detection_strategy')
+                    or 'single_stage'
+                )
+                max_runtime_sec = int(
+                    app_config.get('processor.track_regen_video_timeout_sec') or 300
+                )
+                species_ids_f = sorted(set(species_ids or []))
+                regen_params = {
+                    'frame_step': frame_step,
+                    'lores_px': lores_px,
+                    'detection_strategy': str(regen_strategy).strip(),
+                    'max_runtime_sec': max_runtime_sec,
+                }
+                if species_ids_f:
+                    regen_params['species_ids'] = species_ids_f
+                    regen_params['species_partial_regen'] = True
+                regen_params['ignore_regional_species'] = bool(
+                    app_config.get('processor.track_regen_ignore_regional_species', True)
+                )
+                _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 if force:
                     q = Video.query
+                elif species_ids_f:
+                    # Выбраны виды (напр. Rodent): брать все записи с этими детекциями,
+                    # иначе при уже заполненных frames ролик не попадал бы в выборку.
+                    q = (
+                        Video.query.join(VideoSpecies)
+                        .filter(VideoSpecies.species_id.in_(species_ids_f))
+                        .distinct()
+                    )
                 else:
                     from sqlalchemy import or_
                     q = Video.query.join(VideoSpecies).filter(
@@ -789,21 +1274,135 @@ def register_routes(app):
                     except ValueError:
                         app.logger.warning('Invalid end_date %s, ignoring', end_date)
 
+                if species_ids_f and force:
+                    vid_subq = (
+                        select(VideoSpecies.video_id)
+                        .where(VideoSpecies.species_id.in_(species_ids_f))
+                        .distinct()
+                    )
+                    q = q.filter(Video.id.in_(vid_subq))
+
                 videos = q.order_by(Video.start_time.asc()).all()
+                target_video_ids = sorted(set(video_ids or []))
+                if target_video_ids:
+                    videos = [v for v in videos if v.id in target_video_ids]
                 total = len(videos)
                 _regenerate_tracks_status['progress']['total'] = total
+                if total == 0 and species_ids_f:
+                    app.logger.info(
+                        'Track regen: empty queue (species_ids=%s, start_date=%s, end_date=%s, force=%s)',
+                        species_ids_f,
+                        start_date,
+                        end_date,
+                        force,
+                    )
 
                 generated = 0
                 failed = 0
                 skipped = 0
                 frames_updated = 0  # videos with manually_corrected: only frames updated
+                precise_candidates: list[dict] = []
 
                 visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
+                # Reuse YOLO+tracker pipeline across all videos in the batch.
+                frame_processor, decision_maker = build_detection_pipeline(
+                    app_config,
+                    strategy_override=regen_strategy,
+                    for_track_regen=True,
+                )
+                species_scope = set(species_ids_f) if species_ids_f else None
+                scope_catalog_species: list[Species] = []
+                scope_names_lc: set[str] = set()
+                scope_taxon_ids: set[int] = set()
+                if species_scope:
+                    for sid in species_ids_f:
+                        sp = db.session.get(Species, sid)
+                        if not sp:
+                            continue
+                        scope_catalog_species.append(sp)
+                        if sp.name:
+                            scope_names_lc.add(sp.name.strip().lower())
+                        if sp.taxon_id is not None:
+                            scope_taxon_ids.add(sp.taxon_id)
+                species_name_to_id_cache: dict[str, int | None] = {}
+
+                def _resolved_species_id_for_det(detection: dict) -> int | None:
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return None
+                    if name not in species_name_to_id_cache:
+                        sp = visit_processor._get_or_create_species(name)
+                        species_name_to_id_cache[name] = sp.id if sp else None
+                    return species_name_to_id_cache[name]
+
+                def _detection_in_species_scope(detection: dict) -> bool:
+                    if not species_scope:
+                        return True
+                    sid = _resolved_species_id_for_det(detection)
+                    if sid and sid in species_scope:
+                        return True
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return False
+                    if name.lower() in scope_names_lc:
+                        return True
+                    res = resolve_species_name(name, source='ingest')
+                    if res.found and res.taxon and res.taxon.id in scope_taxon_ids:
+                        return True
+                    return False
+
+                def _remap_det_for_scope(detection: dict) -> dict:
+                    if not species_scope:
+                        return detection
+                    sid = _resolved_species_id_for_det(detection)
+                    if sid and sid in species_scope:
+                        return detection
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return detection
+                    nlc = name.lower()
+                    if nlc in scope_names_lc:
+                        for sp in scope_catalog_species:
+                            if sp.name and sp.name.strip().lower() == nlc:
+                                return {**detection, 'species_name': sp.name}
+                    res = resolve_species_name(name, source='ingest')
+                    if res.found and res.taxon:
+                        tid = res.taxon.id
+                        for sp in scope_catalog_species:
+                            if sp.taxon_id == tid:
+                                return {**detection, 'species_name': sp.name}
+                    return detection
+
+                def _tracks_same_species(db_name: str, det_name: str) -> bool:
+                    if not db_name or not det_name:
+                        return False
+                    if db_name.strip().lower() == det_name.strip().lower():
+                        return True
+                    ra = resolve_species_name(db_name.strip(), source='ingest')
+                    rb = resolve_species_name(det_name.strip(), source='ingest')
+                    if (
+                        ra.found
+                        and rb.found
+                        and ra.taxon
+                        and rb.taxon
+                        and ra.taxon.id == rb.taxon.id
+                    ):
+                        return True
+                    return False
 
                 for video in videos:
+                    species_name_to_id_cache.clear()
+                    _regenerate_tracks_status['progress']['current_video'] = (
+                        video.video_path or None
+                    )
                     if not video.video_path:
                         skipped += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': None,
+                            'reason': 'missing_video_path',
+                        })
                         _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
@@ -812,6 +1411,11 @@ def register_routes(app):
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': video.video_path,
+                            'reason': 'video_file_missing',
+                        })
                         _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
@@ -820,15 +1424,53 @@ def register_routes(app):
 
                     try:
                         detections = process_video_for_tracks(
-                            full_video, lores_size
+                            full_video,
+                            lores_size,
+                            frame_processor=frame_processor,
+                            decision_maker=decision_maker,
+                            frame_step=frame_step,
+                            max_runtime_sec=max_runtime_sec,
                         )
                         if not detections:
                             skipped += 1
+                            precise_candidates.append({
+                                'video_id': video.id,
+                                'video_path': video.video_path,
+                                'reason': 'no_detections_fast_run',
+                            })
                             _regenerate_tracks_status['progress'].update(
                                 processed=generated + failed + skipped,
                                 generated=generated, failed=failed, skipped=skipped,
                             )
                             continue
+
+                        scoped_detections: list[dict] | None = None
+                        if species_scope:
+                            scoped_detections = []
+                            for d in detections:
+                                if not _detection_in_species_scope(d):
+                                    continue
+                                scoped_detections.append(_remap_det_for_scope(d))
+                            if not scoped_detections:
+                                sample = [d.get('species_name') for d in detections[:8]]
+                                app.logger.info(
+                                    'Track regen: no detections match species scope '
+                                    '(video_id=%s scope=%s sample_model_names=%s)',
+                                    video.id,
+                                    sorted(species_scope),
+                                    sample,
+                                )
+                                skipped += 1
+                                precise_candidates.append({
+                                    'video_id': video.id,
+                                    'video_path': video.video_path,
+                                    'reason': 'no_detections_for_selected_species',
+                                })
+                                _regenerate_tracks_status['progress'].update(
+                                    processed=generated + failed + skipped,
+                                    generated=generated, failed=failed, skipped=skipped,
+                                )
+                                continue
 
                         manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                         if manual_vs:
@@ -836,7 +1478,15 @@ def register_routes(app):
                             # Критично: сопоставлять только при совпадении вида, иначе кадр от другой птицы.
                             import json
                             used_det_indices = set()
-                            for vs in sorted(manual_vs, key=lambda x: x.start_time):
+                            manuals_ordered = sorted(
+                                (
+                                    [vs for vs in manual_vs if vs.species_id in species_scope]
+                                    if species_scope
+                                    else manual_vs
+                                ),
+                                key=lambda x: x.start_time,
+                            )
+                            for vs in manuals_ordered:
                                 best_idx = None
                                 best_overlap = 0.0
                                 vs_species_name = vs.species.name if vs.species else None
@@ -844,7 +1494,9 @@ def register_routes(app):
                                     if i in used_det_indices:
                                         continue
                                     # Только если вид совпадает — иначе присвоим кадр от другой птицы
-                                    if vs_species_name and d.get('species_name') != vs_species_name:
+                                    if vs_species_name and not _tracks_same_species(
+                                        vs_species_name, d.get('species_name') or ''
+                                    ):
                                         continue
                                     overlap = min(vs.end_time, d['end_time']) - max(vs.start_time, d['start_time'])
                                     if overlap > best_overlap and overlap > 0.3:
@@ -854,14 +1506,53 @@ def register_routes(app):
                                     vs.frames = json.dumps(detections[best_idx]['frames'])
                                     used_det_indices.add(best_idx)
                             db.session.flush()
-                            # Удалить не-manual, добавить новые детекции (не matched)
-                            to_delete = [vs for vs in video.video_species if not vs.manually_corrected]
+                            unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
+                            if species_scope:
+                                unmatched = [
+                                    _remap_det_for_scope(d)
+                                    for d in unmatched
+                                    if _detection_in_species_scope(d)
+                                ]
+                            if species_scope:
+                                ids_touched = {
+                                    _resolved_species_id_for_det(d)
+                                    for d in unmatched
+                                }
+                                ids_touched &= species_scope
+                                to_delete = [
+                                    vs for vs in video.video_species
+                                    if not vs.manually_corrected
+                                    and vs.species_id in ids_touched
+                                ]
+                            else:
+                                to_delete = [
+                                    vs for vs in video.video_species
+                                    if not vs.manually_corrected
+                                ]
                             for vs in to_delete:
                                 db.session.delete(vs)
-                            unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
                             frames_updated += 1
+                            precise_candidates.append({
+                                'video_id': video.id,
+                                'video_path': video.video_path,
+                                'reason': 'has_manual_corrections',
+                            })
+                        elif species_scope:
+                            ids_touched = {
+                                _resolved_species_id_for_det(d)
+                                for d in scoped_detections
+                            }
+                            ids_touched &= species_scope
+                            if ids_touched:
+                                VideoSpecies.query.filter(
+                                    VideoSpecies.video_id == video.id,
+                                    VideoSpecies.species_id.in_(ids_touched),
+                                    VideoSpecies.manually_corrected.is_(False),
+                                ).delete(synchronize_session=False)
+                            visit_processor.process_detections(video, scoped_detections)
+                            generated += 1
                         else:
                             VideoSpecies.query.filter_by(video_id=video.id).delete()
                             visit_processor.process_detections(video, detections)
@@ -871,6 +1562,11 @@ def register_routes(app):
                         db.session.rollback()
                         app.logger.exception(f'Track regen failed {video.video_path}: {e}')
                         failed += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': video.video_path,
+                            'reason': 'processing_failed',
+                        })
 
                     _regenerate_tracks_status['progress'].update(
                         processed=generated + failed + skipped,
@@ -880,9 +1576,20 @@ def register_routes(app):
                 app.logger.info(
                     f'Tracks: generated={generated}, frames_updated={frames_updated}, failed={failed}, skipped={skipped}'
                 )
-                result = {'generated': generated, 'failed': failed, 'skipped': skipped}
+                result = {
+                    'generated': generated,
+                    'failed': failed,
+                    'skipped': skipped,
+                    'regen_params': regen_params,
+                }
                 if frames_updated:
                     result['frames_updated'] = frames_updated
+                if precise_candidates:
+                    dedup = {}
+                    for item in precise_candidates:
+                        dedup[(item['video_id'], item['reason'])] = item
+                    result['precise_rerun_candidates'] = list(dedup.values())[:500]
+                    result['precise_rerun_candidate_count'] = len(dedup)
                 _regenerate_tracks_status = {
                     'status': 'done',
                     'result': result,
@@ -909,9 +1616,22 @@ def register_routes(app):
         force = data.get('force', False)
         start_date = data.get('start_date')  # YYYY-MM-DD or None
         end_date = data.get('end_date')  # YYYY-MM-DD or None
+        frame_step = data.get('frame_step')
+        try:
+            video_ids = _parse_video_ids(data)
+        except ValueError as e:
+            return {'error': str(e)}, 400
+        try:
+            species_ids = _parse_species_ids(data)
+        except ValueError as e:
+            return {'error': str(e)}, 400
+        try:
+            frame_step = int(frame_step) if frame_step is not None else None
+        except Exception:
+            frame_step = None
         t = threading.Thread(
             target=_run_regenerate_tracks,
-            args=(force, start_date, end_date),
+            args=(force, start_date, end_date, frame_step, video_ids, species_ids),
             daemon=True,
         )
         t.start()
@@ -933,22 +1653,21 @@ def register_routes(app):
         if not os.path.exists(recordings_dir()):
             return {'imported': 0, 'message': 'No recordings directory'}, 200
 
-        species = Species.query.filter_by(name=IMPORT_SPECIES_NAME).first()
-        if not species:
-            species = Species(name=IMPORT_SPECIES_NAME, active=False)
-            db.session.add(species)
-            db.session.flush()
-
         existing_paths = {
             v.video_path for v in db.session.query(Video.video_path).all()
         }
         imported = 0
+        cleaned_legacy_placeholders = 0
+        cleaned_legacy_visits = 0
         # YYYY/MM/DD/HHMMSS или YYYY/MM/DD/HH-MM-SS
         pattern = re.compile(
             r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$'
         )
 
         try:
+            cleaned_legacy_placeholders, cleaned_legacy_visits = (
+                _cleanup_legacy_import_placeholders()
+            )
             rec_dir = recordings_dir()
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
@@ -1001,29 +1720,6 @@ def register_routes(app):
                                         spectrogram_path=spectrogram,
                                     )
                                     db.session.add(video)
-                                    db.session.flush()
-
-                                    visit = SpeciesVisit(
-                                        species_id=species.id,
-                                        start_time=start_time,
-                                        end_time=end_time,
-                                        max_simultaneous=1,
-                                    )
-                                    db.session.add(visit)
-                                    db.session.flush()
-
-                                vs = VideoSpecies(
-                                    video_id=video.id,
-                                    species_id=species.id,
-                                    species_visit_id=visit.id,
-                                    start_time=0,
-                                    end_time=30,
-                                    confidence=0,
-                                    source='video',
-                                    detection_provider='legacy',
-                                    created_at=start_time,
-                                )
-                                db.session.add(vs)
                                 existing_paths.add(rel_path)
                                 imported += 1
                             except Exception as e:
@@ -1033,19 +1729,32 @@ def register_routes(app):
                                 continue
 
             db.session.commit()
+            bust_response_caches()
+            bust_system_response_caches()
 
             # Auto-start spectrogram regeneration for newly imported videos (если не запущена)
             spectrogram_started = False
             if imported > 0:
                 with _regenerate_lock:
                     if _regenerate_status['status'] != 'running':
-                        t = threading.Thread(target=_run_regenerate_spectrograms, args=(False,), daemon=True)
+                        t = threading.Thread(
+                            target=_run_regenerate_spectrograms,
+                            args=(False, None, None),
+                            daemon=True,
+                        )
                         t.start()
                         spectrogram_started = True
 
+            message = f'Imported {imported} recordings'
+            if cleaned_legacy_placeholders:
+                message += (
+                    f'; cleaned {cleaned_legacy_placeholders} legacy placeholders'
+                )
             return {
                 'imported': imported,
-                'message': f'Imported {imported} recordings',
+                'cleaned_legacy_placeholders': cleaned_legacy_placeholders,
+                'cleaned_legacy_visits': cleaned_legacy_visits,
+                'message': message,
                 'spectrogramRegenerationStarted': spectrogram_started,
             }, 200
         except Exception as e:
@@ -1085,6 +1794,7 @@ def register_routes(app):
                     vs.species_id = vs.species_visit.species_id
                     synced += 1
             db.session.commit()
+            bust_response_caches()
             return {
                 'orphaned': orphaned,
                 'synced': synced,
@@ -1138,10 +1848,68 @@ def register_routes(app):
                     db.session.delete(other)
                     merged += 1
             db.session.commit()
+            bust_response_caches()
             return {'merged': merged, 'details': details, 'message': f'Merged {merged} duplicate species'}, 200
         except Exception as e:
             db.session.rollback()
             app.logger.exception('Merge duplicate species failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-catalog/reconcile', methods=['POST'])
+    def species_catalog_reconcile():
+        """
+        Привести каталог видов: слияние дубликатов по нормализованному имени;
+        опционально перенос подозрительных (блоклист) и строк вне allowlist на «Unknown».
+
+        body JSON:
+          dry_run (default true),
+          merge_normalized_duplicate_names (default true),
+          reassign_suspects_to_unknown, delete_empty_suspects,
+          reassign_off_allowlist_to_unknown, delete_empty_off_allowlist,
+          duplicate_group_limit (default 500).
+
+        Allowlist: species.catalog_allowlist_file → scripts/datasets/dump_classifier_allowlist.py
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            from services.species_catalog_allowlist_service import clear_allowlist_cache
+            from services.species_catalog_reconcile_service import reconcile_species_catalog
+
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            dup_limit = payload.get('duplicate_group_limit', 500)
+            try:
+                dup_limit = int(dup_limit)
+            except (TypeError, ValueError):
+                return {'error': 'duplicate_group_limit must be int'}, 400
+            dup_limit = max(10, min(dup_limit, 5000))
+
+            body = reconcile_species_catalog(
+                dry_run=dry_run,
+                merge_normalized_duplicate_names=bool(
+                    payload.get('merge_normalized_duplicate_names', True),
+                ),
+                reassign_suspects_to_unknown=bool(
+                    payload.get('reassign_suspects_to_unknown', False),
+                ),
+                reassign_off_allowlist_to_unknown=bool(
+                    payload.get('reassign_off_allowlist_to_unknown', False),
+                ),
+                delete_empty_suspects=bool(payload.get('delete_empty_suspects', False)),
+                delete_empty_off_allowlist=bool(
+                    payload.get('delete_empty_off_allowlist', False),
+                ),
+                duplicate_group_limit=dup_limit,
+                app_config_get=app_config.get,
+            )
+            if not dry_run:
+                clear_allowlist_cache()
+                bust_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Species catalog reconcile failed: %s', e)
             return {'error': str(e)}, 500
 
     @app.route('/api/ui/system/species-registry/seed', methods=['POST'])
@@ -1288,5 +2056,209 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/materialize-allowlist', methods=['POST'])
+    def species_registry_materialize_allowlist():
+        """Create missing Species rows for allowlist and optionally fill metadata."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        payload = request.get_json(silent=True) or {}
+        dry_run = bool(payload.get('dry_run', False))
+        fill_metadata = bool(payload.get('fill_metadata', True))
+        try:
+            limit = int(payload.get('limit', 5000))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be int'}, 400
+        try:
+            body = ensure_allowlist_species_materialized(
+                app_config.get,
+                fill_metadata=fill_metadata,
+                dry_run=dry_run,
+                limit=limit,
+            )
+            bust_response_caches()
+            bust_system_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Materialize allowlist failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/repair-cards', methods=['POST'])
+    def species_registry_repair_cards():
+        """Auto-heal full catalog cards metadata and blocked image links."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        payload = request.get_json(silent=True) or {}
+        dry_run = bool(payload.get('dry_run', False))
+        try:
+            limit = int(payload.get('limit', 6000))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be int'}, 400
+        try:
+            body = repair_catalog_cards(
+                app_config.get,
+                dry_run=dry_run,
+                limit=limit,
+            )
+            bust_response_caches()
+            bust_system_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Repair cards failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/repair-cards/start', methods=['POST'])
+    def species_registry_repair_cards_start():
+        """Start background repair for species cards."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _catalog_cards_lock:
+            if _catalog_cards_status.get('status') == 'running':
+                return {'error': 'Repair already running', 'status': _catalog_cards_status}, 409
+            payload = request.get_json(silent=True) or {}
+            try:
+                limit = int(payload.get('limit', 6000))
+            except (TypeError, ValueError):
+                return {'error': 'limit must be int'}, 400
+            _catalog_cards_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': {
+                    'limit': limit,
+                    'coverage_before': catalog_cards_coverage_snapshot(app_config.get),
+                },
+            })
+
+            def _run():
+                try:
+                    with app.app_context():
+                        result = repair_catalog_cards(
+                            app_config.get,
+                            dry_run=False,
+                            limit=limit,
+                        )
+                        coverage_after = catalog_cards_coverage_snapshot(app_config.get)
+                    with _catalog_cards_lock:
+                        _catalog_cards_status.update({
+                            'status': 'done',
+                            'result': {**result, 'coverage_after': coverage_after},
+                            'error': None,
+                        })
+                except Exception as e:
+                    with _catalog_cards_lock:
+                        _catalog_cards_status.update({
+                            'status': 'error',
+                            'result': None,
+                            'error': str(e),
+                        })
+
+            threading.Thread(target=_run, daemon=True).start()
+            return {'message': 'Catalog cards repair started', 'status': _catalog_cards_status}, 202
+
+    @app.route('/api/ui/system/species-registry/repair-cards/status', methods=['GET'])
+    def species_registry_repair_cards_status():
+        """Read background repair status with live coverage counters."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _catalog_cards_lock:
+            snap = dict(_catalog_cards_status)
+        snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
+        snap['schedule'] = _catalog_cards_schedule_state()
+        return snap, 200
+
+    @app.route('/api/ui/system/species-registry/data-quality', methods=['GET'])
+    def species_registry_data_quality():
+        """Отчёт по мусорным/не-птица строкам каталога и дубликатам имён (слияние)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_data_quality_service import build_data_quality_report
+
+        dup_limit = request.args.get('duplicate_limit', type=int) or 80
+        dup_limit = max(10, min(dup_limit, 500))
+        try:
+            body = build_data_quality_report(
+                db.session,
+                duplicate_group_limit=dup_limit,
+            )
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Species data quality report failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/classifier-dataset-alignment', methods=['GET'])
+    def species_registry_classifier_dataset_alignment():
+        """Классы классификатора (best.pt) ↔ каталог Species ↔ папки data/dataset."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_dataset_alignment_service import build_classifier_dataset_alignment_report
+
+        clf_lim = request.args.get('classifier_limit', type=int) or 600
+        cat_lim = request.args.get('catalog_limit', type=int) or 400
+        ds_lim = request.args.get('dataset_limit', type=int) or 200
+        try:
+            body = build_classifier_dataset_alignment_report(
+                db.session,
+                app_config.get,
+                classifier_limit=clf_lim,
+                catalog_limit=cat_lim,
+                dataset_limit=ds_lim,
+            )
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Classifier/dataset alignment report failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/coverage-metrics', methods=['GET'])
+    def species_registry_coverage_metrics():
+        """Coverage metrics for observed/dataset/full EU catalog segments."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_dataset_alignment_service import build_catalog_coverage_metrics
+
+        try:
+            body = build_catalog_coverage_metrics(db.session, app_config.get)
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Catalog coverage metrics failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/tuning-targets/export', methods=['GET'])
+    def species_registry_tuning_targets_export():
+        """Export manually marked tuning targets for training pipeline."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        raw = app_config.get('species.tuning_target_species_ids') or []
+        ids = []
+        if isinstance(raw, list):
+            for x in raw:
+                try:
+                    v = int(x)
+                except (TypeError, ValueError):
+                    continue
+                if v > 0:
+                    ids.append(v)
+        ids = sorted(set(ids))
+        rows = Species.query.filter(Species.id.in_(ids)).all() if ids else []
+        by_id = {s.id: s for s in rows}
+
+        fmt = (request.args.get('format') or 'json').strip().lower()
+        body_rows = [{'id': sid, 'name': by_id[sid].name} for sid in ids if sid in by_id]
+        if fmt == 'csv':
+            buf = io.StringIO()
+            wr = csv.writer(buf)
+            wr.writerow(['species_id', 'species_name'])
+            for r in body_rows:
+                wr.writerow([r['id'], r['name']])
+            return Response(
+                buf.getvalue(),
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': 'attachment; filename="birdlense_tuning_targets.csv"',
+                },
+            )
+        return {'count': len(body_rows), 'targets': body_rows}, 200
 
     _start_system_metrics_sampler(app)

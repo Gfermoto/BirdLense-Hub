@@ -1,7 +1,11 @@
 import pytest
 
 from app_config.app_config import app_config
-from services.species_registry_service import resolve_species_name
+import services.species_registry_service as registry_mod
+from services.species_registry_service import (
+    repair_recently_reset_species_metadata,
+    resolve_species_name,
+)
 from services.visit_processor import VisitProcessor
 from models import Species, db
 
@@ -89,4 +93,40 @@ class TestSpeciesResolverIntegration:
         assert api.status_code == 200
         items = (api.get_json() or {}).get('items') or []
         assert any('Totally Unknown Bird XYZ' in (i.get('raw_name') or '') for i in items)
+
+
+class TestSpeciesMetadataRepair:
+    def test_repair_recently_reset_species_metadata_restores_images(self, app, monkeypatch):
+        with app.app_context():
+            sp = Species(
+                name='Test Reset Towhee',
+                description='Existing description survives the bad reset.',
+                image_url=None,
+                metadata_source=None,
+                metadata_source_url=None,
+            )
+            db.session.add(sp)
+            db.session.commit()
+
+            def fake_update_species_info(target):
+                assert target.id == sp.id
+                target.image_url = 'https://example.com/aberts.jpg'
+                target.metadata_source = 'inaturalist'
+                target.metadata_source_url = 'https://www.inaturalist.org/taxa/123'
+                return True
+
+            monkeypatch.setattr(
+                registry_mod,
+                'update_species_info_from_wiki',
+                fake_update_species_info,
+            )
+
+            stats = repair_recently_reset_species_metadata(dry_run=False)
+            db.session.expire_all()
+            repaired = db.session.get(Species, sp.id)
+
+            assert stats['processed'] == 1
+            assert stats['repaired'] == 1
+            assert repaired.image_url == 'https://example.com/aberts.jpg'
+            assert repaired.metadata_source == 'inaturalist'
 

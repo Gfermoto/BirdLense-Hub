@@ -1,7 +1,12 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchVideo, fetchVideoNeighbors } from '../../api/api';
+import {
+  fetchVideo,
+  fetchVideoNeighbors,
+  fetchVideoDetectionFrames,
+} from '../../api/api';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
@@ -23,6 +28,23 @@ export const VideoDetails = () => {
   const { t } = useTranslation();
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /** Preserve Timeline / Unknowns return path when stepping prev/next (VisitCard passes `state.from`). */
+  const neighborNavigationState = (() => {
+    const s = location.state;
+    if (s && typeof s === 'object' && 'from' in s) {
+      const from = (s as { from?: unknown }).from;
+      if (
+        typeof from === 'string' &&
+        from.startsWith('/') &&
+        !from.startsWith('//')
+      ) {
+        return { from };
+      }
+    }
+    return undefined;
+  })();
 
   const {
     data: video,
@@ -40,6 +62,28 @@ export const VideoDetails = () => {
     enabled: Boolean(params.id),
   });
 
+  const { data: detectionFrames } = useQuery({
+    queryKey: ['video-detection-frames', params.id],
+    queryFn: () => fetchVideoDetectionFrames(params.id as string),
+    enabled: Boolean(params.id),
+  });
+
+  const displayVideo = useMemo((): Video | undefined => {
+    if (!video) return undefined;
+    const tracks = detectionFrames?.tracks;
+    if (!tracks?.length) return video as Video;
+    const byDetId = new Map(tracks.map((t) => [t.id, t.frames]));
+    return {
+      ...(video as Video),
+      species: (video as Video).species.map((s) => {
+        const detId = s.id;
+        if (detId === undefined) return s;
+        const frames = byDetId.get(detId);
+        return frames ? { ...s, frames } : s;
+      }),
+    };
+  }, [video, detectionFrames]);
+
   if (isLoading)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -49,7 +93,9 @@ export const VideoDetails = () => {
   if (error || !video)
     return (
       <Box sx={{ p: 2 }}>
-        <Box component="span" sx={{ color: 'error.main' }}>{t('errors.loadSightings')}</Box>
+        <Box component="span" sx={{ color: 'error.main' }}>
+          {t('errors.loadSightings')}
+        </Box>
         <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
           {t('common.retry')}
         </Button>
@@ -84,7 +130,7 @@ export const VideoDetails = () => {
                     onClick={() =>
                       neighbors.previous_id &&
                       navigate(`/videos/${neighbors.previous_id}`, {
-                        state: listReturnState,
+                        state: neighborNavigationState,
                       })
                     }
                   >
@@ -92,7 +138,11 @@ export const VideoDetails = () => {
                   </IconButton>
                 </span>
               </Tooltip>
-              <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ px: 0.5 }}
+              >
                 {neighbors.index + 1} / {neighbors.total}
               </Typography>
               <Tooltip
@@ -110,7 +160,7 @@ export const VideoDetails = () => {
                     onClick={() =>
                       neighbors.next_id &&
                       navigate(`/videos/${neighbors.next_id}`, {
-                        state: listReturnState,
+                        state: neighborNavigationState,
                       })
                     }
                   >
@@ -119,7 +169,11 @@ export const VideoDetails = () => {
                 </span>
               </Tooltip>
               <Tooltip title={t('video.neighborsDayHint')}>
-                <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  sx={{ ml: 1 }}
+                >
                   {neighbors.day_scope === 'local'
                     ? `${t('video.localDayLabel')} ${neighbors.day_label}`
                     : `UTC ${neighbors.day_label}`}
@@ -127,12 +181,15 @@ export const VideoDetails = () => {
               </Tooltip>
             </Stack>
           )}
-          <VideoPlayer video={video as Video} />
-          <DetectedSpecies species={(video as Video).species} videoId={(video as Video).id} />
+          <VideoPlayer video={(displayVideo ?? video) as Video} />
+          <DetectedSpecies
+            species={(displayVideo ?? (video as Video)).species}
+            videoId={(video as Video).id}
+          />
         </Grid>
         {/* Video Info Column */}
         <Grid size={{ xs: 12, lg: 4 }}>
-          <VideoInfo video={video as Video} />
+          <VideoInfo video={(displayVideo ?? video) as Video} />
         </Grid>
       </Grid>
     </>

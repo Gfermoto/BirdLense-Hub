@@ -53,6 +53,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | Document |
 |-------|----------|
 | Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
+| Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | MCP (AI tools) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
 
 ---
@@ -93,6 +94,7 @@ Pick what matches you — you can read the rest as reference.
 |------|---------|
 | Local stack | `cd app && make local` → http://localhost:8085 |
 | Web tests | `cd app && make test-web` |
+| Telegram proxy autorotate | `make proxy-rotation-install` (status: `make proxy-rotation-status`) |
 | Full doc index above | You are here ✓ |
 | Preview static doc site | `pip install -r requirements-docs.txt && mkdocs serve` ([details](./Documentation.md)) |
 

@@ -74,6 +74,7 @@ def merge_detections(
     dedup_window_seconds=45,
     one_per_species=True,
     source_priority=None,
+    cross_source_confidence_bonus=0.0,
 ):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
@@ -81,6 +82,8 @@ def merge_detections(
     dedup_window_seconds: детекции одного вида с разрывом > N сек считаются разными визитами.
     one_per_species: если True — гарантированно один результат на вид (объединяем все дубликаты).
     source_priority: при конфликте (разные виды в одном окне) — первый в списке выше приоритет.
+    cross_source_confidence_bonus: при первом слиянии MQTT (Frigate/BirdNET) в существующую
+        видео-детекцию — разово прибавить к confidence (до 1.0), без дообучения моделей.
     """
     from datetime import datetime, timezone
 
@@ -185,6 +188,14 @@ def merge_detections(
 
         if merged is not None:
             _merge_into(merged, conf, ev_start, ev_end)
+            if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
+                n = int(merged.get("_cross_mqtt_merges") or 0) + 1
+                merged["_cross_mqtt_merges"] = n
+                if n == 1:
+                    merged["confidence"] = min(
+                        1.0,
+                        float(merged.get("confidence") or 0) + float(cross_source_confidence_bonus),
+                    )
             logger.debug("merge: MQTT %s into YOLO (offset=%.1fs)", species, offset if offset is not None else -1)
             continue
         provider = ev.get("source", "mqtt")
@@ -277,4 +288,7 @@ def merge_detections(
                         break
         result_list = [d for i, d in enumerate(result_list) if i not in to_remove]
 
-    return sorted(result_list, key=lambda x: x.get("start_time", 0))
+    out = sorted(result_list, key=lambda x: x.get("start_time", 0))
+    for d in out:
+        d.pop("_cross_mqtt_merges", None)
+    return out

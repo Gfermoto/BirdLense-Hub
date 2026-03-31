@@ -1,4 +1,5 @@
 """eBird API: regional species for comparison with user's feeder."""
+import hashlib
 import logging
 import time
 from collections import Counter
@@ -7,6 +8,7 @@ import httpx
 
 from app_config.app_config import app_config
 
+from services.cache import cache_get, cache_set
 from services.ebird_util import REGION_NAME_TO_CODE, common_name_from_species
 
 logger = logging.getLogger(__name__)
@@ -84,9 +86,17 @@ def get_region_top_species_cached(api_key: str, region_code: str) -> list[str]:
 
 
 def _ebird_to_birdlense(name: str) -> str:
-    """Map eBird common name to BirdLense canonical (Gray->Grey, etc.)."""
-    mapping = app_config.get('ebird.species_mapping') or {}
-    return mapping.get(name, name)
+    """Map eBird common name to BirdLense canonical.
+
+    Checks ebird.species_mapping first (user overrides), then detection.species_mapping
+    (centralized name harmonization). This way Gray/Grey etc. work without duplicating
+    entries in both config sections.
+    """
+    ebird_map = app_config.get('ebird.species_mapping') or {}
+    if name in ebird_map:
+        return ebird_map[name]
+    detection_map = app_config.get('detection.species_mapping') or {}
+    return detection_map.get(name, name)
 
 
 def ebird_common_to_birdlense_name(name: str) -> str:
@@ -99,24 +109,34 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
 
     Returns dict with regionCode, userCount, regionTopCount, matchCount,
     matchedSpecies, regionTop. Or None if API key missing or error.
-    Uses ebird.species_mapping to align eBird names (Gray) with BirdLense (Grey).
+    Uses detection.species_mapping to align eBird names (Gray) with BirdLense (Grey).
+    Result cached 4 hours per (api_key_suffix, region_code, sorted user names).
     """
     api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
     if not api_key:
         return None
 
     region_code = _build_region_code()
+    sorted_names = sorted(n for n in user_species_names if n)
+    names_hash = hashlib.md5("|".join(sorted_names).encode()).hexdigest()
+    key_suffix = api_key[-12:] if len(api_key) >= 12 else api_key
+    cache_key = f"ebird_region_comparison:{key_suffix}:{region_code}:{names_hash}"
+
+    found, cached_result = cache_get(cache_key)
+    if found:
+        return cached_result
+
     user_common = [common_name_from_species(n) for n in user_species_names if n]
     user_common = [n for n in user_common if n and n != 'Bird']
     user_set = {n.lower() for n in user_common}
 
     try:
-        region_top = get_region_top_species(api_key, region_code)
+        region_top = get_region_top_species_cached(api_key, region_code)
     except Exception:
         return None
 
     if not region_top:
-        return {
+        result = {
             'regionCode': region_code,
             'userCount': len(user_set),
             'regionTopCount': 0,
@@ -124,13 +144,15 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
             'matchedSpecies': [],
             'regionTop': [],
         }
+        cache_set(cache_key, result, ttl_seconds=14400)
+        return result
 
     # eBird names -> BirdLense canonical для сопоставления
     region_mapped = [_ebird_to_birdlense(n) for n in region_top]
     region_set = {n.lower() for n in region_mapped}
     matched = [n for n in user_common if n.lower() in region_set]
 
-    return {
+    result = {
         'regionCode': region_code,
         'userCount': len(user_set),
         'regionTopCount': len(region_top),
@@ -138,3 +160,5 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
         'matchedSpecies': matched,
         'regionTop': region_mapped,  # показываем BirdLense-имена
     }
+    cache_set(cache_key, result, ttl_seconds=14400)
+    return result

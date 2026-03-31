@@ -8,6 +8,10 @@ import pytest
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 # Не поднимать фоновый sampler метрик в тестах (поток + psutil sleep).
 os.environ['DISABLE_SYSTEM_METRICS_SAMPLER'] = '1'
+# Prevent startup Telegram/push notification.
+# app.py calls create_app() at module level (for gunicorn `app:app`); this flag must be set
+# BEFORE any test module imports `app`, otherwise notify_app_startup hangs on the real token.
+os.environ['FLASK_TESTING'] = '1'
 
 # Prevent MQTT/ESPHome connection attempts (would hang or fail in CI)
 os.environ.pop('MQTT_BROKER', None)
@@ -34,7 +38,7 @@ def app():
         from app import create_app
     except ImportError:
         from web.app import create_app
-    # Avoid external weather network calls in tests.
+    # Avoid external network calls in tests.
     app_config.set('secrets.openweather_api_key', '')
     app_config.set('weather.ha_token', '')
     app_config.set('weather.ha_url', '')

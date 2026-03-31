@@ -1,4 +1,7 @@
 general:
+  # Поток видео в UI (/api/ui/videos/:id/stream): false — гости могут смотреть (см. ACCESS_CONTROL Viewer).
+  # true — только Contributor/Admin (старое поведение).
+  require_auth_for_video_stream: false
   enable_notifications: false
   notification_excluded_species: []
   # Пароль для доступа к настройкам (Admin). Пусто — без пароля.
@@ -8,37 +11,65 @@ general:
   contributor_password: ""
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
-  # Ссылка на страницу пожертвований (Ko-fi, Buy Me a Coffee и т.д.). Пусто — кнопка не показывается.
+  # Ссылка на Heimdall Dashboard. Пусто — ссылка Heimdall в UI скрыта.
+  heimdall_url: ""
+  # Ссылка на донаты: задаётся в Настройках → Общие; в UI только иконка-сердце в шапке. Пусто — скрыто.
   donate_url: ""
 
 # Video/Audio processor settings
+# Важно: значения в user_config.yaml (секция processor / detection) полностью перекрывают дефолты ниже.
 processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
   max_inactive_seconds: 10
-  min_track_duration: 3  # сек; треки короче отбрасываются. 2 — больше треков, 3 — меньше ложных
-  min_confidence_binary: 0.15  # Детектор «птица/не птица». 0.15 = 15% по умолчанию
-  min_confidence_to_process: 0.30  # Классификатор (вид). 0.30 = 30% по умолчанию
+  # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
+  post_record_seconds: 0
+  min_track_duration: 4  # сек; короче — отброс (меньше ложных «мельканий»)
+  # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
+  # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
+  track_regen_frame_step: 6
+  # Отдельная стратегия детекции для batch-перегенерации треков.
+  # В production можно ускорить, выставив single_stage только для регенерации.
+  track_regen_detection_strategy: single_stage
+  # Размер кадра для batch-перегенерации треков (px). Меньше = быстрее, но грубее bbox.
+  track_regen_lores_px: 512
+  # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
+  track_regen_video_timeout_sec: 300
+  # При перегенерации не сужать YOLO/классификатор по processor.regional_species
+  # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
+  track_regen_ignore_regional_species: true
+  min_confidence_binary: 0.22  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
+  min_confidence_to_process: 0.36  # Классификатор (голосование × средняя уверенность)
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
-  # Вычитается из min_confidence_to_process для каждого вида из топа (после ebird.species_mapping)
-  ebird_regional_top_confidence_delta: 0.05
+  # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
+  ebird_regional_top_confidence_delta: 0.03
   # Нижняя граница авто-порога (не ниже)
-  ebird_regional_top_confidence_floor: 0.05
+  ebird_regional_top_confidence_floor: 0.08
+  # BirdNET MQTT: снизить порог классификатора для видов из недавних сообщений (#129). Выкл. по умолчанию — без регрессии без MQTT.
+  birdnet_mqtt_auto_confidence: false
+  birdnet_mqtt_bias_window_seconds: 120
+  birdnet_mqtt_bias_delta: 0.05
+  birdnet_mqtt_bias_floor: 0.05
+  # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
+  multi_camera_groups: []  # например: [["BirdBox","Forest"]]
+  multi_camera_confidence_boost: 0.03
   spectrogram_px_per_sec: 200
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
+  # single_stage + стандартный COCO (ровно 80 классов): только животные (bird, cat, dog, …), не person и не предметы.
+  # Старый ключ single_stage_coco_bird_only_auto всё ещё читается, если animals_only не задан.
+  single_stage_coco_animals_only_auto: true
   included_bird_families:
     - "Perching Birds"
     - "Pigeons and Doves"
     - "Woodpeckers"
-    - "Squirrel"
   save_images: false
   # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
   save_dataset_crops: false
-  dataset_min_confidence: 0.5
+  dataset_min_confidence: 0.55
   detection_strategy: "two_stage"
   models:
     # Продакшен: x86/amd64 + веса .pt (PyTorch). single_stage (NCNN) — опционально на amd64; ARM не поддерживается.
@@ -70,7 +101,7 @@ video:
 motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
-  check_every_n_frames: 1
+  check_every_n_frames: 2
   frigate_camera_filter: []  # from cameras list; frigate/events
   frigate_label_filter: ["bird", "Bird"]
   frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
@@ -92,14 +123,16 @@ mqtt:
 
 # Detection merging (YOLO + Frigate + BirdNET)
 detection:
-  merge_window_seconds: 8
+  merge_window_seconds: 6
   dedup_window_seconds: 60
   # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
   one_per_species: true
   # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
   source_priority: ["yolo", "frigate", "birdnet"]
+  # Без дообучения: при первом совпадении вида с MQTT (Frigate/BirdNET) и YOLO — разово +bonus к confidence (потолок 1.0)
+  cross_source_confidence_bonus: 0.02
   # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
-  min_confidence_to_store: 0.30
+  min_confidence_to_store: 0.36
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
@@ -133,6 +166,17 @@ detection:
     "Linaria cannabina (Common Linnet)": "Common Linnet"
     "Fringilla montifringilla (Brambling)": "Brambling"
     "Sturnus vulgaris (Common Starling)": "Common Starling"
+    # Gray/Grey harmonization (US/eBird vs UK/EU naming)
+    "Gray-headed Woodpecker": "Grey-headed Woodpecker"
+    "Grey-headed Woodpecker": "Grey-headed Woodpecker"
+    "Great Gray Shrike": "Great Grey Shrike"
+    "Great Grey Shrike": "Great Grey Shrike"
+    # Squirrel/rodent: detector class → catalog name
+    "squirrel": "Rodent"
+    "Squirrel": "Rodent"
+    "Eastern Gray Squirrel": "Rodent"
+    "Red Squirrel": "Rodent"
+    "Eurasian Red Squirrel": "Rodent"
 
 # Feeder control: mqtt (Tasmota) | esphome. Relay on for duration_seconds.
 # esphome_type: switch (turn_on/turn_off) | button (press — если реле управляется кнопкой/скриптом)
@@ -149,7 +193,7 @@ weather:
   source: openweather
   ha_url: "http://homeassistant:8123"
   ha_entity_id: "weather.home"
-  # ha_token: ""  # Long-Lived Access Token; HA_TOKEN in env overrides
+  ha_token: ""  # Long-Lived Access Token; HA_TOKEN в env переопределяет
 
 # Retention
 retention:
@@ -163,6 +207,16 @@ notifications:
   telegram_chat_id: ""        # ID чата или канала (например -1001234567890)
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
+  # Тип прокси: none | socks_http | mtproto (как в приложении Telegram: сервер/порт/секрет).
+  telegram_proxy_type: socks_http
+  # При socks_http — SOCKS5h или HTTP(S) для HTTPS-запросов к api.telegram.org
+  telegram_proxy_url: ""      # socks5h://127.0.0.1:9050 или http://127.0.0.1:8118
+  # При mtproto — отдельные поля + telegram_api_id / telegram_api_hash (my.telegram.org)
+  telegram_mtproto_host: ""
+  telegram_mtproto_port: 443
+  telegram_mtproto_secret: ""  # hex из приложения (ee/dd…); маскируется в API
+  telegram_api_id: 0           # целое, или env TELEGRAM_API_ID
+  telegram_api_hash: ""       # строка, или env TELEGRAM_API_HASH
   telegram_timeout: 300      # Таймаут сек (в РФ блокировки — ставить 300+). Текст: timeout/2
   telegram_retries: 5        # Повторы при таймауте/сетевой ошибке
   compress_photo_over_kb: 400 # Сжимать фото >N KB для ускорения (0=выкл)
@@ -193,12 +247,27 @@ webhook:
 gallery:
   enabled: false
   upload_url: ""  # URL API галереи для приёма кадров (multipart/form-data)
-  min_confidence: 0.5
+  min_confidence: 0.55
   only_manually_corrected: false
+
+# Весы у кормушки: MQTT (топик состояния) или сущность Home Assistant.
+# Совместимо с ESPHome/HA (напр. github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection).
+integrations:
+  scales:
+    enabled: false
+    source: mqtt  # mqtt | homeassistant
+    mqtt_topic: ""  # ESPHome: homeassistant/sensor/<id>/state или свой топик с числом / JSON
+    homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
+    unit: kg  # kg | g — единица для отображения и записи из MQTT
+
+# Кэш API: Redis (docker-compose) можно выключить или задать URL в UI (перекрывает REDIS_URL из env).
+performance:
+  cache_redis_enabled: true
+  redis_url: ""  # непусто — использовать вместо REDIS_URL; секрет — маскируется в API
 
 # UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
 ui:
-  unknown_confidence_threshold: 0.5  # 0.0–1.0; детекции с confidence < порога попадают в «Неизвестные»
+  unknown_confidence_threshold: 0.48  # чуть строже отбор в «Неизвестные» при новых порогах детектора
 
 # MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
 mcp:
@@ -215,10 +284,17 @@ ebird:
   state: ""           # 1–3 chars (NY, CA, MOS для Московской обл., etc.)
   location_name: "BirdLense Feeder"
   protocol: "Stationary"  # Stationary | Traveling | Incidental | Historical
-  # Маппинг eBird (Gray, US) -> BirdLense (Grey, EU). Для сопоставления в «Сравнение с регионом».
-  species_mapping:
-    "Gray-headed Woodpecker": "Grey-headed Woodpecker"
-    "Great Gray Shrike": "Great Grey Shrike"
+  # Необязательные eBird-специфичные переопределения имён (сверх detection.species_mapping).
+  # Гармонизация Gray/Grey и «Scientific (Common)» → общее имя уже в detection.species_mapping.
+  species_mapping: {}
+
+# Каталог видов: строго соответствует классам EU классификатора (best_EU.pt) + Rodent.
+# class_names.txt сгенерирован из best_EU.pt через scripts/datasets/dump_classifier_allowlist.py.
+species:
+  # Список классов EU классификатора (491 птица + Rodent). Единственный источник истины для каталога.
+  catalog_allowlist_file: "models/classification/weights/class_names.txt"
+  # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
+  catalog_strict_ingest: true
 
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:

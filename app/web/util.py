@@ -8,6 +8,36 @@ import time
 from datetime import timedelta, datetime, timezone
 from urllib.parse import urlparse
 
+# Re-exports for backward compatibility — do not remove
+from auth import (
+    _get_session_role,
+    _has_contributor_password,
+    settings_check_access,
+    contributor_or_admin_access,
+)
+from notifications import (
+    notify,
+    notify_app_startup,
+    notify_telegram_test,
+    _telegram_http_proxies,
+    _telegram_request,
+    _telegram_send_message,
+    _telegram_button_open_live,
+    _get_button_custom_emoji_id,
+    _get_telegram_api_base,
+    _telegram_timeouts,
+    _payload_for_telegram_multipart,
+    _compress_image_for_telegram,
+)
+from weather_service import (
+    _normalize_coord,
+    WeatherFetcher,
+    HAWeatherFetcher,
+    _create_weather_fetcher,
+    weather_fetcher,
+    fetch_weather,
+)
+
 # Rate limit for verify-password: 5 failed attempts per 60 sec per IP
 _verify_password_attempts: dict = {}
 _verify_password_lock = threading.Lock()
@@ -34,10 +64,14 @@ def client_ip_for_rate_limit(request) -> str:
         except ValueError:
             return None
 
-    for hdr in ('X-Real-IP', 'X-Forwarded-For'):
-        parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
-        if parsed:
-            return parsed
+    trusted_proxy = (os.environ.get('TRUSTED_PROXY') or '').strip().lower() in (
+        '1', 'true', 'yes',
+    )
+    if trusted_proxy:
+        for hdr in ('X-Real-IP', 'X-Forwarded-For'):
+            parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
+            if parsed:
+                return parsed
     ra = (getattr(request, 'remote_addr', None) or '').strip()
     return ra or 'unknown'
 
@@ -192,58 +226,6 @@ def full_path_for_video(video_path: str) -> str | None:
     return os.path.normpath(os.path.join(app_base, video_path))
 
 
-def _get_session_role():
-    """Return 'admin' | 'contributor' | None from session."""
-    from flask import session
-    return session.get('access_role')
-
-
-def _has_contributor_password():
-    """True if contributor tier is configured (two-password mode)."""
-    return bool((app_config.get('general.contributor_password') or '').strip())
-
-
-def settings_check_access():
-    """Check if admin access (settings, feed, system). Backward compat: no password = full access.
-    Also accepts MCP token (Authorization: Bearer) for server-to-server calls."""
-    from flask import session, request
-    admin_pw = (app_config.get('general.settings_password') or '').strip()
-    contrib_pw = (app_config.get('general.contributor_password') or '').strip()
-
-    # MCP token из настроек — для вызовов MCP-сервера к API (Get_app_settings и т.д.)
-    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
-    if mcp_token:
-        auth = request.headers.get('Authorization') or ''
-        if auth.startswith('Bearer '):
-            token = auth[7:].strip()
-            if secrets.compare_digest(token, mcp_token):
-                return True
-
-    if not admin_pw and not contrib_pw:
-        return True
-    role = session.get('access_role')
-    if role == 'admin':
-        return True
-    if not contrib_pw and role and session.get('settings_unlocked'):
-        return True  # legacy: single password
-    return False
-
-
-def contributor_or_admin_access():
-    """Check if contributor or admin (correction, reports, iNaturalist, exports)."""
-    from flask import session
-    admin_pw = (app_config.get('general.settings_password') or '').strip()
-    contrib_pw = (app_config.get('general.contributor_password') or '').strip()
-    if not admin_pw and not contrib_pw:
-        return True
-    role = session.get('access_role')
-    if role in ('admin', 'contributor'):
-        return True
-    if not contrib_pw and session.get('settings_unlocked'):
-        return True  # legacy
-    return False
-
-
 import requests
 import re
 import time
@@ -325,160 +307,11 @@ def infer_metadata_source_fields(
 
     if _host_is_wikipedia_family(img_host) or _host_is_wikipedia_family(src_host):
         return 'wikipedia', (src or f'https://en.wikipedia.org/wiki/{title}')
+    if _host_is_inaturalist(src_host) or _host_is_inaturalist(img_host):
+        return 'inaturalist', (src or img)
     if _url_suggests_inaturalist_asset(img) or _url_suggests_inaturalist_asset(src):
-        return 'inaturalist', (src or 'https://www.inaturalist.org/')
+        return 'inaturalist', None
     return None, source_url
-
-
-def _normalize_coord(v):
-    """Replace comma with dot for OpenWeather API (e.g. 55,934 -> 55.934)."""
-    if v is None:
-        return None
-    s = str(v).strip().replace(',', '.')
-    return s if s else None
-
-
-class WeatherFetcher:
-    def __init__(self, api_url, latitude, longitude, api_key, cache_duration=timedelta(minutes=10)):
-        self.api_url = api_url
-        self.latitude = _normalize_coord(latitude)
-        self.longitude = _normalize_coord(longitude)
-        self.api_key = api_key
-        self.cache_duration = cache_duration
-        self.last_fetched = None
-        self.cached_data = None
-        self.default_params = {
-            'lat': self.latitude,
-            'lon': self.longitude,
-            'appid': self.api_key,
-            'units': 'metric'
-        }
-
-    def _is_cache_valid(self):
-        """Check if the cached data is still valid."""
-        if not self.cached_data or not self.last_fetched:
-            return False
-        return datetime.now() - self.last_fetched < self.cache_duration
-
-    def _fetch_weather_data(self, params=None, retries=3, backoff_factor=2):
-        params = params or self.default_params
-        if not params.get('appid'):
-            return {}
-        lat = _normalize_coord(params.get('lat'))
-        lon = _normalize_coord(params.get('lon'))
-        if not lat or not lon:
-            return {}
-        params = {**params, 'lat': lat, 'lon': lon}
-        delay = 1
-        for attempt in range(retries):
-            try:
-                response = requests.get(self.api_url, params=params)
-                response.raise_for_status()
-                data = response.json()
-                return {
-                    'weather_main': data['weather'][0]['main'],
-                    'weather_description': data['weather'][0]['description'],
-                    'weather_temp': data['main']['temp'],
-                    'weather_humidity': data['main']['humidity'],
-                    'weather_pressure': data['main']['pressure'],
-                    'weather_clouds': data['clouds']['all'],
-                    'weather_wind_speed': data['wind']['speed']
-                }
-            except requests.RequestException as e:
-                if attempt < retries - 1:
-                    time.sleep(delay)
-                    delay *= backoff_factor
-                else:
-                    logging.error(
-                        f"All retries failed. Returning empty object. Error: {e}")
-                    return {}
-
-    def fetch(self):
-        if self._is_cache_valid():
-            return self.cached_data
-        new_data = self._fetch_weather_data()
-        self.cached_data = new_data
-        self.last_fetched = datetime.now()
-        return new_data
-
-
-class HAWeatherFetcher:
-    """Fetch weather from Home Assistant REST API."""
-
-    def __init__(self, ha_url, entity_id, token, cache_duration=timedelta(minutes=10)):
-        self.ha_url = (ha_url or '').rstrip('/')
-        self.entity_id = entity_id or 'weather.home'
-        self.token = token
-        self.cache_duration = cache_duration
-        self.last_fetched = None
-        self.cached_data = None
-
-    def _is_cache_valid(self):
-        if not self.cached_data or not self.last_fetched:
-            return False
-        return datetime.now() - self.last_fetched < self.cache_duration
-
-    def _fetch(self):
-        if not self.ha_url or not self.token:
-            return {}
-        url = f"{self.ha_url}/api/states/{self.entity_id}"
-        try:
-            r = requests.get(
-                url,
-                headers={'Authorization': f'Bearer {self.token}'},
-                timeout=10,
-            )
-            r.raise_for_status()
-            data = r.json()
-            attrs = data.get('attributes', {})
-            return {
-                'weather_main': attrs.get('condition', 'unknown'),
-                'weather_description': attrs.get('condition', ''),
-                'weather_temp': attrs.get('temperature'),
-                'weather_humidity': attrs.get('humidity'),
-                'weather_pressure': attrs.get('pressure'),
-                'weather_clouds': attrs.get('cloud_coverage'),
-                'weather_wind_speed': attrs.get('wind_speed'),
-            }
-        except Exception as e:
-            logging.error(f"HA weather fetch failed: {e}")
-            return {}
-
-    def fetch(self):
-        if self._is_cache_valid():
-            return self.cached_data
-        new_data = self._fetch()
-        self.cached_data = new_data
-        self.last_fetched = datetime.now()
-        return new_data
-
-
-def _create_weather_fetcher():
-    source = app_config.get('weather.source', 'openweather')
-    if source == 'homeassistant':
-        ha_url = os.environ.get('HA_URL') or app_config.get('weather.ha_url')
-        return HAWeatherFetcher(
-            ha_url=ha_url,
-            entity_id=app_config.get('weather.ha_entity_id', 'weather.home'),
-            token=os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token'),
-        )
-    lat = _normalize_coord(app_config.get('secrets.latitude'))
-    lon = _normalize_coord(app_config.get('secrets.longitude'))
-    return WeatherFetcher(
-        api_url='https://api.openweathermap.org/data/2.5/weather',
-        latitude=lat,
-        longitude=lon,
-        api_key=os.environ.get('OPENWEATHER_API_KEY') or app_config.get('secrets.openweather_api_key'),
-    )
-
-
-weather_fetcher = _create_weather_fetcher()
-
-
-def fetch_weather():
-    """Fetch weather using current app_config (picks up settings changes without restart)."""
-    fetcher = _create_weather_fetcher()
-    return fetcher.fetch()
 
 
 def fetch_sun_times(date_str: str) -> dict | None:
@@ -712,6 +545,7 @@ def get_inaturalist_image_and_description(title):
             "per_page": 3,
             "locale": "en",
             "is_active": "true",
+            "iconic_taxa": "Aves",
         }
         headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
         response = requests.get(url, params=params, timeout=10, headers=headers)
@@ -720,7 +554,12 @@ def get_inaturalist_image_and_description(title):
         results = data.get("results") or []
         if not results:
             return None, None, None
-        top = results[0]
+        top = next(
+            (row for row in results if (row.get("iconic_taxon_name") or "") == "Aves"),
+            None,
+        )
+        if not top:
+            return None, None, None
         image_url = ((top.get("default_photo") or {}).get("medium_url")
                      or (top.get("default_photo") or {}).get("square_url"))
         description = (top.get("wikipedia_summary")
@@ -838,382 +677,6 @@ def update_species_info_from_wiki(sp):
     if (metadata_source_url or inferred_url) and not getattr(sp, 'metadata_source_url', None):
         sp.metadata_source_url = metadata_source_url or inferred_url
     return bool(image_url or description)
-
-
-def _telegram_button_open_live(link, emoji='📺', style='primary', icon_custom_emoji_id=None):
-    """Inline button 'Open Live' with emoji and style (Bot API 9.4+).
-    icon_custom_emoji_id: optional, для Premium — кастомный эмодзи вместо Unicode.
-    """
-    btn = {'text': 'Open Live', 'url': link, 'style': style}
-    if icon_custom_emoji_id:
-        btn['icon_custom_emoji_id'] = icon_custom_emoji_id
-    else:
-        btn['text'] = f'{emoji} Open Live'
-    return btn
-
-
-def _get_button_custom_emoji_id(tags):
-    """Возвращает icon_custom_emoji_id для кнопки, если use_custom_emoji и ID задан."""
-    if not app_config.get('notifications.use_custom_emoji', False):
-        return None
-    key = 'custom_emoji_id_chipmunk' if tags == 'chipmunk' else (
-        'custom_emoji_id_bird' if tags == 'bird' else 'custom_emoji_id_open_live'
-    )
-    val = (app_config.get(f'notifications.{key}') or '').strip()
-    return val if val else None
-
-
-def _get_telegram_api_base():
-    """Base URL для Telegram Bot API. Прокси/альтернатива при троттлинге."""
-    base = (app_config.get('notifications.telegram_api_base') or '').strip().rstrip('/')
-    return base or 'https://api.telegram.org'
-
-
-def _telegram_timeouts():
-    """(timeout_text, timeout_media) — текст легче, медиа тяжелее. В РФ таймауты большие (блокировки)."""
-    t = int(app_config.get('notifications.telegram_timeout') or 300)
-    t = max(30, min(600, t))  # до 10 мин при блокировках
-    return t // 2, t
-
-
-def _telegram_request(method, url, timeout, retries=None, **kwargs):
-    """Запрос к Telegram API с повторами при таймауте/сетевой ошибке."""
-    retries = retries or int(app_config.get('notifications.telegram_retries') or 3)
-    retries = max(1, min(5, retries))
-    last_exc = None
-    for attempt in range(retries):
-        try:
-            r = requests.request(method, url, timeout=timeout, **kwargs)
-            return r
-        except (requests.Timeout, requests.ConnectionError, OSError) as e:
-            last_exc = e
-            if attempt < retries - 1:
-                delay = 2 ** attempt
-                logging.warning(
-                    "Telegram attempt %d/%d failed (%s), retry in %ds",
-                    attempt + 1, retries, type(e).__name__, delay)
-                time.sleep(delay)
-    raise last_exc
-
-
-def _payload_for_telegram_multipart(payload):
-    """Для multipart/form-data Telegram ожидает булевы как строки 'true'/'false'."""
-    out = {}
-    for k, v in payload.items():
-        if isinstance(v, bool):
-            out[k] = 'true' if v else 'false'
-        elif isinstance(v, dict):
-            out[k] = json.dumps(v)
-        else:
-            out[k] = v
-    return out
-
-
-def _compress_image_for_telegram(image_bytes):
-    """Сжать и/или уменьшить JPEG для Telegram. В уведомлениях уже шлём кропы (bounding box) с процессора."""
-    max_side = int(app_config.get('notifications.telegram_max_side_px') or 0)
-    limit_kb = int(app_config.get('notifications.compress_photo_over_kb') or 0)
-    if max_side <= 0 and (limit_kb <= 0 or len(image_bytes) <= limit_kb * 1024):
-        return image_bytes
-    try:
-        from PIL import Image
-        import io
-        img = Image.open(io.BytesIO(image_bytes))
-        if img.mode in ('RGBA', 'P'):
-            img = img.convert('RGB')
-        w, h = img.size
-        if max_side > 0 and max(w, h) > max_side:
-            ratio = max_side / max(w, h)
-            new_size = (int(w * ratio), int(h * ratio))
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
-            logging.debug("Telegram: resized to %s (max_side=%s)", new_size, max_side)
-        buf = io.BytesIO()
-        img.save(buf, 'JPEG', quality=85, optimize=True)
-        out = buf.getvalue()
-        if limit_kb > 0 and len(out) > limit_kb * 1024:
-            buf2 = io.BytesIO()
-            img.save(buf2, 'JPEG', quality=78, optimize=True)
-            out = buf2.getvalue()
-        if len(out) < len(image_bytes):
-            logging.debug("Telegram: %d -> %d bytes", len(image_bytes), len(out))
-        return out
-    except Exception as e:
-        logging.debug("Telegram image process skip: %s", e)
-    return image_bytes
-
-
-def _telegram_send_message(token, chat_id, text, link=None, button_emoji='📺',
-                          button_style='primary', button_tags=None, **kwargs):
-    """Build and send Telegram message with HTML, keyboard, options."""
-    link_preview = {'is_disabled': True}
-    if link and app_config.get('notifications.link_preview_large', False):
-        link_preview = {'is_disabled': False, 'prefer_large_media': True}
-        text = f"{text}\n\n{link}"
-
-    payload = {
-        'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'HTML',
-        'disable_notification': app_config.get(
-            'notifications.disable_notification', False),
-        'protect_content': app_config.get(
-            'notifications.protect_content', False),
-        'link_preview_options': link_preview,
-    }
-    thread_id = app_config.get('notifications.message_thread_id')
-    if thread_id is not None and thread_id != '':
-        try:
-            payload['message_thread_id'] = int(thread_id)
-        except (ValueError, TypeError):
-            pass
-    if link:
-        custom_id = _get_button_custom_emoji_id(button_tags)
-        payload['reply_markup'] = {
-            'inline_keyboard': [[_telegram_button_open_live(
-                link, button_emoji, button_style, icon_custom_emoji_id=custom_id)]]
-        }
-    payload.update(kwargs)
-    base = _get_telegram_api_base()
-    timeout_text, _ = _telegram_timeouts()
-    url = f"{base}/bot{token}/sendMessage"
-    return _telegram_request('POST', url, timeout=timeout_text, json=payload)
-
-
-def notify_telegram_test(message="Test notification from BirdLense"):
-    """Отправить тестовое сообщение в Telegram. Возвращает (success, error_message)."""
-    if not app_config.get('general.enable_notifications'):
-        return False, 'Notifications disabled'
-    token = (app_config.get('notifications.telegram_bot_token') or '').strip()
-    chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
-    if not token or not chat_id:
-        return False, 'Telegram bot token or chat_id not configured'
-    text = f"🚀 {message}"
-    try:
-        r = _telegram_send_message(token, chat_id, text, link=None)
-        if r.ok:
-            return True, None
-        err = r.json() if r.text else {}
-        desc = err.get('description', r.text[:200] if r.text else str(r.status_code))
-        return False, desc
-    except requests.RequestException as e:
-        return False, str(e)
-
-
-def notify_app_startup(app=None):
-    """Send 'App is UP!' on startup. Skips when TESTING (pytest creates app 45×).
-    Skips when startup is due to 'restart processor' from UI (marker file .startup_notify_skip
-    in data_dir with recent mtime). Skips when already sent in this container run (marker in
-    /tmp — survives worker restarts but not container restart) to avoid TG spam.
-    Marker is created BEFORE notify() so that if we crash during send, we don't send again."""
-    if app and app.config.get('TESTING'):
-        return
-    sent_marker = '/tmp/.birdlense_startup_notify_sent'  # not in volume → one send per container
-    try:
-        if os.path.exists(sent_marker):
-            logging.info(
-                "notify_app_startup: skip (marker exists, pid=%s)",
-                os.getpid(),
-            )
-            return  # already sent this container run (e.g. after gunicorn worker restart)
-        skip_marker = os.path.join(_data_dir(), '.startup_notify_skip')
-        if os.path.exists(skip_marker):
-            age_sec = time.time() - os.path.getmtime(skip_marker)
-            if age_sec <= 120:
-                try:
-                    os.remove(skip_marker)
-                except OSError:
-                    pass
-                logging.info("notify_app_startup: skip (restart processor, pid=%s)", os.getpid())
-                return  # restart was from UI "restart processor", skip TG
-            try:
-                os.remove(skip_marker)
-            except OSError:
-                pass
-        # Create marker BEFORE notify so crash during send doesn't cause resend on next start
-        try:
-            open(sent_marker, 'a').close()
-        except OSError:
-            pass
-        logging.info("notify_app_startup: sending (pid=%s)", os.getpid())
-        # Web Push / DB (PushSubscription) need Flask application context
-        if app is not None:
-            with app.app_context():
-                notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
-        else:
-            notify("App is UP!", tags="rocket", timestamp=datetime.now(timezone.utc))
-    except Exception as e:
-        logging.warning("notify_app_startup failed: %s", e)
-
-
-def notify(message, link="live", tags=None, image_path=None, image_bytes=None, timestamp=None):
-    """Send notification via Telegram and/or Web Push. Requires token+chat_id or Web Push subscribers.
-
-    image_path: path to image file (must pass _is_safe_image_path when used).
-    image_bytes: raw JPEG bytes (alternative to image_path, preferred when processor sends base64).
-    timestamp: datetime or Unix int for dynamic time <t:unix:R> (Bot API 9.5).
-    """
-    if not app_config.get('general.enable_notifications'):
-        return
-    # Web Push (параллельно с Telegram)
-    try:
-        from services.web_push_service import send_web_push
-        icon = "chipmunk" if tags and any(s in (tags or "").lower() for s in (
-            "squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
-        send_web_push(message, link=link, tag=icon)
-    except Exception as e:
-        logging.warning("Web Push notify error: %s", e)
-    token = (app_config.get('notifications.telegram_bot_token') or '').strip()
-    chat_id = (app_config.get('notifications.telegram_chat_id') or '').strip()
-    if not token or not chat_id:
-        return
-    base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
-    link_url = f"{base_url}/{link}" if base_url else None
-    text = message
-    button_emoji = '📺'
-    button_tags = tags
-    if tags:
-        emoji = {'chipmunk': '🐿️', 'bird': '🐦', 'rocket': '🚀'}.get(tags, '🐦')
-        text = f"{emoji} {message}"
-        button_emoji = emoji if tags in ('chipmunk', 'bird') else '📺'
-    if timestamp is not None:
-        unix_ts = int(timestamp.timestamp()) if hasattr(timestamp, 'timestamp') else int(timestamp)
-        # Bot API 9.5: <tg-time> — динамическое время в часовом поясе подписчика
-        text = f'{text} <tg-time unix="{unix_ts}" format="r">just now</tg-time>'
-    try:
-        send_photo = app_config.get('notifications.send_photo', True)
-        # Prefer image_bytes (from processor base64) — не зависит от общего файлового пространства
-        image_to_send = None
-        if send_photo and image_bytes and isinstance(image_bytes, bytes) and len(image_bytes) > 0:
-            image_to_send = image_bytes
-        elif send_photo and image_path:
-            safe_img_path = _safe_image_path_or_none(image_path)
-            if safe_img_path:
-                try:
-                    with open(safe_img_path, 'rb') as f:
-                        image_to_send = f.read()
-                except OSError as e:
-                    logging.warning("Cannot read image for Telegram: %s", e)
-                    image_to_send = None
-        if image_to_send:
-            image_to_send = _compress_image_for_telegram(image_to_send)
-            view_stars = app_config.get('notifications.paid_media_view_star_count')
-            forward_stars = app_config.get('notifications.paid_media_forward_star_count')
-            try:
-                view_stars = int(view_stars) if view_stars else 0
-            except (ValueError, TypeError):
-                view_stars = 0
-            try:
-                forward_stars = int(forward_stars) if forward_stars else 0
-            except (ValueError, TypeError):
-                forward_stars = 0
-            view_stars = max(0, min(25000, view_stars))
-            forward_stars = max(0, min(25000, forward_stars))
-
-            # protect_content: при бесплатном просмотре — запретить пересылку, если forward_stars > 0
-            # (Telegram не поддерживает отдельную плату за пересылку)
-            protect = app_config.get('notifications.protect_content', False)
-            if view_stars == 0 and forward_stars > 0:
-                protect = True
-
-            caption = text
-            if link_url and app_config.get('notifications.link_preview_large', False):
-                caption = f"{text}\n\n{link_url}"
-            payload = {
-                'chat_id': chat_id,
-                'caption': caption,
-                'parse_mode': 'HTML',
-                'disable_notification': app_config.get(
-                    'notifications.disable_notification', False),
-                'protect_content': protect,
-            }
-            if link_url and app_config.get('notifications.link_preview_large', False):
-                payload['link_preview_options'] = {'is_disabled': False, 'prefer_large_media': True}
-            thread_id = app_config.get('notifications.message_thread_id')
-            if thread_id not in (None, ''):
-                try:
-                    payload['message_thread_id'] = int(thread_id)
-                except (ValueError, TypeError):
-                    pass
-            if link_url:
-                custom_id = _get_button_custom_emoji_id(button_tags)
-                payload['reply_markup'] = {
-                    'inline_keyboard': [[_telegram_button_open_live(
-                        link_url, button_emoji, 'primary',
-                        icon_custom_emoji_id=custom_id)]]
-                }
-
-            base = _get_telegram_api_base()
-            _, timeout_media = _telegram_timeouts()
-            logging.info(
-                "Telegram: sending photo (%d bytes), timeout=%ds",
-                len(image_to_send),
-                timeout_media,
-            )
-            photo_failed = False
-            r = None
-            try:
-                data = _payload_for_telegram_multipart(payload)
-                if view_stars > 0:
-                    data['star_count'] = view_stars
-                    data['media'] = json.dumps([
-                        {'type': 'photo', 'media': 'attach://photo'}
-                    ])
-                    r = _telegram_request(
-                        'POST', f"{base}/bot{token}/sendPaidMedia",
-                        timeout=timeout_media,
-                        data=data,
-                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                    )
-                else:
-                    r = _telegram_request(
-                        'POST', f"{base}/bot{token}/sendPhoto",
-                        timeout=timeout_media,
-                        data=data,
-                        files={'photo': ('photo.jpg', image_to_send, 'image/jpeg')},
-                    )
-            except (requests.Timeout, requests.ConnectionError, OSError) as e:
-                logging.warning(
-                    "Telegram photo failed (timeout/network): %s — fallback to text",
-                    e,
-                )
-                photo_failed = True
-            if r is not None and not r.ok:
-                logging.warning(
-                    "Telegram sendPhoto HTTP %s: %s",
-                    r.status_code,
-                    (r.text or "")[:500],
-                )
-                photo_failed = True
-            if photo_failed:
-                try:
-                    r = _telegram_send_message(
-                        token, chat_id, text, link=link_url,
-                        button_emoji=button_emoji, button_style='primary',
-                        button_tags=button_tags)
-                except requests.RequestException as fallback_e:
-                    logging.warning("Telegram text fallback also failed: %s", fallback_e)
-                    r = None
-            if r is None:
-                return
-            safe_rm = _safe_image_path_or_none(image_path)
-            if safe_rm and os.path.isfile(safe_rm):
-                try:
-                    os.remove(safe_rm)
-                except OSError:
-                    pass
-        else:
-            r = _telegram_send_message(
-                token, chat_id, text, link=link_url,
-                button_emoji=button_emoji, button_style='primary',
-                button_tags=button_tags)
-        if r is not None and not r.ok:
-            logging.warning(
-                "Telegram notify failed: %s %s",
-                r.status_code,
-                (getattr(r, "text", "") or "")[:300],
-            )
-    except requests.RequestException as e:
-        logging.warning("Telegram notify error: %s", e)
 
 
 def filter_feeder_species(species_names):

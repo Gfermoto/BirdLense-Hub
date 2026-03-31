@@ -67,6 +67,32 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 14  | Навигация по видео: подряд (напр. за день), без сброса в начало списка                       | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6**                                                         | P2, web                  |
 | 15  | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI                                                          | P3, web                  |
 | 16  | Overview: «Средняя длительность» считалась по визитам, а не по записям                       | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug             |
+| 17  | Детекция: ложные срабатывания и «не-животное» — стратегия (two_stage / single_stage+COCO, пороги, веса) | Консилиум: [§ ниже](#detection-strategy-consilium) · связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML        |
+
+
+### Консилиум: стратегия детекции {#detection-strategy-consilium}
+
+**Задача:** собрать консилиум (продукт/оператор, ML, платформа) и зафиксировать решение, как на проде снижать **ложные срабатывания** и детекции **неодушевлённых объектов**. По договорённости — **после** закрытия текущей волны разработки и ручной приёмки базового сценария; см. [§ «Завершение задач → тестирование оператором»](#completion-then-operator-testing).
+
+**Контекст:** при `detection_strategy: two_stage` и настройках в `user_config.yaml` поведение **не** совпадает с режимом **single_stage** + типичный COCO, где по умолчанию включён авто-фильтр **только животные** (`processor.single_stage_coco_animals_only_auto` — без person и без «вещей»). Деплой кода не подменяет `user_config.yaml`.
+
+**Варианты для сравнения (не исключая комбинации):**
+
+- оставить **two_stage** и подкрутить **`min_confidence_binary`** / **`min_confidence_to_process`**, при необходимости дообучить или заменить бинарный детектор;
+- перейти на **single_stage** + COCO (или иная detect-модель) и опереться на фильтр животных / свои классы;
+- учесть сценарии с Frigate / дополнительными триггерами.
+
+Документация по ключам: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (processor, motion). Расширение классов «не только птицы» пересекается с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — на консилиуме решить, ведём ли одну эпик-задачу или выделяем дочерние issues.
+
+**Не забыть (чеклист — чтобы не потерять контекст):**
+
+| Шаг | Что сделать |
+|-----|-------------|
+| 1 | Зафиксировать **как сейчас на хабе** фрагмент `processor` из `user_config.yaml`: `detection_strategy`, пути `models.binary` / `models.classifier` / `models.single_stage`, `min_confidence_binary`, `min_confidence_to_process`, `single_stage_coco_animals_only_auto`. |
+| 2 | Кратко описать **симптомы**: что именно даёт ложные срабатывания / «не-животное» (кадр, время суток, погода — по возможности). |
+| 3 | На консилиуме выбрать ветку (two_stage + пороги/модель **или** single_stage + COCO/своя модель **или** гибрид с Frigate и т.д.) и **записать решение** в Issue (один эпик или несколько дочерних). |
+| 4 | После решения: обновить **этот ROADMAP** (строка 17 — итог или ссылка на закрытый issue), при смене ключей — **CONFIGURATION** / примеры; на сервере **вручную** поправить `user_config.yaml` при необходимости (**деплой его не перезаписывает**). |
+| 5 | Не смешивать с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) без явного решения: либо одна линия работы, либо отдельные issues со ссылками друг на друга. |
 
 
 ### Триаж: Issue или Discussion
@@ -80,23 +106,23 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **После консилиума:** новая отслеживаемая работа → Issue, карточка на доске (`github-project-add-backlog-consilium.sh` или вручную), затем **обновить эту таблицу** в ROADMAP в том же или следующем PR.
 
-**Отчётность (вся работа, не только консилиум):** каждая сданная задача — **Issue** (нет карточки — завести) и при необходимости карточка на доске **BirdLense Hub — Roadmap**. По готовности: комментарий (итог + ссылки на PR), **закрыть** Issue, на доске **Status → Done** (при PAT: `bash scripts/github-project-mark-done.sh <номер>`). Для регулярной уборки рассинхрона использовать `bash scripts/github-project-sync.sh --assign Gfermoto` (выравнивает статус/поток по issue-state, назначает исполнителя на open без assignee, репортит задачи без подзадач). Подробности и чеклист — корневой **[CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)** § *Issues и доска Project*.
+**Отчётность (вся работа, не только консилиум):** каждая сданная задача — **Issue** (нет карточки — завести) и при необходимости карточка на доске **BirdLense Hub — Roadmap**. По готовности: комментарий (итог + ссылки на PR), **закрыть** Issue, на доске **Status → Done** (при PAT: `bash scripts/github-project-mark-done.sh <номер>`). Для регулярной уборки рассинхрона использовать `bash scripts/github-project-sync.sh --assign Gfermoto` (выравнивает статус/поток по issue-state, назначает исполнителя на open без assignee, репортит задачи без подзадач). Подробности и чеклист — корневой **[CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)** § *Issues и доска Project*. **Отложенные идеи** могут жить только в этом ROADMAP, пока не заведён новый issue под объём работ.
 
 ---
 
-## Кандидаты на будущее (issues заведены)
+## Кандидаты на будущее
 
-Темы уже оформлены в отдельные **Issues** и добавлены на доску; приоритизируются по слотам:
+Идеи приоритизируются по слотам; **открытый GitHub issue** заводится заново, когда появляется конкретный объём работ (см. [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md)).
 
 
 | Тема                                       | Зачем                                                                                                                                                                                               |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Доступность (a11y)**                     | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, фокус, контраст, axe E2E, [A11Y.ru.md](./A11Y.ru.md); дальнейшие улучшения — по новым issues.        |
-| **Расширение E2E (Playwright)**            | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): не только смоук — логин, таймлайн, критичные настройки, коррекция видов.                                                              |
+| **Расширение E2E (Playwright)**            | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118) ✅ issue закрыт: смок-набор и CI по расписанию — [TESTING.ru.md](./TESTING.ru.md); доп. сценарии — итеративно в PR.                                                              |
 | **Секреты в проде**                        | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) (дополняет [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Синхронизация версий стека**             | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: чеклист и `python3 scripts/check-docs-version.py` — см. [VERSIONING.ru.md](./VERSIONING.ru.md).                                                               |
 | **Community / донаты в UI**                | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121) ✅ MVP: `general.donate_url` — ссылки в шапке, мобильном и меню шестерёнки + карточка «Корм»; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md). Метрики кликов — вне объёма.                       |
-| **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): ручные отметки «видел сам», заметки — отдельно от таблицы миграции; сейчас только беклог и планы в issue, без кода.                   |
+| **Интерактивный life list (планирование)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125) ✅ issue закрыт: замысел — ручные отметки и заметки отдельно от таблицы миграции; новый issue при появлении спеки / макета.                   |
 | **Системная база видов (канонизация)**     | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168): ✅ реализовано — единый реестр видов, нормализация по ID, backfill, фоновые metadata jobs и CI smoke quality-gate для всей базы.       |
 
 
@@ -114,29 +140,31 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — реализовано и закрыто: диаграмма распределения видов на Overview (сектор и легенда) ведёт в Timeline с фильтрами вида и даты.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — реализовано и закрыто: добавлен фильтр периода по датам (день-точность) для Migration; применяется к таблице, но не к региональному справочнику.
+- [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — реализовано и закрыто: BirdNET MQTT bias, multi-camera boost, post-roll записи; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → Processor.
+- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — issues закрыты для нулевого открытого хвоста: ворота UX в [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), E2E — [TESTING.ru.md](./TESTING.ru.md), остальное — строки таблиц ниже + консилиум п.17.
 
-**Новые идеи (март 2026) — структурированы в issues и добавлены на доску Project:**
+**Новые идеи (март 2026) — таблица с историческими номерами GitHub; открытый issue заводится при старте работ:**
 
 
 | #   | Тема                                                                                                                                     | Issue                                                        | Приоритет / зона                                             |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 1   | System: счётчик уникальных посетителей                                                                                                   | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) ✅ | P3, web                                                      |
 | 2   | После удаления записи возвращать в список, а не на Home                                                                                  | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) ✅ | P2, web, bug                                                 |
-| 3   | Multi-camera confidence для камер одной локации                                                                                          | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) | P2, processor                                                |
+| 3   | Multi-camera confidence для камер одной локации                                                                                          | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) ✅ `multi_camera_groups` + boost после merge; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) | P2, processor                                                |
 | 4   | «Суточный паттерн»: клик должен фильтровать по часу                                                                                      | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) ✅ | P2, web, bug                                                 |
 | 5   | Несоответствие длительности записи (Home vs страница записи)                                                                             | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) ✅ | P2, web, bug                                                 |
 | 6   | Счётчик «на проверке» не обновляется без F5                                                                                              | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) ✅ | P2, web, bug                                                 |
-| 7   | Recording quality: pre-roll/post-roll, чтобы не терять прилёты/отлёты                                                                    | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) | P2, processor                                                |
+| 7   | Recording quality: pre-roll/post-roll, чтобы не терять прилёты/отлёты                                                                    | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) ✅ `processor.post_record_seconds` (хвост записи); pre-roll по-прежнему `video.pre_record_seconds` (Go2RTC — см. issue) | P2, processor                                                |
 | 8   | Реэкспорт: осиротевшие распознавания без вида и без записи                                                                               | [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) ✅ | P1, processor, bug                                           |
 | 9   | UX consistency: tooltips и встроенные пояснения                                                                                          | [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) ✅ | P3, web                                                      |
 | 10  | Regenerate tracks: прогресс, 409 и timeout на больших объёмах                                                                            | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug                                                 |
 | 11  | Dataset UX: понятный сценарий в Library (обслуживание БД и получение датасета)                                                           | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) ✅ | P2, docs + web                                               |
 | 12  | Dataset pipeline: уменьшить необходимость пост-скрипта перед обучением                                                                   | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) ✅ | P2, processor                                                |
-| 13  | Detector: добавить классы не-птиц (мыши, белки, кошки)                                                                                   | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research                                      |
-| 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research                                      |
-| 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) | P3, web                                                      |
-| 16  | Интеграция с Heimdall                                                                                                                    | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra                                                    |
-| 17  | Дальний backlog: весы корма/птиц (auto-tare + object detection)                                                                          | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) | P3, processor, research                                      |
+| 13  | Detector: добавить классы не-птиц (мыши, белки, кошки)                                                                                   | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) ✅ issue закрыт; трекер — [консилиум п.17](#detection-strategy-consilium); новый issue при старте датасета/модели | P3, processor, research                                      |
+| 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue закрыт; идея здесь; новый issue при старте работ | P2, processor, research                                      |
+| 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue закрыт; идея здесь; новый issue при старте | P3, web                                                      |
+| 16  | Интеграция с Heimdall                                                                                                                    | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue закрыт; идея здесь; новый issue при старте | P3, infra                                                    |
+| 17  | Дальний backlog: весы корма/птиц (auto-tare + object detection)                                                                          | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) ✅ issue закрыт; идея здесь; новый issue при старте | P3, processor, research                                      |
 
 
 **Системная инициатива (приоритет P1):**
@@ -155,7 +183,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | ------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------ |
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | ✅ блок «Сравнение с регионом» на Migration (см. прогресс выше)                               |
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | ✅ merge в процессоре + настройки; дельта/пол от `min_confidence_to_process`; ручные overrides важнее; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | Доп. снижение порога; окно подсказок **7 дней** (если BirdNET настроен)                    |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | ✅ Снижение порога классификатора для видов из недавних MQTT BirdNET: `birdnet_mqtt_auto_confidence` и параметры окна/дельты; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md)                    |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов                     | ✅ каталог: «Региональные» = топ eBird + детекции `birdnet_mqtt`; поле `regional_scope` в `GET /species`; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | ✅ расширен `seed.py` + идемпотентное слияние по имени; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → «Корм» |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping`           | ✅ API `GET /api/ui/settings/ebird-species-mapping-suggestions`, кнопка в настройках, общий кэш топа eBird; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
@@ -202,6 +230,14 @@ bash scripts/github-project-add-backlog-consilium.sh
 | Неизвестные — пустое состояние (подсказка) | ✅        |
 | Неизвестные — время суток (как в Timeline) | ✅ v0.1.9 |
 
+
+---
+
+## Порядок работ: завершение задач → тестирование оператором {#completion-then-operator-testing}
+
+**Договорённость:** сначала **доводим до конца** согласованный объём работ (открытые issues текущей волны / milestone на доске **BirdLense Hub — Roadmap**: PR смержен, issue **закрыт**, при необходимости **`make deploy`**, CI зелёный). **Затем** оператор ведёт **ручное тестирование** на живой установке и передаёт **замечания отдельными новыми issues** (или указывает регрессию в существующем issue) — без параллельного наращивания «хвостов» в той же волне.
+
+**Не путать с бэклогом:** строки в таблице «Новые идеи» без ✅ — это **очередь на будущее**; в объём «до приёмки» входит только то, что **явно взято в работу** на доске. **Консилиум по детекции** ([п.17](#detection-strategy-consilium)) — после стабилизации текущей волны, если отдельно не решено иначе.
 
 ---
 

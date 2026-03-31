@@ -35,7 +35,7 @@
 | `/settings` | GET/PATCH | Настройки |
 | `/settings/requires-password` | GET | Проверка, требуется ли пароль |
 | `/settings/verify-password` | POST | Разблокировка (`password` → `role`). **401** при неверном пароле; **429** + `Retry-After` после 5 неудач за 60 с на IP — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) |
-| `/settings/check-access` | GET | Проверка разблокировки (200/403) |
+| `/settings/check-access` | GET | Состояние сессии: `{ unlocked, role? }` — всегда **200** (заблокировано → `unlocked: false`; без лишнего 403 в консоли браузера) |
 | `/unknowns` | GET | Детекции с низкой confidence (params: start_time, end_time, limit) |
 | `/region-comparison` | GET | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
 | `/detections/:id` | PATCH | Исправить вид детекции (body: `{species_id}`). Требует пароль настроек |
@@ -44,7 +44,7 @@
 | `/push/vapid-public` | GET | Публичный ключ VAPID для Web Push подписки |
 | `/push/subscribe` | POST | Регистрация Web Push подписки (body: `{subscription}`) |
 | `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
-| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу (species, month_labels, monthly_counts) |
+| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу. Параметры: `catalog`=`active`\|`full`, `evidence`=`all`\|`video`, опционально годы/даты |
 | `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
 | `/species/:id/summary` | GET | Сводка по виду |
 | `/restart-processor` | POST | Перезапуск processor |

@@ -66,6 +66,8 @@ Debug one file / UI mode: `cd app/e2e && npx playwright test tests/migration.spe
 
 **Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **weekly** and on **workflow_dispatch** — not a required check; use it to catch regressions without running Playwright on every PR.
 
+**Expanding coverage:** extra journeys (full login, timeline drill-down, species correction flows) are added **incrementally** when a change needs them; track new specs in the PR and in this doc — no standing umbrella issue required.
+
 ### MQTT & ESPHome in `/api/ui/status`
 
 The status payload includes:

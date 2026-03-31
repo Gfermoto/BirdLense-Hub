@@ -8,17 +8,107 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description`, `--ignore-empty-image-url` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на незаполненных карточках минимальной БД CI.
+
+## [0.2.10] - 2026-03-31
+
+Накопительный релиз после v0.2.9: каталог/реестр, производительность, Telegram/MTProto, CI/E2E, перегенерация треков. Merge: [#196](https://github.com/Gfermoto/BirdLense-Hub/pull/196).
+
+### Tracks / перегенерация
+
+- **Перегенерация треков:** частичная замена по выбранным видам (`species_ids`); сопоставление детекций с каталогом по таксону и имени; `GET /api/ui/species/track-regen-options` — виды с треками на видео (VideoSpecies); при фильтре по виду период запроса — весь охват библиотеки из storage stats; ручные правки — сопоставление вида по таксону, не только построчное равенство имён; лог при пустой очереди с `species_ids`.
+
+### Documentation
+
+- **CONFIGURATION / Telegram:** раздел «если my.telegram.org выдаёт ERROR» — обход через SOCKS/HTTP или без прокси без api_id; уточнены ключи `telegram_proxy_type` и MTProto.
+- **CONFIGURATION / Telegram:** добавлены простые команды для авто-ротации прокси на сервере: `make proxy-rotation-install`, `make proxy-rotation-status`, `make proxy-rotation-remove`.
+- **INSTALL / docs index:** добавлен короткий путь «one-command setup» для Telegram proxy autorotate в `INSTALL(.ru).md` и `docs/README(.ru).md` (установка, статус, отключение, one-shot).
+
 ### Added
 
-- **E2E ([#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118)):** `app/e2e/tests/migration.spec.ts` — фильтр года на Migration и сброс на «все годы»; [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md) — отладка отдельного файла (`playwright test` / `--debug`).
+- **Каталог видов / allowlist классификатора:** `species.catalog_allowlist_file` + `species.catalog_strict_ingest` — список классов из обучения (скрипт `scripts/datasets/dump_classifier_allowlist.py`), строгий импорт вне списка → «Unknown». `POST /api/ui/system/species-catalog/reconcile` — слияние дубликатов по нормализованному имени, перенос подозрительных (блоклист) и строк вне allowlist на «Unknown». Блоклист также отсекает новый мусор на импорте.
+- **Согласованность классификатора и датасета:** `GET /api/ui/system/species-registry/classifier-dataset-alignment` — классы из `processor.models.classifier` (как у процессора), каталог `Species` и папки `data/dataset/train|val`; карточка System «Классификатор, каталог и датасет». Подсказка в отчёте data-quality.
+- **Каталог видов / качество данных:** `species_suspect_blocklist.txt` — скрытие не-птиц и «вещей» в справочнике (`GET /api/ui/species?exclude_suspects=1`), карточка System «Качество каталога», `GET /api/ui/system/species-registry/data-quality` (отчёт, дубликаты имён для merge). Календарь миграции исключает те же строки; кэш `migration_cal:v2`.
+- **Deploy / статика:** rsync больше не исключает весь `app/data` — на сервер попадает `app/data/images` (иконки корма и т.д.); записи и БД по-прежнему в `app/data/recordings`, `app/data/db`. В образе — `data/images` в `/_bundled_data` и копирование в `/app/data/images` при старте контейнера (fallback).
+- **Миграции / UI+API:** фильтры «только с активностью» vs «весь каталог» (`catalog`) и «все визиты» vs «только с видео-детекцией» (`evidence`). Связь с планом [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125).
+- **Детекция без дообучения:** `detection.cross_source_confidence_bonus` (по умолчанию 0.02) — одноразовый бонус к confidence при первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию.
+- **System / observability:** карточка «Наблюдаемость уведомлений» — счётчики `notify_preview_24h` и подсказка по URL экспорта метрик Hub для Heimdall/Grafana; `GET /api/ui/system/observability` (с авторизацией настроек), `GET /api/metrics/summary` (JSON, тот же смысл, что и `/metrics`).
+- **Docs / Heimdall:** явно описано направление данных: метрики **отдаёт Hub** (`/metrics`, `/api/metrics/summary`), в Heimdall добавляют ссылку на хаб; поле `heimdall_url` — только проверка доступности Heimdall **с сервера Hub**; про `http://heimdall.local` и резолв из Docker.
+- **Gallery:** нормализация JPEG (мин. размер, ограничение стороны) и fallback на **полный кадр**, если кроп по bbox не удался — ближе к надёжности Telegram-превью.
+- **Telegram / прокси:** выбор типа — **без прокси**, **SOCKS5 / HTTP (URL)** или **MTProto** (сервер, порт, секрет hex как в приложении Telegram). MTProto-режим отправляет сообщения через **Telethon** (нативный MTProto); нужны **api_id** и **api_hash** с https://my.telegram.org или переменные `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` в окружении. Зависимость: `telethon`. Paid Media (Stars) в MTProto-режиме не поддерживается — отправляется обычное фото.
+- **Ops / Telegram:** `scripts/manage-telegram-proxy-rotation.sh` и make-таргеты для установки cron-авторотации (по умолчанию каждые 6 часов). Ротация запускает `scripts/refresh-telegram-proxy.sh` на самом сервере (`BIRDLENSE_PROXY_LOCAL=1`), выбирает лучший рабочий SOCKS5 и обновляет `user_config.yaml` только при изменении.
+- **Настройки:** блок «Производительность / кэш API» — включение Redis и опциональный URL (`performance.*`); секретный URL маскируется в API; в **GET /settings** добавлено read-only поле `performance.redis_url_effective_masked` — фактический URL (в т.ч. из `REDIS_URL`), пароль замаскирован; в форме — placeholder и строка «Сейчас используется».
+- **Весы у кормушки:** `integrations.scales` — источник MQTT (топик с числом/JSON, совместимо с ESPHome/HA) или сущность Home Assistant; отображение веса на главной в карточке кормушки; процессор пишет `data/feeder_scale_state.json`.
+- **Heimdall integration:** новый ключ `general.heimdall_url` (Settings → General) и серверный probe в разделе System (доступность, HTTP-статус, latency, title/version если доступны).
+- **System UI / ревизия:** новая карточка «Ревизия конфигурации» на странице System (`/api/ui/system/config-audit`) — показывает deprecated/unknown keys, Telegram photo/proxy, gallery URL и статус Gray/Grey mapping.
 
 ### Changed
 
-- **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`.
+- **Видео в UI:** поток `/api/ui/videos/:id/stream` по умолчанию доступен гостям (как в ACCESS_CONTROL); опционально `general.require_auth_for_video_stream: true` для прежней блокировки.
+- **System / каталог:** карточки качества каталога и согласования классификатора свёрнуты в аккордеон «Диагностика каталога»; смягчены подсказки в UI.
+- **Старт Hub / containment:** тяжёлые мутации БД на старте по умолчанию выключены — `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA`, `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT`, `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA`; Telegram «App is UP!» — `BIRDLENSE_NOTIFY_APP_STARTUP=0`. См. CONFIGURATION.
+- **GET `/api/ui/species/:id/summary`:** только чтение (без Wikipedia/commit); в ответе `metadata_status` и `metadata_trust`.
+- **Processor:** single-stage COCO — только класс `bird`; при `boxes.id is None` повторный `track` на том же кадре; зависимость `lap` для ByteTrack; ESLint — `ignores` для `dist`/`node_modules`.
+- **CI (PR):** после web-тестов — E2E smoke Playwright против локального `docker compose up`.
+- **Деплой:** при `BIRDLENSE_ENV=production` на удалённый `app/.env` идемпотентно дописываются `TRUSTED_PROXY=1` и `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1`, если ключей ещё нет.
 
-- **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); `requests` **2.33.0** в `app/web/requirements.txt` и `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
+- **Донаты:** только иконка в шапке (рядом с языком и настройками); убраны из карточки «Корм» и из меню шестерёнки; **URL по-прежнему в настройках** (Общие → ссылка для поддержки).
+- **Системная нормализация Gray/Grey:** добавлены канонические пары в `detection.species_mapping` и `species_canonical_mapping.txt` (`Gray-headed Woodpecker`/`Great Gray Shrike` → `Grey-*`), чтобы исключить рассинхрон имён между источниками.
+- **Telegram:** подсказка про MTProto vs Bot API (HTTPS); прокси — SOCKS5h или HTTP(S).
+- **Пороги детекции (дефолты в репо):** снова нейтральные значения `min_track_duration` 4, `min_confidence_binary` 0.22, `min_confidence_to_process` 0.36, `detection.min_confidence_to_store` 0.36 (без лишнего ужесточения). Продакшен-хаб настраивается **`user_config.yaml` на сервере** (не в git): там заданы рабочие пороги под площадку.
+- **Обзор:** подсказки при наведении на все карточки ключевой статистики (раньше только «Время записи»).
+- **Локализация / кормушка:** «Реле кормушки» → «Кормушка» (раздел настроек про выдачу корма, весы и реле).
+- **Каталог корма:** позиция «Apple pieces» убрана из дефолтного списка; при старте старые строки с таким именем удаляются вместе со связями в `video_bird_food_association` (общая категория **Fruit** остаётся).
 
-- **CI / Deploy:** шаг **Verify** — порт из `BIRDLENSE_PORT` в `app/.env` на сервере (иначе 8085), пауза 10 с и до **36** попыток `curl` с интервалом 5 с после `make pull` (старт контейнера и приложения).
+### Performance
+
+- **Gunicorn:** `gthread` + **8** потоков (переменная `GUNICORN_THREADS`), `--timeout 0` — воркер не рвёт долгие стримы; параллельные запросы при одном процессе.
+- **SQLite:** `check_same_thread=False`, таймаут подключения 30 с; при старте соединения — **WAL**, `synchronous=NORMAL`, `cache_size` ~64 MiB, `temp_store=MEMORY`.
+- **Nginx:** **gzip** для JSON/JS/CSS/XML; **upstream keepalive** к Gunicorn (`proxy_http_version 1.1`, пустой `Connection`); **open_file_cache** для статики.
+- **Кэш ответов API (TTL):** `/status` 5 с; `/species` 45 с; `/species/observed` 45 с; `/bird_families` 300 с; `/migration-calendar` 120 с; `/timeline` 20 с; `/unknowns` 12 с; `/detection-frames` 45 с; `/species/:id/summary` 30 с; Xeno-Canto 600 с. **Сброс кэша:** `services/http_response_cache.bust_response_caches()` — после PATCH настроек, правок детекций, merge видов, удаления видео и **POST `/api/processor/videos`** (новая запись).
+- **Убран `app_config.reload()`** из `GET /api/ui/feed/info` на каждый запрос.
+- **React Query:** `refetchOnWindowFocus: false`, `retry: 1`, `gcTime` 15 мин — меньше лишних запросов при переключении вкладок.
+- **Страница видео / стриминг:** GET `/api/ui/videos/:id` больше не включает покадровые `frames` (часто мегабайты JSON) — оверлей треков подгружает `GET /api/ui/videos/:id/detection-frames` параллельно; плеер и метаданные появляются сразу после лёгкого ответа. Nginx: для `/api/ui/videos/*/stream` отключены `proxy_buffering` и `proxy_request_buffering`, увеличены таймауты чтения/отдачи — быстрее старт MP4 по HTTP Range.
+- **Backend кэширование ([#203](https://github.com/Gfermoto/BirdLense-Hub/issues/203)):** `services/cache.py` — in-memory TTL или **Redis** при `REDIS_URL`. `/api/ui/overview` и region-comparison — как ранее; **тяжёлые эндпоинты «Система» и хранилище** — TTL-кэш с инвалидацией после purge/retention/scan/clean visits и merge видов. **Redis по умолчанию в Docker:** сервис `redis` (`birdlense-redis`) в `docker-compose.yml` и `docker-compose.pull.yml`, `REDIS_URL=redis://redis:6379/0`, `depends_on` + healthcheck. **Nginx Brotli** — динамический модуль `ngx_brotli` в образе. **PostgreSQL:** `DATABASE_URL` + пул в `config.py`; пример только Postgres: `app/docker-compose.stack.example.yml`. Зависимости: `redis`, `psycopg[binary]`.
+- **React Query staleTime:** `staleTime=5 мин` на 4 редко-изменяемых запроса (bird-directory, species, observed) — меньше лишних refetch.
+
+### Refactored
+
+- **`util.py` → 3 модуля:** `auth.py` (аутентификация и rate-limit), `notifications.py` (Telegram + Web Push), `weather_service.py` (WeatherFetcher / HAWeatherFetcher / fetch_weather). `util.py` сохраняет re-exports — все существующие импорты работают без изменений. Убраны ~591 строк дублирования.
+- **`SettingsForm.tsx` → секции:** `sections/GeneralSection`, `VideoSection`, `ProcessorSection`, `NotificationsSection`, `EBirdSection`, `IntegrationsSection`; `shared/ServiceBlock`, `CamerasListField`. Главный файл стал оркестратором (< 120 строк).
+- **React Error Boundary:** `components/ErrorBoundary.tsx` + оборачивает `<Routes>` в `App.tsx` — несломанный рендер при runtime-ошибках в дочерних страницах.
+
+### Fixed
+
+- **Telegram MTProto:** корректный разбор `telegram_api_id` и порта прокси из YAML/чисел (в т.ч. `12345.0`), чтобы после сохранения настроек не «терялся» api_id.
+- **Telegram preview:** нормализация фото перед отправкой (`Pillow` + fallback через `OpenCV`) и upscaling очень маленьких кропов (минимум 64px), чтобы снизить ошибки Bot API `IMAGE_PROCESS_FAILED`.
+- **Telegram notifications UX:** для детекций передаётся deep-link на конкретную запись (`/videos/{id}`) вместо общего `live`; превью теперь имеет fallback-кроп из сохранённого видео по `frames.bbox`, если `best_frame` отсутствует; кнопка в TG — более нейтральная (`Open video` / `Open live`).
+- **Telegram notifications reliability:** чтобы избежать «пустых» уведомлений, добавлен дополнительный fallback на **полный кадр** из видео, если нет `best_frame` и нет валидного `bbox` для кропа.
+- **Notifications observability:** добавлены логи источника превью (`best_frame` / `bbox_crop` / `full_frame` / `none`) и метрика Prometheus `birdlense_notify_preview_24h{source=...}` по данным `activity_log` за 24 часа.
+- **Статус MQTT в шапке:** при работающем процессоре индикатор берёт **`mqtt_connected` из heartbeat** (тот же клиент, что Frigate/BirdNET). Дополнительно: проверка из веб-процесса ждёт до ~2 с после `loop_start()` и нормализует `mqtt.port` в int — меньше ложных «ошибок» из-за гонки.
+- **UI (страница видео):** кнопки «предыдущая / следующая запись» не работали из‑за обращения к несуществующей переменной `listReturnState` (**ReferenceError** в обработчике). Исправлено: `useLocation()`, сохранение `state.from` при переходе к соседним роликам (как с Timeline / Unknowns). Журнал проверок: [VERIFICATION.ru.md](docs/VERIFICATION.ru.md) / [EN](docs/VERIFICATION.md).
+- **UI / доступ:** `GET /api/ui/settings/check-access` всегда отвечает **200** с `{ unlocked: false }`, если сессия не разблокирована (раньше **403** — шум в консоли браузера). Защищённые POST/PATCH по-прежнему возвращают 403 без сессии.
+- **Processor:** при **single_stage** и **80 классах COCO** детекция по умолчанию только **животные** классы (без person и без предметов): `processor.single_stage_coco_animals_only_auto` (по умолчанию true; читается и устаревший `single_stage_coco_bird_only_auto`, если новый ключ не задан).
+
+### Changed
+
+- **UI:** Migration — режим периода «по годам» **или** «по датам» (без одновременного показа четырёх полей). «Поддержать» в шапке на **всех** страницах (включая главную): **сердце** с анимацией пульса, то же в мобильном меню и в меню шестерёнки.
+- **UI:** запрос `settings-check-access` в React Query — `staleTime` 60 с, меньше лишних refetch при навигации.
+- **CI / Deploy:** workflow **Deploy** — `concurrency` (один активный деплой на `main`), `timeout-minutes: 45`, `permissions: contents: read`; шаг **Verify** падает с `exit 1`, если health недоступен (раньше только печатался FAIL). **upload-artifact** в CI и E2E → **v6** (Node 24, без предупреждения о Node 20). **INSTALL** / **RU:** пояснение про **Queued** и fallback `make deploy`. Rsync в autodeploy — добавлен `--exclude=app/.env`.
+- **Зависимости / безопасность:** `app/ui` — `npm audit fix` (транзитивные обновления, в т.ч. brace-expansion, picomatch, yaml, цепочка до `serialize-javascript`); **`requests[socks]==2.33.0`** в `app/web/requirements.txt` (SOCKS-прокси для Telegram); `requests` **2.33.0** в `app/processor/requirements.txt`. **scripts/setup-auto-deploy.sh** — скачивание runner по **последнему** релизу с GitHub API, `RUNNER_ALLOW_RUNASROOT=1` под root, `./config.sh` с `--unattended --replace`.
+- **CI / Deploy:** шаг **Verify** — порт из `BIRDLENSE_PORT` в `app/.env` на сервере (иначе 8085), пауза 10 с и до **36** попыток `curl` с интервалом 5 с после `make pull` (старт контейнера и приложения). Smoke workflow — исправлен маппинг порта контейнера (8080, по умолчанию entrypoint).
+- **Процесс / документация:** закрыт открытый хвост issues ([#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)): ворота UX-контекста для `area:web` в [CONTRIBUTING.md](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); E2E — итеративное расширение в [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md); идеи зафиксированы в [ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) (новый issue при появлении объёма).
+
+### Added
+
+- **Settings / UI:** поля в веб-настройках для прокси и сети Telegram (`notifications.telegram_proxy_url`, API base, таймауты, сжатие фото); post-roll и блок «несколько камер + BirdNET MQTT» (`processor.*`); зарезервированные **весы** `integrations.scales.*` (топик сохраняется, обработка — позже, [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). Web: зависимость **`requests[socks]`** для SOCKS5h.
+- **Processor ([#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157)):** `processor.post_record_seconds` — post-roll: увеличивает паузу без детекций перед остановкой записи (сумма с `max_inactive_seconds`).
+- **Processor ([#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129)):** опционально `processor.birdnet_mqtt_auto_confidence` и параметры окна/дельты — более низкий порог классификатора для видов из недавних сообщений BirdNET по MQTT (по умолчанию выкл.).
+- **Processor ([#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153)):** `processor.multi_camera_groups` + `multi_camera_confidence_boost` — при Frigate-событиях одного вида с двух камер из группы прибавка к `confidence` после merge.
+- **Roadmap:** пункт консилиума **№17** — стратегия детекции (two_stage vs single_stage+COCO, пороги в `user_config`, дообучение бинарника); блок в [ROADMAP.ru.md](docs/ROADMAP.ru.md) / [EN](docs/ROADMAP.md), связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163). Дополнено: **чеклист «не забыть»** перед/после консилиума; раздел **«Завершение задач → тестирование оператором»** (`#completion-then-operator-testing`).
+- **E2E ([#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118)):** `app/e2e/tests/migration.spec.ts` — фильтр года на Migration и сброс на «все годы»; [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md) — отладка отдельного файла (`playwright test` / `--debug`).
 
 ## [0.2.9] - 2026-03-28
 

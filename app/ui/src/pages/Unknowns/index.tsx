@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import MuiLink from '@mui/material/Link';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -125,7 +126,7 @@ function UnknownCard({
             </Box>
           </Box>
           <CardActionArea
-            component={Link}
+            component={RouterLink}
             to={`/videos/${detection.video_id}`}
             state={{ from: videoListReturnPath }}
             sx={{
@@ -227,6 +228,7 @@ export function UnknownsPage() {
   const { data: speciesList = [] } = useQuery({
     queryKey: ['species'],
     queryFn: () => fetchBirdDirectory(),
+    staleTime: 5 * 60 * 1000,
   });
   const { data: recentCorrections = [] } = useQuery({
     queryKey: ['corrections-recent'],
@@ -368,9 +370,14 @@ export function UnknownsPage() {
           >
             {t('settings.passwordSubmit')}
           </Button>
-          <Link to="/settings" style={{ fontWeight: 600 }}>
+          <MuiLink
+            component={RouterLink}
+            to="/settings"
+            color="inherit"
+            sx={{ fontWeight: 600 }}
+          >
             {t('nav.settings')}
-          </Link>
+          </MuiLink>
         </Alert>
       )}
       <SettingsPasswordDialog

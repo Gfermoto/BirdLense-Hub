@@ -103,8 +103,26 @@ export interface Settings {
     enable_notifications: boolean;
     notification_excluded_species: string[];
     settings_password?: string;
+    contributor_password?: string;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
-    donate_url?: string; // Donation page (Ko-fi, etc.); empty = no button
+    heimdall_url?: string; // URL to Heimdall dashboard; empty = no link in UI
+    /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
+    donate_url?: string;
+  };
+  performance?: {
+    cache_redis_enabled?: boolean;
+    redis_url?: string;
+    /** Только ответ GET /settings: фактический URL кэша (пароль замаскирован), не сохранять */
+    redis_url_effective_masked?: string;
+  };
+  integrations?: {
+    scales?: {
+      enabled?: boolean;
+      source?: 'mqtt' | 'homeassistant';
+      mqtt_topic?: string;
+      homeassistant_entity_id?: string;
+      unit?: 'kg' | 'g';
+    };
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
@@ -155,6 +173,19 @@ export interface Settings {
     telegram_bot_token?: string;
     telegram_chat_id?: string;
     base_url?: string;
+    /** none | socks_http | mtproto */
+    telegram_proxy_type?: string;
+    telegram_proxy_url?: string;
+    telegram_mtproto_host?: string;
+    telegram_mtproto_port?: number;
+    telegram_mtproto_secret?: string;
+    telegram_api_id?: number;
+    telegram_api_hash?: string;
+    telegram_api_base?: string;
+    telegram_timeout?: number;
+    telegram_retries?: number;
+    compress_photo_over_kb?: number;
+    telegram_max_side_px?: number;
     message_thread_id?: string;
     disable_notification?: boolean;
     protect_content?: boolean;
@@ -171,7 +202,7 @@ export interface Settings {
     source?: 'openweather' | 'homeassistant';
     ha_url?: string;
     ha_entity_id?: string;
-    ha_token?: string;
+    ha_token?: string; // LLAT для HA (погода и весы)
   };
   ebird?: {
     country?: string;

@@ -6,6 +6,18 @@ from models import Video, SpeciesVisit, VideoSpecies, BirdFood, video_bird_food_
 from util import format_visit_for_timeline
 
 
+def metadata_trust_for_species(sp) -> str:
+    """Грубая метка доверия к карточке для UI (без автозаписи в БД на GET /summary)."""
+    st = (getattr(sp, 'metadata_status', None) or 'pending').strip().lower()
+    if st in ('error', 'not_found'):
+        return 'low_confidence'
+    if getattr(sp, 'taxon_id', None):
+        if st == 'ok':
+            return 'registry_verified'
+        return 'registry_bound'
+    return 'unbound'
+
+
 def build_species_summary(session, species, children, all_species_ids: list) -> dict:
     """Build species summary response: stats, hourlyActivity, weather, food, subspecies, recentVisits."""
     now = datetime.now(timezone.utc)
@@ -91,6 +103,8 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
             'name': species.name,
             'image_url': species.image_url,
             'description': species.description,
+            'metadata_status': species.metadata_status,
+            'metadata_trust': metadata_trust_for_species(species),
             'metadata_source': species.metadata_source,
             'metadata_source_url': species.metadata_source_url,
             'active': species.active,
@@ -115,6 +129,8 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
                 'id': c.id,
                 'name': c.name,
                 'image_url': c.image_url,
+                'metadata_status': c.metadata_status,
+                'metadata_trust': metadata_trust_for_species(c),
                 'metadata_source': c.metadata_source,
                 'metadata_source_url': c.metadata_source_url,
             },

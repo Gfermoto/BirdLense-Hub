@@ -19,7 +19,8 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import { Link } from 'react-router-dom';
+import MuiLink from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
@@ -105,6 +106,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const { data: speciesList = [] } = useQuery({
     queryKey: ['species'],
     queryFn: () => fetchBirdDirectory(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const correctMutation = useMutation({
@@ -235,9 +237,14 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
           >
             {t('settings.passwordSubmit')}
           </Button>
-          <Link to="/settings" style={{ fontWeight: 600 }}>
+          <MuiLink
+            component={RouterLink}
+            to="/settings"
+            color="inherit"
+            sx={{ fontWeight: 600 }}
+          >
             {t('nav.settings')}
-          </Link>
+          </MuiLink>
         </Alert>
       )}
       <SettingsPasswordDialog
@@ -355,7 +362,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
               <CardActions sx={{ pt: 0, flexWrap: 'wrap', gap: 0.5 }}>
                 <Button
                   size="small"
-                  component={Link}
+                  component={RouterLink}
                   to={`/species/${group.species_id}`}
                 >
                   {t('video.learnMore')}

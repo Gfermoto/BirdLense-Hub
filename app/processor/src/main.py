@@ -16,6 +16,8 @@ from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
 from ebird_regional_confidence import merge_species_confidence_overrides_with_ebird_top
+from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
+from multi_camera_confidence import apply_multi_camera_confidence_boost
 from fps_tracker import FPSTracker
 from api import API
 from dataset_saver import save_dataset_crops
@@ -75,6 +77,82 @@ def _check_restart_flag():
             pass
         logging.info("Restart flag found, exiting for restart")
         raise SystemExit(0)
+
+
+def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
+    """Return (image_base64, source): best_frame | bbox_crop | full_frame | none."""
+    try:
+        import base64
+        import numpy as np
+
+        bf = detection.get('best_frame')
+        if isinstance(bf, np.ndarray):
+            ok, buf = cv2.imencode('.jpg', bf)
+            if ok and buf is not None:
+                return base64.b64encode(buf.tobytes()).decode('ascii'), 'best_frame'
+    except Exception as e:
+        logging.warning("Encode best_frame for notify failed: %s", e)
+
+    frames = detection.get('frames') or []
+    if not video_file_path:
+        return None, 'none'
+
+    def _pick_timestamp() -> float:
+        try:
+            st = float(detection.get('start_time') or 0)
+            et = float(detection.get('end_time') or st)
+            if et > st:
+                return st + (et - st) * 0.5
+            return st
+        except Exception:
+            return 0.0
+
+    mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
+    bbox = mid.get('bbox') if isinstance(mid, dict) else None
+    t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
+
+    cap = cv2.VideoCapture(video_file_path)
+    try:
+        if not cap.isOpened():
+            return None, 'none'
+
+        def _read_at(ts: float):
+            fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+            if fps > 0.01:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(ts * fps)))
+            else:
+                cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
+            ok_local, frame_local = cap.read()
+            return frame_local if ok_local else None
+
+        frame = _read_at(t) or _read_at(0.0)
+        if frame is None:
+            return None, 'none'
+        h, w = frame.shape[:2]
+        # Primary fallback: bbox crop when available.
+        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+            x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
+            y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
+            x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
+            y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
+            crop = frame[y1:y2, x1:x2]
+            if crop.size > 0:
+                ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                if ok and buf is not None:
+                    import base64
+                    return base64.b64encode(buf.tobytes()).decode('ascii'), 'bbox_crop'
+
+        # Secondary fallback: full frame (avoid empty notifications even without bbox).
+        ok, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+        if not ok or buf is None:
+            return None, 'none'
+        import base64
+        return base64.b64encode(buf.tobytes()).decode('ascii'), 'full_frame'
+    except Exception as e:
+        logging.warning("Encode video crop for notify failed: %s", e)
+        return None, 'none'
+    finally:
+        cap.release()
 
 
 # Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
@@ -206,6 +284,15 @@ def main():
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
+    _data_dir = os.environ.get('DATA_DIR', 'data')
+    scales_topic_arg = None
+    scales_unit_arg = 'kg'
+    if app_config.get('integrations.scales.enabled'):
+        scales_unit_arg = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
+        src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
+        mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
+        if src == 'mqtt' and mq_st:
+            scales_topic_arg = mq_st
     frigate_camera_filter = (
         app_config.get('motion.frigate_camera_filter')
         or app_config.get('mqtt.frigate_camera_filter')
@@ -243,6 +330,9 @@ def main():
             base_url=app_config.get('notifications.base_url', ''),
             reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
             reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
+            scales_topic=scales_topic_arg,
+            scales_data_dir=_data_dir if scales_topic_arg else None,
+            scales_unit=scales_unit_arg,
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator
@@ -328,6 +418,7 @@ def main():
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
         species_confidence_overrides=merged_overrides,
+        post_record_seconds=app_config.get('processor.post_record_seconds', 0),
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
@@ -362,9 +453,13 @@ def main():
         # .pt файл или yolov8n.pt (pretrained)
         if not os.path.isfile(single_path):
             single_path = 'yolov8n.pt'
+        _coco_anim = app_config.get('processor.single_stage_coco_animals_only_auto')
+        if _coco_anim is None:
+            _coco_anim = app_config.get('processor.single_stage_coco_bird_only_auto', True)
         detection_strategy = SingleStageStrategy(
             model_path=single_path,
-            regional_species=regional_species
+            regional_species=regional_species,
+            coco_animals_only_auto=bool(_coco_anim),
         )
 
     tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
@@ -382,6 +477,11 @@ def main():
         if not motion_detector.detect():
             continue
         api.notify_motion()
+
+        session_overrides = merge_birdnet_mqtt_bias_into_overrides(
+            merged_overrides, app_config, mqtt_aggregator
+        )
+        decision_maker.species_confidence_overrides = session_overrides
 
         # Multi-camera: use triggered camera (MQTT) or default (OpenCV)
         camera_id = (
@@ -490,10 +590,15 @@ def main():
                     **d, 'species_name': sn, 'species': sn,
                     'source': 'video', 'detection_provider': 'yolo'
                 })
+            cross_bonus = float(
+                app_config.get('detection.cross_source_confidence_bonus') or 0)
             video_detections = merge_detections(
                 video_list, mqtt_events, start_time, end_time,
                 merge_window, dedup_window, one_per_species=one_per_species,
-                source_priority=source_priority)
+                source_priority=source_priority,
+                cross_source_confidence_bonus=cross_bonus)
+            video_detections = apply_multi_camera_confidence_boost(
+                video_detections, mqtt_events, app_config)
 
             # Отсечь детекции с низким confidence (4% и т.п.)
             min_conf_store = float(app_config.get('detection.min_confidence_to_store') or 0.05)
@@ -535,24 +640,33 @@ def main():
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
-                        image_base64 = None
-                        bf = d.get('best_frame')
-                        if bf is not None:
-                            try:
-                                import base64
-                                import numpy as np
-                                if isinstance(bf, np.ndarray):
-                                    ok, buf = cv2.imencode('.jpg', bf)
-                                    if ok and buf is not None:
-                                        image_base64 = base64.b64encode(buf.tobytes()).decode('ascii')
-                            except Exception as e:
-                                logging.warning("Encode best_frame for notify failed: %s", e)
-                        if image_base64 is None and bf is None:
+                        image_base64, preview_source = _encode_notify_preview_base64(d, video_output)
+                        if image_base64 is None:
                             logging.info(
-                                "Notify %s without photo: no best_frame (source=%s)",
-                                sn, d.get('detection_provider', 'unknown'))
+                                "Notify %s without photo: no preview (provider=%s, source=%s)",
+                                sn, d.get('detection_provider', 'unknown'), preview_source)
+                        else:
+                            logging.info("Notify preview source: %s (%s)", preview_source, sn)
                         try:
-                            api.notify_species(sn, image_base64=image_base64)
+                            link = f"videos/{video_id}" if video_id else "live"
+                            api.notify_species(
+                                sn,
+                                image_base64=image_base64,
+                                link=link,
+                                preview_source=preview_source,
+                            )
+                            try:
+                                api.activity_log(
+                                    type='notify_preview',
+                                    data={
+                                        'species': sn,
+                                        'video_id': video_id,
+                                        'preview_source': preview_source,
+                                        'has_image': bool(image_base64),
+                                    },
+                                )
+                            except Exception as e:
+                                logging.warning("notify_preview activity_log failed: %s", e)
                         except Exception as e:
                             resp = getattr(e, 'response', None)
                             hint = ''

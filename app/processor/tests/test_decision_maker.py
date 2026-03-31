@@ -131,5 +131,20 @@ class TestDecisionMaker(unittest.TestCase):
         results2 = dm2.get_results(tracks_common)
         self.assertEqual(len(results2), 0)
 
+    def test_post_record_extends_inactive_window(self):
+        """post_record_seconds adds to max_inactive before stop (#157)."""
+        dm = DecisionMaker(
+            max_record_seconds=3600,
+            max_inactive_seconds=1,
+            post_record_seconds=5,
+            min_track_duration=0,
+        )
+        dm.update_has_detections(False)
+        self.assertFalse(dm.decide_stop_recording())
+        time.sleep(1.2)
+        self.assertFalse(dm.decide_stop_recording())
+        time.sleep(5.1)
+        self.assertTrue(dm.decide_stop_recording())
+
 if __name__ == '__main__':
     unittest.main()

@@ -10,9 +10,12 @@ logger = logging.getLogger(__name__)
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset({
+    'performance.redis_url',
     'general.settings_password',
     'general.contributor_password',
     'notifications.telegram_bot_token',
+    'notifications.telegram_mtproto_secret',
+    'notifications.telegram_api_hash',
     'web_push.vapid_private_key',
     'mqtt.password',
     'video.go2rtc_password',
@@ -62,13 +65,14 @@ class AppConfig:
 
     @staticmethod
     def merge_dicts(base, overrides):
-        """Recursively merges two dictionaries."""
+        """Recursively merge overrides into base; returns new dict, does not mutate base."""
+        result = copy.copy(base)
         for key, value in overrides.items():
-            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-                base[key] = AppConfig.merge_dicts(base[key], value)
+            if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+                result[key] = AppConfig.merge_dicts(result[key], value)
             else:
-                base[key] = value
-        return base
+                result[key] = value
+        return result
 
     @staticmethod
     def _mask_value(val):
