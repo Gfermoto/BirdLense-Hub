@@ -487,7 +487,7 @@
     "regenerateTracksSpeciesFilterActive": "Species filter: {{count}} selected (only videos with those detections)",
     "trackRegenSpeciesLabel": "Limit to species (optional)",
     "trackRegenSpeciesPlaceholder": "Observed species…",
-    "trackRegenSpeciesHint": "Same set as «observed» in Migration: only recordings that already have at least one detection of the chosen species are included. Detection still runs on the full frame.",
+    "trackRegenSpeciesHint": "Same “observed” set as Migration. With species selected, every recording that already has those detections is queued—even if bbox was already filled. The detector still scans the full frame; rodents need a model that outputs that class (not COCO bird-only).",
     "regenerateTracksPreciseCandidatesFound": "Precise rerun candidates found: {{count}}",
     "regenerateTracksRunPreciseCandidates": "Run precise rerun for candidates ({{count}})",
     "preciseFilterProblematic": "Problematic",
