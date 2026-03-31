@@ -1,12 +1,12 @@
 # Quality verification (operators & maintainers)
 
-Short log of automated checks. Full cycle: [CONTRIBUTING.md](../CONTRIBUTING.md), [TESTING.md](./TESTING.md).
+Short log of automated checks. Full cycle: [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), [TESTING.md](./TESTING.md).
 
 ## 2026-03-29 — critical UI fix
 
 | Check | Result |
 |-------|--------|
-| Prev/next recording on `/videos/:id` | Fixed `ReferenceError` (undefined `listReturnState`); see [CHANGELOG.md](../CHANGELOG.md) [Unreleased] |
+| Prev/next recording on `/videos/:id` | Fixed `ReferenceError` (undefined `listReturnState`); see [CHANGELOG.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) [Unreleased] |
 | `make test-web` (Docker, `app/`) | 100 passed |
 | `npm run build` (`app/ui`) | OK |
 
