@@ -43,13 +43,24 @@ def resolve_allowlist_path(app_config_get) -> str | None:
 
 @lru_cache(maxsize=4)
 def _load_allowlist_norm_keys_cached(abspath: str) -> frozenset[str]:
+    """Load norm keys from allowlist.
+
+    For entries in "Scientific (Common)" format, also adds the common name as a
+    separate key so DB species stored with just common names (e.g. "Eurasian Blue Tit")
+    match against allowlist entries like "Cyanistes caeruleus (Eurasian Blue Tit)".
+    """
     keys: set[str] = set()
+    _sci_common_re = re.compile(r'^(.+?)\s*\(([^)]+)\)\s*$')
     with open(abspath, 'r', encoding='utf-8') as f:
         for raw in f:
             line = raw.split('#', 1)[0].strip()
             if not line:
                 continue
             keys.add(_norm_key(line))
+            m = _sci_common_re.match(line)
+            if m:
+                keys.add(_norm_key(m.group(1).strip()))  # scientific part
+                keys.add(_norm_key(m.group(2).strip()))  # common name part
     return frozenset(keys)
 
 
