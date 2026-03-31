@@ -553,8 +553,16 @@ def ensure_allowlist_species_materialized(
 
 def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6000) -> dict:
     """Auto-heal full catalog cards: missing metadata and blocked Wikimedia images."""
+    # Ensure full catalog materialization first, otherwise repair runs only on
+    # already-existing rows and misses allowlist species absent in DB.
+    materialize = ensure_allowlist_species_materialized(
+        app_config_get,
+        fill_metadata=True,
+        dry_run=dry_run,
+        limit=limit,
+    )
+
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
-    mapping = load_species_canonical_mapping() or {}
     if not allowlist_names:
         return {
             'checked': 0,
@@ -648,6 +656,8 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
         'metadata_fixed': metadata_fixed,
         'images_replaced_from_inat': images_replaced_from_inat,
         'still_missing': still_missing,
+        'materialized_created': int(materialize.get('created') or 0),
+        'materialized_missing_after': int(materialize.get('missing_after') or 0),
         'dry_run': dry_run,
     }
 

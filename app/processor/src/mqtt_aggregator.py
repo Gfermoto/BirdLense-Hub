@@ -202,7 +202,15 @@ class MQTTEventAggregator:
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
-        self.birdnet_topics = [birdnet_topic] if (birdnet_topic or "").strip() else []
+        # Support comma-separated topics and subtree subscriptions.
+        # Example: "birdnet/sightings" will also match "birdnet/sightings/#".
+        self.birdnet_topics = []
+        raw_birdnet = (birdnet_topic or "").strip()
+        if raw_birdnet:
+            parts = [p.strip() for p in raw_birdnet.split(",") if p.strip()]
+            for p in parts:
+                if p not in self.birdnet_topics:
+                    self.birdnet_topics.append(p)
         self.publish_topic = publish_topic
         self.username = username or os.environ.get("MQTT_USERNAME")
         self.password = password or os.environ.get("MQTT_PASSWORD")
@@ -358,7 +366,7 @@ class MQTTEventAggregator:
                             camera, label, sub_label,
                             list(cam_f) if cam_f else "any",
                             list(lbl_f))
-        elif msg.topic in self.birdnet_topics:
+        elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
             ev = _parse_birdnet_event(msg.payload)
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
@@ -392,6 +400,13 @@ class MQTTEventAggregator:
                 self._client.subscribe(self.frigate_topic, qos=1)
                 for t in self.birdnet_topics:
                     self._client.subscribe(t, qos=1)
+                    # If exact topic was configured, also subscribe subtree to
+                    # catch common BirdNET publisher variants.
+                    if "+" not in t and "#" not in t:
+                        self._client.subscribe(f"{t}/#", qos=1)
+                        logger.info("MQTT: subscribed BirdNET topics %s and %s/#", t, t)
+                    else:
+                        logger.info("MQTT: subscribed BirdNET topic %s", t)
                 if self.scales_topic:
                     self._client.subscribe(self.scales_topic, qos=1)
                     logger.info("MQTT: subscribed scales topic %s", self.scales_topic)
