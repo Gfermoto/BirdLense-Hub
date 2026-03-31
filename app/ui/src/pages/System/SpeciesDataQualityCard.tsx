@@ -17,13 +17,18 @@ import {
   Typography,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { fetchSpeciesDataQuality } from '../../api/api';
+import { fetchCatalogCoverageMetrics, fetchSpeciesDataQuality } from '../../api/api';
 
 export function SpeciesDataQualityCard() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
     queryKey: ['species-data-quality'],
     queryFn: fetchSpeciesDataQuality,
+    staleTime: 60_000,
+  });
+  const { data: coverage } = useQuery({
+    queryKey: ['catalog-coverage-metrics'],
+    queryFn: fetchCatalogCoverageMetrics,
     staleTime: 60_000,
   });
 
@@ -60,6 +65,25 @@ export function SpeciesDataQualityCard() {
               color="warning"
               label={t('system.speciesDataQualityDupes', { n: dupeCount })}
             />
+          )}
+          {coverage && (
+            <>
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.catalogObservedCount', { n: coverage.observed_species_count })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.catalogDatasetCount', { n: coverage.dataset_species_count })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.catalogFullEuCount', { n: coverage.full_eu_species_count })}
+              />
+            </>
           )}
         </Box>
 

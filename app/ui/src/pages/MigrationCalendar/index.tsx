@@ -36,7 +36,7 @@ export const MigrationCalendar = () => {
   const [endYear, setEndYear] = useState<number | ''>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [catalogMode, setCatalogMode] = useState<'active' | 'full'>('active');
+  const [catalogMode, setCatalogMode] = useState<'observed' | 'dataset' | 'full_eu'>('observed');
   const [evidenceMode, setEvidenceMode] = useState<'all' | 'camera' | 'birdnet'>('all');
 
   const handlePeriodMode = (_: React.MouseEvent<HTMLElement>, value: PeriodMode | null) => {
@@ -57,7 +57,7 @@ export const MigrationCalendar = () => {
       end_year?: number;
       start_date?: string;
       end_date?: string;
-      catalog?: 'active' | 'full';
+      catalog?: 'observed' | 'dataset' | 'full_eu';
       evidence?: 'all' | 'camera' | 'birdnet';
     } = {
       catalog: catalogMode,
@@ -211,11 +211,12 @@ export const MigrationCalendar = () => {
             size="small"
             label={t('migrationCalendar.catalogLabel')}
             value={catalogMode}
-            onChange={(e) => setCatalogMode(e.target.value as 'active' | 'full')}
+            onChange={(e) => setCatalogMode(e.target.value as 'observed' | 'dataset' | 'full_eu')}
             sx={{ minWidth: 220 }}
           >
-            <MenuItem value="active">{t('migrationCalendar.catalogActive')}</MenuItem>
-            <MenuItem value="full">{t('migrationCalendar.catalogFull')}</MenuItem>
+            <MenuItem value="observed">{t('migrationCalendar.catalogObserved')}</MenuItem>
+            <MenuItem value="dataset">{t('migrationCalendar.catalogDataset')}</MenuItem>
+            <MenuItem value="full_eu">{t('migrationCalendar.catalogFullEu')}</MenuItem>
           </TextField>
           <TextField
             select
@@ -237,9 +238,11 @@ export const MigrationCalendar = () => {
       {species.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            {catalogMode === 'full'
+            {catalogMode === 'full_eu'
               ? t('migrationCalendar.noSpeciesInDb')
-              : t('migrationCalendar.noData')}
+              : catalogMode === 'dataset'
+                ? t('migrationCalendar.noDataset')
+                : t('migrationCalendar.noObserved')}
           </Typography>
         </Paper>
       ) : (
