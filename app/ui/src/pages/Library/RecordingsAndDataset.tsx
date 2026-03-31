@@ -62,6 +62,8 @@ interface TrackRegenParams {
   detection_strategy: string;
   max_runtime_sec: number;
   species_ids?: number[];
+  species_partial_regen?: boolean;
+  ignore_regional_species?: boolean;
 }
 
 interface RegenerateSpectrogramsResponse {
@@ -173,6 +175,7 @@ export const RecordingsAndDataset = () => {
     'video_file_missing',
     'missing_video_path',
     'no_detections_fast_run',
+    'no_detections_for_selected_species',
   ]);
   const manualReasons = new Set(['has_manual_corrections']);
 
@@ -903,6 +906,11 @@ export const RecordingsAndDataset = () => {
                             {t('storage.regenerateTracksSpeciesFilterActive', {
                               count: tracksProgress.regen_params.species_ids!.length,
                             })}
+                          </Typography>
+                        )}
+                        {tracksProgress.regen_params.ignore_regional_species && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('storage.regenerateTracksFullClassScope')}
                           </Typography>
                         )}
                       </>
