@@ -1236,6 +1236,10 @@ def register_routes(app):
                 }
                 if species_ids_f:
                     regen_params['species_ids'] = species_ids_f
+                    regen_params['species_partial_regen'] = True
+                regen_params['ignore_regional_species'] = bool(
+                    app_config.get('processor.track_regen_ignore_regional_species', True)
+                )
                 _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 if force:
@@ -1296,9 +1300,22 @@ def register_routes(app):
                 frame_processor, decision_maker = build_detection_pipeline(
                     app_config,
                     strategy_override=regen_strategy,
+                    for_track_regen=True,
                 )
+                species_scope = set(species_ids_f) if species_ids_f else None
+                species_name_to_id_cache: dict[str, int | None] = {}
+
+                def _resolved_species_id_for_det(detection: dict) -> int | None:
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return None
+                    if name not in species_name_to_id_cache:
+                        sp = visit_processor._get_or_create_species(name)
+                        species_name_to_id_cache[name] = sp.id if sp else None
+                    return species_name_to_id_cache[name]
 
                 for video in videos:
+                    species_name_to_id_cache.clear()
                     _regenerate_tracks_status['progress']['current_video'] = (
                         video.video_path or None
                     )
@@ -1350,13 +1367,41 @@ def register_routes(app):
                             )
                             continue
 
+                        scoped_detections: list[dict] | None = None
+                        if species_scope:
+                            scoped_detections = []
+                            for d in detections:
+                                sid = _resolved_species_id_for_det(d)
+                                if sid and sid in species_scope:
+                                    scoped_detections.append(d)
+                            if not scoped_detections:
+                                skipped += 1
+                                precise_candidates.append({
+                                    'video_id': video.id,
+                                    'video_path': video.video_path,
+                                    'reason': 'no_detections_for_selected_species',
+                                })
+                                _regenerate_tracks_status['progress'].update(
+                                    processed=generated + failed + skipped,
+                                    generated=generated, failed=failed, skipped=skipped,
+                                )
+                                continue
+
                         manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                         if manual_vs:
                             # Только обновить frames (bbox) — виды не трогаем.
                             # Критично: сопоставлять только при совпадении вида, иначе кадр от другой птицы.
                             import json
                             used_det_indices = set()
-                            for vs in sorted(manual_vs, key=lambda x: x.start_time):
+                            manuals_ordered = sorted(
+                                (
+                                    [vs for vs in manual_vs if vs.species_id in species_scope]
+                                    if species_scope
+                                    else manual_vs
+                                ),
+                                key=lambda x: x.start_time,
+                            )
+                            for vs in manuals_ordered:
                                 best_idx = None
                                 best_overlap = 0.0
                                 vs_species_name = vs.species.name if vs.species else None
@@ -1374,11 +1419,19 @@ def register_routes(app):
                                     vs.frames = json.dumps(detections[best_idx]['frames'])
                                     used_det_indices.add(best_idx)
                             db.session.flush()
-                            # Удалить не-manual, добавить новые детекции (не matched)
-                            to_delete = [vs for vs in video.video_species if not vs.manually_corrected]
+                            to_delete = [
+                                vs for vs in video.video_species
+                                if not vs.manually_corrected
+                                and (not species_scope or vs.species_id in species_scope)
+                            ]
                             for vs in to_delete:
                                 db.session.delete(vs)
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
+                            if species_scope:
+                                unmatched = [
+                                    d for d in unmatched
+                                    if _resolved_species_id_for_det(d) in species_scope
+                                ]
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
                             frames_updated += 1
@@ -1387,6 +1440,14 @@ def register_routes(app):
                                 'video_path': video.video_path,
                                 'reason': 'has_manual_corrections',
                             })
+                        elif species_scope:
+                            VideoSpecies.query.filter(
+                                VideoSpecies.video_id == video.id,
+                                VideoSpecies.species_id.in_(species_ids_f),
+                                VideoSpecies.manually_corrected.is_(False),
+                            ).delete(synchronize_session=False)
+                            visit_processor.process_detections(video, scoped_detections)
+                            generated += 1
                         else:
                             VideoSpecies.query.filter_by(video_id=video.id).delete()
                             visit_processor.process_detections(video, detections)

@@ -10,7 +10,11 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
-def build_detection_pipeline(app_config, strategy_override: str | None = None):
+def build_detection_pipeline(
+    app_config,
+    strategy_override: str | None = None,
+    for_track_regen: bool = False,
+):
     """Build detection_strategy, frame_processor, decision_maker from config."""
     from detection_strategy import SingleStageStrategy, TwoStageStrategy
     from frame_processor import FrameProcessor
@@ -32,6 +36,12 @@ def build_detection_pipeline(app_config, strategy_override: str | None = None):
         classifier_path = os.path.join(processor_root, classifier_path)
 
     regional_species = app_config.get('processor.regional_species') or []
+    if for_track_regen and app_config.get(
+        'processor.track_regen_ignore_regional_species',
+        True,
+    ):
+        # Иначе узкий regional_species (напр. US eBird) отрезает EU-виды и Rodent.
+        regional_species = []
 
     if strategy_type == 'two_stage' and os.path.isfile(binary_path) and os.path.isfile(classifier_path):
         detection_strategy = TwoStageStrategy(
@@ -94,7 +104,10 @@ def process_video_for_tracks(
         return []
 
     if frame_processor is None or decision_maker is None:
-        frame_processor, decision_maker = build_detection_pipeline(app_config)
+        frame_processor, decision_maker = build_detection_pipeline(
+            app_config,
+            for_track_regen=True,
+        )
     frame_processor.reset()
     decision_maker.reset()
     frame_step = max(1, int(frame_step or 1))
