@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Каталог видов / allowlist классификатора:** `species.catalog_allowlist_file` + `species.catalog_strict_ingest` — список классов из обучения (скрипт `scripts/datasets/dump_classifier_allowlist.py`), строгий импорт вне списка → «Unknown». `POST /api/ui/system/species-catalog/reconcile` — слияние дубликатов по нормализованному имени, перенос подозрительных (блоклист) и строк вне allowlist на «Unknown». Блоклист также отсекает новый мусор на импорте.
 - **Согласованность классификатора и датасета:** `GET /api/ui/system/species-registry/classifier-dataset-alignment` — классы из `processor.models.classifier` (как у процессора), каталог `Species` и папки `data/dataset/train|val`; карточка System «Классификатор, каталог и датасет». Подсказка в отчёте data-quality.
 - **Каталог видов / качество данных:** `species_suspect_blocklist.txt` — скрытие не-птиц и «вещей» в справочнике (`GET /api/ui/species?exclude_suspects=1`), карточка System «Качество каталога», `GET /api/ui/system/species-registry/data-quality` (отчёт, дубликаты имён для merge). Календарь миграции исключает те же строки; кэш `migration_cal:v2`.
 - **Deploy / статика:** rsync больше не исключает весь `app/data` — на сервер попадает `app/data/images` (иконки корма и т.д.); записи и БД по-прежнему в `app/data/recordings`, `app/data/db`. В образе — `data/images` в `/_bundled_data` и копирование в `/app/data/images` при старте контейнера (fallback).

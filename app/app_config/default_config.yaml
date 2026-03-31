@@ -268,6 +268,15 @@ ebird:
     "Gray-headed Woodpecker": "Grey-headed Woodpecker"
     "Great Gray Shrike": "Great Grey Shrike"
 
+# Каталог видов: соответствие классам YOLO-классификатора и защита от мусора при импорте
+species:
+  # Путь к текстовому списку классов (одна строка = одно имя в формате Hub, как в merged_cls).
+  # Относительно каталога app/processor или абсолютный. Пусто — без allowlist.
+  # Сгенерировать: scripts/datasets/dump_classifier_allowlist.py → class_names.txt рядом с best.pt
+  catalog_allowlist_file: ""
+  # Если true и задан файл allowlist — новые детекции вне списка пишутся как вид «Unknown», новые строки не создаются.
+  catalog_strict_ingest: false
+
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""

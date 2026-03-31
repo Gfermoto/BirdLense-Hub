@@ -188,7 +188,9 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 
-**Catalog quality:** `app/web/seed/species_suspect_blocklist.txt` lists terms used to hide non-bird / object rows in the Bird Directory (`GET /api/ui/species?exclude_suspects=1`, default in UI). Full report (suspects, duplicate-name merge candidates): System → “Species catalog data quality” or `GET /api/ui/system/species-registry/data-quality` (settings password).
+**Catalog quality:** `app/web/seed/species_suspect_blocklist.txt` lists terms used to hide non-bird / object rows in the Bird Directory (`GET /api/ui/species?exclude_suspects=1`, default in UI). Full report (suspects, duplicate-name merge candidates): System → “Species catalog data quality” or `GET /api/ui/system/species-registry/data-quality` (settings password). New ingest matching the blocklist does not create a junk species row — it is routed to “Unknown”.
+
+**Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
 
 | Key | Description |
 |-----|-------------|
