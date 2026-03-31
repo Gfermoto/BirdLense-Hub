@@ -87,6 +87,7 @@ def process_video_for_tracks(
     Each detection: {species_name, start_time, end_time, confidence, track_id, frames, ...}
     """
     from app_config.app_config import app_config
+    from species_normalizer import normalize
 
     if not os.path.isfile(video_path):
         logger.warning(f"Video not found: {video_path}")
@@ -133,10 +134,16 @@ def process_video_for_tracks(
         cap.release()
 
     results = decision_maker.get_results(frame_processor.tracks)
+    species_mapping = app_config.get('detection.species_mapping') or {}
+
     detections = []
     for r in results:
+        raw_name = r.get('species_name') or ''
+        species_name = (
+            normalize(raw_name, species_mapping) if raw_name else raw_name
+        )
         detections.append({
-            'species_name': r['species_name'],
+            'species_name': species_name,
             'start_time': r['start_time'],
             'end_time': r['end_time'],
             'confidence': r['confidence'],

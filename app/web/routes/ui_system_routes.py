@@ -1240,6 +1240,14 @@ def register_routes(app):
 
                 if force:
                     q = Video.query
+                elif species_ids_f:
+                    # Выбраны виды (напр. Rodent): брать все записи с этими детекциями,
+                    # иначе при уже заполненных frames ролик не попадал бы в выборку.
+                    q = (
+                        Video.query.join(VideoSpecies)
+                        .filter(VideoSpecies.species_id.in_(species_ids_f))
+                        .distinct()
+                    )
                 else:
                     from sqlalchemy import or_
                     q = Video.query.join(VideoSpecies).filter(
@@ -1261,7 +1269,7 @@ def register_routes(app):
                     except ValueError:
                         app.logger.warning('Invalid end_date %s, ignoring', end_date)
 
-                if species_ids_f:
+                if species_ids_f and force:
                     vid_subq = (
                         select(VideoSpecies.video_id)
                         .where(VideoSpecies.species_id.in_(species_ids_f))
