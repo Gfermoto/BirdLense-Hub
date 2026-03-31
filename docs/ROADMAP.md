@@ -64,6 +64,31 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 14 | Video navigation: sequential browse (e.g. same day), no list reset | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | `area:web`, P2 |
 | 15 | Video neighbors: local TZ, cross-day jump, docs clarity (follow-up to #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ local day + `cross_day` + API/UI docs | `area:web`, P3 |
 | 16 | Overview: “mean duration” used visit span instead of per-recording average | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ mean over `Video` rows (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); RU/EN labels | `area:web`, P3, `bug` |
+| 17 | Detection: false positives and inanimate objects — strategy (two_stage vs single_stage+COCO, thresholds, weights) | Consilium: [§ below](#detection-strategy-consilium) · ties to [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML |
+
+### Detection strategy consilium {#detection-strategy-consilium}
+
+**Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production. By default this runs **after** the current development wave is closed and basic manual acceptance; see [§ Finish work, then operator testing](#completion-then-operator-testing).
+
+**Context:** with `detection_strategy: two_stage` and values in `user_config.yaml`, behavior **does not** match **single_stage** + typical COCO, where the default **animals-only** auto-filter applies (`processor.single_stage_coco_animals_only_auto` — excludes person and inanimate COCO classes). Deploying code does not overwrite `user_config.yaml`.
+
+**Options to compare (combinations allowed):**
+
+- keep **two_stage** and tune **`min_confidence_binary`** / **`min_confidence_to_process`**, and/or retrain/replace the binary detector;
+- move to **single_stage** + COCO (or another detect model) and rely on the animal filter / custom classes;
+- factor in Frigate / extra motion triggers.
+
+See [CONFIGURATION.md](./CONFIGURATION.md) (processor, motion). Non-bird classes overlap [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — consilium should decide one epic vs child issues.
+
+**Do not forget (checklist):**
+
+| Step | Action |
+|------|--------|
+| 1 | Capture the live hub **`processor`** snippet from `user_config.yaml`: `detection_strategy`, `models.binary` / `models.classifier` / `models.single_stage`, `min_confidence_binary`, `min_confidence_to_process`, `single_stage_coco_animals_only_auto`. |
+| 2 | Note **symptoms**: what triggers false positives / non-animal detections (scene, time of day, weather when possible). |
+| 3 | At the consilium, pick an approach (two_stage + thresholds/model **or** single_stage + COCO/custom **or** Frigate hybrid, etc.) and **write the decision** into Issue(s) (one epic or children). |
+| 4 | After the decision: update **this ROADMAP** (row 17 — outcome or link to closed issue), **CONFIGURATION** / examples if keys change; on the server **edit `user_config.yaml` manually** if needed (**deploy does not overwrite it**). |
+| 5 | Keep in sync with [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) by explicit choice: one workstream or separate cross-linked issues. |
 
 ### Triage: Issue vs. Discussion
 
@@ -74,22 +99,22 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 
 **After consilium:** new tracked work → create/update the Issue, add the card to the Project (`github-project-add-backlog-consilium.sh` or manually), then **update this ROADMAP** table in the same PR or follow-up.
 
-**Reporting (all shipped work, not only consilium):** every shipped item has a **GitHub Issue** (open one if missing) and, when tracked, a card on **BirdLense Hub — Roadmap**. When done: comment (outcome + PR links), **close** the issue, set board **Status → Done** (with a PAT: `bash scripts/github-project-mark-done.sh <n>`). For routine hygiene, run `bash scripts/github-project-sync.sh --assign Gfermoto` (aligns board status/flow with issue state, assigns open issues without assignee, reports open issues missing subtask checklists). Checklist: root **[CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)** § *Issues & Project board*.
+**Reporting (all shipped work, not only consilium):** every shipped item has a **GitHub Issue** (open one if missing) and, when tracked, a card on **BirdLense Hub — Roadmap**. When done: comment (outcome + PR links), **close** the issue, set board **Status → Done** (with a PAT: `bash scripts/github-project-mark-done.sh <n>`). For routine hygiene, run `bash scripts/github-project-sync.sh --assign Gfermoto` (aligns board status/flow with issue state, assigns open issues without assignee, reports open issues missing subtask checklists). Checklist: root **[CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)** § *Issues & Project board*. **Deferred ideas** may live only in this ROADMAP until a new scoped issue is filed.
 
 ---
 
-## Future work candidates (issues created)
+## Future work candidates
 
-These themes are now tracked as dedicated **Issues** and added to the board; schedule by available capacity:
+Prioritize by capacity; open a new **GitHub issue** when work is scoped (see [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)).
 
 | Theme | Why |
 |-------|-----|
 | **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, focus, contrast, axe E2E, [A11Y.md](./A11Y.md); further work via new issues. |
-| **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118): beyond smoke — login, timeline, critical settings, correction flow. |
+| **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118) ✅ issue closed: smoke suites + scheduled CI — [TESTING.md](./TESTING.md); more journeys added incrementally in PRs. |
 | **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
 | **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
 | **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121) ✅ MVP: `general.donate_url` drives links in Navigation (desktop + mobile + gear menu) and Food card; see [CONFIGURATION.md](./CONFIGURATION.md). Click analytics out of scope. |
-| **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125): manual “I saw it” flags and notes — distinct from the migration matrix; backlog/planning in the issue first, no implementation yet. |
+| **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125) ✅ issue closed: same intent — manual flags/notes vs migration table; open a new issue when a spec exists. |
 | **Species canonical registry** | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) ✅: unified registry, name normalization, backfill, background metadata jobs, CI quality gate for the full dataset. |
 
 ### User wishes backlog (Mar 2026)
@@ -105,12 +130,14 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
+- [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
+- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
 
 | # | Issue | Summary |
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | ✅ Compare-to-region on Migration (see progress above) |
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](./CONFIGURATION.md) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | Extra sensitivity; **7-day** hint window (when BirdNET is configured) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | ✅ Lower classifier thresholds for species in recent BirdNET MQTT: `birdnet_mqtt_auto_confidence` + window/delta; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
 | [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
@@ -119,27 +146,27 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | ✅ `GET /api/ui/settings/ebird-species-mapping-suggestions`, Settings UI button, shared eBird top cache; [CONFIGURATION.md](./CONFIGURATION.md) |
 
-**New ideas (Mar 2026) — tracked as issues on the Project board:**
+**New ideas (Mar 2026) — table keeps historical GitHub numbers; open a new issue when work starts:**
 
 | # | Theme | Issue | Priority / area |
 |---|--------|-------|-----------------|
 | 1 | System: unique visitor counter | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) ✅ | P3, web |
 | 2 | After deleting a recording, return to list not Home | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) ✅ | P2, web, bug |
-| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) | P2, processor |
+| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) ✅ `multi_camera_groups` + boost after merge; [CONFIGURATION.md](./CONFIGURATION.md) | P2, processor |
 | 4 | “Daily pattern” chart: click should filter by hour | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) ✅ | P2, web, bug |
 | 5 | Recording duration mismatch (Home vs recording page) | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) ✅ | P2, web, bug |
 | 6 | Review counter not updating without full reload | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) ✅ | P2, web, bug |
-| 7 | Recording quality: pre-roll/post-roll for approach/departure | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) | P2, processor |
+| 7 | Recording quality: pre-roll/post-roll for approach/departure | [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) ✅ `processor.post_record_seconds` (recording tail); pre-roll remains `video.pre_record_seconds` (Go2RTC — see issue) | P2, processor |
 | 8 | Re-export: orphan recognitions without species/recording | [#158](https://github.com/Gfermoto/BirdLense-Hub/issues/158) ✅ | P1, processor, bug |
 | 9 | UX consistency: tooltips and inline help | [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) ✅ | P3, web |
 | 10 | Regenerate tracks: progress, 409, timeouts on large sets | [#160](https://github.com/Gfermoto/BirdLense-Hub/issues/160) ✅ | P1, web, bug |
 | 11 | Dataset UX: clear Library flow (DB maintenance + export) | [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) ✅ | P2, docs + web |
 | 12 | Dataset pipeline: less post-script work before training | [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) ✅ | P2, processor |
-| 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P3, processor, research |
-| 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) | P2, processor, research |
-| 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) | P3, web |
-| 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) | P3, infra |
-| 17 | Long-term: feeder / bird scales (auto-tare + object detection) | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) | P3, processor, research |
+| 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) ✅ issue closed; tracker: [consilium item 17](#detection-strategy-consilium); new issue when training starts | P3, processor, research |
+| 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
+| 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
+| 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue closed; idea retained here; new issue when work starts | P3, infra |
+| 17 | Long-term: feeder / bird scales (auto-tare + object detection) | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) ✅ issue closed; idea retained here; new issue when work starts | P3, processor, research |
 
 **System initiative (P1):**
 
@@ -184,6 +211,14 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | Activity month picker | Shipped (v0.1.8) |
 | Unknowns empty state | Shipped |
 | Unknowns time-of-day filter | Shipped (v0.1.9) |
+
+---
+
+## Work order: finish in-flight work, then operator testing {#completion-then-operator-testing}
+
+**Agreement:** first **complete** the agreed slice of work (open issues in the current wave / **BirdLense Hub — Roadmap** milestone: PR merged, issue **closed**, **`make deploy`** if needed, CI green). **Then** the operator runs **manual testing** on the live hub and files **feedback as new issues** (or flags regressions on an existing issue) — without growing the same wave in parallel.
+
+**Backlog vs acceptance:** rows in **New ideas** without ✅ are **future queue**; only items **explicitly in progress** on the board count toward “ready for acceptance”. The **detection consilium** ([item 17](#detection-strategy-consilium)) runs **after** the current wave stabilizes unless the board decides otherwise.
 
 ---
 

@@ -132,6 +132,8 @@ cd app/e2e && npx playwright test --debug tests/migration.spec.ts
 
 **CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **раз в неделю** и по **workflow_dispatch**; в ruleset **не required** — для отлова регрессий без Playwright на каждом PR.
 
+**Расширение покрытия:** дополнительные сценарии (полный логин, углубление в таймлайн, коррекция видов) добавляются **по мере необходимости** вместе с фичей; фиксируйте в PR и в этом документе — отдельный «зонтичный» issue не обязателен.
+
 ### Статус MQTT и ESPHome
 
 Эндпоинт `/api/ui/status` возвращает:

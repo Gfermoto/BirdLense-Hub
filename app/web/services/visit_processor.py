@@ -1,9 +1,19 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
 import json
+
+from app_config.app_config import app_config
 from models import Video, Species, VideoSpecies, SpeciesVisit
-from util import update_species_info_from_wiki, get_parent_name_for_species
+from services.species_catalog_allowlist_service import (
+    load_catalog_allowlist_norm_keys,
+    species_matches_allowlist,
+)
 from services.species_registry_service import resolve_species_name
+from util import (
+    get_parent_name_for_species,
+    load_species_canonical_mapping,
+    update_species_info_from_wiki,
+)
 
 
 def _ensure_utc(dt: datetime) -> datetime:
@@ -170,6 +180,36 @@ class VisitProcessor:
         self.db.session.add(visit)
         return visit, True
 
+    def _get_or_create_unknown_species(self) -> Optional[Species]:
+        """Перенос мусора / вне allowlist — одна строка «Unknown»."""
+        existing = Species.query.filter_by(name='Unknown').first()
+        if existing:
+            return existing
+        birds = Species.query.filter_by(name='Birds').first()
+        parent_id = birds.id if birds else None
+        row = Species(name='Unknown', parent_id=parent_id, active=False)
+        self.db.session.add(row)
+        self.db.session.flush()
+        self.logger.info('Created species "Unknown" for blocked/off-allowlist ingest')
+        return row
+
+    def _ingest_blocked(
+        self,
+        display_name: str,
+        raw_normalized: str,
+        taxon_common_name: str | None,
+    ) -> bool:
+        """Строгий allowlist: если задан и включён — имена вне списка → Unknown."""
+        if not bool(app_config.get('species.catalog_strict_ingest')):
+            return False
+        allow = load_catalog_allowlist_norm_keys(app_config.get)
+        if allow is None:
+            return False
+        mapping = load_species_canonical_mapping()
+        ok_display = species_matches_allowlist(display_name or '', allow, mapping)
+        ok_raw = species_matches_allowlist(raw_normalized or '', allow, mapping)
+        return not (ok_display or ok_raw)
+
     def _get_or_create_species(self, name: str) -> Optional[Species]:
         """Вид по имени или создание (Frigate/YOLO/BirdNET). bird → Bird."""
         if not name or not isinstance(name, str):
@@ -180,13 +220,23 @@ class VisitProcessor:
         if normalized.lower() == 'bird':
             normalized = 'Bird'
         resolution = resolve_species_name(normalized, source="ingest")
-        canonical_name = resolution.taxon.common_name if resolution.found and resolution.taxon else normalized
+        taxon = resolution.taxon if resolution.found else None
+        taxon_common = taxon.common_name if taxon else None
+        canonical_name = taxon_common if taxon else normalized
 
         species = Species.query.filter_by(name=canonical_name).first()
         if species:
-            if resolution.found and resolution.taxon and species.taxon_id != resolution.taxon.id:
-                species.taxon_id = resolution.taxon.id
+            tx = species.taxon
+            cmn = tx.common_name if tx else None
+            if self._ingest_blocked(species.name or '', normalized, cmn):
+                return self._get_or_create_unknown_species()
+            if resolution.found and taxon and species.taxon_id != taxon.id:
+                species.taxon_id = taxon.id
             return species
+
+        if self._ingest_blocked(canonical_name, normalized, taxon_common):
+            return self._get_or_create_unknown_species()
+
         birds = Species.query.filter_by(name='Birds').first()
         parent_id = birds.id if birds else None
         parent_name = get_parent_name_for_species(canonical_name)
@@ -198,7 +248,7 @@ class VisitProcessor:
             name=canonical_name,
             parent_id=parent_id,
             active=False,
-            taxon_id=resolution.taxon.id if resolution.found and resolution.taxon else None,
+            taxon_id=taxon.id if taxon else None,
         )
         self.db.session.add(species)
         self.db.session.flush()

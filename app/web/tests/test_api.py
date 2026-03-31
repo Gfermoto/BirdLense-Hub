@@ -1,5 +1,5 @@
 """API integration tests for web service."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -41,6 +41,16 @@ class TestMetrics:
         assert 'birdlense_memory_used_percent' in body
         assert 'birdlense_disk_used_percent' in body
         assert 'birdlense_detections_total' in body
+
+    def test_metrics_summary_json(self, client):
+        r = client.get('/api/metrics/summary')
+        assert r.status_code == 200
+        assert r.is_json
+        data = r.get_json()
+        assert data.get('service') == 'birdlense-hub'
+        assert 'notify_preview_24h' in data
+        assert 'detections_total' in data
+        assert isinstance(data['notify_preview_24h'], dict)
 
     def test_system_metrics_live_only(self, client):
         r = client.get('/api/ui/system/metrics')
@@ -117,6 +127,20 @@ class TestLibraryDatasetFlow:
                 r_tracks_status = client.get('/api/ui/system/regenerate-tracks/status')
                 assert r_tracks_status.status_code == 200
                 assert 'status' in r_tracks_status.json
+
+                r_tracks_bad_video_ids = client.post(
+                    '/api/ui/system/regenerate-tracks',
+                    json={'video_ids': 'not-an-array'},
+                )
+                assert r_tracks_bad_video_ids.status_code == 400
+                assert 'video_ids' in (r_tracks_bad_video_ids.json.get('error') or '')
+
+                r_tracks_bad_species_ids = client.post(
+                    '/api/ui/system/regenerate-tracks',
+                    json={'species_ids': 'not-an-array'},
+                )
+                assert r_tracks_bad_species_ids.status_code == 400
+                assert 'species_ids' in (r_tracks_bad_species_ids.json.get('error') or '')
 
                 r_clean = client.post('/api/ui/dataset/clean', json={
                     'dry_run': True,
@@ -445,6 +469,13 @@ class TestSpecies:
         for item in r.json:
             assert 'id' in item and 'name' in item and 'count' in item
 
+    def test_species_track_regen_options_returns_list(self, client):
+        r = client.get('/api/ui/species/track-regen-options')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+        for item in r.json:
+            assert 'id' in item and 'name' in item and 'count' in item
+
 
 class TestCorrectionsHistory:
     def test_recent_corrections_endpoint_shape(self, client):
@@ -474,11 +505,9 @@ class TestSettingsEndpoints:
 
     def test_settings_check_access_returns_status(self, client):
         r = client.get('/api/ui/settings/check-access')
-        assert r.status_code in (200, 403)
-        if r.status_code == 200:
-            assert 'unlocked' in r.json
-        else:
-            assert 'error' in r.json
+        assert r.status_code == 200
+        assert 'unlocked' in r.json
+        assert r.json['unlocked'] in (True, False)
 
 
 class TestStatusDebug:
@@ -565,6 +594,10 @@ class TestSpeciesRegionalScope:
             db.session.commit()
             sid = sp.id
 
+        # Прямой commit в БД минует processor — сбросить TTL-кэш списка видов
+        from services.http_response_cache import bust_response_caches
+        bust_response_caches()
+
         r = client.get('/api/ui/species')
         assert r.status_code == 200
         row = next((x for x in r.json if x['id'] == sid), None)
@@ -604,8 +637,14 @@ class TestPush:
             assert r.status_code == 503
             assert 'error' in r.json
 
-    def test_push_subscribe_rejects_empty_or_invalid(self, client):
+    def test_push_subscribe_rejects_empty_or_invalid(self, client, monkeypatch):
         """Subscribe returns 400 when notifications disabled or payload invalid."""
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
         r = client.post(
             '/api/ui/push/subscribe',
             json={},
@@ -615,7 +654,13 @@ class TestPush:
         err = r.json.get('error', '').lower()
         assert 'notifications' in err or 'subscription' in err
 
-    def test_push_subscribe_requires_keys(self, client):
+    def test_push_subscribe_requires_keys(self, client, monkeypatch):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
         r = client.post(
             '/api/ui/push/subscribe',
             json={'subscription': {'endpoint': 'https://example.com/push'}},
@@ -678,6 +723,70 @@ class TestMigrationCalendar:
         assert r.status_code == 400
         assert 'error' in r.json
 
+    def test_migration_calendar_catalog_full_and_evidence_video(self, client):
+        r = client.get(
+            '/api/ui/migration-calendar',
+            query_string={'catalog': 'full', 'evidence': 'video'},
+        )
+        assert r.status_code == 200
+        assert 'species' in r.json
+
+    def test_migration_calendar_evidence_param_ignored(self, app, client):
+        from models import db, Species, SpeciesVisit, VideoSpecies
+
+        with app.app_context():
+            camera_species = Species(name='Camera only species')
+            birdnet_species = Species(name='BirdNET only species')
+            db.session.add_all([camera_species, birdnet_species])
+            db.session.flush()
+
+            visit_camera = SpeciesVisit(
+                species_id=camera_species.id,
+                start_time=datetime(2025, 3, 1, 10, 0, 0),
+                end_time=datetime(2025, 3, 1, 10, 1, 0),
+                max_simultaneous=1,
+            )
+            visit_birdnet = SpeciesVisit(
+                species_id=birdnet_species.id,
+                start_time=datetime(2025, 3, 2, 10, 0, 0),
+                end_time=datetime(2025, 3, 2, 10, 1, 0),
+                max_simultaneous=1,
+            )
+            db.session.add_all([visit_camera, visit_birdnet])
+            db.session.flush()
+
+            db.session.add(VideoSpecies(
+                video_id=1,
+                species_id=camera_species.id,
+                species_visit_id=visit_camera.id,
+                start_time=0,
+                end_time=1,
+                confidence=0.99,
+                source='video',
+                detection_provider='yolo',
+            ))
+            db.session.add(VideoSpecies(
+                video_id=2,
+                species_id=birdnet_species.id,
+                species_visit_id=visit_birdnet.id,
+                start_time=0,
+                end_time=1,
+                confidence=0.99,
+                source='audio',
+                detection_provider='birdnet_mqtt',
+            ))
+            db.session.commit()
+
+        r_camera = client.get('/api/ui/migration-calendar', query_string={'evidence': 'camera'})
+        r_birdnet = client.get('/api/ui/migration-calendar', query_string={'evidence': 'birdnet'})
+        assert r_camera.status_code == 200
+        assert r_birdnet.status_code == 200
+        assert r_camera.json == r_birdnet.json
+
+    def test_migration_calendar_rejects_bad_catalog(self, client):
+        r = client.get('/api/ui/migration-calendar', query_string={'catalog': 'maybe'})
+        assert r.status_code == 400
+
 
 class TestUnknowns:
     def test_unknowns_requires_params(self, client):
@@ -718,6 +827,128 @@ class TestUnknowns:
         assert r.status_code == 200
         assert isinstance(r.json, list)
         assert len(r.json) <= 500
+
+    def test_unknowns_excludes_legacy_import_placeholders(self, app, client):
+        from models import db, Species, SpeciesVisit, Video, VideoSpecies
+
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        with app.app_context():
+            unknown = Species.query.filter_by(name='Unknown').first()
+            if unknown is None:
+                unknown = Species(name='Unknown', active=False)
+                db.session.add(unknown)
+                db.session.flush()
+
+            video = Video(
+                processor_version='1',
+                start_time=now,
+                end_time=now + timedelta(seconds=30),
+                video_path='data/recordings/2026/03/30/120000/video.mp4',
+                spectrogram_path=None,
+            )
+            db.session.add(video)
+            db.session.flush()
+
+            visit = SpeciesVisit(
+                species_id=unknown.id,
+                start_time=now,
+                end_time=now + timedelta(seconds=30),
+                max_simultaneous=1,
+            )
+            db.session.add(visit)
+            db.session.flush()
+
+            db.session.add(VideoSpecies(
+                video_id=video.id,
+                species_id=unknown.id,
+                species_visit_id=visit.id,
+                start_time=0,
+                end_time=30,
+                confidence=0,
+                source='video',
+                detection_provider='legacy',
+                created_at=now,
+            ))
+            db.session.commit()
+
+        ts = int(now.replace(tzinfo=timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/unknowns',
+            query_string={'start_time': ts - 60, 'end_time': ts + 60},
+        )
+        assert r.status_code == 200
+        assert r.json == []
+
+
+class TestScanRecordings:
+    def test_scan_import_avoids_new_legacy_unknowns_and_cleans_old_ones(
+        self, app, client, monkeypatch, tmp_path,
+    ):
+        from app_config.app_config import app_config
+        from models import db, Species, SpeciesVisit, Video, VideoSpecies
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        monkeypatch.setenv('DATA_DIR', str(tmp_path))
+        rec_dir = tmp_path / 'recordings' / '2026' / '03' / '30' / '131825'
+        rec_dir.mkdir(parents=True)
+        (rec_dir / 'video.mp4').write_bytes(b'fake-video')
+
+        now = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc).replace(
+            tzinfo=None,
+        )
+        with app.app_context():
+            unknown = Species.query.filter_by(name='Unknown').first()
+            if unknown is None:
+                unknown = Species(name='Unknown', active=False)
+                db.session.add(unknown)
+                db.session.flush()
+
+            old_video = Video(
+                processor_version='1',
+                start_time=now,
+                end_time=now + timedelta(seconds=30),
+                video_path='data/recordings/2026/03/29/120000/video.mp4',
+                spectrogram_path=None,
+            )
+            db.session.add(old_video)
+            db.session.flush()
+
+            old_visit = SpeciesVisit(
+                species_id=unknown.id,
+                start_time=now,
+                end_time=now + timedelta(seconds=30),
+                max_simultaneous=1,
+            )
+            db.session.add(old_visit)
+            db.session.flush()
+
+            db.session.add(VideoSpecies(
+                video_id=old_video.id,
+                species_id=unknown.id,
+                species_visit_id=old_visit.id,
+                start_time=0,
+                end_time=30,
+                confidence=0,
+                source='video',
+                detection_provider='legacy',
+                created_at=now,
+            ))
+            db.session.commit()
+
+        response = client.post('/api/ui/system/recordings/scan')
+        assert response.status_code == 200
+        assert response.json['imported'] == 1
+        assert response.json['cleaned_legacy_placeholders'] == 1
+
+        with app.app_context():
+            paths = {row.video_path for row in Video.query.all()}
+            assert 'data/recordings/2026/03/30/131825/video.mp4' in paths
+            assert VideoSpecies.query.count() == 0
+            assert SpeciesVisit.query.count() == 0
 
 
 class TestVerifyPasswordRateLimit:
@@ -779,6 +1010,8 @@ class TestVerifyPasswordRateLimit:
         ).status_code == 429
 
     def test_x_real_ip_separate_buckets(self, client, monkeypatch):
+        """За доверенным прокси разные X-Real-IP — разные бакеты (см. TRUSTED_PROXY)."""
+        monkeypatch.setenv('TRUSTED_PROXY', '1')
         from app_config.app_config import app_config
         general = dict(app_config.config.get('general') or {})
         general['settings_password'] = 's'
@@ -801,3 +1034,85 @@ class TestVerifyPasswordRateLimit:
             headers={'X-Real-IP': '198.51.100.33'},
         )
         assert r.status_code == 401
+
+
+class TestSpeciesSummaryReadOnly:
+    """GET /api/ui/species/:id/summary не обязан мутировать БД (containment)."""
+
+    def test_summary_includes_metadata_trust(self, app, client):
+        from models import Species, db
+
+        unique = f'API Summary Trust Lark {id(app)}'
+        with app.app_context():
+            sp = Species(name=unique, metadata_status='ok')
+            db.session.add(sp)
+            db.session.commit()
+            sid = sp.id
+        r = client.get(f'/api/ui/species/{sid}/summary')
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data['species']['metadata_trust'] == 'unbound'
+        assert data['species']['metadata_status'] == 'ok'
+
+
+class TestVideoStreamAccess:
+    """Поток видео для плеера: по умолчанию без пароля (Viewer)."""
+
+    def test_stream_allows_guest_when_not_locked(self, app, client, tmp_path, monkeypatch):
+        from models import Video, db
+
+        fake = tmp_path / 'clip.mp4'
+        fake.write_bytes(b'\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2')
+        monkeypatch.setattr('util.full_path_for_video', lambda _p: str(fake))
+
+        vp = 'data/recordings/2026/03/31/120000/video.mp4'
+        with app.app_context():
+            v = Video(
+                processor_version='t',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path=vp,
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['require_auth_for_video_stream'] = False
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        r = client.get(f'/api/ui/videos/{vid}/stream')
+        assert r.status_code == 200
+        assert 'video' in (r.content_type or '').lower()
+
+    def test_stream_requires_password_when_locked(self, app, client, tmp_path, monkeypatch):
+        from models import Video, db
+
+        fake = tmp_path / 'clip2.mp4'
+        fake.write_bytes(b'\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2')
+        monkeypatch.setattr('util.full_path_for_video', lambda _p: str(fake))
+
+        vp = 'data/recordings/2026/03/31/130000/video.mp4'
+        with app.app_context():
+            v = Video(
+                processor_version='t',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path=vp,
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['require_auth_for_video_stream'] = True
+        general['settings_password'] = 'secret-stream-test'
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        r = client.get(f'/api/ui/videos/{vid}/stream')
+        assert r.status_code == 403

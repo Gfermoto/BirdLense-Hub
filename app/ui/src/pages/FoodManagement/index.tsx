@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Table from '@mui/material/Table';
@@ -12,7 +13,6 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
-import Avatar from '@mui/material/Avatar';
 import Info from '@mui/icons-material/Info';
 import Tooltip from '@mui/material/Tooltip';
 import { resolveImageUrl, fetchBirdFood, toggleBirdFood } from '../../api/api';
@@ -25,6 +25,7 @@ export const FoodManagement = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { isAdmin } = useProtectedArea();
+  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const { data: foodData, isLoading } = useQuery({
     queryKey: ['birdFood'],
     queryFn: fetchBirdFood,
@@ -82,12 +83,25 @@ export const FoodManagement = () => {
               <TableRow key={food.id} hover>
                 <TableCell sx={{ width: '250px' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {food.image_url ? (
-                      <Avatar
+                    {food.image_url && !brokenImages[food.id] ? (
+                      <Box
+                        component="img"
                         src={resolveImageUrl(food.image_url)}
                         alt={food.name}
-                        variant="rounded"
-                        sx={{ width: 64, height: 64 }}
+                        onError={() =>
+                          setBrokenImages((prev) => ({ ...prev, [food.id]: true }))
+                        }
+                        sx={{
+                          width: 64,
+                          height: 64,
+                          objectFit: 'contain',
+                          borderRadius: 1.5,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          bgcolor: 'background.paper',
+                          p: 0.5,
+                          flexShrink: 0,
+                        }}
                       />
                     ) : (
                       <Info

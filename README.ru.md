@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.2.6-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.2.10-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 ### Краткое описание
 
@@ -28,6 +28,8 @@
 **Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
+
+**Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
 **Модели:** EU-классификатор (birds-525 + iNaturalist). См. [docs/TRAINING.md](./docs/TRAINING.md).
 

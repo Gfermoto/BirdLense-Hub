@@ -35,6 +35,7 @@ export const Settings: React.FC = () => {
   const { data: observedSpecies, isLoading: isLoadingObserved } = useQuery({
     queryKey: ['species', 'observed'],
     queryFn: fetchObservedSpecies,
+    staleTime: 5 * 60 * 1000,
   });
 
   const updateMutation = useMutation({
@@ -48,6 +49,10 @@ export const Settings: React.FC = () => {
           ? { type: 'success', textKey: 'settings.savedRestart' }
           : { type: 'error', textKey: 'settings.restartFailed', apiMessage: result.message },
       );
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : t('settings.saveError');
+      setRestartMessage({ type: 'error', textKey: 'settings.saveError', apiMessage: msg });
     },
   });
 

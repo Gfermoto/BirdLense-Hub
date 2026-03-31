@@ -153,6 +153,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
   const timeoutRef = useRef<number>();
   const [view, setView] = useState<'video' | 'audio'>('video');
   const [error, setError] = useState<string | null>(null);
+
+  // Reset error when video changes to avoid showing a stale error for a new video
+  useEffect(() => {
+    setError(null);
+  }, [video.id]);
   const [showControls, setShowControls] = useState(true);
   const [showTracks, setShowTracks] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -496,6 +501,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
           <video
             ref={videoRef}
             src={`${BASE_API_URL}/videos/${video.id}/stream`}
+            preload="auto"
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
             onError={() => setError(t('errors.loadVideo'))}

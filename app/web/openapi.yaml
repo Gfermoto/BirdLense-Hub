@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: BirdLense Hub UI API
-  version: 0.2.9
+  version: 0.2.10
   description: |
     BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. This API is designed for both human users and LLM agents to:
       - Query real-time and historical bird visit data
@@ -104,7 +104,7 @@ paths:
     get:
       summary: Get video details
       description: |
-        Retrieve detailed information about a specific video recording, including detected species, food present, and weather at the time. Use this to analyze or display individual bird visit events.
+        Retrieve detailed information about a specific video recording, including detected species, food present, and weather at the time. Per-frame track geometry (bbox) is not included here — use GET /videos/{video_id}/detection-frames to avoid multi-megabyte JSON on the initial page load.
       parameters:
         - in: path
           name: video_id
@@ -118,6 +118,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoDetails"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /videos/{video_id}/detection-frames:
+    get:
+      summary: Per-detection track frames (bbox over time)
+      description: |
+        Returns bbox keyframes for each VideoSpecies row that has stored frame data. Large payload — intended to load after the main video details response. IDs match `species[].id` from GET /videos/{video_id}.
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Track frame lists keyed by detection id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tracks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: VideoSpecies row id
+                        species_id:
+                          type: integer
+                        start_time:
+                          type: number
+                        end_time:
+                          type: number
+                        frames:
+                          type: array
+                          description: Time-normalized bbox keyframes
         "404":
           description: Video not found
           content:
@@ -335,6 +377,14 @@ paths:
       summary: List all species
       description: |
         Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
+        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+      parameters:
+        - in: query
+          name: exclude_suspects
+          required: false
+          schema:
+            type: boolean
+          description: If true, filter out catalog rows flagged by the data-quality blocklist.
       responses:
         "200":
           description: List of species
@@ -434,7 +484,9 @@ paths:
     get:
       summary: Get summary for a species
       description: |
-        Retrieve the detailed summary for a specific species, including detection statistics, recent visits, and environmental correlations. This is useful for in-depth analysis of a species' behavior and trends.
+        Retrieve the detailed summary for a specific species (read-only: does not run wiki/metadata
+        enrichment or change the database). Use System → species registry enrichment jobs to refresh
+        images and descriptions. Includes coarse ``metadata_trust`` for UI disclosure.
       parameters:
         - in: path
           name: species_id
@@ -900,6 +952,25 @@ components:
               type: string
             description:
               type: string
+            metadata_status:
+              type: string
+              description: Registry enrichment status (pending, ok, error, not_found, …).
+            metadata_trust:
+              type: string
+              enum:
+                - low_confidence
+                - registry_verified
+                - registry_bound
+                - unbound
+              description: >
+                Coarse trust hint: unbound = no canonical taxon link; registry_verified = taxon + ok metadata;
+                low_confidence = failed or missing enrichment.
+            metadata_source:
+              type: string
+              nullable: true
+            metadata_source_url:
+              type: string
+              nullable: true
             active:
               type: boolean
             parent:
@@ -971,6 +1042,16 @@ components:
                     type: string
                   image_url:
                     type: string
+                  metadata_status:
+                    type: string
+                  metadata_trust:
+                    type: string
+                  metadata_source:
+                    type: string
+                    nullable: true
+                  metadata_source_url:
+                    type: string
+                    nullable: true
               stats:
                 type: object
                 properties:

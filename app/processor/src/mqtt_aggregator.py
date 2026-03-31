@@ -15,6 +15,51 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
+FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
+
+
+def _parse_scale_payload(payload: bytes) -> float | None:
+    """Число веса из plain text, JSON {value|weight|state} или HA state string."""
+    if not payload:
+        return None
+    try:
+        raw = payload.decode("utf-8", errors="replace").strip()
+    except Exception:
+        return None
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            for k in ("value", "weight", "state", "Weight"):
+                v = data.get(k)
+                if v is not None and str(v).strip() != "":
+                    return float(str(v).replace(",", "."))
+        return float(data)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
+    try:
+        return float(raw.replace(",", "."))
+    except ValueError:
+        return None
+
+
+def write_feeder_scale_state(data_dir: str, weight: float, unit: str) -> None:
+    """Сохранить последний вес для UI (карточка кормушки)."""
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        path = os.path.join(data_dir, FEEDER_SCALE_STATE_FILE)
+        rec = {
+            "weight": float(weight),
+            "unit": (unit or "kg").strip().lower()[:8],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(rec, f, ensure_ascii=False)
+    except OSError as e:
+        logger.debug("write_feeder_scale_state: %s", e)
+
+
 # HA Discovery state topics (we publish state here)
 HA_TOPIC_LAST_SPECIES = "birdlense/sensor/last_species/state"
 HA_TOPIC_LAST_CONFIDENCE = "birdlense/sensor/last_confidence/state"
@@ -144,6 +189,9 @@ class MQTTEventAggregator:
         base_url: str = "",
         reconnect_min_delay: int = 5,
         reconnect_max_delay: int = 300,
+        scales_topic: str | None = None,
+        scales_data_dir: str | None = None,
+        scales_unit: str = "kg",
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -154,7 +202,15 @@ class MQTTEventAggregator:
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
-        self.birdnet_topics = [birdnet_topic] if (birdnet_topic or "").strip() else []
+        # Support comma-separated topics and subtree subscriptions.
+        # Example: "birdnet/sightings" will also match "birdnet/sightings/#".
+        self.birdnet_topics = []
+        raw_birdnet = (birdnet_topic or "").strip()
+        if raw_birdnet:
+            parts = [p.strip() for p in raw_birdnet.split(",") if p.strip()]
+            for p in parts:
+                if p not in self.birdnet_topics:
+                    self.birdnet_topics.append(p)
         self.publish_topic = publish_topic
         self.username = username or os.environ.get("MQTT_USERNAME")
         self.password = password or os.environ.get("MQTT_PASSWORD")
@@ -172,6 +228,10 @@ class MQTTEventAggregator:
         self.base_url = (base_url or "").strip().rstrip("/")
         self.reconnect_min_delay = max(1, int(reconnect_min_delay))
         self.reconnect_max_delay = max(self.reconnect_min_delay, int(reconnect_max_delay))
+        st = (scales_topic or "").strip()
+        self.scales_topic = st if st else None
+        self.scales_data_dir = (scales_data_dir or "").strip() or None
+        self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -306,8 +366,14 @@ class MQTTEventAggregator:
                             camera, label, sub_label,
                             list(cam_f) if cam_f else "any",
                             list(lbl_f))
-        elif msg.topic in self.birdnet_topics:
+        elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
             ev = _parse_birdnet_event(msg.payload)
+        elif self.scales_topic and msg.topic == self.scales_topic:
+            w = _parse_scale_payload(msg.payload)
+            if w is not None and self.scales_data_dir:
+                write_feeder_scale_state(self.scales_data_dir, w, self.scales_unit)
+                logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
+            return
         if ev:
             with self._lock:
                 self._events.append(ev)
@@ -334,6 +400,16 @@ class MQTTEventAggregator:
                 self._client.subscribe(self.frigate_topic, qos=1)
                 for t in self.birdnet_topics:
                     self._client.subscribe(t, qos=1)
+                    # If exact topic was configured, also subscribe subtree to
+                    # catch common BirdNET publisher variants.
+                    if "+" not in t and "#" not in t:
+                        self._client.subscribe(f"{t}/#", qos=1)
+                        logger.info("MQTT: subscribed BirdNET topics %s and %s/#", t, t)
+                    else:
+                        logger.info("MQTT: subscribed BirdNET topic %s", t)
+                if self.scales_topic:
+                    self._client.subscribe(self.scales_topic, qos=1)
+                    logger.info("MQTT: subscribed scales topic %s", self.scales_topic)
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
                 retry_delay = self.reconnect_min_delay
                 # paho handles exponential reconnect backoff inside the network loop.

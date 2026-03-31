@@ -145,7 +145,7 @@ export const Overview = () => {
             <Paper
               sx={{
                 p: 2,
-                bgcolor: 'primary.main',
+                bgcolor: 'primary.dark',
                 color: 'primary.contrastText',
                 display: 'flex',
                 alignItems: 'center',
@@ -154,10 +154,10 @@ export const Overview = () => {
             >
               <BirdIcon size={40} />
               <Box>
-                <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
+                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.92)' }}>
                   {t('overview.lastBird')}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#ffffff' }}>
                   {(dayjs(overviewData.lastDetection.start_time ?? undefined).isValid()
                     ? dayjs(overviewData.lastDetection.start_time).format('HH:mm')
                     : '—')}{' '}
@@ -179,6 +179,7 @@ export const Overview = () => {
                 icon={BirdIcon}
                 title={t('overview.uniqueSpecies')}
                 value={overviewData?.stats.uniqueSpecies || 0}
+                hint={t('overview.uniqueSpeciesHint')}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -186,6 +187,7 @@ export const Overview = () => {
                 icon={VisibilityOutlined}
                 title={t('overview.totalVisits')}
                 value={overviewData?.stats.totalDetections || 0}
+                hint={t('overview.totalVisitsHint')}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -193,6 +195,7 @@ export const Overview = () => {
                 icon={ScheduleOutlined}
                 title={t('overview.visitsLastHour')}
                 value={overviewData?.stats.lastHourDetections || 0}
+                hint={t('overview.visitsLastHourHint')}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -200,6 +203,7 @@ export const Overview = () => {
                 icon={TimelapseOutlined}
                 title={t('overview.meanDuration')}
                 value={`${Math.round(overviewData?.stats.avgVisitDuration || 0)} ${t('time.sec')}`}
+                hint={t('overview.meanDurationHint')}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -211,20 +215,18 @@ export const Overview = () => {
                     ? formatHour(overviewData?.stats.busiestHour ?? 0)
                     : t('common.na')
                 }
+                hint={t('overview.busiestHourHint')}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-              <Tooltip title={t('overview.recordingTimeHint')}>
-                <span>
-                  <StatCard
-                    icon={VideocamOutlined}
-                    title={t('overview.recordingTime')}
-                    value={formatRecordingTime(
-                      Math.max(0, overviewData?.stats.videoDuration ?? 0),
-                    )}
-                  />
-                </span>
-              </Tooltip>
+              <StatCard
+                icon={VideocamOutlined}
+                title={t('overview.recordingTime')}
+                value={formatRecordingTime(
+                  Math.max(0, overviewData?.stats.videoDuration ?? 0),
+                )}
+                hint={t('overview.recordingTimeHint')}
+              />
             </Grid>
           </Grid>
           {overviewData?.stats.detectionByProvider &&

@@ -13,6 +13,7 @@ import { SkipToContent } from './components/SkipToContent';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
@@ -46,6 +47,8 @@ const theme = createTheme({
     },
     primary: {
       main: '#10B981', // Emerald 500
+      /** Текст/иконки на сплошной заливке primary — WCAG AA для обычного текста */
+      dark: '#047857',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -143,6 +146,9 @@ const theme = createTheme({
           '& .MuiAlert-message .MuiButton-root': {
             color: '#7dd3fc',
           },
+          '& .MuiAlert-message a': {
+            color: '#7dd3fc',
+          },
         },
       },
     },
@@ -159,6 +165,9 @@ function App() {
     defaultOptions: {
       queries: {
         staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 15,
+        refetchOnWindowFocus: false,
+        retry: 1,
       },
     },
   });
@@ -193,6 +202,7 @@ function App() {
                     </Box>
                   }
                 >
+                  <ErrorBoundary>
                   <Routes>
                     <Route path="/" element={<Overview />} />
                     <Route path="/timeline" element={<TimelinePage />} />
@@ -207,6 +217,7 @@ function App() {
                     <Route path="/system" element={<System />} />
                     <Route path="/library" element={<Library />} />
                   </Routes>
+                  </ErrorBoundary>
                 </Suspense>
               </Container>
             </Box>

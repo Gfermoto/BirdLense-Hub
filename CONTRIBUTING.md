@@ -50,7 +50,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 
 ## Issues & Project board (accountability)
 
-**All substantive work** must be reflected in **GitHub Issues** and, when the item is on it, on the **BirdLense Hub — Roadmap** project — including work **outside** the [Roadmap consilium](docs/ROADMAP.md) table (CI-only, docs, chores). Comment with outcomes + PR links, **close** issues when done, set board **Status** to **Done** (or `bash scripts/github-project-mark-done.sh <n>` with PAT `repo` + `project`).
+**All substantive work** must be reflected in **GitHub Issues** and, when the item is on it, on the **BirdLense Hub — Roadmap** project — including work **outside** the [Roadmap consilium](docs/ROADMAP.md) table (CI-only, docs, chores). Comment with outcomes + PR links, **close** issues when done, set board **Status** to **Done** (or `bash scripts/github-project-mark-done.sh <n>` with PAT `repo` + `project`). **Deferred ideas** without a current implementation scope may be recorded only in [ROADMAP](docs/ROADMAP.md) until a new issue is opened.
 
 ## Pull request guidelines
 
@@ -58,6 +58,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 - Add tests for new API endpoints or processor logic.
 - Update documentation if behavior changes.
 - Ensure **`make test`** and **`make test-web`** pass in `app/` (Docker), or the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
+- For PRs that materially change **UI placement** or add a new surface (`area:web`): in the PR description, briefly confirm the **UX-context gate** (after [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114)): which page owns the user intent, whether data/API flow reuses existing patterns, and what would feel wrong to an operator.
 
 ### Maintainer checklist (before release)
 

@@ -75,7 +75,8 @@ test-report:
 
 test-e2e:
 	cd e2e && npm ci && npx playwright install chromium && npm test
-# E2E с паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://YOUR_HOST:8085 make test-e2e
+# Локальный стек: BASE_URL=http://127.0.0.1:8085 make test-e2e
+# С паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://YOUR_HOST:8085 make test-e2e
 
 # Автодокументация
 docs: docs-python docs-ui

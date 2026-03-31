@@ -77,6 +77,27 @@ make deploy
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
+### Telegram proxy autorotate (одной кнопкой)
+
+После первого успешного `make deploy` (чтобы скрипты попали на сервер):
+
+```bash
+cd BirdLense-Hub
+make proxy-rotation-install
+```
+
+Готово: на сервере будет cron, который раз в 6 часов подбирает рабочий SOCKS5-прокси для Telegram API и применяет его только при изменении.
+
+Полезные команды:
+
+```bash
+make proxy-rotation-status   # показать расписание и последние логи
+make proxy-rotation-remove   # отключить autorotate
+make refresh-telegram-proxy  # разовый запуск подбора прямо сейчас
+```
+
+Если в `status` видно `not installed`, сначала проверьте `scripts/deploy.local.sh` (DEPLOY_HOST/DEPLOY_SSH_PORT) и повторите `make proxy-rotation-install`.
+
 ---
 
 ## Проверка

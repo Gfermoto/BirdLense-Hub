@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import Divider from '@mui/material/Divider';
 import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
@@ -35,6 +36,24 @@ const pulse = keyframes`
   }
   100% {
     opacity: 1;
+    transform: scale(1);
+  }
+`;
+
+const heartbeat = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.2);
+  }
+  40% {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  70% {
     transform: scale(1);
   }
 `;
@@ -97,8 +116,7 @@ export function Navigation() {
     staleTime: 1000 * 30,
   });
   const donateUrl = feedInfo?.donate_url?.trim() || '';
-  /** На главной ссылка уже в карточке «Корм» — не дублируем в шапке и в мобильном меню. */
-  const showAppBarDonate = Boolean(donateUrl) && currentPath !== '/';
+  const showAppBarDonate = Boolean(donateUrl);
 
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
@@ -170,8 +188,16 @@ export function Navigation() {
             </Typography>
           </Box>
 
-          {/* Mobile Menu */}
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+          {/* Mobile: menu | logo | donate icon (только шапка, без пункта в drawer) */}
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: { xs: 'flex', md: 'none' },
+              alignItems: 'center',
+              minWidth: 0,
+              gap: 0.5,
+            }}
+          >
             <IconButton
               size="large"
               onClick={(e) => setMobileMenuAnchor(e.currentTarget)}
@@ -254,18 +280,6 @@ export function Navigation() {
                 {t('nav.library')}
               </MenuItem>
 
-              {showAppBarDonate ? (
-                <MenuItem
-                  component="a"
-                  href={donateUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleMobileMenuClose}
-                >
-                  {t('nav.supportProject')}
-                </MenuItem>
-              ) : null}
-
               {/* Mobile: Status + Language */}
               <Divider />
               <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -273,27 +287,54 @@ export function Navigation() {
                 <LanguageSwitcher />
               </Box>
             </Menu>
-          </Box>
 
-          {/* Logo Section - Mobile (Clickable) */}
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              alignItems: 'center',
-              textDecoration: 'none',
-              color: 'inherit',
-            }}
-          >
             <Box
-              component="img"
-              src={logoUrl}
-              alt="BirdLense Hub Logo"
-              sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5 }}
-            />
-            <Typography variant="h6">{t('common.appName')}</Typography>
+              component={Link}
+              to="/"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                textDecoration: 'none',
+                color: 'inherit',
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                component="img"
+                src={logoUrl}
+                alt="BirdLense Hub Logo"
+                sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5, flexShrink: 0 }}
+              />
+              <Typography variant="h6" noWrap>
+                {t('common.appName')}
+              </Typography>
+            </Box>
+
+            {showAppBarDonate ? (
+              <IconButton
+                component="a"
+                href={donateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                color="inherit"
+                aria-label={t('nav.supportProject')}
+                sx={{
+                  flexShrink: 0,
+                  color: 'rgba(255, 255, 255, 0.92)',
+                }}
+              >
+                <FavoriteIcon
+                  sx={{
+                    fontSize: 22,
+                    color: '#fca5a5',
+                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                  }}
+                />
+              </IconButton>
+            ) : null}
           </Box>
 
           {/* Desktop Navigation - Pill Style */}
@@ -374,25 +415,28 @@ export function Navigation() {
             <LanguageSwitcher />
 
             {showAppBarDonate ? (
-              <Button
+              <IconButton
                 component="a"
                 href={donateUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 size="small"
+                color="inherit"
+                aria-label={t('nav.supportProject')}
+                title={t('nav.supportProject')}
                 sx={{
-                  color: 'rgba(255, 255, 255, 0.88)',
-                  textTransform: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  minWidth: 'auto',
-                  px: 1,
-                  py: 0.5,
+                  color: 'rgba(255, 255, 255, 0.92)',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
                 }}
               >
-                {t('nav.supportProject')}
-              </Button>
+                <FavoriteIcon
+                  sx={{
+                    fontSize: 22,
+                    color: '#fca5a5',
+                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                  }}
+                />
+              </IconButton>
             ) : null}
 
             {/* Settings Icon */}
@@ -455,20 +499,6 @@ export function Navigation() {
             >
               {t('nav.library')}
             </MenuItem>
-            {donateUrl ? (
-              <>
-                <Divider />
-                <MenuItem
-                  component="a"
-                  href={donateUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleSettingsMenuClose}
-                >
-                  {t('nav.supportProject')}
-                </MenuItem>
-              </>
-            ) : null}
           </Menu>
         </Toolbar>
       </Container>

@@ -65,6 +65,9 @@
 | **High** | No rate limiting. | Add Flask-Limiter or similar. |
 | **Medium** | CORS: `supports_credentials: True`, origins via `CORS_ORIGINS`. When empty — localhost only. | Document CORS setup for external access. |
 | **Medium** | Input validation is partial. | Extend validation (schemas, sizes) for mutating endpoints. |
+| ~~**Medium**~~ **Fixed** | `X-Real-IP` / `X-Forwarded-For` were trusted without a trusted proxy boundary. | Proxy headers are used only when `TRUSTED_PROXY=1`; otherwise rate limiting uses `remote_addr`. |
+| ~~**Medium**~~ **Fixed** | Web Push subscription could enable `web_push.enabled` without settings access. | `POST /api/ui/push/subscribe` now requires `settings_check_access()`. |
+| ~~**High**~~ **Fixed** | `webhook.url` could target loopback / private IPs and be abused as SSRF. | Only public `http`/`https` targets are allowed; private ranges are blocked. |
 
 ---
 

@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs docs-site diagnose
+.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards
 
 deploy:
 	@./scripts/deploy.sh
@@ -21,3 +21,26 @@ docs-site:
 # Диагностика перезапусков на сервере (ssh birdlense)
 diagnose:
 	@./scripts/diagnose.sh
+
+# Подобрать рабочий SOCKS5-прокси для Telegram API и применить на сервере
+refresh-telegram-proxy:
+	@./scripts/refresh-telegram-proxy.sh
+
+# Поставить cron-авторотацию прокси на сервере (по умолчанию каждые 6 часов)
+proxy-rotation-install:
+	@./scripts/manage-telegram-proxy-rotation.sh install
+
+# Проверить cron и последние логи ротации на сервере
+proxy-rotation-status:
+	@./scripts/manage-telegram-proxy-rotation.sh status
+
+# Удалить cron-авторотацию прокси на сервере
+proxy-rotation-remove:
+	@./scripts/manage-telegram-proxy-rotation.sh remove
+
+# Аудит карточек видов (фото/описание/доступность через proxy)
+# Примеры:
+#   make audit-cards
+#   BASE_URL=https://birdlense.eyera.info make audit-cards
+audit-cards:
+	@python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
