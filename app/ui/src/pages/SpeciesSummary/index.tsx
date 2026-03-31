@@ -25,7 +25,10 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import { CircularProgress } from '@mui/material';
 import { SpeciesSummary } from '../../types';
-import { fetchSpeciesSummary, fetchXenoCantoRecordings } from '../../api/api';
+import {
+  fetchSpeciesSummary,
+  fetchXenoCantoRecordings,
+} from '../../api/api';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
@@ -146,6 +149,7 @@ const SpeciesSummaryPage = () => {
     id && /^\d+$/.test(id) ? parseInt(id, 10) : undefined;
   const speciesIdValid = speciesId !== undefined && speciesId > 0;
   const [playingRecording, setPlayingRecording] = useState<string | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery<SpeciesSummary>({
@@ -159,6 +163,10 @@ const SpeciesSummaryPage = () => {
       audioRef.current?.pause();
     };
   }, []);
+
+  useEffect(() => {
+    setImageLoadFailed(false);
+  }, [speciesId]);
 
   if (!speciesIdValid) {
     return (
@@ -269,10 +277,11 @@ const SpeciesSummaryPage = () => {
                 overflow: 'hidden',
               }}
             >
-              {data.species.image_url ? (
+              {data.species.image_url && !imageLoadFailed ? (
                 <img
                   src={resolveImageUrl(data.species.image_url)}
                   alt={data.species.name}
+                  onError={() => setImageLoadFailed(true)}
                   style={{
                     width: '100%',
                     height: 'auto',
@@ -303,7 +312,7 @@ const SpeciesSummaryPage = () => {
               textAlign="justify"
               sx={{ mb: 2 }}
             >
-              {data.species.description}
+              {data.species.description || t('speciesSummary.noDescription')}
             </Typography>
             {data.species.metadata_source_url && (
               <Typography variant="caption" color="text.secondary">

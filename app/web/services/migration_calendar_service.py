@@ -17,20 +17,33 @@ def _norm_key(name: str) -> str:
     return ' '.join((name or '').strip().lower().replace('_', ' ').replace('-', ' ').split())
 
 
-def _dataset_folder_names() -> set[str]:
-    base = os.path.join(data_dir(), 'dataset')
+def _dataset_class_names(app_config_get=None) -> set[str]:
+    web_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    repo_root = os.path.abspath(os.path.join(web_root, '..', '..'))
+    candidates = [
+        os.path.join(data_dir(), 'dataset'),
+        os.path.join(repo_root, 'datasets', 'merged_cls'),
+    ]
     out: set[str] = set()
-    for split in ('train', 'val'):
-        root = os.path.join(base, split)
-        if not os.path.isdir(root):
-            continue
-        try:
-            for entry in os.listdir(root):
-                if os.path.isdir(os.path.join(root, entry)):
-                    out.add(entry)
-        except OSError:
-            continue
+    for base in candidates:
+        for split in ('train', 'val'):
+            root = os.path.join(base, split)
+            if not os.path.isdir(root):
+                continue
+            try:
+                for entry in os.listdir(root):
+                    if os.path.isdir(os.path.join(root, entry)):
+                        out.add(_folder_display_name(entry))
+            except OSError:
+                continue
+    allow_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
+    if allow_names:
+        out.update(str(x).strip() for x in allow_names if str(x).strip())
     return out
+
+
+def _folder_display_name(folder: str) -> str:
+    return ' '.join((folder or '').replace('_', ' ').split()).strip()
 
 
 def get_migration_calendar(
@@ -184,9 +197,9 @@ def get_migration_calendar(
                 })
 
     elif catalog == 'dataset':
-        for folder in sorted(_dataset_folder_names()):
+        for folder in sorted(_dataset_class_names(app_config_get)):
             match = None
-            for mk in species_name_match_norm_keys(folder):
+            for mk in species_name_match_norm_keys(_folder_display_name(folder)):
                 if mk in db_by_norm:
                     match = db_by_norm[mk]
                     break
@@ -199,6 +212,16 @@ def get_migration_calendar(
                         'image_url': simg,
                         'monthly_counts': [0] * 12,
                     }
+            else:
+                # Keep unmatched folders visible: local dataset may include classes
+                # not yet materialized in Species table.
+                key = f"__dataset__{_norm_key(folder)}"
+                species_data.setdefault(key, {
+                    'id': None,
+                    'name': _folder_display_name(folder),
+                    'image_url': None,
+                    'monthly_counts': [0] * 12,
+                })
 
     if suspect_ids:
         species_data = {

@@ -1,4 +1,4 @@
-# Instructions for coding agents (Cursor, etc.)
+# Engineering workflow rules
 
 ## Доводить работу до конца
 

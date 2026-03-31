@@ -31,7 +31,15 @@ export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
  */
 export const resolveImageUrl = (url: string | null | undefined): string | undefined => {
   if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Do not proxy Wikimedia: server-side proxy can be rate-limited by shared IP.
+    // Keep browser direct-load for Wikimedia and proxy only iNaturalist-hosted links.
+    const lower = url.toLowerCase();
+    const needsProxy = lower.includes('inaturalist');
+    if (!needsProxy) return url;
+    const base = BASE_URL || '';
+    return `${base ? `${base}` : ''}/api/ui/species-image?url=${encodeURIComponent(url)}`;
+  }
   if (url.startsWith('data:')) {
     const m = url.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i);
     return m ? url : undefined;
@@ -727,6 +735,41 @@ export interface CatalogCoverageMetrics {
   tuning_candidates: Array<{ id: number; name: string }>;
 }
 
+export interface CatalogCardsCoverageSnapshot {
+  allowlist_total: number;
+  species_matched: number;
+  with_image: number;
+  with_description: number;
+  complete_cards: number;
+  completion_percent: number;
+}
+
+export interface CatalogRepairStatus {
+  status: 'idle' | 'running' | 'done' | 'error';
+  result: null | {
+    checked: number;
+    metadata_fixed: number;
+    images_replaced_from_inat: number;
+    still_missing: number;
+    dry_run: boolean;
+    auto?: boolean;
+    coverage_after?: CatalogCardsCoverageSnapshot;
+  };
+  error: string | null;
+  progress: null | {
+    auto?: boolean;
+    limit: number;
+    coverage_before?: CatalogCardsCoverageSnapshot;
+  };
+  coverage_now: CatalogCardsCoverageSnapshot;
+  schedule?: {
+    autorun_enabled: boolean;
+    interval_min: number;
+    limit: number;
+    next_run_in_sec: number;
+  };
+}
+
 export const fetchClassifierDatasetAlignment =
   async (): Promise<ClassifierDatasetAlignmentReport> => {
     const response = await axios.get(
@@ -743,6 +786,25 @@ export const fetchCatalogCoverageMetrics =
     );
     return response.data;
   };
+
+export const fetchCatalogRepairStatus = async (): Promise<CatalogRepairStatus> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/system/species-registry/repair-cards/status`,
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const startCatalogRepair = async (
+  limit = 6000,
+): Promise<{ message: string; status: CatalogRepairStatus }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/species-registry/repair-cards/start`,
+    { limit },
+    { withCredentials: true },
+  );
+  return response.data;
+};
 
 /** Lightweight: only species with count > 0 (for Settings exclude list). */
 export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: string; count: number }>> => {
@@ -795,6 +857,51 @@ export const fetchSpeciesSummary = async (
 ): Promise<SpeciesSummary> => {
   const response = await axios.get(
     `${BASE_API_URL}/species/${speciesId}/summary`,
+  );
+  return response.data;
+};
+
+export interface TuningTargetEntry {
+  id: number;
+  name: string;
+  observed_count: number;
+  in_dataset: boolean;
+  in_full_catalog: boolean;
+}
+
+export interface TuningTargetsResponse {
+  ids: number[];
+  targets: TuningTargetEntry[];
+}
+
+export const fetchTuningTargets = async (): Promise<TuningTargetsResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/species/tuning-targets`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const setSpeciesTuningTarget = async (
+  speciesId: number,
+  enabled: boolean,
+): Promise<{ ok: boolean; species_id: number; enabled: boolean; tuning_target_species_ids: number[] }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/species/${speciesId}/tuning-target`,
+    { enabled },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const fetchTuningTargetsExport = async (
+  format: 'json' | 'csv' = 'json',
+): Promise<{ count: number; targets: Array<{ id: number; name: string }> }> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/system/species-registry/tuning-targets/export`,
+    {
+      params: { format },
+      withCredentials: true,
+    },
   );
   return response.data;
 };

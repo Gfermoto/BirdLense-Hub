@@ -14,7 +14,6 @@ from sqlalchemy import func
 
 from models import Species, VideoSpecies
 from services.species_catalog_allowlist_service import load_catalog_allowlist_names
-from services.dataset_export_service import _sanitize_dirname
 from util import (
     GENERIC_BIRD_SPECIES,
     data_dir,
@@ -130,20 +129,34 @@ def _species_ids_with_video_detections(session) -> set[int]:
     return {int(r[0]) for r in rows if r[0] is not None}
 
 
-def _dataset_split_class_names() -> set[str]:
-    base = os.path.join(data_dir(), 'dataset')
+def _dataset_split_class_names(app_config_get=None) -> set[str]:
+    web_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    repo_root = os.path.abspath(os.path.join(web_root, '..', '..'))
+    candidates = [
+        os.path.join(data_dir(), 'dataset'),
+        os.path.join(repo_root, 'datasets', 'merged_cls'),
+    ]
     names: set[str] = set()
-    for split in ('train', 'val'):
-        root = os.path.join(base, split)
-        if not os.path.isdir(root):
-            continue
-        try:
-            for entry in os.listdir(root):
-                if os.path.isdir(os.path.join(root, entry)):
-                    names.add(entry)
-        except OSError:
-            continue
+    for base in candidates:
+        for split in ('train', 'val'):
+            root = os.path.join(base, split)
+            if not os.path.isdir(root):
+                continue
+            try:
+                for entry in os.listdir(root):
+                    if os.path.isdir(os.path.join(root, entry)):
+                        names.add(entry)
+            except OSError:
+                continue
+    allow_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
+    if allow_names:
+        names.update(str(x).strip() for x in allow_names if str(x).strip())
     return names
+
+
+def _folder_norm_keys(folder: str, mapping: dict[str, str]) -> set[str]:
+    display = (folder or '').replace('_', ' ').strip()
+    return _species_name_match_keys(display, mapping)
 
 
 def build_classifier_dataset_alignment_report(
@@ -191,12 +204,9 @@ def build_classifier_dataset_alignment_report(
     # species_id -> match keys
     species_rows = session.query(Species.id, Species.name).order_by(Species.id.asc()).all()
     sp_keys: dict[int, set[str]] = {}
-    sanitize_to_species: dict[str, list[tuple[int, str]]] = {}
     for sid, name in species_rows:
         keys = _species_name_match_keys(name or '', mapping)
         sp_keys[int(sid)] = keys
-        sd = _sanitize_dirname(name or '')
-        sanitize_to_species.setdefault(sd, []).append((int(sid), name or ''))
 
     def species_matches_classifier(sid: int) -> bool:
         return bool(sp_keys.get(sid, set()) & label_norms)
@@ -222,11 +232,16 @@ def build_classifier_dataset_alignment_report(
             continue
         cat_unmatched_full.append({'id': int(sid), 'name': name})
 
-    dataset_names = _dataset_split_class_names()
+    dataset_names = _dataset_split_class_names(app_config_get)
     folder_orphans: list[str] = []
     folder_without_classifier: list[dict[str, Any]] = []
     for folder in sorted(dataset_names):
-        species_list = sanitize_to_species.get(folder)
+        folder_keys = _folder_norm_keys(folder, mapping)
+        species_list = [
+            (sid, name or '')
+            for sid, name in species_rows
+            if sp_keys.get(int(sid), set()) & folder_keys
+        ]
         if not species_list:
             folder_orphans.append(folder)
             continue
@@ -269,11 +284,9 @@ def build_catalog_coverage_metrics(session, app_config_get) -> dict[str, Any]:
     species_rows = session.query(Species.id, Species.name).order_by(Species.id.asc()).all()
     mapping = load_species_canonical_mapping()
     sp_keys: dict[int, set[str]] = {}
-    sanitize_to_species: dict[str, set[int]] = {}
     for sid, name in species_rows:
         keys = _species_name_match_keys(name or '', mapping)
         sp_keys[int(sid)] = keys
-        sanitize_to_species.setdefault(_sanitize_dirname(name or ''), set()).add(int(sid))
 
     # observed species (exclude generic placeholders)
     observed_ids = _species_ids_with_video_detections(session)
@@ -283,33 +296,35 @@ def build_catalog_coverage_metrics(session, app_config_get) -> dict[str, Any]:
         if (session.query(Species.name).filter(Species.id == sid).scalar() or '').strip().lower() not in service_names
     }
 
-    dataset_folders = _dataset_split_class_names()
-    dataset_species_ids: set[int] = set()
+    dataset_folders = _dataset_split_class_names(app_config_get)
+    dataset_folder_keys: set[str] = set()
     for folder in dataset_folders:
-        for sid in sanitize_to_species.get(folder, set()):
-            dataset_species_ids.add(sid)
+        dataset_folder_keys.update(_folder_norm_keys(folder, mapping))
 
     # observed that are part of full EU allowlist (by name match keys)
     allow_keys = {nk for name in allowlist_names for nk in _species_name_match_keys(name, mapping)}
     observed_in_full_eu = {sid for sid in observed_ids if sp_keys.get(sid, set()) & allow_keys}
-    dataset_in_full_eu = {sid for sid in dataset_species_ids if sp_keys.get(sid, set()) & allow_keys}
+    dataset_in_full_eu_by_folder = dataset_folder_keys & allow_keys
 
     def _pct(a: int, b: int) -> float:
         return round((a / b) * 100.0, 2) if b else 0.0
 
-    observed_not_in_dataset = sorted(observed_ids - dataset_species_ids)
+    observed_not_in_dataset = sorted(
+        sid for sid in observed_ids if not (sp_keys.get(sid, set()) & dataset_folder_keys)
+    )
     id_to_name = {int(sid): (name or '') for sid, name in species_rows}
 
     return {
         'observed_species_count': len(observed_ids),
-        'dataset_species_count': len(dataset_species_ids),
+        # Local dataset classes by folders (not only DB-matched IDs).
+        'dataset_species_count': len(dataset_folders),
         'full_eu_species_count': full_eu_count,
         'observed_in_full_eu_count': len(observed_in_full_eu),
-        'dataset_in_full_eu_count': len(dataset_in_full_eu),
+        'dataset_in_full_eu_count': len(dataset_in_full_eu_by_folder),
         'observed_vs_full_eu_percent': _pct(len(observed_in_full_eu), full_eu_count),
-        'dataset_vs_full_eu_percent': _pct(len(dataset_in_full_eu), full_eu_count),
-        'observed_in_dataset_count': len(observed_ids & dataset_species_ids),
-        'observed_in_dataset_percent': _pct(len(observed_ids & dataset_species_ids), len(observed_ids)),
+        'dataset_vs_full_eu_percent': _pct(len(dataset_in_full_eu_by_folder), full_eu_count),
+        'observed_in_dataset_count': len(observed_ids) - len(observed_not_in_dataset),
+        'observed_in_dataset_percent': _pct(len(observed_ids) - len(observed_not_in_dataset), len(observed_ids)),
         # Candidates for future fine-tuning: observed manually, absent in dataset.
         'tuning_candidate_count': len(observed_not_in_dataset),
         'tuning_candidates': [

@@ -1,14 +1,22 @@
 import re
 import time
+import requests
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from models import db, Species, SpeciesAlias, SpeciesTaxon, SpeciesUnresolvedName
+from services.species_catalog_allowlist_service import (
+    load_catalog_allowlist_names,
+    species_name_match_norm_keys,
+)
 from util import load_species_canonical_mapping
 from util import (
     update_species_info_from_wiki,
     _extract_wiki_search_title,
     infer_metadata_source_fields,
+    get_inaturalist_image_and_description,
+    _host_is_wikipedia_family,
+    _url_hostname_lower,
 )
 
 
@@ -461,5 +469,235 @@ def species_registry_health() -> dict:
         "metadata_error": metadata_error,
         "metadata_not_found": metadata_not_found,
         "metadata_pending": metadata_pending,
+    }
+
+
+def ensure_allowlist_species_materialized(
+    app_config_get,
+    *,
+    fill_metadata: bool = True,
+    dry_run: bool = True,
+    limit: int = 5000,
+) -> dict:
+    """Ensure every allowlist class has a Species row and metadata."""
+    allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
+    if not allowlist_names:
+        return {
+            'allowlist_total': 0,
+            'created': 0,
+            'matched_existing': 0,
+            'metadata_updated': 0,
+            'missing_after': 0,
+            'dry_run': dry_run,
+        }
+
+    existing_rows = Species.query.order_by(Species.id.asc()).all()
+    by_norm: dict[str, Species] = {}
+    for sp in existing_rows:
+        for k in species_name_match_norm_keys(sp.name or ''):
+            by_norm.setdefault(k, sp)
+
+    created = 0
+    matched_existing = 0
+    metadata_updated = 0
+    touched: list[Species] = []
+    sci_common = re.compile(r'^(.+?)\s*\(([^)]+)\)\s*$')
+    cap = max(1, min(int(limit or 5000), 20000))
+    for raw in allowlist_names[:cap]:
+        target = None
+        for k in species_name_match_norm_keys(raw):
+            target = by_norm.get(k)
+            if target:
+                break
+        if target:
+            matched_existing += 1
+        else:
+            m = sci_common.match((raw or '').strip())
+            common_name = (m.group(2).strip() if m else (raw or '').strip()) or (raw or '').strip()
+            target = Species(name=common_name)
+            db.session.add(target)
+            db.session.flush()
+            created += 1
+            for k in species_name_match_norm_keys(raw):
+                by_norm.setdefault(k, target)
+            for k in species_name_match_norm_keys(target.name):
+                by_norm.setdefault(k, target)
+        touched.append(target)
+
+    if fill_metadata:
+        for sp in touched:
+            if sp.image_url and sp.description:
+                continue
+            try:
+                if update_species_info_from_wiki(sp):
+                    metadata_updated += 1
+            except Exception:
+                continue
+
+    missing_after = sum(1 for sp in touched if not sp.image_url or not sp.description)
+
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+
+    return {
+        'allowlist_total': len(allowlist_names),
+        'created': created,
+        'matched_existing': matched_existing,
+        'metadata_updated': metadata_updated,
+        'missing_after': missing_after,
+        'dry_run': dry_run,
+    }
+
+
+def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6000) -> dict:
+    """Auto-heal full catalog cards: missing metadata and blocked Wikimedia images."""
+    allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
+    mapping = load_species_canonical_mapping() or {}
+    if not allowlist_names:
+        return {
+            'checked': 0,
+            'metadata_fixed': 0,
+            'images_replaced_from_inat': 0,
+            'still_missing': 0,
+            'dry_run': dry_run,
+        }
+
+    species_rows = Species.query.order_by(Species.id.asc()).all()
+    by_norm: dict[str, Species] = {}
+    for sp in species_rows:
+        for k in species_name_match_norm_keys(sp.name or ''):
+            by_norm.setdefault(k, sp)
+
+    targets: list[Species] = []
+    for aname in allowlist_names:
+        match = None
+        for k in species_name_match_norm_keys(aname):
+            match = by_norm.get(k)
+            if match:
+                break
+        if match:
+            targets.append(match)
+    # unique by ID, keep order
+    uniq: dict[int, Species] = {}
+    for sp in targets[: max(1, min(limit, 20000))]:
+        uniq.setdefault(int(sp.id), sp)
+    targets = list(uniq.values())
+
+    metadata_fixed = 0
+    images_replaced_from_inat = 0
+
+    for sp in targets:
+        before_img = bool((sp.image_url or '').strip())
+        before_desc = bool((sp.description or '').strip())
+
+        if not before_img or not before_desc:
+            try:
+                changed = update_species_info_from_wiki(sp)
+                if changed and (not before_img or not before_desc):
+                    metadata_fixed += 1
+            except Exception:
+                pass
+
+        # Wikimedia links are often blocked by anti-abuse; replace only failing ones.
+        current_img = (sp.image_url or '').strip()
+        host = _url_hostname_lower(current_img)
+        if current_img and _host_is_wikipedia_family(host):
+            blocked = False
+            try:
+                resp = requests.get(
+                    current_img,
+                    timeout=8,
+                    allow_redirects=True,
+                    headers={
+                        'User-Agent': 'BirdLense-Hub/1.0',
+                        'Accept': 'image/*,*/*;q=0.8',
+                    },
+                    stream=True,
+                )
+                blocked = resp.status_code >= 400
+                resp.close()
+            except Exception:
+                blocked = True
+
+            if blocked:
+                title = _extract_wiki_search_title(sp.name) or sp.name
+                img2, desc2, src2 = get_inaturalist_image_and_description(title)
+                if img2:
+                    sp.image_url = img2
+                    if desc2 and not (sp.description or '').strip():
+                        sp.description = desc2
+                    sp.metadata_source = 'inaturalist'
+                    if src2:
+                        sp.metadata_source_url = src2
+                    images_replaced_from_inat += 1
+
+    still_missing = sum(
+        1
+        for sp in targets
+        if not (sp.image_url or '').strip() or not (sp.description or '').strip()
+    )
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+
+    return {
+        'checked': len(targets),
+        'metadata_fixed': metadata_fixed,
+        'images_replaced_from_inat': images_replaced_from_inat,
+        'still_missing': still_missing,
+        'dry_run': dry_run,
+    }
+
+
+def catalog_cards_coverage_snapshot(app_config_get) -> dict:
+    """Coverage snapshot for allowlist-backed catalog cards."""
+    allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
+    if not allowlist_names:
+        return {
+            'allowlist_total': 0,
+            'species_matched': 0,
+            'with_image': 0,
+            'with_description': 0,
+            'complete_cards': 0,
+            'completion_percent': 100.0,
+        }
+
+    species_rows = Species.query.order_by(Species.id.asc()).all()
+    by_norm: dict[str, Species] = {}
+    for sp in species_rows:
+        for k in species_name_match_norm_keys(sp.name or ''):
+            by_norm.setdefault(k, sp)
+
+    matched: list[Species] = []
+    for raw in allowlist_names:
+        target = None
+        for k in species_name_match_norm_keys(raw):
+            target = by_norm.get(k)
+            if target:
+                break
+        if target:
+            matched.append(target)
+
+    uniq: dict[int, Species] = {}
+    for sp in matched:
+        uniq.setdefault(int(sp.id), sp)
+    matched = list(uniq.values())
+
+    with_image = sum(1 for sp in matched if (sp.image_url or '').strip())
+    with_description = sum(1 for sp in matched if (sp.description or '').strip())
+    complete_cards = sum(
+        1 for sp in matched if (sp.image_url or '').strip() and (sp.description or '').strip()
+    )
+    completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
+    return {
+        'allowlist_total': len(allowlist_names),
+        'species_matched': len(matched),
+        'with_image': with_image,
+        'with_description': with_description,
+        'complete_cards': complete_cards,
+        'completion_percent': completion_percent,
     }
 
