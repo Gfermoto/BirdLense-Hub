@@ -713,11 +713,31 @@ export interface ClassifierDatasetAlignmentReport {
   hints?: Record<string, string>;
 }
 
+export interface CatalogCoverageMetrics {
+  observed_species_count: number;
+  dataset_species_count: number;
+  full_eu_species_count: number;
+  observed_in_full_eu_count: number;
+  dataset_in_full_eu_count: number;
+  observed_vs_full_eu_percent: number;
+  dataset_vs_full_eu_percent: number;
+  observed_in_dataset_count: number;
+  observed_in_dataset_percent: number;
+}
+
 export const fetchClassifierDatasetAlignment =
   async (): Promise<ClassifierDatasetAlignmentReport> => {
     const response = await axios.get(
       `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment`,
       { params: { classifier_limit: 400, catalog_limit: 300, dataset_limit: 150 } },
+    );
+    return response.data;
+  };
+
+export const fetchCatalogCoverageMetrics =
+  async (): Promise<CatalogCoverageMetrics> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/coverage-metrics`,
     );
     return response.data;
   };
@@ -730,13 +750,14 @@ export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: 
 
 export interface MigrationCalendarData {
   species: Array<{
-    id: number;
+    id: number | null;
     name: string;
     image_url: string | null;
     monthly_counts: number[];
     total: number;
   }>;
   month_labels: string[];
+  catalog?: 'observed' | 'dataset' | 'full_eu';
 }
 
 export const fetchMigrationCalendar = async (params?: {
@@ -744,7 +765,7 @@ export const fetchMigrationCalendar = async (params?: {
   end_year?: number;
   start_date?: string;
   end_date?: string;
-  catalog?: 'active' | 'full';
+  catalog?: 'observed' | 'dataset' | 'full_eu' | 'active' | 'full';
   evidence?: 'all' | 'camera' | 'birdnet' | 'video';
 }): Promise<MigrationCalendarData> => {
   const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {

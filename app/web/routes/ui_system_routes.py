@@ -1698,4 +1698,18 @@ def register_routes(app):
             app.logger.exception('Classifier/dataset alignment report failed: %s', e)
             return {'error': str(e)}, 500
 
+    @app.route('/api/ui/system/species-registry/coverage-metrics', methods=['GET'])
+    def species_registry_coverage_metrics():
+        """Coverage metrics for observed/dataset/full EU catalog segments."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.species_dataset_alignment_service import build_catalog_coverage_metrics
+
+        try:
+            body = build_catalog_coverage_metrics(db.session, app_config.get)
+            return body, 200
+        except Exception as e:
+            app.logger.exception('Catalog coverage metrics failed: %s', e)
+            return {'error': str(e)}, 500
+
     _start_system_metrics_sampler(app)

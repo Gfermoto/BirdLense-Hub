@@ -673,10 +673,10 @@ def register_routes(app):
         end_year = request.args.get('end_year', type=int)
         start_date = request.args.get('start_date', type=str)
         end_date = request.args.get('end_date', type=str)
-        catalog = (request.args.get('catalog') or 'active').strip().lower()
+        catalog = (request.args.get('catalog') or 'observed').strip().lower()
         evidence = (request.args.get('evidence') or 'all').strip().lower()
-        if catalog not in ('active', 'full'):
-            return {'error': 'catalog must be active or full'}, 400
+        if catalog not in ('observed', 'dataset', 'full_eu', 'active', 'full'):
+            return {'error': 'catalog must be observed, dataset or full_eu'}, 400
         if evidence not in ('all', 'video', 'camera', 'birdnet'):
             return {'error': 'evidence must be all, video, camera or birdnet'}, 400
         if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
@@ -686,7 +686,7 @@ def register_routes(app):
         if start_date and end_date and start_date > end_date:
             return {'error': 'start_date must be <= end_date'}, 400
         mck = (
-            f"migration_cal:v2:{start_year}:{end_year}:{start_date}:{end_date}:"
+            f"migration_cal:v3:{start_year}:{end_year}:{start_date}:{end_date}:"
             f"{catalog}:{evidence}"
         )
         hit, mcached = cache_get(mck)

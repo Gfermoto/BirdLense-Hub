@@ -1,15 +1,36 @@
 """Migration calendar: species activity by month (historical data)."""
 from datetime import datetime, timezone
-from sqlalchemy import func, and_, select
+import os
+
+from sqlalchemy import and_, func, select
 
 from models import Species, SpeciesVisit, VideoSpecies
-from util import GENERIC_BIRD_SPECIES
-from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_names,
-    load_catalog_allowlist_norm_keys,
-    species_matches_allowlist,
+    species_name_match_norm_keys,
 )
+from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
+from util import GENERIC_BIRD_SPECIES, data_dir
+
+
+def _norm_key(name: str) -> str:
+    return ' '.join((name or '').strip().lower().replace('_', ' ').replace('-', ' ').split())
+
+
+def _dataset_folder_names() -> set[str]:
+    base = os.path.join(data_dir(), 'dataset')
+    out: set[str] = set()
+    for split in ('train', 'val'):
+        root = os.path.join(base, split)
+        if not os.path.isdir(root):
+            continue
+        try:
+            for entry in os.listdir(root):
+                if os.path.isdir(os.path.join(root, entry)):
+                    out.add(entry)
+        except OSError:
+            continue
+    return out
 
 
 def get_migration_calendar(
@@ -19,7 +40,7 @@ def get_migration_calendar(
     start_date: str | None = None,
     end_date: str | None = None,
     *,
-    catalog: str = 'active',
+    catalog: str = 'observed',
     evidence: str = 'all',
     app_config_get=None,
 ) -> dict:
@@ -28,13 +49,20 @@ def get_migration_calendar(
     Returns species list with monthly visit counts for heatmap/calendar.
     start_year, end_year: filter by year (inclusive). None = no filter.
     start_date, end_date: filter by date (inclusive, YYYY-MM-DD, UTC).
-    catalog: ``active`` — только виды с ненулевой активностью;
-             ``full`` — все виды из allowlist (если задан) или весь каталог БД.
+    catalog: ``observed`` — только виды с ненулевой активностью;
+             ``dataset`` — виды, присутствующие в data/dataset/*;
+             ``full_eu`` — полный каталог из allowlist EU.
+             Legacy aliases: ``active`` -> ``observed``, ``full`` -> ``full_eu``.
     evidence: ``all`` — все визиты; ``camera``/``video`` — только визиты с видео-детекцией;
         ``birdnet`` — только визиты, где есть audio/BirdNET-детекция.
     """
-    if catalog not in ('active', 'full'):
-        catalog = 'active'
+    catalog = (catalog or 'observed').strip().lower()
+    if catalog == 'active':
+        catalog = 'observed'
+    elif catalog == 'full':
+        catalog = 'full_eu'
+    if catalog not in ('observed', 'dataset', 'full_eu'):
+        catalog = 'observed'
     if evidence == 'video':
         evidence = 'camera'
     if evidence not in ('all', 'camera', 'birdnet'):
@@ -108,36 +136,27 @@ def get_migration_calendar(
         except (ValueError, TypeError):
             pass
 
-    if catalog == 'full':
+    q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
+    if suspect_ids:
+        q = q.filter(~Species.id.in_(suspect_ids))
+    all_db_species = q.all()
+
+    db_by_norm: dict[str, tuple[int, str, str | None]] = {}
+    for sid, sname, simg in all_db_species:
+        for mk in species_name_match_norm_keys(sname or ''):
+            db_by_norm.setdefault(mk, (sid, sname, simg))
+
+    if catalog == 'full_eu':
         allowlist_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
-        allowlist_keys = load_catalog_allowlist_norm_keys(app_config_get) if app_config_get else None
-
-        if allowlist_names is not None:
-            # Full catalog = exactly the allowlist. First, map DB species by norm key.
-            q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
-            if suspect_ids:
-                q = q.filter(~Species.id.in_(suspect_ids))
-            db_species_by_key: dict[str, tuple] = {}
-            for sid, sname, simg in q.all():
-                import re as _re
-                nk = sname.strip().lower().replace('_', ' ').replace('-', ' ')
-                nk = _re.sub(r'\s+', ' ', nk)
-                db_species_by_key[nk] = (sid, sname, simg)
-                # Also try common name from "Scientific (Common)" format
-                m = _re.match(r'^.+\(([^)]+)\)\s*$', sname.strip())
-                if m:
-                    cn = m.group(1).strip().lower().replace('-', ' ')
-                    cn = _re.sub(r'\s+', ' ', cn)
-                    db_species_by_key.setdefault(cn, (sid, sname, simg))
-
-            used_keys: set = set()
+        if allowlist_names:
             for aname in allowlist_names:
-                import re as _re
-                nk = aname.strip().lower().replace('_', ' ').replace('-', ' ')
-                nk = _re.sub(r'\s+', ' ', nk)
-                if nk in db_species_by_key and nk not in used_keys:
-                    sid, sname, simg = db_species_by_key[nk]
-                    used_keys.add(nk)
+                match = None
+                for mk in species_name_match_norm_keys(aname):
+                    if mk in db_by_norm:
+                        match = db_by_norm[mk]
+                        break
+                if match:
+                    sid, sname, simg = match
                     if sid not in species_data:
                         species_data[sid] = {
                             'id': sid,
@@ -145,28 +164,39 @@ def get_migration_calendar(
                             'image_url': simg,
                             'monthly_counts': [0] * 12,
                         }
-                elif nk not in used_keys:
-                    # Allowlist species not yet in DB — show as placeholder with zero counts
-                    used_keys.add(nk)
-                    placeholder_key = f'__allowlist__{nk}'
-                    if placeholder_key not in species_data:
-                        species_data[placeholder_key] = {
-                            'id': None,
-                            'name': aname,
-                            'image_url': None,
-                            'monthly_counts': [0] * 12,
-                        }
+                else:
+                    # Keep in full EU view even if DB row is missing.
+                    key = f"__allowlist__{_norm_key(aname)}"
+                    species_data.setdefault(key, {
+                        'id': None,
+                        'name': aname,
+                        'image_url': None,
+                        'monthly_counts': [0] * 12,
+                    })
         else:
-            # No allowlist: fall back to all DB species (legacy behaviour)
-            q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
-            if suspect_ids:
-                q = q.filter(~Species.id.in_(suspect_ids))
-            for sid, name, image_url in q.all():
+            # Legacy fallback when allowlist is not configured.
+            for sid, sname, simg in all_db_species:
+                species_data.setdefault(sid, {
+                    'id': sid,
+                    'name': sname,
+                    'image_url': simg,
+                    'monthly_counts': [0] * 12,
+                })
+
+    elif catalog == 'dataset':
+        for folder in sorted(_dataset_folder_names()):
+            match = None
+            for mk in species_name_match_norm_keys(folder):
+                if mk in db_by_norm:
+                    match = db_by_norm[mk]
+                    break
+            if match:
+                sid, sname, simg = match
                 if sid not in species_data:
                     species_data[sid] = {
                         'id': sid,
-                        'name': name,
-                        'image_url': image_url,
+                        'name': sname,
+                        'image_url': simg,
                         'monthly_counts': [0] * 12,
                     }
 
@@ -177,11 +207,12 @@ def get_migration_calendar(
         }
 
     species_list = [{**v, 'total': sum(v['monthly_counts'])} for v in species_data.values()]
-    if catalog == 'active':
+    if catalog == 'observed':
         species_list = [s for s in species_list if s['total'] > 0]
     species_list.sort(key=lambda s: (-s['total'], (s['name'] or '').lower()))
 
     return {
+        'catalog': catalog,
         'species': species_list,
         'month_labels': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     }
