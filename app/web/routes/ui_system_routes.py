@@ -1450,6 +1450,63 @@ def register_routes(app):
             app.logger.exception('Merge duplicate species failed: %s', e)
             return {'error': str(e)}, 500
 
+    @app.route('/api/ui/system/species-catalog/reconcile', methods=['POST'])
+    def species_catalog_reconcile():
+        """
+        Привести каталог видов: слияние дубликатов по нормализованному имени;
+        опционально перенос подозрительных (блоклист) и строк вне allowlist на «Unknown».
+
+        body JSON:
+          dry_run (default true),
+          merge_normalized_duplicate_names (default true),
+          reassign_suspects_to_unknown, delete_empty_suspects,
+          reassign_off_allowlist_to_unknown, delete_empty_off_allowlist,
+          duplicate_group_limit (default 500).
+
+        Allowlist: species.catalog_allowlist_file → scripts/datasets/dump_classifier_allowlist.py
+        """
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            from services.species_catalog_allowlist_service import clear_allowlist_cache
+            from services.species_catalog_reconcile_service import reconcile_species_catalog
+
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            dup_limit = payload.get('duplicate_group_limit', 500)
+            try:
+                dup_limit = int(dup_limit)
+            except (TypeError, ValueError):
+                return {'error': 'duplicate_group_limit must be int'}, 400
+            dup_limit = max(10, min(dup_limit, 5000))
+
+            body = reconcile_species_catalog(
+                dry_run=dry_run,
+                merge_normalized_duplicate_names=bool(
+                    payload.get('merge_normalized_duplicate_names', True),
+                ),
+                reassign_suspects_to_unknown=bool(
+                    payload.get('reassign_suspects_to_unknown', False),
+                ),
+                reassign_off_allowlist_to_unknown=bool(
+                    payload.get('reassign_off_allowlist_to_unknown', False),
+                ),
+                delete_empty_suspects=bool(payload.get('delete_empty_suspects', False)),
+                delete_empty_off_allowlist=bool(
+                    payload.get('delete_empty_off_allowlist', False),
+                ),
+                duplicate_group_limit=dup_limit,
+                app_config_get=app_config.get,
+            )
+            if not dry_run:
+                clear_allowlist_cache()
+                bust_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Species catalog reconcile failed: %s', e)
+            return {'error': str(e)}, 500
+
     @app.route('/api/ui/system/species-registry/seed', methods=['POST'])
     def seed_species_registry():
         """Seed canonical species registry and aliases from mapping file."""

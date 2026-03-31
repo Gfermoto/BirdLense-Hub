@@ -166,6 +166,7 @@ def build_data_quality_report(
             'classifier_catalog_dataset_alignment': (
                 'GET /api/ui/system/species-registry/classifier-dataset-alignment'
             ),
+            'catalog_reconcile': 'POST /api/ui/system/species-catalog/reconcile',
         },
     }
 
