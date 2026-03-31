@@ -99,11 +99,23 @@ def _species_name_match_keys(name: str, mapping: dict[str, str]) -> set[str]:
 
 
 def _normalized_classifier_labels(raw_labels: list[str]) -> list[tuple[str, str]]:
-    """Пары (сырое_имя_в_весах, нормализованное_как_в_процессоре)."""
+    """Пары (сырое_имя_в_весах, нормализованный ключ).
+
+    Для меток в формате "Scientific (Common)" добавляем и common-key, чтобы
+    виды в БД, хранящиеся как "Eurasian Blue Tit", считались совпадающими.
+    """
     out: list[tuple[str, str]] = []
+    sci_common_re = re.compile(r'^(.+?)\s*\(([^)]+)\)\s*$')
     for raw in raw_labels:
         disp = normalize_classifier_label(raw).strip()
-        out.append((raw, _norm_key(disp)))
+        nk = _norm_key(disp)
+        if nk:
+            out.append((raw, nk))
+        m = sci_common_re.match(disp)
+        if m:
+            common_nk = _norm_key(m.group(2).strip())
+            if common_nk:
+                out.append((raw, common_nk))
     return out
 
 
