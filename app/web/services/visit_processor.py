@@ -8,7 +8,6 @@ from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
 )
-from services.species_data_quality_service import suspect_reasons_for_species
 from services.species_registry_service import resolve_species_name
 from util import (
     get_parent_name_for_species,
@@ -200,9 +199,7 @@ class VisitProcessor:
         raw_normalized: str,
         taxon_common_name: str | None,
     ) -> bool:
-        """Блоклист data-quality или строгий allowlist (если файл задан)."""
-        if suspect_reasons_for_species(display_name or '', taxon_common_name):
-            return True
+        """Строгий allowlist: если задан и включён — имена вне списка → Unknown."""
         if not bool(app_config.get('species.catalog_strict_ingest')):
             return False
         allow = load_catalog_allowlist_norm_keys(app_config.get)

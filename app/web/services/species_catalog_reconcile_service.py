@@ -3,15 +3,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from models import Species, SpeciesTaxon, SpeciesVisit, VideoSpecies, db
+from models import Species, SpeciesVisit, VideoSpecies, db
 from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
 )
-from services.species_data_quality_service import (
-    find_duplicate_name_groups,
-    is_species_suspect_non_bird,
-)
+from services.species_data_quality_service import find_duplicate_name_groups
 from services.species_merge_service import merge_species_into
 from util import load_species_canonical_mapping
 
@@ -63,7 +60,8 @@ def reconcile_species_catalog(
     """
     merge_normalized_duplicate_names: одна строка Species на нормализованное имя.
 
-    reassign_suspects_to_unknown: подозрительные (блоклист data-quality) с активностью → Unknown;
+    reassign_suspects_to_unknown: сохранён для обратной совместимости API; при включённом
+        allowlist эквивалентен reassign_off_allowlist_to_unknown (все виды вне allowlist = suspects).
         delete_empty_suspects: без активности → удалить строку.
 
     reassign_off_allowlist_to_unknown: нет в species.catalog_allowlist_file (нужен файл);
@@ -124,33 +122,12 @@ def reconcile_species_catalog(
                 if not dry_run:
                     merge_species_into(oid, tid)
 
-    # 2) Подозрительные (блоклист)
-    if reassign_suspects_to_unknown or delete_empty_suspects:
-        rows = (
-            db.session.query(Species, SpeciesTaxon)
-            .outerjoin(SpeciesTaxon, Species.taxon_id == SpeciesTaxon.id)
-            .order_by(Species.id.asc())
-            .all()
-        )
-        uid = unknown.id if unknown else 0
-        for sp, taxon in rows:
-            if sp.id in protected_ids:
-                continue
-            if _has_child_species(sp.id):
-                continue
-            if not is_species_suspect_non_bird(sp, taxon):
-                continue
-            active = _species_has_activity(sp.id)
-            if active and reassign_suspects_to_unknown and unknown:
-                report['suspects_reassigned'] += 1
-                report['details'].append(f'suspect → Unknown: {sp.id} {sp.name!r}')
-                if not dry_run:
-                    merge_species_into(sp.id, uid)
-            elif not active and delete_empty_suspects:
-                report['suspects_deleted_empty'] += 1
-                report['details'].append(f'delete empty suspect: {sp.id} {sp.name!r}')
-                if not dry_run:
-                    db.session.delete(sp)
+    # 2) Подозрительные — при включённом allowlist это подмножество off_allowlist.
+    # Шаг обрабатывается в шаге 3 (off_allowlist). Здесь только перекидываем флаги.
+    if reassign_suspects_to_unknown and not reassign_off_allowlist_to_unknown:
+        reassign_off_allowlist_to_unknown = True
+    if delete_empty_suspects and not delete_empty_off_allowlist:
+        delete_empty_off_allowlist = True
 
     # 3) Вне allowlist
     if reassign_off_allowlist_to_unknown or delete_empty_off_allowlist:

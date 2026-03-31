@@ -5,6 +5,11 @@ from sqlalchemy import func, and_, select
 from models import Species, SpeciesVisit, VideoSpecies
 from util import GENERIC_BIRD_SPECIES
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
+from services.species_catalog_allowlist_service import (
+    load_catalog_allowlist_names,
+    load_catalog_allowlist_norm_keys,
+    species_matches_allowlist,
+)
 
 
 def get_migration_calendar(
@@ -16,13 +21,15 @@ def get_migration_calendar(
     *,
     catalog: str = 'active',
     evidence: str = 'all',
+    app_config_get=None,
 ) -> dict:
     """
     Aggregate SpeciesVisit by species and month (1-12).
     Returns species list with monthly visit counts for heatmap/calendar.
     start_year, end_year: filter by year (inclusive). None = no filter.
     start_date, end_date: filter by date (inclusive, YYYY-MM-DD, UTC).
-    catalog: ``active`` — только виды с ненулевой активностью; ``full`` — весь каталог видов (нули в клетках).
+    catalog: ``active`` — только виды с ненулевой активностью;
+             ``full`` — все виды из allowlist (если задан) или весь каталог БД.
     evidence: ``all`` — все визиты; ``camera``/``video`` — только визиты с видео-детекцией;
         ``birdnet`` — только визиты, где есть audio/BirdNET-детекция.
     """
@@ -102,25 +109,71 @@ def get_migration_calendar(
             pass
 
     if catalog == 'full':
-        q = session.query(Species.id, Species.name, Species.image_url).filter(
-            exclude_bird,
-        )
-        if suspect_ids:
-            q = q.filter(~Species.id.in_(suspect_ids))
-        all_species = q.all()
-        for sid, name, image_url in all_species:
-            if sid not in species_data:
-                species_data[sid] = {
-                    'id': sid,
-                    'name': name,
-                    'image_url': image_url,
-                    'monthly_counts': [0] * 12,
-                }
+        allowlist_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
+        allowlist_keys = load_catalog_allowlist_norm_keys(app_config_get) if app_config_get else None
+
+        if allowlist_names is not None:
+            # Full catalog = exactly the allowlist. First, map DB species by norm key.
+            q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
+            if suspect_ids:
+                q = q.filter(~Species.id.in_(suspect_ids))
+            db_species_by_key: dict[str, tuple] = {}
+            for sid, sname, simg in q.all():
+                import re as _re
+                nk = sname.strip().lower().replace('_', ' ').replace('-', ' ')
+                nk = _re.sub(r'\s+', ' ', nk)
+                db_species_by_key[nk] = (sid, sname, simg)
+                # Also try common name from "Scientific (Common)" format
+                m = _re.match(r'^.+\(([^)]+)\)\s*$', sname.strip())
+                if m:
+                    cn = m.group(1).strip().lower().replace('-', ' ')
+                    cn = _re.sub(r'\s+', ' ', cn)
+                    db_species_by_key.setdefault(cn, (sid, sname, simg))
+
+            used_keys: set = set()
+            for aname in allowlist_names:
+                import re as _re
+                nk = aname.strip().lower().replace('_', ' ').replace('-', ' ')
+                nk = _re.sub(r'\s+', ' ', nk)
+                if nk in db_species_by_key and nk not in used_keys:
+                    sid, sname, simg = db_species_by_key[nk]
+                    used_keys.add(nk)
+                    if sid not in species_data:
+                        species_data[sid] = {
+                            'id': sid,
+                            'name': sname,
+                            'image_url': simg,
+                            'monthly_counts': [0] * 12,
+                        }
+                elif nk not in used_keys:
+                    # Allowlist species not yet in DB — show as placeholder with zero counts
+                    used_keys.add(nk)
+                    placeholder_key = f'__allowlist__{nk}'
+                    if placeholder_key not in species_data:
+                        species_data[placeholder_key] = {
+                            'id': None,
+                            'name': aname,
+                            'image_url': None,
+                            'monthly_counts': [0] * 12,
+                        }
+        else:
+            # No allowlist: fall back to all DB species (legacy behaviour)
+            q = session.query(Species.id, Species.name, Species.image_url).filter(exclude_bird)
+            if suspect_ids:
+                q = q.filter(~Species.id.in_(suspect_ids))
+            for sid, name, image_url in q.all():
+                if sid not in species_data:
+                    species_data[sid] = {
+                        'id': sid,
+                        'name': name,
+                        'image_url': image_url,
+                        'monthly_counts': [0] * 12,
+                    }
 
     if suspect_ids:
         species_data = {
             k: v for k, v in species_data.items()
-            if k not in suspect_ids
+            if not isinstance(k, int) or k not in suspect_ids
         }
 
     species_list = [{**v, 'total': sum(v['monthly_counts'])} for v in species_data.values()]

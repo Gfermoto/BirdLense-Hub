@@ -31,7 +31,7 @@ processor:
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
-  # Вычитается из min_confidence_to_process для каждого вида из топа (после ebird.species_mapping)
+  # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
   ebird_regional_top_confidence_delta: 0.03
   # Нижняя граница авто-порога (не ниже)
   ebird_regional_top_confidence_floor: 0.08
@@ -53,7 +53,6 @@ processor:
     - "Perching Birds"
     - "Pigeons and Doves"
     - "Woodpeckers"
-    - "Squirrel"
   save_images: false
   # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
   save_dataset_crops: false
@@ -159,6 +158,12 @@ detection:
     "Grey-headed Woodpecker": "Grey-headed Woodpecker"
     "Great Gray Shrike": "Great Grey Shrike"
     "Great Grey Shrike": "Great Grey Shrike"
+    # Squirrel/rodent: detector class → catalog name
+    "squirrel": "Rodent"
+    "Squirrel": "Rodent"
+    "Eastern Gray Squirrel": "Rodent"
+    "Red Squirrel": "Rodent"
+    "Eurasian Red Squirrel": "Rodent"
 
 # Feeder control: mqtt (Tasmota) | esphome. Relay on for duration_seconds.
 # esphome_type: switch (turn_on/turn_off) | button (press — если реле управляется кнопкой/скриптом)
@@ -266,19 +271,17 @@ ebird:
   state: ""           # 1–3 chars (NY, CA, MOS для Московской обл., etc.)
   location_name: "BirdLense Feeder"
   protocol: "Stationary"  # Stationary | Traveling | Incidental | Historical
-  # Маппинг eBird (Gray, US) -> BirdLense (Grey, EU). Для сопоставления в «Сравнение с регионом».
-  species_mapping:
-    "Gray-headed Woodpecker": "Grey-headed Woodpecker"
-    "Great Gray Shrike": "Great Grey Shrike"
+  # Необязательные eBird-специфичные переопределения имён (сверх detection.species_mapping).
+  # Гармонизация Gray/Grey и «Scientific (Common)» → общее имя уже в detection.species_mapping.
+  species_mapping: {}
 
-# Каталог видов: соответствие классам YOLO-классификатора и защита от мусора при импорте
+# Каталог видов: строго соответствует классам EU классификатора (best_EU.pt) + Rodent.
+# class_names.txt сгенерирован из best_EU.pt через scripts/datasets/dump_classifier_allowlist.py.
 species:
-  # Путь к текстовому списку классов (одна строка = одно имя в формате Hub, как в merged_cls).
-  # Относительно каталога app/processor или абсолютный. Пусто — без allowlist.
-  # Сгенерировать: scripts/datasets/dump_classifier_allowlist.py → class_names.txt рядом с best.pt
-  catalog_allowlist_file: ""
-  # Если true и задан файл allowlist — новые детекции вне списка пишутся как вид «Unknown», новые строки не создаются.
-  catalog_strict_ingest: false
+  # Список классов EU классификатора (491 птица + Rodent). Единственный источник истины для каталога.
+  catalog_allowlist_file: "models/classification/weights/class_names.txt"
+  # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
+  catalog_strict_ingest: true
 
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:

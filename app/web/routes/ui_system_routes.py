@@ -532,14 +532,14 @@ def register_routes(app):
         notif = app_config.get('notifications', {}) or {}
         gallery_enabled = bool(app_config.get('gallery.enabled'))
         gallery_url = (app_config.get('gallery.upload_url') or '').strip()
-        mapping = app_config.get('ebird.species_mapping') or {}
-        gray_pairs = {
-            'Gray-headed Woodpecker': mapping.get('Gray-headed Woodpecker'),
-            'Great Gray Shrike': mapping.get('Great Gray Shrike'),
-        }
+        # Gray/Grey harmonization now lives in detection.species_mapping; check there.
+        # Also accept old ebird.species_mapping for backwards compat.
+        detection_map = app_config.get('detection.species_mapping') or {}
+        ebird_map = app_config.get('ebird.species_mapping') or {}
+        combined_map = {**detection_map, **ebird_map}
         gray_to_grey_ok = (
-            gray_pairs.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
-            and gray_pairs.get('Great Gray Shrike') == 'Great Grey Shrike'
+            combined_map.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
+            and combined_map.get('Great Gray Shrike') == 'Great Grey Shrike'
         )
         return {
             'deprecated_keys_present': deprecated_present,
@@ -1659,14 +1659,11 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         from services.species_data_quality_service import build_data_quality_report
 
-        suspect_limit = request.args.get('suspect_limit', type=int) or 400
-        suspect_limit = max(50, min(suspect_limit, 2000))
         dup_limit = request.args.get('duplicate_limit', type=int) or 80
         dup_limit = max(10, min(dup_limit, 500))
         try:
             body = build_data_quality_report(
                 db.session,
-                suspect_limit=suspect_limit,
                 duplicate_group_limit=dup_limit,
             )
             return body, 200
