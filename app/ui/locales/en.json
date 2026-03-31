@@ -33,7 +33,7 @@
     "datasetFlowTitle": "Dataset prep (simple order)",
     "datasetFlowIntro": "For a normal cycle, use only 4 buttons: \"Scan and import\" -> \"Regenerate spectrograms\" -> \"Regenerate tracks\" -> \"Export dataset\". Other buttons are service/maintenance tools and can be skipped.",
     "datasetFlowStep1": "Import: click \"Scan and import\".",
-    "datasetFlowStep2": "Period: choose Last 7/30 days or All time, then run spectrogram regeneration.",
+    "datasetFlowStep2": "Period: choose Last 7/30 days or All time, then run track regeneration.",
     "datasetFlowStep3": "Tracks: run \"Regenerate tracks\" (for big archives, run overnight and split by periods).",
     "datasetFlowStep4": "Export: click \"Export dataset\". Use \"Retro-export\" and \"Clean dataset\" only for recovery/cleanup."
   },
@@ -459,7 +459,7 @@
     "scanFailed": "Failed to scan recordings",
     "purgeFailed": "Failed to purge videos",
     "regenerateSpectrograms": "Regenerate spectrograms",
-    "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them (BirdNET required)",
+    "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them (optional, for audio/visualization)",
     "regenerating": "Generating...",
     "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
     "regenerateTracks": "Regenerate tracks",
@@ -582,7 +582,7 @@
     "evidenceAll": "All (camera + BirdNET in same sessions)",
     "evidenceCamera": "Camera only",
     "evidenceBirdnet": "BirdNET only",
-    "catalogEvidenceHint": "\"Observed\" lists only species with visits. \"Present in local dataset\" lists species found in data/dataset folders. \"Full EU catalog\" lists all allowlist classes, including zero rows. \"Camera only\" keeps visits with a video detection row, while \"BirdNET only\" keeps visits with an audio/BirdNET detection row.",
+    "catalogEvidenceHint": "\"Observed\" lists only species with visits. \"Present in local dataset\" lists species found in data/dataset folders. \"Full EU catalog\" lists all allowlist classes, including zero rows.",
     "errorLoad": "Error loading migration calendar.",
     "filterSectionTitle": "Filter migration data",
     "tableCaption": "Species by month: visit counts per cell; last column is the row total."

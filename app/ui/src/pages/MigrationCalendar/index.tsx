@@ -37,7 +37,6 @@ export const MigrationCalendar = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [catalogMode, setCatalogMode] = useState<'observed' | 'dataset' | 'full_eu'>('observed');
-  const [evidenceMode, setEvidenceMode] = useState<'all' | 'camera' | 'birdnet'>('all');
 
   const handlePeriodMode = (_: React.MouseEvent<HTMLElement>, value: PeriodMode | null) => {
     if (value === null) return;
@@ -58,10 +57,8 @@ export const MigrationCalendar = () => {
       start_date?: string;
       end_date?: string;
       catalog?: 'observed' | 'dataset' | 'full_eu';
-      evidence?: 'all' | 'camera' | 'birdnet';
     } = {
       catalog: catalogMode,
-      evidence: evidenceMode,
     };
     if (periodMode === 'years') {
       const s = startYear === '' ? undefined : startYear;
@@ -86,7 +83,7 @@ export const MigrationCalendar = () => {
       start_date: sd,
       end_date: ed,
     };
-  }, [periodMode, startYear, endYear, startDate, endDate, catalogMode, evidenceMode]);
+  }, [periodMode, startYear, endYear, startDate, endDate, catalogMode]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['migration-calendar', params],
@@ -217,18 +214,6 @@ export const MigrationCalendar = () => {
             <MenuItem value="observed">{t('migrationCalendar.catalogObserved')}</MenuItem>
             <MenuItem value="dataset">{t('migrationCalendar.catalogDataset')}</MenuItem>
             <MenuItem value="full_eu">{t('migrationCalendar.catalogFullEu')}</MenuItem>
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label={t('migrationCalendar.evidenceLabel')}
-            value={evidenceMode}
-            onChange={(e) => setEvidenceMode(e.target.value as 'all' | 'camera' | 'birdnet')}
-            sx={{ minWidth: 260 }}
-          >
-            <MenuItem value="all">{t('migrationCalendar.evidenceAll')}</MenuItem>
-            <MenuItem value="camera">{t('migrationCalendar.evidenceCamera')}</MenuItem>
-            <MenuItem value="birdnet">{t('migrationCalendar.evidenceBirdnet')}</MenuItem>
           </TextField>
         </Box>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>

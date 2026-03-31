@@ -708,7 +708,7 @@ class TestMigrationCalendar:
         assert r.status_code == 200
         assert 'species' in r.json
 
-    def test_migration_calendar_evidence_camera_and_birdnet(self, app, client):
+    def test_migration_calendar_evidence_param_ignored(self, app, client):
         from models import db, Species, SpeciesVisit, VideoSpecies
 
         with app.app_context():
@@ -755,16 +755,10 @@ class TestMigrationCalendar:
             db.session.commit()
 
         r_camera = client.get('/api/ui/migration-calendar', query_string={'evidence': 'camera'})
-        assert r_camera.status_code == 200
-        names_camera = {row['name'] for row in r_camera.json['species']}
-        assert 'Camera only species' in names_camera
-        assert 'BirdNET only species' not in names_camera
-
         r_birdnet = client.get('/api/ui/migration-calendar', query_string={'evidence': 'birdnet'})
+        assert r_camera.status_code == 200
         assert r_birdnet.status_code == 200
-        names_birdnet = {row['name'] for row in r_birdnet.json['species']}
-        assert 'BirdNET only species' in names_birdnet
-        assert 'Camera only species' not in names_birdnet
+        assert r_camera.json == r_birdnet.json
 
     def test_migration_calendar_rejects_bad_catalog(self, client):
         r = client.get('/api/ui/migration-calendar', query_string={'catalog': 'maybe'})
