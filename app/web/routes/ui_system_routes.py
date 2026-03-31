@@ -25,6 +25,7 @@ from services.species_registry_service import (
     catalog_cards_coverage_snapshot,
     species_registry_health,
     unresolved_species_report,
+    resolve_species_name,
 )
 from services.heimdall_service import probe_heimdall
 from app_config.app_config import app_config
@@ -1287,6 +1288,14 @@ def register_routes(app):
                     videos = [v for v in videos if v.id in target_video_ids]
                 total = len(videos)
                 _regenerate_tracks_status['progress']['total'] = total
+                if total == 0 and species_ids_f:
+                    app.logger.info(
+                        'Track regen: empty queue (species_ids=%s, start_date=%s, end_date=%s, force=%s)',
+                        species_ids_f,
+                        start_date,
+                        end_date,
+                        force,
+                    )
 
                 generated = 0
                 failed = 0
@@ -1303,6 +1312,19 @@ def register_routes(app):
                     for_track_regen=True,
                 )
                 species_scope = set(species_ids_f) if species_ids_f else None
+                scope_catalog_species: list[Species] = []
+                scope_names_lc: set[str] = set()
+                scope_taxon_ids: set[int] = set()
+                if species_scope:
+                    for sid in species_ids_f:
+                        sp = db.session.get(Species, sid)
+                        if not sp:
+                            continue
+                        scope_catalog_species.append(sp)
+                        if sp.name:
+                            scope_names_lc.add(sp.name.strip().lower())
+                        if sp.taxon_id is not None:
+                            scope_taxon_ids.add(sp.taxon_id)
                 species_name_to_id_cache: dict[str, int | None] = {}
 
                 def _resolved_species_id_for_det(detection: dict) -> int | None:
@@ -1313,6 +1335,61 @@ def register_routes(app):
                         sp = visit_processor._get_or_create_species(name)
                         species_name_to_id_cache[name] = sp.id if sp else None
                     return species_name_to_id_cache[name]
+
+                def _detection_in_species_scope(detection: dict) -> bool:
+                    if not species_scope:
+                        return True
+                    sid = _resolved_species_id_for_det(detection)
+                    if sid and sid in species_scope:
+                        return True
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return False
+                    if name.lower() in scope_names_lc:
+                        return True
+                    res = resolve_species_name(name, source='ingest')
+                    if res.found and res.taxon and res.taxon.id in scope_taxon_ids:
+                        return True
+                    return False
+
+                def _remap_det_for_scope(detection: dict) -> dict:
+                    if not species_scope:
+                        return detection
+                    sid = _resolved_species_id_for_det(detection)
+                    if sid and sid in species_scope:
+                        return detection
+                    name = (detection.get('species_name') or '').strip()
+                    if not name:
+                        return detection
+                    nlc = name.lower()
+                    if nlc in scope_names_lc:
+                        for sp in scope_catalog_species:
+                            if sp.name and sp.name.strip().lower() == nlc:
+                                return {**detection, 'species_name': sp.name}
+                    res = resolve_species_name(name, source='ingest')
+                    if res.found and res.taxon:
+                        tid = res.taxon.id
+                        for sp in scope_catalog_species:
+                            if sp.taxon_id == tid:
+                                return {**detection, 'species_name': sp.name}
+                    return detection
+
+                def _tracks_same_species(db_name: str, det_name: str) -> bool:
+                    if not db_name or not det_name:
+                        return False
+                    if db_name.strip().lower() == det_name.strip().lower():
+                        return True
+                    ra = resolve_species_name(db_name.strip(), source='ingest')
+                    rb = resolve_species_name(det_name.strip(), source='ingest')
+                    if (
+                        ra.found
+                        and rb.found
+                        and ra.taxon
+                        and rb.taxon
+                        and ra.taxon.id == rb.taxon.id
+                    ):
+                        return True
+                    return False
 
                 for video in videos:
                     species_name_to_id_cache.clear()
@@ -1371,10 +1448,18 @@ def register_routes(app):
                         if species_scope:
                             scoped_detections = []
                             for d in detections:
-                                sid = _resolved_species_id_for_det(d)
-                                if sid and sid in species_scope:
-                                    scoped_detections.append(d)
+                                if not _detection_in_species_scope(d):
+                                    continue
+                                scoped_detections.append(_remap_det_for_scope(d))
                             if not scoped_detections:
+                                sample = [d.get('species_name') for d in detections[:8]]
+                                app.logger.info(
+                                    'Track regen: no detections match species scope '
+                                    '(video_id=%s scope=%s sample_model_names=%s)',
+                                    video.id,
+                                    sorted(species_scope),
+                                    sample,
+                                )
                                 skipped += 1
                                 precise_candidates.append({
                                     'video_id': video.id,
@@ -1409,7 +1494,9 @@ def register_routes(app):
                                     if i in used_det_indices:
                                         continue
                                     # Только если вид совпадает — иначе присвоим кадр от другой птицы
-                                    if vs_species_name and d.get('species_name') != vs_species_name:
+                                    if vs_species_name and not _tracks_same_species(
+                                        vs_species_name, d.get('species_name') or ''
+                                    ):
                                         continue
                                     overlap = min(vs.end_time, d['end_time']) - max(vs.start_time, d['start_time'])
                                     if overlap > best_overlap and overlap > 0.3:
@@ -1422,8 +1509,9 @@ def register_routes(app):
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
                             if species_scope:
                                 unmatched = [
-                                    d for d in unmatched
-                                    if _resolved_species_id_for_det(d) in species_scope
+                                    _remap_det_for_scope(d)
+                                    for d in unmatched
+                                    if _detection_in_species_scope(d)
                                 ]
                             if species_scope:
                                 ids_touched = {

@@ -35,7 +35,7 @@ import {
   exportDataset,
   retroExportDataset,
   cleanDataset,
-  fetchObservedSpecies,
+  fetchTrackRegenSpeciesOptions,
 } from '../../api/api';
 
 interface StorageStats {
@@ -208,9 +208,9 @@ export const RecordingsAndDataset = () => {
     },
   });
 
-  const { data: observedSpeciesForTracks = [] } = useQuery({
-    queryKey: ['species', 'observed'],
-    queryFn: fetchObservedSpecies,
+  const { data: trackRegenSpeciesOptions = [] } = useQuery({
+    queryKey: ['species', 'track-regen-options'],
+    queryFn: fetchTrackRegenSpeciesOptions,
     staleTime: 60_000,
   });
 
@@ -229,6 +229,20 @@ export const RecordingsAndDataset = () => {
       totalSize: sorted.reduce((sum, item) => sum + (item.totalSize || 0), 0),
     };
   }, [storageStats]);
+
+  /** With species filter, regen queue joins VideoSpecies — use full library span from stats
+   *  so rare clips outside the default «last week» are not dropped. */
+  const trackRegenDateRange = useMemo(() => {
+    if (trackRegenSpeciesIds.length > 0 && storageRange) {
+      return { start: storageRange.start, end: storageRange.end };
+    }
+    return { start: operationsPeriod.start, end: operationsPeriod.end };
+  }, [
+    trackRegenSpeciesIds.length,
+    storageRange,
+    operationsPeriod.start,
+    operationsPeriod.end,
+  ]);
 
   const applyPreset = useCallback(
     (preset: 'last7' | 'last30' | 'all') => {
@@ -801,10 +815,10 @@ export const RecordingsAndDataset = () => {
               <Box>
                 <Autocomplete
                   multiple
-                  options={observedSpeciesForTracks}
+                  options={trackRegenSpeciesOptions}
                   getOptionLabel={(o) => o.name}
                   isOptionEqualToValue={(a, b) => a.id === b.id}
-                  value={observedSpeciesForTracks.filter((o) =>
+                  value={trackRegenSpeciesOptions.filter((o) =>
                     trackRegenSpeciesIds.includes(o.id),
                   )}
                   onChange={(_, v) => setTrackRegenSpeciesIds(v.map((x) => x.id))}
@@ -821,6 +835,13 @@ export const RecordingsAndDataset = () => {
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                   {t('storage.trackRegenSpeciesHint')}
                 </Typography>
+                {trackRegenSpeciesIds.length > 0 && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    {storageRange
+                      ? t('storage.trackRegenSpeciesPeriodNote')
+                      : t('storage.trackRegenSpeciesPeriodNoStats')}
+                  </Typography>
+                )}
                 <Stack spacing={1} sx={{ mb: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     {t('storage.regenerateTracksPresetLabel')}
@@ -848,8 +869,8 @@ export const RecordingsAndDataset = () => {
                   disabled={regenerateTracksMutation.isPending}
                   onClick={() =>
                     regenerateTracksMutation.mutate({
-                      start_date: operationsPeriod.start.format('YYYY-MM-DD'),
-                      end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                      start_date: trackRegenDateRange.start.format('YYYY-MM-DD'),
+                      end_date: trackRegenDateRange.end.format('YYYY-MM-DD'),
                       frame_step: trackRegenPreset === 'fast' ? 6 : 1,
                       ...(trackRegenSpeciesIds.length
                         ? { species_ids: [...trackRegenSpeciesIds] }

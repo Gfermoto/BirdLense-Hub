@@ -469,6 +469,13 @@ class TestSpecies:
         for item in r.json:
             assert 'id' in item and 'name' in item and 'count' in item
 
+    def test_species_track_regen_options_returns_list(self, client):
+        r = client.get('/api/ui/species/track-regen-options')
+        assert r.status_code == 200
+        assert isinstance(r.json, list)
+        for item in r.json:
+            assert 'id' in item and 'name' in item and 'count' in item
+
 
 class TestCorrectionsHistory:
     def test_recent_corrections_endpoint_shape(self, client):

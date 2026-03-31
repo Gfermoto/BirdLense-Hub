@@ -812,6 +812,14 @@ export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: 
   return response.data;
 };
 
+/** Species present on recordings (VideoSpecies); use for track regen picker. */
+export const fetchTrackRegenSpeciesOptions = async (): Promise<
+  Array<{ id: number; name: string; count: number }>
+> => {
+  const response = await axios.get(`${BASE_API_URL}/species/track-regen-options`);
+  return response.data;
+};
+
 export interface MigrationCalendarData {
   species: Array<{
     id: number | null;
