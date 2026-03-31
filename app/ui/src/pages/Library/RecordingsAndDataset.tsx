@@ -9,6 +9,8 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -127,6 +129,7 @@ export const RecordingsAndDataset = () => {
     processed: number;
     total: number;
   } | null>(null);
+  const [trackRegenPreset, setTrackRegenPreset] = useState<'accurate' | 'fast'>('fast');
   const [operationsPeriod, setOperationsPeriod] = useState<{
     start: Dayjs;
     end: Dayjs;
@@ -329,7 +332,7 @@ export const RecordingsAndDataset = () => {
   const regenerateTracksMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
-    { force?: boolean; start_date?: string; end_date?: string }
+    { force?: boolean; start_date?: string; end_date?: string; frame_step?: number }
   >({
     mutationFn: async (params) => {
       try {
@@ -709,6 +712,27 @@ export const RecordingsAndDataset = () => {
                 )}
               </Box>
               <Box>
+                <Stack spacing={1} sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('storage.regenerateTracksPresetLabel')}
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={trackRegenPreset}
+                    onChange={(_, value) => {
+                      if (value) setTrackRegenPreset(value);
+                    }}
+                    aria-label={t('storage.regenerateTracksPresetLabel')}
+                  >
+                    <ToggleButton value="accurate">
+                      {t('storage.regenerateTracksPresetAccurate')}
+                    </ToggleButton>
+                    <ToggleButton value="fast">
+                      {t('storage.regenerateTracksPresetFast')}
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
                 <Button
                   variant="outlined"
                   disabled={regenerateTracksMutation.isPending}
@@ -716,6 +740,7 @@ export const RecordingsAndDataset = () => {
                     regenerateTracksMutation.mutate({
                       start_date: operationsPeriod.start.format('YYYY-MM-DD'),
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
+                      frame_step: trackRegenPreset === 'fast' ? 3 : 1,
                     })
                   }
                   startIcon={<RouteIcon />}

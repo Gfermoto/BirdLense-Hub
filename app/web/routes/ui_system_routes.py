@@ -1142,7 +1142,12 @@ def register_routes(app):
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
         return _regenerate_status, 200
 
-    def _run_regenerate_tracks(force: bool, start_date: str | None, end_date: str | None):
+    def _run_regenerate_tracks(
+        force: bool,
+        start_date: str | None,
+        end_date: str | None,
+        frame_step_override: int | None = None,
+    ):
         """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks.
         start_date, end_date: YYYY-MM-DD — период. None = все.
         """
@@ -1165,8 +1170,11 @@ def register_routes(app):
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
                 lores_size = (640, 640)
                 frame_step = int(
-                    app_config.get('processor.track_regen_frame_step') or 1
+                    frame_step_override
+                    or app_config.get('processor.track_regen_frame_step')
+                    or 1
                 )
+                frame_step = max(1, min(frame_step, 10))
 
                 if force:
                     q = Video.query
@@ -1317,9 +1325,14 @@ def register_routes(app):
         force = data.get('force', False)
         start_date = data.get('start_date')  # YYYY-MM-DD or None
         end_date = data.get('end_date')  # YYYY-MM-DD or None
+        frame_step = data.get('frame_step')
+        try:
+            frame_step = int(frame_step) if frame_step is not None else None
+        except Exception:
+            frame_step = None
         t = threading.Thread(
             target=_run_regenerate_tracks,
-            args=(force, start_date, end_date),
+            args=(force, start_date, end_date, frame_step),
             daemon=True,
         )
         t.start()
