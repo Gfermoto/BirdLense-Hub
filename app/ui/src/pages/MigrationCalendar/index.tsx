@@ -266,23 +266,31 @@ export const MigrationCalendar = () => {
             <TableBody>
               {species.map((s) => {
                 const maxInRow = Math.max(...s.monthly_counts, 1);
+                const hasSpeciesId = Number.isInteger(s.id) && (s.id as number) > 0;
                 return (
-                  <TableRow key={s.id} hover>
+                  <TableRow key={`${s.id ?? 'noid'}:${s.name}`} hover>
                     <TableCell sx={{ verticalAlign: 'middle' }}>
-                      <Link
-                        component={RouterLink}
-                        to={`/species/${s.id}`}
-                        underline="hover"
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.5,
-                          color: 'inherit',
-                        }}
-                      >
-                        <SpeciesIcon speciesName={s.name} imageUrl={s.image_url} size={32} />
-                        {s.name}
-                      </Link>
+                      {hasSpeciesId ? (
+                        <Link
+                          component={RouterLink}
+                          to={`/species/${s.id}`}
+                          underline="hover"
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            color: 'inherit',
+                          }}
+                        >
+                          <SpeciesIcon speciesName={s.name} imageUrl={s.image_url} size={32} />
+                          {s.name}
+                        </Link>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.secondary' }}>
+                          <SpeciesIcon speciesName={s.name} imageUrl={s.image_url} size={32} />
+                          {s.name}
+                        </Box>
+                      )}
                     </TableCell>
                     {s.monthly_counts.map((count, i) => {
                       const intensity = maxInRow > 0 ? count / maxInRow : 0;
