@@ -187,6 +187,7 @@ jobs:
             --workers 4 \
             --limit 200 \
             --ignore-direct-image-429 \
+            --ignore-empty-description \
             --report-path ../.artifacts/catalog-cards-audit.local.json
         working-directory: app
 

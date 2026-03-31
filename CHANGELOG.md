@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опция `--ignore-direct-image-429` и меньше воркеров в PR, чтобы прогон не падал на массовом **429** от Wikimedia при параллельных запросах из GitHub Actions.
+- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на пустом описании в минимальной БД CI.
 
 ## [0.2.10] - 2026-03-31
 
