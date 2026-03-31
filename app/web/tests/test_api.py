@@ -1035,3 +1035,66 @@ class TestSpeciesSummaryReadOnly:
         data = r.get_json()
         assert data['species']['metadata_trust'] == 'unbound'
         assert data['species']['metadata_status'] == 'ok'
+
+
+class TestVideoStreamAccess:
+    """Поток видео для плеера: по умолчанию без пароля (Viewer)."""
+
+    def test_stream_allows_guest_when_not_locked(self, app, client, tmp_path, monkeypatch):
+        from models import Video, db
+
+        fake = tmp_path / 'clip.mp4'
+        fake.write_bytes(b'\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2')
+        monkeypatch.setattr('util.full_path_for_video', lambda _p: str(fake))
+
+        vp = 'data/recordings/2026/03/31/120000/video.mp4'
+        with app.app_context():
+            v = Video(
+                processor_version='t',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path=vp,
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['require_auth_for_video_stream'] = False
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        r = client.get(f'/api/ui/videos/{vid}/stream')
+        assert r.status_code == 200
+        assert 'video' in (r.content_type or '').lower()
+
+    def test_stream_requires_password_when_locked(self, app, client, tmp_path, monkeypatch):
+        from models import Video, db
+
+        fake = tmp_path / 'clip2.mp4'
+        fake.write_bytes(b'\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2')
+        monkeypatch.setattr('util.full_path_for_video', lambda _p: str(fake))
+
+        vp = 'data/recordings/2026/03/31/130000/video.mp4'
+        with app.app_context():
+            v = Video(
+                processor_version='t',
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                video_path=vp,
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['require_auth_for_video_stream'] = True
+        general['settings_password'] = 'secret-stream-test'
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+
+        r = client.get(f'/api/ui/videos/{vid}/stream')
+        assert r.status_code == 403

@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
-import { SpeciesDataQualityCard } from './SpeciesDataQualityCard';
-import { ClassifierDatasetAlignmentCard } from './ClassifierDatasetAlignmentCard';
+import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { ProcessorLogs } from './ProcessorLogs';
 import { StorageOverview } from './StorageOverview';
 import { Box, Divider } from '@mui/material';
@@ -35,13 +34,7 @@ export const System: React.FC = () => {
         <Divider sx={{ my: 3 }} />
 
         <Box>
-          <SpeciesDataQualityCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <ClassifierDatasetAlignmentCard />
+          <CatalogDiagnosticsAccordion />
         </Box>
 
         <Divider sx={{ my: 3 }} />
