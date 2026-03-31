@@ -16,6 +16,8 @@ import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -33,6 +35,7 @@ import {
   exportDataset,
   retroExportDataset,
   cleanDataset,
+  fetchObservedSpecies,
 } from '../../api/api';
 
 interface StorageStats {
@@ -58,6 +61,7 @@ interface TrackRegenParams {
   lores_px: number;
   detection_strategy: string;
   max_runtime_sec: number;
+  species_ids?: number[];
 }
 
 interface RegenerateSpectrogramsResponse {
@@ -153,6 +157,7 @@ export const RecordingsAndDataset = () => {
   }>>([]);
   const [preciseRerunFilter, setPreciseRerunFilter] = useState<'all' | 'problematic' | 'manual'>('all');
   const [trackRegenPreset, setTrackRegenPreset] = useState<'accurate' | 'fast'>('fast');
+  const [trackRegenSpeciesIds, setTrackRegenSpeciesIds] = useState<number[]>([]);
   const [operationsPeriod, setOperationsPeriod] = useState<{
     start: Dayjs;
     end: Dayjs;
@@ -198,6 +203,12 @@ export const RecordingsAndDataset = () => {
       );
       return data;
     },
+  });
+
+  const { data: observedSpeciesForTracks = [] } = useQuery({
+    queryKey: ['species', 'observed'],
+    queryFn: fetchObservedSpecies,
+    staleTime: 60_000,
   });
 
   const storageRange = useMemo(() => {
@@ -391,6 +402,7 @@ export const RecordingsAndDataset = () => {
       end_date?: string;
       frame_step?: number;
       video_ids?: number[];
+      species_ids?: number[];
     }
   >({
     mutationFn: async (params) => {
@@ -784,6 +796,28 @@ export const RecordingsAndDataset = () => {
                 )}
               </Box>
               <Box>
+                <Autocomplete
+                  multiple
+                  options={observedSpeciesForTracks}
+                  getOptionLabel={(o) => o.name}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  value={observedSpeciesForTracks.filter((o) =>
+                    trackRegenSpeciesIds.includes(o.id),
+                  )}
+                  onChange={(_, v) => setTrackRegenSpeciesIds(v.map((x) => x.id))}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={t('storage.trackRegenSpeciesLabel')}
+                      placeholder={t('storage.trackRegenSpeciesPlaceholder')}
+                      size="small"
+                    />
+                  )}
+                  sx={{ mb: 1 }}
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  {t('storage.trackRegenSpeciesHint')}
+                </Typography>
                 <Stack spacing={1} sx={{ mb: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     {t('storage.regenerateTracksPresetLabel')}
@@ -814,6 +848,9 @@ export const RecordingsAndDataset = () => {
                       start_date: operationsPeriod.start.format('YYYY-MM-DD'),
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
                       frame_step: trackRegenPreset === 'fast' ? 6 : 1,
+                      ...(trackRegenSpeciesIds.length
+                        ? { species_ids: [...trackRegenSpeciesIds] }
+                        : {}),
                     })
                   }
                   startIcon={<RouteIcon />}
@@ -852,14 +889,23 @@ export const RecordingsAndDataset = () => {
                       </Typography>
                     )}
                     {tracksProgress?.regen_params && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {t('storage.regenerateTracksEffectiveParams', {
-                          step: tracksProgress.regen_params.frame_step,
-                          px: tracksProgress.regen_params.lores_px,
-                          strategy: tracksProgress.regen_params.detection_strategy,
-                          timeout: tracksProgress.regen_params.max_runtime_sec,
-                        })}
-                      </Typography>
+                      <>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('storage.regenerateTracksEffectiveParams', {
+                            step: tracksProgress.regen_params.frame_step,
+                            px: tracksProgress.regen_params.lores_px,
+                            strategy: tracksProgress.regen_params.detection_strategy,
+                            timeout: tracksProgress.regen_params.max_runtime_sec,
+                          })}
+                        </Typography>
+                        {(tracksProgress.regen_params.species_ids?.length || 0) > 0 && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('storage.regenerateTracksSpeciesFilterActive', {
+                              count: tracksProgress.regen_params.species_ids!.length,
+                            })}
+                          </Typography>
+                        )}
+                      </>
                     )}
                   </Box>
                 )}
@@ -914,6 +960,9 @@ export const RecordingsAndDataset = () => {
                         regenerateTracksMutation.mutate({
                           frame_step: 1,
                           video_ids: filteredPreciseCandidates.map((x) => x.video_id),
+                          ...(trackRegenSpeciesIds.length
+                            ? { species_ids: [...trackRegenSpeciesIds] }
+                            : {}),
                         })
                       }
                       fullWidth

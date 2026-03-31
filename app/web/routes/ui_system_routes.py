@@ -357,6 +357,22 @@ def register_routes(app):
                 out.append(v)
         return sorted(set(out))
 
+    def _parse_species_ids(payload) -> list[int]:
+        raw = (payload or {}).get('species_ids')
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError('species_ids must be an array of integers')
+        out: list[int] = []
+        for x in raw:
+            try:
+                v = int(x)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                out.append(v)
+        return sorted(set(out))
+
     def _flatten_keys(d: dict, prefix: str = '') -> set[str]:
         out = set()
         if not isinstance(d, dict):
@@ -1164,9 +1180,11 @@ def register_routes(app):
         end_date: str | None,
         frame_step_override: int | None = None,
         video_ids: list[int] | None = None,
+        species_ids: list[int] | None = None,
     ):
         """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks.
         start_date, end_date: YYYY-MM-DD — период. None = все.
+        species_ids: если задан — только видео, где есть детекция хотя бы одного из видов.
         """
         global _regenerate_tracks_status
         _regenerate_tracks_status = {
@@ -1209,12 +1227,15 @@ def register_routes(app):
                 max_runtime_sec = int(
                     app_config.get('processor.track_regen_video_timeout_sec') or 300
                 )
+                species_ids_f = sorted(set(species_ids or []))
                 regen_params = {
                     'frame_step': frame_step,
                     'lores_px': lores_px,
                     'detection_strategy': str(regen_strategy).strip(),
                     'max_runtime_sec': max_runtime_sec,
                 }
+                if species_ids_f:
+                    regen_params['species_ids'] = species_ids_f
                 _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 if force:
@@ -1239,6 +1260,14 @@ def register_routes(app):
                         q = q.filter(Video.start_time < dt_end)
                     except ValueError:
                         app.logger.warning('Invalid end_date %s, ignoring', end_date)
+
+                if species_ids_f:
+                    vid_subq = (
+                        select(VideoSpecies.video_id)
+                        .where(VideoSpecies.species_id.in_(species_ids_f))
+                        .distinct()
+                    )
+                    q = q.filter(Video.id.in_(vid_subq))
 
                 videos = q.order_by(Video.start_time.asc()).all()
                 target_video_ids = sorted(set(video_ids or []))
@@ -1419,12 +1448,16 @@ def register_routes(app):
         except ValueError as e:
             return {'error': str(e)}, 400
         try:
+            species_ids = _parse_species_ids(data)
+        except ValueError as e:
+            return {'error': str(e)}, 400
+        try:
             frame_step = int(frame_step) if frame_step is not None else None
         except Exception:
             frame_step = None
         t = threading.Thread(
             target=_run_regenerate_tracks,
-            args=(force, start_date, end_date, frame_step, video_ids),
+            args=(force, start_date, end_date, frame_step, video_ids, species_ids),
             daemon=True,
         )
         t.start()

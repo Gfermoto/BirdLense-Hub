@@ -135,6 +135,13 @@ class TestLibraryDatasetFlow:
                 assert r_tracks_bad_video_ids.status_code == 400
                 assert 'video_ids' in (r_tracks_bad_video_ids.json.get('error') or '')
 
+                r_tracks_bad_species_ids = client.post(
+                    '/api/ui/system/regenerate-tracks',
+                    json={'species_ids': 'not-an-array'},
+                )
+                assert r_tracks_bad_species_ids.status_code == 400
+                assert 'species_ids' in (r_tracks_bad_species_ids.json.get('error') or '')
+
                 r_clean = client.post('/api/ui/dataset/clean', json={
                     'dry_run': True,
                     'remove_fullframe': False,
