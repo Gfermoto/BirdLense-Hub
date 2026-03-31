@@ -128,6 +128,13 @@ class TestLibraryDatasetFlow:
                 assert r_tracks_status.status_code == 200
                 assert 'status' in r_tracks_status.json
 
+                r_tracks_bad_video_ids = client.post(
+                    '/api/ui/system/regenerate-tracks',
+                    json={'video_ids': 'not-an-array'},
+                )
+                assert r_tracks_bad_video_ids.status_code == 400
+                assert 'video_ids' in (r_tracks_bad_video_ids.json.get('error') or '')
+
                 r_clean = client.post('/api/ui/dataset/clean', json={
                     'dry_run': True,
                     'remove_fullframe': False,
@@ -622,6 +629,7 @@ class TestPush:
 
         general = dict(app_config.config.get('general') or {})
         general['settings_password'] = ''
+        general['contributor_password'] = ''
         monkeypatch.setitem(app_config.config, 'general', general)
         r = client.post(
             '/api/ui/push/subscribe',
@@ -637,6 +645,7 @@ class TestPush:
 
         general = dict(app_config.config.get('general') or {})
         general['settings_password'] = ''
+        general['contributor_password'] = ''
         monkeypatch.setitem(app_config.config, 'general', general)
         r = client.post(
             '/api/ui/push/subscribe',
@@ -866,6 +875,7 @@ class TestScanRecordings:
 
         general = dict(app_config.config.get('general') or {})
         general['settings_password'] = ''
+        general['contributor_password'] = ''
         monkeypatch.setitem(app_config.config, 'general', general)
 
         monkeypatch.setenv('DATA_DIR', str(tmp_path))

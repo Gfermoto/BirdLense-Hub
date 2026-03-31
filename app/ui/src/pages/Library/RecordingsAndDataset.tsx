@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Alert from '@mui/material/Alert';
@@ -52,6 +53,13 @@ interface ScanResponse {
   spectrogramRegenerationStarted?: boolean;
 }
 
+interface TrackRegenParams {
+  frame_step: number;
+  lores_px: number;
+  detection_strategy: string;
+  max_runtime_sec: number;
+}
+
 interface RegenerateSpectrogramsResponse {
   generated: number;
   failed: number;
@@ -59,6 +67,13 @@ interface RegenerateSpectrogramsResponse {
   message: string;
   frames_updated?: number;
   tracks?: boolean;
+  regen_params?: TrackRegenParams;
+  precise_rerun_candidate_count?: number;
+  precise_rerun_candidates?: Array<{
+    video_id: number;
+    video_path: string | null;
+    reason: string;
+  }>;
 }
 
 interface MergeSpeciesResponse {
@@ -128,7 +143,15 @@ export const RecordingsAndDataset = () => {
   const [tracksProgress, setTracksProgress] = useState<{
     processed: number;
     total: number;
+    current_video?: string | null;
+    regen_params?: TrackRegenParams;
   } | null>(null);
+  const [preciseRerunCandidates, setPreciseRerunCandidates] = useState<Array<{
+    video_id: number;
+    video_path: string | null;
+    reason: string;
+  }>>([]);
+  const [preciseRerunFilter, setPreciseRerunFilter] = useState<'all' | 'problematic' | 'manual'>('all');
   const [trackRegenPreset, setTrackRegenPreset] = useState<'accurate' | 'fast'>('fast');
   const [operationsPeriod, setOperationsPeriod] = useState<{
     start: Dayjs;
@@ -140,6 +163,32 @@ export const RecordingsAndDataset = () => {
   const [onlyManuallyCorrected, setOnlyManuallyCorrected] = useState(false);
   const POLL_INTERVAL_MS = 2000;
   const POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2h for large historical batches
+  const problematicReasons = new Set([
+    'processing_failed',
+    'video_file_missing',
+    'missing_video_path',
+    'no_detections_fast_run',
+  ]);
+  const manualReasons = new Set(['has_manual_corrections']);
+
+  const preciseCandidatesByReason = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const c of preciseRerunCandidates) {
+      const key = c.reason || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+    }
+    return Object.entries(acc).sort((a, b) => b[1] - a[1]);
+  }, [preciseRerunCandidates]);
+
+  const filteredPreciseCandidates = useMemo(() => {
+    if (preciseRerunFilter === 'problematic') {
+      return preciseRerunCandidates.filter((c) => problematicReasons.has(c.reason));
+    }
+    if (preciseRerunFilter === 'manual') {
+      return preciseRerunCandidates.filter((c) => manualReasons.has(c.reason));
+    }
+    return preciseRerunCandidates;
+  }, [preciseRerunCandidates, preciseRerunFilter]);
 
   const { data: storageStats = [], refetch } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
@@ -231,6 +280,8 @@ export const RecordingsAndDataset = () => {
           generated: number;
           failed: number;
           skipped: number;
+          current_video?: string | null;
+          regen_params?: TrackRegenParams;
         };
       }>(`${BASE_API_URL}/system/regenerate-tracks/status`, {
         timeout: JOB_STATUS_POLL_TIMEOUT_MS,
@@ -239,6 +290,8 @@ export const RecordingsAndDataset = () => {
         setTracksProgress({
           processed: data.progress.processed,
           total: data.progress.total,
+          current_video: data.progress.current_video || null,
+          regen_params: data.progress.regen_params,
         });
       }
       if (data.status === 'done' && data.result) {
@@ -332,7 +385,13 @@ export const RecordingsAndDataset = () => {
   const regenerateTracksMutation = useMutation<
     RegenerateSpectrogramsResponse,
     Error,
-    { force?: boolean; start_date?: string; end_date?: string; frame_step?: number }
+    {
+      force?: boolean;
+      start_date?: string;
+      end_date?: string;
+      frame_step?: number;
+      video_ids?: number[];
+    }
   >({
     mutationFn: async (params) => {
       try {
@@ -361,8 +420,11 @@ export const RecordingsAndDataset = () => {
         failed: data.failed,
         skipped: data.skipped,
         frames_updated: data.frames_updated,
+        precise_rerun_candidate_count: data.precise_rerun_candidate_count,
+        precise_rerun_candidates: data.precise_rerun_candidates,
         tracks: true,
       });
+      setPreciseRerunCandidates(data.precise_rerun_candidates || []);
       refetch();
       queryClient.invalidateQueries({ queryKey: ['videos'] });
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
@@ -540,6 +602,15 @@ export const RecordingsAndDataset = () => {
                         size: formatBytes(success.deletedSize),
                       })
                     : t('storage.imported', { count: success.deletedCount })}
+          {'tracks' in success &&
+            success.tracks &&
+            (success.precise_rerun_candidate_count || 0) > 0 && (
+              <Typography variant="body2" sx={{ mt: 0.75 }}>
+                {t('storage.regenerateTracksPreciseCandidatesFound', {
+                  count: success.precise_rerun_candidate_count || 0,
+                })}
+              </Typography>
+            )}
         </Alert>
       )}
 
@@ -740,7 +811,7 @@ export const RecordingsAndDataset = () => {
                     regenerateTracksMutation.mutate({
                       start_date: operationsPeriod.start.format('YYYY-MM-DD'),
                       end_date: operationsPeriod.end.format('YYYY-MM-DD'),
-                      frame_step: trackRegenPreset === 'fast' ? 3 : 1,
+                      frame_step: trackRegenPreset === 'fast' ? 6 : 1,
                     })
                   }
                   startIcon={<RouteIcon />}
@@ -771,7 +842,112 @@ export const RecordingsAndDataset = () => {
                         {t('storage.regeneratingProgress', tracksProgress)}
                       </Typography>
                     )}
+                    {tracksProgress?.current_video && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {t('storage.regeneratingCurrentVideo', {
+                          video: tracksProgress.current_video,
+                        })}
+                      </Typography>
+                    )}
+                    {tracksProgress?.regen_params && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {t('storage.regenerateTracksEffectiveParams', {
+                          step: tracksProgress.regen_params.frame_step,
+                          px: tracksProgress.regen_params.lores_px,
+                          strategy: tracksProgress.regen_params.detection_strategy,
+                          timeout: tracksProgress.regen_params.max_runtime_sec,
+                        })}
+                      </Typography>
+                    )}
                   </Box>
+                )}
+                {preciseRerunCandidates.length > 0 && (
+                  <Stack spacing={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('storage.regenerateTracksPreciseCandidatesFound', {
+                        count: preciseRerunCandidates.length,
+                      })}
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'all' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('all')}
+                      >
+                        {t('common.all')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'problematic' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('problematic')}
+                      >
+                        {t('storage.preciseFilterProblematic')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={preciseRerunFilter === 'manual' ? 'contained' : 'outlined'}
+                        onClick={() => setPreciseRerunFilter('manual')}
+                      >
+                        {t('storage.preciseFilterManual')}
+                      </Button>
+                    </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {preciseCandidatesByReason.map(([reason, count]) => (
+                        <Chip
+                          key={reason}
+                          size="small"
+                          label={`${reason}: ${count}`}
+                          variant="outlined"
+                        />
+                      ))}
+                    </Stack>
+                    <Button
+                      variant="text"
+                      disabled={
+                        regenerateTracksMutation.isPending ||
+                        filteredPreciseCandidates.length === 0
+                      }
+                      onClick={() =>
+                        regenerateTracksMutation.mutate({
+                          frame_step: 1,
+                          video_ids: filteredPreciseCandidates.map((x) => x.video_id),
+                        })
+                      }
+                      fullWidth
+                    >
+                      {t('storage.regenerateTracksRunPreciseCandidates', {
+                        count: filteredPreciseCandidates.length,
+                      })}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        const blob = new Blob(
+                          [
+                            JSON.stringify(
+                              {
+                                generated_at: new Date().toISOString(),
+                                filter: preciseRerunFilter,
+                                candidates: filteredPreciseCandidates,
+                              },
+                              null,
+                              2,
+                            ),
+                          ],
+                          { type: 'application/json' },
+                        );
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'track_regen_precise_candidates.json';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      {t('storage.downloadPreciseCandidates')}
+                    </Button>
+                  </Stack>
                 )}
               </Box>
             </Stack>
