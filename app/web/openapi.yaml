@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: BirdLense Hub UI API
-  version: 0.2.9
+  version: 0.2.10
   description: |
     BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. This API is designed for both human users and LLM agents to:
       - Query real-time and historical bird visit data

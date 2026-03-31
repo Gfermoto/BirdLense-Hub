@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-03-31
+
+Накопительный релиз после v0.2.9: каталог/реестр, производительность, Telegram/MTProto, CI/E2E, перегенерация треков. Merge: [#196](https://github.com/Gfermoto/BirdLense-Hub/pull/196).
+
+### Tracks / перегенерация
+
+- **Перегенерация треков:** частичная замена по выбранным видам (`species_ids`); сопоставление детекций с каталогом по таксону и имени; `GET /api/ui/species/track-regen-options` — виды с треками на видео (VideoSpecies); при фильтре по виду период запроса — весь охват библиотеки из storage stats; ручные правки — сопоставление вида по таксону, не только построчное равенство имён; лог при пустой очереди с `species_ids`.
+
 ### Documentation
 
 - **CONFIGURATION / Telegram:** раздел «если my.telegram.org выдаёт ERROR» — обход через SOCKS/HTTP или без прокси без api_id; уточнены ключи `telegram_proxy_type` и MTProto.
