@@ -4,6 +4,8 @@ import threading
 import sqlite3
 import tempfile
 import json
+import io
+import csv
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
@@ -18,6 +20,9 @@ from services.species_registry_service import (
     backfill_species_taxa,
     enrich_species_metadata,
     enrich_species_metadata_with_status,
+    ensure_allowlist_species_materialized,
+    repair_catalog_cards,
+    catalog_cards_coverage_snapshot,
     species_registry_health,
     unresolved_species_report,
 )
@@ -34,6 +39,9 @@ _regenerate_lock = threading.Lock()
 _regenerate_tracks_lock = threading.Lock()
 _species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
 _species_metadata_lock = threading.Lock()
+_catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_catalog_cards_lock = threading.Lock()
+_catalog_cards_next_run_ts = 0.0
 
 
 IMPORT_SPECIES_NAME = "Unknown"
@@ -120,6 +128,16 @@ SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
 SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
 SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
 SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
+CATALOG_REPAIR_AUTORUN_ENABLED = os.environ.get(
+    'BIRDLENSE_CATALOG_REPAIR_AUTORUN',
+    '1',
+).strip().lower() in ('1', 'true', 'yes')
+CATALOG_REPAIR_INTERVAL_MIN = _env_bounded_int(
+    'BIRDLENSE_CATALOG_REPAIR_INTERVAL_MIN', 180, min_v=15, max_v=1440,
+)
+CATALOG_REPAIR_LIMIT = _env_bounded_int(
+    'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
+)
 
 _CACHE_SYSTEM_METRICS_SEC = 2.5
 _CACHE_SYSTEM_VISITORS_SEC = 25
@@ -167,6 +185,7 @@ def _system_metrics_sampler_worker(app):
         try:
             with app.app_context():
                 _record_system_resource_sample(app)
+                _maybe_run_catalog_cards_repair(app)
         except Exception as e:
             app.logger.warning('system metrics sampler: %s', e)
             try:
@@ -174,6 +193,64 @@ def _system_metrics_sampler_worker(app):
             except Exception:
                 pass
         time.sleep(SYSTEM_METRICS_SAMPLE_INTERVAL_SEC)
+
+
+def _maybe_run_catalog_cards_repair(app) -> None:
+    global _catalog_cards_next_run_ts
+    if not CATALOG_REPAIR_AUTORUN_ENABLED:
+        return
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if _catalog_cards_next_run_ts and now_ts < _catalog_cards_next_run_ts:
+        return
+    with _catalog_cards_lock:
+        if _catalog_cards_status.get('status') == 'running':
+            return
+        _catalog_cards_status.update({
+            'status': 'running',
+            'result': None,
+            'error': None,
+            'progress': {
+                'auto': True,
+                'limit': CATALOG_REPAIR_LIMIT,
+                'coverage_before': catalog_cards_coverage_snapshot(app_config.get),
+            },
+        })
+    try:
+        result = repair_catalog_cards(
+            app_config.get,
+            dry_run=False,
+            limit=CATALOG_REPAIR_LIMIT,
+        )
+        coverage_after = catalog_cards_coverage_snapshot(app_config.get)
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
+                'status': 'done',
+                'result': {**result, 'auto': True, 'coverage_after': coverage_after},
+                'error': None,
+            })
+    except Exception as e:
+        db.session.rollback()
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
+                'status': 'error',
+                'result': None,
+                'error': str(e),
+            })
+    finally:
+        _catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
+
+
+def _catalog_cards_schedule_state() -> dict:
+    now_ts = datetime.now(timezone.utc).timestamp()
+    next_in = 0
+    if _catalog_cards_next_run_ts > now_ts:
+        next_in = int(_catalog_cards_next_run_ts - now_ts)
+    return {
+        'autorun_enabled': CATALOG_REPAIR_AUTORUN_ENABLED,
+        'interval_min': CATALOG_REPAIR_INTERVAL_MIN,
+        'limit': CATALOG_REPAIR_LIMIT,
+        'next_run_in_sec': next_in,
+    }
 
 
 def _start_system_metrics_sampler(app):
@@ -1656,6 +1733,118 @@ def register_routes(app):
             app.logger.exception('Species registry health failed: %s', e)
             return {'error': str(e)}, 500
 
+    @app.route('/api/ui/system/species-registry/materialize-allowlist', methods=['POST'])
+    def species_registry_materialize_allowlist():
+        """Create missing Species rows for allowlist and optionally fill metadata."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        payload = request.get_json(silent=True) or {}
+        dry_run = bool(payload.get('dry_run', False))
+        fill_metadata = bool(payload.get('fill_metadata', True))
+        try:
+            limit = int(payload.get('limit', 5000))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be int'}, 400
+        try:
+            body = ensure_allowlist_species_materialized(
+                app_config.get,
+                fill_metadata=fill_metadata,
+                dry_run=dry_run,
+                limit=limit,
+            )
+            bust_response_caches()
+            bust_system_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Materialize allowlist failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/repair-cards', methods=['POST'])
+    def species_registry_repair_cards():
+        """Auto-heal full catalog cards metadata and blocked image links."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        payload = request.get_json(silent=True) or {}
+        dry_run = bool(payload.get('dry_run', False))
+        try:
+            limit = int(payload.get('limit', 6000))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be int'}, 400
+        try:
+            body = repair_catalog_cards(
+                app_config.get,
+                dry_run=dry_run,
+                limit=limit,
+            )
+            bust_response_caches()
+            bust_system_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Repair cards failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/repair-cards/start', methods=['POST'])
+    def species_registry_repair_cards_start():
+        """Start background repair for species cards."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _catalog_cards_lock:
+            if _catalog_cards_status.get('status') == 'running':
+                return {'error': 'Repair already running', 'status': _catalog_cards_status}, 409
+            payload = request.get_json(silent=True) or {}
+            try:
+                limit = int(payload.get('limit', 6000))
+            except (TypeError, ValueError):
+                return {'error': 'limit must be int'}, 400
+            _catalog_cards_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': {
+                    'limit': limit,
+                    'coverage_before': catalog_cards_coverage_snapshot(app_config.get),
+                },
+            })
+
+            def _run():
+                try:
+                    with app.app_context():
+                        result = repair_catalog_cards(
+                            app_config.get,
+                            dry_run=False,
+                            limit=limit,
+                        )
+                        coverage_after = catalog_cards_coverage_snapshot(app_config.get)
+                    with _catalog_cards_lock:
+                        _catalog_cards_status.update({
+                            'status': 'done',
+                            'result': {**result, 'coverage_after': coverage_after},
+                            'error': None,
+                        })
+                except Exception as e:
+                    with _catalog_cards_lock:
+                        _catalog_cards_status.update({
+                            'status': 'error',
+                            'result': None,
+                            'error': str(e),
+                        })
+
+            threading.Thread(target=_run, daemon=True).start()
+            return {'message': 'Catalog cards repair started', 'status': _catalog_cards_status}, 202
+
+    @app.route('/api/ui/system/species-registry/repair-cards/status', methods=['GET'])
+    def species_registry_repair_cards_status():
+        """Read background repair status with live coverage counters."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _catalog_cards_lock:
+            snap = dict(_catalog_cards_status)
+        snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
+        snap['schedule'] = _catalog_cards_schedule_state()
+        return snap, 200
+
     @app.route('/api/ui/system/species-registry/data-quality', methods=['GET'])
     def species_registry_data_quality():
         """Отчёт по мусорным/не-птица строкам каталога и дубликатам имён (слияние)."""
@@ -1711,5 +1900,41 @@ def register_routes(app):
         except Exception as e:
             app.logger.exception('Catalog coverage metrics failed: %s', e)
             return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/species-registry/tuning-targets/export', methods=['GET'])
+    def species_registry_tuning_targets_export():
+        """Export manually marked tuning targets for training pipeline."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        raw = app_config.get('species.tuning_target_species_ids') or []
+        ids = []
+        if isinstance(raw, list):
+            for x in raw:
+                try:
+                    v = int(x)
+                except (TypeError, ValueError):
+                    continue
+                if v > 0:
+                    ids.append(v)
+        ids = sorted(set(ids))
+        rows = Species.query.filter(Species.id.in_(ids)).all() if ids else []
+        by_id = {s.id: s for s in rows}
+
+        fmt = (request.args.get('format') or 'json').strip().lower()
+        body_rows = [{'id': sid, 'name': by_id[sid].name} for sid in ids if sid in by_id]
+        if fmt == 'csv':
+            buf = io.StringIO()
+            wr = csv.writer(buf)
+            wr.writerow(['species_id', 'species_name'])
+            for r in body_rows:
+                wr.writerow([r['id'], r['name']])
+            return Response(
+                buf.getvalue(),
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': 'attachment; filename="birdlense_tuning_targets.csv"',
+                },
+            )
+        return {'count': len(body_rows), 'targets': body_rows}, 200
 
     _start_system_metrics_sampler(app)

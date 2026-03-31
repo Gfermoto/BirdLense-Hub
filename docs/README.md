@@ -4,7 +4,7 @@
 
 [Русский](./README.ru.md)
 
-Welcome. This folder is the **single source of truth** for operators, integrators, and contributors. Use it to run the stack, fix issues, extend the project, or **repurpose content** for a website, wiki, or blog (see [OVERVIEW](./OVERVIEW.md)).
+Welcome. This folder is the **single source of truth** for operators, integrators, and contributors. Use it to run the stack, troubleshoot issues, and extend the project (see [OVERVIEW](./OVERVIEW.md)).
 
 ---
 
@@ -26,7 +26,7 @@ Pick what matches you — you can read the rest as reference.
 |-------|---------|---------|
 | **Short description** (GitHub About, press) | [SHORT_DESCRIPTION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
-| **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
+| **Install & deploy** | [INSTALL](./INSTALL.md) · [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./INSTALL.ru.md) · [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md) |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |

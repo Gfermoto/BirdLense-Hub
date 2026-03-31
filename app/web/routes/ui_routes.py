@@ -4,7 +4,10 @@ import secrets
 import csv
 import io
 import re
-from urllib.parse import quote
+import time
+import hashlib
+from urllib.parse import quote, urlparse
+import requests
 from flask import request, session, Response
 import json as json_module
 from sqlalchemy import func, case, distinct, or_
@@ -28,6 +31,9 @@ from util import (
     _record_verify_password_failure,
     verify_password_retry_after_seconds,
     notify_telegram_test,
+    _host_is_wikipedia_family,
+    _host_is_inaturalist,
+    _url_suggests_inaturalist_asset,
 )
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
@@ -44,6 +50,7 @@ from services.dataset_export_service import (
     move_crop_on_species_correction,
     extract_and_save_crop_for_detection,
     clean_dataset,
+    _sanitize_dirname,
 )
 from services.overview_service import get_overview_data
 from services.species_summary_service import build_species_summary
@@ -68,6 +75,46 @@ _CACHE_DETECTION_FRAMES_SEC = 45
 
 
 def register_routes(app):
+    def _get_tuning_target_ids() -> list[int]:
+        raw = app_config.get('species.tuning_target_species_ids') or []
+        out: list[int] = []
+        if isinstance(raw, list):
+            for x in raw:
+                try:
+                    v = int(x)
+                except (TypeError, ValueError):
+                    continue
+                if v > 0:
+                    out.append(v)
+        return sorted(set(out))
+
+    def _save_tuning_target_ids(ids: list[int]) -> None:
+        species_cfg = app_config.config.get('species') or {}
+        species_cfg['tuning_target_species_ids'] = sorted(set(int(x) for x in ids if int(x) > 0))
+        app_config.config['species'] = species_cfg
+        app_config.save()
+
+    def _dataset_class_folders() -> set[str]:
+        web_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        repo_root = os.path.abspath(os.path.join(web_root, '..', '..'))
+        candidates = [
+            os.path.join(data_dir(), 'dataset'),
+            os.path.join(repo_root, 'datasets', 'merged_cls'),
+        ]
+        out: set[str] = set()
+        for base in candidates:
+            for split in ('train', 'val'):
+                root = os.path.join(base, split)
+                if not os.path.isdir(root):
+                    continue
+                try:
+                    for entry in os.listdir(root):
+                        if os.path.isdir(os.path.join(root, entry)):
+                            out.add(entry)
+                except OSError:
+                    continue
+        return out
+
     def _normalize_correction_source(value):
         src = (value or '').strip().lower()
         if src in ('unknowns', 'video'):
@@ -1625,3 +1672,147 @@ def register_routes(app):
         out = build_species_summary(db.session, species, children, all_species_ids)
         cache_set(sck, out, 30)
         return out
+
+    @app.route('/api/ui/species-image', methods=['GET'])
+    def proxy_species_image():
+        """Proxy remote species image URLs to avoid third-party hotlink blocks."""
+        raw = (request.args.get('url') or '').strip()
+        if not raw:
+            return {'error': 'url is required'}, 400
+        parsed = urlparse(raw)
+        if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+            return {'error': 'only absolute http/https URLs are allowed'}, 400
+        host = (parsed.hostname or '').lower()
+        if not (
+            _host_is_wikipedia_family(host)
+            or _host_is_inaturalist(host)
+            or _url_suggests_inaturalist_asset(raw)
+        ):
+            return {'error': 'host is not allowed for proxy'}, 400
+
+        # Persistent local cache: avoids repeated external hits and shields UI
+        # from Wikimedia/iNaturalist throttling on shared server IPs.
+        key = hashlib.sha1(raw.encode('utf-8')).hexdigest()
+        cache_dir = os.path.join(data_dir(), 'cache', 'species_proxy')
+        body_path = os.path.join(cache_dir, f'{key}.bin')
+        ctype_path = os.path.join(cache_dir, f'{key}.ctype')
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except OSError:
+            pass
+
+        if os.path.isfile(body_path):
+            try:
+                with open(body_path, 'rb') as fh:
+                    body = fh.read()
+                ctype = 'image/jpeg'
+                if os.path.isfile(ctype_path):
+                    with open(ctype_path, 'r', encoding='utf-8') as fh:
+                        ctype = (fh.read().strip() or ctype)
+                return Response(body, status=200, mimetype=ctype, headers={'Cache-Control': 'public, max-age=86400'})
+            except OSError:
+                pass
+
+        last_err = None
+        for attempt in range(2):
+            try:
+                upstream = requests.get(
+                    raw,
+                    timeout=8,
+                    headers={
+                        'User-Agent': 'BirdLense-Hub/1.0',
+                        'Accept': 'image/*,*/*;q=0.8',
+                    },
+                    allow_redirects=True,
+                    stream=True,
+                )
+                if upstream.status_code >= 400:
+                    last_err = f'upstream status={upstream.status_code}'
+                    if attempt == 0:
+                        time.sleep(0.35)
+                        continue
+                    break
+                ctype = (upstream.headers.get('Content-Type') or '').lower()
+                if ctype and not ctype.startswith('image/'):
+                    last_err = 'upstream is not image content'
+                    break
+                body = upstream.content
+                try:
+                    with open(body_path, 'wb') as fh:
+                        fh.write(body)
+                    with open(ctype_path, 'w', encoding='utf-8') as fh:
+                        fh.write(ctype or 'image/jpeg')
+                except OSError:
+                    pass
+                headers = {'Cache-Control': 'public, max-age=86400'}
+                return Response(body, status=200, mimetype=ctype or 'image/jpeg', headers=headers)
+            except requests.RequestException as exc:
+                last_err = f'image proxy request failed: {exc}'
+                if attempt == 0:
+                    time.sleep(0.35)
+                    continue
+                break
+
+        app.logger.warning('Species image proxy failed for %s: %s', raw, last_err)
+        return {'error': last_err or 'image proxy failed'}, 502
+
+    @app.route('/api/ui/species/tuning-targets', methods=['GET'])
+    def get_tuning_targets():
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+        ids = _get_tuning_target_ids()
+        if not ids:
+            return {'ids': [], 'targets': []}, 200
+        species_rows = Species.query.filter(Species.id.in_(ids)).all()
+        by_id = {s.id: s for s in species_rows}
+
+        # observed status
+        observed_rows = (
+            db.session.query(SpeciesVisit.species_id, func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0))
+            .filter(SpeciesVisit.species_id.in_(ids))
+            .group_by(SpeciesVisit.species_id)
+            .all()
+        )
+        observed = {int(sid): int(cnt or 0) for sid, cnt in observed_rows if sid is not None}
+
+        # dataset status
+        dataset_folders = _dataset_class_folders()
+
+        targets = []
+        for sid in ids:
+            sp = by_id.get(sid)
+            if not sp:
+                continue
+            in_dataset = _sanitize_dirname(sp.name or '') in dataset_folders
+            targets.append({
+                'id': sid,
+                'name': sp.name,
+                'observed_count': observed.get(sid, 0),
+                'in_dataset': bool(in_dataset),
+                'in_full_catalog': True,
+            })
+        return {'ids': ids, 'targets': targets}, 200
+
+    @app.route('/api/ui/species/<int:species_id>/tuning-target', methods=['POST'])
+    def set_species_tuning_target(species_id: int):
+        if not contributor_or_admin_access():
+            return {'error': 'Password required'}, 403
+        sp = db.session.get(Species, species_id)
+        if not sp:
+            return {'error': 'Species not found'}, 404
+        payload = request.json or {}
+        enabled = bool(payload.get('enabled'))
+        ids = _get_tuning_target_ids()
+        id_set = set(ids)
+        if enabled:
+            id_set.add(species_id)
+        else:
+            id_set.discard(species_id)
+        _save_tuning_target_ids(sorted(id_set))
+        bust_response_caches()
+        return {
+            'ok': True,
+            'species_id': species_id,
+            'enabled': enabled,
+            'tuning_target_species_ids': sorted(id_set),
+        }, 200

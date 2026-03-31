@@ -4,7 +4,7 @@
 
 [English](./README.md)
 
-Этот каталог — **единый источник правды** для администраторов, интеграторов и контрибьюторов: запуск, устранение проблем, расширение проекта и **основа для сайта, вики или статей** (см. [OVERVIEW](./OVERVIEW.ru.md)).
+Этот каталог — **единый источник правды** для администраторов, интеграторов и контрибьюторов: запуск, устранение проблем, расширение проекта (см. [OVERVIEW](./OVERVIEW.ru.md)).
 
 ---
 
@@ -24,7 +24,7 @@
 |------|---------|---------|
 | **Краткое описание** (About на GitHub, анонсы) | [EN](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **О проекте** (лендинг, статьи) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
-| **Установка и деплой** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
+| **Установка и деплой** | [INSTALL](./INSTALL.md) · [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./INSTALL.ru.md) · [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md) |
 | **Сценарии** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Конфигурация** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Термины (Hub, Frigate, слияние…)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
@@ -93,6 +93,7 @@
 | Локально | `cd app && make local` → http://localhost:8085 |
 | Web-тесты | `cd app && make test-web` |
 | Telegram proxy autorotate | `make proxy-rotation-install` (статус: `make proxy-rotation-status`) |
+| Аудит карточек каталога (авто) | `make audit-cards` (прод: `BASE_URL=https://birdlense.eyera.info make audit-cards`) |
 | Полный индекс | Вы здесь ✓ |
 | Предпросмотр статического сайта | `pip install -r requirements-docs.txt && mkdocs serve` ([подробности](./Documentation.ru.md)) |
 

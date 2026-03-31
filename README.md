@@ -86,6 +86,8 @@ UI: http://localhost:8085
 
 **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
+**Server deploy (production):** [docs/DEPLOY_SERVER.md](./docs/DEPLOY_SERVER.md) | [RU](./docs/DEPLOY_SERVER.ru.md)
+
 On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
 
 ## Developers
@@ -115,6 +117,7 @@ From repo root:
 | Command | Description |
 |---------|-------------|
 | `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
+| `make audit-cards` | Automated species cards audit (photo/description/proxy reachability) |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |

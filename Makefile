@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove
+.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards
 
 deploy:
 	@./scripts/deploy.sh
@@ -37,3 +37,10 @@ proxy-rotation-status:
 # Удалить cron-авторотацию прокси на сервере
 proxy-rotation-remove:
 	@./scripts/manage-telegram-proxy-rotation.sh remove
+
+# Аудит карточек видов (фото/описание/доступность через proxy)
+# Примеры:
+#   make audit-cards
+#   BASE_URL=https://birdlense.eyera.info make audit-cards
+audit-cards:
+	@python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
