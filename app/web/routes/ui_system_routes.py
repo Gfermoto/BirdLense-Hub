@@ -1154,7 +1154,14 @@ def register_routes(app):
         global _regenerate_tracks_status
         _regenerate_tracks_status = {
             'status': 'running', 'result': None, 'error': None,
-            'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
+            'progress': {
+                'processed': 0,
+                'total': 0,
+                'generated': 0,
+                'failed': 0,
+                'skipped': 0,
+                'current_video': None,
+            },
         }
         try:
             with app.app_context():
@@ -1175,6 +1182,9 @@ def register_routes(app):
                     or 1
                 )
                 frame_step = max(1, min(frame_step, 10))
+                max_runtime_sec = int(
+                    app_config.get('processor.track_regen_video_timeout_sec') or 300
+                )
 
                 if force:
                     q = Video.query
@@ -1214,6 +1224,9 @@ def register_routes(app):
                 frame_processor, decision_maker = build_detection_pipeline(app_config)
 
                 for video in videos:
+                    _regenerate_tracks_status['progress']['current_video'] = (
+                        video.video_path or None
+                    )
                     if not video.video_path:
                         skipped += 1
                         _regenerate_tracks_status['progress'].update(
@@ -1237,6 +1250,7 @@ def register_routes(app):
                             frame_processor=frame_processor,
                             decision_maker=decision_maker,
                             frame_step=frame_step,
+                            max_runtime_sec=max_runtime_sec,
                         )
                         if not detections:
                             skipped += 1

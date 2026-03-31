@@ -4,6 +4,7 @@ Runs YOLO+ByteTrack on each frame and returns detections with frames.
 """
 import logging
 import os
+import time
 import cv2
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ def process_video_for_tracks(
     frame_processor=None,
     decision_maker=None,
     frame_step: int = 1,
+    max_runtime_sec: int | None = None,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
@@ -100,8 +102,13 @@ def process_video_for_tracks(
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     frame_count = 0
+    started = time.monotonic()
     try:
         while True:
+            if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
+                raise TimeoutError(
+                    f'Track regeneration timeout ({max_runtime_sec}s) for {video_path}'
+                )
             ret, frame = cap.read()
             if not ret:
                 break
