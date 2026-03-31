@@ -341,6 +341,22 @@ def _collect_live_system_metrics(app):
 
 
 def register_routes(app):
+    def _parse_video_ids(payload) -> list[int]:
+        raw = (payload or {}).get('video_ids')
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError('video_ids must be an array of integers')
+        out: list[int] = []
+        for x in raw:
+            try:
+                v = int(x)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                out.append(v)
+        return sorted(set(out))
+
     def _flatten_keys(d: dict, prefix: str = '') -> set[str]:
         out = set()
         if not isinstance(d, dict):
@@ -1147,6 +1163,7 @@ def register_routes(app):
         start_date: str | None,
         end_date: str | None,
         frame_step_override: int | None = None,
+        video_ids: list[int] | None = None,
     ):
         """Background: run YOLO+ByteTrack on old videos, replace VideoSpecies with tracks.
         start_date, end_date: YYYY-MM-DD — период. None = все.
@@ -1175,16 +1192,30 @@ def register_routes(app):
                 from services.visit_processor import VisitProcessor
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
-                lores_size = (640, 640)
+                lores_px = int(app_config.get('processor.track_regen_lores_px') or 640)
+                lores_px = max(320, min(lores_px, 960))
+                lores_size = (lores_px, lores_px)
                 frame_step = int(
                     frame_step_override
                     or app_config.get('processor.track_regen_frame_step')
                     or 1
                 )
-                frame_step = max(1, min(frame_step, 10))
+                frame_step = max(1, min(frame_step, 30))
+                regen_strategy = (
+                    app_config.get('processor.track_regen_detection_strategy')
+                    or app_config.get('processor.detection_strategy')
+                    or 'single_stage'
+                )
                 max_runtime_sec = int(
                     app_config.get('processor.track_regen_video_timeout_sec') or 300
                 )
+                regen_params = {
+                    'frame_step': frame_step,
+                    'lores_px': lores_px,
+                    'detection_strategy': str(regen_strategy).strip(),
+                    'max_runtime_sec': max_runtime_sec,
+                }
+                _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 if force:
                     q = Video.query
@@ -1210,6 +1241,9 @@ def register_routes(app):
                         app.logger.warning('Invalid end_date %s, ignoring', end_date)
 
                 videos = q.order_by(Video.start_time.asc()).all()
+                target_video_ids = sorted(set(video_ids or []))
+                if target_video_ids:
+                    videos = [v for v in videos if v.id in target_video_ids]
                 total = len(videos)
                 _regenerate_tracks_status['progress']['total'] = total
 
@@ -1217,11 +1251,15 @@ def register_routes(app):
                 failed = 0
                 skipped = 0
                 frames_updated = 0  # videos with manually_corrected: only frames updated
+                precise_candidates: list[dict] = []
 
                 visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
                 # Reuse YOLO+tracker pipeline across all videos in the batch.
-                frame_processor, decision_maker = build_detection_pipeline(app_config)
+                frame_processor, decision_maker = build_detection_pipeline(
+                    app_config,
+                    strategy_override=regen_strategy,
+                )
 
                 for video in videos:
                     _regenerate_tracks_status['progress']['current_video'] = (
@@ -1229,6 +1267,11 @@ def register_routes(app):
                     )
                     if not video.video_path:
                         skipped += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': None,
+                            'reason': 'missing_video_path',
+                        })
                         _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
@@ -1237,6 +1280,11 @@ def register_routes(app):
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': video.video_path,
+                            'reason': 'video_file_missing',
+                        })
                         _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
@@ -1254,6 +1302,11 @@ def register_routes(app):
                         )
                         if not detections:
                             skipped += 1
+                            precise_candidates.append({
+                                'video_id': video.id,
+                                'video_path': video.video_path,
+                                'reason': 'no_detections_fast_run',
+                            })
                             _regenerate_tracks_status['progress'].update(
                                 processed=generated + failed + skipped,
                                 generated=generated, failed=failed, skipped=skipped,
@@ -1292,6 +1345,11 @@ def register_routes(app):
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
                             frames_updated += 1
+                            precise_candidates.append({
+                                'video_id': video.id,
+                                'video_path': video.video_path,
+                                'reason': 'has_manual_corrections',
+                            })
                         else:
                             VideoSpecies.query.filter_by(video_id=video.id).delete()
                             visit_processor.process_detections(video, detections)
@@ -1301,6 +1359,11 @@ def register_routes(app):
                         db.session.rollback()
                         app.logger.exception(f'Track regen failed {video.video_path}: {e}')
                         failed += 1
+                        precise_candidates.append({
+                            'video_id': video.id,
+                            'video_path': video.video_path,
+                            'reason': 'processing_failed',
+                        })
 
                     _regenerate_tracks_status['progress'].update(
                         processed=generated + failed + skipped,
@@ -1310,9 +1373,20 @@ def register_routes(app):
                 app.logger.info(
                     f'Tracks: generated={generated}, frames_updated={frames_updated}, failed={failed}, skipped={skipped}'
                 )
-                result = {'generated': generated, 'failed': failed, 'skipped': skipped}
+                result = {
+                    'generated': generated,
+                    'failed': failed,
+                    'skipped': skipped,
+                    'regen_params': regen_params,
+                }
                 if frames_updated:
                     result['frames_updated'] = frames_updated
+                if precise_candidates:
+                    dedup = {}
+                    for item in precise_candidates:
+                        dedup[(item['video_id'], item['reason'])] = item
+                    result['precise_rerun_candidates'] = list(dedup.values())[:500]
+                    result['precise_rerun_candidate_count'] = len(dedup)
                 _regenerate_tracks_status = {
                     'status': 'done',
                     'result': result,
@@ -1341,12 +1415,16 @@ def register_routes(app):
         end_date = data.get('end_date')  # YYYY-MM-DD or None
         frame_step = data.get('frame_step')
         try:
+            video_ids = _parse_video_ids(data)
+        except ValueError as e:
+            return {'error': str(e)}, 400
+        try:
             frame_step = int(frame_step) if frame_step is not None else None
         except Exception:
             frame_step = None
         t = threading.Thread(
             target=_run_regenerate_tracks,
-            args=(force, start_date, end_date, frame_step),
+            args=(force, start_date, end_date, frame_step, video_ids),
             daemon=True,
         )
         t.start()

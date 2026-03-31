@@ -10,7 +10,7 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
-def build_detection_pipeline(app_config):
+def build_detection_pipeline(app_config, strategy_override: str | None = None):
     """Build detection_strategy, frame_processor, decision_maker from config."""
     from detection_strategy import SingleStageStrategy, TwoStageStrategy
     from frame_processor import FrameProcessor
@@ -20,7 +20,10 @@ def build_detection_pipeline(app_config):
     )
 
     processor_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    strategy_type = app_config.get('processor.detection_strategy', 'single_stage')
+    strategy_type = (strategy_override or app_config.get(
+        'processor.detection_strategy',
+        'single_stage',
+    )).strip()
     binary_path = app_config.get('processor.models.binary', 'models/detection/weights/best.pt')
     classifier_path = app_config.get('processor.models.classifier', 'models/classification/weights/best.pt')
     if not os.path.isabs(binary_path):
@@ -109,16 +112,22 @@ def process_video_for_tracks(
                 raise TimeoutError(
                     f'Track regeneration timeout ({max_runtime_sec}s) for {video_path}'
                 )
-            ret, frame = cap.read()
-            if not ret:
-                break
+            # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
+            # без полного декодирования (иначе frame_step почти не ускоряет батч).
             if frame_count % frame_step == 0:
+                ret, frame = cap.read()
+                if not ret:
+                    break
                 frame_time_sec = frame_count / fps
                 frame_resized = cv2.resize(frame, lores_size)
                 has_detections = frame_processor.run(
                     frame_resized, frame_time=frame_time_sec
                 )
                 decision_maker.update_has_detections(has_detections)
+            else:
+                ret = cap.grab()
+                if not ret:
+                    break
             frame_count += 1
     finally:
         cap.release()
