@@ -144,7 +144,7 @@ export const fetchVideoDetectionFrames = async (id: string) => {
   const response = await axios.get(`${BASE_API_URL}/videos/${id}/detection-frames`);
   return response.data as {
     tracks: Array<{
-      id: number;
+      id: number | null;
       species_id: number;
       start_time: number;
       end_time: number;

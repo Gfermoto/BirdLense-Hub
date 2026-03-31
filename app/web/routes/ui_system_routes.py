@@ -537,9 +537,13 @@ def register_routes(app):
         detection_map = app_config.get('detection.species_mapping') or {}
         ebird_map = app_config.get('ebird.species_mapping') or {}
         combined_map = {**detection_map, **ebird_map}
+        gray_pairs = {
+            'Gray-headed Woodpecker': combined_map.get('Gray-headed Woodpecker'),
+            'Great Gray Shrike': combined_map.get('Great Gray Shrike'),
+        }
         gray_to_grey_ok = (
-            combined_map.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
-            and combined_map.get('Great Gray Shrike') == 'Great Grey Shrike'
+            gray_pairs.get('Gray-headed Woodpecker') == 'Grey-headed Woodpecker'
+            and gray_pairs.get('Great Gray Shrike') == 'Great Grey Shrike'
         )
         return {
             'deprecated_keys_present': deprecated_present,
