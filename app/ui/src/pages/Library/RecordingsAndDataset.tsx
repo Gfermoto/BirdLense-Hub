@@ -743,6 +743,7 @@ export const RecordingsAndDataset = () => {
               <Box>
                 <Button
                   variant="outlined"
+                  color="error"
                   disabled={regenerateMutation.isPending}
                   onClick={() =>
                     regenerateMutation.mutate({
@@ -806,6 +807,7 @@ export const RecordingsAndDataset = () => {
                 </Stack>
                 <Button
                   variant="outlined"
+                  color="error"
                   disabled={regenerateTracksMutation.isPending}
                   onClick={() =>
                     regenerateTracksMutation.mutate({
@@ -903,6 +905,7 @@ export const RecordingsAndDataset = () => {
                     </Stack>
                     <Button
                       variant="text"
+                      color="error"
                       disabled={
                         regenerateTracksMutation.isPending ||
                         filteredPreciseCandidates.length === 0
@@ -1037,10 +1040,16 @@ export const RecordingsAndDataset = () => {
                     checked={retroRebuild}
                     onChange={(e) => setRetroRebuild(e.target.checked)}
                     size="small"
+                    color="error"
                   />
                 }
                 label={t('storage.retroExportRebuild')}
-                sx={{ alignSelf: 'flex-start' }}
+                sx={{
+                  alignSelf: 'flex-start',
+                  '& .MuiFormControlLabel-label': retroRebuild
+                    ? { color: 'error.main', fontWeight: 600 }
+                    : undefined,
+                }}
               />
               <Tooltip
                 title={
@@ -1052,6 +1061,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color={retroRebuild ? 'error' : 'primary'}
                     disabled={retroExporting}
                     onClick={async () => {
                       if (
@@ -1103,6 +1113,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color="error"
                     disabled={cleanDatasetLoading}
                     onClick={async () => {
                       if (!window.confirm(t('storage.cleanDatasetConfirm'))) return;
@@ -1152,6 +1163,7 @@ export const RecordingsAndDataset = () => {
                 <span>
                   <Button
                     variant="outlined"
+                    color="error"
                     disabled={cleanOrphanedMutation.isPending}
                     onClick={() => {
                       if (window.confirm(t('storage.cleanOrphanedVisitsConfirm'))) {
@@ -1173,6 +1185,7 @@ export const RecordingsAndDataset = () => {
               )}
               <Button
                 variant="outlined"
+                color="error"
                 disabled={mergeSpeciesMutation.isPending}
                 onClick={() => {
                   if (window.confirm(t('storage.mergeSpeciesConfirm'))) {
