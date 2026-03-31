@@ -15,7 +15,12 @@ from sqlalchemy import func
 from models import Species, VideoSpecies
 from services.species_catalog_allowlist_service import load_catalog_allowlist_names
 from services.dataset_export_service import _sanitize_dirname
-from util import data_dir, load_species_canonical_mapping, normalize_species_to_canonical
+from util import (
+    GENERIC_BIRD_SPECIES,
+    data_dir,
+    load_species_canonical_mapping,
+    normalize_species_to_canonical,
+)
 
 
 def _norm_key(name: str) -> str:
@@ -177,6 +182,11 @@ def build_classifier_dataset_alignment_report(
 
     norm_pairs = _normalized_classifier_labels(raw_labels)
     label_norms = {nk for _raw, nk in norm_pairs}
+    # Allowlist is the catalog source of truth; include it in matching keys
+    # so service class additions like Rodent do not show as false drift.
+    allow_names = load_catalog_allowlist_names(app_config_get) or ()
+    for aname in allow_names:
+        label_norms.update(_species_name_match_keys(aname, mapping))
 
     # species_id -> match keys
     species_rows = session.query(Species.id, Species.name).order_by(Species.id.asc()).all()
@@ -202,7 +212,10 @@ def build_classifier_dataset_alignment_report(
 
     active_ids = _species_ids_with_video_detections(session)
     cat_unmatched_full: list[dict[str, Any]] = []
+    service_species = {GENERIC_BIRD_SPECIES.strip().lower(), 'unknown'}
     for sid, name in species_rows:
+        if (name or '').strip().lower() in service_species:
+            continue
         if sid not in active_ids:
             continue
         if species_matches_classifier(sid):
