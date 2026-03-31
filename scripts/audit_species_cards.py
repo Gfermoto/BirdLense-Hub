@@ -112,7 +112,12 @@ def main() -> int:
     p.add_argument(
         '--ignore-direct-image-429',
         action='store_true',
-        help='Exit 0 if remaining issues would only be direct image checks with HTTP 429 (rate limit).',
+        help='Do not count direct image fetch HTTP 429 (e.g. Wikimedia rate limit in CI).',
+    )
+    p.add_argument(
+        '--ignore-empty-description',
+        action='store_true',
+        help='Do not fail on empty species description (common in minimal CI DB without metadata fetch).',
     )
     args = p.parse_args()
 
@@ -145,9 +150,11 @@ def main() -> int:
             os.makedirs(out_dir, exist_ok=True)
         with open(args.report_path, 'w', encoding='utf-8') as f:
             f.write(payload + '\n')
-    fail_issues = issues
+    fail_issues = list(issues)
     if args.ignore_direct_image_429:
-        fail_issues = [i for i in issues if not _is_direct_image_429(i)]
+        fail_issues = [i for i in fail_issues if not _is_direct_image_429(i)]
+    if args.ignore_empty_description:
+        fail_issues = [i for i in fail_issues if i.issue != 'empty_description']
     return 1 if fail_issues else 0
 
 
