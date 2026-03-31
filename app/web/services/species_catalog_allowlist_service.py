@@ -101,3 +101,23 @@ def ingest_name_matches_allowlist(
     if not allow_keys:
         return True
     return species_matches_allowlist(raw_or_canonical, allow_keys, mapping)
+
+
+@lru_cache(maxsize=4)
+def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
+    """Raw display names from allowlist file (preserved case, stripped)."""
+    names: list[str] = []
+    with open(abspath, 'r', encoding='utf-8') as f:
+        for raw in f:
+            line = raw.split('#', 1)[0].strip()
+            if line:
+                names.append(line)
+    return tuple(names)
+
+
+def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
+    """Список имён классов из allowlist-файла или None, если не задан."""
+    path = resolve_allowlist_path(app_config_get)
+    if not path or not os.path.isfile(path):
+        return None
+    return _load_allowlist_names_cached(os.path.abspath(path))

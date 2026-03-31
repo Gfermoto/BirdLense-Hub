@@ -672,21 +672,6 @@ export const fetchBirdDirectory = async (): Promise<Species[]> => {
 
 export interface SpeciesDataQualityReport {
   species_total: number;
-  blocklist_entries: number;
-  blocklist_file: string;
-  suspect_count: number;
-  suspects: Array<{
-    id: number;
-    name: string;
-    parent_id: number | null;
-    taxon_id: number | null;
-    taxon_common_name: string | null;
-    metadata_source: string | null;
-    metadata_source_url: string | null;
-    metadata_status: string | null;
-    visit_weight: number;
-    reasons: string[];
-  }>;
   duplicate_name_group_count: number;
   duplicate_name_groups: Array<{
     normalized_name: string;

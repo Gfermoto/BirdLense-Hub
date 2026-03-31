@@ -1,4 +1,4 @@
-"""Фильтрация мусора и allowlist при создании Species."""
+"""Фильтрация allowlist при создании Species (blocklist удалён, используется strict allowlist)."""
 
 import pytest
 
@@ -16,20 +16,17 @@ def _restore_config():
     app_config.set('species.catalog_allowlist_file', old_file)
 
 
-def test_blocklisted_ingest_goes_to_unknown(app, monkeypatch):
+def test_no_strict_allows_any_name(app, monkeypatch):
+    """Без strict mode любое имя создаётся в каталоге (мусор обрабатывается allowlist)."""
     with app.app_context():
         app_config.set('species.catalog_strict_ingest', False)
         if not Species.query.filter_by(name='Birds').first():
             db.session.add(Species(name='Birds'))
             db.session.commit()
-        if not Species.query.filter_by(name='Unknown').first():
-            db.session.add(Species(name='Unknown', parent_id=Species.query.filter_by(name='Birds').first().id))
-            db.session.commit()
-
         vp = VisitProcessor(db, app.logger)
-        sp = vp._get_or_create_species('toilet')
+        sp = vp._get_or_create_species('SomeUnknownBirdXYZ')
         assert sp is not None
-        assert sp.name == 'Unknown'
+        assert sp.name != 'Unknown'
 
 
 def test_strict_allowlist_blocks_unknown_class(app, monkeypatch):

@@ -700,6 +700,7 @@ def register_routes(app):
             end_date=end_date,
             catalog=catalog,
             evidence=evidence,
+            app_config_get=app_config.get,
         )
         cache_set(mck, data, _CACHE_MIGRATION_SEC)
         return data, 200
