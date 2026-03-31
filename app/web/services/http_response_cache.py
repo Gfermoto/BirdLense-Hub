@@ -9,6 +9,7 @@ _RESPONSE_CACHE_PREFIXES = (
     'detection_frames:',
     'species_list:',
     'species_observed:',
+    'species_track_regen:',
     'migration_cal:',
     'component_status:',
     'bird_families:',

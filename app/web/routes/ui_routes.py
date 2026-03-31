@@ -67,6 +67,7 @@ UNKNOWNS_LIMIT_MAX = 500
 _CACHE_STATUS_SEC = 5
 _CACHE_SPECIES_LIST_SEC = 45
 _CACHE_SPECIES_OBSERVED_SEC = 45
+_CACHE_SPECIES_TRACK_REGEN_SEC = 45
 _CACHE_BIRD_FAMILIES_SEC = 300
 _CACHE_MIGRATION_SEC = 120
 _CACHE_TIMELINE_SEC = 20
@@ -1444,6 +1445,34 @@ def register_routes(app):
         ).order_by(Species.name.asc()).all()
         out = [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
         cache_set('species_observed:v1', out, _CACHE_SPECIES_OBSERVED_SEC)
+        return out
+
+    @app.route('/api/ui/species/track-regen-options', methods=['GET'])
+    def get_species_track_regen_options():
+        """Species that have VideoSpecies rows (tracks on at least one video).
+
+        Differs from /species/observed (SpeciesVisit): rare or legacy rows can
+        exist on videos without visit aggregates, and the regen queue joins VideoSpecies.
+        """
+        hit, oc = cache_get('species_track_regen:v1')
+        if hit:
+            return oc
+        subq = (
+            db.session.query(
+                VideoSpecies.species_id,
+                func.count(distinct(VideoSpecies.video_id)).label('video_count'),
+            )
+            .group_by(VideoSpecies.species_id)
+            .subquery()
+        )
+        rows = (
+            db.session.query(Species, subq.c.video_count)
+            .join(subq, Species.id == subq.c.species_id)
+            .order_by(Species.name.asc())
+            .all()
+        )
+        out = [{'id': s.id, 'name': s.name, 'count': int(vc)} for s, vc in rows]
+        cache_set('species_track_regen:v1', out, _CACHE_SPECIES_TRACK_REGEN_SEC)
         return out
 
     @app.route('/api/ui/bird_families', methods=['GET'])
