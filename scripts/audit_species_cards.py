@@ -119,6 +119,11 @@ def main() -> int:
         action='store_true',
         help='Do not fail on empty species description (common in minimal CI DB without metadata fetch).',
     )
+    p.add_argument(
+        '--ignore-empty-image-url',
+        action='store_true',
+        help='Do not fail when summary has no image_url (minimal CI seed / cards not enriched).',
+    )
     args = p.parse_args()
 
     base = args.base_url.rstrip('/')
@@ -155,6 +160,8 @@ def main() -> int:
         fail_issues = [i for i in fail_issues if not _is_direct_image_429(i)]
     if args.ignore_empty_description:
         fail_issues = [i for i in fail_issues if i.issue != 'empty_description']
+    if args.ignore_empty_image_url:
+        fail_issues = [i for i in fail_issues if i.issue != 'empty_image_url']
     return 1 if fail_issues else 0
 
 

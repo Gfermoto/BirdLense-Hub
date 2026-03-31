@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на пустом описании в минимальной БД CI.
+- **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description`, `--ignore-empty-image-url` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на незаполненных карточках минимальной БД CI.
 
 ## [0.2.10] - 2026-03-31
 
