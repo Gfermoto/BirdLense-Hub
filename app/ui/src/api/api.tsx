@@ -723,6 +723,8 @@ export interface CatalogCoverageMetrics {
   dataset_vs_full_eu_percent: number;
   observed_in_dataset_count: number;
   observed_in_dataset_percent: number;
+  tuning_candidate_count: number;
+  tuning_candidates: Array<{ id: number; name: string }>;
 }
 
 export const fetchClassifierDatasetAlignment =

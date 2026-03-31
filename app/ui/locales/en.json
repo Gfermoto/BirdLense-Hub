@@ -767,6 +767,8 @@
     "catalogObservedCount": "Observed: {{n}}",
     "catalogDatasetCount": "In dataset: {{n}}",
     "catalogFullEuCount": "Full EU: {{n}}",
+    "catalogTuningCandidates": "Tuning candidates: {{n}}",
+    "catalogTuningHint": "Candidates for fine-tuning (observed manually, not yet in dataset):",
     "speciesDataQualityBlocklist": "Hidden-label rules: {{n}}",
     "speciesDataQualitySuspectTable": "Suspect catalog entries (sample)",
     "speciesDataQualityDupesTable": "Same normalized name (merge candidates)",

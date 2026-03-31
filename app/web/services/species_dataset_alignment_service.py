@@ -297,6 +297,9 @@ def build_catalog_coverage_metrics(session, app_config_get) -> dict[str, Any]:
     def _pct(a: int, b: int) -> float:
         return round((a / b) * 100.0, 2) if b else 0.0
 
+    observed_not_in_dataset = sorted(observed_ids - dataset_species_ids)
+    id_to_name = {int(sid): (name or '') for sid, name in species_rows}
+
     return {
         'observed_species_count': len(observed_ids),
         'dataset_species_count': len(dataset_species_ids),
@@ -307,4 +310,10 @@ def build_catalog_coverage_metrics(session, app_config_get) -> dict[str, Any]:
         'dataset_vs_full_eu_percent': _pct(len(dataset_in_full_eu), full_eu_count),
         'observed_in_dataset_count': len(observed_ids & dataset_species_ids),
         'observed_in_dataset_percent': _pct(len(observed_ids & dataset_species_ids), len(observed_ids)),
+        # Candidates for future fine-tuning: observed manually, absent in dataset.
+        'tuning_candidate_count': len(observed_not_in_dataset),
+        'tuning_candidates': [
+            {'id': sid, 'name': id_to_name.get(sid, '')}
+            for sid in observed_not_in_dataset
+        ],
     }
