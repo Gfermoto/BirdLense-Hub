@@ -342,6 +342,8 @@
     "ebirdRegionalTopConfidenceFloorHint": "Auto threshold is never below this value (0.0–1.0).",
     "unknownConfidenceThreshold": "Unknowns threshold",
     "unknownConfidenceThresholdHelp": "Detections below go to «Unknowns» for manual review",
+    "showTrackRegenControls": "Show track regeneration in Library",
+    "showTrackRegenControlsHelp": "Heavy operation that re-runs detection on video. Off by default to avoid accidental overwrites.",
     "spectrogramDetail": "Spectrogram detail",
     "spectrogramDetailHelp": "Pixels per second (when BirdNET event arrives)",
     "saveDatasetCrops": "Save dataset for fine-tuning",
@@ -460,6 +462,10 @@
     "purgeFailed": "Failed to purge videos",
     "regenerateSpectrograms": "Regenerate spectrograms",
     "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them (optional, for audio/visualization)",
+<<<<<<< HEAD
+    "trackRegenDisabledHint": "Track regeneration is hidden. Turn on «Show track regeneration in Library» in Settings → Processor.",
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "regenerating": "Generating...",
     "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
     "regenerateTracks": "Regenerate tracks",
@@ -544,7 +550,8 @@
     "dbBackupFailed": "Failed to download DB backup",
     "dbRestoreAction": "Restore from file",
     "dbRestoring": "Restoring...",
-    "dbRestoreConfirm": "Restore database from selected file? Current DB will be replaced (a pre-restore backup will be saved on server).",
+    "dbRestoreConfirm": "Replace the current database with \"{{name}}\"? A pre-restore backup will be saved on the server first.",
+    "dbRestoreTitle": "Restore database",
     "dbRestoreDone": "Database restored",
     "dbRestoreFailed": "Failed to restore database"
   },
@@ -726,7 +733,8 @@
     "end": "End",
     "duration": "Duration",
     "processor": "Processor",
-    "birdFood": "Bird Food"
+    "birdFood": "Bird Food",
+    "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip."
   },
   "weather": {
     "title": "Weather",
@@ -800,6 +808,28 @@
     "catalogRepairWithDescription": "With description: {{n}}",
     "catalogRepairNextRun": "Next auto-run: ~{{n}} min",
     "catalogRepairLastRun": "Last run: checked {{checked}}, metadata updated {{fixed}}, images replaced {{swapped}}, incomplete left {{missing}}.",
+<<<<<<< HEAD
+    "dbMaintenanceTitle": "Database maintenance",
+    "dbMaintenanceSubtitle": "Safe tools for keeping database consistent. Use Preview first — it shows what will change without modifying anything.",
+    "dbScanRecordingsTitle": "Scan & import recordings",
+    "dbScanRecordingsDesc": "Find video files on disk not yet in DB and register them (non-destructive).",
+    "dbScanAction": "Scan",
+    "dbScanImported": "+{{n}} imported",
+    "dbCleanOrphanedTitle": "Clean orphaned visits",
+    "dbCleanOrphanedDesc": "Remove SpeciesVisit records that have no linked detections.",
+    "dbCleanOrphanedConfirmDesc": "This will permanently delete {{orphaned}} orphaned visit records. Continue?",
+    "dbCleanNothingToClean": "No orphaned visits found — database is clean.",
+    "dbCleanPreviewResult": "Found {{orphaned}} orphaned visits to remove.",
+    "dbRealignTitle": "Realign visit times",
+    "dbRealignDesc": "Correct SpeciesVisit start/end timestamps to match actual detection wall-clock times.",
+    "dbRealignConfirmDesc": "This will update {{updated}} visit time ranges. Continue?",
+    "dbRealignNothingToFix": "All visit times are already aligned.",
+    "dbRealignPreviewResult": "{{updated}} visits need time correction.",
+    "dbPreviewAction": "Preview",
+    "dbApplyAction": "Apply",
+    "dbMaintenanceDone": "Database maintenance complete.",
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "speciesDataQualityBlocklist": "Hidden-label rules: {{n}}",
     "speciesDataQualitySuspectTable": "Suspect catalog entries (sample)",
     "speciesDataQualityDupesTable": "Same normalized name (merge candidates)",

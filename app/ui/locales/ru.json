@@ -342,6 +342,8 @@
     "ebirdRegionalTopConfidenceFloorHint": "Авто-порог не ниже этого значения (0.0–1.0).",
     "unknownConfidenceThreshold": "Порог «Неизвестные»",
     "unknownConfidenceThresholdHelp": "Детекции ниже — в «Неизвестные» для ручной проверки",
+    "showTrackRegenControls": "Показать перегенерацию треков в библиотеке",
+    "showTrackRegenControlsHelp": "Тяжёлая операция: заново проходит видео и перезаписывает детекции. По умолчанию выключено, чтобы не запускать случайно.",
     "spectrogramDetail": "Детализация спектрограммы",
     "spectrogramDetailHelp": "Пикселей на секунду (когда приходит событие BirdNET)",
     "saveDatasetCrops": "Сохранять датасет для дообучения",
@@ -460,6 +462,10 @@
     "purgeFailed": "Ошибка удаления",
     "regenerateSpectrograms": "Перегенерировать спектрограммы",
     "regenerateSpectrogramsHint": "Создать спектрограммы для старых видео без них (опционально, для аудио/визуализации)",
+<<<<<<< HEAD
+    "trackRegenDisabledHint": "Перегенерация треков скрыта. Включите «Показать перегенерацию треков в библиотеке» в Настройках → Процессор.",
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "regenerating": "Генерация...",
     "regenerateSuccess": "Создано {{generated}} спектрограмм, ошибок {{failed}}, пропущено {{skipped}}",
     "regenerateTracks": "Перегенерировать треки",
@@ -544,7 +550,8 @@
     "dbBackupFailed": "Не удалось скачать бэкап БД",
     "dbRestoreAction": "Восстановить из файла",
     "dbRestoring": "Восстановление...",
-    "dbRestoreConfirm": "Восстановить БД из выбранного файла? Текущая БД будет заменена (pre-restore backup сохранится на сервере).",
+    "dbRestoreConfirm": "Заменить текущую БД файлом «{{name}}»? Перед восстановлением на сервере будет сохранена резервная копия.",
+    "dbRestoreTitle": "Восстановление базы данных",
     "dbRestoreDone": "БД восстановлена",
     "dbRestoreFailed": "Не удалось восстановить БД"
   },
@@ -726,7 +733,8 @@
     "end": "Конец",
     "duration": "Длительность",
     "processor": "Процессор",
-    "birdFood": "Корм для птиц"
+    "birdFood": "Корм для птиц",
+    "visitSpeciesMismatch": "Часть детекций привязана к визиту другого вида — часто после ручных правок БД или перегенерации треков. Подписи на странице — то, что сохранено именно для этого ролика."
   },
   "weather": {
     "title": "Погода",
@@ -802,6 +810,28 @@
     "catalogRepairWithDescription": "С описанием: {{n}}",
     "catalogRepairNextRun": "Следующий автопрогон: ~{{n}} мин",
     "catalogRepairLastRun": "Последний прогон: проверено {{checked}}, обновлено метаданных {{fixed}}, заменено фото {{swapped}}, осталось неполных {{missing}}.",
+<<<<<<< HEAD
+    "dbMaintenanceTitle": "Обслуживание базы данных",
+    "dbMaintenanceSubtitle": "Безопасные инструменты для поддержания консистентности БД. Сначала нажмите «Предпросмотр» — изменения будут показаны без применения.",
+    "dbScanRecordingsTitle": "Сканировать и импортировать записи",
+    "dbScanRecordingsDesc": "Найти видеофайлы на диске, отсутствующие в БД, и зарегистрировать их (безопасно, без удаления).",
+    "dbScanAction": "Сканировать",
+    "dbScanImported": "+{{n}} импортировано",
+    "dbCleanOrphanedTitle": "Очистить осиротевшие визиты",
+    "dbCleanOrphanedDesc": "Удалить записи SpeciesVisit без связанных детекций.",
+    "dbCleanOrphanedConfirmDesc": "Будет удалено {{orphaned}} осиротевших записей визитов. Продолжить?",
+    "dbCleanNothingToClean": "Осиротевших визитов нет — база в порядке.",
+    "dbCleanPreviewResult": "Найдено {{orphaned}} осиротевших визитов для удаления.",
+    "dbRealignTitle": "Выровнять времена визитов",
+    "dbRealignDesc": "Исправить start_time/end_time в SpeciesVisit по фактическим временам детекций на видео.",
+    "dbRealignConfirmDesc": "Будут обновлены временные рамки {{updated}} визитов. Продолжить?",
+    "dbRealignNothingToFix": "Все времена визитов уже выровнены.",
+    "dbRealignPreviewResult": "{{updated}} визитов требуют исправления времён.",
+    "dbPreviewAction": "Предпросмотр",
+    "dbApplyAction": "Применить",
+    "dbMaintenanceDone": "Обслуживание БД завершено.",
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "speciesDataQualityBlocklist": "Правил скрытия подписей: {{n}}",
     "speciesDataQualitySuspectTable": "Подозрительные записи (фрагмент)",
     "speciesDataQualityDupesTable": "Одинаковое нормализованное имя (кандидаты на merge)",
