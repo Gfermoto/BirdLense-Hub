@@ -5,9 +5,14 @@ import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
+<<<<<<< HEAD
+import { DatabaseMaintenanceCard } from './DatabaseMaintenanceCard';
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
 import { ProcessorLogs } from './ProcessorLogs';
 import { StorageOverview } from './StorageOverview';
-import { Box, Divider } from '@mui/material';
+import Box from '@mui/material/Box';
+import Divider from '@mui/material/Divider';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 
 export const System: React.FC = () => {
@@ -47,6 +52,15 @@ export const System: React.FC = () => {
         <Divider sx={{ my: 3 }} />
 
         <Box>
+<<<<<<< HEAD
+          <DatabaseMaintenanceCard />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box>
+=======
+>>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
           <StorageOverview />
         </Box>
 
