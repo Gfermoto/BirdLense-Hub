@@ -462,10 +462,7 @@
     "purgeFailed": "Failed to purge videos",
     "regenerateSpectrograms": "Regenerate spectrograms",
     "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them (optional, for audio/visualization)",
-<<<<<<< HEAD
     "trackRegenDisabledHint": "Track regeneration is hidden. Turn on «Show track regeneration in Library» in Settings → Processor.",
-=======
->>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "regenerating": "Generating...",
     "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
     "regenerateTracks": "Regenerate tracks",
@@ -808,7 +805,6 @@
     "catalogRepairWithDescription": "With description: {{n}}",
     "catalogRepairNextRun": "Next auto-run: ~{{n}} min",
     "catalogRepairLastRun": "Last run: checked {{checked}}, metadata updated {{fixed}}, images replaced {{swapped}}, incomplete left {{missing}}.",
-<<<<<<< HEAD
     "dbMaintenanceTitle": "Database maintenance",
     "dbMaintenanceSubtitle": "Safe tools for keeping database consistent. Use Preview first — it shows what will change without modifying anything.",
     "dbScanRecordingsTitle": "Scan & import recordings",
@@ -828,8 +824,6 @@
     "dbPreviewAction": "Preview",
     "dbApplyAction": "Apply",
     "dbMaintenanceDone": "Database maintenance complete.",
-=======
->>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "speciesDataQualityBlocklist": "Hidden-label rules: {{n}}",
     "speciesDataQualitySuspectTable": "Suspect catalog entries (sample)",
     "speciesDataQualityDupesTable": "Same normalized name (merge candidates)",

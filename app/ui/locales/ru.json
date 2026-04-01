@@ -462,10 +462,7 @@
     "purgeFailed": "Ошибка удаления",
     "regenerateSpectrograms": "Перегенерировать спектрограммы",
     "regenerateSpectrogramsHint": "Создать спектрограммы для старых видео без них (опционально, для аудио/визуализации)",
-<<<<<<< HEAD
     "trackRegenDisabledHint": "Перегенерация треков скрыта. Включите «Показать перегенерацию треков в библиотеке» в Настройках → Процессор.",
-=======
->>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "regenerating": "Генерация...",
     "regenerateSuccess": "Создано {{generated}} спектрограмм, ошибок {{failed}}, пропущено {{skipped}}",
     "regenerateTracks": "Перегенерировать треки",
@@ -810,7 +807,6 @@
     "catalogRepairWithDescription": "С описанием: {{n}}",
     "catalogRepairNextRun": "Следующий автопрогон: ~{{n}} мин",
     "catalogRepairLastRun": "Последний прогон: проверено {{checked}}, обновлено метаданных {{fixed}}, заменено фото {{swapped}}, осталось неполных {{missing}}.",
-<<<<<<< HEAD
     "dbMaintenanceTitle": "Обслуживание базы данных",
     "dbMaintenanceSubtitle": "Безопасные инструменты для поддержания консистентности БД. Сначала нажмите «Предпросмотр» — изменения будут показаны без применения.",
     "dbScanRecordingsTitle": "Сканировать и импортировать записи",
@@ -830,8 +826,6 @@
     "dbPreviewAction": "Предпросмотр",
     "dbApplyAction": "Применить",
     "dbMaintenanceDone": "Обслуживание БД завершено.",
-=======
->>>>>>> 33e94c3bb0988b2cc797724d9cdef283f7d5b816
     "speciesDataQualityBlocklist": "Правил скрытия подписей: {{n}}",
     "speciesDataQualitySuspectTable": "Подозрительные записи (фрагмент)",
     "speciesDataQualityDupesTable": "Одинаковое нормализованное имя (кандидаты на merge)",
