@@ -8,18 +8,13 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispenseFeed, fetchFeedInfo } from '../api/api';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
+import { formatLocalDateTime } from '../util';
 
 function formatLastDispense(iso: string | null): string | null {
   if (!iso) return null;
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const formatted = formatLocalDateTime(iso);
+    return formatted === '—' ? null : formatted;
   } catch {
     return null;
   }
@@ -40,10 +35,8 @@ function formatScale(
   let time = '';
   if (updatedAt) {
     try {
-      const d = new Date(updatedAt);
-      if (!Number.isNaN(d.getTime())) {
-        time = d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      }
+      const formatted = formatLocalDateTime(updatedAt);
+      if (formatted !== '—') time = formatted;
     } catch {
       /* ignore */
     }

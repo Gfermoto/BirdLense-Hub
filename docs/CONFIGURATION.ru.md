@@ -189,7 +189,7 @@
 
 **Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 
-**Качество каталога:** `app/web/seed/species_suspect_blocklist.txt` — термины для скрытия не-птиц/объектов в справочнике (`GET /api/ui/species?exclude_suspects=1`, по умолчанию в UI). Полный отчёт (подозрительные строки, дубликаты имён для слияния): System → карточка «Качество каталога видов» или `GET /api/ui/system/species-registry/data-quality` (с паролем настроек). Новые детекции по строкам из блоклиста не создают отдельный вид — уходят в «Unknown».
+**Качество каталога:** `app/web/seed/species_suspect_blocklist.txt` — термины для скрытия не-птиц/объектов из фильтрованных списков видов (`GET /api/ui/species?exclude_suspects=1`, когда это явно запрошено). Полный отчёт (подозрительные строки, дубликаты имён для слияния): System → карточка «Качество каталога видов» или `GET /api/ui/system/species-registry/data-quality` (с паролем настроек). Новые детекции по строкам из блоклиста не создают отдельный вид — уходят в «Unknown».
 
 **Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt`: `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
 
@@ -381,7 +381,7 @@ Push-уведомления в браузере (дополнение или а�
 
 Подсказки для маппинга: в настройках у поля `ebird.species_mapping` кнопка подгружает региональный топ eBird и предлагает строки (регистр / нечёткое совпадение); `GET /api/ui/settings/ebird-species-mapping-suggestions` (тот же доступ, что у настроек). См. [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136).
 
-Фильтр **«Региональные»** в каталоге видов использует тот же региональный топ eBird, что и блок сравнения на Migration, **и** виды с хотя бы одной детекцией **BirdNET MQTT** (`detection_provider` = `birdnet_mqtt`). См. [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132).
+Фильтр видов **«Региональные»** использует тот же региональный топ eBird, что и блок сравнения на Migration, **и** виды с хотя бы одной детекцией **BirdNET MQTT** (`detection_provider` = `birdnet_mqtt`). См. [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132).
 
 **Россия, Московская область:** `ebird.country=RU`, `ebird.state=MOS` (или `MO`). Регион для API: RU-MOS.
 

@@ -26,5 +26,5 @@ This guide defines a consistent pattern for hints in BirdLense Hub UI.
 
 ## Applied on key screens
 
-- `Library / RecordingsAndDataset`: unified hints via `Tooltip` for dataset maintenance actions.
+- `Library`: unified hints via `Tooltip` for dataset maintenance actions.
 - `Unknowns`: unified action hints for apply/confirm controls.

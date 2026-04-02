@@ -6,6 +6,7 @@ import pytest
 
 import util as util_mod
 from routes import processor_routes as processor_routes_mod
+from auth import settings_check_access
 
 
 class TestTrustedProxyIpParsing:
@@ -58,6 +59,57 @@ class TestPushSubscribeAuth:
             },
         )
         assert r.status_code == 401
+
+
+class TestProductionSettingsAccess:
+    """Production defaults must not leave system routes open."""
+
+    def test_settings_access_denied_in_production_when_passwords_missing(
+        self, app, monkeypatch,
+    ):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+        monkeypatch.setenv('BIRDLENSE_ENV', 'production')
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+
+        with app.test_request_context('/api/ui/system/db/backup'):
+            assert settings_check_access() is False
+
+    def test_settings_verify_password_rejects_empty_password_bootstrap_in_production(
+        self, client, monkeypatch,
+    ):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+        monkeypatch.setenv('BIRDLENSE_ENV', 'production')
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+
+        response = client.post('/api/ui/settings/verify-password', json={'password': ''})
+        assert response.status_code == 401
+        assert response.get_json()['ok'] is False
+
+    def test_settings_requires_password_reports_true_in_production_without_passwords(
+        self, client, monkeypatch,
+    ):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+        monkeypatch.setenv('BIRDLENSE_ENV', 'production')
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+
+        response = client.get('/api/ui/settings/requires-password')
+        assert response.status_code == 200
+        assert response.get_json()['requires'] is True
 
 
 class TestWebhookUrlValidation:

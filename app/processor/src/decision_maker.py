@@ -1,11 +1,41 @@
 import logging
 import time
 from collections import Counter
+import re
 
 logger = logging.getLogger(__name__)
 
 # Default min confidence; can be overridden via app_config processor.min_confidence_to_process
 DEFAULT_MIN_CONFIDENCE = 0.03
+
+
+def _normalized_species_keys(species_name):
+    raw = str(species_name or '').strip()
+    if not raw:
+        return []
+
+    def _normalize_key(value):
+        return ' '.join(
+            str(value or '')
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .strip()
+            .lower()
+            .split()
+        )
+
+    keys = []
+    raw_key = _normalize_key(raw)
+    if raw_key:
+        keys.append(raw_key)
+
+    match = re.match(r'^.+?\s*\(([^)]+)\)\s*$', raw)
+    if match:
+        common_key = _normalize_key(match.group(1))
+        if common_key and common_key not in keys:
+            keys.append(common_key)
+
+    return keys
 
 
 class DecisionMaker():
@@ -33,13 +63,23 @@ class DecisionMaker():
             else DEFAULT_MIN_CONFIDENCE
         )
         self.species_confidence_overrides = species_confidence_overrides or {}
+        self._species_confidence_override_keys = {
+            key: value
+            for name, value in self.species_confidence_overrides.items()
+            for key in _normalized_species_keys(name)
+        }
         self.reset()
 
     def _get_threshold_for_species(self, species_name):
         """Return min confidence threshold for species. Override or default."""
-        return self.species_confidence_overrides.get(
-            species_name, self.min_confidence_to_process
-        )
+        direct = self.species_confidence_overrides.get(species_name)
+        if direct is not None:
+            return direct
+        for key in _normalized_species_keys(species_name):
+            mapped = self._species_confidence_override_keys.get(key)
+            if mapped is not None:
+                return mapped
+        return self.min_confidence_to_process
 
     def reset(self):
         self.stop_recording_decided = False
@@ -130,4 +170,10 @@ class DecisionMaker():
                 'frames': track.get('frames', [])  # Per-frame bounding box data
             })
 
+        result.sort(
+            key=lambda item: (
+                -float(item.get('confidence') or 0.0),
+                int(item.get('track_id') or 0),
+            )
+        )
         return result

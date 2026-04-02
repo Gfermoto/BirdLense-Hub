@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -39,6 +39,7 @@ const formatBytes = (bytes: number): string => {
 
 export const StorageOverview = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const [dbMessage, setDbMessage] = useState<string>('');
   const [dbError, setDbError] = useState<string>('');
@@ -105,6 +106,7 @@ export const StorageOverview = () => {
     try {
       const result = await restoreDbBackup(file);
       setDbMessage(result.message || t('storage.dbRestoreDone'));
+      await queryClient.invalidateQueries();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('storage.dbRestoreFailed');
       setDbError(msg);

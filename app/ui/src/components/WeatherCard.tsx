@@ -16,6 +16,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { Weather } from '../types';
 import { fetchSunTimes } from '../api/api';
 import { SunHorizon } from './SunHorizon';
+import { formatLocalDateTime } from '../util';
 
 interface WeatherCardProps {
   weather: Weather;
@@ -26,6 +27,19 @@ interface WeatherCardProps {
 export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
   const { t } = useTranslation();
   const isConfigured = Object.keys(weather).length > 0;
+  const weatherMeta = (() => {
+    if (!weather.source && !weather.fetched_at) return null;
+    const weatherSourceLabel =
+      weather.source === 'homeassistant'
+        ? t('weather.sourceHomeAssistant')
+        : t('weather.sourceOpenWeather');
+    return weather.fetched_at
+      ? t('weather.metaWithTime', {
+          time: formatLocalDateTime(weather.fetched_at),
+          source: weatherSourceLabel,
+        })
+      : t('weather.metaNoTime', { source: weatherSourceLabel });
+  })();
 
   const { data: sunTimes } = useQuery({
     queryKey: ['sun-times', date],
@@ -63,7 +77,14 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
   return (
     <Paper sx={{ padding: 1.5, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Stack spacing={1} sx={{ flex: 1, minHeight: 0 }}>
-        <Typography variant="h6">{t('weather.title')}</Typography>
+        <Box>
+          <Typography variant="h6">{t('weather.title')}</Typography>
+          {weatherMeta && (
+            <Typography variant="caption" color="text.secondary">
+              {weatherMeta}
+            </Typography>
+          )}
+        </Box>
         <Box
           sx={{
             display: 'flex',

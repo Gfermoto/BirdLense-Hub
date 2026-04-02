@@ -26,6 +26,7 @@ import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { downloadDetectionCropForINaturalist } from '../api/api';
 import { formatDuration } from '../utils/timeUtils';
+import { formatLocalDateTime, formatLocalTime } from '../util';
 
 const DetectionItem = ({
   detection,
@@ -82,7 +83,7 @@ const DetectionItem = ({
             color="text.secondary"
             sx={{ minWidth: 65 }}
           >
-            {new Date(detection.start_time).toLocaleTimeString()}
+            {formatLocalTime(detection.start_time)}
           </Typography>
           <Chip
             label={`${Math.round(detection.confidence * 100)}%`}
@@ -174,17 +175,11 @@ export const VisitCard = memo(function VisitCard({
 
   const formatDateTime = () => {
     if (isToday) {
-      return `Today at ${startDateTime.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`;
+      return t('visitCard.todayAt', {
+        time: formatLocalTime(startDateTime),
+      });
     }
-    return startDateTime.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatLocalDateTime(startDateTime);
   };
 
   return (
@@ -296,6 +291,7 @@ export const VisitCard = memo(function VisitCard({
                         navigate(`/videos/${detection.video_id}`, {
                           state: {
                             from: `${location.pathname}${location.search}`,
+                            visitId: visit.id,
                           },
                         })
                       }

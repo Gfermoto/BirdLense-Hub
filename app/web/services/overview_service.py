@@ -3,8 +3,20 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import func, case, distinct
 
 from models import Video, Species, SpeciesVisit, VideoSpecies
-from util import ensure_utc, GENERIC_BIRD_SPECIES
+from util import (
+    ensure_utc,
+    GENERIC_BIRD_SPECIES,
+    observer_local_hour,
+    get_observer_timezone_name,
+)
 from services.cache import cache_get, cache_set
+
+
+def _visit_overlaps_window(start_of_day: datetime, end_of_day: datetime):
+    return (
+        SpeciesVisit.end_time >= start_of_day,
+        SpeciesVisit.start_time <= end_of_day,
+    )
 
 
 def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> dict:
@@ -17,48 +29,44 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    # Top species
-    top_species_query = session.query(
-        Species.id.label('id'),
-        Species.name.label('name'),
-        *[
-            func.sum(
-                case(
-                    (func.strftime('%H', SpeciesVisit.start_time) == str(h).zfill(2),
-                     SpeciesVisit.max_simultaneous),
-                    else_=0
-                )
-            ).label(f'detection_hour_{h}')
-            for h in range(24)
-        ]
-    ).join(SpeciesVisit, SpeciesVisit.species_id == Species.id).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
+    overview_visits = session.query(SpeciesVisit).join(Species).filter(
+        *_visit_overlaps_window(start_of_day, end_of_day),
         exclude_bird,
-    ).group_by(Species.id, Species.name).order_by(
-        func.sum(SpeciesVisit.max_simultaneous).desc()
-    ).limit(10)
+    ).all()
+
+    species_hourly: dict[int, dict[str, object]] = {}
+    busiest_by_hour = [0] * 24
+    for visit in overview_visits:
+        bucket_time = max(visit.start_time, start_of_day)
+        hour = observer_local_hour(bucket_time)
+        busiest_by_hour[hour] += int(visit.max_simultaneous or 0)
+
+        species_bucket = species_hourly.setdefault(
+            visit.species_id,
+            {
+                'id': visit.species.id,
+                'name': visit.species.name,
+                'detections': [0] * 24,
+                'total': 0,
+            },
+        )
+        detections = species_bucket['detections']
+        detections[hour] += int(visit.max_simultaneous or 0)
+        species_bucket['total'] += int(visit.max_simultaneous or 0)
 
     top_species = [
         {
-            'id': s.id,
-            'name': s.name,
-            'detections': [getattr(s, f'detection_hour_{h}', 0) or 0 for h in range(24)],
+            'id': row['id'],
+            'name': row['name'],
+            'detections': row['detections'],
         }
-        for s in top_species_query
+        for row in sorted(
+            species_hourly.values(),
+            key=lambda row: row['total'],
+            reverse=True,
+        )[:10]
     ]
-
-    # Busiest hour
-    busiest = session.query(
-        func.strftime('%H', SpeciesVisit.start_time).label('hour'),
-        func.sum(SpeciesVisit.max_simultaneous).label('visit_count'),
-    ).join(Species, SpeciesVisit.species_id == Species.id).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
-        exclude_bird,
-    ).group_by('hour').order_by(
-        func.sum(SpeciesVisit.max_simultaneous).desc()
-    ).first()
+    busiest = max(range(24), key=lambda hour: busiest_by_hour[hour], default=0)
 
     # Stats based on visits
     stats_q = session.query(
@@ -72,8 +80,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
             )
         ).label('lastHourDetections'),
     ).join(Species, SpeciesVisit.species_id == Species.id).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
+        *_visit_overlaps_window(start_of_day, end_of_day),
         exclude_bird,
     ).first()
 
@@ -106,19 +113,17 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         func.sum(case((VideoSpecies.source == 'video', dur_expr), else_=0)).label('video_duration'),
         func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)).label('audio_duration'),
     ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
+        *_visit_overlaps_window(start_of_day, end_of_day),
     ).first()
 
     # Provider counts
     prov_q = session.query(
         VideoSpecies.detection_provider,
-        func.sum(SpeciesVisit.max_simultaneous).label('count'),
+        func.count(VideoSpecies.id).label('count'),
     ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).join(
         Species, SpeciesVisit.species_id == Species.id
     ).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
+        *_visit_overlaps_window(start_of_day, end_of_day),
         exclude_bird,
     ).group_by(VideoSpecies.detection_provider).all()
 
@@ -126,7 +131,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         'uniqueSpecies': stats_q.uniqueSpecies or 0,
         'totalDetections': stats_q.totalDetections or 0,
         'lastHourDetections': stats_q.lastHourDetections or 0,
-        'busiestHour': int(busiest.hour) if busiest else 0,
+        'busiestHour': busiest if any(busiest_by_hour) else 0,
         # UI card "Mean duration": average single recording duration (Video), not visit span.
         'avgVisitDuration': round(avg_recording_sec),
         'videoDuration': round(recording_sec),  # время записей: сумма длительностей видеофайлов
@@ -152,8 +157,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
     last_row = session.query(SpeciesVisit, Species.name).join(
         Species, SpeciesVisit.species_id == Species.id
     ).filter(
-        SpeciesVisit.start_time >= start_of_day,
-        SpeciesVisit.start_time <= end_of_day,
+        *_visit_overlaps_window(start_of_day, end_of_day),
     ).order_by(SpeciesVisit.end_time.desc()).first()
 
     last_detection = None
@@ -170,6 +174,7 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         'stats': stats,
         'hourlyTemperature': hourly_temperature,
         'lastDetection': last_detection,
+        'observer_timezone': get_observer_timezone_name(),
     }
     cache_set(cache_key, result, ttl_seconds=60)
     return result

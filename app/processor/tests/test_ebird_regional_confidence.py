@@ -1,6 +1,14 @@
 """Tests for ebird_regional_confidence merge (#128)."""
+import os
+import sys
 import unittest
 from unittest.mock import patch
+
+# @patch('services...') требует импорта пакета web (как в контейнере с PYTHONPATH).
+_tests_dir = os.path.dirname(os.path.abspath(__file__))
+_web = os.path.abspath(os.path.join(_tests_dir, '../../web'))
+if os.path.isdir(_web) and _web not in sys.path:
+    sys.path.insert(0, _web)
 
 
 class _Cfg:

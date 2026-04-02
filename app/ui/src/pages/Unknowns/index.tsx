@@ -19,13 +19,13 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
-import { getTimeRange, type TimeOfDay } from '../../utils/timeUtils';
+import { type TimeOfDay } from '../../utils/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import Snackbar from '@mui/material/Snackbar';
 import Tooltip from '@mui/material/Tooltip';
 import {
-  fetchUnknowns,
+  fetchUnknownsForObserverDate,
   fetchBirdDirectory,
   updateDetectionSpecies,
   confirmDetection,
@@ -33,6 +33,7 @@ import {
   resolveImageUrl,
   type UnknownDetection,
 } from '../../api/api';
+import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { PageHelp } from '../../components/PageHelp';
@@ -112,7 +113,7 @@ function UnknownCard({
               {detection.species_name}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {new Date(detection.start_time).toLocaleString()}
+              {formatLocalDateTime(detection.start_time)}
             </Typography>
             <Box display="flex" gap={1} flexWrap="wrap" sx={{ mt: 0.5 }}>
               <Chip
@@ -219,8 +220,10 @@ export function UnknownsPage() {
     queryKey: ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
     queryFn: () => {
       if (!selectedDate) return [];
-      const { start, end } = getTimeRange(selectedDate, timeOfDay);
-      return fetchUnknowns(start, end, 500);
+      return fetchUnknownsForObserverDate(
+        selectedDate.format('YYYY-MM-DD'),
+        { timeOfDay, limit: 500 },
+      );
     },
     enabled: !!selectedDate,
   });
@@ -398,7 +401,7 @@ export function UnknownsPage() {
           <Box component="ul" sx={{ m: 0, pl: 2 }}>
             {recentCorrections.slice(0, 5).map((row) => (
               <Typography component="li" variant="body2" key={row.id}>
-                {new Date(row.created_at).toLocaleString()} — {row.action === 'confirm_species'
+                {formatLocalDateTime(row.created_at)} — {row.action === 'confirm_species'
                   ? t('unknowns.recentCorrectionConfirm')
                   : t('unknowns.recentCorrectionUpdate', {
                       from: row.from_species_name || t('common.na'),

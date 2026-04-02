@@ -6,19 +6,22 @@ import tempfile
 import json
 import io
 import csv
+import hashlib
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
 import psutil
-from flask import request, Response, send_file, jsonify
+from flask import request, Response, send_file, jsonify, after_this_request
 import shutil
-from models import ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit, SystemResourceSample
-from sqlalchemy import func, select, exists, delete
-from services.retention_service import run_retention
+from models import (
+    ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit,
+    SystemResourceSample, SiteVisitor,
+)
+from sqlalchemy import func, select, delete
+from services.retention_service import run_retention, _delete_video_row_cascade
 from services.species_registry_service import (
     ensure_species_registry_seeded,
     backfill_species_taxa,
-    enrich_species_metadata,
     enrich_species_metadata_with_status,
     ensure_allowlist_species_materialized,
     repair_catalog_cards,
@@ -28,6 +31,15 @@ from services.species_registry_service import (
     resolve_species_name,
 )
 from services.heimdall_service import probe_heimdall
+from services.species_visit_maintenance_service import (
+    apply_clean_orphaned_visits,
+    apply_realign_visit_times,
+    apply_split_large_gap_visits,
+    preview_clean_orphaned_visits,
+    preview_realign_visit_times,
+    preview_split_large_gap_visits,
+)
+from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
 from util import settings_check_access, recordings_dir
 from services.cache import cache_get, cache_set
@@ -55,6 +67,17 @@ DEPRECATED_USER_CONFIG_KEYS = (
     'processor.detection_device',
     'processor.detection_frame_interval',
 )
+
+TERMINAL_CONFIG_MAP_KEYS = {
+    'detection.species_mapping',
+    'ebird.species_mapping',
+    'processor.species_confidence_overrides',
+}
+
+IGNORED_CONFIG_AUDIT_KEYS = {
+    'camera',
+    'secrets.zip',
+}
 
 
 def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
@@ -160,6 +183,91 @@ def _downsample_evenly(items, max_n: int):
         idx = int(round(i * (n - 1) / (max_n - 1)))
         out.append(items[idx])
     return out
+
+
+def _run_track_regen_with_precise_fallback(
+    video_path: str,
+    process_video_for_tracks,
+    fast_kwargs: dict,
+    precise_kwargs_factory=None,
+):
+    """Run fast track regen first, then a precise pass only when needed."""
+    detections = process_video_for_tracks(video_path, **fast_kwargs)
+    precise_used = False
+    if detections or precise_kwargs_factory is None:
+        return detections, precise_used
+    precise_kwargs = precise_kwargs_factory()
+    if not precise_kwargs:
+        return detections, precise_used
+    precise_used = True
+    return process_video_for_tracks(video_path, **precise_kwargs), precise_used
+
+
+def _manual_conflict_with_detection(
+    manual_rows,
+    detection: dict,
+    tracks_same_species,
+) -> bool:
+    """Drop auto detections that conflict with already manual-corrected rows."""
+    det_name = (detection.get('species_name') or '').strip()
+    det_track_id = detection.get('track_id')
+    det_start = float(detection.get('start_time') or 0.0)
+    det_end = float(detection.get('end_time') or 0.0)
+    for row in manual_rows:
+        manual_species = getattr(getattr(row, 'species', None), 'name', '') or ''
+        if manual_species and tracks_same_species(manual_species, det_name):
+            continue
+        row_track_id = getattr(row, 'track_id', None)
+        if row_track_id is not None and det_track_id is not None and row_track_id == det_track_id:
+            return True
+        overlap = min(float(getattr(row, 'end_time', 0.0) or 0.0), det_end) - max(
+            float(getattr(row, 'start_time', 0.0) or 0.0),
+            det_start,
+        )
+        if overlap > 0.3:
+            return True
+    return False
+
+
+def _derive_track_regen_species_scope(start_dt=None) -> list[str]:
+    """Local recovery scope: observed project species plus configured mappings."""
+    names: set[str] = set()
+    mapping = app_config.get('detection.species_mapping') or {}
+    for value in mapping.values():
+        value = str(value or '').strip()
+        if value and value not in {'Unknown', 'Bird'}:
+            names.add(value)
+
+    q = (
+        db.session.query(Species.name)
+        .join(VideoSpecies, VideoSpecies.species_id == Species.id)
+        .join(Video, Video.id == VideoSpecies.video_id)
+    )
+    if start_dt is not None:
+        q = q.filter(Video.start_time < start_dt)
+    for (name,) in q.distinct().all():
+        name = str(name or '').strip()
+        if name and name not in {'Unknown', 'Bird'}:
+            names.add(name)
+    return sorted(names)
+
+
+def _remap_detection_to_local_scope(
+    detection: dict,
+    local_scope_names_lc: set[str],
+) -> dict:
+    """Keep local species, remap exotic recovery guesses to Unknown."""
+    name = str(detection.get('species_name') or '').strip()
+    if not name or not local_scope_names_lc:
+        return detection
+    if name.lower() in local_scope_names_lc:
+        return detection
+    resolved = resolve_species_name(name, source='ingest')
+    if resolved.found and resolved.taxon:
+        common = str(resolved.taxon.common_name or '').strip().lower()
+        if common and common in local_scope_names_lc:
+            return {**detection, 'species_name': resolved.taxon.common_name}
+    return {**detection, 'species_name': 'Unknown'}
 
 
 def _record_system_resource_sample(app) -> None:
@@ -273,22 +381,62 @@ def _start_system_metrics_sampler(app):
 
 
 def _collect_visitor_stats(visitors_days: int = 7) -> dict:
-    """Агрегаты посетителей по БД (не системные мгновенные метрики)."""
+    """Anonymous browser stats for System UI."""
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     days = max(1, min(int(visitors_days or 7), 365))
     start_utc = now_utc - timedelta(days=days)
-    unique_visit_sessions = db.session.query(func.count(SpeciesVisit.id)).filter(
-        SpeciesVisit.start_time >= start_utc
+    browser_count = db.session.query(
+        func.count(func.distinct(SiteVisitor.browser_hash)),
+    ).filter(
+        SiteVisitor.last_seen_at >= start_utc,
     ).scalar() or 0
     active_days = db.session.query(
-        func.count(func.distinct(func.strftime('%Y-%m-%d', SpeciesVisit.start_time)))
-    ).filter(SpeciesVisit.start_time >= start_utc).scalar() or 0
+        func.count(func.distinct(SiteVisitor.seen_day)),
+    ).filter(
+        SiteVisitor.last_seen_at >= start_utc,
+    ).scalar() or 0
+    raw_breakdown = db.session.query(
+        SiteVisitor.device_class,
+        func.count(func.distinct(SiteVisitor.browser_hash)),
+    ).filter(
+        SiteVisitor.last_seen_at >= start_utc,
+    ).group_by(SiteVisitor.device_class).all()
+    breakdown = {'desktop': 0, 'mobile': 0, 'tablet': 0, 'unknown': 0}
+    for device_class, count in raw_breakdown:
+        key = str(device_class or 'unknown').strip().lower()
+        if key not in breakdown:
+            key = 'unknown'
+        breakdown[key] = int(count or 0)
     return {
         'period_days': days,
-        'unique_visits': int(unique_visit_sessions),
+        'browser_count': int(browser_count),
+        'unique_visits': int(browser_count),
         'active_days': int(active_days),
-        'method': 'species_visit_sessions',
+        'device_breakdown': breakdown,
+        'method': 'anonymous_browser_id',
     }
+
+
+def _device_class_from_user_agent(user_agent: str) -> str:
+    ua = (user_agent or '').strip().lower()
+    if not ua:
+        return 'unknown'
+    if 'ipad' in ua or 'tablet' in ua:
+        return 'tablet'
+    if 'android' in ua and 'mobile' not in ua:
+        return 'tablet'
+    if (
+        'iphone' in ua
+        or 'mobile' in ua
+        or 'android' in ua
+        or 'windows phone' in ua
+    ):
+        return 'mobile'
+    return 'desktop'
+
+
+def _browser_hash(raw_browser_id: str) -> str:
+    return hashlib.sha256(raw_browser_id.encode('utf-8')).hexdigest()
 
 
 def _collect_live_system_metrics(app):
@@ -341,6 +489,43 @@ def _collect_live_system_metrics(app):
     }
 
 
+def _sqlite_validate_file(path: str) -> None:
+    with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as conn:
+        check = conn.execute('PRAGMA integrity_check;').fetchone()
+        if not check or check[0] != 'ok':
+            raise sqlite3.DatabaseError('integrity_check failed')
+
+
+def _sqlite_backup_to_file(src_path: str, dst_path: str) -> None:
+    parent = os.path.dirname(dst_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with sqlite3.connect(src_path, timeout=30) as src_conn:
+        src_conn.execute('PRAGMA busy_timeout = 30000')
+        with sqlite3.connect(dst_path, timeout=30) as dst_conn:
+            dst_conn.execute('PRAGMA busy_timeout = 30000')
+            src_conn.backup(dst_conn)
+            dst_conn.commit()
+
+
+def _sqlite_remove_sidecars(db_path: str) -> None:
+    for suffix in ('-wal', '-shm'):
+        sidecar = f'{db_path}{suffix}'
+        try:
+            if os.path.exists(sidecar):
+                os.remove(sidecar)
+        except OSError:
+            pass
+
+
+def _sqlite_replace_live_db(live_db_path: str, restored_path: str) -> None:
+    if os.path.isfile(live_db_path):
+        shutil.copymode(live_db_path, restored_path)
+    _sqlite_remove_sidecars(live_db_path)
+    os.replace(restored_path, live_db_path)
+    _sqlite_remove_sidecars(live_db_path)
+
+
 def register_routes(app):
     def _parse_video_ids(payload) -> list[int]:
         raw = (payload or {}).get('video_ids')
@@ -378,6 +563,8 @@ def register_routes(app):
         out = set()
         if not isinstance(d, dict):
             return out
+        if prefix in TERMINAL_CONFIG_MAP_KEYS:
+            return {prefix} if prefix else set()
         for k, v in d.items():
             p = f'{prefix}.{k}' if prefix else str(k)
             out.add(p)
@@ -407,6 +594,18 @@ def register_routes(app):
             .all()
         )
 
+    def _notify_preview_generated_rows_24h():
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        preview_since = now_utc - timedelta(hours=24)
+        return (
+            db.session.query(ActivityLog)
+            .filter(
+                ActivityLog.type == 'notify_preview_generated',
+                ActivityLog.created_at >= preview_since,
+            )
+            .all()
+        )
+
     def _activity_log_payload(row):
         try:
             return row.data if isinstance(row.data, dict) else (
@@ -420,6 +619,17 @@ def register_routes(app):
         preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
         for row in preview_rows:
             src = 'unknown'
+            payload = _activity_log_payload(row)
+            src = str((payload or {}).get('preview_source') or 'unknown')
+            if src not in preview_by_source:
+                src = 'unknown'
+            preview_by_source[src] += 1
+        return preview_by_source
+
+    def _notify_preview_generated_by_source_24h():
+        preview_rows = _notify_preview_generated_rows_24h()
+        preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
+        for row in preview_rows:
             payload = _activity_log_payload(row)
             src = str((payload or {}).get('preview_source') or 'unknown')
             if src not in preview_by_source:
@@ -475,6 +685,7 @@ def register_routes(app):
         species_count = db.session.query(VideoSpecies.species_id).distinct().count()
         videos_count = db.session.query(func.count(Video.id)).scalar() or 0
         preview_by_source = _notify_preview_by_source_24h()
+        preview_generated_by_source = _notify_preview_generated_by_source_24h()
         fallback_by_reason = _notify_fallback_by_reason_24h()
         delivery_counts = _notify_delivery_24h()
         lines = [
@@ -508,6 +719,12 @@ def register_routes(app):
         for src, count in preview_by_source.items():
             lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
         lines.extend([
+            '# HELP birdlense_notify_preview_generated_24h Notification preview generation counts for last 24h',
+            '# TYPE birdlense_notify_preview_generated_24h gauge',
+        ])
+        for src, count in preview_generated_by_source.items():
+            lines.append(f'birdlense_notify_preview_generated_24h{{source="{src}"}} {count}')
+        lines.extend([
             '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
             '# TYPE birdlense_notify_fallback_24h gauge',
         ])
@@ -536,6 +753,7 @@ def register_routes(app):
             species_count = db.session.query(VideoSpecies.species_id).distinct().count()
             videos_count = db.session.query(func.count(Video.id)).scalar() or 0
             preview = _notify_preview_by_source_24h()
+            preview_generated = _notify_preview_generated_by_source_24h()
             fallback = _notify_fallback_by_reason_24h()
             delivery = _notify_delivery_24h()
             payload = {
@@ -549,6 +767,7 @@ def register_routes(app):
                 'species_count': int(species_count),
                 'videos_total': int(videos_count),
                 'notify_preview_24h': preview,
+                'notify_preview_generated_24h': preview_generated,
                 'notify_fallback_24h': fallback,
                 'notify_delivery_24h': delivery,
             }
@@ -607,10 +826,12 @@ def register_routes(app):
             return {'error': 'Unauthorized'}, 401
         try:
             preview = _notify_preview_by_source_24h()
+            preview_generated = _notify_preview_generated_by_source_24h()
             fallback = _notify_fallback_by_reason_24h()
             delivery = _notify_delivery_24h()
             return {
                 'notify_preview_24h': preview,
+                'notify_preview_generated_24h': preview_generated,
                 'notify_fallback_24h': fallback,
                 'notify_delivery_24h': delivery,
                 'hub_metrics': {
@@ -636,7 +857,12 @@ def register_routes(app):
             pass
         user_keys = _flatten_keys(user_cfg)
         default_keys = _flatten_keys(default_only)
-        unknown_keys = sorted([k for k in user_keys if k not in default_keys and not k.startswith('camera.')])
+        unknown_keys = sorted([
+            k for k in user_keys
+            if k not in default_keys
+            and k not in IGNORED_CONFIG_AUDIT_KEYS
+            and not k.startswith('camera.')
+        ])
         deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
 
         notif = app_config.get('notifications', {}) or {}
@@ -695,6 +921,46 @@ def register_routes(app):
         except Exception as e:
             app.logger.error(f"Error getting visitor stats: {str(e)}")
             return {'error': 'Failed to get visitor stats'}, 500
+
+    @app.route('/api/ui/system/visitors/track', methods=['POST'])
+    def system_visitors_track():
+        try:
+            payload = request.get_json(silent=True) or {}
+            raw_browser_id = str(payload.get('browser_id') or '').strip()
+            if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', raw_browser_id):
+                return {'error': 'Invalid browser_id'}, 400
+
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            seen_day = now_utc.strftime('%Y-%m-%d')
+            browser_hash = _browser_hash(raw_browser_id)
+            device_class = _device_class_from_user_agent(
+                request.headers.get('User-Agent', ''),
+            )
+
+            row = db.session.query(SiteVisitor).filter(
+                SiteVisitor.browser_hash == browser_hash,
+                SiteVisitor.seen_day == seen_day,
+            ).first()
+            if row is None:
+                row = SiteVisitor(
+                    browser_hash=browser_hash,
+                    seen_day=seen_day,
+                    device_class=device_class,
+                    first_seen_at=now_utc,
+                    last_seen_at=now_utc,
+                )
+                db.session.add(row)
+            else:
+                row.last_seen_at = now_utc
+                row.device_class = device_class
+            db.session.commit()
+            bust_system_response_caches()
+            bust_response_caches()
+            return {'ok': True}, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error('Error tracking site visitor: %s', e)
+            return {'error': 'Failed to track site visitor'}, 500
 
     @app.route('/api/ui/system/metrics/history', methods=['GET'])
     def system_metrics_history():
@@ -832,6 +1098,44 @@ def register_routes(app):
 
         return total_files, total_size
 
+    def _recording_days_with_files():
+        days = set()
+        rec_dir = recordings_dir()
+        if not os.path.exists(rec_dir):
+            return days
+        try:
+            for year in os.listdir(rec_dir):
+                year_path = os.path.join(rec_dir, year)
+                if not os.path.isdir(year_path):
+                    continue
+                for month in os.listdir(year_path):
+                    month_path = os.path.join(year_path, month)
+                    if not os.path.isdir(month_path):
+                        continue
+                    for day in os.listdir(month_path):
+                        day_path = os.path.join(month_path, day)
+                        if not os.path.isdir(day_path):
+                            continue
+                        file_count, _ = get_day_storage_info(day_path)
+                        if file_count > 0:
+                            days.add(f'{year}-{month}-{day}')
+        except Exception as e:
+            app.logger.error(f'Error scanning recording days: {e}')
+        return days
+
+    def _get_tree_storage_info(dir_path):
+        total_size = 0
+        total_files = 0
+        for root, _, files in os.walk(dir_path):
+            for name in files:
+                file_path = os.path.join(root, name)
+                try:
+                    total_size += os.path.getsize(file_path)
+                    total_files += 1
+                except OSError as e:
+                    app.logger.error(f'Error getting size for {file_path}: {e}')
+        return total_files, total_size
+
     @app.route('/api/ui/storage/stats', methods=['GET'])
     def get_storage_stats():
         sck = 'storage_stats:v1'
@@ -877,6 +1181,30 @@ def register_routes(app):
         cache_set(sck, stats, _CACHE_STORAGE_STATS_SEC)
         return stats, 200
 
+    @app.route('/api/ui/storage/nearest-recording-day', methods=['GET'])
+    def get_nearest_recording_day():
+        raw_date = (request.args.get('date') or '').strip()
+        direction = (request.args.get('direction') or 'next').strip().lower()
+        if not raw_date:
+            return {'error': 'date is required'}, 400
+        if direction not in ('prev', 'next'):
+            return {'error': 'direction must be "prev" or "next"'}, 400
+        try:
+            pivot = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+
+        day_values = sorted(_recording_days_with_files())
+        if direction == 'prev':
+            match = next((day for day in reversed(day_values) if day < pivot.isoformat()), None)
+        else:
+            match = next((day for day in day_values if day > pivot.isoformat()), None)
+        return {
+            'date': match,
+            'direction': direction,
+            'found': match is not None,
+        }, 200
+
     @app.route('/api/ui/storage/purge', methods=['POST'])
     def purge_storage():
         if not settings_check_access():
@@ -891,12 +1219,36 @@ def register_routes(app):
                 purge_date = datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
                 return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+            purge_cutoff = purge_date + timedelta(days=1)
 
             deleted_count = 0
             deleted_size = 0
-
-            # Walk through the recordings directory
             rec_dir = recordings_dir()
+            app_base = os.path.dirname(os.path.dirname(rec_dir))
+
+            videos = (
+                Video.query
+                .filter(Video.start_time < purge_cutoff)
+                .order_by(Video.start_time.asc())
+                .all()
+            )
+            video_dirs_to_delete = set()
+            for video in videos:
+                rel_dir = os.path.dirname(video.video_path or '')
+                if rel_dir:
+                    video_dirs_to_delete.add(os.path.join(app_base, rel_dir))
+                _delete_video_row_cascade(video)
+            db.session.commit()
+
+            for dir_path in sorted(video_dirs_to_delete):
+                if not os.path.isdir(dir_path):
+                    continue
+                count, size = _get_tree_storage_info(dir_path)
+                deleted_count += count
+                deleted_size += size
+                shutil.rmtree(dir_path)
+
+            # Walk the recordings tree to remove stray day directories that no longer have DB rows.
             for year in os.listdir(rec_dir):
                 year_path = os.path.join(rec_dir, year)
                 if not os.path.isdir(year_path):
@@ -916,20 +1268,15 @@ def register_routes(app):
                         dir_date = datetime.strptime(
                             f"{year}-{month}-{day}", '%Y-%m-%d')
                         if dir_date <= purge_date:
-                            # Calculate stats before deletion
                             count, size = get_day_storage_info(day_path)
                             deleted_count += count
                             deleted_size += size
-
-                            # Remove the directory and all contents
                             shutil.rmtree(day_path)
 
-                    # Clean up empty month directory
-                    if not os.listdir(month_path):
+                    if os.path.isdir(month_path) and not os.listdir(month_path):
                         os.rmdir(month_path)
 
-                # Clean up empty year directory
-                if not os.listdir(year_path):
+                if os.path.isdir(year_path) and not os.listdir(year_path):
                     os.rmdir(year_path)
 
             bust_system_response_caches()
@@ -940,6 +1287,7 @@ def register_routes(app):
             }, 200
 
         except Exception as e:
+            db.session.rollback()
             app.logger.exception('Purge storage failed')
             return {'error': 'Failed to purge storage'}, 500
 
@@ -955,8 +1303,23 @@ def register_routes(app):
             return {'error': 'Database file not found'}, 404
         ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
         filename = f'birdlense_db_backup_{ts}.db'
+        tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-backup-')
+        snapshot_path = os.path.join(tmp_dir, filename)
+        try:
+            _sqlite_backup_to_file(db_path, snapshot_path)
+            _sqlite_validate_file(snapshot_path)
+        except Exception:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            app.logger.exception('DB backup failed')
+            return {'error': 'Failed to create DB backup snapshot'}, 500
+
+        @after_this_request
+        def _cleanup_snapshot(response):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return response
+
         return send_file(
-            db_path,
+            snapshot_path,
             as_attachment=True,
             download_name=filename,
             mimetype='application/octet-stream',
@@ -970,34 +1333,36 @@ def register_routes(app):
         db_path = _sqlite_db_path()
         if not db_path:
             return {'error': 'DB restore is supported only for SQLite'}, 400
+        if not os.path.isfile(db_path):
+            return {'error': 'Database file not found'}, 404
         upload = request.files.get('file')
         if not upload:
             return {'error': 'file is required (multipart/form-data)'}, 400
 
         tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-restore-')
         uploaded_path = os.path.join(tmp_dir, 'uploaded.db')
+        restored_path = os.path.join(tmp_dir, 'restored.db')
         backup_path = ''
         try:
             upload.save(uploaded_path)
             if not os.path.isfile(uploaded_path) or os.path.getsize(uploaded_path) == 0:
                 return {'error': 'Uploaded file is empty'}, 400
 
-            # Validate uploaded sqlite before touching live DB.
-            with sqlite3.connect(uploaded_path) as src:
-                check = src.execute('PRAGMA integrity_check;').fetchone()
-                if not check or check[0] != 'ok':
-                    return {'error': 'Uploaded SQLite file failed integrity_check'}, 400
+            try:
+                _sqlite_validate_file(uploaded_path)
+            except sqlite3.DatabaseError:
+                return {'error': 'Uploaded SQLite file failed integrity_check'}, 400
 
             db.session.remove()
             db.engine.dispose()
 
             ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
             backup_path = f'{db_path}.pre_restore_{ts}.bak'
-            shutil.copy2(db_path, backup_path)
-
-            with sqlite3.connect(uploaded_path) as src_conn:
-                with sqlite3.connect(db_path) as dst_conn:
-                    src_conn.backup(dst_conn)
+            _sqlite_backup_to_file(db_path, backup_path)
+            _sqlite_backup_to_file(uploaded_path, restored_path)
+            _sqlite_validate_file(restored_path)
+            _sqlite_replace_live_db(db_path, restored_path)
+            bust_system_response_caches()
 
             return {
                 'message': 'Database restored successfully',
@@ -1228,6 +1593,8 @@ def register_routes(app):
                 max_runtime_sec = int(
                     app_config.get('processor.track_regen_video_timeout_sec') or 300
                 )
+                dt_start = None
+                dt_end = None
                 species_ids_f = sorted(set(species_ids or []))
                 regen_params = {
                     'frame_step': frame_step,
@@ -1302,6 +1669,17 @@ def register_routes(app):
                 skipped = 0
                 frames_updated = 0  # videos with manually_corrected: only frames updated
                 precise_candidates: list[dict] = []
+                regen_species_scope = None
+                regen_species_scope_lc: set[str] = set()
+                if app_config.get('processor.track_regen_ignore_regional_species', True):
+                    regen_species_scope = _derive_track_regen_species_scope(dt_start)
+                    if regen_species_scope:
+                        regen_species_scope_lc = {
+                            str(name).strip().lower()
+                            for name in regen_species_scope
+                            if str(name).strip()
+                        }
+                        regen_params['local_species_scope_count'] = len(regen_species_scope)
 
                 visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
                 visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
@@ -1311,6 +1689,38 @@ def register_routes(app):
                     strategy_override=regen_strategy,
                     for_track_regen=True,
                 )
+                precise_lores_px = max(lores_px, 640)
+                precise_frame_step = min(frame_step, 2)
+                precise_strategy = (
+                    app_config.get('processor.track_regen_precise_detection_strategy')
+                    or app_config.get('processor.track_regen_detection_strategy')
+                    or
+                    app_config.get('processor.detection_strategy')
+                    or regen_strategy
+                    or 'single_stage'
+                )
+                precise_max_runtime_sec = min(
+                    max_runtime_sec,
+                    int(app_config.get('processor.track_regen_precise_timeout_sec') or 420),
+                )
+                precise_min_center_dist = float(
+                    app_config.get('processor.track_regen_precise_min_center_dist') or 0.02
+                )
+                precise_enabled = any((
+                    precise_lores_px != lores_px,
+                    precise_frame_step != frame_step,
+                    str(precise_strategy).strip() != str(regen_strategy).strip(),
+                ))
+                precise_params = {
+                    'frame_step': precise_frame_step,
+                    'lores_px': precise_lores_px,
+                    'detection_strategy': str(precise_strategy).strip(),
+                    'max_runtime_sec': precise_max_runtime_sec,
+                    'min_center_dist': precise_min_center_dist,
+                } if precise_enabled else None
+                if precise_params:
+                    regen_params['precise_fallback'] = precise_params
+                precise_pipeline = None
                 species_scope = set(species_ids_f) if species_ids_f else None
                 scope_catalog_species: list[Species] = []
                 scope_names_lc: set[str] = set()
@@ -1423,26 +1833,72 @@ def register_routes(app):
                         continue
 
                     try:
-                        detections = process_video_for_tracks(
+                        fast_kwargs = {
+                            'lores_size': lores_size,
+                            'frame_processor': frame_processor,
+                            'decision_maker': decision_maker,
+                            'frame_step': frame_step,
+                            'max_runtime_sec': max_runtime_sec,
+                        }
+
+                        def _precise_kwargs():
+                            nonlocal precise_pipeline
+                            if not precise_params:
+                                return None
+                            if precise_pipeline is None:
+                                precise_scope_override = regen_species_scope
+                                if str(precise_strategy).strip() == 'single_stage':
+                                    precise_scope_override = None
+                                precise_pipeline = build_detection_pipeline(
+                                    app_config,
+                                    strategy_override=precise_strategy,
+                                    for_track_regen=True,
+                                    regional_species_override=precise_scope_override,
+                                    min_center_dist_override=precise_min_center_dist,
+                                )
+                            precise_frame_processor, precise_decision_maker = precise_pipeline
+                            return {
+                                'lores_size': (precise_lores_px, precise_lores_px),
+                                'frame_processor': precise_frame_processor,
+                                'decision_maker': precise_decision_maker,
+                                'frame_step': precise_frame_step,
+                                'max_runtime_sec': precise_max_runtime_sec,
+                            }
+
+                        detections, precise_used = _run_track_regen_with_precise_fallback(
                             full_video,
-                            lores_size,
-                            frame_processor=frame_processor,
-                            decision_maker=decision_maker,
-                            frame_step=frame_step,
-                            max_runtime_sec=max_runtime_sec,
+                            process_video_for_tracks,
+                            fast_kwargs,
+                            _precise_kwargs if precise_enabled else None,
                         )
+                        if precise_used and regen_species_scope_lc and str(precise_strategy).strip() == 'single_stage':
+                            detections = [
+                                _remap_detection_to_local_scope(d, regen_species_scope_lc)
+                                for d in detections
+                            ]
                         if not detections:
+                            reason = 'no_detections_after_precise_pass' if precise_used else 'no_detections_fast_run'
                             skipped += 1
                             precise_candidates.append({
                                 'video_id': video.id,
                                 'video_path': video.video_path,
-                                'reason': 'no_detections_fast_run',
+                                'reason': reason,
                             })
                             _regenerate_tracks_status['progress'].update(
                                 processed=generated + failed + skipped,
                                 generated=generated, failed=failed, skipped=skipped,
                             )
                             continue
+                        if precise_used:
+                            app.logger.info(
+                                'Track regen precise fallback recovered detections '
+                                '(video_id=%s path=%s strategy=%s frame_step=%s lores_px=%s)',
+                                video.id,
+                                video.video_path,
+                                precise_strategy,
+                                precise_frame_step,
+                                precise_lores_px,
+                            )
 
                         scoped_detections: list[dict] | None = None
                         if species_scope:
@@ -1507,6 +1963,12 @@ def register_routes(app):
                                     used_det_indices.add(best_idx)
                             db.session.flush()
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
+                            unmatched = [
+                                d for d in unmatched
+                                if not _manual_conflict_with_detection(
+                                    manuals_ordered, d, _tracks_same_species
+                                )
+                            ]
                             if species_scope:
                                 unmatched = [
                                     _remap_det_for_scope(d)
@@ -1772,37 +2234,59 @@ def register_routes(app):
         if not settings_check_access():
             return {'error': 'Password required'}, 403
         try:
-            orphaned = 0
-            synced = 0
-            # 1. Удалить SpeciesVisit без VideoSpecies (осиротевшие)
-            has_vs = exists().where(VideoSpecies.species_visit_id == SpeciesVisit.id)
-            orphan_visits = SpeciesVisit.query.filter(~has_vs).all()
-            for sv in orphan_visits:
-                db.session.delete(sv)
-                orphaned += 1
-            db.session.flush()
-            # 2. Синхронизировать VideoSpecies.species_id с visit.species_id.
-            # НЕ перезаписывать manually_corrected — там вид задан пользователем.
-            for vs in VideoSpecies.query.filter(VideoSpecies.species_visit_id.isnot(None)).all():
-                if not vs.species_visit or vs.species_id == vs.species_visit.species_id:
-                    continue
-                if vs.manually_corrected:
-                    # Вид задан пользователем — обновить visit, а не vs
-                    vs.species_visit.species_id = vs.species_id
-                    synced += 1
-                else:
-                    vs.species_id = vs.species_visit.species_id
-                    synced += 1
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            if dry_run:
+                return preview_clean_orphaned_visits(db.session), 200
+
+            body = apply_clean_orphaned_visits(db.session)
             db.session.commit()
             bust_response_caches()
-            return {
-                'orphaned': orphaned,
-                'synced': synced,
-                'message': f'Removed {orphaned} orphaned visits, synced {synced} detections',
-            }, 200
+            return body, 200
         except Exception as e:
             db.session.rollback()
             app.logger.exception('Clean orphaned visits failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/realign-visit-times', methods=['POST'])
+    def realign_visit_times():
+        """Preview/apply SpeciesVisit time realignment from actual detection timestamps."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            if dry_run:
+                return preview_realign_visit_times(db.session), 200
+
+            body = apply_realign_visit_times(db.session)
+            db.session.commit()
+            bust_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Realign visit times failed: %s', e)
+            return {'error': str(e)}, 500
+
+    @app.route('/api/ui/system/split-large-gap-visits', methods=['POST'])
+    def split_large_gap_visits():
+        """Preview/apply splitting of visits with large internal detection gaps."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            gap_seconds = int(app_config.get('detection.dedup_window_seconds') or 60)
+            if dry_run:
+                return preview_split_large_gap_visits(db.session, gap_seconds), 200
+
+            body = apply_split_large_gap_visits(db.session, gap_seconds)
+            db.session.commit()
+            bust_response_caches()
+            return body, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Split large-gap visits failed: %s', e)
             return {'error': str(e)}, 500
 
     @app.route('/api/ui/system/merge-duplicate-species', methods=['POST'])
@@ -1835,17 +2319,10 @@ def register_routes(app):
                     continue
                 target = next((s for s in species_list if s.name == canonical), species_list[0])
                 for other in [s for s in species_list if s.id != target.id]:
-                    vs_count = VideoSpecies.query.filter_by(species_id=other.id).update(
-                        {'species_id': target.id}
-                    )
-                    sv_count = SpeciesVisit.query.filter_by(species_id=other.id).update(
-                        {'species_id': target.id}
-                    )
-                    Species.query.filter_by(parent_id=other.id).update({'parent_id': target.id})
                     if target.name != canonical:
                         target.name = canonical
+                    merge_species_into(other.id, target.id)
                     details.append(f"{other.name} -> {canonical}")
-                    db.session.delete(other)
                     merged += 1
             db.session.commit()
             bust_response_caches()
@@ -1966,29 +2443,6 @@ def register_routes(app):
             app.logger.exception('Unresolved species report failed: %s', e)
             return {'error': str(e)}, 500
 
-    @app.route('/api/ui/system/species-registry/enrich-metadata', methods=['POST'])
-    def run_species_registry_metadata_enrichment():
-        """
-        Batch metadata enrichment for species cards.
-        body: {"dry_run": true|false, "limit": 200}
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            raw_limit = payload.get('limit', 200)
-            try:
-                limit = int(raw_limit)
-            except (TypeError, ValueError):
-                return {'error': 'limit must be int'}, 400
-            stats = enrich_species_metadata(limit=limit, dry_run=dry_run)
-            return {'ok': True, **stats}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Species metadata enrichment failed: %s', e)
-            return {'error': str(e)}, 500
-
     @app.route('/api/ui/system/species-registry/enrich-metadata/start', methods=['POST'])
     def start_species_registry_metadata_enrichment():
         """
@@ -2082,31 +2536,6 @@ def register_routes(app):
         except Exception as e:
             db.session.rollback()
             app.logger.exception('Materialize allowlist failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/repair-cards', methods=['POST'])
-    def species_registry_repair_cards():
-        """Auto-heal full catalog cards metadata and blocked image links."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        payload = request.get_json(silent=True) or {}
-        dry_run = bool(payload.get('dry_run', False))
-        try:
-            limit = int(payload.get('limit', 6000))
-        except (TypeError, ValueError):
-            return {'error': 'limit must be int'}, 400
-        try:
-            body = repair_catalog_cards(
-                app_config.get,
-                dry_run=dry_run,
-                limit=limit,
-            )
-            bust_response_caches()
-            bust_system_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Repair cards failed: %s', e)
             return {'error': str(e)}, 500
 
     @app.route('/api/ui/system/species-registry/repair-cards/start', methods=['POST'])

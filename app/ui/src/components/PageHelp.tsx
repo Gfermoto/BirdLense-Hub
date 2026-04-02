@@ -29,7 +29,6 @@ export interface PageHelpConfig {
     | 'overview'
     | 'food'
     | 'timeline'
-    | 'birdDir'
     | 'videoDetails'
     | 'unknowns'
     | 'migrationCalendar'

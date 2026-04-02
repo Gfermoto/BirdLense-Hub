@@ -10,7 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Cleanup / legacy removal:** removed dead Library/System UI leftovers (`RecordingsAndDataset`, `SystemActivity`, dormant BirdDirectory page/help/i18n), so legacy dangerous controls can no longer reappear through accidental imports.
+- **Backend surface hardening:** `/api/ui/status/debug` now requires authenticated admin settings access; legacy sync species-registry maintenance routes were removed in favor of the active async `start/status` flow.
+- **Docs / operator parity:** TESTING, CONFIGURATION, and ARCHITECTURE docs now match the live routes and current species/catalog UI model.
 - **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description`, `--ignore-empty-image-url` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на незаполненных карточках минимальной БД CI.
+- **Stabilization / safety:** `POST /api/ui/system/realign-visit-times` now exists with honest preview/apply flow; `clean-orphaned-visits` preview no longer mutates the DB; production no longer treats empty passwords as an implicit admin unlock for system/settings flows.
+- **Library / System boundary:** Library now shows a real recordings-on-disk calendar instead of processor heartbeat and points operators to System for maintenance; heartbeat activity moved to System.
+- **Overview / cross-day visits:** Overview now counts visits that overlap the selected day and buckets cross-midnight visits into the selected day instead of the previous day’s hour.
+- **Species merge integrity:** merging species rows now preserves missing target metadata (description, image, metadata source) instead of silently dropping it.
 
 ## [0.2.10] - 2026-03-31
 

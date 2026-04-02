@@ -106,11 +106,9 @@ Check: models loaded (NCNN/YOLO), motion source line, no `403`, `Connection refu
 
 **Gray status icons:** If Video/MQTT/YOLO stay gray while things work, heartbeat may be failing:
 
-```bash
-curl -s http://YOUR_HOST:8085/api/ui/status/debug
-```
+`/api/ui/status/debug` now requires an authenticated admin settings session. Check it from a browser after admin login and Settings unlock, or pass the session cookie explicitly in your HTTP client.
 
-Interpret: `last_heartbeat: null`, stale `updated_at`, `processor_secret_configured: false`, or `activity_log: 403` → fix secret alignment between processor and web.
+Interpret: `last_heartbeat: null`, stale `updated_at`, `processor_secret_configured: false`, or repeated `403` heartbeat errors in processor logs → fix secret alignment between processor and web.
 
 ### 2.2 Full pipeline smoke (YOLO path)
 

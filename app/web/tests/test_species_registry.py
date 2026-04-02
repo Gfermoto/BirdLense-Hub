@@ -3,6 +3,7 @@ import pytest
 from app_config.app_config import app_config
 import services.species_registry_service as registry_mod
 from services.species_registry_service import (
+    enrich_species_metadata,
     repair_recently_reset_species_metadata,
     resolve_species_name,
 )
@@ -25,6 +26,12 @@ def _disable_settings_passwords_for_registry_tests():
 
 
 class TestSpeciesRegistryApi:
+    def test_species_registry_sync_endpoints_removed(self, client):
+        enrich = client.post('/api/ui/system/species-registry/enrich-metadata', json={'limit': 10})
+        repair = client.post('/api/ui/system/species-registry/repair-cards', json={'limit': 10})
+        assert enrich.status_code == 404
+        assert repair.status_code == 404
+
     def test_species_registry_seed_endpoint(self, client):
         r = client.post('/api/ui/system/species-registry/seed')
         assert r.status_code == 200
@@ -96,6 +103,43 @@ class TestSpeciesResolverIntegration:
 
 
 class TestSpeciesMetadataRepair:
+    def test_enrich_species_metadata_treats_blank_description_as_missing(
+        self,
+        app,
+        monkeypatch,
+    ):
+        with app.app_context():
+            sp = Species(
+                name='Blank Description Nuthatches',
+                description='',
+                image_url='https://example.com/existing.jpg',
+                metadata_source=None,
+                metadata_source_url=None,
+            )
+            db.session.add(sp)
+            db.session.commit()
+
+            def fake_update_species_info(target):
+                assert target.id == sp.id
+                target.description = 'Recovered description.'
+                target.metadata_source = 'wikipedia'
+                return True
+
+            monkeypatch.setattr(
+                registry_mod,
+                'update_species_info_from_wiki',
+                fake_update_species_info,
+            )
+
+            stats = enrich_species_metadata(limit=5000, dry_run=False)
+            db.session.expire_all()
+            enriched = db.session.get(Species, sp.id)
+
+            assert stats['processed'] >= 1
+            assert stats['updated'] >= 1
+            assert enriched.description == 'Recovered description.'
+            assert enriched.image_url == 'https://example.com/existing.jpg'
+
     def test_repair_recently_reset_species_metadata_restores_images(self, app, monkeypatch):
         with app.app_context():
             sp = Species(

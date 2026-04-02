@@ -329,3 +329,44 @@ def test_system_observability_includes_delivery_and_fallback_counts(app, client)
         finally:
             app_config.set('general.settings_password', old_admin)
             app_config.set('general.contributor_password', old_contrib)
+
+
+def test_system_observability_ignores_processor_preview_generation_rows(app, client):
+    from app_config.app_config import app_config
+    from models import ActivityLog, db
+
+    with app.app_context():
+        old_admin = app_config.get('general.settings_password')
+        old_contrib = app_config.get('general.contributor_password')
+        app_config.set('general.settings_password', '')
+        app_config.set('general.contributor_password', '')
+        try:
+            db.session.add(ActivityLog(
+                type='notify_preview_generated',
+                data=__import__('json').dumps({
+                    'species': 'Eurasian Jay',
+                    'preview_source': 'best_frame',
+                    'has_image': True,
+                }),
+            ))
+            db.session.add(ActivityLog(
+                type='notify_preview',
+                data=__import__('json').dumps({
+                    'species': 'Eurasian Jay',
+                    'preview_source': 'best_frame',
+                    'telegram_delivery': 'photo',
+                    'fallback_reason': None,
+                }),
+            ))
+            db.session.commit()
+
+            response = client.get('/api/ui/system/observability')
+            assert response.status_code == 200
+            payload = response.get_json()
+            assert payload['notify_preview_generated_24h']['best_frame'] == 1
+            assert payload['notify_preview_24h']['best_frame'] == 1
+            assert payload['notify_delivery_24h']['photo'] == 1
+            assert payload['notify_delivery_24h']['unknown'] == 0
+        finally:
+            app_config.set('general.settings_password', old_admin)
+            app_config.set('general.contributor_password', old_contrib)

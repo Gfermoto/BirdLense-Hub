@@ -6,6 +6,7 @@ import secrets
 import threading
 import time
 from datetime import timedelta, datetime, timezone
+from functools import lru_cache
 from urllib.parse import urlparse
 
 # Re-exports for backward compatibility — do not remove
@@ -159,11 +160,23 @@ def parse_utc_timestamp(param) -> datetime:
 
 
 def get_primary_video_for_visit(visit) -> object | None:
-    """First video for a SpeciesVisit (for weather, path). Returns None if no video_species."""
+    """Deterministically pick the earliest video for a SpeciesVisit."""
     if not visit or not getattr(visit, 'video_species', None):
         return None
-    vs_list = visit.video_species
-    return vs_list[0].video if vs_list else None
+    vs_list = [
+        vs for vs in visit.video_species
+        if getattr(vs, 'video', None) and getattr(vs.video, 'start_time', None)
+    ]
+    if not vs_list:
+        return None
+    primary = min(
+        vs_list,
+        key=lambda vs: (
+            ensure_utc(vs.video.start_time),
+            getattr(vs.video, 'id', 0) or 0,
+        ),
+    )
+    return primary.video
 
 
 def format_visit_for_timeline(visit) -> dict:
@@ -351,6 +364,124 @@ def fetch_sun_times(date_str: str) -> dict | None:
     except Exception as e:
         logging.warning(f"Sun times calculation failed: {e}")
         return None
+
+
+@lru_cache(maxsize=32)
+def _observer_timezone_name_cached(lat: str, lon: str) -> str:
+    import zoneinfo
+    from timezonefinder import TimezoneFinder
+
+    try:
+        lat_f = float(str(lat).replace(',', '.'))
+        lon_f = float(str(lon).replace(',', '.'))
+        tf = TimezoneFinder()
+        tz_name = tf.timezone_at(lat=lat_f, lng=lon_f) or 'UTC'
+        zoneinfo.ZoneInfo(tz_name)
+        return tz_name
+    except Exception:
+        return 'UTC'
+
+
+def get_observer_timezone_name() -> str:
+    lat = _normalize_coord(app_config.get('secrets.latitude'))
+    lon = _normalize_coord(app_config.get('secrets.longitude'))
+    if not lat or not lon:
+        return 'UTC'
+    return _observer_timezone_name_cached(str(lat), str(lon))
+
+
+def get_observer_timezone():
+    import zoneinfo
+
+    try:
+        return zoneinfo.ZoneInfo(get_observer_timezone_name())
+    except Exception:
+        return timezone.utc
+
+
+def observer_local_day_bounds(date_str: str) -> tuple[datetime, datetime]:
+    local_day = datetime.strptime(date_str, '%Y-%m-%d')
+    tz = get_observer_timezone()
+    start_local = local_day.replace(tzinfo=tz)
+    end_local = start_local + timedelta(days=1) - timedelta(microseconds=1)
+    return (
+        start_local.astimezone(timezone.utc).replace(tzinfo=None),
+        end_local.astimezone(timezone.utc).replace(tzinfo=None),
+    )
+
+
+def observer_local_range(
+    date_str: str,
+    *,
+    time_of_day: str = 'all',
+    hour: int | None = None,
+) -> tuple[datetime, datetime]:
+    local_day = datetime.strptime(date_str, '%Y-%m-%d')
+    tz = get_observer_timezone()
+    start_local = local_day.replace(tzinfo=tz)
+
+    if hour is not None:
+        if hour < 0 or hour > 23:
+            raise ValueError('hour must be in range 0..23')
+        range_start = start_local.replace(
+            hour=hour,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        range_end = start_local.replace(
+            hour=hour,
+            minute=59,
+            second=59,
+            microsecond=999999,
+        )
+    elif time_of_day == 'all':
+        range_start = start_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        range_end = start_local.replace(
+            hour=23, minute=59, second=59, microsecond=999999,
+        )
+    else:
+        ranges = {
+            'night': (22, 6),
+            'morning': (6, 10),
+            'day': (10, 14),
+            'afternoon': (14, 18),
+            'evening': (18, 22),
+        }
+        if time_of_day not in ranges:
+            raise ValueError('invalid time_of_day')
+        start_hour, end_hour = ranges[time_of_day]
+        range_start = start_local.replace(
+            hour=start_hour,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        if time_of_day == 'night':
+            range_end = (
+                start_local + timedelta(days=1)
+            ).replace(hour=end_hour, minute=0, second=0, microsecond=0) - timedelta(
+                microseconds=1,
+            )
+        else:
+            range_end = start_local.replace(
+                hour=end_hour,
+                minute=0,
+                second=0,
+                microsecond=0,
+            ) - timedelta(microseconds=1)
+
+    return (
+        range_start.astimezone(timezone.utc).replace(tzinfo=None),
+        range_end.astimezone(timezone.utc).replace(tzinfo=None),
+    )
+
+
+def observer_local_hour(dt: datetime | None) -> int:
+    if dt is None:
+        return 0
+    local = ensure_utc(dt).astimezone(get_observer_timezone())
+    return int(local.hour)
 
 
 def _extract_common_for_hierarchy(species_name: str) -> str:

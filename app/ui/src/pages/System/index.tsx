@@ -5,9 +5,7 @@ import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
-import { DatabaseMaintenanceCard } from './DatabaseMaintenanceCard';
 import { ProcessorLogs } from './ProcessorLogs';
-import { StorageOverview } from './StorageOverview';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -44,18 +42,6 @@ export const System: React.FC = () => {
 
         <Box>
           <CatalogRepairCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <DatabaseMaintenanceCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <StorageOverview />
         </Box>
 
         <Divider sx={{ my: 3 }} />

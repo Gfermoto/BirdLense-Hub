@@ -22,6 +22,7 @@ import { WeatherCard } from '../../components/WeatherCard';
 import { resolveImageUrl, deleteVideo } from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { BASE_API_URL } from '../../api/api';
+import { formatLocalDateTime } from '../../util';
 
 function safeInternalPath(from: unknown): string | null {
   if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//')) {
@@ -74,11 +75,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
   const { processor_version, start_time, end_time, favorite, weather, food } =
     video;
 
-  const formatDate = (date: string | Date) =>
-    new Date(date).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
+  const formatDate = (date: string | Date) => formatLocalDateTime(date);
 
   const duration = Math.max(
     0,
