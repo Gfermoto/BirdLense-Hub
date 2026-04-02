@@ -21,6 +21,7 @@ from util import (
     ensure_utc,
     parse_utc_timestamp,
     get_primary_video_for_visit,
+    get_primary_video_for_visit_in_window,
     format_visit_for_timeline,
     observer_local_day_bounds,
     observer_local_range,
@@ -414,6 +415,8 @@ def register_routes(app):
         if neighbor_mode not in ('video', 'visit_primary'):
             return {'error': 'neighbor_mode must be "video" or "visit_primary"'}, 400
         visit_id = request.args.get('visit_id', type=int)
+        if neighbor_mode == 'visit_primary' and visit_id is None:
+            return {'error': 'visit_id is required when neighbor_mode=visit_primary'}, 400
 
         try:
             tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
@@ -455,10 +458,16 @@ def register_routes(app):
             ids = [
                 primary.id
                 for visit in visit_rows
-                for primary in [get_primary_video_for_visit(visit)]
+                for primary in [
+                    get_primary_video_for_visit_in_window(visit, day_start, day_end)
+                ]
                 if primary is not None
             ]
-            visit_ids = [visit.id for visit in visit_rows if get_primary_video_for_visit(visit) is not None]
+            visit_ids = [
+                visit.id
+                for visit in visit_rows
+                if get_primary_video_for_visit_in_window(visit, day_start, day_end) is not None
+            ]
             try:
                 idx = visit_ids.index(visit_id)
             except ValueError:
@@ -1048,7 +1057,7 @@ def register_routes(app):
             .join(Video)
             .join(Species)
             .filter(
-                Video.start_time >= start_dt,
+                Video.end_time >= start_dt,
                 Video.start_time <= end_dt,
                 VideoSpecies.manually_corrected == False,
                 or_(

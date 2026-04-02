@@ -29,7 +29,8 @@ export const SpeciesDistributionChart: React.FC<
     .map((species) => ({
       id: species.id,
       value: species.detections.reduce((a, b) => a + b, 0),
-      label: species.name,
+      label: '',
+      name: species.name,
       color: labelToUniqueHexColor(species.name),
     }))
     .filter((item) => item.value > 0)
@@ -118,18 +119,15 @@ export const SpeciesDistributionChart: React.FC<
             }}
             role="button"
             tabIndex={0}
-            aria-label={item.label}
+            aria-label={item.name}
             sx={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
               gap: 1,
-              px: 1.25,
-              py: 0.5,
-              borderRadius: 999,
-              border: 1,
-              borderColor: 'divider',
+              px: 0.5,
+              py: 0.25,
               cursor: 'pointer',
-              '&:hover': { bgcolor: 'action.hover' },
+              '&:hover': { opacity: 0.85 },
               '&:focus-visible': {
                 outline: '2px solid #5EEAD4',
                 outlineOffset: 2,
@@ -145,7 +143,7 @@ export const SpeciesDistributionChart: React.FC<
               }}
             />
             <Typography variant="caption">
-              {item.label} ({item.value})
+              {item.name} ({item.value})
             </Typography>
           </Box>
         ))}

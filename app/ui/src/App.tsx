@@ -163,22 +163,32 @@ const theme = createTheme({
 
 function App() {
   useEffect(() => {
-    const browserIdKey = 'birdlense.browser_id';
-    const trackedDayKey = 'birdlense.visitor_tracked_day';
-    const utcDay = new Date().toISOString().slice(0, 10);
+    try {
+      if (typeof localStorage === 'undefined') {
+        return;
+      }
+      const browserIdKey = 'birdlense.browser_id';
+      const trackedDayKey = 'birdlense.visitor_tracked_day';
+      const utcDay = new Date().toISOString().slice(0, 10);
 
-    let browserId = localStorage.getItem(browserIdKey);
-    if (!browserId) {
-      browserId = crypto.randomUUID();
-      localStorage.setItem(browserIdKey, browserId);
+      let browserId = localStorage.getItem(browserIdKey);
+      if (!browserId) {
+        browserId = globalThis.crypto?.randomUUID?.();
+        if (!browserId) {
+          return;
+        }
+        localStorage.setItem(browserIdKey, browserId);
+      }
+      if (localStorage.getItem(trackedDayKey) === utcDay) {
+        return;
+      }
+      localStorage.setItem(trackedDayKey, utcDay);
+      void trackSiteVisitor(browserId).catch(() => {
+        localStorage.removeItem(trackedDayKey);
+      });
+    } catch {
+      // Ignore tracking in restricted/private environments.
     }
-    if (localStorage.getItem(trackedDayKey) === utcDay) {
-      return;
-    }
-    localStorage.setItem(trackedDayKey, utcDay);
-    void trackSiteVisitor(browserId).catch(() => {
-      localStorage.removeItem(trackedDayKey);
-    });
   }, []);
 
   const queryClient = new QueryClient({

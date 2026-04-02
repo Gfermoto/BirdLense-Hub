@@ -118,6 +118,65 @@ def test_alignment_ignores_model_classes_outside_allowlist(app, monkeypatch):
     assert 'Only In Model Class' not in rpt['in_classifier_not_in_catalog']
 
 
+def test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged(
+    app, monkeypatch,
+):
+    import services.species_dataset_alignment_service as mod
+    from datetime import datetime, timezone
+
+    outside_name = 'Knob Billed Duck ALIGN_IN_MODEL'
+    monkeypatch.setattr(
+        mod,
+        'load_classifier_labels_or_error',
+        lambda _path: (
+            ['Parus_major_(Great_Tit)', 'Knob_Billed_Duck_ALIGN_IN_MODEL'],
+            None,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        'load_catalog_allowlist_names',
+        lambda _get: ['Parus major (Great Tit)'],
+    )
+
+    with app.app_context():
+        duck = Species(name=outside_name)
+        db.session.add(duck)
+        db.session.flush()
+        video = Video(
+            processor_version='t',
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            video_path='align-test/in-model-outside-allowlist.mp4',
+        )
+        db.session.add(video)
+        db.session.flush()
+        db.session.add(
+            VideoSpecies(
+                video_id=video.id,
+                species_id=duck.id,
+                start_time=0.0,
+                end_time=1.0,
+                confidence=0.8,
+                source='video',
+            ),
+        )
+        db.session.commit()
+        try:
+            rpt = mod.build_classifier_dataset_alignment_report(
+                db.session,
+                app_config.get,
+            )
+        finally:
+            VideoSpecies.query.filter_by(video_id=video.id).delete()
+            Video.query.filter_by(id=video.id).delete()
+            Species.query.filter_by(id=duck.id).delete()
+            db.session.commit()
+
+    names = {row['name'] for row in rpt['in_catalog_not_in_classifier']}
+    assert outside_name not in names
+
+
 def test_alignment_species_with_video_not_in_model(app, monkeypatch):
     import services.species_dataset_alignment_service as mod
     from datetime import datetime, timezone

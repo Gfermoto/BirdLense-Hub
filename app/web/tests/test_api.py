@@ -88,6 +88,35 @@ class TestMetrics:
         assert isinstance(r.json['unique_visits'], int)
         assert 'species_visit_count' not in r.json
 
+    def test_system_visitors_counts_browser_days_as_unique_visits(self, app, client):
+        from models import SiteVisitor, db
+        from routes.ui_system_routes import _browser_hash
+
+        with app.app_context():
+            db.session.add_all([
+                SiteVisitor(
+                    browser_hash=_browser_hash('same-browser'),
+                    seen_day='2026-04-01',
+                    device_class='desktop',
+                    first_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                    last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                ),
+                SiteVisitor(
+                    browser_hash=_browser_hash('same-browser'),
+                    seen_day='2026-04-02',
+                    device_class='desktop',
+                    first_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                    last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                ),
+            ])
+            db.session.commit()
+
+        response = client.get('/api/ui/system/visitors', query_string={'days': 7})
+
+        assert response.status_code == 200
+        assert response.json['browser_count'] >= 1
+        assert response.json['unique_visits'] >= 2
+
     def test_system_metrics_history_endpoint(self, app, client):
         from models import db, SystemResourceSample
         now = datetime.now(timezone.utc)
@@ -422,6 +451,7 @@ class TestTimeline:
             species = Species(name=f'Timeline Local {id(app)}')
             db.session.add(species)
             db.session.flush()
+            species_name = species.name
             visit = SpeciesVisit(
                 species_id=species.id,
                 start_time=datetime(2026, 3, 24, 21, 5, 0),
@@ -454,7 +484,10 @@ class TestTimeline:
             query_string={'date': '2026-03-25'},
         )
         assert r.status_code == 200
-        assert len(r.json) >= 1
+        assert any(
+            row.get('species', {}).get('name') == species_name
+            for row in r.json
+        )
 
 
 class TestOverview:
@@ -764,6 +797,121 @@ class TestVideos:
         assert data['next_id'] == next_primary_id
         assert data['total'] == 3
         assert data['index'] == 1
+
+    def test_video_neighbors_visit_primary_requires_visit_id(self, app, client):
+        from models import db, Video
+
+        with app.app_context():
+            video = Video(
+                processor_version='test',
+                start_time=datetime(2025, 3, 21, 8, 0, 0),
+                end_time=datetime(2025, 3, 21, 8, 1, 0),
+                video_path='2025/03/21/080000/v.mp4',
+            )
+            db.session.add(video)
+            db.session.commit()
+            video_id = video.id
+
+        response = client.get(
+            f'/api/ui/videos/{video_id}/neighbors',
+            query_string={'neighbor_mode': 'visit_primary'},
+        )
+
+        assert response.status_code == 400
+        assert 'visit_id' in response.get_json()['error']
+
+    def test_video_neighbors_visit_primary_uses_primary_video_inside_current_day(
+        self, app, client,
+    ):
+        from models import db, Video, Species, SpeciesVisit, VideoSpecies
+
+        with app.app_context():
+            species = Species(name='Cross Midnight Visit Neighbor Bird')
+            db.session.add(species)
+            db.session.flush()
+
+            cross_primary = Video(
+                processor_version='test',
+                start_time=datetime(2025, 3, 20, 23, 58, 0),
+                end_time=datetime(2025, 3, 21, 0, 0, 0),
+                video_path='2025/03/20/235800/v.mp4',
+            )
+            same_day_extra = Video(
+                processor_version='test',
+                start_time=datetime(2025, 3, 21, 0, 2, 0),
+                end_time=datetime(2025, 3, 21, 0, 3, 0),
+                video_path='2025/03/21/000200/v.mp4',
+            )
+            next_visit_primary = Video(
+                processor_version='test',
+                start_time=datetime(2025, 3, 21, 1, 0, 0),
+                end_time=datetime(2025, 3, 21, 1, 1, 0),
+                video_path='2025/03/21/010000/v.mp4',
+            )
+            db.session.add_all([cross_primary, same_day_extra, next_visit_primary])
+            db.session.flush()
+
+            visit1 = SpeciesVisit(
+                species_id=species.id,
+                start_time=cross_primary.start_time,
+                end_time=same_day_extra.end_time,
+                max_simultaneous=1,
+            )
+            visit2 = SpeciesVisit(
+                species_id=species.id,
+                start_time=next_visit_primary.start_time,
+                end_time=next_visit_primary.end_time,
+                max_simultaneous=1,
+            )
+            db.session.add_all([visit1, visit2])
+            db.session.flush()
+
+            db.session.add_all([
+                VideoSpecies(
+                    video_id=cross_primary.id,
+                    species_id=species.id,
+                    species_visit_id=visit1.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.9,
+                    source='video',
+                ),
+                VideoSpecies(
+                    video_id=same_day_extra.id,
+                    species_id=species.id,
+                    species_visit_id=visit1.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.88,
+                    source='video',
+                ),
+                VideoSpecies(
+                    video_id=next_visit_primary.id,
+                    species_id=species.id,
+                    species_visit_id=visit2.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.91,
+                    source='video',
+                ),
+            ])
+            db.session.commit()
+
+            same_day_video_id = same_day_extra.id
+            visit1_id = visit1.id
+            next_primary_id = next_visit_primary.id
+
+        response = client.get(
+            f'/api/ui/videos/{same_day_video_id}/neighbors',
+            query_string={
+                'neighbor_mode': 'visit_primary',
+                'visit_id': visit1_id,
+                'day_scope': 'utc',
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.get_json()['next_id'] == next_primary_id
 
     def test_storage_nearest_recording_day_skips_empty_days(self, app, client):
         import os
@@ -1355,6 +1503,54 @@ class TestUnknowns:
         )
         assert r.status_code == 200
         assert r.json == []
+
+    def test_unknowns_include_clip_that_overlaps_window(self, app, client):
+        from models import db, Species, SpeciesVisit, Video, VideoSpecies
+
+        with app.app_context():
+            unknown = Species.query.filter_by(name='Unknown').first()
+            if unknown is None:
+                unknown = Species(name='Unknown', active=False)
+                db.session.add(unknown)
+                db.session.flush()
+
+            video = Video(
+                processor_version='1',
+                start_time=datetime(2026, 3, 24, 23, 59, 50),
+                end_time=datetime(2026, 3, 25, 0, 0, 20),
+                video_path='data/recordings/2026/03/24/235950/video.mp4',
+                spectrogram_path=None,
+            )
+            visit = SpeciesVisit(
+                species_id=unknown.id,
+                start_time=video.start_time,
+                end_time=video.end_time,
+                max_simultaneous=1,
+            )
+            db.session.add_all([video, visit])
+            db.session.flush()
+            detection = VideoSpecies(
+                video_id=video.id,
+                species_id=unknown.id,
+                species_visit_id=visit.id,
+                start_time=12.0,
+                end_time=18.0,
+                confidence=0.1,
+                source='video',
+                detection_provider='yolo',
+                created_at=datetime(2026, 3, 25, 0, 0, 5),
+            )
+            db.session.add(detection)
+            db.session.commit()
+            detection_id = detection.id
+
+        response = client.get(
+            '/api/ui/unknowns',
+            query_string={'date': '2026-03-25', 'time_of_day': 'all'},
+        )
+
+        assert response.status_code == 200
+        assert any(row['id'] == detection_id for row in response.get_json())
 
 
 class TestScanRecordings:

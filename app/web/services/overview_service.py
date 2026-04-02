@@ -19,7 +19,18 @@ def _visit_overlaps_window(start_of_day: datetime, end_of_day: datetime):
     )
 
 
-def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> dict:
+def _video_overlaps_window(start_of_day: datetime, end_of_day: datetime):
+    return (
+        Video.end_time >= start_of_day,
+        Video.start_time <= end_of_day,
+    )
+
+
+def get_overview_data(
+    session,
+    start_of_day: datetime,
+    end_of_day: datetime,
+) -> dict:
     """Build overview payload: topSpecies, stats, hourlyTemperature, lastDetection."""
     cache_key = f"overview:{start_of_day.isoformat()}:{end_of_day.isoformat()}"
     found, cached_result = cache_get(cache_key)
@@ -74,9 +85,11 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
         func.sum(
             case(
-                (SpeciesVisit.start_time >= now_utc - timedelta(hours=1),
-                 SpeciesVisit.max_simultaneous),
-                else_=0
+                (
+                    SpeciesVisit.start_time >= now_utc - timedelta(hours=1),
+                    SpeciesVisit.max_simultaneous,
+                ),
+                else_=0,
             )
         ).label('lastHourDetections'),
     ).join(Species, SpeciesVisit.species_id == Species.id).filter(
@@ -86,32 +99,47 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
 
     # Recording time: сумма длительностей видеофайлов за день (Video.start_time в диапазоне).
     # Это «время записей» — сколько всего записали камерой.
-    video_dur_expr = (
-        func.strftime('%s', Video.end_time) - func.strftime('%s', Video.start_time)
+    overlapping_videos = session.query(
+        Video.start_time,
+        Video.end_time,
+        Video.weather_temp,
+    ).filter(
+        *_video_overlaps_window(start_of_day, end_of_day),
+    ).all()
+    video_durations = [
+        max(
+            0,
+            round(
+                (
+                    ensure_utc(video_end) - ensure_utc(video_start)
+                ).total_seconds(),
+            ),
+        )
+        for video_start, video_end, _temp in overlapping_videos
+        if video_start and video_end
+    ]
+    recording_sec = sum(video_durations)
+    avg_recording_sec = (
+        sum(video_durations) / len(video_durations)
+        if video_durations else 0
     )
-    recording_sec = session.query(
-        func.sum(video_dur_expr).label('total'),
-    ).filter(
-        Video.start_time >= start_of_day,
-        Video.start_time <= end_of_day,
-    ).scalar() or 0
-    avg_recording_sec = session.query(
-        func.avg(video_dur_expr).label('avg'),
-    ).filter(
-        Video.start_time >= start_of_day,
-        Video.start_time <= end_of_day,
-    ).scalar() or 0
 
     # Detection time: сумма длительностей детекций (VideoSpecies) — сколько птиц было видно.
     # case — защита от end<start.
     dur_expr = case(
-        (VideoSpecies.end_time >= VideoSpecies.start_time,
-         VideoSpecies.end_time - VideoSpecies.start_time),
-        else_=0
+        (
+            VideoSpecies.end_time >= VideoSpecies.start_time,
+            VideoSpecies.end_time - VideoSpecies.start_time,
+        ),
+        else_=0,
     )
     dur_q = session.query(
-        func.sum(case((VideoSpecies.source == 'video', dur_expr), else_=0)).label('video_duration'),
-        func.sum(case((VideoSpecies.source == 'audio', dur_expr), else_=0)).label('audio_duration'),
+        func.sum(
+            case((VideoSpecies.source == 'video', dur_expr), else_=0)
+        ).label('video_duration'),
+        func.sum(
+            case((VideoSpecies.source == 'audio', dur_expr), else_=0)
+        ).label('audio_duration'),
     ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).filter(
         *_visit_overlaps_window(start_of_day, end_of_day),
     ).first()
@@ -120,8 +148,12 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
     prov_q = session.query(
         VideoSpecies.detection_provider,
         func.count(VideoSpecies.id).label('count'),
-    ).join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id).join(
-        Species, SpeciesVisit.species_id == Species.id
+    ).join(
+        SpeciesVisit,
+        VideoSpecies.species_visit_id == SpeciesVisit.id,
+    ).join(
+        Species,
+        SpeciesVisit.species_id == Species.id,
     ).filter(
         *_visit_overlaps_window(start_of_day, end_of_day),
         exclude_bird,
@@ -132,26 +164,25 @@ def get_overview_data(session, start_of_day: datetime, end_of_day: datetime) -> 
         'totalDetections': stats_q.totalDetections or 0,
         'lastHourDetections': stats_q.lastHourDetections or 0,
         'busiestHour': busiest if any(busiest_by_hour) else 0,
-        # UI card "Mean duration": average single recording duration (Video), not visit span.
+        # UI card "Mean duration": average single recording duration (Video).
         'avgVisitDuration': round(avg_recording_sec),
-        'videoDuration': round(recording_sec),  # время записей: сумма длительностей видеофайлов
+        'videoDuration': round(recording_sec),
         'audioDuration': round(dur_q.audio_duration or 0),
         'detectionByProvider': {(p or 'legacy'): int(c) for p, c in prov_q},
     }
 
     # Hourly temperature
-    temp_q = session.query(
-        func.strftime('%H', Video.start_time).label('hour'),
-        func.avg(Video.weather_temp).label('avg_temp'),
-    ).filter(
-        Video.start_time >= start_of_day,
-        Video.start_time <= end_of_day,
-        Video.weather_temp.isnot(None),
-    ).group_by('hour').all()
-
     hourly_temperature = [None] * 24
-    for h, avg in temp_q:
-        hourly_temperature[int(h)] = round(avg, 1) if avg else None
+    hourly_temp_values: dict[int, list[float]] = {}
+    for video_start, _video_end, temp in overlapping_videos:
+        if temp is None or video_start is None:
+            continue
+        bucket_time = max(video_start, start_of_day)
+        hour = observer_local_hour(bucket_time)
+        hourly_temp_values.setdefault(hour, []).append(float(temp))
+    for hour, values in hourly_temp_values.items():
+        if values:
+            hourly_temperature[hour] = round(sum(values) / len(values), 1)
 
     # Last detection
     last_row = session.query(SpeciesVisit, Species.name).join(

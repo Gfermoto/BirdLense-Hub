@@ -1,7 +1,11 @@
 """Motion detector factory with safe local fallback."""
 
+import logging
+
 from motion_detectors.opencv_motion import OpenCVMotionDetector
 from motion_detectors.or_motion import OrMotionDetector
+
+logger = logging.getLogger(__name__)
 
 
 def build_motion_detector(
@@ -28,23 +32,37 @@ def build_motion_detector(
             check_every_n_frames=check_every_n_frames,
         )
     elif source == 'mqtt' and mqtt_broker and (mqtt_topic or '').strip():
-        from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
+        try:
+            from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
 
-        additional = MQTTBinaryMotionDetector(
-            broker=mqtt_broker,
-            port=mqtt_port,
-            topic=(mqtt_topic or '').strip(),
-            username=mqtt_username,
-            password=mqtt_password,
-        )
-        additional.start()
+            additional = MQTTBinaryMotionDetector(
+                broker=mqtt_broker,
+                port=mqtt_port,
+                topic=(mqtt_topic or '').strip(),
+                username=mqtt_username,
+                password=mqtt_password,
+            )
+            additional.start()
+        except (ImportError, ModuleNotFoundError, Exception) as exc:
+            logger.warning(
+                'MQTT motion detector unavailable, fallback to OpenCV: %s',
+                exc,
+            )
+            additional = None
     elif source == 'esphome' and esphome_url and esphome_sensor:
-        from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
+        try:
+            from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
 
-        additional = ESPHomeBinaryMotionDetector(
-            url=esphome_url,
-            sensor_id=esphome_sensor,
-        )
+            additional = ESPHomeBinaryMotionDetector(
+                url=esphome_url,
+                sensor_id=esphome_sensor,
+            )
+        except (ImportError, ModuleNotFoundError, Exception) as exc:
+            logger.warning(
+                'ESPHome motion detector unavailable, fallback to OpenCV: %s',
+                exc,
+            )
+            additional = None
 
     if primary and additional:
         return OrMotionDetector(primary=primary, additional=additional)
@@ -52,6 +70,12 @@ def build_motion_detector(
         return primary
     if additional:
         return additional
+    logger.warning(
+        'No dedicated motion detector active, using OpenCV fallback '
+        '(source=%s, check_every_n_frames=%s)',
+        source,
+        check_every_n_frames,
+    )
     return OpenCVMotionDetector(
         capture_fn=media_source.capture,
         check_every_n_frames=check_every_n_frames,

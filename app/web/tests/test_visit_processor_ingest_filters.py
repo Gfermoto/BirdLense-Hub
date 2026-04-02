@@ -160,3 +160,49 @@ def test_out_of_order_video_ingest_does_not_attach_to_future_visit(app):
 
         assert later_visit.id != earlier_visit.id
         assert SpeciesVisit.query.count() == 2
+
+
+def test_out_of_order_video_ingest_within_timeout_rewinds_visit_start(app):
+    """Near out-of-order detections may reuse a visit, but start_time must rewind."""
+    with app.app_context():
+        species = Species(name='Great Tit')
+        db.session.add(species)
+        db.session.flush()
+
+        later_video = Video(
+            processor_version='test',
+            start_time=datetime(2026, 4, 1, 8, 47, 0),
+            end_time=datetime(2026, 4, 1, 8, 47, 30),
+            video_path='data/recordings/2026/04/01/084700/video.mp4',
+        )
+        earlier_video = Video(
+            processor_version='test',
+            start_time=datetime(2026, 4, 1, 8, 46, 30),
+            end_time=datetime(2026, 4, 1, 8, 47, 0),
+            video_path='data/recordings/2026/04/01/084630/video.mp4',
+        )
+        db.session.add_all([later_video, earlier_video])
+        db.session.flush()
+
+        vp = VisitProcessor(db, app.logger, visit_timeout=60)
+
+        visit_from_later, _ = vp.process_video_detection(
+            species=species,
+            video=later_video,
+            detection_start=5.0,
+            detection_end=10.0,
+            confidence=0.98,
+        )
+        visit_from_earlier, _ = vp.process_video_detection(
+            species=species,
+            video=earlier_video,
+            detection_start=0.0,
+            detection_end=5.0,
+            confidence=0.97,
+        )
+        db.session.flush()
+
+        assert visit_from_later.id == visit_from_earlier.id
+        assert visit_from_earlier.start_time.replace(tzinfo=None) == datetime(
+            2026, 4, 1, 8, 46, 30,
+        )

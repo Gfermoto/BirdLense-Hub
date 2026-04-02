@@ -390,6 +390,11 @@ def _collect_visitor_stats(visitors_days: int = 7) -> dict:
     ).filter(
         SiteVisitor.last_seen_at >= start_utc,
     ).scalar() or 0
+    unique_visits = db.session.query(
+        func.count(SiteVisitor.id),
+    ).filter(
+        SiteVisitor.last_seen_at >= start_utc,
+    ).scalar() or 0
     active_days = db.session.query(
         func.count(func.distinct(SiteVisitor.seen_day)),
     ).filter(
@@ -410,7 +415,7 @@ def _collect_visitor_stats(visitors_days: int = 7) -> dict:
     return {
         'period_days': days,
         'browser_count': int(browser_count),
-        'unique_visits': int(browser_count),
+        'unique_visits': int(unique_visits),
         'active_days': int(active_days),
         'device_breakdown': breakdown,
         'method': 'anonymous_browser_id',
@@ -1710,6 +1715,8 @@ def register_routes(app):
                     precise_lores_px != lores_px,
                     precise_frame_step != frame_step,
                     str(precise_strategy).strip() != str(regen_strategy).strip(),
+                    precise_max_runtime_sec != max_runtime_sec,
+                    app_config.get('processor.track_regen_precise_min_center_dist') is not None,
                 ))
                 precise_params = {
                     'frame_step': precise_frame_step,

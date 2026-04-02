@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
 const STATUS_KEYS: Record<string, Record<string, string>> = {
-  processor: { ok: 'status.processorOk', unknown: 'status.processorUnknown', offline: 'status.processorUnknown', error: 'status.processorError' },
+  processor: { ok: 'status.processorOk', unknown: 'status.processorUnknown', offline: 'status.processorOffline', error: 'status.processorError' },
   video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoError', not_configured: 'status.videoNotConfigured' },
   mqtt: { ok: 'status.mqttOk', unknown: 'status.mqttUnknown', not_used: 'status.mqttNotUsed', not_configured: 'status.mqttNotConfigured', error: 'status.mqttError', offline: 'status.mqttUnknown' },
   esphome: { ok: 'status.esphomeOk', not_used: 'status.esphomeNotUsed', not_configured: 'status.esphomeNotConfigured', unknown: 'status.esphomeUnknown', error: 'status.esphomeError', offline: 'status.esphomeUnknown' },

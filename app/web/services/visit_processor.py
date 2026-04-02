@@ -78,6 +78,8 @@ class VisitProcessor:
 
         if not visit:
             return None
+        if detection_time < _ensure_utc(visit.start_time):
+            visit.start_time = detection_time
 
         video_species = VideoSpecies(
             species_id=species.id,
@@ -172,6 +174,8 @@ class VisitProcessor:
                 tzinfo=timezone.utc)
             recent_visit.created_at = recent_visit.created_at.replace(
                 tzinfo=timezone.utc)
+            if detection_time < recent_visit.start_time:
+                recent_visit.start_time = detection_time
             return recent_visit, False
 
         visit = SpeciesVisit(
