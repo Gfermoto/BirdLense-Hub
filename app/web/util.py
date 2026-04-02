@@ -180,7 +180,8 @@ def get_primary_video_for_visit_in_window(
         filtered_vs = []
         for vs in vs_list:
             video_start = ensure_utc(vs.video.start_time).replace(tzinfo=None)
-            if window_start is not None and video_start < window_start:
+            video_end = ensure_utc(vs.video.end_time).replace(tzinfo=None)
+            if window_start is not None and video_end <= window_start:
                 continue
             if window_end is not None and video_start >= window_end:
                 continue

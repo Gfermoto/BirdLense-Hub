@@ -473,9 +473,11 @@ def register_routes(app):
             except ValueError:
                 idx = None
         if idx is None:
+            # Пересечение с локальным/UTC-сутками (как в overview): клип, начавшийся до
+            # полуночи, но попадающий в день по длительности, должен участвовать в списке.
             day_rows = (
                 Video.query.filter(
-                    Video.start_time >= day_start,
+                    Video.end_time > day_start,
                     Video.start_time < day_end,
                 )
                 .order_by(Video.start_time.asc(), Video.id.asc())

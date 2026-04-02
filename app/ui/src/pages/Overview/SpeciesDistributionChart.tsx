@@ -60,6 +60,8 @@ export const SpeciesDistributionChart: React.FC<
     <Box
       sx={{
         width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         height: '100%',
         minHeight: isMobile ? 0 : 400,
         display: 'flex',
@@ -67,6 +69,8 @@ export const SpeciesDistributionChart: React.FC<
         alignItems: 'center',
         flexDirection: 'column',
         gap: 2,
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       <PieChart
@@ -98,12 +102,16 @@ export const SpeciesDistributionChart: React.FC<
       />
       <Box
         sx={{
-          px: { xs: 0, sm: 2 },
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
           display: 'flex',
+          flexDirection: 'row',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          gap: 1.5,
+          gap: 2,
+          p: 1,
+          boxSizing: 'border-box',
         }}
       >
         {pieData.map((item) => (
@@ -124,6 +132,8 @@ export const SpeciesDistributionChart: React.FC<
               display: 'flex',
               alignItems: 'center',
               gap: 1,
+              maxWidth: '100%',
+              minWidth: 0,
               px: 0.5,
               py: 0.25,
               cursor: 'pointer',
@@ -142,7 +152,14 @@ export const SpeciesDistributionChart: React.FC<
                 backgroundColor: item.color,
               }}
             />
-            <Typography variant="caption">
+            <Typography
+              variant="caption"
+              sx={{
+                maxWidth: { xs: 'min(100%, 220px)', sm: 280 },
+                overflowWrap: 'anywhere',
+                textAlign: 'center',
+              }}
+            >
               {item.name} ({item.value})
             </Typography>
           </Box>
