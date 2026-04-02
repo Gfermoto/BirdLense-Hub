@@ -9,10 +9,11 @@ from app_config.app_config import app_config
 
 
 def _is_production_runtime() -> bool:
-    return (
-        os.environ.get('FLASK_ENV') == 'production'
-        or os.environ.get('BIRDLENSE_ENV') == 'production'
-    )
+    values = {
+        (os.environ.get('FLASK_ENV') or '').strip().lower(),
+        (os.environ.get('BIRDLENSE_ENV') or '').strip().lower(),
+    }
+    return any(value in {'production', 'prod'} for value in values)
 
 
 def _get_session_role():

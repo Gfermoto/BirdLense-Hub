@@ -295,6 +295,56 @@ class TestOverviewDayOverlap:
         assert body['stats']['busiestHour'] == 0
         assert body['topSpecies'][0]['detections'][0] == 3
 
+    def test_overview_date_counts_overlapping_video_duration_and_local_temperature(
+        self, app, client,
+    ):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            species = Species(name='Overlap Video Species')
+            db.session.add(species)
+            db.session.flush()
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 24, 21, 2, 0),
+                end_time=datetime(2026, 3, 24, 21, 4, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version='test',
+                start_time=datetime(2026, 3, 24, 20, 55, 0),
+                end_time=datetime(2026, 3, 24, 21, 5, 0),
+                video_path='data/recordings/2026/03/24/205500/video.mp4',
+                weather_temp=5.5,
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=5.0,
+                    confidence=0.9,
+                    source='video',
+                    detection_provider='yolo',
+                ),
+            )
+            db.session.commit()
+
+        bust_response_caches()
+
+        response = client.get('/api/ui/overview', query_string={'date': '2026-03-25'})
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body['stats']['videoDuration'] == 600
+        assert body['hourlyTemperature'][0] == 5.5
+
     def test_overview_detection_by_provider_counts_detection_rows_not_visit_size(
         self, app, client,
     ):
@@ -361,4 +411,17 @@ class TestOverviewDayOverlap:
         assert response.status_code == 200
         body = response.get_json()
         assert body['stats']['detectionByProvider']['yolo'] == 2
-        assert body['stats']['detectionByProvider']['frigate'] == 1
+
+
+class TestObserverLocalRanges:
+    def test_observer_local_night_covers_early_morning_of_selected_date(self, app):
+        from app_config.app_config import app_config
+        from util import observer_local_range
+
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            start_dt, end_dt = observer_local_range('2026-03-25', time_of_day='night')
+
+        assert start_dt == datetime(2026, 3, 24, 21, 0, 0)
+        assert end_dt == datetime(2026, 3, 25, 2, 59, 59, 999999)

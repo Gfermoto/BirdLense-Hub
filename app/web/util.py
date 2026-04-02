@@ -161,12 +161,31 @@ def parse_utc_timestamp(param) -> datetime:
 
 def get_primary_video_for_visit(visit) -> object | None:
     """Deterministically pick the earliest video for a SpeciesVisit."""
+    return get_primary_video_for_visit_in_window(visit)
+
+
+def get_primary_video_for_visit_in_window(
+    visit,
+    window_start: datetime | None = None,
+    window_end: datetime | None = None,
+) -> object | None:
+    """Pick the earliest visit video, optionally constrained to a time window."""
     if not visit or not getattr(visit, 'video_species', None):
         return None
     vs_list = [
         vs for vs in visit.video_species
         if getattr(vs, 'video', None) and getattr(vs.video, 'start_time', None)
     ]
+    if window_start is not None or window_end is not None:
+        filtered_vs = []
+        for vs in vs_list:
+            video_start = ensure_utc(vs.video.start_time).replace(tzinfo=None)
+            if window_start is not None and video_start < window_start:
+                continue
+            if window_end is not None and video_start >= window_end:
+                continue
+            filtered_vs.append(vs)
+        vs_list = filtered_vs
     if not vs_list:
         return None
     primary = min(
@@ -442,7 +461,7 @@ def observer_local_range(
         )
     else:
         ranges = {
-            'night': (22, 6),
+            'night': (0, 6),
             'morning': (6, 10),
             'day': (10, 14),
             'afternoon': (14, 18),
@@ -457,19 +476,12 @@ def observer_local_range(
             second=0,
             microsecond=0,
         )
-        if time_of_day == 'night':
-            range_end = (
-                start_local + timedelta(days=1)
-            ).replace(hour=end_hour, minute=0, second=0, microsecond=0) - timedelta(
-                microseconds=1,
-            )
-        else:
-            range_end = start_local.replace(
-                hour=end_hour,
-                minute=0,
-                second=0,
-                microsecond=0,
-            ) - timedelta(microseconds=1)
+        range_end = start_local.replace(
+            hour=end_hour,
+            minute=0,
+            second=0,
+            microsecond=0,
+        ) - timedelta(microseconds=1)
 
     return (
         range_start.astimezone(timezone.utc).replace(tzinfo=None),

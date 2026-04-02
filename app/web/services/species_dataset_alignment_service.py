@@ -194,6 +194,7 @@ def build_classifier_dataset_alignment_report(
         return report
 
     norm_pairs = _normalized_classifier_labels(raw_labels)
+    all_label_norms = {nk for _raw, nk in norm_pairs if nk}
     allowlist_names = load_catalog_allowlist_names(app_config_get) or ()
     allowlist_norms = {
         nk
@@ -204,7 +205,6 @@ def build_classifier_dataset_alignment_report(
         pair for pair in norm_pairs
         if not allowlist_norms or pair[1] in allowlist_norms
     ]
-    label_norms = {nk for _raw, nk in scoped_norm_pairs}
     label_to_norms: dict[str, set[str]] = {}
     for raw, nk in scoped_norm_pairs:
         if not nk:
@@ -219,7 +219,7 @@ def build_classifier_dataset_alignment_report(
         sp_keys[int(sid)] = keys
 
     def species_matches_classifier(sid: int) -> bool:
-        return bool(sp_keys.get(sid, set()) & label_norms)
+        return bool(sp_keys.get(sid, set()) & all_label_norms)
 
     clf_unmatched_labels: list[str] = []
     for raw, norms in label_to_norms.items():

@@ -111,6 +111,21 @@ class TestProductionSettingsAccess:
         assert response.status_code == 200
         assert response.get_json()['requires'] is True
 
+    def test_settings_access_denied_in_prod_alias_when_passwords_missing(
+        self, app, monkeypatch,
+    ):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = ''
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
+        monkeypatch.setenv('BIRDLENSE_ENV', 'PROD')
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+
+        with app.test_request_context('/api/ui/system/db/backup'):
+            assert settings_check_access() is False
+
 
 class TestWebhookUrlValidation:
     """Webhook SSRF guardrails."""

@@ -32,6 +32,7 @@ import {
   exportTimelineForObserverDate,
   fetchUnknownsForObserverDate,
   fetchNearestRecordingDay,
+  fetchOverviewData,
 } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
@@ -103,6 +104,34 @@ export function TimelinePage() {
     const parsed = paramDate ? dayjs(paramDate).startOf('date') : dayjs().startOf('date');
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
+  const { data: observerOverview } = useQuery({
+    queryKey: ['timeline-observer-timezone'],
+    queryFn: () => fetchOverviewData(dayjs().format('YYYY-MM-DD')),
+    staleTime: 1000 * 60 * 30,
+  });
+  const observerToday = useMemo(() => {
+    const timezone = observerOverview?.observer_timezone;
+    if (!timezone) {
+      return dayjs().startOf('day');
+    }
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const year = parts.find((part) => part.type === 'year')?.value;
+      const month = parts.find((part) => part.type === 'month')?.value;
+      const day = parts.find((part) => part.type === 'day')?.value;
+      if (!year || !month || !day) {
+        return dayjs().startOf('day');
+      }
+      return dayjs(`${year}-${month}-${day}`).startOf('day');
+    } catch {
+      return dayjs().startOf('day');
+    }
+  }, [observerOverview?.observer_timezone]);
 
   const {
     data: visits,
@@ -355,7 +384,7 @@ export function TimelinePage() {
                 label={t('timeline.selectDate')}
                 value={selectedDate}
                 onChange={updateSelectedDate}
-                maxDate={dayjs()}
+                maxDate={observerToday}
                 slotProps={{
                   textField: {
                     fullWidth: true,
@@ -368,7 +397,7 @@ export function TimelinePage() {
                 <IconButton
                   aria-label={t('timeline.nextDay')}
                   disabled={
-                    !selectedDate.isBefore(dayjs(), 'day')
+                    !selectedDate.isBefore(observerToday, 'day')
                   }
                   onClick={() => void jumpToNearestRecordingDay('next')}
                 >

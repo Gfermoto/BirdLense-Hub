@@ -951,6 +951,7 @@
     "motionHint_esphome": "Frigate + BirdNET + ESPHome: триггер от любого",
     "processorOk": "Процессор работает",
     "processorUnknown": "Нет свежего heartbeat процессора",
+    "processorOffline": "Процессор офлайн",
     "processorError": "Ошибка процессора",
     "videoOk": "Камеры подключены",
     "videoUnknown": "Нет подключения к камерам",

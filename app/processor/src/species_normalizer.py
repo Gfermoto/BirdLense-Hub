@@ -113,6 +113,7 @@ def merge_detections(
         new_best_frame=None,
         new_frames=None,
         new_provider=None,
+        new_providers=None,
     ):
         old_conf = existing.get("confidence", 0)
         existing["confidence"] = max(old_conf, new_conf)
@@ -122,9 +123,11 @@ def merge_detections(
             existing["best_frame"] = new_best_frame
         if new_frames and not existing.get("frames"):
             existing["frames"] = new_frames
-        if new_provider:
+        if new_provider or new_providers:
             providers = set(existing.get("contributing_providers") or [])
-            providers.add(new_provider)
+            if new_provider:
+                providers.add(new_provider)
+            providers.update(p for p in (new_providers or []) if p)
             existing["contributing_providers"] = sorted(providers)
 
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
@@ -158,6 +161,7 @@ def merge_detections(
                 d.get("best_frame"),
                 d.get("frames"),
                 new_provider=provider,
+                new_providers=d.get("contributing_providers"),
             )
             logger.debug("merge: YOLO %s into existing (gap=%.1fs)", species, best_gap)
         else:
@@ -172,7 +176,9 @@ def merge_detections(
                 "detection_provider": provider,
                 "track_id": d.get("track_id"),
                 "frames": d.get("frames"),
-                "contributing_providers": sorted({provider}),
+                "contributing_providers": sorted(
+                    {provider, *(d.get("contributing_providers") or [])}
+                ),
             }
             if "best_frame" in d:
                 by_key[(key, visit_id)]["best_frame"] = d["best_frame"]
@@ -221,7 +227,14 @@ def merge_detections(
         if provider == "birdnet":
             provider = "birdnet_mqtt"
         if merged is not None:
-            _merge_into(merged, conf, ev_start, ev_end, new_provider=provider)
+            _merge_into(
+                merged,
+                conf,
+                ev_start,
+                ev_end,
+                new_provider=provider,
+                new_providers=ev.get("contributing_providers"),
+            )
             if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
                 n = int(merged.get("_cross_mqtt_merges") or 0) + 1
                 merged["_cross_mqtt_merges"] = n
@@ -240,7 +253,9 @@ def merge_detections(
             "confidence": conf,
             "source": "video",
             "detection_provider": provider,
-            "contributing_providers": sorted({provider}),
+            "contributing_providers": sorted(
+                {provider, *(ev.get("contributing_providers") or [])}
+            ),
         }
         logger.debug("merge: MQTT %s new (offset=%.1fs)", species, offset if offset is not None else -1)
 
@@ -280,6 +295,7 @@ def merge_detections(
                     d.get("best_frame"),
                     d.get("frames"),
                     new_provider=d.get("detection_provider"),
+                    new_providers=d.get("contributing_providers"),
                 )
                 # Сохраняем имя с frames (YOLO) приоритетнее
                 if d.get("frames") or d.get("best_frame"):
