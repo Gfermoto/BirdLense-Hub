@@ -3,6 +3,8 @@ __pycache__
 .env
 .env.*
 *.db
+*.db-shm
+*.db-wal
 app/data/recordings
 app/data/notify_temp
 app/data/processor.log*
