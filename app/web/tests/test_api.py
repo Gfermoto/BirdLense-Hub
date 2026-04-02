@@ -913,6 +913,50 @@ class TestVideos:
         assert response.status_code == 200
         assert response.get_json()['next_id'] == next_primary_id
 
+    def test_video_neighbors_includes_clip_starting_before_day_but_overlapping(
+        self, app, client,
+    ):
+        """Локальный день UTC−5: клип с start до day_start UTC, но пересекающий сутки — в списке."""
+        from datetime import datetime, timedelta
+        from models import db, Video
+
+        with app.app_context():
+            # tz_offset +300 (JS): local = UTC − 5h. Локальные 2025-03-20 → [Mar20 05:00, Mar21 05:00) UTC.
+            overlap_early_start = datetime(2025, 3, 20, 4, 0, 0)
+            overlap_early_end = datetime(2025, 3, 21, 4, 0, 0)
+            anchor_start = datetime(2025, 3, 21, 3, 0, 0)
+            anchor_end = datetime(2025, 3, 21, 3, 30, 0)
+            overlap = Video(
+                processor_version='test',
+                start_time=overlap_early_start,
+                end_time=overlap_early_end,
+                video_path='2025/03/20/040000/overlap.mp4',
+            )
+            anchor = Video(
+                processor_version='test',
+                start_time=anchor_start,
+                end_time=anchor_end,
+                video_path='2025/03/21/030000/v.mp4',
+            )
+            db.session.add_all([overlap, anchor])
+            db.session.commit()
+            overlap_id, anchor_id = overlap.id, anchor.id
+
+        r = client.get(
+            f'/api/ui/videos/{anchor_id}/neighbors',
+            query_string={
+                'day_scope': 'local',
+                'tz_offset_minutes': 300,
+            },
+        )
+        assert r.status_code == 200
+        j = r.json
+        assert j['day_label'] == '2025-03-20'
+        assert j['total'] == 2
+        assert j['index'] == 1
+        assert j['previous_id'] == overlap_id
+        assert j['next_id'] is None
+
     def test_storage_nearest_recording_day_skips_empty_days(self, app, client):
         import os
         from pathlib import Path

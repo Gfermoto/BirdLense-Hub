@@ -324,8 +324,8 @@ export const Overview = () => {
 
         {/* Species Distribution */}
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ p: 1, height: '100%', overflow: 'hidden', minWidth: 0 }}>
+            <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
               {t('overview.topSpecies')}
             </Typography>
             {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
