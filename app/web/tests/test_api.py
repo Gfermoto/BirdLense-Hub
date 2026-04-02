@@ -1,5 +1,6 @@
 """API integration tests for web service."""
 from datetime import datetime, timedelta, timezone
+import sqlite3
 
 import pytest
 
@@ -49,6 +50,7 @@ class TestMetrics:
         data = r.get_json()
         assert data.get('service') == 'birdlense-hub'
         assert 'notify_preview_24h' in data
+        assert 'notify_preview_generated_24h' in data
         assert 'detections_total' in data
         assert isinstance(data['notify_preview_24h'], dict)
 
@@ -59,26 +61,32 @@ class TestMetrics:
         assert 'cpu' in body and 'memory' in body and 'disk' in body
         assert 'visitors' not in body
 
-    def test_system_visitors_endpoint(self, app, client):
-        from models import db, Species, SpeciesVisit
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        with app.app_context():
-            sp = Species(name='Test species unique visitors')
-            db.session.add(sp)
-            db.session.flush()
-            db.session.add(SpeciesVisit(
-                species_id=sp.id,
-                start_time=now,
-                end_time=now,
-                max_simultaneous=1,
-            ))
-            db.session.commit()
+    def test_system_visitors_endpoint_counts_anonymous_browsers(self, app, client):
+        payload = {'browser_id': '11111111-1111-4111-8111-111111111111'}
+        headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile'}
+        r1 = client.post('/api/ui/system/visitors/track', json=payload, headers=headers)
+        assert r1.status_code == 200
+
+        r2 = client.post('/api/ui/system/visitors/track', json=payload, headers=headers)
+        assert r2.status_code == 200
+
+        r3 = client.post(
+            '/api/ui/system/visitors/track',
+            json={'browser_id': '22222222-2222-4222-8222-222222222222'},
+            headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'},
+        )
+        assert r3.status_code == 200
+
         r = client.get('/api/ui/system/visitors', query_string={'days': 7})
         assert r.status_code == 200
         assert r.json['period_days'] == 7
-        assert r.json['method'] == 'species_visit_sessions'
+        assert r.json['method'] == 'anonymous_browser_id'
+        assert r.json['unique_visits'] == 2
+        assert r.json['browser_count'] == 2
+        assert r.json['device_breakdown']['mobile'] == 1
+        assert r.json['device_breakdown']['desktop'] == 1
         assert isinstance(r.json['unique_visits'], int)
-        assert r.json['unique_visits'] >= 1
+        assert 'species_visit_count' not in r.json
 
     def test_system_metrics_history_endpoint(self, app, client):
         from models import db, SystemResourceSample
@@ -152,6 +160,164 @@ class TestLibraryDatasetFlow:
             finally:
                 app_config.set('general.settings_password', old_admin)
                 app_config.set('general.contributor_password', old_contrib)
+
+
+class TestTrackRegenFallback:
+    """Fast regen should escalate to a precise pass only when needed."""
+
+    def test_precise_fallback_runs_after_empty_fast_pass(self):
+        from routes.ui_system_routes import _run_track_regen_with_precise_fallback
+
+        calls = []
+
+        def fake_process(video_path, **kwargs):
+            calls.append((video_path, kwargs['frame_step'], kwargs['lores_size']))
+            if len(calls) == 1:
+                return []
+            return [{'species_name': 'Eurasian Jay'}]
+
+        detections, precise_used = _run_track_regen_with_precise_fallback(
+            '/tmp/test.mp4',
+            fake_process,
+            {
+                'frame_step': 6,
+                'lores_size': (512, 512),
+            },
+            lambda: {
+                'frame_step': 2,
+                'lores_size': (640, 640),
+            },
+        )
+
+        assert precise_used is True
+        assert detections == [{'species_name': 'Eurasian Jay'}]
+        assert calls == [
+            ('/tmp/test.mp4', 6, (512, 512)),
+            ('/tmp/test.mp4', 2, (640, 640)),
+        ]
+
+    def test_precise_fallback_skips_second_pass_when_fast_found_detections(self):
+        from routes.ui_system_routes import _run_track_regen_with_precise_fallback
+
+        calls = []
+
+        def fake_process(video_path, **kwargs):
+            calls.append((video_path, kwargs['frame_step']))
+            return [{'species_name': 'Great Tit'}]
+
+        detections, precise_used = _run_track_regen_with_precise_fallback(
+            '/tmp/test.mp4',
+            fake_process,
+            {
+                'frame_step': 6,
+                'lores_size': (512, 512),
+            },
+            lambda: {
+                'frame_step': 2,
+                'lores_size': (640, 640),
+            },
+        )
+
+        assert precise_used is False
+        assert detections == [{'species_name': 'Great Tit'}]
+        assert calls == [('/tmp/test.mp4', 6)]
+
+    def test_manual_conflict_filter_drops_unknown_same_track(self):
+        from types import SimpleNamespace
+        from routes.ui_system_routes import _manual_conflict_with_detection
+
+        manual_rows = [
+            SimpleNamespace(
+                track_id=1,
+                start_time=6.0,
+                end_time=12.0,
+                species=SimpleNamespace(name='Eurasian Jay'),
+            )
+        ]
+
+        conflict = _manual_conflict_with_detection(
+            manual_rows,
+            {
+                'species_name': 'Unknown',
+                'track_id': 1,
+                'start_time': 6.1,
+                'end_time': 11.9,
+            },
+            lambda a, b: a.strip().lower() == b.strip().lower(),
+        )
+        same_species = _manual_conflict_with_detection(
+            manual_rows,
+            {
+                'species_name': 'Eurasian Jay',
+                'track_id': 1,
+                'start_time': 6.1,
+                'end_time': 11.9,
+            },
+            lambda a, b: a.strip().lower() == b.strip().lower(),
+        )
+
+        assert conflict is True
+        assert same_species is False
+
+    def test_derive_track_regen_species_scope_uses_mapping_and_prior_observed(self, app):
+        from models import Species, Video, VideoSpecies, db
+        from routes.ui_system_routes import _derive_track_regen_species_scope
+        from app_config.app_config import app_config
+        from datetime import datetime
+
+        with app.app_context():
+            old_mapping = app_config.get('detection.species_mapping')
+            app_config.set('detection.species_mapping', {
+                'Corvus_cornix': 'Hooded Crow',
+                'Sitta_europaea': 'Eurasian Nuthatch',
+            })
+            try:
+                sp = Species(name='Eurasian Jay')
+                db.session.add(sp)
+                db.session.flush()
+                video = Video(
+                    processor_version='test',
+                    start_time=datetime(2026, 3, 25, 8, 0, 0),
+                    end_time=datetime(2026, 3, 25, 8, 0, 30),
+                    video_path='data/recordings/2026/03/25/080000/video.mp4',
+                )
+                db.session.add(video)
+                db.session.flush()
+                db.session.add(VideoSpecies(
+                    species_id=sp.id,
+                    video_id=video.id,
+                    start_time=0.0,
+                    end_time=12.0,
+                    confidence=0.9,
+                    source='video',
+                ))
+                db.session.commit()
+
+                names = _derive_track_regen_species_scope(
+                    datetime(2026, 3, 26, 0, 0, 0)
+                )
+
+                assert 'Eurasian Jay' in names
+                assert 'Hooded Crow' in names
+                assert 'Eurasian Nuthatch' in names
+            finally:
+                app_config.set('detection.species_mapping', old_mapping)
+
+    def test_remap_detection_to_local_scope_maps_exotics_to_unknown(self, app):
+        from routes.ui_system_routes import _remap_detection_to_local_scope
+
+        with app.app_context():
+            kept = _remap_detection_to_local_scope(
+                {'species_name': 'Eurasian Jay'},
+                {'eurasian jay', 'great tit'},
+            )
+            remapped = _remap_detection_to_local_scope(
+                {'species_name': 'Gyrfalcon'},
+                {'eurasian jay', 'great tit'},
+            )
+
+        assert kept['species_name'] == 'Eurasian Jay'
+        assert remapped['species_name'] == 'Unknown'
 
 
 class TestTimelineExport:
@@ -245,6 +411,50 @@ class TestTimeline:
             }
         )
         assert r.status_code == 400
+
+    def test_timeline_accepts_observer_local_date(self, app, client):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            species = Species(name=f'Timeline Local {id(app)}')
+            db.session.add(species)
+            db.session.flush()
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version='test',
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 5, 30),
+                video_path='data/recordings/2026/03/24/210500/video.mp4',
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=5.0,
+                    confidence=0.9,
+                    source='video',
+                    detection_provider='yolo',
+                ),
+            )
+            db.session.commit()
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={'date': '2026-03-25'},
+        )
+        assert r.status_code == 200
+        assert len(r.json) >= 1
 
 
 class TestOverview:
@@ -348,6 +558,31 @@ class TestWeather:
         assert r.status_code == 200
         assert isinstance(r.json, dict)
 
+    def test_weather_includes_source_metadata(self, app, client, monkeypatch):
+        import routes.ui_routes as ui_routes
+        from app_config.app_config import app_config
+
+        monkeypatch.setattr(
+            ui_routes,
+            'fetch_weather',
+            lambda: {
+                'weather_main': 'Rain',
+                'weather_description': 'steady rain',
+                'weather_temp': 7,
+                'weather_humidity': 100,
+                'weather_pressure': 1000,
+                'weather_clouds': 100,
+                'weather_wind_speed': 3,
+            },
+        )
+        with app.app_context():
+            app_config.set('weather.source', 'homeassistant')
+            r = client.get('/api/ui/weather')
+
+        assert r.status_code == 200
+        assert r.json['source'] == 'homeassistant'
+        assert isinstance(r.json.get('fetched_at'), str)
+
 
 class TestVideos:
     def test_videos_not_found_returns_404(self, client):
@@ -442,6 +677,126 @@ class TestVideos:
         # В local-дне оба ролика: сосед справа есть
         assert data['next_id'] == v2_id
 
+    def test_video_neighbors_can_follow_primary_videos_of_visits(self, app, client):
+        from datetime import datetime, timedelta
+        from models import db, Video, Species, SpeciesVisit, VideoSpecies
+
+        with app.app_context():
+            species = Species(name='Visit Neighbor Bird')
+            db.session.add(species)
+            db.session.flush()
+
+            base = datetime(2025, 3, 21, 8, 0, 0)
+
+            def make_video(offset_minutes: int):
+                st = base + timedelta(minutes=offset_minutes)
+                video = Video(
+                    processor_version='test',
+                    start_time=st,
+                    end_time=st + timedelta(minutes=1),
+                    video_path=f'2025/03/21/{80000 + offset_minutes}/v.mp4',
+                )
+                db.session.add(video)
+                db.session.flush()
+                return video
+
+            v1a = make_video(0)
+            v1b = make_video(5)
+            v2a = make_video(60)
+            v2b = make_video(65)
+            v3a = make_video(120)
+            v3b = make_video(125)
+
+            visits = []
+            for idx, (primary, extra) in enumerate(((v1a, v1b), (v2a, v2b), (v3a, v3b)), start=1):
+                visit = SpeciesVisit(
+                    species_id=species.id,
+                    start_time=primary.start_time,
+                    end_time=extra.end_time,
+                    max_simultaneous=1,
+                )
+                db.session.add(visit)
+                db.session.flush()
+                db.session.add(
+                    VideoSpecies(
+                        video_id=primary.id,
+                        species_id=species.id,
+                        species_visit_id=visit.id,
+                        start_time=0.0,
+                        end_time=30.0,
+                        confidence=0.9,
+                        source='video',
+                        track_id=idx * 10,
+                    ),
+                )
+                db.session.add(
+                    VideoSpecies(
+                        video_id=extra.id,
+                        species_id=species.id,
+                        species_visit_id=visit.id,
+                        start_time=0.0,
+                        end_time=30.0,
+                        confidence=0.8,
+                        source='video',
+                        track_id=idx * 10 + 1,
+                    ),
+                )
+                visits.append((visit, primary, extra))
+
+            db.session.commit()
+            target_visit_id = visits[1][0].id
+            target_extra_id = visits[1][2].id
+            prev_primary_id = visits[0][1].id
+            next_primary_id = visits[2][1].id
+
+        r = client.get(
+            f'/api/ui/videos/{target_extra_id}/neighbors',
+            query_string={
+                'day_scope': 'utc',
+                'cross_day': '1',
+                'visit_id': target_visit_id,
+                'neighbor_mode': 'visit_primary',
+            },
+        )
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data['previous_id'] == prev_primary_id
+        assert data['next_id'] == next_primary_id
+        assert data['total'] == 3
+        assert data['index'] == 1
+
+    def test_storage_nearest_recording_day_skips_empty_days(self, app, client):
+        import os
+        from pathlib import Path
+        import routes.ui_system_routes as ui_system_routes
+
+        with app.app_context():
+            tmp_root = Path(app.instance_path) / 'storage-nearest-day-test'
+            rec_root = tmp_root / 'recordings'
+            (rec_root / '2025' / '03' / '19' / '120000').mkdir(parents=True, exist_ok=True)
+            (rec_root / '2025' / '03' / '22' / '130000').mkdir(parents=True, exist_ok=True)
+            (rec_root / '2025' / '03' / '19' / '120000' / 'video.mp4').write_bytes(b'x')
+            (rec_root / '2025' / '03' / '22' / '130000' / 'video.mp4').write_bytes(b'x')
+
+            original_recordings_dir = ui_system_routes.recordings_dir
+            ui_system_routes.recordings_dir = lambda: os.fspath(rec_root)
+            try:
+                prev_r = client.get(
+                    '/api/ui/storage/nearest-recording-day',
+                    query_string={'date': '2025-03-21', 'direction': 'prev'},
+                )
+                next_r = client.get(
+                    '/api/ui/storage/nearest-recording-day',
+                    query_string={'date': '2025-03-20', 'direction': 'next'},
+                )
+            finally:
+                ui_system_routes.recordings_dir = original_recordings_dir
+
+        assert prev_r.status_code == 200
+        assert prev_r.get_json() == {'date': '2025-03-19', 'direction': 'prev', 'found': True}
+        assert next_r.status_code == 200
+        assert next_r.get_json() == {'date': '2025-03-22', 'direction': 'next', 'found': True}
+
     def test_delete_video_requires_access(self, client):
         """Delete returns 403 without contributor/admin access when password is set."""
         r = client.delete('/api/ui/videos/1')
@@ -511,7 +866,24 @@ class TestSettingsEndpoints:
 
 
 class TestStatusDebug:
-    def test_status_debug_returns_diagnostics(self, client):
+    def test_status_debug_requires_access(self, client):
+        from app_config.app_config import app_config
+
+        old_admin = app_config.get('general.settings_password')
+        old_contrib = app_config.get('general.contributor_password')
+        app_config.set('general.settings_password', 'test-admin-password')
+        app_config.set('general.contributor_password', '')
+        try:
+            r = client.get('/api/ui/status/debug')
+            assert r.status_code == 403
+        finally:
+            app_config.set('general.settings_password', old_admin)
+            app_config.set('general.contributor_password', old_contrib)
+
+    def test_status_debug_returns_diagnostics_when_unlocked(self, client):
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'admin'
+            sess['settings_unlocked'] = True
         r = client.get('/api/ui/status/debug')
         assert r.status_code == 200
         data = r.json
@@ -534,6 +906,111 @@ class TestDatabaseBackupRestore:
         assert r.status_code in (400, 403)
         if r.status_code == 400:
             assert 'error' in r.json
+
+    def test_sqlite_backup_helper_captures_live_database(self, tmp_path):
+        from routes.ui_system_routes import _sqlite_backup_to_file
+
+        live_db = tmp_path / 'live.db'
+        snapshot_db = tmp_path / 'snapshot.db'
+
+        with sqlite3.connect(live_db) as conn:
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('CREATE TABLE sample (value TEXT)')
+            conn.execute('INSERT INTO sample(value) VALUES (?)', ('from-live-db',))
+            conn.commit()
+
+        _sqlite_backup_to_file(str(live_db), str(snapshot_db))
+
+        with sqlite3.connect(snapshot_db) as conn:
+            row = conn.execute('SELECT value FROM sample').fetchone()
+        assert row == ('from-live-db',)
+
+    def test_sqlite_replace_live_db_swaps_file_and_removes_sidecars(self, tmp_path):
+        from routes.ui_system_routes import _sqlite_replace_live_db
+
+        live_db = tmp_path / 'live.db'
+        restored_db = tmp_path / 'restored.db'
+        wal_path = tmp_path / 'live.db-wal'
+        shm_path = tmp_path / 'live.db-shm'
+
+        with sqlite3.connect(live_db) as conn:
+            conn.execute('CREATE TABLE sample (value TEXT)')
+            conn.execute('INSERT INTO sample(value) VALUES (?)', ('old-value',))
+            conn.commit()
+
+        with sqlite3.connect(restored_db) as conn:
+            conn.execute('CREATE TABLE sample (value TEXT)')
+            conn.execute('INSERT INTO sample(value) VALUES (?)', ('new-value',))
+            conn.commit()
+
+        wal_path.write_bytes(b'legacy wal')
+        shm_path.write_bytes(b'legacy shm')
+
+        _sqlite_replace_live_db(str(live_db), str(restored_db))
+
+        with sqlite3.connect(live_db) as conn:
+            row = conn.execute('SELECT value FROM sample').fetchone()
+        assert row == ('new-value',)
+        assert wal_path.exists() is False
+        assert shm_path.exists() is False
+
+
+class TestStoragePurge:
+    def test_purge_storage_deletes_db_rows_and_files(self, app, client, tmp_path, monkeypatch):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        import routes.ui_system_routes as ui_system_routes
+
+        old_admin = app_config.get('general.settings_password')
+        old_contrib = app_config.get('general.contributor_password')
+        app_config.set('general.settings_password', '')
+        app_config.set('general.contributor_password', '')
+
+        recordings_root = tmp_path / 'app' / 'data' / 'recordings'
+        clip_dir = recordings_root / '2026' / '03' / '26' / '031309'
+        clip_dir.mkdir(parents=True, exist_ok=True)
+        (clip_dir / 'video.mp4').write_bytes(b'video-bytes')
+        monkeypatch.setattr(ui_system_routes, 'recordings_dir', lambda: str(recordings_root))
+
+        try:
+            with app.app_context():
+                species = Species(name='Eurasian Jay')
+                visit = SpeciesVisit(
+                    species=species,
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 21),
+                    max_simultaneous=1,
+                )
+                video = Video(
+                    processor_version='test',
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 39),
+                    video_path='data/recordings/2026/03/26/031309/video.mp4',
+                )
+                detection = VideoSpecies(
+                    video=video,
+                    species=species,
+                    species_visit=visit,
+                    start_time=0.0,
+                    end_time=12.0,
+                    confidence=0.91,
+                    source='video',
+                )
+                db.session.add_all([species, visit, video, detection])
+                db.session.commit()
+
+            response = client.post('/api/ui/storage/purge', json={'date': '2026-03-26'})
+            assert response.status_code == 200
+
+            with app.app_context():
+                assert Video.query.count() == 0
+                assert VideoSpecies.query.count() == 0
+                assert SpeciesVisit.query.count() == 0
+
+            assert not clip_dir.exists()
+        finally:
+            app_config.set('general.settings_password', old_admin)
+            app_config.set('general.contributor_password', old_contrib)
 
 
 class TestReportPdf:
@@ -1036,6 +1513,82 @@ class TestVerifyPasswordRateLimit:
         assert r.status_code == 401
 
 
+class TestConfigAudit:
+    def test_config_audit_ignores_valid_dynamic_and_schema_keys(self, client, tmp_path, monkeypatch):
+        import yaml
+        from app_config.app_config import app_config
+
+        user_cfg = {
+            'camera': {'stream_name': 'legacy'},
+            'mqtt': {'username': 'user', 'password': 'secret'},
+            'video': {'go2rtc_username': 'go2rtc-user', 'go2rtc_password': 'go2rtc-pass'},
+            'species': {'tuning_target_species_ids': [1, 2, 3]},
+            'ebird': {
+                'species_mapping': {
+                    'Gray-headed Woodpecker': 'Grey-headed Woodpecker',
+                },
+            },
+            'processor': {
+                'species_confidence_overrides': {
+                    'Bird': 0.2,
+                },
+            },
+            'secrets': {'zip': '12345'},
+        }
+        user_config = tmp_path / 'user_config.yaml'
+        user_config.write_text(yaml.safe_dump(user_cfg), encoding='utf-8')
+        monkeypatch.setattr(app_config, 'user_config_file', str(user_config))
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'admin'
+            sess['settings_unlocked'] = True
+
+        response = client.get('/api/ui/system/config-audit')
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'camera' not in data['deprecated_keys_present']
+        assert 'camera' not in data['unknown_keys']
+        assert 'mqtt.username' not in data['unknown_keys']
+        assert 'mqtt.password' not in data['unknown_keys']
+        assert 'video.go2rtc_username' not in data['unknown_keys']
+        assert 'video.go2rtc_password' not in data['unknown_keys']
+        assert 'species.tuning_target_species_ids' not in data['unknown_keys']
+        assert 'ebird.species_mapping.Gray-headed Woodpecker' not in data['unknown_keys']
+        assert 'processor.species_confidence_overrides.Bird' not in data['unknown_keys']
+        assert 'secrets.zip' not in data['unknown_keys']
+
+    def test_update_settings_does_not_persist_transient_zip_field(self, client, tmp_path, monkeypatch):
+        import yaml
+        from app_config.app_config import app_config
+
+        user_config = tmp_path / 'user_config.yaml'
+        user_config.write_text(
+            yaml.safe_dump({'secrets': {'zip': '99999'}}),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(app_config, 'user_config_file', str(user_config))
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'admin'
+            sess['settings_unlocked'] = True
+
+        response = client.patch(
+            '/api/ui/settings',
+            json={
+                'secrets': {
+                    'zip': '12345',
+                    'latitude': '55.75',
+                    'longitude': '37.61',
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        assert 'zip' not in ((response.get_json() or {}).get('secrets') or {})
+        assert 'zip' not in (app_config.config.get('secrets') or {})
+        saved = yaml.safe_load(user_config.read_text(encoding='utf-8')) or {}
+        assert 'zip' not in (saved.get('secrets') or {})
+
+
 class TestSpeciesSummaryReadOnly:
     """GET /api/ui/species/:id/summary не обязан мутировать БД (containment)."""
 
@@ -1053,6 +1606,34 @@ class TestSpeciesSummaryReadOnly:
         data = r.get_json()
         assert data['species']['metadata_trust'] == 'unbound'
         assert data['species']['metadata_status'] == 'ok'
+
+    def test_summary_hourly_activity_uses_observer_local_hour(self, app, client):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, db
+
+        unique = f'API Summary Time Owl {id(app)}'
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            sp = Species(name=unique, metadata_status='ok')
+            db.session.add(sp)
+            db.session.flush()
+            db.session.add(
+                SpeciesVisit(
+                    species_id=sp.id,
+                    start_time=datetime(2026, 3, 24, 21, 15, 0),
+                    end_time=datetime(2026, 3, 24, 21, 25, 0),
+                    max_simultaneous=4,
+                ),
+            )
+            db.session.commit()
+            sid = sp.id
+        from services.http_response_cache import bust_response_caches
+        bust_response_caches()
+        r = client.get(f'/api/ui/species/{sid}/summary')
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data['stats']['hourlyActivity'][0] == 4
 
 
 class TestVideoStreamAccess:

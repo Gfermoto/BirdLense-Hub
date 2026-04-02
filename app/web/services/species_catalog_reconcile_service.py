@@ -101,7 +101,11 @@ def reconcile_species_catalog(
 
     # 1) Дубликаты по нормализованному имени
     if merge_normalized_duplicate_names:
-        groups = find_duplicate_name_groups(db.session, limit_groups=duplicate_group_limit)
+        groups = find_duplicate_name_groups(
+            db.session,
+            limit_groups=duplicate_group_limit,
+            skip_inactive_empty_groups=False,
+        )
         for g in groups:
             pairs = g.get('species') or []
             if len(pairs) < 2:

@@ -43,11 +43,12 @@ jobs:
             --exclude='.venv-datasets' \
             ./ "$DEPLOY_DIR"/
 
-      - name: Pull and restart
+      - name: Build and restart
         run: |
           cd "${DEPLOY_DIR:-/root/BirdLense}/app"
           make stop 2>/dev/null || true
-          make pull
+          make build
+          make start
 
       - name: Verify
         run: |

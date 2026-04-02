@@ -4,9 +4,9 @@ import { OverviewTopSpecies } from '../../types';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 
@@ -21,22 +21,14 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
   const theme = useTheme();
   const [selectedSpecies, setSelectedSpecies] = useState<number | 'all'>('all');
 
-  const offsetInHours = new Date().getTimezoneOffset() / 60;
-
-  // Adjust array indices for local timezone
-  const toLocalHour = (hour: number) => (hour + offsetInHours + 24) % 24;
-
   const hourlyData = useMemo(() => {
     return Array.from({ length: 24 }, (_, hour) => {
-      const utcHour = Math.floor(toLocalHour(hour));
       if (selectedSpecies === 'all') {
-        return data.reduce((sum, s) => sum + (s.detections[utcHour] || 0), 0);
+        return data.reduce((sum, s) => sum + (s.detections[hour] || 0), 0);
       }
-      return (
-        data.find((s) => s.id === selectedSpecies)?.detections[utcHour] || 0
-      );
+      return data.find((s) => s.id === selectedSpecies)?.detections[hour] || 0;
     });
-  }, [data, selectedSpecies, offsetInHours]);
+  }, [data, selectedSpecies]);
 
   const hours = Array.from(
     { length: 24 },
@@ -55,7 +47,6 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
       data: hourlyData,
       color: chartColor,
       yAxisId: 'detections',
-      label: t('commonLabels.detections'),
       valueFormatter: (v: number | null) =>
         v !== null ? t('commonLabels.detectionsCount', { count: v }) : '',
     },
@@ -65,13 +56,11 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
     <Box sx={{ width: '100%', height: '100%' }}>
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
         <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel id="hourly-activity-species-label">
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
             {t('overviewExtra.hourlyChartSpecies')}
-          </InputLabel>
+          </Typography>
           <Select
             id="hourly-activity-species-select"
-            labelId="hourly-activity-species-label"
-            label={t('overviewExtra.hourlyChartSpecies')}
             value={selectedSpecies}
             inputProps={{
               'aria-label': t('overviewExtra.hourlyChartSpecies'),
@@ -99,27 +88,21 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
               tickLabelStyle: { angle: 45, textAnchor: 'start', fontSize: 10 },
             },
           ]}
-          yAxis={[{ id: 'detections', scaleType: 'linear' as const }]}
+          yAxis={[{
+            id: 'detections',
+            scaleType: 'linear' as const,
+            width: 42,
+            valueFormatter: (value: number) => `${value}`,
+          }]}
           series={series}
           height={220}
           margin={{
             top: 20,
             bottom: 50,
-            left: 40,
+            left: 48,
             right: 10,
           }}
-          slotProps={{
-            legend: {
-              direction: 'row',
-              position: { vertical: 'top', horizontal: 'right' },
-              padding: 0,
-              itemMarkWidth: 10,
-              itemMarkHeight: 10,
-              markGap: 5,
-              itemGap: 15,
-              labelStyle: { fontSize: 12 },
-            },
-          }}
+          hideLegend
         />
       </Box>
     </Box>

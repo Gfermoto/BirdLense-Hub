@@ -51,7 +51,14 @@ export function DatabaseMaintenanceCard() {
     onSuccess: (data) => {
       setScanResult(data);
       qc.invalidateQueries({ queryKey: ['storageStats'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
       qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: ['speciesVisits'] });
+      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: ['bird-directory'] });
+      qc.invalidateQueries({ queryKey: ['species'] });
+      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
     },
     onError: (err) => setError(err.message),
   });
@@ -82,8 +89,14 @@ export function DatabaseMaintenanceCard() {
     onSuccess: (data) => {
       setCleanPreview(null);
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
+      qc.invalidateQueries({ queryKey: ['videos'] });
       qc.invalidateQueries({ queryKey: ['speciesVisits'] });
       qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: ['bird-directory'] });
+      qc.invalidateQueries({ queryKey: ['species'] });
+      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
       setTimeout(() => setApplyResult(null), 8000);
     },
     onError: (err) => setError(err.message),
@@ -115,8 +128,14 @@ export function DatabaseMaintenanceCard() {
     onSuccess: (data) => {
       setRealignPreview(null);
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
+      qc.invalidateQueries({ queryKey: ['videos'] });
       qc.invalidateQueries({ queryKey: ['speciesVisits'] });
       qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: ['bird-directory'] });
+      qc.invalidateQueries({ queryKey: ['species'] });
+      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
       setTimeout(() => setApplyResult(null), 8000);
     },
     onError: (err) => setError(err.message),
@@ -143,6 +162,7 @@ export function DatabaseMaintenanceCard() {
     confirmOpen === 'clean'
       ? t('system.dbCleanOrphanedConfirmDesc', {
           orphaned: cleanPreview?.orphaned ?? 0,
+          synced: cleanPreview?.synced_would_update ?? 0,
         })
       : t('system.dbRealignConfirmDesc', {
           updated: realignPreview?.updated ?? 0,
@@ -250,10 +270,12 @@ export function DatabaseMaintenanceCard() {
             <Collapse in={!!cleanPreview}>
               {cleanPreview && (
                 <Alert severity="info" icon={false} sx={{ py: 0.5, mt: 1 }}>
-                  {cleanPreview.orphaned === 0
+                  {cleanPreview.orphaned === 0 &&
+                  (cleanPreview.synced_would_update ?? 0) === 0
                     ? t('system.dbCleanNothingToClean')
                     : t('system.dbCleanPreviewResult', {
                         orphaned: cleanPreview.orphaned,
+                        synced: cleanPreview.synced_would_update ?? 0,
                       })}
                 </Alert>
               )}

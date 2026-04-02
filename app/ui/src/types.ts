@@ -57,6 +57,8 @@ export interface Weather {
   pressure: number;
   clouds: number;
   wind_speed: number;
+  source?: 'openweather' | 'homeassistant' | string;
+  fetched_at?: string;
 }
 
 export interface Video {
@@ -297,6 +299,7 @@ export interface OverviewData {
   stats: OverviewStats;
   hourlyTemperature: (number | null)[]; // 24 values, avg temp per hour (°C)
   lastDetection?: OverviewLastDetection | null;
+  observer_timezone?: string;
 }
 
 export interface DetectionCounts {
@@ -318,6 +321,7 @@ export interface SpeciesSummary {
     detections: DetectionCounts;
     timeRange: TimestampRange;
     hourlyActivity: number[];
+    observer_timezone?: string;
     weather: Array<{
       temp: number;
       clouds: number;

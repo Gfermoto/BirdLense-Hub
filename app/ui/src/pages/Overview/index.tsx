@@ -31,9 +31,7 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
 
 const formatHour = (hour: number) => {
-  const date = new Date();
-  date.setUTCHours(hour, 0, 0, 0);
-  return date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+  return `${String(hour).padStart(2, '0')}:00`;
 };
 
 export const Overview = () => {
@@ -104,11 +102,16 @@ export const Overview = () => {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
-                label={t('commonLabels.date')}
                 value={selectedDay}
                 onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
                 disableFuture
                 format="YYYY-MM-DD"
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    'aria-label': t('commonLabels.date'),
+                  },
+                }}
               />
             </LocalizationProvider>
             <Tooltip title={!canEdit ? t('common.loginRequiredForExport') : undefined}>
@@ -309,6 +312,7 @@ export const Overview = () => {
                 data={overviewData.topSpecies}
                 date={selectedDay}
                 size={450}
+                observerTimezone={overviewData.observer_timezone}
               />
             ) : (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>

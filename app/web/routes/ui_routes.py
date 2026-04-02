@@ -10,10 +10,10 @@ from urllib.parse import quote, urlparse
 import requests
 from flask import request, session, Response
 import json as json_module
-from sqlalchemy import func, case, distinct, or_
+from sqlalchemy import func, distinct, or_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
-from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription, video_bird_food_association
+from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription
 from util import (
     data_dir,
     fetch_weather,
@@ -22,6 +22,8 @@ from util import (
     parse_utc_timestamp,
     get_primary_video_for_visit,
     format_visit_for_timeline,
+    observer_local_day_bounds,
+    observer_local_range,
     settings_check_access,
     contributor_or_admin_access,
     GENERIC_BIRD_SPECIES,
@@ -263,6 +265,8 @@ def register_routes(app):
     @app.route('/api/ui/status/debug', methods=['GET'])
     def status_debug():
         """Диагностика: почему статус серый. Проверить после деплоя."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
         from datetime import datetime, timezone, timedelta
         from models import ActivityLog
         last = ActivityLog.query.filter_by(type='heartbeat').order_by(ActivityLog.updated_at.desc()).first()
@@ -305,6 +309,7 @@ def register_routes(app):
 
     @app.route('/api/ui/weather', methods=['GET'])
     def weather():
+        from app_config.app_config import app_config
         weather = fetch_weather()
         return {
             'main': weather.get('weather_main'),
@@ -314,6 +319,8 @@ def register_routes(app):
             'pressure': weather.get('weather_pressure'),
             'clouds': weather.get('weather_clouds'),
             'wind_speed': weather.get('weather_wind_speed'),
+            'source': app_config.get('weather.source', 'openweather'),
+            'fetched_at': datetime.now(timezone.utc).isoformat(),
         } if weather else {}
 
     @app.route('/api/ui/sun-times', methods=['GET'])
@@ -403,6 +410,10 @@ def register_routes(app):
         if scope not in ('utc', 'local'):
             return {'error': 'day_scope must be "utc" or "local"'}, 400
         cross_day = (request.args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
+        neighbor_mode = (request.args.get('neighbor_mode') or 'video').strip().lower()
+        if neighbor_mode not in ('video', 'visit_primary'):
+            return {'error': 'neighbor_mode must be "video" or "visit_primary"'}, 400
+        visit_id = request.args.get('visit_id', type=int)
 
         try:
             tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
@@ -426,18 +437,45 @@ def register_routes(app):
             day_end = day_start + timedelta(days=1)
             day_label = day_start.date().isoformat()
 
-        day_rows = (
-            Video.query.filter(
-                Video.start_time >= day_start,
-                Video.start_time < day_end,
+        ids = []
+        idx = None
+        if neighbor_mode == 'visit_primary' and visit_id:
+            visit_rows = (
+                db.session.query(SpeciesVisit)
+                .options(
+                    joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+                )
+                .filter(
+                    SpeciesVisit.end_time >= day_start,
+                    SpeciesVisit.start_time < day_end,
+                )
+                .order_by(SpeciesVisit.start_time.asc(), SpeciesVisit.id.asc())
+                .all()
             )
-            .order_by(Video.start_time.asc(), Video.id.asc())
-            .with_entities(Video.id)
-            .all()
-        )
-        ids = [row[0] for row in day_rows]
+            ids = [
+                primary.id
+                for visit in visit_rows
+                for primary in [get_primary_video_for_visit(visit)]
+                if primary is not None
+            ]
+            visit_ids = [visit.id for visit in visit_rows if get_primary_video_for_visit(visit) is not None]
+            try:
+                idx = visit_ids.index(visit_id)
+            except ValueError:
+                idx = None
+        if idx is None:
+            day_rows = (
+                Video.query.filter(
+                    Video.start_time >= day_start,
+                    Video.start_time < day_end,
+                )
+                .order_by(Video.start_time.asc(), Video.id.asc())
+                .with_entities(Video.id)
+                .all()
+            )
+            ids = [row[0] for row in day_rows]
         try:
-            idx = ids.index(video_id)
+            idx = ids.index(video_id) if idx is None else idx
         except ValueError:
             app.logger.warning(
                 'Video %s start_time not in day list (scope=%s day %s–%s); ids=%s',
@@ -684,10 +722,13 @@ def register_routes(app):
 
     @app.route('/api/ui/overview', methods=['GET'])
     def get_overview():
+        date_param = request.args.get('date', None)
         start_time_param = request.args.get('start_time', None)
         end_time_param = request.args.get('end_time', None)
         try:
-            if start_time_param and end_time_param:
+            if date_param:
+                start_of_day, end_of_day = observer_local_day_bounds(date_param)
+            elif start_time_param and end_time_param:
                 start_of_day = parse_utc_timestamp(start_time_param)
                 end_of_day = parse_utc_timestamp(end_time_param)
             else:
@@ -754,25 +795,37 @@ def register_routes(app):
     @app.route('/api/ui/timeline', methods=['GET'])
     def get_video_species():
         # Parse query parameters
+        date_param = request.args.get('date')
+        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
+        hour_param = request.args.get('hour', type=int)
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
 
         # Validate query parameters
-        if not start_time or not end_time:
-            return {'error': 'Both start_time and end_time are required'}, 400
-
-        tck = f"timeline:{start_time}:{end_time}"
+        if date_param:
+            try:
+                start_dt, end_dt = observer_local_range(
+                    date_param,
+                    time_of_day=time_of_day,
+                    hour=hour_param,
+                )
+            except ValueError:
+                return {'error': 'Invalid local date range parameters'}, 400
+            tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}"
+        else:
+            if not start_time or not end_time:
+                return {'error': 'Both start_time and end_time are required'}, 400
+            try:
+                start_dt = parse_utc_timestamp(start_time)
+                end_dt = parse_utc_timestamp(end_time)
+            except ValueError:
+                return {'error': 'Invalid datetime format'}, 400
+            tck = f"timeline:{start_time}:{end_time}"
         hit, tcached = cache_get(tck)
         if hit:
             return tcached
 
-        try:
-            start_time = parse_utc_timestamp(start_time)
-            end_time = parse_utc_timestamp(end_time)
-        except ValueError:
-            return {'error': 'Invalid datetime format'}, 400
-
-        if end_time - start_time > timedelta(days=1):
+        if end_dt - start_dt > timedelta(days=1):
             return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
 
         # Query SpeciesVisit records within the interval (eager load to avoid N+1)
@@ -786,8 +839,8 @@ def register_routes(app):
                 joinedload(SpeciesVisit.species),
             )
             .filter(
-                SpeciesVisit.end_time >= start_time,
-                SpeciesVisit.start_time <= end_time
+                SpeciesVisit.end_time >= start_dt,
+                SpeciesVisit.start_time <= end_dt
             )
             .order_by(SpeciesVisit.start_time.desc())
             .all()
@@ -800,20 +853,33 @@ def register_routes(app):
     @app.route('/api/ui/timeline/export', methods=['GET'])
     def export_timeline():
         """Export timeline data as CSV or JSON. Same params as /api/ui/timeline."""
+        date_param = request.args.get('date')
+        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
+        hour_param = request.args.get('hour', type=int)
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
         fmt = request.args.get('format', 'json').lower()
 
-        if not start_time or not end_time:
-            return {'error': 'Both start_time and end_time are required'}, 400
         if fmt not in ('csv', 'json', 'ebird'):
             return {'error': 'format must be csv, json, or ebird'}, 400
 
-        try:
-            start_dt = parse_utc_timestamp(start_time)
-            end_dt = parse_utc_timestamp(end_time)
-        except ValueError:
-            return {'error': 'Invalid datetime format'}, 400
+        if date_param:
+            try:
+                start_dt, end_dt = observer_local_range(
+                    date_param,
+                    time_of_day=time_of_day,
+                    hour=hour_param,
+                )
+            except ValueError:
+                return {'error': 'Invalid local date range parameters'}, 400
+        else:
+            if not start_time or not end_time:
+                return {'error': 'Both start_time and end_time are required'}, 400
+            try:
+                start_dt = parse_utc_timestamp(start_time)
+                end_dt = parse_utc_timestamp(end_time)
+            except ValueError:
+                return {'error': 'Invalid datetime format'}, 400
 
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'Interval must not exceed 1 day'}, 400
@@ -935,19 +1001,31 @@ def register_routes(app):
     @app.route('/api/ui/unknowns', methods=['GET'])
     def get_unknowns():
         """List of low-confidence detections for manual review."""
+        date_param = request.args.get('date')
+        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
+        hour_param = request.args.get('hour', type=int)
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
         limit = request.args.get('limit', 100, type=int)
         limit = min(max(limit, 1), UNKNOWNS_LIMIT_MAX)
 
-        if not start_time or not end_time:
-            return {'error': 'Both start_time and end_time are required'}, 400
-
-        try:
-            start_dt = parse_utc_timestamp(start_time)
-            end_dt = parse_utc_timestamp(end_time)
-        except ValueError:
-            return {'error': 'Invalid datetime format'}, 400
+        if date_param:
+            try:
+                start_dt, end_dt = observer_local_range(
+                    date_param,
+                    time_of_day=time_of_day,
+                    hour=hour_param,
+                )
+            except ValueError:
+                return {'error': 'Invalid local date range parameters'}, 400
+        else:
+            if not start_time or not end_time:
+                return {'error': 'Both start_time and end_time are required'}, 400
+            try:
+                start_dt = parse_utc_timestamp(start_time)
+                end_dt = parse_utc_timestamp(end_time)
+            except ValueError:
+                return {'error': 'Invalid datetime format'}, 400
 
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'Interval must not exceed 1 day'}, 400
@@ -955,7 +1033,10 @@ def register_routes(app):
         threshold = float(app_config.get('ui.unknown_confidence_threshold') or 0.5)
         threshold = max(0.0, min(1.0, threshold))
 
-        uck = f"unknowns:{start_time}:{end_time}:{limit}:{threshold}"
+        uck = (
+            f"unknowns:{date_param or start_time}:{time_of_day}:{hour_param}:"
+            f"{end_time}:{limit}:{threshold}"
+        )
         hit, uc = cache_get(uck)
         if hit:
             return uc
@@ -1502,6 +1583,11 @@ def register_routes(app):
     def _settings_requires_password():
         admin_pw = (app_config.get('general.settings_password') or '').strip()
         contrib_pw = (app_config.get('general.contributor_password') or '').strip()
+        if not admin_pw and not contrib_pw:
+            return (
+                os.environ.get('FLASK_ENV') == 'production'
+                or os.environ.get('BIRDLENSE_ENV') == 'production'
+            )
         return bool(admin_pw or contrib_pw)
 
     def _has_contributor_tier():
@@ -1541,6 +1627,12 @@ def register_routes(app):
         admin_pw = (app_config.get('general.settings_password') or '').strip()
         contrib_pw = (app_config.get('general.contributor_password') or '').strip()
         if not admin_pw and not contrib_pw:
+            if (
+                os.environ.get('FLASK_ENV') == 'production'
+                or os.environ.get('BIRDLENSE_ENV') == 'production'
+            ):
+                _record_verify_password_failure(ip)
+                return {'ok': False}, 401
             session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
@@ -1604,6 +1696,12 @@ def register_routes(app):
 
             # Не перезаписывать секреты placeholder'ами (***)
             updates = app_config.filter_sensitive_placeholders(updates)
+
+            # UI helper field for ZIP lookup is transient and must not persist in config.
+            if isinstance(updates.get('secrets'), dict):
+                updates['secrets'].pop('zip', None)
+            if isinstance(app_config.config.get('secrets'), dict):
+                app_config.config['secrets'].pop('zip', None)
 
             # Recursively merge the updates into the current configuration
             app_config.config = app_config.merge_dicts(

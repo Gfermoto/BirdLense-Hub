@@ -33,18 +33,31 @@ export const VideoDetails = () => {
   /** Preserve Timeline / Unknowns return path when stepping prev/next (VisitCard passes `state.from`). */
   const neighborNavigationState = (() => {
     const s = location.state;
-    if (s && typeof s === 'object' && 'from' in s) {
+    if (s && typeof s === 'object') {
       const from = (s as { from?: unknown }).from;
+      const visitId = (s as { visitId?: unknown }).visitId;
+      const state: { from?: string; visitId?: number } = {};
       if (
         typeof from === 'string' &&
         from.startsWith('/') &&
         !from.startsWith('//')
       ) {
-        return { from };
+        state.from = from;
+      }
+      if (typeof visitId === 'number' && Number.isFinite(visitId)) {
+        state.visitId = visitId;
+      }
+      if (state.from || state.visitId) {
+        return state;
       }
     }
     return undefined;
   })();
+
+  const neighborVisitId = useMemo(() => {
+    const visitId = neighborNavigationState?.visitId;
+    return typeof visitId === 'number' ? visitId : undefined;
+  }, [neighborNavigationState]);
 
   const {
     data: video,
@@ -57,8 +70,8 @@ export const VideoDetails = () => {
   });
 
   const { data: neighbors } = useQuery({
-    queryKey: ['video-neighbors', params.id],
-    queryFn: () => fetchVideoNeighbors(params.id as string),
+    queryKey: ['video-neighbors', params.id, neighborVisitId ?? null],
+    queryFn: () => fetchVideoNeighbors(params.id as string, { visitId: neighborVisitId }),
     enabled: Boolean(params.id),
   });
 

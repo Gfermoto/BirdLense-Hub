@@ -74,10 +74,12 @@ const navPillStyles = {
   fontWeight: 500,
   color: 'rgba(255, 255, 255, 0.75)',
   textDecoration: 'none',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
   transition: 'all 0.2s',
   '&:hover': {
     bgcolor: 'rgba(255, 255, 255, 0.1)',
     color: 'white',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   },
 };
 
@@ -86,6 +88,7 @@ const activeNavPillStyles = {
   bgcolor: 'rgba(255, 255, 255, 0.15)',
   color: 'white',
   fontWeight: 600,
+  borderColor: 'rgba(255, 255, 255, 0.22)',
 };
 
 type PendingAction =
@@ -342,7 +345,7 @@ export function Navigation() {
             sx={{
               flexGrow: 1,
               display: { xs: 'none', md: 'flex' },
-              gap: 0.5,
+              gap: 0.9,
               alignItems: 'center',
             }}
           >

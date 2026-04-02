@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -14,6 +14,7 @@ import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { trackSiteVisitor } from './api/api';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
@@ -161,6 +162,25 @@ const theme = createTheme({
 });
 
 function App() {
+  useEffect(() => {
+    const browserIdKey = 'birdlense.browser_id';
+    const trackedDayKey = 'birdlense.visitor_tracked_day';
+    const utcDay = new Date().toISOString().slice(0, 10);
+
+    let browserId = localStorage.getItem(browserIdKey);
+    if (!browserId) {
+      browserId = crypto.randomUUID();
+      localStorage.setItem(browserIdKey, browserId);
+    }
+    if (localStorage.getItem(trackedDayKey) === utcDay) {
+      return;
+    }
+    localStorage.setItem(trackedDayKey, utcDay);
+    void trackSiteVisitor(browserId).catch(() => {
+      localStorage.removeItem(trackedDayKey);
+    });
+  }, []);
+
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

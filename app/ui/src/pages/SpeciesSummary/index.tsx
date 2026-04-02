@@ -209,27 +209,16 @@ const SpeciesSummaryPage = () => {
     (_, i) => `${i.toString().padStart(2, '0')}:00`,
   );
 
-  // Adjust timezone for activity data
-  const tzOffset = new Date().getTimezoneOffset() / 60;
-  const adjustTimeZone = (activity: number[]) =>
-    activity.map((_, idx) => {
-      let localIdx = idx + tzOffset;
-      if (localIdx < 0) localIdx += 24;
-      if (localIdx >= 24) localIdx -= 24;
-      return activity[Math.floor(localIdx)];
-    });
-
   const hourly =
     Array.isArray(data.stats.hourlyActivity) && data.stats.hourlyActivity.length === 24
       ? data.stats.hourlyActivity
       : Array.from({ length: 24 }, () => 0);
-  const localActivity = adjustTimeZone(hourly);
   const subspeciesActivities = data.subspecies.map((sub) => ({
     name: sub.species.name,
-    data: adjustTimeZone(
+    data: (
       Array.isArray(sub.stats.hourlyActivity) && sub.stats.hourlyActivity.length === 24
         ? sub.stats.hourlyActivity
-        : Array.from({ length: 24 }, () => 0),
+        : Array.from({ length: 24 }, () => 0)
     ),
   }));
 
@@ -415,7 +404,7 @@ const SpeciesSummaryPage = () => {
                 ]}
                 series={[
                   {
-                    data: localActivity,
+                    data: hourly,
                     // area: true,
                     color: labelToUniqueHexColor(data.species.name as string),
                     label: t('speciesSummary.total'),

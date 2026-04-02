@@ -5,6 +5,8 @@ import { OverviewTopSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import dayjs, { Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,7 +19,12 @@ export const SpeciesDistributionChart: React.FC<
   SpeciesDistributionChartProps
 > = ({ data, date }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const chartSize = isMobile ? 280 : 400;
+  const outerRadius = isMobile ? 104 : 150;
+  const innerRadius = isMobile ? 34 : 50;
   const pieData = data
     .map((species) => ({
       id: species.id,
@@ -29,7 +36,7 @@ export const SpeciesDistributionChart: React.FC<
     .sort((a, b) => b.value - a.value);
 
   const navigateToTimelineForSpecies = (speciesId: number) => {
-    const dateValue = (date ?? dayjs()).startOf('day').toISOString();
+    const dateValue = (date ?? dayjs()).format('YYYY-MM-DD');
     navigate(`/timeline?speciesId=${speciesId}&date=${dateValue}`);
   };
 
@@ -53,10 +60,12 @@ export const SpeciesDistributionChart: React.FC<
       sx={{
         width: '100%',
         height: '100%',
-        minHeight: 400,
+        minHeight: isMobile ? 0 : 400,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
+        flexDirection: 'column',
+        gap: 2,
       }}
     >
       <PieChart
@@ -64,15 +73,15 @@ export const SpeciesDistributionChart: React.FC<
           {
             data: pieData,
             highlightScope: { faded: 'global', highlighted: 'item' },
-            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-            innerRadius: 50,
-            outerRadius: 150,
+            faded: { innerRadius: 24, additionalRadius: -18, color: 'gray' },
+            innerRadius,
+            outerRadius,
             paddingAngle: 2,
             cornerRadius: 4,
           },
         ]}
-        width={400}
-        height={400}
+        width={chartSize}
+        height={chartSize}
         onItemClick={(_, item) => {
           if (typeof item.dataIndex !== 'number') return;
           const selected = pieData[item.dataIndex];
@@ -88,8 +97,7 @@ export const SpeciesDistributionChart: React.FC<
       />
       <Box
         sx={{
-          mt: 1,
-          px: 2,
+          px: { xs: 0, sm: 2 },
           width: '100%',
           display: 'flex',
           flexWrap: 'wrap',

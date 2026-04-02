@@ -95,7 +95,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 | `/unknowns` | Low-confidence detections for manual review |
 | `/videos/:id` | Player, detections, spectrogram, share |
 | `/live` | Live streams |
-| `/species` | Bird directory |
+| `/species` | Redirect to Migration Calendar (legacy compatibility route) |
 | `/species/:id` | Species summary, Xeno-canto |
 | `/settings` | Configuration |
 | `/system` | Storage, activity, monitor, processor logs |

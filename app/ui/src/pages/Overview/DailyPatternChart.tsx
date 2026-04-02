@@ -52,12 +52,14 @@ interface DailyPatternChartProps {
   data: OverviewTopSpecies[];
   date: Dayjs;
   size?: number;
+  observerTimezone?: string;
 }
 
 export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
   data,
   date,
   size: propSize,
+  observerTimezone,
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -68,16 +70,10 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
     ? Math.min(window.innerWidth * 0.8, 400)
     : (propSize ?? 600);
   const center = size / 2;
-  const offsetInHours = new Date().getTimezoneOffset() / 60;
-
-  const getOffsetValue = (detections: number[], hour: number) => {
-    const utcHour = (hour + offsetInHours + 24) % 24;
-    return detections[Math.floor(utcHour)];
-  };
 
   const maxDetections = Math.max(
     ...data.flatMap((d) =>
-      Array.from({ length: 24 }, (_, i) => getOffsetValue(d.detections, i)),
+      Array.from({ length: 24 }, (_, i) => d.detections[i] || 0),
     ),
   );
 
@@ -150,13 +146,7 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
                   ${hour >= 6 && hour <= 18 ? 'rotate(180,' + pos.x + ',' + pos.y + ')' : ''}
                 `}
               >
-                {hour === 0
-                  ? '12AM'
-                  : hour === 12
-                    ? '12PM'
-                    : hour > 12
-                      ? `${hour - 12}PM`
-                      : `${hour}AM`}
+                {`${String(hour).padStart(2, '0')}:00`}
               </text>
             </g>
           ))}
@@ -169,7 +159,7 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
             return hours.map((hour) => {
               const startAngle = (hour * 360) / 24;
               const endAngle = ((hour + 1) * 360) / 24;
-              const detections = getOffsetValue(species.detections, hour);
+              const detections = species.detections[hour] || 0;
               const intensity =
                 detections === 0
                   ? 0
@@ -212,8 +202,17 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
           {/* Current time indicator */}
           {(() => {
             const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+              ...(observerTimezone ? { timeZone: observerTimezone } : {}),
+            });
+            const parts = formatter.formatToParts(now);
+            const hoursPart = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+            const minutesPart = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
             const currentAngle =
-              ((now.getHours() * 60 + now.getMinutes()) * 360) / (24 * 60);
+              ((hoursPart * 60 + minutesPart) * 360) / (24 * 60);
             const pos = polarToCartesian(
               center,
               center,

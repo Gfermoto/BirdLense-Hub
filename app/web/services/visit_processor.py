@@ -10,6 +10,7 @@ from services.species_catalog_allowlist_service import (
 )
 from services.species_registry_service import resolve_species_name
 from util import (
+    GENERIC_BIRD_SPECIES,
     get_parent_name_for_species,
     load_species_canonical_mapping,
     update_species_info_from_wiki,
@@ -154,10 +155,12 @@ class VisitProcessor:
         """
         # Look for existing visit that ended recently or is still ongoing
         cutoff_time = detection_time - timedelta(seconds=self.visit_timeout)
+        future_tolerance = detection_time + timedelta(seconds=self.visit_timeout)
         recent_visit = (SpeciesVisit.query
                         .filter(
                             SpeciesVisit.species_id == species.id,
-                            SpeciesVisit.end_time >= cutoff_time
+                            SpeciesVisit.end_time >= cutoff_time,
+                            SpeciesVisit.start_time <= future_tolerance,
                         )
                         .order_by(SpeciesVisit.end_time.desc())
                         .first())
@@ -200,11 +203,23 @@ class VisitProcessor:
         taxon_common_name: str | None,
     ) -> bool:
         """Строгий allowlist: если задан и включён — имена вне списка → Unknown."""
+        canonical_candidates = {
+            str(display_name or '').strip().lower(),
+            str(raw_normalized or '').strip().lower(),
+            str(taxon_common_name or '').strip().lower(),
+        }
+        if GENERIC_BIRD_SPECIES.strip().lower() in canonical_candidates:
+            return False
         if not bool(app_config.get('species.catalog_strict_ingest')):
             return False
         allow = load_catalog_allowlist_norm_keys(app_config.get)
         if allow is None:
-            return False
+            self.logger.warning(
+                'Strict catalog ingest is enabled but allowlist is unavailable; '
+                'blocking species "%s" until allowlist is restored.',
+                display_name or raw_normalized or taxon_common_name or 'unknown',
+            )
+            return True
         mapping = load_species_canonical_mapping()
         ok_display = species_matches_allowlist(display_name or '', allow, mapping)
         ok_raw = species_matches_allowlist(raw_normalized or '', allow, mapping)
@@ -217,8 +232,8 @@ class VisitProcessor:
         normalized = name.strip()
         if not normalized:
             return None
-        if normalized.lower() == 'bird':
-            normalized = 'Bird'
+        if normalized.lower() in {'bird', 'unknown'}:
+            normalized = GENERIC_BIRD_SPECIES
         resolution = resolve_species_name(normalized, source="ingest")
         taxon = resolution.taxon if resolution.found else None
         taxon_common = taxon.common_name if taxon else None
@@ -263,6 +278,7 @@ class VisitProcessor:
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:
         """Активный визит для аудио: вид или его дочерние."""
         cutoff_time = detection_time - timedelta(seconds=self.visit_timeout)
+        future_tolerance = detection_time + timedelta(seconds=self.visit_timeout)
 
         child_species = Species.query.filter_by(
             parent_id=audio_species.id).all()
@@ -271,7 +287,8 @@ class VisitProcessor:
         return (SpeciesVisit.query
                 .filter(
                     SpeciesVisit.species_id.in_(species_ids),
-                    SpeciesVisit.end_time >= cutoff_time
+                    SpeciesVisit.end_time >= cutoff_time,
+                    SpeciesVisit.start_time <= future_tolerance,
                 )
                 .order_by(SpeciesVisit.end_time.desc())
                 .first())

@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import func
 
 from models import Video, SpeciesVisit, VideoSpecies, BirdFood, video_bird_food_association
-from util import format_visit_for_timeline
+from util import format_visit_for_timeline, observer_local_hour, get_observer_timezone_name
 
 
 def metadata_trust_for_species(sp) -> str:
@@ -46,18 +46,18 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
 
     hourly_rows = session.query(
         SpeciesVisit.species_id,
-        func.strftime('%H', SpeciesVisit.start_time).label('hour'),
-        func.sum(SpeciesVisit.max_simultaneous).label('count'),
+        SpeciesVisit.start_time.label('start_time'),
+        SpeciesVisit.max_simultaneous.label('count'),
     ).filter(
         SpeciesVisit.species_id.in_(all_species_ids),
         SpeciesVisit.start_time >= last_30d,
-    ).group_by(SpeciesVisit.species_id, 'hour').all()
+    ).all()
 
     activity_by_species = {sid: [0] * 24 for sid in all_species_ids}
     activity_total = [0] * 24
-    for sid, hour, count in hourly_rows:
-        h = int(hour)
-        activity_by_species[sid][h] = int(count or 0)
+    for sid, start_time, count in hourly_rows:
+        h = observer_local_hour(start_time)
+        activity_by_species[sid][h] += int(count or 0)
         activity_total[h] += int(count or 0)
 
     weather_stats = session.query(
@@ -121,6 +121,7 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
                 'last_sighting': sightings.last.isoformat() if sightings and sightings.last else None,
             },
             'hourlyActivity': activity_total,
+            'observer_timezone': get_observer_timezone_name(),
             'weather': [{'temp': t, 'clouds': c, 'count': int(cnt or 0)} for t, c, cnt in weather_stats],
             'food': [{'name': n, 'count': int(c or 0)} for n, c in food_stats],
         },
