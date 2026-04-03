@@ -50,6 +50,9 @@ jobs:
       - name: Xeno-canto service (mocked HTTP)
         run: python -m pytest web/tests/test_xeno_canto_service.py -q
 
+      - name: Birdfood / push subscribe smoke (auth gates)
+        run: python -m pytest web/tests/test_settings_mutations_smoke.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:
