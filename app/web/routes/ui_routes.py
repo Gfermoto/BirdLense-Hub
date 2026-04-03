@@ -6,7 +6,9 @@ import io
 import re
 import time
 import hashlib
-from urllib.parse import quote, urlparse, urljoin
+import ipaddress
+
+from urllib.parse import quote, urlparse, urljoin, urlunparse
 import requests
 from flask import request, session, Response
 import json as json_module
@@ -173,15 +175,55 @@ def _species_proxy_allowed_url(url: str) -> bool:
     )
 
 
+def _species_proxy_sanitized_fetch_url(url: str) -> str | None:
+    """Пересобрать http(s) URL из hostname/port/path после allowlist (без userinfo; смягчает SSRF)."""
+    p = urlparse(url)
+    if p.scheme not in ('http', 'https') or p.username or p.password:
+        return None
+    host = (p.hostname or '').lower()
+    if not host:
+        return None
+    if not (
+        _host_is_wikipedia_family(host)
+        or _host_is_inaturalist(host)
+        or _url_suggests_inaturalist_asset(url)
+    ):
+        return None
+    hn = p.hostname
+    if not hn:
+        return None
+    try:
+        addr = ipaddress.ip_address(hn)
+        host_netloc = f'[{hn}]' if addr.version == 6 else hn
+    except ValueError:
+        host_netloc = hn
+    netloc = f'{host_netloc}:{p.port}' if p.port else host_netloc
+    return urlunparse((p.scheme, netloc, p.path or '', p.params, p.query, p.fragment))
+
+
+def _species_proxy_client_error_message(last_err: str | None) -> str:
+    """Не отдавать клиенту текст исключений / внутренних деталей (stack-trace exposure)."""
+    if not last_err:
+        return 'image proxy failed'
+    if last_err.startswith('upstream status='):
+        return last_err
+    if last_err == 'upstream is not image content':
+        return last_err
+    return 'image proxy failed'
+
+
 def _fetch_species_proxy_upstream(start_url: str):
     """GET с allow_redirects=False и проверкой хоста на каждом редиректе (смягчает SSRF)."""
     current = start_url
     for _ in range(_SPECIES_PROXY_MAX_REDIRECTS + 1):
         if not _species_proxy_allowed_url(current):
             return None, 'image proxy: redirect to disallowed host'
+        fetch_url = _species_proxy_sanitized_fetch_url(current)
+        if not fetch_url:
+            return None, 'image proxy: invalid URL'
         try:
             r = requests.get(
-                current,
+                fetch_url,
                 timeout=8,
                 headers={
                     'User-Agent': 'BirdLense-Hub/1.0',
@@ -190,8 +232,8 @@ def _fetch_species_proxy_upstream(start_url: str):
                 allow_redirects=False,
                 stream=True,
             )
-        except requests.RequestException as exc:
-            return None, f'image proxy request failed: {exc}'
+        except requests.RequestException:
+            return None, 'image proxy: upstream request failed'
         if 300 <= r.status_code < 400:
             loc = (r.headers.get('Location') or '').strip()
             next_url = urljoin(r.url, loc) if loc else ''
@@ -1991,8 +2033,12 @@ def register_routes(app):
                 if upstream is not None:
                     upstream.close()
 
-        app.logger.warning('Species image proxy failed for %s: %s', raw, last_err)
-        return {'error': last_err or 'image proxy failed'}, 502
+        app.logger.warning(
+            'Species image proxy failed url=%s detail=%s',
+            (raw[:512] + '…') if len(raw) > 512 else raw,
+            last_err,
+        )
+        return {'error': _species_proxy_client_error_message(last_err)}, 502
 
     @app.route('/api/ui/species/tuning-targets', methods=['GET'])
     def get_tuning_targets():
