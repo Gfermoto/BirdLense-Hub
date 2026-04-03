@@ -225,7 +225,11 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 ## Tech debt queue (simple → complex)
 
-Navigator issue: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) (levels 1.x–5.x). Details: [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (Flask split), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (processor). Full Russian context: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not tech debt: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+**Execution lives in GitHub issues and the [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) board**; this section is a pointer only.
+
+- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220).
+- Levels: [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225).
+- Umbrellas: [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (web), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (processor). RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 
