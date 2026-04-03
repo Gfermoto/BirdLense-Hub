@@ -48,6 +48,22 @@ from services.xeno_canto_service import fetch_recordings, _search_term_from_spec
 from services.ebird_export_service import build_ebird_csv
 from services.detection_crop_service import extract_detection_frame, crop_filename
 from services.web_push_service import get_vapid_public_key
+
+
+def _timeline_visits_deduped_ordered(visits_raw):
+    """JOIN с VideoSpecies даёт дубликаты SpeciesVisit при нескольких роликах в одном визите."""
+    seen = set()
+    visits = []
+    for v in visits_raw:
+        if v.id in seen:
+            continue
+        seen.add(v.id)
+        visits.append(v)
+    visits.sort(
+        key=lambda x: (ensure_utc(x.start_time), x.id or 0),
+        reverse=True,
+    )
+    return visits
 from services.dataset_export_service import (
     build_dataset_zip,
     move_crop_on_species_correction,
@@ -840,7 +856,7 @@ def register_routes(app):
             return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
 
         # Query SpeciesVisit records within the interval (eager load to avoid N+1)
-        visits = (
+        visits_raw = (
             db.session.query(SpeciesVisit)
             .join(Species)
             .join(VideoSpecies)
@@ -856,6 +872,7 @@ def register_routes(app):
             .order_by(SpeciesVisit.start_time.desc())
             .all()
         )
+        visits = _timeline_visits_deduped_ordered(visits_raw)
 
         response = [format_visit_for_timeline(visit) for visit in visits]
         cache_set(tck, response, _CACHE_TIMELINE_SEC)
@@ -895,7 +912,7 @@ def register_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'Interval must not exceed 1 day'}, 400
 
-        visits = (
+        visits_raw = (
             db.session.query(SpeciesVisit)
             .options(
                 joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
@@ -911,6 +928,7 @@ def register_routes(app):
             .order_by(SpeciesVisit.start_time.desc())
             .all()
         )
+        visits = _timeline_visits_deduped_ordered(visits_raw)
 
         rows = []
         for visit in visits:

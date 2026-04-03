@@ -280,7 +280,9 @@ export interface OverviewTopSpecies {
 
 export interface OverviewStats {
   uniqueSpecies: number;
+  /** Visit count for the day (SpeciesVisit rows), not recognition segments */
   totalDetections: number;
+  /** Visits overlapping the last hour */
   lastHourDetections: number;
   videoDuration: number;
   audioDuration: number;
