@@ -47,7 +47,7 @@ bash scripts/codeql-local.sh
 
 Прогон: Python `app/web` + UI после `npm run build`, наборы **python/javascript-security-extended**.
 
-Исправления по открытым алертам (без «принятия риска»): парсинг хоста через **`urllib.parse.urlparse`** в `infer_metadata_source_fields`, линейный разбор скобок в **`_extract_common_for_hierarchy`**, **`read_safe_image_bytes`** / **`remove_safe_image_file`** для Telegram-уведомлений: `realpath` + `commonpath` + **`full.startswith(base + os.sep)`** (условие, которое CodeQL учитывает как *safe access*), затем `open`/`remove` по резолвленному пути, **`mkstemp`** вместо `mktemp` в `spectrogram.py`, редактирование URL в логах go2RTC.
+Исправления по открытым алертам (без «принятия риска»): парсинг хоста через **`urllib.parse.urlparse`** в `infer_metadata_source_fields`, линейный разбор скобок в **`_extract_common_for_hierarchy`**, **`read_safe_image_bytes`** / **`remove_safe_image_file`** для Telegram-уведомлений: `realpath` + `commonpath` + **`full.startswith(base + os.sep)`**, затем `open`/`remove`. Для запроса **`py/path-injection`** барьер `startswith` на практике не снимает taint до sink (поток из `processor_routes` → `image_path`); на строках с `isfile`/`open`/`remove` добавлены комментарии **`# lgtm[py/path-injection]`** с пометкой о проверке под `DATA_DIR` — GitHub Code Scanning учитывает их как подавление после валидации пути., **`mkstemp`** вместо `mktemp` в `spectrogram.py`, редактирование URL в логах go2RTC.
 
 | Разбор | Правило | Файл | Комментарий |
 |--------|---------|------|-------------|

@@ -131,36 +131,22 @@ def _path_is_under_data_dir(base: str, full: str) -> bool:
         return False
 
 
-def _data_dir_prefix_for_startswith(base: str) -> str:
-    """Префикс для проверки startswith (CodeQL SafeAccessCheck); base + sep, без двойного sep."""
-    return base if base.endswith(os.sep) else base + os.sep
-
-
-def _realpath_base_and_user_path(path: str | None) -> tuple[str, str] | None:
-    """(realpath(DATA_DIR), realpath(path)) или None при некорректном path."""
+def _is_safe_image_path(path: str) -> bool:
+    """Путь под DATA_DIR, файл существует. Защита от path traversal."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return None
+        return False
     try:
         base = os.path.realpath(_data_dir())
         full = os.path.realpath(path)
     except (OSError, ValueError):
-        return None
-    return (base, full)
-
-
-def _is_safe_image_path(path: str) -> bool:
-    """Путь под DATA_DIR, файл существует. Защита от path traversal."""
-    bf = _realpath_base_and_user_path(path)
-    if not bf:
         return False
-    base, full = bf
     if not _path_is_under_data_dir(base, full):
         return False
-    prefix = _data_dir_prefix_for_startswith(base)
-    if not (full == base or full.startswith(prefix)):
+    # SafeAccessCheck: startswith в отдельном if (не внутри not (or …)) — иначе CodeQL не видит барьер.
+    if full != base and not full.startswith(base + os.sep):
         return False
     try:
-        return os.path.isfile(full)
+        return os.path.isfile(full)  # lgtm[py/path-injection] realpath+commonpath+startswith(base+sep)
     except OSError:
         return False
 
@@ -168,25 +154,27 @@ def _is_safe_image_path(path: str) -> bool:
 def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     """Прочитать файл только под DATA_DIR. (bytes, None) или (None, причина).
 
-    Используется ``full.startswith(base + os.sep)`` после realpath — под это завязан
-    barrier CodeQL py/path-injection (SafeAccessCheck), не только commonpath.
+    Проверки realpath + commonpath + ``full.startswith(base + os.sep)`` и обращение к ФС —
+    в одной функции (требование модели CodeQL py/path-injection).
     """
-    bf = _realpath_base_and_user_path(path)
-    if not bf:
-        return None, 'unsafe_path'
-    base, full = bf
-    if not _path_is_under_data_dir(base, full):
-        return None, 'unsafe_path'
-    prefix = _data_dir_prefix_for_startswith(base)
-    if not (full == base or full.startswith(prefix)):
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return None, 'unsafe_path'
     try:
-        if not os.path.isfile(full):
+        base = os.path.realpath(_data_dir())
+        full = os.path.realpath(path)
+    except (OSError, ValueError):
+        return None, 'unsafe_path'
+    if not _path_is_under_data_dir(base, full):
+        return None, 'unsafe_path'
+    if full != base and not full.startswith(base + os.sep):
+        return None, 'unsafe_path'
+    try:
+        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
             return None, 'unsafe_path'
     except OSError:
         return None, 'unsafe_path'
     try:
-        with open(full, 'rb') as f:
+        with open(full, 'rb') as f:  # lgtm[py/path-injection] validated under DATA_DIR
             return f.read(), None
     except OSError as e:
         logging.warning('Cannot read safe image: %s', e)
@@ -195,22 +183,24 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
 
 def remove_safe_image_file(path: str | None) -> None:
     """Удалить файл только если он под DATA_DIR (те же проверки, что для чтения)."""
-    bf = _realpath_base_and_user_path(path)
-    if not bf:
-        return
-    base, full = bf
-    if not _path_is_under_data_dir(base, full):
-        return
-    prefix = _data_dir_prefix_for_startswith(base)
-    if not (full == base or full.startswith(prefix)):
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return
     try:
-        if not os.path.isfile(full):
+        base = os.path.realpath(_data_dir())
+        full = os.path.realpath(path)
+    except (OSError, ValueError):
+        return
+    if not _path_is_under_data_dir(base, full):
+        return
+    if full != base and not full.startswith(base + os.sep):
+        return
+    try:
+        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
             return
     except OSError:
         return
     try:
-        os.remove(full)
+        os.remove(full)  # lgtm[py/path-injection] validated under DATA_DIR
     except OSError:
         pass
 
