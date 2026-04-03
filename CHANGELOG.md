@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
-- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) — **sub-issues** в GitHub (колонка на доске); скрипт `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
+- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
 - **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — backlog: **триггер по скачку массы**, **оценка веса птицы в карточке визита** (в духе корма/погоды). [CONFIGURATION](docs/CONFIGURATION.ru.md) — ключи `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed

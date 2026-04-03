@@ -123,6 +123,6 @@ bash scripts/github-project-mark-done.sh 46
 bash scripts/github-project-mark-done.sh 46 57
 ```
 
-GitHub **sub-issue** hierarchy (board column, parent on the issue page): use `scripts/github-issue-link-subissues.sh` (example: `bash scripts/github-issue-link-subissues.sh 220 221 222 223 224 225`).
+GitHub **sub-issue** hierarchy (board column, parent on the issue page): use `scripts/github-issue-link-subissues.sh` (full tech-debt tree example: `bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225`).
 
 On **WSL**, `gh project view … --web` often fails (`xdg-open: Permission denied`); open the printed **https://github.com/users/…/projects/N** link in your Windows browser instead.
