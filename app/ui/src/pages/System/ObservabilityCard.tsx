@@ -42,6 +42,7 @@ export function ObservabilityCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data) return <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>;
 
+  const generatedCounts = data.notify_preview_generated_24h || {};
   const counts = data.notify_preview_24h || {};
   const fallbackCounts = data.notify_fallback_24h || {};
   const deliveryCounts = data.notify_delivery_24h || {};
@@ -55,6 +56,20 @@ export function ObservabilityCard() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('system.observabilityHint')}
         </Typography>
+
+        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+          {t('system.observabilityGeneratedTitle')}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {PREVIEW_ORDER.map((key) => (
+            <Chip
+              key={`generated-${key}`}
+              size="small"
+              variant="outlined"
+              label={`${t(`system.previewSource.${key}`)}: ${generatedCounts[key] ?? 0}`}
+            />
+          ))}
+        </Box>
 
         <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
           {t('system.observabilityPreviewTitle')}

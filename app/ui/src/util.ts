@@ -39,6 +39,38 @@ export const formatHourToLocalTime = (utcHour: number): number => {
   return date.getHours();
 };
 
+const toValidDate = (value: string | Date | null | undefined): Date | null => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const formatLocalTime = (
+  value: string | Date | null | undefined,
+): string => {
+  const date = toValidDate(value);
+  if (!date) return '--:--';
+  return date.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+export const formatLocalDateTime = (
+  value: string | Date | null | undefined,
+): string => {
+  const date = toValidDate(value);
+  if (!date) return '—';
+  return date.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
 /** Squirrel, chipmunk, mouse — show SquirrelIcon instead of BirdIcon */
 export const isSquirrelLike = (speciesName: string): boolean => {
   if (!speciesName || typeof speciesName !== 'string') return false;

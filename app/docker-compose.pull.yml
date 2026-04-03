@@ -26,12 +26,17 @@ services:
       - ./app_config:/app/app_config
     environment:
       - DATA_DIR=/app/data
+      - BIRDLENSE_ENV=${BIRDLENSE_ENV:-}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_USERNAME=${MQTT_USERNAME:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}
+      - TRUSTED_PROXY=${TRUSTED_PROXY:-}
+      - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped

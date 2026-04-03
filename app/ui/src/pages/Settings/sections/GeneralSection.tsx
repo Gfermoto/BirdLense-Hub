@@ -30,7 +30,7 @@ export function GeneralSection({ form }: Props) {
   return (
     <>
       {/* ========== 1. ПОДКЛЮЧЕНИЕ ========== */}
-      <Accordion defaultExpanded>
+      <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           {t('settings.accordionConnection')}
         </AccordionSummary>

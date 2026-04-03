@@ -67,6 +67,82 @@ def test_merge_species_into_moves_fks(app):
         assert SpeciesVisit.query.filter_by(species_id=aid).count() == 1
 
 
+def test_merge_species_into_preserves_missing_target_metadata(app):
+    with app.app_context():
+        target = Species(
+            name='MergeTarget Meta',
+            description='',
+            image_url=None,
+            metadata_source=None,
+            metadata_source_url=None,
+        )
+        source = Species(
+            name='MergeSource Meta',
+            description='Source description survives merge.',
+            image_url='https://example.com/source.jpg',
+            metadata_source='wikipedia',
+            metadata_source_url='https://example.com/source',
+        )
+        db.session.add_all([target, source])
+        db.session.commit()
+
+        target_id = target.id
+        source_id = source.id
+
+        merge_species_into(source_id, target_id)
+        db.session.commit()
+        db.session.expire_all()
+
+        merged = db.session.get(Species, target_id)
+        assert merged is not None
+        assert merged.description == 'Source description survives merge.'
+        assert merged.image_url == 'https://example.com/source.jpg'
+        assert merged.metadata_source == 'wikipedia'
+        assert merged.metadata_source_url == 'https://example.com/source'
+
+
+def test_merge_duplicate_species_endpoint_preserves_missing_target_metadata(
+    app, client, monkeypatch,
+):
+    import util as util_mod
+
+    with app.app_context():
+        target = Species(
+            name='MergeTarget Endpoint',
+            description='',
+            image_url=None,
+        )
+        source = Species(
+            name='MergeSource Endpoint',
+            description='Endpoint description survives merge.',
+            image_url='https://example.com/endpoint.jpg',
+        )
+        db.session.add_all([target, source])
+        db.session.commit()
+        target_id = target.id
+
+    monkeypatch.setattr(
+        util_mod,
+        'load_species_canonical_mapping',
+        lambda: {
+            'MergeTarget Endpoint': 'MergeTarget Endpoint',
+            'MergeSource Endpoint': 'MergeTarget Endpoint',
+        },
+    )
+
+    response = client.post('/api/ui/system/merge-duplicate-species')
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body['merged'] >= 1
+
+    with app.app_context():
+        db.session.expire_all()
+        merged = db.session.get(Species, target_id)
+        assert merged is not None
+        assert merged.description == 'Endpoint description survives merge.'
+        assert merged.image_url == 'https://example.com/endpoint.jpg'
+
+
 def test_reconcile_dry_run_finds_duplicate_norm(app):
     with app.app_context():
         if Species.query.filter_by(name='DupTest A').first():

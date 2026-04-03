@@ -189,15 +189,12 @@ curl -s http://YOUR_HOST:8085/api/ui/status
 
 Если статус серый при работающем подключении — heartbeat не доходит до API.
 
-**Диагностика:**
-```bash
-curl -s http://YOUR_IP:8085/api/ui/status/debug
-```
+**Диагностика:** `/api/ui/status/debug` теперь требует админскую сессию настроек. Проверяйте его из браузера после входа администратором и разблокировки Settings либо передавайте cookie сессии в HTTP-клиенте.
 
 - `last_heartbeat: null` — процессор не шлёт heartbeat (проверить логи: `Heartbeat failed`, `403`)
 - `last_heartbeat.updated_at` старый — процессор упал или heartbeat не проходит
 - `processor_secret_configured: false` — PROCESSOR_SECRET не задан в контейнере
-- `activity_log: 403 Forbidden` в логах — несовпадение PROCESSOR_SECRET
+- повторяющиеся `403` на heartbeat в логах процессора — несовпадение PROCESSOR_SECRET
 
 ### 2. Провокация события (тест полного пайплайна)
 

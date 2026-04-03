@@ -131,6 +131,26 @@ class TestDecisionMaker(unittest.TestCase):
         results2 = dm2.get_results(tracks_common)
         self.assertEqual(len(results2), 0)
 
+    def test_species_confidence_overrides_match_scientific_common_labels(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.10,
+            species_confidence_overrides={"House Sparrow": 0.03},
+        )
+        tracks = {
+            1: {
+                'start_time': time.time(),
+                'end_time': time.time() + 1,
+                'preds': [('Passer domesticus (House Sparrow)', 0.05)] * 10,
+                'best_frame': None,
+            }
+        }
+
+        results = dm.get_results(tracks)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['species_name'], 'Passer domesticus (House Sparrow)')
+
     def test_post_record_extends_inactive_window(self):
         """post_record_seconds adds to max_inactive before stop (#157)."""
         dm = DecisionMaker(
@@ -145,6 +165,38 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertFalse(dm.decide_stop_recording())
         time.sleep(5.1)
         self.assertTrue(dm.decide_stop_recording())
+
+    def test_get_results_sorts_by_confidence_then_track_id(self):
+        tracks = {
+            9: {
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'preds': [('Blue Jay', 0.7)] * 3,
+                'best_frame': None,
+                'frames': [],
+            },
+            3: {
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'preds': [('Great Tit', 0.9)] * 3,
+                'best_frame': None,
+                'frames': [],
+            },
+            1: {
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'preds': [('Robin', 0.9)] * 3,
+                'best_frame': None,
+                'frames': [],
+            },
+        }
+
+        results = self.decision_maker.get_results(tracks)
+
+        self.assertEqual(
+            [(item['track_id'], item['species_name']) for item in results],
+            [(1, 'Robin'), (3, 'Great Tit'), (9, 'Blue Jay')],
+        )
 
 if __name__ == '__main__':
     unittest.main()

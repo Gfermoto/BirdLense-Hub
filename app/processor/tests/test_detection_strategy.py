@@ -20,6 +20,62 @@ except ImportError:
 # Sample regional species list in Philadelphia area.
 regional_species = ['Northern Cardinal', 'Dark-eyed Junco', 'Tufted Titmouse', 'American Crow', 'Mourning Dove', 'Blue Jay', 'Carolina Wren', 'White-breasted Nuthatch', 'White-throated Sparrow', 'Downy Woodpecker', 'Red-bellied Woodpecker', 'Song Sparrow', 'European Starling', 'American Goldfinch', 'House Finch', 'Carolina Chickadee', 'House Sparrow', 'American Robin', 'Northern Mockingbird', 'Black-capped Chickadee', 'Eastern Bluebird', 'Northern Flicker', 'Hairy Woodpecker', 'Rock Pigeon', 'Golden-crowned Kinglet', 'Yellow-rumped Warbler', 'Pileated Woodpecker', 'American Tree Sparrow', 'Red-winged Blackbird', 'Red-breasted Nuthatch', 'Brown Creeper', 'Common Raven', 'Cedar Waxwing', 'Yellow-bellied Sapsucker', 'Common Grackle', 'Purple Finch', 'Pine Siskin', 'Horned Lark', 'Hermit Thrush', 'Swamp Sparrow', 'Ruby-crowned Kinglet', 'Eastern Towhee', 'Winter Wren', 'Fox Sparrow', 'Brown-headed Cowbird', 'Field Sparrow', 'Squirrel']
 
+
+class _FakeTensor:
+    def __init__(self, values):
+        self._values = np.array(values)
+
+    def int(self):
+        return _FakeTensor(self._values.astype(int))
+
+    def cpu(self):
+        return self
+
+    def tolist(self):
+        return self._values.tolist()
+
+    def numpy(self):
+        return self._values
+
+
+class _FakeBoxes:
+    def __init__(self, track_ids, confidences, boxes_norm, boxes_abs):
+        self.id = _FakeTensor(track_ids)
+        self.conf = _FakeTensor(confidences)
+        self.xyxyn = _FakeTensor(boxes_norm)
+        self.xyxy = _FakeTensor(boxes_abs)
+
+    def __len__(self):
+        return len(self.conf.tolist())
+
+
+class _FakeDetectResult:
+    def __init__(self, boxes):
+        self.boxes = boxes
+
+
+class _FakeProbs:
+    def __init__(self, values):
+        self.data = np.array(values, dtype=float)
+        self.top1 = int(np.argmax(self.data))
+        self.top1conf = np.array(self.data[self.top1])
+
+
+class _FakeClassifierResult:
+    def __init__(self, names, probs):
+        self.names = names
+        self.probs = _FakeProbs(probs)
+
+
+class _FakeClassifierModel:
+    def __init__(self, names, per_crop_probs):
+        self.names = names
+        self._per_crop_probs = per_crop_probs
+
+    def __call__(self, crop, verbose=False):
+        crop_key = int(crop[0, 0, 0])
+        return [_FakeClassifierResult(self.names, self._per_crop_probs[crop_key])]
+
 class TestDetectionStrategy(unittest.TestCase):
 
     def setUp(self):
@@ -169,6 +225,65 @@ class TestDetectionStrategy(unittest.TestCase):
 
         self.assertEqual(results, [])
 
+    def test_single_stage_regional_filter_matches_normalized_common_names(self):
+        if SingleStageStrategy is None:
+            self.skipTest("SingleStageStrategy not available (import failed).")
+
+        from detection_strategy import _normalize_species_filter_text
+
+        strategy = SingleStageStrategy.__new__(SingleStageStrategy)
+        strategy.logger = self.logger
+        strategy.model = type(
+            'FakeModel',
+            (),
+            {
+                'names': {
+                    0: 'Garrulus glandarius (Eurasian Jay)',
+                    1: 'Parus_major_(Great_Tit)',
+                    2: 'KNOB_BILLED_DUCK',
+                },
+            },
+        )()
+        strategy.regional_species = ['Eurasian Jay', 'Great Tit', 'Hooded Crow']
+        regional_keys = [_normalize_species_filter_text(x) for x in strategy.regional_species]
+
+        classes = [
+            cid
+            for cid, label in strategy.model.names.items()
+            if any(key and key in _normalize_species_filter_text(label) for key in regional_keys)
+        ]
+
+        self.assertEqual(classes, [0, 1])
+
+    def test_single_stage_regional_filter_matches_hyphenated_common_names(self):
+        if SingleStageStrategy is None:
+            self.skipTest("SingleStageStrategy not available (import failed).")
+
+        from detection_strategy import _normalize_species_filter_text
+
+        strategy = SingleStageStrategy.__new__(SingleStageStrategy)
+        strategy.logger = self.logger
+        strategy.model = type(
+            'FakeModel',
+            (),
+            {
+                'names': {
+                    0: 'Columba palumbus (Common Wood-Pigeon)',
+                    1: 'Poecile-montanus-(Willow-Tit)',
+                },
+            },
+        )()
+        strategy.regional_species = ['Common Wood Pigeon', 'Willow Tit']
+        regional_keys = [_normalize_species_filter_text(x) for x in strategy.regional_species]
+
+        classes = [
+            cid
+            for cid, label in strategy.model.names.items()
+            if any(key and key in _normalize_species_filter_text(label) for key in regional_keys)
+        ]
+
+        self.assertEqual(classes, [0, 1])
+
     def test_two_stage_skips_frame_when_tracker_ids_absent(self):
         if TwoStageStrategy is None:
             self.skipTest("TwoStageStrategy not available (import failed).")
@@ -196,6 +311,123 @@ class TestDetectionStrategy(unittest.TestCase):
         results = strategy.detect(np.zeros((128, 128, 3), dtype=np.uint8), 'bytetrack.yaml', 0.1)
 
         self.assertEqual(results, [])
+
+    def test_two_stage_classifies_multiple_tracks_per_frame_with_budget(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+
+        frame = np.zeros((120, 120, 3), dtype=np.uint8)
+        frame[0:30, 0:30] = 10
+        frame[30:60, 30:60] = 20
+        frame[60:90, 60:90] = 30
+
+        boxes = _FakeBoxes(
+            track_ids=[1, 2, 3],
+            confidences=[0.9, 0.85, 0.8],
+            boxes_norm=[
+                [0.0, 0.0, 0.25, 0.25],
+                [0.25, 0.25, 0.5, 0.5],
+                [0.5, 0.5, 0.75, 0.75],
+            ],
+            boxes_abs=[
+                [0, 0, 30, 30],
+                [30, 30, 60, 60],
+                [60, 60, 90, 90],
+            ],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            'FakeBinaryModel',
+            (),
+            {'track': lambda *args, **kwargs: [_FakeDetectResult(boxes)]},
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: 'Blue_Jay', 1: 'Great_Tit', 2: 'Eurasian_Jay'},
+            {
+                10: [0.9, 0.05, 0.05],
+                20: [0.05, 0.9, 0.05],
+                30: [0.05, 0.05, 0.9],
+            },
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = self.logger
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 100.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        first_results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
+        second_results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
+
+        first_classified = {res.track_id: res.class_name for res in first_results if res.class_name}
+        second_classified = {res.track_id: res.class_name for res in second_results if res.class_name}
+
+        self.assertEqual(first_classified, {1: 'Blue Jay', 2: 'Great Tit'})
+        self.assertEqual(second_classified, {1: 'Blue Jay', 3: 'Eurasian Jay'})
+
+    def test_two_stage_limits_blur_scan_with_max_blur_checks(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+
+        frame = np.zeros((160, 160, 3), dtype=np.uint8)
+        frame[0:30, 0:30] = 10
+        frame[30:60, 30:60] = 20
+        frame[60:90, 60:90] = 30
+        frame[90:120, 90:120] = 40
+
+        boxes = _FakeBoxes(
+            track_ids=[1, 2, 3, 4],
+            confidences=[0.9, 0.85, 0.8, 0.75],
+            boxes_norm=[
+                [0.0, 0.0, 0.2, 0.2],
+                [0.2, 0.2, 0.4, 0.4],
+                [0.4, 0.4, 0.6, 0.6],
+                [0.6, 0.6, 0.8, 0.8],
+            ],
+            boxes_abs=[
+                [0, 0, 30, 30],
+                [30, 30, 60, 60],
+                [60, 60, 90, 90],
+                [90, 90, 120, 120],
+            ],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            'FakeBinaryModel',
+            (),
+            {'track': lambda *args, **kwargs: [_FakeDetectResult(boxes)]},
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: 'Blue_Jay', 1: 'Great_Tit', 2: 'Eurasian_Jay', 3: 'Robin'},
+            {
+                10: [0.9, 0.05, 0.03, 0.02],
+                20: [0.05, 0.9, 0.03, 0.02],
+                30: [0.03, 0.05, 0.9, 0.02],
+                40: [0.02, 0.05, 0.03, 0.9],
+            },
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = self.logger
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 100.0
+        strategy.max_blur_checks = 2
+        strategy.max_classifications_per_frame = 3
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
+
+        classified = {res.track_id: res.class_name for res in results if res.class_name}
+
+        self.assertEqual(classified, {1: 'Blue Jay', 2: 'Great Tit'})
 
 if __name__ == '__main__':
     unittest.main()

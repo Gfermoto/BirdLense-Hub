@@ -15,11 +15,6 @@ export const timelineHelpConfig: PageHelpConfig = {
   dialogMaxWidth: 'md',
 } as const;
 
-export const birdDirHelpConfig: PageHelpConfig = {
-  configKey: 'birdDir',
-  dialogMaxWidth: 'md',
-} as const;
-
 export const videoDetailsHelpConfig: PageHelpConfig = {
   configKey: 'videoDetails',
   dialogMaxWidth: 'md',

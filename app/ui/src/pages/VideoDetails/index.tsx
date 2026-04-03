@@ -30,17 +30,21 @@ export const VideoDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  /** Preserve Timeline / Unknowns return path when stepping prev/next (VisitCard passes `state.from`). */
+  /** Preserve return path when stepping prev/next. */
   const neighborNavigationState = (() => {
     const s = location.state;
-    if (s && typeof s === 'object' && 'from' in s) {
+    if (s && typeof s === 'object') {
       const from = (s as { from?: unknown }).from;
+      const state: { from?: string } = {};
       if (
         typeof from === 'string' &&
         from.startsWith('/') &&
         !from.startsWith('//')
       ) {
-        return { from };
+        state.from = from;
+      }
+      if (state.from) {
+        return state;
       }
     }
     return undefined;

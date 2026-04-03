@@ -14,6 +14,17 @@ logger = logging.getLogger(__name__)
 _COCO_BIRD_ONLY_CLASS_NAMES = frozenset({'bird'})
 
 
+def _normalize_species_filter_text(name: str) -> str:
+    return (
+        str(name or '')
+        .replace('_OR_', '/')
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .strip()
+        .lower()
+    )
+
+
 def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
     """ByteTrack иногда возвращает ``boxes.id is None`` на первом реальном кадре — повтор без нового кадра."""
     results = model.track(frame, **kwargs)
@@ -92,10 +103,14 @@ class SingleStageStrategy(DetectionStrategy):
 
         if self.regional_species:
             self.logger.info(f'Initializing with regional species filters: {self.regional_species}')
+            regional_keys = [_normalize_species_filter_text(x) for x in self.regional_species]
             self.classes = [
                 id
                 for id, label in self.model.names.items()
-                if any(reg_species in label for reg_species in self.regional_species)
+                if any(
+                    key and key in _normalize_species_filter_text(label)
+                    for key in regional_keys
+                )
             ]
 
             # Log the actual class names that are enabled
@@ -189,10 +204,21 @@ class SingleStageStrategy(DetectionStrategy):
 
 
 class TwoStageStrategy(DetectionStrategy):
-    def __init__(self, binary_model_path: str, classifier_model_path: str, regional_species: Optional[List[str]] = None, min_center_dist: float = 0.1, min_box_size_px: int = 50, blur_threshold: float = 100.0):
-        super().__init__(min_center_dist, min_box_size_px, blur_threshold)
+    def __init__(
+        self,
+        binary_model_path: str,
+        classifier_model_path: str,
+        regional_species: Optional[List[str]] = None,
+        min_center_dist: float = 0.1,
+        min_box_size_px: int = 50,
+        blur_threshold: float = 100.0,
+        max_blur_checks: int = 3,
+        max_classifications_per_frame: int = 2,
+    ):
+        super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.regional_species = regional_species
+        self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         
         self.binary_model = YOLO(binary_model_path, task="detect")
         self.classifier_model = YOLO(classifier_model_path, task="classify")
@@ -204,9 +230,13 @@ class TwoStageStrategy(DetectionStrategy):
         self.classes = None
         if self.regional_species:
             self.logger.info(f'Initializing with regional species filters: {self.regional_species}')
+            regional_keys = [_normalize_species_filter_text(x) for x in self.regional_species]
             self.classes = [
-                id for id, label in self.classifier_model.names.items() 
-                if any(reg_species in self._normalize_class_name(label) for reg_species in self.regional_species)
+                id for id, label in self.classifier_model.names.items()
+                if any(
+                    reg_species and reg_species in _normalize_species_filter_text(label)
+                    for reg_species in regional_keys
+                )
             ]
             # Log the actual class names that are enabled
             enabled_classes = [self._normalize_class_name(self.classifier_model.names[id]) for id in self.classes]
@@ -244,7 +274,7 @@ class TwoStageStrategy(DetectionStrategy):
         return self._normalize_class_name(result_cls[0].names[top1_idx]), probs.top1conf.item()
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
-        """Binary detect → фильтр валидности → round-robin классификация одного бокса на кадр."""
+        """Binary detect -> validate -> classify a bounded round-robin slice of tracks."""
         results = _track_maybe_retry(
             self.binary_model,
             frame,
@@ -295,32 +325,46 @@ class TwoStageStrategy(DetectionStrategy):
         if not valid_boxes:
             return []
         valid_boxes.sort(key=lambda b: b['track_id'])
+        classification_budget = min(
+            len(valid_boxes),
+            max(1, int(getattr(self, 'max_classifications_per_frame', 1))),
+        )
         start_idx = self._classification_index % len(valid_boxes)
-        self._classification_index += 1
-        
-        classified = None  # {track_id, crop, blur_variance}
-        for i in range(min(len(valid_boxes), self.max_blur_checks)):
-            idx = (start_idx + i) % len(valid_boxes)
-            box = valid_boxes[idx]
+        self._classification_index = (
+            self._classification_index + classification_budget
+        ) % len(valid_boxes)
+
+        scheduled_boxes = [
+            valid_boxes[(start_idx + i) % len(valid_boxes)]
+            for i in range(len(valid_boxes))
+        ]
+        scan_limit = min(
+            len(scheduled_boxes),
+            max(1, int(getattr(self, 'max_blur_checks', 1) or 1)),
+        )
+        classified_by_track = {}
+        fallback_box = None
+        for box in scheduled_boxes[:scan_limit]:
+            if fallback_box is None:
+                fallback_box = box
             x1, y1, x2, y2 = box['crop_coords']
             crop = frame[y1:y2, x1:x2]
             is_blur, variance = self.is_blurry(crop)
-            if not is_blur:
-                classified = {
-                    'track_id': box['track_id'],
-                    'crop': crop.copy(),
-                    'blur_variance': variance
-                }
+            if is_blur:
+                continue
+            classified_by_track[box['track_id']] = {
+                'crop': crop.copy(),
+                'blur_variance': variance,
+            }
+            if len(classified_by_track) >= classification_budget:
                 break
-        if classified is None and valid_boxes:
-            box = valid_boxes[start_idx % len(valid_boxes)]
-            x1, y1, x2, y2 = box['crop_coords']
+        if not classified_by_track and fallback_box is not None:
+            x1, y1, x2, y2 = fallback_box['crop_coords']
             crop = frame[y1:y2, x1:x2]
             _, variance = self.is_blurry(crop)
-            classified = {
-                'track_id': box['track_id'],
+            classified_by_track[fallback_box['track_id']] = {
                 'crop': crop.copy(),
-                'blur_variance': variance
+                'blur_variance': variance,
             }
         detection_results = []
         for box in valid_boxes:
@@ -329,7 +373,8 @@ class TwoStageStrategy(DetectionStrategy):
             blur_variance = None
             combined_conf = box['conf']  # Default to detector confidence
             
-            if classified and box['track_id'] == classified['track_id']:
+            classified = classified_by_track.get(box['track_id'])
+            if classified:
                 species_name, cls_conf = self._classify_crop(classified['crop'])
                 combined_conf = box['conf'] * cls_conf
 

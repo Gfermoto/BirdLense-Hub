@@ -220,6 +220,30 @@ class ActivityLog(db.Model):
     )
 
 
+class SiteVisitor(db.Model):
+    """Anonymous browser/day presence record for lightweight site visitor metrics."""
+    __tablename__ = 'site_visitor'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    browser_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    seen_day: Mapped[str] = mapped_column(String(10), nullable=False)
+    device_class: Mapped[str] = mapped_column(
+        String(16), nullable=False, default='unknown', server_default='unknown',
+    )
+    first_seen_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    last_seen_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    __table_args__ = (
+        Index('ix_site_visitor_seen_day', 'seen_day'),
+        Index('ix_site_visitor_browser_hash', 'browser_hash'),
+        Index('ux_site_visitor_browser_day', 'browser_hash', 'seen_day', unique=True),
+    )
+
+
 class PushSubscription(db.Model):
     """Web Push subscription for browser notifications."""
     id: Mapped[int] = mapped_column(primary_key=True)

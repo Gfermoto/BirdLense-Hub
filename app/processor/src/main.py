@@ -11,7 +11,6 @@ from frame_processor import FrameProcessor
 from detection_strategy import SingleStageStrategy, TwoStageStrategy
 from spectrogram import generate_spectrogram
 from motion_detectors.fake import FakeMotionDetector
-from motion_detectors.opencv_motion import OpenCVMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
 from decision_maker import DecisionMaker
@@ -111,21 +110,37 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tupl
     bbox = mid.get('bbox') if isinstance(mid, dict) else None
     t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
 
-    cap = cv2.VideoCapture(video_file_path)
+    def _read_frame_with_retries(ts: float):
+        retry_delays = (0.0, 0.2, 0.5)
+        for idx, delay in enumerate(retry_delays):
+            cap = cv2.VideoCapture(video_file_path)
+            try:
+                if not cap.isOpened():
+                    frame = None
+                else:
+                    fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+                    if fps > 0.01:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(ts * fps)))
+                    else:
+                        cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
+                    ok_local, frame = cap.read()
+                    if not ok_local:
+                        frame = None
+                    if frame is None and ts > 0:
+                        cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
+                        ok_local, frame = cap.read()
+                        if not ok_local:
+                            frame = None
+                if frame is not None:
+                    return frame
+            finally:
+                cap.release()
+            if idx + 1 < len(retry_delays):
+                time.sleep(delay)
+        return None
+
     try:
-        if not cap.isOpened():
-            return None, 'none'
-
-        def _read_at(ts: float):
-            fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-            if fps > 0.01:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(ts * fps)))
-            else:
-                cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
-            ok_local, frame_local = cap.read()
-            return frame_local if ok_local else None
-
-        frame = _read_at(t) or _read_at(0.0)
+        frame = _read_frame_with_retries(t)
         if frame is None:
             return None, 'none'
         h, w = frame.shape[:2]
@@ -151,8 +166,16 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tupl
     except Exception as e:
         logging.warning("Encode video crop for notify failed: %s", e)
         return None, 'none'
-    finally:
-        cap.release()
+
+
+def _resolve_single_stage_model_path(config, processor_root: str) -> str:
+    """Return configured single-stage path or yolov8n fallback."""
+    single_path = config.get('processor.models.single_stage', 'yolov8n.pt')
+    if not os.path.isabs(single_path):
+        single_path = os.path.join(processor_root, single_path)
+    if os.path.isfile(single_path) or os.path.isdir(single_path):
+        return single_path
+    return 'yolov8n.pt'
 
 
 # Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
@@ -339,8 +362,8 @@ def main():
         if use_frigate_from_aggregator:
             frigate_detector._aggregator = mqtt_aggregator
 
-    # Motion detector: fake (arg) | mock-mqtt | Frigate + optional additional | opencv | pir
-    from motion_detectors.or_motion import OrMotionDetector
+    # Motion detector: fake (arg) | mock-mqtt | Frigate + local/OpenCV fallback | opencv | pir
+    from motion_detectors.factory import build_motion_detector
 
     if args.fake_motion:
         motion = args.fake_motion.lower() == 'true'
@@ -368,46 +391,43 @@ def main():
             else:
                 logging.warning('Frigate MQTT not connected')
 
-        # Additional trigger (parallel): opencv | mqtt | esphome
-        additional = None
         add_source = app_config.get('motion.source', 'frigate')
-        if add_source == 'opencv':
-            check_n = app_config.get('motion.check_every_n_frames', 1)
-            additional = OpenCVMotionDetector(capture_fn=media_source.capture, check_every_n_frames=check_n)
+        check_n = app_config.get('motion.check_every_n_frames', 1)
+        esphome_url = (
+            os.environ.get('MOTION_ESPHOME_URL')
+            or app_config.get('motion.esphome_url', '')
+        ).strip()
+        esphome_sensor = (
+            os.environ.get('MOTION_ESPHOME_SENSOR')
+            or app_config.get('motion.esphome_sensor_id', '')
+        ).strip()
+        motion_detector = build_motion_detector(
+            motion_source=add_source,
+            media_source=media_source,
+            primary=primary,
+            mqtt_broker=mqtt_broker,
+            mqtt_topic=app_config.get('motion.mqtt_topic', '').strip(),
+            mqtt_port=app_config.get('mqtt.port', 1883),
+            mqtt_username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
+            mqtt_password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+            esphome_url=esphome_url,
+            esphome_sensor=esphome_sensor,
+            check_every_n_frames=check_n,
+        )
+        if add_source == 'frigate':
+            logging.info(
+                'Motion: Frigate with local OpenCV fallback (check_every_n_frames=%s)',
+                check_n,
+            )
+        elif add_source == 'opencv':
             logging.info('Motion: + OpenCV (parallel, check_every_n_frames=%s)', check_n)
         elif add_source == 'mqtt' and mqtt_broker and (app_config.get('motion.mqtt_topic') or '').strip():
-            from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
-            additional = MQTTBinaryMotionDetector(
-                broker=mqtt_broker,
-                port=app_config.get('mqtt.port', 1883),
-                topic=app_config.get('motion.mqtt_topic', '').strip(),
-                username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
-                password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
-            )
-            additional.start()
             logging.info('Motion: + MQTT binary (parallel)')
         elif add_source == 'esphome':
-            esphome_url = (os.environ.get('MOTION_ESPHOME_URL') or app_config.get('motion.esphome_url', '')).strip()
-            esphome_sensor = (os.environ.get('MOTION_ESPHOME_SENSOR') or app_config.get('motion.esphome_sensor_id', '')).strip()
             if esphome_url and esphome_sensor:
-                from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
-                additional = ESPHomeBinaryMotionDetector(
-                    url=esphome_url,
-                    sensor_id=esphome_sensor,
-                )
                 logging.info('Motion: + ESPHome (parallel)')
             else:
                 logging.warning('motion.source=esphome but URL/sensor empty')
-
-        if primary or additional:
-            if primary and additional:
-                motion_detector = OrMotionDetector(primary=primary, additional=additional)
-            else:
-                motion_detector = primary or additional
-        else:
-            logging.info('Motion: OpenCV (no MQTT)')
-            check_n = app_config.get('motion.check_every_n_frames', 1)
-            motion_detector = OpenCVMotionDetector(capture_fn=media_source.capture, check_every_n_frames=check_n)
 
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(
         app_config)
@@ -447,12 +467,7 @@ def main():
                 f'YOLO two_stage: модели не найдены ({binary_path}, {classifier_path}). '
                 'Используем single_stage с yolov8n.pt. Добавьте best.pt в processor/models/ для полной детекции.'
             )
-        single_path = app_config.get('processor.models.single_stage', 'yolov8n.pt')
-        if not os.path.isabs(single_path):
-            single_path = os.path.join(processor_root, single_path)
-        # .pt файл или yolov8n.pt (pretrained)
-        if not os.path.isfile(single_path):
-            single_path = 'yolov8n.pt'
+        single_path = _resolve_single_stage_model_path(app_config, processor_root)
         _coco_anim = app_config.get('processor.single_stage_coco_animals_only_auto')
         if _coco_anim is None:
             _coco_anim = app_config.get('processor.single_stage_coco_bird_only_auto', True)
@@ -596,7 +611,9 @@ def main():
                 video_list, mqtt_events, start_time, end_time,
                 merge_window, dedup_window, one_per_species=one_per_species,
                 source_priority=source_priority,
-                cross_source_confidence_bonus=cross_bonus)
+                cross_source_confidence_bonus=cross_bonus,
+                species_mapping=species_mapping,
+            )
             video_detections = apply_multi_camera_confidence_boost(
                 video_detections, mqtt_events, app_config)
 
@@ -657,7 +674,7 @@ def main():
                             )
                             try:
                                 api.activity_log(
-                                    type='notify_preview',
+                                    type='notify_preview_generated',
                                     data={
                                         'species': sn,
                                         'video_id': video_id,

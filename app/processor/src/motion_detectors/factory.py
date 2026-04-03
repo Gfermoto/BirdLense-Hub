@@ -1,0 +1,82 @@
+"""Motion detector factory with safe local fallback."""
+
+import logging
+
+from motion_detectors.opencv_motion import OpenCVMotionDetector
+from motion_detectors.or_motion import OrMotionDetector
+
+logger = logging.getLogger(__name__)
+
+
+def build_motion_detector(
+    *,
+    motion_source,
+    media_source,
+    primary=None,
+    mqtt_broker=None,
+    mqtt_topic='',
+    mqtt_port=1883,
+    mqtt_username=None,
+    mqtt_password=None,
+    esphome_url='',
+    esphome_sensor='',
+    check_every_n_frames=1,
+):
+    """Build the effective motion detector chain for the processor."""
+    additional = None
+    source = (motion_source or 'frigate').strip().lower()
+
+    if source in {'frigate', 'opencv'}:
+        additional = OpenCVMotionDetector(
+            capture_fn=media_source.capture,
+            check_every_n_frames=check_every_n_frames,
+        )
+    elif source == 'mqtt' and mqtt_broker and (mqtt_topic or '').strip():
+        try:
+            from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
+
+            additional = MQTTBinaryMotionDetector(
+                broker=mqtt_broker,
+                port=mqtt_port,
+                topic=(mqtt_topic or '').strip(),
+                username=mqtt_username,
+                password=mqtt_password,
+            )
+            additional.start()
+        except (ImportError, ModuleNotFoundError, Exception) as exc:
+            logger.warning(
+                'MQTT motion detector unavailable, fallback to OpenCV: %s',
+                exc,
+            )
+            additional = None
+    elif source == 'esphome' and esphome_url and esphome_sensor:
+        try:
+            from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
+
+            additional = ESPHomeBinaryMotionDetector(
+                url=esphome_url,
+                sensor_id=esphome_sensor,
+            )
+        except (ImportError, ModuleNotFoundError, Exception) as exc:
+            logger.warning(
+                'ESPHome motion detector unavailable, fallback to OpenCV: %s',
+                exc,
+            )
+            additional = None
+
+    if primary and additional:
+        return OrMotionDetector(primary=primary, additional=additional)
+    if primary:
+        return primary
+    if additional:
+        return additional
+    logger.warning(
+        'No dedicated motion detector active, using OpenCV fallback '
+        '(source=%s, check_every_n_frames=%s)',
+        source,
+        check_every_n_frames,
+    )
+    return OpenCVMotionDetector(
+        capture_fn=media_source.capture,
+        check_every_n_frames=check_every_n_frames,
+    )

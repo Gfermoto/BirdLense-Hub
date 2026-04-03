@@ -25,7 +25,6 @@
     "activity4to8h": "4-8h",
     "activity2to4h": "2-4h",
     "activityUnder2h": "Under 2h",
-    "recordingsAndDataset": "Recordings & Dataset",
     "sectionImport": "Import from disk",
     "sectionRegenerate": "Regenerate",
     "sectionDataset": "Dataset",
@@ -35,7 +34,25 @@
     "datasetFlowStep1": "Import: \"Scan and import\" picks up new files under the recordings archive.",
     "datasetFlowStep2": "Period and filters: set the date range above; for tracks you can limit species so only videos that already have those detections are queued.",
     "datasetFlowStep3": "Tracks: \"Regenerate tracks\" when detections/bboxes in the DB must be rebuilt (after setting changes or bad frames). Large archives: run overnight and slice by period.",
-    "datasetFlowStep4": "Crops on disk: use \"Retro-export\" from saved detections if needed, then \"Export dataset\" (ZIP). \"Clean dataset\" only when you intentionally remove bad or orphaned files under train/."
+    "datasetFlowStep4": "Crops on disk: use \"Retro-export\" from saved detections if needed, then \"Export dataset\" (ZIP). \"Clean dataset\" only when you intentionally remove bad or orphaned files under train/.",
+    "recordingsCalendarTitle": "Recordings archive",
+    "recordingsCalendarSubtitle": "This calendar shows real files on disk, not processor heartbeat.",
+    "recordingsCalendarMonth": "Month",
+    "recordingsDaysChip": "{{count}} recorded days",
+    "recordingsFilesChip": "{{count}} files",
+    "recordingsLoading": "Loading archive stats...",
+    "recordingsLoadFailed": "Failed to load recordings archive stats.",
+    "recordingsLevelNone": "No files",
+    "recordingsLevelLow": "1-7 files",
+    "recordingsLevelMedium": "8-15 files",
+    "recordingsLevelHigh": "16+ files",
+    "recordingsOpenDayHint": "Click a highlighted day to open recordings and detections for that date.",
+    "datasetToolsTitle": "Dataset export",
+    "datasetToolsSubtitle": "Dataset preparation and archive maintenance now live directly in Library so the whole workflow stays in one place.",
+    "datasetToolsLibraryHint": "Scan/import, DB maintenance, backup/restore, and storage overview are available below on this same page.",
+    "datasetExportStarted": "Dataset archive is ready and the download has started.",
+    "maintenanceMovedToSystem": "Archive, dataset, and database operations are grouped on the Library page so the operator workflow stays consistent.",
+    "openSystem": "Open System"
   },
   "overview": {
     "lastBird": "Last bird today",
@@ -43,6 +60,7 @@
     "errorLoad": "Error loading data. Check that the API is available.",
     "checkApi": "Check: open /api/ui/health in browser — should return {status: ok}.",
     "bySource": "By detection source",
+    "bySourceHint": "How many visits include at least one segment from this provider. Row sums can exceed total visits when one visit merged multiple sources.",
     "noData": "No data for selected day",
     "hourlyActivity": "Hourly Activity",
     "dailyPattern": "Daily Activity Pattern",
@@ -50,13 +68,13 @@
     "uniqueSpecies": "Unique Species",
     "uniqueSpeciesHint": "Distinct bird species with detections on the selected day",
     "totalVisits": "Total Visits",
-    "totalVisitsHint": "All detections for the day (video and audio), not merged into visits",
+    "totalVisitsHint": "Number of visits (SpeciesVisit sessions) on the selected day. A visit may include multiple clips and multiple recognition segments.",
     "visitsLastHour": "Visits (Last Hour)",
-    "visitsLastHourHint": "Detections in the last 60 minutes from the current time",
+    "visitsLastHourHint": "Visits overlapping the last 60 minutes from now (same clock as the API).",
     "meanDuration": "Mean Recording Duration",
     "meanDurationHint": "Average length of video clips recorded that day",
     "busiestHour": "Busiest Hour",
-    "busiestHourHint": "Hour of day (UTC) with the most detections",
+    "busiestHourHint": "Local observer hour when the most visits started",
     "recordingTime": "Recording Time",
     "recordingTimeHint": "Sum of all video file durations for the day",
     "downloadPdf": "PDF report",
@@ -342,6 +360,8 @@
     "ebirdRegionalTopConfidenceFloorHint": "Auto threshold is never below this value (0.0–1.0).",
     "unknownConfidenceThreshold": "Unknowns threshold",
     "unknownConfidenceThresholdHelp": "Detections below go to «Unknowns» for manual review",
+    "showTrackRegenControls": "Show track regeneration in Library",
+    "showTrackRegenControlsHelp": "Heavy operation that re-runs detection on video. Off by default to avoid accidental overwrites.",
     "spectrogramDetail": "Spectrogram detail",
     "spectrogramDetailHelp": "Pixels per second (when BirdNET event arrives)",
     "saveDatasetCrops": "Save dataset for fine-tuning",
@@ -414,6 +434,8 @@
     "scanHint": "(Library → Recordings)",
     "selectDateTime": "Select Date & Time",
     "selectDate": "Select date",
+    "previousDay": "Previous recorded day",
+    "nextDay": "Next recorded day",
     "species": "Species",
     "errorLoad": "Error loading data.",
     "export": "Export",
@@ -460,6 +482,7 @@
     "purgeFailed": "Failed to purge videos",
     "regenerateSpectrograms": "Regenerate spectrograms",
     "regenerateSpectrogramsHint": "Generate spectrograms for old videos that don't have them (optional, for audio/visualization)",
+    "trackRegenDisabledHint": "Track regeneration is hidden. Turn on «Show track regeneration in Library» in Settings → Processor.",
     "regenerating": "Generating...",
     "regenerateSuccess": "Generated {{generated}} spectrograms, failed {{failed}}, skipped {{skipped}}",
     "regenerateTracks": "Regenerate tracks",
@@ -529,8 +552,8 @@
     "heavyOpsDataset": "Dataset export/retro-export: reads the archive and builds a ZIP; best run after import and corrections, not during peak recording time.",
     "mergeDuplicateSpecies": "Merge duplicate species",
     "cleanOrphanedVisits": "Fix counters",
-    "cleanOrphanedVisitsHint": "Removes orphaned visits and syncs data. Fixes incorrect counts in calendar and directory after corrections.",
-    "cleanOrphanedVisitsConfirm": "Remove orphaned visits and sync species_id? This will fix counts in calendar and directory.",
+    "cleanOrphanedVisitsHint": "Removes orphaned visits and syncs data. Fixes incorrect counts in calendars and species summaries after corrections.",
+    "cleanOrphanedVisitsConfirm": "Remove orphaned visits and sync species_id? This will fix counts in calendars and species views.",
     "cleanOrphanedVisitsSuccess": "Removed {{orphaned}} visits, synced {{synced}} detections",
     "mergeSpeciesConfirm": "Merge duplicate species (e.g. Garrulus glandarius (Eurasian Jay) → Eurasian Jay)? This updates the database.",
     "merging": "Merging…",
@@ -544,7 +567,8 @@
     "dbBackupFailed": "Failed to download DB backup",
     "dbRestoreAction": "Restore from file",
     "dbRestoring": "Restoring...",
-    "dbRestoreConfirm": "Restore database from selected file? Current DB will be replaced (a pre-restore backup will be saved on server).",
+    "dbRestoreConfirm": "Replace the current database with \"{{name}}\"? A pre-restore backup will be saved on the server first.",
+    "dbRestoreTitle": "Restore database",
     "dbRestoreDone": "Database restored",
     "dbRestoreFailed": "Failed to restore database"
   },
@@ -630,12 +654,12 @@
     "collapseAll": "Collapse all",
     "noMatch": "No species found matching \"{{query}}\"",
     "noSpeciesFilter": "No species to display with the selected filter.",
-    "errorLoad": "Error loading bird directory data."
+    "errorLoad": "Error loading species list."
   },
   "overviewExtra": {
     "temperature": "Temperature",
     "allSpecies": "All Species",
-    "hourlyChartSpecies": "Species (hourly activity)",
+    "hourlyChartSpecies": "Species filter",
     "detections": "Detections"
   },
   "video": {
@@ -662,7 +686,7 @@
     "nextRecording": "Next recording",
     "noPreviousRecording": "No earlier recording",
     "noNextRecording": "No later recording",
-    "neighborsDayHint": "Navigation uses the browser's local calendar day; at day boundaries it can continue to adjacent days",
+    "neighborsDayHint": "Local calendar day; can continue past midnight. Prev/next steps through all clips for that calendar day.",
     "localDayLabel": "Local day"
   },
   "feed": {
@@ -694,8 +718,8 @@
     "sightings": "sightings",
     "errorLoad": "Error loading data.",
     "notFound": "This species is not in the catalog (it may have been removed or the link is outdated).",
-    "invalidId": "Invalid species link. Use the bird directory to open a species.",
-    "openDirectory": "Bird directory",
+    "invalidId": "Invalid species link. Open a species from the Migration calendar or another in-app link.",
+    "openDirectory": "Open Migration calendar",
     "noWeatherData": "No weather data for sightings in the last 30 days.",
     "recentVisits": "Recent Visits",
     "total": "Total",
@@ -712,8 +736,10 @@
     "totalRecordingTime": "Recording Time"
   },
   "visitCard": {
+    "todayAt": "Today at {{time}}",
     "visitDuration": "Visit duration (time at feeder)",
-    "recordingTime": "Sum of recordings in event"
+    "recordingTime": "Sum of recordings in event",
+    "recordingWithoutVisit": "Recording (no visit)"
   },
   "videoInfo": {
     "downloadVideo": "Download video",
@@ -726,12 +752,17 @@
     "end": "End",
     "duration": "Duration",
     "processor": "Processor",
-    "birdFood": "Bird Food"
+    "birdFood": "Bird Food",
+    "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip."
   },
   "weather": {
     "title": "Weather",
     "notConfigured": "Weather information is not configured yet.",
     "configureSettings": "Configure Weather Settings",
+    "sourceOpenWeather": "OpenWeather",
+    "sourceHomeAssistant": "Home Assistant",
+    "metaWithTime": "Updated: {{time}} • Source: {{source}}",
+    "metaNoTime": "Source: {{source}}",
     "sunrise": "Sunrise",
     "sunset": "Sunset",
     "dawn": "Dawn",
@@ -753,8 +784,8 @@
     "history48h": "48 h",
     "errorLoadHistory": "Could not load metrics history",
     "chartCollecting": "Collecting points… stay on the page for a few polls.",
-    "uniqueVisitorsSection": "Visitors over period",
-    "errorLoadVisitors": "Could not load visitor statistics",
+    "uniqueVisitorsSection": "Site visitors",
+    "errorLoadVisitors": "Could not load site visitor statistics",
     "cpu": "CPU",
     "memory": "Memory",
     "disk": "Disk",
@@ -766,18 +797,21 @@
     "processorMqtt": "Processor MQTT (Frigate/BirdNET)",
     "gpu": "GPU",
     "gpuNoData": "No metrics (sysfs). If Intel recording fails, switch to CPU in Settings → Video.",
-    "uniqueVisitors": "Unique Visitors",
+    "uniqueVisitors": "Visitors",
+    "speciesVisitSessions": "Visit Sessions",
     "uniqueVisitorsPeriod": "Metric period",
     "lastDays_one": "Last {{count}} day",
     "lastDays_other": "Last {{count}} days",
-    "uniqueVisitorsHint": "Uniqueness is counted as SpeciesVisit sessions over {{days}} day(s) (active days: {{activeDays}}).",
+    "uniqueVisitorsHint": "Estimate based on anonymous browsers over {{days}} day(s), without IPs or fingerprinting (active days: {{activeDays}}).",
+    "speciesVisitSessionsHint": "Count of SpeciesVisit sessions over {{days}} day(s) (active days: {{activeDays}}).",
+    "visitorDeviceBreakdown": "Devices: desktop {{desktop}}, mobile {{mobile}}, tablet {{tablet}}.",
     "errorLoadMetrics": "Error loading system metrics",
     "usagePercent": "{{percent}}% Usage",
     "configAuditTitle": "Configuration audit",
     "configAuditHint": "Quick review of key settings without SSH: proxy, gallery, mapping, and deprecated keys.",
     "configAuditLoadError": "Failed to load configuration audit",
     "speciesDataQualityTitle": "Species catalog data quality",
-    "speciesDataQualityHint": "Operator checklist: labels that look like mis-detections or duplicates. The public Bird Directory already hides most of these by default.",
+    "speciesDataQualityHint": "Operator checklist: labels that look like mis-detections or duplicate names. Use it together with catalog diagnostics when cleaning data.",
     "catalogDiagnosticsTitle": "Catalog diagnostics",
     "catalogDiagnosticsSummary": "Optional tools — expand only when tuning data or models.",
     "speciesDataQualityLoadError": "Failed to load species data quality report",
@@ -787,9 +821,9 @@
     "speciesDataQualityDupes": "Duplicate name groups: {{n}}",
     "catalogObservedCount": "Observed: {{n}}",
     "catalogDatasetCount": "In dataset: {{n}}",
-    "catalogFullEuCount": "Full EU: {{n}}",
+    "catalogFullEuCount": "Allowlist: {{n}}",
     "catalogTuningCandidates": "Tuning candidates: {{n}}",
-    "catalogTuningHint": "Fine-tuning candidates are computed automatically: observed species absent in local dataset.",
+    "catalogTuningHint": "Fine-tuning candidates are computed automatically: observed species absent in real local dataset folders.",
     "catalogRepairTitle": "Catalog cards polish",
     "catalogRepairLoadError": "Failed to load catalog polish status",
     "catalogRepairStart": "Start polish",
@@ -800,6 +834,28 @@
     "catalogRepairWithDescription": "With description: {{n}}",
     "catalogRepairNextRun": "Next auto-run: ~{{n}} min",
     "catalogRepairLastRun": "Last run: checked {{checked}}, metadata updated {{fixed}}, images replaced {{swapped}}, incomplete left {{missing}}.",
+    "processorActivityTitle": "Processor heartbeat",
+    "processorActivityLoading": "Loading processor heartbeat...",
+    "processorActivityLoadFailed": "Failed to load processor heartbeat activity.",
+    "dbMaintenanceTitle": "Database maintenance",
+    "dbMaintenanceSubtitle": "Safe tools for keeping database consistent. Use Preview first — it shows what will change without modifying anything.",
+    "dbScanRecordingsTitle": "Scan & import recordings",
+    "dbScanRecordingsDesc": "Find video files on disk not yet in DB and register them (non-destructive).",
+    "dbScanAction": "Scan",
+    "dbScanImported": "+{{n}} imported",
+    "dbCleanOrphanedTitle": "Clean orphaned visits",
+    "dbCleanOrphanedDesc": "Remove SpeciesVisit records that have no linked detections.",
+    "dbCleanOrphanedConfirmDesc": "This will permanently delete {{orphaned}} orphaned visit records and sync {{synced}} linked detections or visits. Continue?",
+    "dbCleanNothingToClean": "No orphaned visits found — database is clean.",
+    "dbCleanPreviewResult": "Found {{orphaned}} orphaned visits to remove and {{synced}} linked detections or visits to sync.",
+    "dbRealignTitle": "Realign visit times",
+    "dbRealignDesc": "Correct SpeciesVisit start/end timestamps to match actual detection wall-clock times.",
+    "dbRealignConfirmDesc": "This will update {{updated}} visit time ranges. Continue?",
+    "dbRealignNothingToFix": "All visit times are already aligned.",
+    "dbRealignPreviewResult": "{{updated}} visits need time correction.",
+    "dbPreviewAction": "Preview",
+    "dbApplyAction": "Apply",
+    "dbMaintenanceDone": "Database maintenance complete.",
     "speciesDataQualityBlocklist": "Hidden-label rules: {{n}}",
     "speciesDataQualitySuspectTable": "Suspect catalog entries (sample)",
     "speciesDataQualityDupesTable": "Same normalized name (merge candidates)",
@@ -843,8 +899,9 @@
     "unknownKeysFound": "Unknown keys found ({{count}})",
     "observabilityTitle": "Notification observability",
     "observabilityHint": "For the last 24 hours, show Telegram preview source, delivery outcome, and fallback reason counts. Below: Hub metric export URLs for Heimdall/Grafana.",
+    "observabilityGeneratedTitle": "Generated previews",
     "observabilityLoadError": "Failed to load observability data",
-    "observabilityPreviewTitle": "Preview sources",
+    "observabilityPreviewTitle": "Preview sources in final notifications",
     "observabilityDeliveryTitle": "Delivery outcomes",
     "observabilityFallbackTitle": "Fallback reasons",
     "hubMetricsForHeimdall": "Hub metric export (for Heimdall widgets)",
@@ -892,6 +949,10 @@
     "motionHint_opencv": "OpenCV + Frigate + BirdNET: all three triggers in parallel",
     "motionHint_mqtt": "Frigate + BirdNET + MQTT sensor: trigger from any",
     "motionHint_esphome": "Frigate + BirdNET + ESPHome: trigger from any",
+    "processorOk": "Processor running",
+    "processorUnknown": "No recent processor heartbeat",
+    "processorOffline": "Processor offline",
+    "processorError": "Processor error",
     "videoOk": "Cameras connected",
     "videoUnknown": "No camera connection",
     "videoError": "Camera access error",
@@ -935,91 +996,198 @@
       "title": "Bird Activity Overview",
       "description": "View real-time and daily statistics about bird activity at your feeder. This dashboard provides key metrics, current weather conditions, and a 24-hour activity pattern visualization.",
       "details": [
-        { "title": "Activity Statistics", "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis." },
-        { "title": "Visit Metrics", "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns." },
-        { "title": "Audio/Video Ratio", "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance." },
-        { "title": "Weather Information", "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection." },
-        { "title": "Daily Activity Pattern", "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections." },
-        { "title": "Date Selection", "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates." }
+        {
+          "title": "Activity Statistics",
+          "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis."
+        },
+        {
+          "title": "Visit Metrics",
+          "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns."
+        },
+        {
+          "title": "Audio/Video Ratio",
+          "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance."
+        },
+        {
+          "title": "Weather Information",
+          "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection."
+        },
+        {
+          "title": "Daily Activity Pattern",
+          "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections."
+        },
+        {
+          "title": "Date Selection",
+          "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates."
+        }
       ]
     },
     "food": {
       "title": "Bird Food Management",
       "description": "Manage and track different types of food available in your bird feeder. The system uses this information to analyze which foods attract specific bird species.",
       "details": [
-        { "title": "Food Selection", "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data." },
-        { "title": "Food Catalog", "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage." },
-        { "title": "Usage Analytics", "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species." },
-        { "title": "Active Status", "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections." },
-        { "title": "Food Information", "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations" },
-        { "title": "Food Effectiveness", "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy." }
+        {
+          "title": "Food Selection",
+          "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data."
+        },
+        {
+          "title": "Food Catalog",
+          "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage."
+        },
+        {
+          "title": "Usage Analytics",
+          "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species."
+        },
+        {
+          "title": "Active Status",
+          "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections."
+        },
+        {
+          "title": "Food Information",
+          "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations"
+        },
+        {
+          "title": "Food Effectiveness",
+          "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy."
+        }
       ]
     },
     "library": {
-      "title": "Library and dataset",
-      "description": "Import archived recordings, rebuild derived assets, and prepare datasets for retraining. The “Period for operations” block controls which date range is sent to the heavier background jobs.",
+      "title": "Library",
+      "description": "Review the real recordings archive, open the needed days, maintain the database, and prepare datasets from one place. Library now combines archive visibility, dataset flow, backup/restore, and dry-run maintenance actions.",
       "details": [
-        { "title": "The “All time” preset", "content": "BirdLense derives the archive range from recordings found on disk and fills the date fields for you. This is the safe way to target the entire archive without guessing dates manually." },
-        { "title": "Recommended order", "content": "Typical flow: 1) scan and import new recordings, 2) regenerate spectrograms or tracks for the needed range, 3) export or retro-export the dataset." },
-        { "title": "Heaviest operations", "content": "Track regeneration is the heaviest because it walks video frames again. Spectrogram regeneration is lighter but still reads the archive. Dataset export mostly packages already prepared files into ZIP." },
-        { "title": "How to avoid overload", "content": "If the archive is large, start with the last 7 or 30 days. Use the “All time” range when the device is idle and you have time to let the background job finish." }
+        {
+          "title": "What the calendar means",
+          "content": "The calendar is built from real files under data/recordings, so highlighted days mean recordings exist on disk for that date."
+        },
+        {
+          "title": "Why this matters",
+          "content": "This helps separate archive problems from detection problems. If a day is highlighted here but Overview or Timeline is empty, recordings exist but detections or visits are missing."
+        },
+        {
+          "title": "What stays in Library",
+          "content": "This page now combines archive browsing, safe dataset actions, scan/import, backup/restore, dry-run maintenance, and storage overview so archive work stays in one place."
+        },
+        {
+          "title": "How the workflow is organized",
+          "content": "Library is now the main operator page for archive, dataset, and database workflows. System remains focused on monitoring, logs, diagnostics, and observability."
+        },
+        {
+          "title": "Safe workflow",
+          "content": "Start in Library to confirm recordings exist for the day, open the needed date, and then run scan/import, dry-run maintenance, backup/restore, or dataset export from the same context."
+        }
       ]
     },
     "timeline": {
       "title": "Timeline",
       "description": "View chronological history of bird visits to your feeder. Each visit shows detailed information about detected birds, including both video and audio observations.",
       "details": [
-        { "title": "Visit Controls", "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration" },
-        { "title": "Visit Information", "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline" },
-        { "title": "Detection Types", "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection" },
-        { "title": "Visual Timeline", "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits" },
-        { "title": "Detection Confidence", "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)" },
-        { "title": "Weather Context", "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors." }
-      ]
-    },
-    "birdDir": {
-      "title": "Bird Directory",
-      "description": "Browse and explore all bird species detected by your feeder. The directory organizes birds in a hierarchical tree structure based on their taxonomic classification.",
-      "details": [
-        { "title": "Bird Classification", "content": "Birds are organized hierarchically by family and species:\n- Main categories like \"Perching Birds\", \"Cardinals\", etc.\n- Species within each family (e.g., Northern Cardinal)\n- Subspecies or age/sex variations when detected (e.g., Adult Male)\nNumbers on the right show detection counts for each group." },
-        { "title": "Navigation", "content": "Use the expandable tree structure to:\n- Click arrows to expand/collapse categories\n- Click species names to view detailed information\n- External link icons (↗) open species detail pages\n- Numbers show total observations at each level" },
-        { "title": "Filtering", "content": "Use the filter dropdown to customize the view:\n- \"Observed\" shows only species detected at your feeder\n- \"Regional\" shows species in your eBird region’s recent top list (same settings as Migration / region comparison) plus any species heard via BirdNET MQTT\n- \"All\" shows the full taxonomy tree\n- Configure `ebird.*` and `secrets.ebird_api_key` for the eBird part; BirdNET uses stored audio detections" },
-        { "title": "Detection Counts", "content": "Numbers displayed on the right indicate:\n- Total detections for each species\n- Aggregated counts for family groups\n- Both audio and video detections are included\n- Counts update automatically as new birds are detected" },
-        { "title": "Species Information", "content": "Clicking on a species name provides:\n- Detailed species information\n- Visit history and patterns\n- Audio and video detection statistics\n- Preferred foods based on your feeder data" },
-        { "title": "Taxonomy Structure", "content": "The hierarchical organization helps understand:\n- Bird family relationships\n- Species classifications\n- Common groupings of similar birds\n- Distinction between different age/sex variations of the same species" }
+        {
+          "title": "Visit Controls",
+          "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration"
+        },
+        {
+          "title": "Day navigation",
+          "content": "Chevrons next to the date jump to the nearest day that has files in your recordings archive on disk (empty days are skipped). Choosing a date in the picker still opens that exact day."
+        },
+        {
+          "title": "Visit Information",
+          "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline"
+        },
+        {
+          "title": "Detection Types",
+          "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection"
+        },
+        {
+          "title": "Visual Timeline",
+          "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits"
+        },
+        {
+          "title": "Detection Confidence",
+          "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)"
+        },
+        {
+          "title": "Weather Context",
+          "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors."
+        }
       ]
     },
     "unknowns": {
       "title": "Unknowns",
       "description": "Review and correct low-confidence detections. Detections with confidence below the threshold (configurable in Settings) appear here for manual verification.",
       "details": [
-        { "title": "Purpose", "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics." },
-        { "title": "Threshold", "content": "The confidence threshold is set in Settings → Advanced (\"Unknowns threshold\"). Default 0.5 means detections below 50% appear here." },
-        { "title": "Correcting Species", "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured." },
-        { "title": "View Video", "content": "Click \"View video\" to open the recording and verify the detection visually before correcting." },
-        { "title": "Same correction as video page", "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first." },
-        { "title": "Period Selection", "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records." }
+        {
+          "title": "Purpose",
+          "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics."
+        },
+        {
+          "title": "Threshold",
+          "content": "The confidence threshold is set in Settings → Advanced (\"Unknowns threshold\"). Default 0.5 means detections below 50% appear here."
+        },
+        {
+          "title": "Correcting Species",
+          "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured."
+        },
+        {
+          "title": "View Video",
+          "content": "Click \"View video\" to open the recording and verify the detection visually before correcting."
+        },
+        {
+          "title": "Same correction as video page",
+          "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first."
+        },
+        {
+          "title": "Period Selection",
+          "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records."
+        }
       ]
     },
     "migrationCalendar": {
       "title": "Migration Calendar",
       "description": "Historical pattern of species activity by month. Shows when each species typically appears at your feeder based on your recorded data.",
       "details": [
-        { "title": "Monthly Pattern", "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist." },
-        { "title": "Data Source", "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern." },
-        { "title": "Species Link", "content": "Click a species name to open its detail page with full statistics and visit history." }
+        {
+          "title": "Monthly Pattern",
+          "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist."
+        },
+        {
+          "title": "Data Source",
+          "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern."
+        },
+        {
+          "title": "Species link",
+          "content": "Click a species name to open its summary page with statistics and recent visits."
+        }
       ]
     },
     "videoDetails": {
       "title": "Video Details",
       "description": "View detailed information about recorded bird visits, including video footage, audio spectrograms, and detection results from both visual and audio analysis.",
       "details": [
-        { "title": "Media Player", "content": "Above the player: arrows open previous/next recordings within the browser local calendar day (ordered by start time); at day boundaries navigation can continue to adjacent days. Position is shown like 2 / 5.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip." },
-        { "title": "Detection Timeline", "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)" },
-        { "title": "Detected Species", "content": "Under \"Detected Species\" section:\n- Species cards showing detected birds\n- Number in parentheses shows detection count\n- Confidence range for all detections\n- Total duration of species presence\n- \"Learn More\" links to detailed species information\n- Correcting species here is the same action as on the Unknowns page for that detection (shared API); low-confidence rows may also appear under Unknowns until you confirm or correct." },
-        { "title": "General Information", "content": "Technical details about the recording:\n- Processor version used for analysis\n- Start and end timestamps\n- Total recording duration\n- Processing details and settings" },
-        { "title": "Weather Context", "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions" },
-        { "title": "Audio Analysis", "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification" }
+        {
+          "title": "Media Player",
+          "content": "Above the player: arrows move between recordings for your browser’s local calendar day (ordered by start time). Past midnight, navigation can continue on the next or previous day.\n\nWhen you open a clip from a Timeline visit card, previous/next step through sibling visits for that day (one step per visit card), using each visit’s primary clip — so the counter matches what you saw on the Timeline.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip."
+        },
+        {
+          "title": "Detection Timeline",
+          "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)"
+        },
+        {
+          "title": "Detected Species",
+          "content": "Under \"Detected Species\" section:\n- Species cards showing detected birds\n- Number in parentheses shows detection count\n- Confidence range for all detections\n- Total duration of species presence\n- \"Learn More\" links to detailed species information\n- Correcting species here is the same action as on the Unknowns page for that detection (shared API); low-confidence rows may also appear under Unknowns until you confirm or correct."
+        },
+        {
+          "title": "General Information",
+          "content": "Technical details about the recording:\n- Processor version used for analysis\n- Start and end timestamps\n- Total recording duration\n- Processing details and settings"
+        },
+        {
+          "title": "Weather Context",
+          "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions"
+        },
+        {
+          "title": "Audio Analysis",
+          "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification"
+        }
       ]
     }
   }

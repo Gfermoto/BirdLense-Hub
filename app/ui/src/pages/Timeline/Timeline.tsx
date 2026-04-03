@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { VisitCard } from '../../components/VisitCard';
+import { formatLocalTime } from '../../util';
 
 export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisit[] }) {
   const theme = useTheme();
@@ -37,9 +38,7 @@ export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisi
               variant="body2"
               color="text.secondary"
             >
-              <Typography variant="body2">
-                {new Date(visit.start_time).toLocaleTimeString()}
-              </Typography>
+              <Typography variant="body2">{formatLocalTime(visit.start_time)}</Typography>
             </TimelineOppositeContent>
           )}
 

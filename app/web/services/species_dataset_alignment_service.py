@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import func
 
 from models import Species, VideoSpecies
+from services.dataset_export_service import _sanitize_dirname
 from services.species_catalog_allowlist_service import load_catalog_allowlist_names
 from util import (
     GENERIC_BIRD_SPECIES,
@@ -94,8 +95,10 @@ def _species_name_match_keys(name: str, mapping: dict[str, str]) -> set[str]:
         return keys
     stripped = str(name).strip()
     keys.add(_norm_key(stripped))
+    keys.add(_norm_key(_sanitize_dirname(stripped)))
     canon = normalize_species_to_canonical(stripped, mapping)
     keys.add(_norm_key(canon))
+    keys.add(_norm_key(_sanitize_dirname(canon)))
     m = re.match(r'^(.+?)\s*\(([^)]+)\)\s*$', stripped)
     if m:
         keys.add(_norm_key(m.group(1).strip()))
@@ -148,9 +151,6 @@ def _dataset_split_class_names(app_config_get=None) -> set[str]:
                         names.add(entry)
             except OSError:
                 continue
-    allow_names = load_catalog_allowlist_names(app_config_get) if app_config_get else None
-    if allow_names:
-        names.update(str(x).strip() for x in allow_names if str(x).strip())
     return names
 
 
@@ -194,12 +194,22 @@ def build_classifier_dataset_alignment_report(
         return report
 
     norm_pairs = _normalized_classifier_labels(raw_labels)
-    label_norms = {nk for _raw, nk in norm_pairs}
-    # Allowlist is the catalog source of truth; include it in matching keys
-    # so service class additions like Rodent do not show as false drift.
-    allow_names = load_catalog_allowlist_names(app_config_get) or ()
-    for aname in allow_names:
-        label_norms.update(_species_name_match_keys(aname, mapping))
+    all_label_norms = {nk for _raw, nk in norm_pairs if nk}
+    allowlist_names = load_catalog_allowlist_names(app_config_get) or ()
+    allowlist_norms = {
+        nk
+        for name in allowlist_names
+        for nk in _species_name_match_keys(name, mapping)
+    }
+    scoped_norm_pairs = [
+        pair for pair in norm_pairs
+        if not allowlist_norms or pair[1] in allowlist_norms
+    ]
+    label_to_norms: dict[str, set[str]] = {}
+    for raw, nk in scoped_norm_pairs:
+        if not nk:
+            continue
+        label_to_norms.setdefault(raw, set()).add(nk)
 
     # species_id -> match keys
     species_rows = session.query(Species.id, Species.name).order_by(Species.id.asc()).all()
@@ -209,20 +219,25 @@ def build_classifier_dataset_alignment_report(
         sp_keys[int(sid)] = keys
 
     def species_matches_classifier(sid: int) -> bool:
-        return bool(sp_keys.get(sid, set()) & label_norms)
+        return bool(sp_keys.get(sid, set()) & all_label_norms)
 
     clf_unmatched_labels: list[str] = []
-    for raw, nk in norm_pairs:
-        if not nk:
-            continue
-        matched = any(nk in keys for keys in sp_keys.values())
+    for raw, norms in label_to_norms.items():
+        matched = any(
+            any(nk in keys for nk in norms)
+            for keys in sp_keys.values()
+        )
         if not matched:
             clf_unmatched_labels.append(normalize_classifier_label(raw))
     clf_unmatched_full = sorted(set(clf_unmatched_labels))
 
     active_ids = _species_ids_with_video_detections(session)
     cat_unmatched_full: list[dict[str, Any]] = []
-    service_species = {GENERIC_BIRD_SPECIES.strip().lower(), 'unknown'}
+    service_species = {
+        GENERIC_BIRD_SPECIES.strip().lower(),
+        'unknown',
+        'rodent',
+    }
     for sid, name in species_rows:
         if (name or '').strip().lower() in service_species:
             continue
@@ -237,10 +252,15 @@ def build_classifier_dataset_alignment_report(
     folder_without_classifier: list[dict[str, Any]] = []
     for folder in sorted(dataset_names):
         folder_keys = _folder_norm_keys(folder, mapping)
+        if folder_keys & service_species:
+            continue
         species_list = [
             (sid, name or '')
             for sid, name in species_rows
-            if sp_keys.get(int(sid), set()) & folder_keys
+            if (
+                sp_keys.get(int(sid), set()) & folder_keys
+                and (name or '').strip().lower() not in service_species
+            )
         ]
         if not species_list:
             folder_orphans.append(folder)
