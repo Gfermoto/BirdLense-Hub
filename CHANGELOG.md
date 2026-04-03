@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **UI (Overview):** карточка погоды больше не пропадает из сетки: пока `/api/ui/weather` грузится, показывается скелетон; сбой погоды не блокирует весь обзор — только блок погоды с кнопкой «Повторить».
+
 ### Security
 
 - **Code scanning (path injection):** чтение и удаление превью для Telegram — **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py`: `realpath` + `commonpath` + **`startswith(DATA_DIR + sep)`**, затем `open`/`os.remove`; логика вынесена из `notifications.py`. Удалён **`_safe_image_path_or_none`**. Для **`py/path-injection`** на sink-строках — **`# lgtm[py/path-injection]`** (путь уже ограничен каталогом данных); иначе анализатор не снимает taint с `realpath(path)` до `open`/`remove`.

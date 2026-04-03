@@ -78,6 +78,7 @@
     "recordingTime": "Recording Time",
     "recordingTimeHint": "Sum of all video file durations for the day",
     "downloadPdf": "PDF report",
+    "weatherLoadError": "Could not load weather. The rest of the overview is shown.",
     "regionComparison": "Region Comparison",
     "regionComparisonDesc": "You have {{userCount}} species. {{matchCount}} of them are in the region's top {{regionTop}}.",
     "regionComparisonMatched": "Your species in region top:",
