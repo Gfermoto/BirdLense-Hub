@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.2.6** · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
+> **Версия 0.3.1** (источник правды: корневой файл `VERSION`) · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [English](./README.md)
 
@@ -14,7 +14,7 @@
 |------|--------|-----------|
 | **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
 | **Интеграции** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.ru.md) → [CONFIGURATION](./CONFIGURATION.ru.md) |
-| **Разработка** | Код, тесты, релизы | [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [Contributing](./project/contributing.md) |
+| **Разработка** | Код, тесты, релизы | [Структура репозитория](./REPOSITORY_LAYOUT.ru.md) → [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -32,6 +32,7 @@
 | **Архитектура** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
 | **API** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc](./reference/openapi.ru.md) |
 | **Версионирование** | [VERSIONING](./VERSIONING.md) | — |
+| **Структура репозитория** | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) | [RU](./REPOSITORY_LAYOUT.ru.md) |
 
 ---
 
@@ -71,6 +72,7 @@
 
 | Тема | Документ |
 |------|----------|
+| **Структура репозитория** (онбординг) | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
 | Как вести документацию | [Documentation](./Documentation.ru.md) |
 | Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | **Ротация секретов (прод)** | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |

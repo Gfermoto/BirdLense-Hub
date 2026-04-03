@@ -6,11 +6,11 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 ---
 
-## Current stack (March 2026)
+## Current stack (April 2026)
 
 | Component | Version / note |
 |-----------|----------------|
-| **Ultralytics** | 8.4.21 (Docker base image) |
+| **Ultralytics** | **8.4.33** at runtime (`app/processor/requirements.txt`, installed via pip in the image). Base image remains **`ultralytics/ultralytics:8.4.21`** (newer base tags broke ngx_brotli build against nginx in CI; see [CHANGELOG](../CHANGELOG.md) **0.3.1**). |
 | **Platform** | **x86/amd64 only** (Intel or AMD 64-bit). ARM / Apple Silicon / aarch64 — **not supported, not planned** |
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
 | **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |

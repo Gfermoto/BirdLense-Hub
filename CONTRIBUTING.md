@@ -37,6 +37,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 
 ## Documentation
 
+- **Repository layout:** [docs/REPOSITORY_LAYOUT.md](docs/REPOSITORY_LAYOUT.md) — where `app/`, `docs/`, and `scripts/` fit together.
 - **Index:** [docs/README.md](docs/README.md) — how guides are grouped (run / integrate / build).
 - **Narrative for readers & press:** [docs/OVERVIEW.md](docs/OVERVIEW.md).
 - **Conventions:** [docs/Documentation.md](docs/Documentation.md) (placeholders, bilingual files, reusing docs for a static site). **Terms:** [docs/GLOSSARY.md](docs/GLOSSARY.md).

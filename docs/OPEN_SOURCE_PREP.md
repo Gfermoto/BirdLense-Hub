@@ -17,7 +17,7 @@
 | **Root** | `README.md`, `README.ru.md`, `CHANGELOG.md`, `SECURITY.md` | EN primary root README; RU mirror |
 | **`docs/`** | Hub [README](./README.md), [OVERVIEW](./OVERVIEW.md), [SITE_MAP](./SITE_MAP.md), guides | EN `.md` + `*.ru.md` for major guides; see [I18N_STATUS](./I18N_STATUS.md) |
 | **`docs/archive/`** | Historical notes | Trimmed; optional reading |
-| **Other** | `article/`, `scripts/datasets/README` | Spot-check relevance |
+| **Other** | `docs/article/`, `scripts/datasets/README` | Spot-check relevance |
 
 ### 1.2 Leaks (use placeholders in docs)
 

@@ -68,6 +68,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Changelog | [project/changelog.md](./project/changelog.md) → root `CHANGELOG.md` |
 | OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
 | Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
+| Repository layout | [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
 | Doc conventions | [Documentation.md](./Documentation.md) |
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
