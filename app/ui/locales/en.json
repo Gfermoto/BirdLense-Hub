@@ -686,7 +686,7 @@
     "nextRecording": "Next recording",
     "noPreviousRecording": "No earlier recording",
     "noNextRecording": "No later recording",
-    "neighborsDayHint": "Local calendar day; can continue past midnight. From Timeline, arrows step by visit when you opened the clip from a visit card.",
+    "neighborsDayHint": "Local calendar day; can continue past midnight. From Timeline, prev/next only cycles clips linked to visits that day (same idea as visit cards), not every file on disk for that date.",
     "localDayLabel": "Local day"
   },
   "feed": {

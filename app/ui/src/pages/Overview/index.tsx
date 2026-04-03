@@ -332,7 +332,11 @@ export const Overview = () => {
               {t('overview.topSpecies')}
             </Typography>
             {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
-              <SpeciesDistributionChart data={overviewData.topSpecies} date={selectedDay} />
+              <SpeciesDistributionChart
+                data={overviewData.topSpecies}
+                date={selectedDay}
+                size={450}
+              />
             ) : (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                 {t('overview.noData')}

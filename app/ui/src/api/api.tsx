@@ -219,18 +219,24 @@ export type VideoNeighbors = {
 
 export const fetchVideoNeighbors = async (
   id: string,
-  options?: { visitId?: number },
+  options?: { visitId?: number; fromPath?: string },
 ): Promise<VideoNeighbors> => {
   const tzOffset = new Date().getTimezoneOffset();
+  const params: Record<string, string | number> = {
+    day_scope: 'local',
+    tz_offset_minutes: tzOffset,
+    cross_day: 1,
+  };
+  const from = options?.fromPath ?? '';
+  // С таймлайна листаем только ролики, привязанные к визитам за день (как сумма клипов в карточках).
+  if (from.includes('/timeline')) {
+    params.neighbor_mode = 'visit_day';
+  } else if (options?.visitId != null) {
+    params.neighbor_mode = 'visit';
+    params.visit_id = options.visitId;
+  }
   const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`, {
-    params: {
-      day_scope: 'local',
-      tz_offset_minutes: tzOffset,
-      cross_day: 1,
-      ...(options?.visitId
-        ? { visit_id: options.visitId, neighbor_mode: 'visit_primary' }
-        : {}),
-    },
+    params,
   });
   return response.data;
 };

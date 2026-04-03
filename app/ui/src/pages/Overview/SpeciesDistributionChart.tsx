@@ -13,18 +13,22 @@ import { useNavigate } from 'react-router-dom';
 interface SpeciesDistributionChartProps {
   data: OverviewTopSpecies[];
   date?: Dayjs;
+  /** Совпадает с DailyPatternChart на Overview (по умолчанию 450). */
+  size?: number;
 }
 
 export const SpeciesDistributionChart: React.FC<
   SpeciesDistributionChartProps
-> = ({ data, date }) => {
+> = ({ data, date, size: propSize }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
-  const chartSize = isMobile ? 280 : 400;
-  const outerRadius = isMobile ? 104 : 150;
-  const innerRadius = isMobile ? 34 : 50;
+  const desktopSize = propSize ?? 450;
+  const chartSize = isMobile ? Math.min(typeof window !== 'undefined' ? window.innerWidth * 0.8 : 280, 400) : desktopSize;
+  const scale = chartSize / 400;
+  const outerRadius = isMobile ? 104 : Math.round(150 * scale);
+  const innerRadius = isMobile ? 34 : Math.round(50 * scale);
   const pieData = data
     .map((species) => ({
       id: species.id,
@@ -80,6 +84,7 @@ export const SpeciesDistributionChart: React.FC<
         }}
       >
       <PieChart
+        hideLegend
         series={[
           {
             data: pieData,
@@ -98,11 +103,6 @@ export const SpeciesDistributionChart: React.FC<
           const selected = pieData[item.dataIndex];
           if (!selected) return;
           navigateToTimelineForSpecies(Number(selected.id));
-        }}
-        slotProps={{
-          legend: {
-            hidden: true,
-          },
         }}
         margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
       />
