@@ -131,8 +131,13 @@ def _path_is_under_data_dir(base: str, full: str) -> bool:
         return False
 
 
-def _relative_file_under_data_or_none(path: str | None) -> tuple[str, str, str] | None:
-    """Если path — обычный файл под DATA_DIR: (base_realpath, rel_from_base, full_realpath). Иначе None."""
+def _data_dir_prefix_for_startswith(base: str) -> str:
+    """Префикс для проверки startswith (CodeQL SafeAccessCheck); base + sep, без двойного sep."""
+    return base if base.endswith(os.sep) else base + os.sep
+
+
+def _realpath_base_and_user_path(path: str | None) -> tuple[str, str] | None:
+    """(realpath(DATA_DIR), realpath(path)) или None при некорректном path."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return None
     try:
@@ -140,87 +145,72 @@ def _relative_file_under_data_or_none(path: str | None) -> tuple[str, str, str] 
         full = os.path.realpath(path)
     except (OSError, ValueError):
         return None
-    if not _path_is_under_data_dir(base, full) or not os.path.isfile(full):
-        return None
-    try:
-        rel = os.path.relpath(full, base)
-    except ValueError:
-        return None
-    if rel == os.pardir or rel.startswith(os.pardir + os.sep):
-        return None
-    if os.path.isabs(rel):
-        return None
-    candidate = os.path.normpath(os.path.join(base, rel))
-    try:
-        if os.path.realpath(candidate) != full:
-            return None
-    except (OSError, ValueError):
-        return None
-    return (base, rel, full)
+    return (base, full)
 
 
 def _is_safe_image_path(path: str) -> bool:
     """Путь под DATA_DIR, файл существует. Защита от path traversal."""
-    return _relative_file_under_data_or_none(path) is not None
+    bf = _realpath_base_and_user_path(path)
+    if not bf:
+        return False
+    base, full = bf
+    if not _path_is_under_data_dir(base, full):
+        return False
+    prefix = _data_dir_prefix_for_startswith(base)
+    if not (full == base or full.startswith(prefix)):
+        return False
+    try:
+        return os.path.isfile(full)
+    except OSError:
+        return False
 
 
 def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
-    """Прочитать файл изображения только под DATA_DIR. (data, None) или (None, 'unsafe_path'|'read_failed')."""
-    triple = _relative_file_under_data_or_none(path)
-    if not triple:
+    """Прочитать файл только под DATA_DIR. (bytes, None) или (None, причина).
+
+    Используется ``full.startswith(base + os.sep)`` после realpath — под это завязан
+    barrier CodeQL py/path-injection (SafeAccessCheck), не только commonpath.
+    """
+    bf = _realpath_base_and_user_path(path)
+    if not bf:
         return None, 'unsafe_path'
-    base, rel, _full = triple
+    base, full = bf
+    if not _path_is_under_data_dir(base, full):
+        return None, 'unsafe_path'
+    prefix = _data_dir_prefix_for_startswith(base)
+    if not (full == base or full.startswith(prefix)):
+        return None, 'unsafe_path'
     try:
-        if os.name == 'nt':
-            candidate = os.path.normpath(os.path.join(base, rel))
-            with open(candidate, 'rb') as f:
-                return f.read(), None
-        dfd = os.open(base, os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            fd = os.open(rel, os.O_RDONLY, dir_fd=dfd)
-        except OSError:
-            os.close(dfd)
-            return None, 'read_failed'
-        os.close(dfd)
-        try:
-            stream = os.fdopen(fd, 'rb')
-        except OSError as e:
-            logging.warning('Cannot read safe image: %s', e)
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-            return None, 'read_failed'
-        try:
-            with stream:
-                return stream.read(), None
-        except OSError as e:
-            logging.warning('Cannot read safe image: %s', e)
-            return None, 'read_failed'
+        if not os.path.isfile(full):
+            return None, 'unsafe_path'
+    except OSError:
+        return None, 'unsafe_path'
+    try:
+        with open(full, 'rb') as f:
+            return f.read(), None
     except OSError as e:
         logging.warning('Cannot read safe image: %s', e)
         return None, 'read_failed'
 
 
 def remove_safe_image_file(path: str | None) -> None:
-    """Удалить файл только если он под DATA_DIR (та же проверка, что для чтения)."""
-    triple = _relative_file_under_data_or_none(path)
-    if not triple:
+    """Удалить файл только если он под DATA_DIR (те же проверки, что для чтения)."""
+    bf = _realpath_base_and_user_path(path)
+    if not bf:
         return
-    base, rel, _full = triple
+    base, full = bf
+    if not _path_is_under_data_dir(base, full):
+        return
+    prefix = _data_dir_prefix_for_startswith(base)
+    if not (full == base or full.startswith(prefix)):
+        return
     try:
-        if os.name == 'nt':
-            candidate = os.path.normpath(os.path.join(base, rel))
-            if os.path.isfile(candidate):
-                os.remove(candidate)
+        if not os.path.isfile(full):
             return
-        dfd = os.open(base, os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.unlink(rel, dir_fd=dfd)
-        except OSError:
-            pass
-        finally:
-            os.close(dfd)
+    except OSError:
+        return
+    try:
+        os.remove(full)
     except OSError:
         pass
 
