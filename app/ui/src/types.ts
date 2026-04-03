@@ -275,7 +275,7 @@ export interface Species {
 export interface OverviewTopSpecies {
   id: number;
   name: string;
-  detections: number[]; // hourly count of detections, 24 values
+  detections: number[]; // hourly visit counts (24), legacy field name
 }
 
 export interface OverviewStats {
