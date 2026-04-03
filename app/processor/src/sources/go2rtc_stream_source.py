@@ -8,8 +8,6 @@ import os
 import subprocess
 import threading
 import time
-from urllib.parse import urlparse
-
 import cv2
 
 from .streaming_server import start_streaming_server
@@ -96,16 +94,8 @@ class Go2RTCStreamSource:
     def _connect(self) -> bool:
         """Open RTSP connection. Returns True if successful."""
         self._disconnect()
-        # Логируем только scheme/host (без userinfo) — CodeQL clear-text password в логах
-        try:
-            p = urlparse(self.stream_url)
-            self.logger.info(
-                "Connecting to stream scheme=%s host=%s",
-                p.scheme or '',
-                p.hostname or '',
-            )
-        except ValueError:
-            self.logger.info("Connecting to stream (unparsed URL)")
+        # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
+        self.logger.info("Connecting to video stream (OpenCV)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
         cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
