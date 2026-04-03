@@ -275,7 +275,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 **Волна D (техдолг):** исполнение и чеклисты — **только в GitHub issues и на доске** [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2); здесь краткая отсылка.
 
 - Эпик-порядок: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220).
-- Уровни 1→5: [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225).
+- Уровни 1→5: [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) — в GitHub привязаны как **sub-issues** к [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) (колонка на доске); восстановить связь: `bash scripts/github-issue-link-subissues.sh 220 221 222 223 224 225`.
 - Сводные темы: [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (web), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (processor).
 - Вне волны D: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (классификатор), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) (весы).
 

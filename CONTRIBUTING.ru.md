@@ -123,4 +123,6 @@ bash scripts/github-project-mark-done.sh 46
 bash scripts/github-project-mark-done.sh 46 57
 ```
 
+Иерархия **sub-issues** в GitHub (колонка на доске, родитель на странице issue): REST API через `gh`, см. `scripts/github-issue-link-subissues.sh` (пример: `bash scripts/github-issue-link-subissues.sh 220 221 222 223 224 225`).
+
 В **WSL** команда `gh project view … --web` часто падает (`xdg-open: Permission denied`) — откройте напечатанную ссылку вида **https://github.com/users/…/projects/N** в браузере Windows.
