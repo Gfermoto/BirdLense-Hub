@@ -1369,8 +1369,20 @@ class TestSpeciesXenoCanto:
         r = client.get('/api/ui/species/999999/xeno-canto')
         assert r.status_code == 404
 
-    def test_xeno_canto_returns_recordings_or_empty(self, client):
-        # Depends on seed data - get first species from /species
+    def test_xeno_canto_returns_recordings_or_empty(self, client, monkeypatch):
+        # Depends on seed data - get first species from /species; no real Xeno-canto HTTP.
+        from routes import ui_routes
+
+        fake = [{
+            'id': '1',
+            'file': 'https://xeno-canto.org/1/test.mp3',
+            'en': 'song',
+            'type': 'call',
+            'rec': 'r',
+            'cnt': 'c',
+        }]
+        monkeypatch.setattr(ui_routes, 'fetch_recordings', lambda species_name, limit=5: fake)
+
         species_r = client.get('/api/ui/species')
         assert species_r.status_code == 200
         species_list = species_r.json
@@ -1382,6 +1394,7 @@ class TestSpeciesXenoCanto:
             assert 'species_name' in r.json
             assert 'xeno_canto_search_url' in r.json
             assert isinstance(r.json['recordings'], list)
+            assert r.json['recordings'] == fake
 
 
 class TestPush:
