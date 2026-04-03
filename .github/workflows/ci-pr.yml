@@ -53,6 +53,12 @@ jobs:
       - name: Birdfood / push subscribe smoke (auth gates)
         run: python -m pytest web/tests/test_settings_mutations_smoke.py -q
 
+      - name: Processor POST /videos smoke
+        run: python -m pytest web/tests/test_processor_videos_smoke.py -q
+
+      - name: System routes smoke (activity, logs, metrics history)
+        run: python -m pytest web/tests/test_system_routes_smoke.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:
