@@ -1335,14 +1335,14 @@ def register_routes(app):
         """Restore SQLite DB from uploaded .db file; keep pre-restore backup."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
+        upload = request.files.get('file')
+        if not upload:
+            return {'error': 'file is required (multipart/form-data)'}, 400
         db_path = _sqlite_db_path()
         if not db_path:
             return {'error': 'DB restore is supported only for SQLite'}, 400
         if not os.path.isfile(db_path):
             return {'error': 'Database file not found'}, 404
-        upload = request.files.get('file')
-        if not upload:
-            return {'error': 'file is required (multipart/form-data)'}, 400
 
         tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-restore-')
         uploaded_path = os.path.join(tmp_dir, 'uploaded.db')
