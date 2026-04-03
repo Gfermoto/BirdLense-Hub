@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-03
+
+Накопительный релиз после **v0.2.10**: обзор и таймлайн, границы Library/System, ужесточение API и CI. Merge: [#211](https://github.com/Gfermoto/BirdLense-Hub/pull/211).
+
 ### Fixed
 
 - **Overview / Timeline / визиты:** счётчики «всего визитов», графики топ-видов и «последний час» считают **число визитов** (строки `SpeciesVisit`), а не сумму `max_simultaneous` и не число сегментов `VideoSpecies`. Блок «По источникам» — **сколько визитов** содержат хотя бы один сегмент провайдера (с подсказкой, что сумма может превышать общее число визитов при слиянии источников). **`GET /api/ui/timeline`** и экспорт: дедупликация визитов после `JOIN` (один визит с несколькими роликами больше не дублируется в списке и статистике). PDF-отчёт и `get_monthly_report_data` выровнены с той же семантикой.
@@ -17,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Backend surface hardening:** `/api/ui/status/debug` now requires authenticated admin settings access; legacy sync species-registry maintenance routes were removed in favor of the active async `start/status` flow.
 - **Docs / operator parity:** TESTING, CONFIGURATION, and ARCHITECTURE docs now match the live routes and current species/catalog UI model.
 - **CI:** аудит карточек каталога (`audit_species_cards.py`) — опции `--ignore-direct-image-429`, `--ignore-empty-description`, `--ignore-empty-image-url` и меньше воркеров в PR: не фейлить на **429** Wikimedia и на незаполненных карточках минимальной БД CI.
+- **`settings-ui-coverage`:** сканирование всех `*.tsx` в `Settings/` (поля Go2RTC в секциях), allowlist для новых ключей `processor.track_regen_precise_*` и `species.tuning_target_species_ids`.
+- **`POST /api/ui/system/db/restore`:** при отсутствии файла в multipart сначала ответ **400** (раньше при отсутствии live SQLite на диске мог вернуться **404** до проверки загрузки).
 - **Stabilization / safety:** `POST /api/ui/system/realign-visit-times` now exists with honest preview/apply flow; `clean-orphaned-visits` preview no longer mutates the DB; production no longer treats empty passwords as an implicit admin unlock for system/settings flows.
 - **Library / System boundary:** Library now shows a real recordings-on-disk calendar instead of processor heartbeat and points operators to System for maintenance; heartbeat activity moved to System.
 - **Overview / cross-day visits:** Overview now counts visits that overlap the selected day and buckets cross-midnight visits into the selected day instead of the previous day’s hour.
@@ -595,6 +601,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.3.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.0
 [0.2.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.6
 [0.2.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.5
 [0.2.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.4
