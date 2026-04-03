@@ -24,6 +24,6 @@
 ## External / second review (recommended for `main`)
 
 - [ ] **Another maintainer or designated observer** has reviewed this PR (required if branch protection demands it).
-- [ ] If this PR was largely generated with AI assistance: I verified the diff line-by-line for correctness and security.
+- [ ] I reviewed the diff for correctness, security, and unintended changes (including generated or pasted snippets).
 
 <!-- Optional: @mention your observer -->

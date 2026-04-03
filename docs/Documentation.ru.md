@@ -34,6 +34,8 @@ python3 -m venv .venv-docs
 
 Каталог `site/` в git не коммитится (см. `.gitignore`).
 
+**Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций) и `CONSILIUM_AUDIT.ru.md` (исторический аудит; ссылка из [archive/README](./archive/README.md)).
+
 ### Публикация (CI)
 
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
@@ -70,6 +72,8 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 - [ ] Перекрёстные ссылки на ту же локаль, где есть пара.
 - [ ] Длинные инструкции (Colab): ячейки исполнимы; тексты print согласованы с языком страницы.
 - [ ] Обновлены [README.md](./README.md) и [I18N_STATUS.md](./I18N_STATUS.md) при новой странице.
+- [ ] Корневой `mkdocs.yml`: новая страница в английском `nav` и в секции **Русский** (или осознанно только в репозитории).
+- [ ] [SITE_MAP.md](./SITE_MAP.md) и [SITE_MAP.ru.md](./SITE_MAP.ru.md) совпадают с боковым меню.
 
 ---
 

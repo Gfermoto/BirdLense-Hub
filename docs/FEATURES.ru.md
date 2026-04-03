@@ -24,7 +24,7 @@
 | **Погода** | OpenWeather, Home Assistant |
 | **Telegram** | Уведомления при детекции, превью best frame в фото |
 | **Кормушка** | Реле (MQTT/ESPHome) при детекции |
-| **MCP** | Model Context Protocol для внешних инструментов |
+| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — опциональный сервер для **внешних ИИ-ассистентов** ([MCP_SETUP.ru](./MCP_SETUP.ru.md)) |
 
 ---
 

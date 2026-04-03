@@ -6,11 +6,11 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 ---
 
-## Current stack (March 2026)
+## Current stack (April 2026)
 
 | Component | Version / note |
 |-----------|----------------|
-| **Ultralytics** | 8.4.21 (Docker base image) |
+| **Ultralytics** | **8.4.33** at runtime (`app/processor/requirements.txt`, installed via pip in the image). Base image remains **`ultralytics/ultralytics:8.4.21`** (newer base tags broke ngx_brotli build against nginx in CI; see [CHANGELOG](./project/changelog.md) **0.3.1**). |
 | **Platform** | **x86/amd64 only** (Intel or AMD 64-bit). ARM / Apple Silicon / aarch64 — **not supported, not planned** |
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
 | **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
@@ -66,7 +66,7 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 16 | Overview: “mean duration” used visit span instead of per-recording average | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ mean over `Video` rows (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); RU/EN labels | `area:web`, P3, `bug` |
 | 17 | Detection: false positives and inanimate objects — strategy (two_stage vs single_stage+COCO, thresholds, weights) | Consilium: [§ below](#detection-strategy-consilium) · ties to [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML |
 
-### Detection strategy consilium {#detection-strategy-consilium}
+<h3 id="detection-strategy-consilium">Detection strategy consilium</h3>
 
 **Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production. By default this runs **after** the current development wave is closed and basic manual acceptance; see [§ Finish work, then operator testing](#completion-then-operator-testing).
 
@@ -214,7 +214,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 ---
 
-## Work order: finish in-flight work, then operator testing {#completion-then-operator-testing}
+<h2 id="completion-then-operator-testing">Work order: finish in-flight work, then operator testing</h2>
 
 **Agreement:** first **complete** the agreed slice of work (open issues in the current wave / **BirdLense Hub — Roadmap** milestone: PR merged, issue **closed**, **`make deploy`** if needed, CI green). **Then** the operator runs **manual testing** on the live hub and files **feedback as new issues** (or flags regressions on an existing issue) — without growing the same wave in parallel.
 

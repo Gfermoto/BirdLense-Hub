@@ -3,11 +3,11 @@ info:
   title: BirdLense Hub UI API
   version: 0.3.1
   description: |
-    BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. This API is designed for both human users and LLM agents to:
-      - Query real-time and historical bird visit data
-      - Retrieve and manage video, species, and food information
-      - Access system health, metrics, and storage usage
-      - Configure system settings (e.g., detection parameters, notification preferences)
+    BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. The API supports:
+      - Querying real-time and historical bird visit data
+      - Retrieving and managing video, species, and food information
+      - Accessing system health, metrics, and storage usage
+      - Configuring system settings (e.g., detection parameters, notification preferences)
 
     The API is organized into several groups:
       - UI routes: Endpoints for retrieving and managing bird, video, food, and visit data, as well as system configuration.
@@ -16,7 +16,7 @@ info:
 
     All endpoints return JSON. PATCH/POST endpoints may update system state. No authentication is required by default, but this can be enabled in deployment.
 
-    For LLMs: You can use this API to answer questions about bird activity, system status, and configuration, or to automate system management tasks.
+    The same REST surface is used by humans, automation scripts, and—when you enable it—**external AI assistants** via [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) (`/mcp` on the hub), so assistants can answer questions about visits, status, and configuration or perform allowed operations under `MCP_TOKEN`.
 servers:
   - url: http://birdlense.local/api/ui
 paths:

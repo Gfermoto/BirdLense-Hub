@@ -1,22 +1,20 @@
 # Governance & external observer
 
-How to avoid a **single-person bottleneck** and ensure important changes get a second pair of eyes (including when using an AI coding assistant in the IDE).
+How to avoid a **single-person bottleneck** and ensure important changes get a second pair of eyes.
 
 [Русский](./GOVERNANCE.ru.md)
 
 ---
 
-## AI and GitHub access
+## Secrets and automation on GitHub
 
-A Cursor assistant **is not a GitHub account** and **cannot accept a collaborator invite**. Work happens against your **local clone**.
+**Collaborator invites** are accepted only by a **real GitHub user**. Scripts and headless tools do not “join” the repo as people—use a **dedicated bot account** or **GitHub App** with least privilege for automation.
 
-**Do not share** with assistants or public chats:
+**Do not paste** into public forums, shared logs, or untrusted channels:
 
 - PATs with `repo`, `workflow`, or `admin`
 - Deploy keys with **write** to production
 - GitHub Actions secret values
-
-Use a **dedicated bot account** or **GitHub App** with least privilege.
 
 ---
 
@@ -40,7 +38,7 @@ See: [Repository roles](https://docs.github.com/en/organizations/managing-user-a
 1. **Settings** → **Rules** → **Rulesets** (or **Branches** → branch protection).
 2. For `main`: require PRs, **required approvals** ≥ 1 (often 1–2), optionally **Code owners**.
 
-Then merges to `main` (including AI-suggested patches) go through a PR and **human approval**.
+Then every merge to `main` goes through a PR and **human approval**.
 
 ### CODEOWNERS
 
@@ -80,6 +78,6 @@ See [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) and `scripts/github-repo-bootstra
 |------|------------------|
 | **Maintainer** | Implement, open PRs, release after review |
 | **Observer (collaborator)** | Approve PRs, security/docs feedback |
-| **IDE AI** | Suggests local patches; **no** GitHub tokens |
+| **Bot / GitHub App** | Automation with scoped tokens—not a substitute for design review |
 
-Trust is enforced by **process**: PR + human approval, not by giving the AI repo admin.
+Trust is enforced by **process**: PR + human approval.

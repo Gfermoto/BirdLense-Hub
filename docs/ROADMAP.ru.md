@@ -2,7 +2,7 @@
 
 [English](./ROADMAP.md)
 
-Направление развития и текущий стек (**март 2026**). **Что уже в релизах** — [Changelog](./project/changelog.md) и [FEATURES](./FEATURES.ru.md).
+Направление развития и текущий стек (**апрель 2026**). **Что уже в релизах** — [Changelog](./project/changelog.md) и [FEATURES](./FEATURES.ru.md).
 
 ---
 
@@ -11,7 +11,7 @@
 
 |                 | Версия                                                                                                               |
 | --------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Ultralytics** | 8.4.21 (Docker base)                                                                                                 |
+| **Ultralytics** | **8.4.33** в рантайме (`app/processor/requirements.txt`, ставится через `pip` в образе). Базовый образ Docker — **`ultralytics/ultralytics:8.4.21`** (более новый базовый тег ломал сборку ngx_brotli под nginx в CI; см. [CHANGELOG](./project/changelog.md) **0.3.1**). |
 | **Платформа**   | **только x86/amd64** (Intel или AMD, 64-bit). ARM / Apple Silicon / aarch64 — **не поддерживается и не планируется** |
 | **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей                           |
 | **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                                                       |
@@ -33,11 +33,11 @@
 
 ---
 
-## Консилиум по бэклогу (март 2026)
+## Консилиум по бэклогу (апрель 2026)
 
 **Роли (мозговой штурм):** продукт/оператор, безопасность, платформа и CI, ML и данные, интеграции (MQTT, HA, Frigate), UX, документация и open-source гигиена.
 
-**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (операторский UX — март 2026; фаза B: snackbar «Открыть видео» на Unknowns). **Сделано:** [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) (скан истории git на секреты + SECURITY), [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) (`export_birdlense_to_yolo.py`), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) (MQTT reconnect backoff + ясность по пропускам в доках), [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) (SQLite backup/restore в UI + INSTALL/TROUBLESHOOTING), [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) (locale switch + пилотная локаль `de`), [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) (scheduled smoke по опубликованному `ghcr` образу), [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) (OpenAPI contract smoke в CI + локальный запуск), [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея: app context в потоке, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по роликам за день UTC, v0.2.6), [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (локальный TZ / соседние сутки / доки), [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) (Overview: средняя длительность = **одна запись** `Video`, не визит). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
+**Результат:** задачи заведены как **Issues** на GitHub: [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46)–[#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50)–[#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (операторский UX — апрель 2026; фаза B: snackbar «Открыть видео» на Unknowns). **Сделано:** [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47) (скан истории git на секреты + SECURITY), [#48](https://github.com/Gfermoto/BirdLense-Hub/issues/48) (`export_birdlense_to_yolo.py`), [#50](https://github.com/Gfermoto/BirdLense-Hub/issues/50) (MQTT reconnect backoff + ясность по пропускам в доках), [#51](https://github.com/Gfermoto/BirdLense-Hub/issues/51) (SQLite backup/restore в UI + INSTALL/TROUBLESHOOTING), [#52](https://github.com/Gfermoto/BirdLense-Hub/issues/52) (locale switch + пилотная локаль `de`), [#53](https://github.com/Gfermoto/BirdLense-Hub/issues/53) (scheduled smoke по опубликованному `ghcr` образу), [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) (OpenAPI contract smoke в CI + локальный запуск), [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея: app context в потоке, v0.2.4), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по роликам за день UTC, v0.2.6), [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) (локальный TZ / соседние сутки / доки), [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) (Overview: средняя длительность = **одна запись** `Video`, не визит). [#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49) (ARM Docker) **закрыт** — только x86; в этом бэклоге не учитывается.
 
 **Карточки на доске Project:** через OAuth/`auth refresh` часто крутится device-login — надёжнее **classic PAT** (`repo` + `project`) в `GH_TOKEN` или `scripts/.env.project` (шаблон `scripts/env.project.example`), затем:
 
@@ -70,7 +70,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 17  | Детекция: ложные срабатывания и «не-животное» — стратегия (two_stage / single_stage+COCO, пороги, веса) | Консилиум: [§ ниже](#detection-strategy-consilium) · связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) | P2, processor, ML        |
 
 
-### Консилиум: стратегия детекции {#detection-strategy-consilium}
+<h3 id="detection-strategy-consilium">Консилиум: стратегия детекции</h3>
 
 **Задача:** собрать консилиум (продукт/оператор, ML, платформа) и зафиксировать решение, как на проде снижать **ложные срабатывания** и детекции **неодушевлённых объектов**. По договорённости — **после** закрытия текущей волны разработки и ручной приёмки базового сценария; см. [§ «Завершение задач → тестирование оператором»](#completion-then-operator-testing).
 
@@ -233,7 +233,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 ---
 
-## Порядок работ: завершение задач → тестирование оператором {#completion-then-operator-testing}
+<h2 id="completion-then-operator-testing">Порядок работ: завершение задач → тестирование оператором</h2>
 
 **Договорённость:** сначала **доводим до конца** согласованный объём работ (открытые issues текущей волны / milestone на доске **BirdLense Hub — Roadmap**: PR смержен, issue **закрыт**, при необходимости **`make deploy`**, CI зелёный). **Затем** оператор ведёт **ручное тестирование** на живой установке и передаёт **замечания отдельными новыми issues** (или указывает регрессию в существующем issue) — без параллельного наращивания «хвостов» в той же волне.
 

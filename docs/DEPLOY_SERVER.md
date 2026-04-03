@@ -1,6 +1,8 @@
 # BirdLense Hub server deployment (EN)
 
-Minimal production deployment checklist.
+Minimal production deployment checklist. Narrative and context: [INSTALL](./INSTALL.md) § *Deploy to server*.
+
+[Русский](./DEPLOY_SERVER.ru.md)
 
 ## 1) Prepare
 
