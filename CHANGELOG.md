@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Tests
 
 - **Xeno-canto:** `web/tests/test_xeno_canto_service.py` — парсинг и ошибки сети через мок `requests.get`; `GET /species/.../xeno-canto` в `test_api` без реального HTTP. Шаг в CI `openapi-contract` (#202).
+- **Birdfood / Web Push:** `web/tests/test_settings_mutations_smoke.py` — 403 при закрытых настройках, POST+PATCH кормушек, дубликат имени, успешный `push/subscribe` при включённых уведомлениях. CI `openapi-contract` (#202).
 
 ### Security
 
