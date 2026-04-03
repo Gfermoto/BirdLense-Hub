@@ -227,3 +227,29 @@ class TestSafeImagePathDataDirBoundary:
         assert err is None and raw == b'jpeg-bytes'
         util_mod.remove_safe_image_file(str(img))
         assert not img.is_file()
+
+
+class TestMetricsBearerToken:
+    """Optional BIRDLENSE_METRICS_TOKEN for Prometheus/JSON export (#199)."""
+
+    def test_metrics_open_when_token_unset(self, client):
+        r = client.get('/api/metrics')
+        assert r.status_code == 200
+
+    def test_metrics_require_bearer_when_token_set(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        assert client.get('/api/metrics').status_code == 401
+        assert client.get('/metrics').status_code == 401
+        r = client.get('/api/metrics/summary')
+        assert r.status_code == 401
+        assert (r.get_json() or {}).get('error') == 'Unauthorized'
+
+    def test_metrics_ok_with_valid_bearer(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        h = {'Authorization': 'Bearer secret-metrics-token'}
+        r = client.get('/api/metrics', headers=h)
+        assert r.status_code == 200
+        assert 'birdlense_cpu_usage_percent' in r.get_data(as_text=True)
+        r2 = client.get('/api/metrics/summary', headers=h)
+        assert r2.status_code == 200
+        assert r2.get_json().get('service') == 'birdlense-hub'

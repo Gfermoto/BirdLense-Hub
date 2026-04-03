@@ -1,3 +1,4 @@
+import hmac
 import ipaddress
 import json
 import logging
@@ -75,6 +76,29 @@ def client_ip_for_rate_limit(request) -> str:
                 return parsed
     ra = (getattr(request, 'remote_addr', None) or '').strip()
     return ra or 'unknown'
+
+
+def metrics_bearer_denied(*, prometheus: bool = False):
+    """If ``BIRDLENSE_METRICS_TOKEN`` is set, require ``Authorization: Bearer <token>``.
+
+    Returns a Flask response tuple or Response to return from the view, or ``None`` if the
+    request may proceed (token unset or bearer matches).
+    """
+    from flask import request, Response, jsonify
+
+    expected = (os.environ.get('BIRDLENSE_METRICS_TOKEN') or '').strip()
+    if not expected:
+        return None
+    auth = (request.headers.get('Authorization') or '').strip()
+    if auth.startswith('Bearer '):
+        got = auth[7:].strip()
+    else:
+        got = ''
+    if got and hmac.compare_digest(got, expected):
+        return None
+    if prometheus:
+        return Response('# Unauthorized\n', status=401, mimetype='text/plain; charset=utf-8')
+    return jsonify({'error': 'Unauthorized'}), 401
 
 
 def _clear_verify_password_attempts(ip: str) -> None:

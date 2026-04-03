@@ -413,6 +413,8 @@ scrape_configs:
 
 **Metrics:** CPU, memory, disk, GPU (if present), `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
 
+**Optional (hub exposed beyond a trusted LAN):** set **`BIRDLENSE_METRICS_TOKEN`** to a non-empty secret — then `GET /metrics`, `GET /api/metrics`, and `GET /api/metrics/summary` return **401** unless the request includes `Authorization: Bearer <same token>`. Configure your Prometheus scrape job with `authorization` / bearer credentials per Prometheus docs.
+
 **Grafana** — Prometheus datasource, dashboard from metrics.
 
 ### System page metrics history

@@ -429,5 +429,74 @@ class TestDetectionStrategy(unittest.TestCase):
 
         self.assertEqual(classified, {1: 'Blue Jay', 2: 'Great Tit'})
 
+
+class _FakeBoxesNoTrackId:
+    """ByteTrack edge case: detections present but ``boxes.id`` is None."""
+
+    def __init__(self):
+        self.id = None
+        self.conf = _FakeTensor([0.9])
+        self.cls = _FakeTensor([0])
+        self.xyxyn = _FakeTensor([[0.2, 0.2, 0.6, 0.6]])
+        self.xyxy = _FakeTensor([[100, 100, 300, 300]])
+
+    def __len__(self):
+        return 1
+
+
+class TestTrackIdMissingBehavior(unittest.TestCase):
+    """Regression: never use per-frame indices as track_id (#201)."""
+
+    def test_track_maybe_retries_once_when_first_id_is_none(self):
+        from detection_strategy import _track_maybe_retry
+
+        calls = []
+
+        def track_fn(*args, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                return [_FakeDetectResult(_FakeBoxesNoTrackId())]
+            good = _FakeBoxes(
+                [42],
+                [0.9],
+                [[0.1, 0.1, 0.4, 0.4]],
+                [[1, 1, 50, 50]],
+            )
+            return [_FakeDetectResult(good)]
+
+        model = type('M', (), {'track': track_fn})()
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        results = _track_maybe_retry(model, frame)
+        self.assertEqual(len(calls), 2)
+        self.assertIsNotNone(results[0].boxes.id)
+        self.assertEqual(results[0].boxes.id.tolist(), [42])
+
+    def test_two_stage_returns_empty_when_ids_stay_none(self):
+        if TwoStageStrategy is None:
+            self.skipTest('TwoStageStrategy not available (import failed).')
+        frame = np.zeros((400, 400, 3), dtype=np.uint8)
+        boxes = _FakeBoxesNoTrackId()
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            'FakeBinaryModel',
+            (),
+            {'track': lambda *args, **kwargs: [_FakeDetectResult(boxes)]},
+        )()
+        strategy.classifier_model = _FakeClassifierModel({0: 'X'}, {10: [1.0]})
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = logging.getLogger('test')
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
+        self.assertEqual(results, [])
+
+
 if __name__ == '__main__':
     unittest.main()

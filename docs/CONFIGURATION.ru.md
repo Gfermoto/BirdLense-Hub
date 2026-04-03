@@ -412,6 +412,8 @@ scrape_configs:
 
 **Метрики:** CPU, память, диск, GPU (если есть), `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
 
+**Опционально (хаб доступен извне):** переменная **`BIRDLENSE_METRICS_TOKEN`** — если задана непустая строка, эндпоинты `GET /metrics`, `GET /api/metrics` и `GET /api/metrics/summary` отвечают **401** без заголовка `Authorization: Bearer <тот же токен>`. В **Prometheus** для scrape добавьте `authorization` / `bearer_token` (см. документацию Prometheus к вашей версии).
+
 **Grafana** — Prometheus datasource, дашборд по метрикам.
 
 ### История метрик на странице «Система»

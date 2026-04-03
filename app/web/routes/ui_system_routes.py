@@ -41,7 +41,7 @@ from services.species_visit_maintenance_service import (
 )
 from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
-from util import settings_check_access, recordings_dir
+from util import settings_check_access, recordings_dir, metrics_bearer_denied
 from services.cache import cache_get, cache_set
 from services.http_response_cache import bust_system_response_caches, bust_response_caches
 
@@ -752,6 +752,9 @@ def register_routes(app):
     @app.route('/api/metrics/summary', methods=['GET'])
     def metrics_summary_json():
         """JSON snapshot for Grafana/Heimdall widgets or external monitors (same data as /metrics)."""
+        denied = metrics_bearer_denied(prometheus=False)
+        if denied is not None:
+            return denied
         try:
             sys_m = _collect_live_system_metrics(app)
             detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
@@ -786,6 +789,9 @@ def register_routes(app):
     @app.route('/api/metrics', methods=['GET'])
     def prometheus_metrics_api():
         """Prometheus exposition format для Grafana. CPU, память, диск, GPU, detections, species, videos."""
+        denied = metrics_bearer_denied(prometheus=True)
+        if denied is not None:
+            return denied
         try:
             body = _prometheus_metrics_body(app)
             return Response(body, mimetype='text/plain; charset=utf-8')
@@ -796,6 +802,9 @@ def register_routes(app):
     @app.route('/metrics', methods=['GET'])
     def prometheus_metrics():
         """Prometheus metrics (alias for /api/metrics)."""
+        denied = metrics_bearer_denied(prometheus=True)
+        if denied is not None:
+            return denied
         try:
             body = _prometheus_metrics_body(app)
             return Response(body, mimetype='text/plain; charset=utf-8')
