@@ -2,7 +2,18 @@
 
 Thank you for your interest in contributing to BirdLense Hub.
 
-**AI / automation:** finish the full cycle (tests, docs, push, PR, deploy when needed) — see [AGENTS.md](AGENTS.md). **Issues & board:** [docs/ROADMAP.md](docs/ROADMAP.md) (triage + reporting) and § *Issues & Project board* below.
+**Issues & board:** [docs/ROADMAP.md](docs/ROADMAP.md) (triage + reporting) and § *Issues & Project board* below.
+
+### Maintainer / contributor workflow (end to end)
+
+When you own a change, carry it through the full cycle unless you agreed otherwise (e.g. draft only, no push):
+
+1. **Code** — match existing style; run relevant tests / linters locally (`app/`, e.g. `make test-web`; CI covers more).
+2. **Docs & changelog** — update `docs/*` when operators or integrators need new facts; user-visible changes → [CHANGELOG.md](CHANGELOG.md).
+3. **Git** — meaningful commits; **push** to the agreed branch (usually `dev`) unless the task was local-only.
+4. **Release path** — feature work merges to **`dev`** first; promotion **`dev` → `main`** is a separate maintainer PR after green CI. Link PRs in Issues and close them when done; update the **BirdLense Hub — Roadmap** board (**Done**) where applicable (see scripts under `scripts/github-project-*.sh` and [docs/ROADMAP.md](docs/ROADMAP.md)).
+5. **Deploy** — when the running hub must pick up your code: from repo root **`make deploy`** (see [docs/INSTALL.md](docs/INSTALL.md) § *Deploy to server*).
+6. **Verify** — after deploy or CI changes, confirm health / logs or workflow success as appropriate.
 
 ## How to contribute
 
@@ -22,7 +33,7 @@ After your PR into `dev` is merged, GitHub **deletes the feature branch** automa
 3. **Test** — in `app/`: `make test` and `make test-web` (Docker), or ensure the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**). **CodeQL** runs separately (see [docs/CODEQL.md](docs/CODEQL.md)); it is not a required check by default.
 4. **Open a Pull Request** with base branch **`dev`**.
 
-**Second pair of eyes:** maintainers should use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub and why AI assistants cannot accept repo invites).
+**Second pair of eyes:** use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub; only a real GitHub account can accept a collaborator invite—use a bot or GitHub App for automation).
 
 ## Development setup
 

@@ -31,7 +31,7 @@ The UI lives in **`app/ui/`** with **`.nvmrc`** → `22`. Pick one:
 | **fnm** | `cd app/ui && fnm use` |
 | **Volta** | Uses `engines` + `volta` in `app/ui/package.json` automatically when you `cd app/ui` (Volta enabled). |
 
-**Cursor / VS Code:** open the repo from the root; for terminal tasks that build UI, `cd app/ui` first so the right Node is active.
+**VS Code:** open the repo from the root; for terminal tasks that build UI, `cd app/ui` first so the right Node is active.
 
 ### Python: app vs docs site
 

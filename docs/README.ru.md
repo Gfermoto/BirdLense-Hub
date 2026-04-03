@@ -53,7 +53,7 @@
 |------|----------|
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
-| MCP | [MCP_SETUP](./MCP_SETUP.ru.md) |
+| MCP (интеграция внешних клиентов) | [MCP_SETUP](./MCP_SETUP.ru.md) |
 
 ---
 

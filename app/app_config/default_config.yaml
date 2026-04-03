@@ -279,7 +279,7 @@ performance:
 ui:
   unknown_confidence_threshold: 0.48  # чуть строже отбор в «Неизвестные» при новых порогах детектора
 
-# MCP (Model Context Protocol) — внешние инструменты могут вызывать API BirdLense Hub
+# MCP — внешние клиенты могут вызывать API BirdLense Hub по токену (см. docs/MCP_SETUP)
 mcp:
   enabled: false
   # Токен для доступа. Пусто — без защиты. Рекомендуется для продакшена.
