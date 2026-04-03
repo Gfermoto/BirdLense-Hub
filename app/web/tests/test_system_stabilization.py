@@ -1,6 +1,6 @@
 """Regression tests for stabilization work across system maintenance and overview."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from services.http_response_cache import bust_response_caches
 

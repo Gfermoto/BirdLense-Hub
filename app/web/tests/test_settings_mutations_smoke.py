@@ -121,7 +121,6 @@ def test_video_stream_allows_contributor_when_stream_auth_required(
     app, client, tmp_path, monkeypatch,
 ):
     """require_auth_for_video_stream + пароли: гость 403, contributor 200."""
-    from app_config.app_config import app_config
     from models import Video, db
 
     monkeypatch.delenv('BIRDLENSE_ENV', raising=False)

@@ -168,14 +168,44 @@ paths:
                 $ref: "#/components/schemas/Error"
   /videos/{video_id}/neighbors:
     get:
-      summary: Previous/next video on same UTC day
+      summary: Previous/next video on the same calendar day
       description: |
-        IDs of the previous and next recordings that share the same calendar day (UTC) as this video's `start_time`.
-        Ordering is by `start_time` ascending, then `id` ascending.
+        IDs of the previous and next recordings in an ordered list for a day. Default `day_scope=utc` uses the UTC calendar date of the video's `start_time`; `day_scope=local` uses the operator-local day (`tz_offset_minutes`, JS-style). Ordering is by `start_time` ascending, then `id` ascending. Optional `cross_day` can surface neighbors from adjacent days when at the first/last clip of the day.
       parameters:
         - in: path
           name: video_id
           required: true
+          schema:
+            type: integer
+        - in: query
+          name: day_scope
+          required: false
+          schema:
+            type: string
+            enum: [utc, local]
+            default: utc
+        - in: query
+          name: tz_offset_minutes
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: cross_day
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: neighbor_mode
+          required: false
+          schema:
+            type: string
+            enum: [video, visit_primary]
+            default: video
+        - in: query
+          name: visit_id
+          required: false
           schema:
             type: integer
       responses:
@@ -185,6 +215,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoNeighbors"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Video not found
           content:
@@ -269,7 +305,7 @@ paths:
       description: |
         Retrieve key statistics and top species information for a given date. This provides a high-level view of bird activity and system detections. Useful for quick checks and monitoring trends.
 
-        Note: `busiestHour` and each index in `topSpecies.detections` represent integer hours in UTC.
+        Note: `busiestHour` and each index in `topSpecies.detections` use the **observer-local** hour (same as the timeline), derived from configured coordinates / timezone — not necessarily UTC.
       parameters:
         - in: query
           name: date
@@ -291,6 +327,25 @@ paths:
                       $ref: "#/components/schemas/TopSpecies"
                   stats:
                     $ref: "#/components/schemas/OverviewStats"
+                  hourlyTemperature:
+                    type: array
+                    description: Per-hour mean temperature (°C) from recordings; null if no sample
+                    items:
+                      type: number
+                      nullable: true
+                  lastDetection:
+                    type: object
+                    nullable: true
+                    properties:
+                      species_name:
+                        type: string
+                      start_time:
+                        type: string
+                        format: date-time
+                        nullable: true
+                  observer_timezone:
+                    type: string
+                    description: IANA timezone name used for local-hour bucketing
         "400":
           description: Invalid date format
           content:
@@ -776,26 +831,38 @@ components:
     VideoNeighbors:
       type: object
       properties:
-        day_utc:
+        day_scope:
+          type: string
+          enum: [utc, local]
+        day_label:
           type: string
           format: date
-          description: Calendar date in UTC (YYYY-MM-DD) used for grouping
+          description: Calendar date (YYYY-MM-DD) for the chosen scope — UTC date or local date
+        timezone_offset_minutes:
+          type: integer
+          description: Client offset (JS `getTimezoneOffset` style) when `day_scope=local`; 0 for UTC scope
+        cross_day:
+          type: boolean
+          description: Whether neighbors may be taken from adjacent days when at day boundary
         previous_id:
           type: integer
           nullable: true
-          description: ID of the previous video the same UTC day, or null
+          description: Previous video id in the day list, or null
         next_id:
           type: integer
           nullable: true
-          description: ID of the next video the same UTC day, or null
+          description: Next video id in the day list, or null
         index:
           type: integer
           description: Zero-based index of this video in the ordered day list
         total:
           type: integer
-          description: Number of videos that day
+          description: Number of videos in the day list
       required:
-        - day_utc
+        - day_scope
+        - day_label
+        - timezone_offset_minutes
+        - cross_day
         - previous_id
         - next_id
         - index
@@ -824,10 +891,18 @@ components:
           type: integer
         avgVisitDuration:
           type: integer
+          description: Mean duration of one recording (Video) in seconds for the day window
         videoDuration:
           type: integer
+          description: Sum of recording durations (video segments) in seconds
         audioDuration:
           type: integer
+          description: Sum of audio detection segment durations in seconds
+        detectionByProvider:
+          type: object
+          description: Visit counts by `VideoSpecies.detection_provider` (key `legacy` if null)
+          additionalProperties:
+            type: integer
     TimelineVisit:
       type: object
       properties:
