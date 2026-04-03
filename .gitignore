@@ -75,6 +75,7 @@ app/web/instance/
 
 # Корневые дампы агента / recovery / pytest-списки (не коммитить)
 /.artifacts/
+/.pytest_cache/
 /.pytest_*.txt
 /.ui_build_*.txt
 /.ui_lint_*.txt

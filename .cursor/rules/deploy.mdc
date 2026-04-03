@@ -1,5 +1,5 @@
 ---
-description: Деплой BirdLense Hub (LAN 192.168.1.11:22, UI :8085, MCP /mcp)
+description: Деплой BirdLense Hub — LAN, UI-порт, MCP, rsync-исключения
 alwaysApply: true
 ---
 

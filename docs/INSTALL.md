@@ -77,6 +77,8 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
+**Linear checklist** (prepare, verify, common pitfalls): [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+
 ### Telegram proxy autorotate (one command)
 
 After the first successful `make deploy` (so scripts are present on the server):

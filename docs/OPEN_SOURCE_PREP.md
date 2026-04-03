@@ -2,7 +2,7 @@
 
 **Goal:** Documentation and repo hygiene for a credible public release. Focus: **security**, **no credential leaks**, **clear paths for users and contributors**.
 
-**Plan version:** 1.1 · March 2026
+**Plan version:** 1.1 · April 2026
 
 [Русский](./OPEN_SOURCE_PREP.ru.md)
 
@@ -12,12 +12,12 @@
 
 ### 1.1 Documentation
 
-| Area | Files | Status (March 2026) |
+| Area | Files | Status (April 2026) |
 |------|-------|---------------------|
 | **Root** | `README.md`, `README.ru.md`, `CHANGELOG.md`, `SECURITY.md` | EN primary root README; RU mirror |
 | **`docs/`** | Hub [README](./README.md), [OVERVIEW](./OVERVIEW.md), [SITE_MAP](./SITE_MAP.md), guides | EN `.md` + `*.ru.md` for major guides; see [I18N_STATUS](./I18N_STATUS.md) |
 | **`docs/archive/`** | Historical notes | Trimmed; optional reading |
-| **Other** | `article/`, `scripts/datasets/README` | Spot-check relevance |
+| **Other** | `docs/article/`, `scripts/datasets/README` | Spot-check relevance |
 
 ### 1.2 Leaks (use placeholders in docs)
 
@@ -27,7 +27,7 @@
 | Tokens in examples | `your-secret-token`, `your-api-key` |
 | `user_config.yaml.bak` committed | `.gitignore` |
 
-`app/.env.example` may keep **example** private IPs. Cursor-only rules (e.g. deploy) stay local — not in repo.
+`app/.env.example` may keep **example** private IPs. Editor-specific local overrides (e.g. deploy hints under `.cursor/`) stay untracked—only committed templates apply to everyone.
 
 ### 1.3 Security themes (from [docs/SECURITY](./SECURITY.md))
 
