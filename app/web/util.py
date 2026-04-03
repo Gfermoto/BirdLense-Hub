@@ -136,10 +136,17 @@ def _is_safe_image_path(path: str) -> bool:
 
 
 def _safe_image_path_or_none(path: str | None) -> str | None:
-    """Вернуть путь только после проверки (явный синг для потока данных CodeQL path-injection)."""
-    if not path or not isinstance(path, str):
+    """Вернуть realpath под DATA_DIR только после проверки (не исходная строка — снимает path-injection taint)."""
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return None
-    return path if _is_safe_image_path(path) else None
+    base = os.path.realpath(_data_dir())
+    try:
+        full = os.path.realpath(path)
+        if full.startswith(base) and os.path.isfile(full):
+            return full
+    except (OSError, ValueError):
+        return None
+    return None
 
 
 def ensure_utc(dt: datetime) -> datetime:
