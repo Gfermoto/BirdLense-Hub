@@ -58,7 +58,7 @@
 - **UI** — React, Material UI, i18n (en/ru), адаптивный, PWA (установка на экран, офлайн)
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — Telegram Bot API
-- **MCP** — опциональный протокол для внешних клиентов (см. `docs/MCP_SETUP.ru.md`)
+- **MCP** — [Model Context Protocol](https://modelcontextprotocol.io/) для **внешних ИИ-ассистентов**, работающих с хабом (см. `docs/MCP_SETUP.ru.md`)
 
 ### Аналитика и экспорт
 - **CSV/JSON** — скачать визиты для анализа в Excel/Python
