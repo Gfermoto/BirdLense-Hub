@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
+- **Docs refactor:** MkDocs `nav` aligned with [SITE_MAP](docs/SITE_MAP.md) — `DEPLOY_SERVER`, `VERIFICATION`, pre-implementation checklist, `UX_TOOLTIPS`, Russian **A11Y** / **REPOSITORY_LAYOUT**; `INSTALL` cross-links the deploy checklist; [API](docs/API.md) version line tracks root `VERSION`; ROADMAP changelog links use [project/changelog](docs/project/changelog.md); `article/**` and `CONSILIUM_AUDIT.ru.md` excluded from the static site build; ROADMAP anchor IDs fixed for strict builds.
 
 ## [0.3.1] - 2026-04-04
 

@@ -1,6 +1,6 @@
 # BirdLense Hub — HTTP API
 
-**Version:** 0.2.6
+**Version:** the release semver in repository root `VERSION` (mirrored in `app/web/openapi.yaml`).
 
 Authoritative contract: [OpenAPI YAML](./project/openapi.md) (import into Redoc, Stoplight, or IDE).
 

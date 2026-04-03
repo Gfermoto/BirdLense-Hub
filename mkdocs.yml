@@ -37,17 +37,21 @@ theme:
     - search.highlight
 
 markdown_extensions:
+  - attr_list
   - md_in_html
 
 # Keep archive and other non-nav pages out of the built site (optional deep links only via explicit nav).
 exclude_docs: |
   archive/**
+  article/**
+  CONSILIUM_AUDIT.ru.md
 
 nav:
   - Overview: OVERVIEW.md
   - Documentation index: README.md
   - "Use the hub":
       - Install: INSTALL.md
+      - Server deploy checklist: DEPLOY_SERVER.md
       - Scenarios: SCENARIOS.md
       - Configuration: CONFIGURATION.md
       - Features: FEATURES.md
@@ -64,6 +68,7 @@ nav:
       - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
       - Accessibility: A11Y.md
+      - "UX: Tooltips & hints": UX_TOOLTIPS.md
       - "UX: Unknowns vs video correction": UX_UNKNOWN_VIDEO_CORRECTION.md
   - "ML & project":
       - Training: TRAINING.md
@@ -72,6 +77,8 @@ nav:
       - Roadmap: ROADMAP.md
   - Meta:
       - Repository layout: REPOSITORY_LAYOUT.md
+      - Verification log: VERIFICATION.md
+      - Pre-implementation checklist: PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md
       - Doc conventions: Documentation.md
       - Site map (generator): SITE_MAP.md
       - i18n status: I18N_STATUS.md
@@ -92,6 +99,7 @@ nav:
       - Обзор: OVERVIEW.ru.md
       - Оглавление: README.ru.md
       - Установка: INSTALL.ru.md
+      - Чеклист деплоя на сервер: DEPLOY_SERVER.ru.md
       - Сценарии: SCENARIOS.ru.md
       - Конфигурация: CONFIGURATION.ru.md
       - Возможности: FEATURES.ru.md
@@ -106,11 +114,16 @@ nav:
       - Локальная разработка: LOCAL_DEV.ru.md
       - CodeQL (CI): CODEQL.ru.md
       - Тестирование: TESTING.ru.md
+      - Доступность: A11Y.ru.md
+      - "UX: подсказки и тултипы": UX_TOOLTIPS.md
       - "UX: Неизвестные и видео": UX_UNKNOWN_VIDEO_CORRECTION.md
       - Обучение: TRAINING.ru.md
       - Датасеты: DATASETS.ru.md
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md
+      - Структура репозитория: REPOSITORY_LAYOUT.ru.md
+      - Верификация релизов: VERIFICATION.ru.md
+      - Чеклист до реализации: PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md
       - О документации: Documentation.ru.md
       - Карта сайта: SITE_MAP.ru.md
       - Локализация: I18N_STATUS.md

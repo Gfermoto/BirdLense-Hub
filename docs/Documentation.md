@@ -34,6 +34,8 @@ python3 -m venv .venv-docs
 
 Build output goes to `site/` (ignored by git).
 
+**Excluded from the published site** (see root `mkdocs.yml` `exclude_docs`): `docs/archive/**`, `docs/article/**` (publication drafts), and `CONSILIUM_AUDIT.ru.md` (historical RU audit; linked from [archive/README](./archive/README.md)).
+
 ### Publish (CI)
 
 Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/docs-pages.yml):
@@ -72,6 +74,8 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 - [ ] Cross-links point to the **same language** where a pair exists (or intentionally to EN for API-only pages).
 - [ ] Long how-tos (e.g. Colab): code cells still run; print strings and comments aligned with the doc language.
 - [ ] [docs/README.md](./README.md) + [I18N_STATUS.md](./I18N_STATUS.md) updated when adding a new page.
+- [ ] [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) — both **English nav** and the **Русский** section list new pages (or an explicit decision to keep them repo-only).
+- [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar.
 
 ---
 

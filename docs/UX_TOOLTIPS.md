@@ -1,6 +1,6 @@
 # UX Guide: Tooltips and Inline Hints
 
-This guide defines a consistent pattern for hints in BirdLense Hub UI.
+English only (contributor-facing). This guide defines a consistent pattern for hints in BirdLense Hub UI.
 
 ## Principles
 
