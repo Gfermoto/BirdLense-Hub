@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **UI (Overview):** карточка погоды больше не пропадает из сетки: пока `/api/ui/weather` грузится, показывается скелетон; сбой погоды не блокирует весь обзор — только блок погоды с кнопкой «Повторить».
 
+### Tests
+
+- **Xeno-canto:** `web/tests/test_xeno_canto_service.py` — парсинг и ошибки сети через мок `requests.get`; `GET /species/.../xeno-canto` в `test_api` без реального HTTP. Шаг в CI `openapi-contract` (#202).
+
 ### Security
 
 - **Metrics endpoints (optional auth):** если задан **`BIRDLENSE_METRICS_TOKEN`**, `GET /metrics`, `GET /api/metrics` и `GET /api/metrics/summary` требуют `Authorization: Bearer <тот же токен>` (`hmac.compare_digest`); без переменной поведение как раньше (удобно для scrape в LAN). См. [CONFIGURATION](docs/CONFIGURATION.ru.md) → Prometheus.

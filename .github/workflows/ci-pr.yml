@@ -47,6 +47,9 @@ jobs:
       - name: Bird food seed idempotency
         run: python -m pytest web/tests/test_bird_food_seed.py -q
 
+      - name: Xeno-canto service (mocked HTTP)
+        run: python -m pytest web/tests/test_xeno_canto_service.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:
