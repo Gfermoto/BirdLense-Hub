@@ -233,6 +233,7 @@ export const VisitCard = memo(function VisitCard({
               </IconButton>
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
+              {visit.timeline_kind !== 'unlinked_video' ? (
               <Chip
                 icon={
                   <Box display="flex" alignItems="center">
@@ -243,6 +244,15 @@ export const VisitCard = memo(function VisitCard({
                 size="small"
                 sx={{ height: 28 }}
               />
+              ) : (
+                <Chip
+                  label={t('visitCard.recordingWithoutVisit')}
+                  size="small"
+                  color="default"
+                  variant="outlined"
+                  sx={{ height: 28 }}
+                />
+              )}
               {(() => {
                 const sec =
                   visit.video_duration_seconds != null && visit.video_duration_seconds > 0
@@ -291,7 +301,10 @@ export const VisitCard = memo(function VisitCard({
                         navigate(`/videos/${detection.video_id}`, {
                           state: {
                             from: `${location.pathname}${location.search}`,
-                            visitId: visit.id,
+                            ...(visit.timeline_kind !== 'unlinked_video' &&
+                            visit.id > 0
+                              ? { visitId: visit.id }
+                              : {}),
                           },
                         })
                       }

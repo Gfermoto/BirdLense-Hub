@@ -686,7 +686,7 @@
     "nextRecording": "Next recording",
     "noPreviousRecording": "No earlier recording",
     "noNextRecording": "No later recording",
-    "neighborsDayHint": "Local calendar day; can continue past midnight. From Timeline, prev/next only cycles clips linked to visits that day (same idea as visit cards), not every file on disk for that date.",
+    "neighborsDayHint": "Local calendar day; can continue past midnight. Prev/next steps through all clips for that calendar day.",
     "localDayLabel": "Local day"
   },
   "feed": {
@@ -738,7 +738,8 @@
   "visitCard": {
     "todayAt": "Today at {{time}}",
     "visitDuration": "Visit duration (time at feeder)",
-    "recordingTime": "Sum of recordings in event"
+    "recordingTime": "Sum of recordings in event",
+    "recordingWithoutVisit": "Recording (no visit)"
   },
   "videoInfo": {
     "downloadVideo": "Download video",

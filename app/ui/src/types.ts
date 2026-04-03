@@ -3,6 +3,8 @@ export interface SpeciesVisit {
   start_time: string;
   end_time: string;
   max_simultaneous: number;
+  /** visit — обычный визит; unlinked_video — ролик за день без SpeciesVisit (показывается на таймлайне). */
+  timeline_kind?: 'visit' | 'unlinked_video';
   /** Сумма длительностей всех детекций (записей) в событии, секунды */
   total_recording_seconds?: number;
   /** Длительность файла записи (как на странице видео), секунды */
