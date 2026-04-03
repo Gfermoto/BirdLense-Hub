@@ -12,7 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
 - **Docs refactor:** MkDocs `nav` aligned with [SITE_MAP](docs/SITE_MAP.md) — `DEPLOY_SERVER`, `VERIFICATION`, pre-implementation checklist, `UX_TOOLTIPS`, Russian **A11Y** / **REPOSITORY_LAYOUT**; `INSTALL` cross-links the deploy checklist; [API](docs/API.md) version line tracks root `VERSION`; ROADMAP changelog links use [project/changelog](docs/project/changelog.md); `article/**` and `CONSILIUM_AUDIT.ru.md` excluded from the static site build; ROADMAP anchor IDs fixed for strict builds.
-- **Contributor docs:** removed `AGENTS.md`; maintainer workflow lives in [CONTRIBUTING](CONTRIBUTING.md) / RU. [GOVERNANCE](docs/GOVERNANCE.md) / RU, [MCP_SETUP](docs/MCP_SETUP.md), OpenAPI description, PR template, CodeQL/local dev guides, and related copy updated for a standard open-source tone (human reviewers, external clients, VS Code).
+- **Contributor docs:** removed `AGENTS.md`; maintainer workflow lives in [CONTRIBUTING](CONTRIBUTING.md) / RU. [GOVERNANCE](docs/GOVERNANCE.md) / RU, [MCP_SETUP](docs/MCP_SETUP.md), OpenAPI description, PR template, CodeQL/local dev guides, and related copy updated for a standard open-source tone (human reviewers, VS Code).
+- **Docs:** MCP again documented explicitly as **Model Context Protocol** for **external AI assistants** (README, OpenAPI narrative, FEATURES, GLOSSARY, MCP_SETUP EN/RU)—without implying the project itself was authored by AI.
 
 ## [0.3.1] - 2026-04-04
 

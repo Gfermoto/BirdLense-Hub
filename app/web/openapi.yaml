@@ -16,7 +16,7 @@ info:
 
     All endpoints return JSON. PATCH/POST endpoints may update system state. No authentication is required by default, but this can be enabled in deployment.
 
-    Integrations and scripts can use the same surface for monitoring, reporting, and operations automation.
+    The same REST surface is used by humans, automation scripts, and—when you enable it—**external AI assistants** via [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) (`/mcp` on the hub), so assistants can answer questions about visits, status, and configuration or perform allowed operations under `MCP_TOKEN`.
 servers:
   - url: http://birdlense.local/api/ui
 paths:

@@ -1,6 +1,6 @@
 # MCP setup — BirdLense Hub
 
-[MCP](https://modelcontextprotocol.io/) lets compatible editors and other clients call BirdLense Hub tools backed by your OpenAPI surface.
+[**Model Context Protocol (MCP)**](https://modelcontextprotocol.io/) exposes BirdLense Hub tools (from your OpenAPI surface) to **external AI assistants**—LLM-based apps, IDE integrations, and other MCP hosts—so they can query and operate the hub with your consent and a valid token.
 
 [Русский](./MCP_SETUP.ru.md)
 
@@ -36,9 +36,9 @@ You can also set the token in **Settings → MCP** in the UI; env overrides are 
 
 ---
 
-## 3. Client configuration
+## 3. Client configuration (AI / IDE hosts)
 
-Add the server entries below in your editor or client’s MCP settings (exact file path depends on the product). **Never commit** tokens or secrets.
+Add the server entries below in your MCP-capable host (Cursor, Claude Desktop, VS Code with MCP, custom stacks—exact path depends on the product). **Never commit** tokens or secrets.
 
 ### 3a. Hub API (tools + OpenAPI)
 
@@ -68,7 +68,7 @@ With a valid token, tools such as settings read/update can run **without** typin
 
 ### 3b. Repository documentation (GitMCP, read-only)
 
-For clients that should read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub, add [GitMCP](https://gitmcp.io):
+For AI hosts that should read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub, add [GitMCP](https://gitmcp.io):
 
 ```json
 {

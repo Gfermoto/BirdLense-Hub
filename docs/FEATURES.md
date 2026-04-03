@@ -22,7 +22,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Weather** | OpenWeather or Home Assistant |
 | **Telegram** | Detection alerts, optional best-frame photo |
 | **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
-| **MCP** | Optional protocol for external clients and automation (see [MCP_SETUP](./MCP_SETUP.md)) |
+| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — optional server so **external AI assistants** can call hub tools (see [MCP_SETUP](./MCP_SETUP.md)) |
 
 ---
 
