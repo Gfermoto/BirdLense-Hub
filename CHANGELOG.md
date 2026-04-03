@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
-- **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — открытый backlog на **триггер по резкому изменению веса**. [CONFIGURATION](docs/CONFIGURATION.ru.md) — актуальные ключи `integrations.scales.*` (MQTT / Home Assistant).
+- **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — backlog: **триггер по скачку массы**, **оценка веса птицы в карточке визита** (в духе корма/погоды). [CONFIGURATION](docs/CONFIGURATION.ru.md) — ключи `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed
 
