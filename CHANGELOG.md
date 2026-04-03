@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-04
+
+Патч после **v0.3.0**: обновления зависимостей и согласованность Docker/CI. Merge: [#213](https://github.com/Gfermoto/BirdLense-Hub/pull/213); gunicorn: [#208](https://github.com/Gfermoto/BirdLense-Hub/pull/208).
+
+### Changed
+
+- **Processor:** `ultralytics==8.4.33` в `app/processor/requirements.txt` (обновление пакета через `pip` в образе).
+- **Web:** `gunicorn` 23.x → **25.3** в `app/web/requirements.txt`.
+- **UI (dev):** `eslint-plugin-react-hooks` **^7.0.1** (`app/ui/package.json` / lockfile).
+
+### Fixed
+
+- **Docker / CI:** базовый образ остаётся `FROM ultralytics/ultralytics:8.4.21` — при `8.4.33` в базе ломалась сборка динамического модуля **ngx_brotli** под nginx из образа (`cc … -Werror`). Версия Ultralytics для рантайма процессора задаётся pip-слоем.
+
 ## [0.3.0] - 2026-04-03
 
 Накопительный релиз после **v0.2.10**: обзор и таймлайн, границы Library/System, ужесточение API и CI. Merge: [#211](https://github.com/Gfermoto/BirdLense-Hub/pull/211).
@@ -601,6 +615,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.3.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.0
 [0.2.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.6
 [0.2.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.5
