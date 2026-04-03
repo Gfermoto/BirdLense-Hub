@@ -237,12 +237,17 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 ---
 
-## Integrations (reserved)
+## Integrations (scales)
 
 | Key | Description |
 |-----|-------------|
-| `integrations.scales.enabled` | Placeholder for smart-scale / feeder weight MQTT (default **false**). |
-| `integrations.scales.mqtt_topic` | MQTT topic to store for future processing (Hub does not consume weight yet; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). |
+| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). When enabled, the **processor** subscribes to MQTT (or reads Home Assistant) and persists the latest weight for the web UI. |
+| `integrations.scales.source` | `mqtt` (default) or `homeassistant`. |
+| `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor writes state under `app/data` for the hub). |
+| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
+| `integrations.scales.unit` | `kg` or `g` for display and stored values. |
+
+Future work: **trigger on sharp weight change** (threshold / debounce) — tracked in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 
