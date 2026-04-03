@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **UI (`app/ui`):** refreshed `package-lock.json` and `overrides` so **lodash** resolves to **≥4.18.0** (addresses [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc), [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh)); **serialize-javascript** pinned via override to **≥7.0.5**. `npm audit` clean. Python `requests` / **Flask-Cors** were already at patched versions in `app/web` and `app/processor` requirements.
+
 ### Changed
 
 - **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
