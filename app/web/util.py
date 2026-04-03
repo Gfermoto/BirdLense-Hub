@@ -123,30 +123,86 @@ def data_dir() -> str:
     return _data_dir()
 
 
+def _path_is_under_data_dir(base: str, full: str) -> bool:
+    """Проверка вложенности без обхода через префикс-соседей (например data_evil при base=data)."""
+    try:
+        return os.path.commonpath([base, full]) == base
+    except ValueError:
+        return False
+
+
 def _is_safe_image_path(path: str) -> bool:
     """Путь под DATA_DIR, файл существует. Защита от path traversal."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return False
-    base = os.path.realpath(_data_dir())
     try:
+        base = os.path.realpath(_data_dir())
         full = os.path.realpath(path)
-        return full.startswith(base) and os.path.isfile(full)
     except (OSError, ValueError):
+        return False
+    if not _path_is_under_data_dir(base, full):
+        return False
+    # SafeAccessCheck: startswith в отдельном if (не внутри not (or …)) — иначе CodeQL не видит барьер.
+    if full != base and not full.startswith(base + os.sep):
+        return False
+    try:
+        return os.path.isfile(full)  # lgtm[py/path-injection] realpath+commonpath+startswith(base+sep)
+    except OSError:
         return False
 
 
-def _safe_image_path_or_none(path: str | None) -> str | None:
-    """Вернуть realpath под DATA_DIR только после проверки (не исходная строка — снимает path-injection taint)."""
+def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
+    """Прочитать файл только под DATA_DIR. (bytes, None) или (None, причина).
+
+    Проверки realpath + commonpath + ``full.startswith(base + os.sep)`` и обращение к ФС —
+    в одной функции (требование модели CodeQL py/path-injection).
+    """
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return None
-    base = os.path.realpath(_data_dir())
+        return None, 'unsafe_path'
     try:
+        base = os.path.realpath(_data_dir())
         full = os.path.realpath(path)
-        if full.startswith(base) and os.path.isfile(full):
-            return full
     except (OSError, ValueError):
-        return None
-    return None
+        return None, 'unsafe_path'
+    if not _path_is_under_data_dir(base, full):
+        return None, 'unsafe_path'
+    if full != base and not full.startswith(base + os.sep):
+        return None, 'unsafe_path'
+    try:
+        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
+            return None, 'unsafe_path'
+    except OSError:
+        return None, 'unsafe_path'
+    try:
+        with open(full, 'rb') as f:  # lgtm[py/path-injection] validated under DATA_DIR
+            return f.read(), None
+    except OSError as e:
+        logging.warning('Cannot read safe image: %s', e)
+        return None, 'read_failed'
+
+
+def remove_safe_image_file(path: str | None) -> None:
+    """Удалить файл только если он под DATA_DIR (те же проверки, что для чтения)."""
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
+        return
+    try:
+        base = os.path.realpath(_data_dir())
+        full = os.path.realpath(path)
+    except (OSError, ValueError):
+        return
+    if not _path_is_under_data_dir(base, full):
+        return
+    if full != base and not full.startswith(base + os.sep):
+        return
+    try:
+        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
+            return
+    except OSError:
+        return
+    try:
+        os.remove(full)  # lgtm[py/path-injection] validated under DATA_DIR
+    except OSError:
+        pass
 
 
 def ensure_utc(dt: datetime) -> datetime:
@@ -392,13 +448,31 @@ def _host_is_inaturalist(hostname: str | None) -> bool:
     return hostname == 'inaturalist.org' or hostname.endswith('.inaturalist.org')
 
 
-def _url_suggests_inaturalist_asset(url: str) -> bool:
-    """iNaturalist сайт или типичный open-data CDN (S3 и т.п.)."""
-    h = _url_hostname_lower(url)
-    if h and _host_is_inaturalist(h):
+def _host_is_inaturalist_open_data_asset(hostname: str | None) -> bool:
+    """Публичный S3-бакет iNaturalist open data (только hostname, без эвристик по query/path — SSRF)."""
+    if not hostname:
+        return False
+    hn = hostname.lower().rstrip('.')
+    if hn == 'inaturalist-open-data.s3.amazonaws.com':
         return True
-    low = url.lower()
-    return 'inaturalist-open-data' in low
+    parts = hn.split('.')
+    if (
+        len(parts) >= 5
+        and parts[0] == 'inaturalist-open-data'
+        and parts[1] == 's3'
+        and parts[-2] == 'amazonaws'
+        and parts[-1] == 'com'
+    ):
+        return True
+    return False
+
+
+def _url_suggests_inaturalist_asset(url: str) -> bool:
+    """iNaturalist сайт или open-data S3 — только по hostname."""
+    h = _url_hostname_lower(url)
+    if not h:
+        return False
+    return _host_is_inaturalist(h) or _host_is_inaturalist_open_data_asset(h)
 
 
 def infer_metadata_source_fields(
