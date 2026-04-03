@@ -29,6 +29,9 @@ jobs:
       - name: Install web test dependencies
         run: pip install -r web/requirements.txt
 
+      - name: Ruff lint (web/tests only)
+        run: pip install ruff==0.9.2 && ruff check web/tests/
+
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
 

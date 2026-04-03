@@ -1007,7 +1007,7 @@ class TestVideos:
         self, app, client,
     ):
         """Локальный день UTC−5: клип с start до day_start UTC, но пересекающий сутки — в списке."""
-        from datetime import datetime, timedelta
+        from datetime import datetime
         from models import db, Video
 
         with app.app_context():
