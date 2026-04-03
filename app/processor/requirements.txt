@@ -1,5 +1,5 @@
 # x86/Docker only
-ultralytics==8.4.21
+ultralytics==8.4.33
 # ByteTrack / BoT-SORT: без lap у boxes.id часто None — нестабильные тесты и пустая детекция.
 lap>=0.5.12
 pyyaml==6.0.3

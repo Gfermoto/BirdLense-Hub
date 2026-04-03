@@ -9,6 +9,8 @@ COPY ui/ ./
 RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legacy-peer-deps && npm run build)
 
 # Stage 2: всё в одном
+# Базовый образ держим на 8.4.21: сборка ngx_brotli под nginx из образа проверена в CI.
+# Версию Python-пакета ultralytics задаём в processor/requirements.txt (pip ниже).
 FROM ultralytics/ultralytics:8.4.21
 # Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
