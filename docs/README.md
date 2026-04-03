@@ -33,8 +33,8 @@ Pick what matches you — you can read the rest as reference.
 | **Feature matrix & API hints** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
 | **System design** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
 | **HTTP API narrative** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc RU](./reference/openapi.ru.md) |
-| **Versioning** | [VERSIONING](./VERSIONING.md) | — |
-| **Repository layout** (where code & docs live) | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) | [RU](./REPOSITORY_LAYOUT.ru.md) |
+| **Versioning** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
+| **Server deploy checklist** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
 
 ---
 

@@ -32,8 +32,10 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | SECURITY | ✅ | ✅ |
 | **docs/** | | |
 | README (hub) | ✅ | ✅ |
+| REPOSITORY_LAYOUT | ✅ | ✅ |
 | OVERVIEW (story / landing source) | ✅ | ✅ |
 | INSTALL | ✅ | ✅ |
+| DEPLOY_SERVER (checklist) | ✅ | ✅ |
 | Documentation (meta guide) | ✅ | ✅ |
 | SCENARIOS | ✅ | ✅ |
 | CONFIGURATION | ✅ | ✅ |
@@ -42,6 +44,10 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | TESTING | ✅ | ✅ |
 | TROUBLESHOOTING | ✅ | ✅ |
 | LOCAL_DEV | ✅ | ✅ |
+| CODEQL (CI) | ✅ | ✅ |
+| A11Y | ✅ | ✅ |
+| UX_TOOLTIPS | ✅ EN only | — |
+| UX_UNKNOWN_VIDEO_CORRECTION | ✅ single page | — |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
 | reference/openapi (Redoc embed) | ✅ | ✅ |
@@ -53,6 +59,8 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
+| VERIFICATION (release checks log) | ✅ | ✅ |
+| PRE_IMPLEMENTATION_UNKNOWN_TIMELINE | ✅ | ✅ |
 | SECURITY (analysis in docs/) | ✅ | ✅ |
 | SECRETS_ROTATION (ops runbook) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |
