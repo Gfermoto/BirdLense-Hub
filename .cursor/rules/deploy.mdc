@@ -1,5 +1,5 @@
 ---
-description: Деплой BirdLense Hub — LAN, UI-порт, MCP, rsync-исключения
+description: Деплой BirdLense Hub — LAN/VPS, UI-порт, MCP, rsync-исключения
 alwaysApply: true
 ---
 
@@ -7,13 +7,15 @@ alwaysApply: true
 
 ## Критично (текущая площадка)
 
-**SSH:** `192.168.1.11`, порт **22** (пользователь по вашей схеме на сервере, часто `root`).
+**SSH:** **`185.218.111.196`**, порт **`2222`** (часто `root`). Для `deploy.sh` задать в **`scripts/deploy.local.sh`**: `DEPLOY_HOST`, **`DEPLOY_SSH_PORT=2222`**.
 
-**Веб-UI:** http://192.168.1.11:8085/ (порт хаба по умолчанию — **8085**, см. `BIRDLENSE_PORT`).
+**Веб-UI по IP:** обычно **`http://185.218.111.196:8085/`** (порт хаба по умолчанию — **8085**, см. `BIRDLENSE_PORT`). Если доступ идёт через nginx на 80 — **`http://185.218.111.196/`**; тогда в `deploy.local.sh` выставить соответствующий **`DEPLOY_URL`** для post-deploy health.
 
-**MCP:** тот же хост и порт, путь **`http://192.168.1.11:8085/mcp`** (Bearer — `MCP_TOKEN` / настройки MCP в UI).
+**MCP:** тот же базовый URL, что и UI, путь **`/mcp`** (Bearer — `MCP_TOKEN` / настройки MCP в UI).
 
-Переопределения без коммита: **`scripts/deploy.local.sh`** (шаблон: `deploy.local.sh.example`) — `DEPLOY_HOST`, `DEPLOY_URL`, при необходимости `DEPLOY_REMOTE_DIR`.
+**По имени (если используете):** https://birdlense.eyera.info/ — тогда `DEPLOY_URL` может указывать на этот хост.
+
+Переопределения без коммита: **`scripts/deploy.local.sh`** (шаблон: `deploy.local.sh.example`) — `DEPLOY_HOST`, `DEPLOY_SSH_PORT`, `DEPLOY_URL`, при необходимости `DEPLOY_REMOTE_DIR`.
 
 **После изменений в коде** — по запросу: `make deploy` из корня репозитория. Не запускать автоматически при открытии проекта.
 
@@ -37,16 +39,25 @@ make deploy
 
 ## SSH (пример `~/.ssh/config`)
 
+Публичный VPS (текущий):
+
+```
+Host birdlense-vps
+  HostName 185.218.111.196
+  Port 2222
+  User root
+```
+
+Тогда в `deploy.local.sh`: `export DEPLOY_HOST="birdlense-vps"` и `export DEPLOY_SSH_PORT="2222"`.
+
+LAN (пример):
+
 ```
 Host birdlense-lan
   HostName 192.168.1.11
   Port 22
   User root
 ```
-
-Тогда в `deploy.local.sh`: `export DEPLOY_HOST="birdlense-lan"`.
-
-Или сразу: `export DEPLOY_HOST="root@192.168.1.11"` (порт 22 по умолчанию).
 
 ## Порт
 
@@ -63,6 +74,6 @@ Host birdlense-lan
 - `app/app_config/user_config.yaml` — настройки
 - Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
 
-## Другая площадка (публичный хост)
+## Другая площадка
 
-Ранее использовались **185.218.111.196:2222** и **https://birdlense.eyera.info/** — задайте их в своём `deploy.local.sh`, если деплой снова на тот сервер.
+**LAN:** `192.168.1.11:22`, UI http://192.168.1.11:8085/ — задать в `deploy.local.sh`, если деплой снова в домашнюю сеть.
