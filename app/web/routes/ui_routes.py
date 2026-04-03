@@ -428,11 +428,14 @@ def register_routes(app):
             return {'error': 'day_scope must be "utc" or "local"'}, 400
         cross_day = (request.args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
         neighbor_mode = (request.args.get('neighbor_mode') or 'video').strip().lower()
-        if neighbor_mode not in ('video', 'visit_primary'):
-            return {'error': 'neighbor_mode must be "video" or "visit_primary"'}, 400
+        allowed_modes = ('video', 'visit_primary', 'visit_day', 'visit')
+        if neighbor_mode not in allowed_modes:
+            return {'error': f'neighbor_mode must be one of {allowed_modes}'}, 400
         visit_id = request.args.get('visit_id', type=int)
         if neighbor_mode == 'visit_primary' and visit_id is None:
             return {'error': 'visit_id is required when neighbor_mode=visit_primary'}, 400
+        if neighbor_mode == 'visit' and visit_id is None:
+            return {'error': 'visit_id is required when neighbor_mode=visit'}, 400
 
         try:
             tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
@@ -456,8 +459,10 @@ def register_routes(app):
             day_end = day_start + timedelta(days=1)
             day_label = day_start.date().isoformat()
 
-        ids = []
+        ids: list[int] = []
         idx = None
+        used_custom_list = False
+
         if neighbor_mode == 'visit_primary' and visit_id:
             visit_rows = (
                 db.session.query(SpeciesVisit)
@@ -488,7 +493,58 @@ def register_routes(app):
                 idx = visit_ids.index(visit_id)
             except ValueError:
                 idx = None
-        if idx is None:
+            used_custom_list = True
+
+        elif neighbor_mode == 'visit' and visit_id:
+            visit = (
+                db.session.query(SpeciesVisit)
+                .options(
+                    joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+                )
+                .filter(SpeciesVisit.id == visit_id)
+                .first()
+            )
+            if not visit:
+                return {'error': 'Visit not found'}, 404
+            ordered = sorted(
+                visit.video_species,
+                key=lambda vs: (
+                    ensure_utc(vs.video.start_time).replace(tzinfo=None)
+                    if vs.video and vs.video.start_time
+                    else datetime.min,
+                    vs.video_id or 0,
+                ),
+            )
+            seen_v: set[int] = set()
+            for vs in ordered:
+                vid = vs.video_id
+                if vid is None or vid in seen_v:
+                    continue
+                seen_v.add(vid)
+                ids.append(vid)
+            used_custom_list = True
+
+        elif neighbor_mode == 'visit_day':
+            # Ролики из визитов за сутки (как на таймлайне), без «сиротских» записей за день.
+            rows = (
+                db.session.query(Video.id)
+                .join(VideoSpecies, VideoSpecies.video_id == Video.id)
+                .join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id)
+                .filter(
+                    SpeciesVisit.end_time > day_start,
+                    SpeciesVisit.start_time < day_end,
+                )
+                .order_by(Video.start_time.asc(), Video.id.asc())
+                .all()
+            )
+            seen_d: set[int] = set()
+            for (vid,) in rows:
+                if vid not in seen_d:
+                    seen_d.add(vid)
+                    ids.append(vid)
+            used_custom_list = True
+
+        if not used_custom_list:
             # Пересечение с локальным/UTC-сутками (как в overview): клип, начавшийся до
             # полуночи, но попадающий в день по длительности, должен участвовать в списке.
             day_rows = (
@@ -501,6 +557,7 @@ def register_routes(app):
                 .all()
             )
             ids = [row[0] for row in day_rows]
+
         try:
             idx = ids.index(video_id) if idx is None else idx
         except ValueError:

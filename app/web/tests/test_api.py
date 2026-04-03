@@ -729,6 +729,65 @@ class TestVideos:
         assert r2.json['previous_id'] == v2_id
         assert r2.json['next_id'] is None
 
+    def test_video_neighbors_visit_day_omits_videos_not_in_any_visit(self, app, client):
+        """visit_day: только ролики с VideoSpecies↔визитом за сутки, не все файлы за день."""
+        from datetime import datetime, timedelta
+        from models import db, Video, Species, SpeciesVisit, VideoSpecies
+
+        with app.app_context():
+            base = datetime(2025, 3, 19, 10, 0, 0)
+            orphan = Video(
+                processor_version='test',
+                start_time=base,
+                end_time=base + timedelta(minutes=1),
+                video_path='2025/03/19/orphan.mp4',
+            )
+            linked = Video(
+                processor_version='test',
+                start_time=base + timedelta(hours=1),
+                end_time=base + timedelta(hours=1, minutes=1),
+                video_path='2025/03/19/linked.mp4',
+            )
+            db.session.add_all([orphan, linked])
+            db.session.flush()
+            species = Species(name='Visit Day Neighbor Sparrow')
+            db.session.add(species)
+            db.session.flush()
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=base + timedelta(hours=1),
+                end_time=base + timedelta(hours=1, minutes=2),
+                max_simultaneous=1,
+            )
+            db.session.add(visit)
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=linked.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=1.0,
+                    confidence=0.9,
+                    source='video',
+                    detection_provider='yolo',
+                ),
+            )
+            db.session.commit()
+            linked_id = linked.id
+
+        r_day = client.get(
+            f'/api/ui/videos/{linked_id}/neighbors',
+            query_string={'neighbor_mode': 'visit_day', 'day_scope': 'utc'},
+        )
+        assert r_day.status_code == 200
+        assert r_day.json['total'] == 1
+        assert r_day.json['index'] == 0
+
+        r_all = client.get(f'/api/ui/videos/{linked_id}/neighbors', query_string={'day_scope': 'utc'})
+        assert r_all.status_code == 200
+        assert r_all.json['total'] == 2
+
     def test_video_neighbors_local_scope_and_cross_day(self, app, client):
         from datetime import datetime, timedelta
         from models import db, Video
