@@ -4,6 +4,8 @@ import requests
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from sqlalchemy import func, or_
+
 from models import db, Species, SpeciesAlias, SpeciesTaxon, SpeciesUnresolvedName
 from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_names,
@@ -32,6 +34,10 @@ def _norm_key(name: str) -> str:
 def _slug(name: str) -> str:
     s = _norm_key(name)
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def _has_metadata_text(value: str | None) -> bool:
+    return bool((value or '').strip())
 
 
 def _next_unique_taxon_key(base_name: str, fallback_suffix: str = '') -> str:
@@ -283,7 +289,12 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
     Populate missing species image/description from external sources.
     """
     q = Species.query.filter(
-        (Species.image_url.is_(None)) | (Species.description.is_(None))
+        or_(
+            Species.image_url.is_(None),
+            func.trim(func.coalesce(Species.image_url, '')) == '',
+            Species.description.is_(None),
+            func.trim(func.coalesce(Species.description, '')) == '',
+        )
     ).order_by(Species.id.asc()).limit(max(1, min(limit, 5000)))
 
     processed = 0
@@ -292,8 +303,8 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
     for sp in q.all():
         processed += 1
         try:
-            before_img = bool(sp.image_url)
-            before_desc = bool(sp.description)
+            before_img = _has_metadata_text(sp.image_url)
+            before_desc = _has_metadata_text(sp.description)
             changed = update_species_info_from_wiki(sp)
             if changed and (not before_img or not before_desc):
                 updated += 1
@@ -365,7 +376,12 @@ def enrich_species_metadata_with_status(
         q = q.filter(Species.metadata_status == 'error')
     else:
         q = q.filter(
-            (Species.image_url.is_(None)) | (Species.description.is_(None))
+            or_(
+                Species.image_url.is_(None),
+                func.trim(func.coalesce(Species.image_url, '')) == '',
+                Species.description.is_(None),
+                func.trim(func.coalesce(Species.description, '')) == '',
+            )
         )
 
     q = q.order_by(Species.id.asc()).limit(max(1, min(limit, 5000)))
@@ -388,7 +404,11 @@ def enrich_species_metadata_with_status(
             sp.metadata_source = src
         if src_url and not sp.metadata_source_url:
             sp.metadata_source_url = src_url
-        if sp.image_url and sp.description and not retry_failed_only:
+        if (
+            _has_metadata_text(sp.image_url)
+            and _has_metadata_text(sp.description)
+            and not retry_failed_only
+        ):
             skipped += 1
             if not dry_run:
                 db.session.commit()
@@ -398,16 +418,19 @@ def enrich_species_metadata_with_status(
         try:
             base_title = (_extract_wiki_search_title(sp.name) or '').strip()
             cached = base_meta_cache.get(base_title.lower()) if base_title else None
-            if cached and (not sp.image_url or not sp.description):
+            if cached and (
+                not _has_metadata_text(sp.image_url)
+                or not _has_metadata_text(sp.description)
+            ):
                 img_c, desc_c = cached
-                if img_c and not sp.image_url:
+                if _has_metadata_text(img_c) and not _has_metadata_text(sp.image_url):
                     sp.image_url = img_c
-                if desc_c and not sp.description:
+                if _has_metadata_text(desc_c) and not _has_metadata_text(sp.description):
                     sp.description = desc_c
 
             changed = update_species_info_from_wiki(sp)
             sp.metadata_updated_at = now
-            if sp.image_url and sp.description:
+            if _has_metadata_text(sp.image_url) and _has_metadata_text(sp.description):
                 sp.metadata_status = 'ok'
                 sp.metadata_error = None
                 if base_title:

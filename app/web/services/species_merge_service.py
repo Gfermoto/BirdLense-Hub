@@ -6,6 +6,30 @@ from typing import Any
 from models import Species, SpeciesVisit, VideoSpecies, db
 
 
+def _copy_missing_metadata(source: Species, target: Species) -> None:
+    if (
+        not (target.description or '').strip()
+        and (source.description or '').strip()
+    ):
+        target.description = source.description
+    if not (target.image_url or '').strip() and (source.image_url or '').strip():
+        target.image_url = source.image_url
+    if (
+        not (target.metadata_source or '').strip()
+        and (source.metadata_source or '').strip()
+    ):
+        target.metadata_source = source.metadata_source
+    if (
+        not (target.metadata_source_url or '').strip()
+        and (source.metadata_source_url or '').strip()
+    ):
+        target.metadata_source_url = source.metadata_source_url
+    if not target.metadata_updated_at and source.metadata_updated_at:
+        target.metadata_updated_at = source.metadata_updated_at
+    if not target.taxon_id and source.taxon_id:
+        target.taxon_id = source.taxon_id
+
+
 def merge_species_into(source_id: int, target_id: int) -> dict[str, Any]:
     """Перенести ссылки с source_id на target_id и удалить Species-источник.
 
@@ -21,6 +45,8 @@ def merge_species_into(source_id: int, target_id: int) -> dict[str, Any]:
             'source_id': source_id,
             'target_id': target_id,
         }
+
+    _copy_missing_metadata(source, target)
 
     n_vs = VideoSpecies.query.filter_by(species_id=source_id).update(
         {'species_id': target_id}, synchronize_session=False,

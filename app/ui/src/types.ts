@@ -3,6 +3,8 @@ export interface SpeciesVisit {
   start_time: string;
   end_time: string;
   max_simultaneous: number;
+  /** visit — обычный визит; unlinked_video — ролик за день без SpeciesVisit (показывается на таймлайне). */
+  timeline_kind?: 'visit' | 'unlinked_video';
   /** Сумма длительностей всех детекций (записей) в событии, секунды */
   total_recording_seconds?: number;
   /** Длительность файла записи (как на странице видео), секунды */
@@ -57,6 +59,8 @@ export interface Weather {
   pressure: number;
   clouds: number;
   wind_speed: number;
+  source?: 'openweather' | 'homeassistant' | string;
+  fetched_at?: string;
 }
 
 export interface Video {
@@ -273,12 +277,14 @@ export interface Species {
 export interface OverviewTopSpecies {
   id: number;
   name: string;
-  detections: number[]; // hourly count of detections, 24 values
+  detections: number[]; // hourly visit counts (24), legacy field name
 }
 
 export interface OverviewStats {
   uniqueSpecies: number;
+  /** Visit count for the day (SpeciesVisit rows), not recognition segments */
   totalDetections: number;
+  /** Visits overlapping the last hour */
   lastHourDetections: number;
   videoDuration: number;
   audioDuration: number;
@@ -297,6 +303,7 @@ export interface OverviewData {
   stats: OverviewStats;
   hourlyTemperature: (number | null)[]; // 24 values, avg temp per hour (°C)
   lastDetection?: OverviewLastDetection | null;
+  observer_timezone?: string;
 }
 
 export interface DetectionCounts {
@@ -318,6 +325,7 @@ export interface SpeciesSummary {
     detections: DetectionCounts;
     timeRange: TimestampRange;
     hourlyActivity: number[];
+    observer_timezone?: string;
     weather: Array<{
       temp: number;
       clouds: number;

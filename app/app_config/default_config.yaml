@@ -35,6 +35,12 @@ processor:
   track_regen_lores_px: 512
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 300
+  # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
+  track_regen_precise_timeout_sec: 420
+  # Более быстрый precise fallback для recovery: local-scoped single-stage вместо тяжёлого global two-stage.
+  track_regen_precise_detection_strategy: single_stage
+  # Для recovery fallback допускаем птиц ближе к краям кадра, иначе feeder-side perches теряются.
+  track_regen_precise_min_center_dist: 0.02
   # При перегенерации не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
@@ -82,6 +88,8 @@ video:
   source: go2rtc
   # Хост Go2RTC: http://IP:1984
   go2rtc_url: ""
+  go2rtc_username: ""
+  go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
@@ -113,6 +121,8 @@ motion:
 mqtt:
   broker: ""
   port: 1883
+  username: ""
+  password: ""
   frigate_topic: "frigate/events"
   birdnet_topic: "birdnet"  # BirdNET-Go/Pi публикует сюда
   publish_topic: "birdlense/detections"
@@ -295,6 +305,7 @@ species:
   catalog_allowlist_file: "models/classification/weights/class_names.txt"
   # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
   catalog_strict_ingest: true
+  tuning_target_species_ids: []
 
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { formatLocalTime } from '../../util';
 import { useState, useEffect, useMemo } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -41,7 +42,9 @@ interface LiveMetrics {
 interface VisitorStats {
   period_days: number;
   unique_visits: number;
+  browser_count?: number;
   active_days: number;
+  device_breakdown?: Record<string, number>;
   method: string;
 }
 
@@ -110,10 +113,7 @@ function SparkMetricCard({
                   data: times,
                   scaleType: 'time',
                   valueFormatter: (d: Date) =>
-                    d.toLocaleTimeString(undefined, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }),
+                    formatLocalTime(d),
                   tickLabelStyle: { fontSize: 10 },
                 },
               ]}
@@ -397,7 +397,7 @@ export const SystemMonitor = () => {
                   </Typography>
                 </Box>
                 <Typography variant="h4" sx={{ lineHeight: 1.2 }}>
-                  {visitors.unique_visits}
+                  {visitors.browser_count ?? visitors.unique_visits}
                 </Typography>
                 <Typography
                   variant="body2"
@@ -407,6 +407,17 @@ export const SystemMonitor = () => {
                   {t('system.uniqueVisitorsHint', {
                     days: visitors.period_days ?? visitorsDays,
                     activeDays: visitors.active_days ?? 0,
+                  })}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  {t('system.visitorDeviceBreakdown', {
+                    desktop: visitors.device_breakdown?.desktop ?? 0,
+                    mobile: visitors.device_breakdown?.mobile ?? 0,
+                    tablet: visitors.device_breakdown?.tablet ?? 0,
                   })}
                 </Typography>
               </CardContent>

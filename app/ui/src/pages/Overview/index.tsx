@@ -31,9 +31,7 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
 
 const formatHour = (hour: number) => {
-  const date = new Date();
-  date.setUTCHours(hour, 0, 0, 0);
-  return date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+  return `${String(hour).padStart(2, '0')}:00`;
 };
 
 export const Overview = () => {
@@ -104,11 +102,16 @@ export const Overview = () => {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
-                label={t('commonLabels.date')}
                 value={selectedDay}
                 onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
                 disableFuture
                 format="YYYY-MM-DD"
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    'aria-label': t('commonLabels.date'),
+                  },
+                }}
               />
             </LocalizationProvider>
             <Tooltip title={!canEdit ? t('common.loginRequiredForExport') : undefined}>
@@ -235,6 +238,9 @@ export const Overview = () => {
                 <Typography variant="subtitle2" gutterBottom color="text.secondary">
                   {t('overview.bySource')}
                 </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  {t('overview.bySourceHint')}
+                </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   {Object.entries(overviewData.stats.detectionByProvider).map(
                     ([provider, count]) => (
@@ -309,6 +315,7 @@ export const Overview = () => {
                 data={overviewData.topSpecies}
                 date={selectedDay}
                 size={450}
+                observerTimezone={overviewData.observer_timezone}
               />
             ) : (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -320,12 +327,16 @@ export const Overview = () => {
 
         {/* Species Distribution */}
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ p: 1, overflow: 'hidden', minWidth: 0 }}>
+            <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
               {t('overview.topSpecies')}
             </Typography>
             {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
-              <SpeciesDistributionChart data={overviewData.topSpecies} date={selectedDay} />
+              <SpeciesDistributionChart
+                data={overviewData.topSpecies}
+                date={selectedDay}
+                size={450}
+              />
             ) : (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                 {t('overview.noData')}

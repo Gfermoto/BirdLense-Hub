@@ -8,6 +8,14 @@ import secrets
 from app_config.app_config import app_config
 
 
+def _is_production_runtime() -> bool:
+    values = {
+        (os.environ.get('FLASK_ENV') or '').strip().lower(),
+        (os.environ.get('BIRDLENSE_ENV') or '').strip().lower(),
+    }
+    return any(value in {'production', 'prod'} for value in values)
+
+
 def _get_session_role():
     """Return 'admin' | 'contributor' | None from session."""
     from flask import session
@@ -20,8 +28,11 @@ def _has_contributor_password():
 
 
 def settings_check_access():
-    """Check if admin access (settings, feed, system). Backward compat: no password = full access.
-    Also accepts MCP token (Authorization: Bearer) for server-to-server calls."""
+    """Check admin access for settings, feed, and system endpoints.
+
+    Backward compat: no password = full access outside production.
+    Also accepts MCP token (Authorization: Bearer) for server-to-server calls.
+    """
     from flask import session, request
     admin_pw = (app_config.get('general.settings_password') or '').strip()
     contrib_pw = (app_config.get('general.contributor_password') or '').strip()
@@ -36,6 +47,8 @@ def settings_check_access():
                 return True
 
     if not admin_pw and not contrib_pw:
+        if _is_production_runtime():
+            return False
         return True
     role = session.get('access_role')
     if role == 'admin':
@@ -46,11 +59,13 @@ def settings_check_access():
 
 
 def contributor_or_admin_access():
-    """Check if contributor or admin (correction, reports, iNaturalist, exports)."""
+    """Check if contributor or admin can access a route."""
     from flask import session
     admin_pw = (app_config.get('general.settings_password') or '').strip()
     contrib_pw = (app_config.get('general.contributor_password') or '').strip()
     if not admin_pw and not contrib_pw:
+        if _is_production_runtime():
+            return False
         return True
     role = session.get('access_role')
     if role in ('admin', 'contributor'):

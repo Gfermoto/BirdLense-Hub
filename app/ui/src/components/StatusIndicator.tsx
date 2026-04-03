@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
+import MemoryOutlined from '@mui/icons-material/MemoryOutlined';
 import CloudOutlined from '@mui/icons-material/CloudOutlined';
 import SmartToyOutlined from '@mui/icons-material/SmartToyOutlined';
 import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
@@ -9,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
 const STATUS_KEYS: Record<string, Record<string, string>> = {
+  processor: { ok: 'status.processorOk', unknown: 'status.processorUnknown', offline: 'status.processorOffline', error: 'status.processorError' },
   video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoError', not_configured: 'status.videoNotConfigured' },
   mqtt: { ok: 'status.mqttOk', unknown: 'status.mqttUnknown', not_used: 'status.mqttNotUsed', not_configured: 'status.mqttNotConfigured', error: 'status.mqttError', offline: 'status.mqttUnknown' },
   esphome: { ok: 'status.esphomeOk', not_used: 'status.esphomeNotUsed', not_configured: 'status.esphomeNotConfigured', unknown: 'status.esphomeUnknown', error: 'status.esphomeError', offline: 'status.esphomeUnknown' },
@@ -22,7 +24,7 @@ const StatusDot = ({
   t,
 }: {
   status: string;
-  component: 'video' | 'mqtt' | 'esphome' | 'yolo';
+  component: 'processor' | 'video' | 'mqtt' | 'esphome' | 'yolo';
   icon: React.ElementType;
   t: (key: string) => string;
 }) => {
@@ -72,6 +74,7 @@ export const StatusIndicator = () => {
   const hint = t(hintKeys[motion] ?? hintKeys.opencv);
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+      <StatusDot status={data.processor} component="processor" icon={MemoryOutlined} t={t} />
       <StatusDot status={data.video} component="video" icon={VideocamOutlined} t={t} />
       <StatusDot status={data.mqtt} component="mqtt" icon={CloudOutlined} t={t} />
       <StatusDot status={data.esphome ?? 'not_used'} component="esphome" icon={SmartToyOutlined} t={t} />

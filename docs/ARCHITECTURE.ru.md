@@ -85,7 +85,7 @@
 | `/unknowns` | Неизвестные — детекции с низкой confidence для ручной проверки |
 | `/videos/:id` | VideoDetails — плеер (0.5x, 2x), детекции, спектрограмма, iNaturalist |
 | `/live` | Live — поток с камер |
-| `/species` | Bird Directory — дерево видов |
+| `/species` | Редирект на Migration Calendar (legacy compatibility route) |
 | `/species/:id` | Species Summary — Xeno-canto (песни птиц) |
 | `/settings` | Настройки |
 | `/system` | System — Storage, Activity, Monitor, Processor Logs |

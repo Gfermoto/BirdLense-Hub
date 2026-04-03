@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack';
 import { BarChart } from '@mui/x-charts/BarChart';
 import dayjs from 'dayjs';
 import { BASE_API_URL, downloadDbBackup, restoreDbBackup } from '../../api/api';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 interface StorageStats {
   date: string;
@@ -38,11 +39,13 @@ const formatBytes = (bytes: number): string => {
 
 export const StorageOverview = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const [dbMessage, setDbMessage] = useState<string>('');
   const [dbError, setDbError] = useState<string>('');
   const [isDownloadingDb, setIsDownloadingDb] = useState(false);
   const [isRestoringDb, setIsRestoringDb] = useState(false);
+  const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
   const { data: storageStats, isLoading } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
     queryFn: async () => {
@@ -86,19 +89,24 @@ export const StorageOverview = () => {
     restoreInputRef.current?.click();
   };
 
-  const handleRestoreFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleRestoreFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    if (!window.confirm(t('storage.dbRestoreConfirm'))) return;
+    setPendingRestoreFile(file);
+  };
+
+  const handleRestoreConfirmed = async () => {
+    if (!pendingRestoreFile) return;
+    const file = pendingRestoreFile;
+    setPendingRestoreFile(null);
     setDbError('');
     setDbMessage('');
     setIsRestoringDb(true);
     try {
       const result = await restoreDbBackup(file);
       setDbMessage(result.message || t('storage.dbRestoreDone'));
+      await queryClient.invalidateQueries();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('storage.dbRestoreFailed');
       setDbError(msg);
@@ -187,6 +195,17 @@ export const StorageOverview = () => {
         {dbMessage && <Alert severity="success" sx={{ mt: 2 }}>{dbMessage}</Alert>}
         {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
       </Paper>
+
+      <ConfirmDialog
+        open={pendingRestoreFile !== null}
+        title={t('storage.dbRestoreTitle')}
+        description={t('storage.dbRestoreConfirm', { name: pendingRestoreFile?.name ?? '' })}
+        confirmLabel={t('storage.dbRestoreAction')}
+        cancelLabel={t('common.cancel')}
+        confirmColor="error"
+        onConfirm={handleRestoreConfirmed}
+        onCancel={() => setPendingRestoreFile(null)}
+      />
     </Box>
   );
 };

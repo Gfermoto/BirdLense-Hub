@@ -3,7 +3,7 @@
 
 Policy:
 - Every terminal key from app/app_config/default_config.yaml must be either:
-  1) mapped to a <form.Field name="..."> in SettingsForm.tsx, or
+  1) mapped to a <form.Field name="..."> under app/ui/src/pages/Settings/ (tsx), or
   2) explicitly listed in ALLOWED_NON_UI_KEYS with a reason.
 """
 
@@ -18,7 +18,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "app" / "app_config" / "default_config.yaml"
-SETTINGS_FORM_PATH = ROOT / "app" / "ui" / "src" / "pages" / "Settings" / "SettingsForm.tsx"
+SETTINGS_UI_DIR = ROOT / "app" / "ui" / "src" / "pages" / "Settings"
 
 
 # Intentionally hidden from Settings UI.
@@ -257,6 +257,9 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "processor.track_regen_frame_step",
     "processor.track_regen_ignore_regional_species",
     "processor.track_regen_lores_px",
+    "processor.track_regen_precise_detection_strategy",
+    "processor.track_regen_precise_min_center_dist",
+    "processor.track_regen_precise_timeout_sec",
     "processor.track_regen_video_timeout_sec",
     "secrets.ebird_api_key",
     "secrets.latitude",
@@ -265,6 +268,7 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "secrets.xeno_canto_api_key",
     "species.catalog_allowlist_file",
     "species.catalog_strict_ingest",
+    "species.tuning_target_species_ids",
     "ui.unknown_confidence_threshold",
     "video.cameras",
     "video.encoding",
@@ -301,8 +305,11 @@ def _collect_terminal_keys(obj: object, prefix: str = "") -> list[str]:
 
 
 def _load_form_fields() -> set[str]:
-    text = SETTINGS_FORM_PATH.read_text(encoding="utf-8")
-    return set(re.findall(r'form\.Field name="([^"]+)"', text))
+    names: set[str] = set()
+    for path in sorted(SETTINGS_UI_DIR.rglob("*.tsx")):
+        text = path.read_text(encoding="utf-8")
+        names.update(re.findall(r'form\.Field name="([^"]+)"', text))
+    return names
 
 
 def _build_report(config_keys: set[str], form_fields: set[str]) -> dict:
@@ -451,7 +458,7 @@ def main() -> int:
         print("These config keys are not in Settings UI and not allowlisted:")
         for key in missing:
             print(f"  - {key}")
-        print("\nEither add form fields in SettingsForm.tsx or add explicit allowlist entries.")
+        print("\nEither add form fields under app/ui/src/pages/Settings/ or add explicit allowlist entries.")
         if not args.no_strict:
             return 1
 

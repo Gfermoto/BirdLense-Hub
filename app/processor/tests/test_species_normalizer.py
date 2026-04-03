@@ -58,3 +58,74 @@ class TestMergeBirdFilter(unittest.TestCase):
         self.assertEqual(result[0]['species_name'], 'Northern Cardinal')
         self.assertIn('frames', result[0])
         self.assertEqual(len(result[0]['frames']), 1)
+
+    def test_frigate_event_outside_video_window_is_skipped(self):
+        """Frigate event far before the clip must not create a negative-duration detection."""
+        yolo = []
+        mqtt = [{
+            'species': 'Eurasian Jay',
+            'source': 'frigate',
+            'confidence': 0.82,
+            'timestamp': (self.video_start - timedelta(seconds=40)).isoformat(),
+        }]
+
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+
+        self.assertEqual(result, [])
+
+    def test_species_mapping_normalizes_mqtt_before_merge(self):
+        yolo = [{
+            'species_name': 'Garrulus glandarius (Eurasian Jay)',
+            'confidence': 0.61,
+            'start_time': 10,
+            'end_time': 18,
+            'detection_provider': 'yolo',
+        }]
+        mqtt = [{
+            'species': 'Eurasian Jay',
+            'source': 'frigate',
+            'confidence': 0.83,
+            'timestamp': (self.video_start + timedelta(seconds=12)).isoformat(),
+        }]
+
+        result = merge_detections(
+            yolo,
+            mqtt,
+            self.video_start,
+            self.video_end,
+            species_mapping={'eurasian_jay': 'Garrulus glandarius (Eurasian Jay)'},
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Garrulus glandarius (Eurasian Jay)')
+        self.assertEqual(result[0]['detection_provider'], 'yolo')
+        self.assertEqual(result[0]['contributing_providers'], ['frigate', 'yolo'])
+
+    def test_one_per_species_preserves_all_contributing_providers(self):
+        yolo = [{
+            'species_name': 'Eurasian Jay',
+            'confidence': 0.61,
+            'start_time': 10,
+            'end_time': 18,
+            'detection_provider': 'yolo',
+            'contributing_providers': ['yolo', 'birdnet_mqtt'],
+        }]
+        mqtt = [{
+            'species': 'Eurasian Jay',
+            'source': 'frigate',
+            'confidence': 0.83,
+            'timestamp': (self.video_start + timedelta(seconds=12)).isoformat(),
+        }]
+
+        result = merge_detections(
+            yolo,
+            mqtt,
+            self.video_start,
+            self.video_end,
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0]['contributing_providers'],
+            ['birdnet_mqtt', 'frigate', 'yolo'],
+        )

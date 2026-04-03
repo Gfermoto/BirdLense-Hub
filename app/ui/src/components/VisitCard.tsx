@@ -26,6 +26,7 @@ import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { downloadDetectionCropForINaturalist } from '../api/api';
 import { formatDuration } from '../utils/timeUtils';
+import { formatLocalDateTime, formatLocalTime } from '../util';
 
 const DetectionItem = ({
   detection,
@@ -82,7 +83,7 @@ const DetectionItem = ({
             color="text.secondary"
             sx={{ minWidth: 65 }}
           >
-            {new Date(detection.start_time).toLocaleTimeString()}
+            {formatLocalTime(detection.start_time)}
           </Typography>
           <Chip
             label={`${Math.round(detection.confidence * 100)}%`}
@@ -174,17 +175,11 @@ export const VisitCard = memo(function VisitCard({
 
   const formatDateTime = () => {
     if (isToday) {
-      return `Today at ${startDateTime.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`;
+      return t('visitCard.todayAt', {
+        time: formatLocalTime(startDateTime),
+      });
     }
-    return startDateTime.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatLocalDateTime(startDateTime);
   };
 
   return (
@@ -238,6 +233,7 @@ export const VisitCard = memo(function VisitCard({
               </IconButton>
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
+              {visit.timeline_kind !== 'unlinked_video' ? (
               <Chip
                 icon={
                   <Box display="flex" alignItems="center">
@@ -248,6 +244,15 @@ export const VisitCard = memo(function VisitCard({
                 size="small"
                 sx={{ height: 28 }}
               />
+              ) : (
+                <Chip
+                  label={t('visitCard.recordingWithoutVisit')}
+                  size="small"
+                  color="default"
+                  variant="outlined"
+                  sx={{ height: 28 }}
+                />
+              )}
               {(() => {
                 const sec =
                   visit.video_duration_seconds != null && visit.video_duration_seconds > 0
@@ -296,6 +301,10 @@ export const VisitCard = memo(function VisitCard({
                         navigate(`/videos/${detection.video_id}`, {
                           state: {
                             from: `${location.pathname}${location.search}`,
+                            ...(visit.timeline_kind !== 'unlinked_video' &&
+                            visit.id > 0
+                              ? { visitId: visit.id }
+                              : {}),
                           },
                         })
                       }

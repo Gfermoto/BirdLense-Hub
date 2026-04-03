@@ -11,24 +11,31 @@ import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   title: string;
+  requireAdmin?: boolean;
 }
 
 /**
  * Wraps protected content (Settings, System). Shows password dialog when
  * access is restricted, or network error when check-access fails.
  */
-export function ProtectedRoute({ children, title }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  title,
+  requireAdmin = true,
+}: ProtectedRouteProps) {
   const { t } = useTranslation();
   const {
     requiresPassword,
+    unlocked,
     isAdmin,
     setUnlocked,
     isLoading,
     accessError,
   } = useProtectedArea();
 
-  const showPasswordDialog = requiresPassword && !isAdmin;
-  const showNetworkError = accessError === 'network' && !isAdmin;
+  const hasAccess = requireAdmin ? isAdmin : unlocked;
+  const showPasswordDialog = requiresPassword && !hasAccess;
+  const showNetworkError = accessError === 'network' && !hasAccess;
 
   if (isLoading) {
     return (
@@ -62,7 +69,7 @@ export function ProtectedRoute({ children, title }: ProtectedRouteProps) {
         </Typography>
         <SettingsPasswordDialog
           open
-          requireAdmin
+          requireAdmin={requireAdmin}
           onSuccess={(role) => setUnlocked(true, role || 'admin')}
         />
       </Container>

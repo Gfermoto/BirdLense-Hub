@@ -10,10 +10,62 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
+def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
+    """Prefer specific species over Bird/Unknown for the same track."""
+    name = str(detection.get('species_name') or '').strip().lower()
+    if name == 'unknown':
+        species_rank = 0
+    elif name == 'bird':
+        species_rank = 1
+    else:
+        species_rank = 2
+    has_frames = 1 if detection.get('frames') else 0
+    confidence = float(detection.get('confidence') or 0.0)
+    return (species_rank, has_frames, confidence)
+
+
+def _dedupe_track_detections(detections: list[dict]) -> list[dict]:
+    """Collapse accidental duplicate outputs for the same track window."""
+    deduped: dict[tuple, dict] = {}
+    for detection in detections:
+        track_id = detection.get('track_id')
+        if track_id is None:
+            key = None
+        else:
+            key = (
+                track_id,
+                str(detection.get('detection_provider') or ''),
+            )
+        if key is None:
+            deduped[(id(detection),)] = detection
+            continue
+        existing = deduped.get(key)
+        if existing is None:
+            deduped[key] = detection
+            continue
+        keep, drop = existing, detection
+        if _track_detection_preference(detection) > _track_detection_preference(existing):
+            keep, drop = detection, existing
+        if not keep.get('frames') and drop.get('frames'):
+            keep = {**keep, 'frames': drop.get('frames')}
+        deduped[key] = keep
+        logger.warning(
+            'Track regen: collapsed duplicate track_id=%s provider=%s -> '
+            'kept %s, dropped %s',
+            track_id,
+            key[1],
+            keep.get('species_name'),
+            drop.get('species_name'),
+        )
+    return list(deduped.values())
+
+
 def build_detection_pipeline(
     app_config,
     strategy_override: str | None = None,
     for_track_regen: bool = False,
+    regional_species_override: list[str] | None = None,
+    min_center_dist_override: float | None = None,
 ):
     """Build detection_strategy, frame_processor, decision_maker from config."""
     from detection_strategy import SingleStageStrategy, TwoStageStrategy
@@ -28,6 +80,11 @@ def build_detection_pipeline(
         'processor.detection_strategy',
         'single_stage',
     )).strip()
+    min_center_dist = (
+        float(min_center_dist_override)
+        if min_center_dist_override is not None
+        else 0.1
+    )
     binary_path = app_config.get('processor.models.binary', 'models/detection/weights/best.pt')
     classifier_path = app_config.get('processor.models.classifier', 'models/classification/weights/best.pt')
     if not os.path.isabs(binary_path):
@@ -35,11 +92,13 @@ def build_detection_pipeline(
     if not os.path.isabs(classifier_path):
         classifier_path = os.path.join(processor_root, classifier_path)
 
-    regional_species = app_config.get('processor.regional_species') or []
+    regional_species = regional_species_override
+    if regional_species is None:
+        regional_species = app_config.get('processor.regional_species') or []
     if for_track_regen and app_config.get(
         'processor.track_regen_ignore_regional_species',
         True,
-    ):
+    ) and regional_species_override is None:
         # Иначе узкий regional_species (напр. US eBird) отрезает EU-виды и Rodent.
         regional_species = []
 
@@ -48,12 +107,13 @@ def build_detection_pipeline(
             binary_model_path=binary_path,
             classifier_model_path=classifier_path,
             regional_species=regional_species,
+            min_center_dist=min_center_dist,
         )
     else:
         single_path = app_config.get('processor.models.single_stage', 'yolov8n.pt')
         if not os.path.isabs(single_path):
             single_path = os.path.join(processor_root, single_path)
-        if not os.path.isfile(single_path):
+        if not (os.path.isfile(single_path) or os.path.isdir(single_path)):
             single_path = 'yolov8n.pt'
         _coco_anim = app_config.get('processor.single_stage_coco_animals_only_auto')
         if _coco_anim is None:
@@ -61,6 +121,7 @@ def build_detection_pipeline(
         detection_strategy = SingleStageStrategy(
             model_path=single_path,
             regional_species=regional_species,
+            min_center_dist=min_center_dist,
             coco_animals_only_auto=bool(_coco_anim),
         )
 
@@ -165,6 +226,7 @@ def process_video_for_tracks(
             'source': 'video',
             'detection_provider': 'yolo',
         })
+    detections = _dedupe_track_detections(detections)
     logger.info(
         "Track regen: %s -> %s detections, %s frames, frame_step=%s",
         video_path,
