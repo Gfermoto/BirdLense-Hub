@@ -39,7 +39,7 @@ from util import (
     notify_telegram_test,
     _host_is_wikipedia_family,
     _host_is_inaturalist,
-    _url_suggests_inaturalist_asset,
+    _host_is_inaturalist_open_data_asset,
 )
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, cameras_for_api
@@ -164,40 +164,51 @@ _SPECIES_PROXY_MAX_REDIRECTS = 5
 
 def _species_proxy_allowed_url(url: str) -> bool:
     """Проверка схемы/хоста для прокси картинок (каждый hop редиректа — отдельно)."""
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
     if parsed.scheme not in ('http', 'https') or not parsed.netloc:
         return False
-    host = (parsed.hostname or '').lower()
+    try:
+        host = (parsed.hostname or '').lower()
+    except ValueError:
+        return False
     return bool(
         _host_is_wikipedia_family(host)
         or _host_is_inaturalist(host)
-        or _url_suggests_inaturalist_asset(url)
+        or _host_is_inaturalist_open_data_asset(host)
     )
 
 
 def _species_proxy_sanitized_fetch_url(url: str) -> str | None:
     """Пересобрать http(s) URL из hostname/port/path после allowlist (без userinfo; смягчает SSRF)."""
-    p = urlparse(url)
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return None
     if p.scheme not in ('http', 'https') or p.username or p.password:
         return None
-    host = (p.hostname or '').lower()
-    if not host:
+    try:
+        host = (p.hostname or '').lower()
+        hn = p.hostname
+        port = p.port
+    except ValueError:
+        return None
+    if not host or not hn:
         return None
     if not (
         _host_is_wikipedia_family(host)
         or _host_is_inaturalist(host)
-        or _url_suggests_inaturalist_asset(url)
+        or _host_is_inaturalist_open_data_asset(host)
     ):
-        return None
-    hn = p.hostname
-    if not hn:
         return None
     try:
         addr = ipaddress.ip_address(hn)
         host_netloc = f'[{hn}]' if addr.version == 6 else hn
     except ValueError:
         host_netloc = hn
-    netloc = f'{host_netloc}:{p.port}' if p.port else host_netloc
+    netloc = f'{host_netloc}:{port}' if port is not None else host_netloc
     return urlunparse((p.scheme, netloc, p.path or '', p.params, p.query, p.fragment))
 
 
@@ -1964,16 +1975,24 @@ def register_routes(app):
         raw = (request.args.get('url') or '').strip()
         if not raw:
             return {'error': 'url is required'}, 400
-        parsed = urlparse(raw)
+        try:
+            parsed = urlparse(raw)
+        except ValueError:
+            return {'error': 'only absolute http/https URLs are allowed'}, 400
         if parsed.scheme not in ('http', 'https') or not parsed.netloc:
             return {'error': 'only absolute http/https URLs are allowed'}, 400
-        host = (parsed.hostname or '').lower()
+        try:
+            host = (parsed.hostname or '').lower()
+        except ValueError:
+            return {'error': 'invalid URL for proxy'}, 400
         if not (
             _host_is_wikipedia_family(host)
             or _host_is_inaturalist(host)
-            or _url_suggests_inaturalist_asset(raw)
+            or _host_is_inaturalist_open_data_asset(host)
         ):
             return {'error': 'host is not allowed for proxy'}, 400
+        if _species_proxy_sanitized_fetch_url(raw) is None:
+            return {'error': 'invalid URL for image proxy'}, 400
 
         # Persistent local cache: avoids repeated external hits and shields UI
         # from Wikimedia/iNaturalist throttling on shared server IPs.

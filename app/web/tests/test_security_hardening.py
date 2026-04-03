@@ -170,3 +170,60 @@ class TestWebhookUrlValidation:
 
         assert response.status_code == 201
         assert posted == []
+
+
+class TestSpeciesImageProxyAllowlist:
+    """Регрессии по замечаниям CodeRabbit к PR #218 (прокси /species-image)."""
+
+    def test_rejects_inaturalist_open_data_substring_on_evil_host(self, client):
+        """Query/path с подстрокой open-data не открывает произвольный host."""
+        r = client.get(
+            '/api/ui/species-image',
+            query_string={'url': 'https://evil.example/x?tag=inaturalist-open-data'},
+        )
+        assert r.status_code == 400
+        err = (r.get_json() or {}).get('error', '')
+        assert 'allowed' in err.lower() or 'invalid' in err.lower()
+
+    def test_rejects_malformed_ipv6_url(self, client):
+        r = client.get(
+            '/api/ui/species-image',
+            query_string={'url': 'https://[::1/not-a-url'},
+        )
+        assert r.status_code == 400
+
+    def test_rejects_wikimedia_url_with_invalid_port(self, client):
+        r = client.get(
+            '/api/ui/species-image',
+            query_string={
+                'url': 'https://upload.wikimedia.org:99999/wikipedia/commons/1/1x/x.png',
+            },
+        )
+        assert r.status_code == 400
+
+
+class TestSafeImagePathDataDirBoundary:
+    """Префикс data vs data_evil — не обходить через startswith."""
+
+    def test_safe_image_rejects_sibling_directory_prefix(self, tmp_path, monkeypatch):
+        data = tmp_path / 'data'
+        data.mkdir()
+        evil = tmp_path / 'data_evil'
+        evil.mkdir()
+        img = evil / 'x.jpg'
+        img.write_bytes(b'x')
+        monkeypatch.setenv('DATA_DIR', str(data))
+        raw, err = util_mod.read_safe_image_bytes(str(img))
+        assert raw is None and err == 'unsafe_path'
+        assert util_mod._is_safe_image_path(str(img)) is False
+
+    def test_safe_image_reads_and_removes_under_data_dir(self, tmp_path, monkeypatch):
+        data = tmp_path / 'data'
+        data.mkdir()
+        img = data / 'preview.jpg'
+        img.write_bytes(b'jpeg-bytes')
+        monkeypatch.setenv('DATA_DIR', str(data))
+        raw, err = util_mod.read_safe_image_bytes(str(img))
+        assert err is None and raw == b'jpeg-bytes'
+        util_mod.remove_safe_image_file(str(img))
+        assert not img.is_file()

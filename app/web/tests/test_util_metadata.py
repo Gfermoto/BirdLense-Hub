@@ -51,6 +51,16 @@ class TestInferMetadataSourceFields:
         assert src is None
         assert orig is None
 
+    def test_no_inaturalist_via_query_string_on_untrusted_host(self):
+        """Подстрока inaturalist-open-data в query не должна включать чужой host (регрессия SSRF-эвристики)."""
+        src, orig = infer_metadata_source_fields(
+            None,
+            'https://evil.example/photo?ref=inaturalist-open-data',
+            None,
+        )
+        assert src is None
+        assert orig is None
+
 
 class TestExtractCommonForHierarchy:
     """Hierarchy label normalization."""

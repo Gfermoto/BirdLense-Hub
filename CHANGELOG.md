@@ -10,7 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **Code scanning (path injection):** чтение и удаление превью для Telegram — **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py`: `realpath` + `commonpath` + **`startswith(DATA_DIR + sep)`**, затем `open`/`os.remove`; логика вынесена из `notifications.py`. Удалён **`_safe_image_path_or_none`**. Для **`py/path-injection`** на sink-строках — **`# lgtm[py/path-injection]`** (путь уже ограничен каталогом данных); иначе анализатор не снимает taint с `realpath(path)` до `open`/`remove`.
+
+## [0.3.2] - 2026-04-03
+
+Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, CodeRabbit follow-up, синхронизация версий.
+
+### Security
+
 - **CodeQL-driven hardening (Python):** species image proxy (`GET /api/ui/species-image`) follows redirects manually with an allowlisted host check on every hop; each request uses a URL rebuilt from parsed host/port/path (no userinfo). Client-facing proxy errors are generic; details only in server logs. Telegram/notification image paths use `_safe_image_path_or_none` that returns only a resolved path under `DATA_DIR`. Go2RTC: connect log omits URL-derived fields (credentials never hit log lines). eBird region comparison cache key uses **SHA-256** (truncated) instead of MD5. Species catalog allowlist parsing avoids a polynomial-ReDoS-prone regex.
+- **Follow-up (CodeRabbit review on PR #218):** iNaturalist open-data allowlist for the species image proxy is **hostname-only** (`_host_is_inaturalist_open_data_asset`) — no substring match on the full URL (closes query-string SSRF bypass). `urlparse` / `hostname` / `port` wrapped where needed to avoid 500 on malformed URLs. `_is_safe_image_path` / `_safe_image_path_or_none` use `os.path.commonpath` against `DATA_DIR` to block `data_evil`-style prefix tricks. Regression tests added.
 - **UI (`app/ui`):** refreshed `package-lock.json` and `overrides` so **lodash** resolves to **≥4.18.0** (addresses [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc), [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh)); **serialize-javascript** pinned via override to **≥7.0.5**. `npm audit` clean. Python `requests` / **Flask-Cors** were already at patched versions in `app/web` and `app/processor` requirements.
 
 ### Changed
@@ -627,6 +636,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.3.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.0
 [0.2.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.6
