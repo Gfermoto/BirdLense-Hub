@@ -237,12 +237,17 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 ---
 
-## Интеграции (зарезервировано)
+## Интеграции (весы)
 
 | Ключ | Описание |
 |------|----------|
-| `integrations.scales.enabled` | Заготовка под MQTT-весы / кормушку (по умолчанию **false**). |
-| `integrations.scales.mqtt_topic` | Топик MQTT для будущей обработки (Hub пока не читает вес; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). |
+| `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). При включении **processor** подписывается на MQTT (или читает Home Assistant) и сохраняет последний вес для веб-UI. |
+| `integrations.scales.source` | `mqtt` (по умолчанию) или `homeassistant`. |
+| `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние пишется в `app/data` для хаба). |
+| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
+| `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
+
+Дальше: **триггер по резкому изменению веса** (порог, дебаунс) — [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 
