@@ -2,8 +2,8 @@
 
 Extracted from util.py. util.py re-exports everything here for backward compatibility.
 
-Note: notify() and notify_app_startup() use lazy imports from util for path-safety helpers
-(_safe_image_path_or_none, _data_dir) to avoid a circular import at module load time.
+Note: path-safety helpers (`read_safe_image_bytes`, `remove_safe_image_file`) are lazy-imported
+from util where needed to avoid a circular import at module load time (util imports this module).
 """
 import json
 import logging
@@ -412,18 +412,12 @@ def notify(
             image_to_send = image_bytes
         elif send_photo and image_path:
             # Lazy import to avoid circular dependency (util imports from notifications)
-            from util import _safe_image_path_or_none
-            safe_img_path = _safe_image_path_or_none(image_path)
-            if safe_img_path:
-                try:
-                    with open(safe_img_path, 'rb') as f:
-                        image_to_send = f.read()
-                except OSError as e:
-                    logging.warning("Cannot read image for Telegram: %s", e)
-                    image_to_send = None
-                    image_issue = 'read_failed'
-            else:
-                image_issue = 'unsafe_path'
+            from util import read_safe_image_bytes
+
+            image_to_send, io_err = read_safe_image_bytes(image_path)
+            if io_err:
+                image_to_send = None
+                image_issue = io_err
         elif not send_photo:
             image_issue = None if intentional_text_only else 'config_disabled'
         else:
@@ -590,13 +584,9 @@ def notify(
                 result['fallback_reason'] = result['fallback_reason'] or 'telegram_text_failed'
                 return result
             # Lazy import to avoid circular dependency
-            from util import _safe_image_path_or_none
-            safe_rm = _safe_image_path_or_none(image_path)
-            if safe_rm and os.path.isfile(safe_rm):
-                try:
-                    os.remove(safe_rm)
-                except OSError:
-                    pass
+            from util import remove_safe_image_file
+
+            remove_safe_image_file(image_path)
         else:
             if result['fallback_reason'] is None and not intentional_text_only:
                 result['fallback_reason'] = fallback_reason_hint or image_issue or 'no_preview'
