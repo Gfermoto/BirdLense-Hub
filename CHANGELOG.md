@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-03
+
+Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, CodeRabbit follow-up, синхронизация версий.
+
 ### Security
 
 - **CodeQL-driven hardening (Python):** species image proxy (`GET /api/ui/species-image`) follows redirects manually with an allowlisted host check on every hop; each request uses a URL rebuilt from parsed host/port/path (no userinfo). Client-facing proxy errors are generic; details only in server logs. Telegram/notification image paths use `_safe_image_path_or_none` that returns only a resolved path under `DATA_DIR`. Go2RTC: connect log omits URL-derived fields (credentials never hit log lines). eBird region comparison cache key uses **SHA-256** (truncated) instead of MD5. Species catalog allowlist parsing avoids a polynomial-ReDoS-prone regex.
@@ -628,6 +632,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.3.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.0
 [0.2.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.2.6

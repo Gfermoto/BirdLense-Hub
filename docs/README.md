@@ -1,6 +1,6 @@
 # BirdLense Hub — Documentation
 
-> **Version 0.3.1** (source of truth: repo root `VERSION`) · OpenAPI: [YAML spec](./project/openapi.md) · **Interactive:** [Redoc](./reference/openapi.md) · **Published docs:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
+> **Version 0.3.2** (source of truth: repo root `VERSION`) · OpenAPI: [YAML spec](./project/openapi.md) · **Interactive:** [Redoc](./reference/openapi.md) · **Published docs:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [Русский](./README.ru.md)
 
