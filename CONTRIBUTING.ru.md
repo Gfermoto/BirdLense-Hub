@@ -37,6 +37,7 @@ make start
 
 ## Документация
 
+- **Структура репозитория:** [docs/REPOSITORY_LAYOUT.ru.md](docs/REPOSITORY_LAYOUT.ru.md) — где `app/`, `docs/` и `scripts/`.
 - **Индекс:** [docs/README.ru.md](docs/README.ru.md) — структура (запуск / интеграции / разработка).
 - **Текст для читателей и статей:** [docs/OVERVIEW.ru.md](docs/OVERVIEW.ru.md).
 - **Правила оформления:** [docs/Documentation.ru.md](docs/Documentation.ru.md). **Термины:** [docs/GLOSSARY.ru.md](docs/GLOSSARY.ru.md).

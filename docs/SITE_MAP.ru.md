@@ -67,6 +67,7 @@
 | Changelog | [project/changelog.md](./project/changelog.md) → корневой `CHANGELOG.md` |
 | OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
 | Корневой README | [project/root-readme.md](./project/root-readme.md) |
+| Структура репозитория | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
 | Правила доков | [Documentation.ru.md](./Documentation.ru.md) |
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) |
 | Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |

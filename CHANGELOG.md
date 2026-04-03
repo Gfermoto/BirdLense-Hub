@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
+
 ## [0.3.1] - 2026-04-04
 
 Патч после **v0.3.0**: обновления зависимостей и согласованность Docker/CI. Merge: [#213](https://github.com/Gfermoto/BirdLense-Hub/pull/213); gunicorn: [#208](https://github.com/Gfermoto/BirdLense-Hub/pull/208).
@@ -313,7 +317,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Документация:** статический сайт (MkDocs + GitHub Pages), карта и i18n; отчёт **Wiki report** в Actions (Summary, артефакт, опционально push в GitHub Wiki).
-- **Сообщество:** `GOVERNANCE`, `CODEOWNERS`, шаблон PR; инструкция настройки репозитория через `gh` (`GITHUB_SETUP_GH`); `WIKI_AUTOMATION`; черновик материала в `article/habr.md`.
+- **Сообщество:** `GOVERNANCE`, `CODEOWNERS`, шаблон PR; инструкция настройки репозитория через `gh` (`GITHUB_SETUP_GH`); `WIKI_AUTOMATION`; черновик материала в `docs/article/habr.md`.
 
 ### Security
 

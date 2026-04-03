@@ -19,7 +19,7 @@
 | **Корневые** | README.md, README.ru.md, CHANGELOG.md, SECURITY.md | Нужна интернационализация (EN приоритет) |
 | **docs/** | Гайды в `docs/` | EN — основной текст (`*.md`), RU — зеркала (`*.ru.md`); см. [I18N_STATUS](./I18N_STATUS.md) |
 | **docs/archive/** | 8 файлов | Оставить как есть (история) |
-| **Лишнее** | article/, scripts/datasets/README | Проверить релевантность |
+| **Лишнее** | docs/article/, scripts/datasets/README | Проверить релевантность |
 
 ### 1.2 Утечки и плейсхолдеры
 

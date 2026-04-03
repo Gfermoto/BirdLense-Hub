@@ -71,6 +71,7 @@ nav:
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
   - Meta:
+      - Repository layout: REPOSITORY_LAYOUT.md
       - Doc conventions: Documentation.md
       - Site map (generator): SITE_MAP.md
       - i18n status: I18N_STATUS.md
