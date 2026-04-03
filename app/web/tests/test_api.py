@@ -489,6 +489,67 @@ class TestTimeline:
             for row in r.json
         )
 
+    def test_timeline_dedupes_visit_with_multiple_video_species(self, app, client):
+        """JOIN VideoSpecies must not duplicate one SpeciesVisit in the JSON list."""
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            species = Species(name=f'Timeline Dedup {id(app)}')
+            db.session.add(species)
+            db.session.flush()
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version='test',
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 5, 30),
+                video_path=f'data/recordings/2026/03/24/210501/dedup{id(app)}.mp4',
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add_all([
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=2.0,
+                    confidence=0.9,
+                    source='video',
+                    detection_provider='yolo',
+                ),
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=3.0,
+                    end_time=5.0,
+                    confidence=0.85,
+                    source='video',
+                    detection_provider='frigate',
+                ),
+            ])
+            db.session.commit()
+            visit_id = visit.id
+
+        from services.http_response_cache import bust_response_caches
+        bust_response_caches()
+
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={'date': '2026-03-25'},
+        )
+        assert r.status_code == 200
+        same_visit_rows = [row for row in r.json if row.get('id') == visit_id]
+        assert len(same_visit_rows) == 1
+
 
 class TestOverview:
     """Overview API with lastDetection."""

@@ -11,10 +11,7 @@ import { formatDuration } from '../../utils/timeUtils';
 export const TimelineStats = memo(function TimelineStats({ visits }: { visits: SpeciesVisit[] }) {
   const { t } = useTranslation();
   const uniqueSpecies = new Set(visits.map((visit) => visit.species.id)).size;
-  const totalDetections = visits.reduce(
-    (acc, visit) => acc + visit.max_simultaneous,
-    0,
-  );
+  const totalVisits = visits.length;
   const recordingDurationSec = visits.reduce((acc, visit) => {
     const sec =
       visit.video_duration_seconds != null && visit.video_duration_seconds > 0
@@ -36,7 +33,7 @@ export const TimelineStats = memo(function TimelineStats({ visits }: { visits: S
         <StatCard
           icon={VisibilityOutlined}
           title={t('timelineStats.totalVisits')}
-          value={totalDetections}
+          value={totalVisits}
         />
       </Grid>
       <Grid size={{ xs: 12, sm: 4 }}>

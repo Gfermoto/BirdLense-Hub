@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Overview / Timeline / визиты:** счётчики «всего визитов», графики топ-видов и «последний час» считают **число визитов** (строки `SpeciesVisit`), а не сумму `max_simultaneous` и не число сегментов `VideoSpecies`. Блок «По источникам» — **сколько визитов** содержат хотя бы один сегмент провайдера (с подсказкой, что сумма может превышать общее число визитов при слиянии источников). **`GET /api/ui/timeline`** и экспорт: дедупликация визитов после `JOIN` (один визит с несколькими роликами больше не дублируется в списке и статистике). PDF-отчёт и `get_monthly_report_data` выровнены с той же семантикой.
+- **Overview UI:** карточка «Топ видов» — легенда под диаграммой (как «Суточный паттерн»), без обрезки из‑за `height: 100%` / overflow.
 - **Cleanup / legacy removal:** removed dead Library/System UI leftovers (`RecordingsAndDataset`, `SystemActivity`, dormant BirdDirectory page/help/i18n), so legacy dangerous controls can no longer reappear through accidental imports.
 - **Backend surface hardening:** `/api/ui/status/debug` now requires authenticated admin settings access; legacy sync species-registry maintenance routes were removed in favor of the active async `start/status` flow.
 - **Docs / operator parity:** TESTING, CONFIGURATION, and ARCHITECTURE docs now match the live routes and current species/catalog UI model.

@@ -260,9 +260,9 @@ class TestOverviewDayOverlap:
         assert response.status_code == 200
         body = response.get_json()
         assert body['stats']['uniqueSpecies'] == 1
-        assert body['stats']['totalDetections'] == 2
+        assert body['stats']['totalDetections'] == 1
         assert body['stats']['busiestHour'] == 3
-        assert body['topSpecies'][0]['detections'][3] == 2
+        assert body['topSpecies'][0]['detections'][3] == 1
         assert body['lastDetection']['species_name'] == 'Midnight Species'
 
     def test_overview_date_uses_observer_local_day_and_local_hour(self, app, client):
@@ -293,7 +293,7 @@ class TestOverviewDayOverlap:
         body = response.get_json()
         assert body['stats']['uniqueSpecies'] == 1
         assert body['stats']['busiestHour'] == 0
-        assert body['topSpecies'][0]['detections'][0] == 3
+        assert body['topSpecies'][0]['detections'][0] == 1
 
     def test_overview_date_counts_overlapping_video_duration_and_local_temperature(
         self, app, client,
@@ -345,7 +345,7 @@ class TestOverviewDayOverlap:
         assert body['stats']['videoDuration'] == 600
         assert body['hourlyTemperature'][0] == 5.5
 
-    def test_overview_detection_by_provider_counts_detection_rows_not_visit_size(
+    def test_overview_detection_by_provider_counts_distinct_visits(
         self, app, client,
     ):
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
@@ -410,7 +410,8 @@ class TestOverviewDayOverlap:
 
         assert response.status_code == 200
         body = response.get_json()
-        assert body['stats']['detectionByProvider']['yolo'] == 2
+        assert body['stats']['detectionByProvider']['yolo'] == 1
+        assert body['stats']['detectionByProvider']['frigate'] == 1
 
 
 class TestObserverLocalRanges:

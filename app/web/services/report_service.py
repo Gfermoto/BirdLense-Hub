@@ -121,7 +121,7 @@ def build_monthly_report(start_dt, end_dt, top_species, stats, month_label):
     summary_data = [
         ['Metric', 'Value'],
         ['Unique species', str(stats.get('uniqueSpecies', 0))],
-        ['Total detections', str(stats.get('totalDetections', 0))],
+        ['Total visits', str(stats.get('totalDetections', 0))],
         ['Recording time (video)', _format_seconds(stats.get('videoDuration', 0))],
         ['Recording time (audio)', _format_seconds(stats.get('audioDuration', 0))],
         ['Avg visit duration', _format_seconds(stats.get('avgVisitDuration', 0))],
@@ -148,7 +148,7 @@ def build_monthly_report(start_dt, end_dt, top_species, stats, month_label):
     # Top species
     story.append(Paragraph('Top Species', heading_style))
     if top_species:
-        species_data = [['#', 'Species', 'Detections']]
+        species_data = [['#', 'Species', 'Visits']]
         for i, sp in enumerate(top_species[:5], 1):
             total = sum(sp.get('detections', []) or [0])
             species_data.append([str(i), sp.get('name', '—'), str(total)])
@@ -210,7 +210,7 @@ def build_monthly_report(start_dt, end_dt, top_species, stats, month_label):
     story.append(Paragraph(
         'This report is generated automatically by BirdLense Hub. Data is based on bird detections '
         'from your feeder cameras using YOLO classification, optionally combined with Frigate and BirdNET. '
-        'Detections are grouped by species visits; the chart shows the total number of detections per species. '
+        'Events are grouped into species visits; charts count visits (sessions), not raw detection segments. '
         'Recording time reflects video and audio duration associated with detected visits.',
         ParagraphStyle('Method', parent=body_style, fontSize=9, textColor=TEXT_SECONDARY),
     ))
@@ -237,8 +237,11 @@ def get_monthly_report_data(session, start_dt, end_dt):
     """Query DB for monthly stats. Returns (top_species, stats)."""
     from models import Species, SpeciesVisit, VideoSpecies, Video
     from sqlalchemy import func, case, distinct
+    from util import GENERIC_BIRD_SPECIES
 
-    # Top species (by total detections in period)
+    exclude_bird = Species.name != GENERIC_BIRD_SPECIES
+
+    # Top species by visit count in period; hourly bars = visits starting in that hour (UTC hour of DB timestamp).
     top_query = (
         session.query(
             Species.id.label('id'),
@@ -247,7 +250,7 @@ def get_monthly_report_data(session, start_dt, end_dt):
                 func.sum(
                     case(
                         (func.strftime('%H', SpeciesVisit.start_time) == str(h).zfill(2),
-                         SpeciesVisit.max_simultaneous),
+                         1),
                         else_=0
                     )
                 ).label(f'detection_hour_{h}')
@@ -258,9 +261,10 @@ def get_monthly_report_data(session, start_dt, end_dt):
         .filter(
             SpeciesVisit.start_time >= start_dt,
             SpeciesVisit.start_time <= end_dt,
+            exclude_bird,
         )
         .group_by(Species.id, Species.name)
-        .order_by(func.sum(SpeciesVisit.max_simultaneous).desc())
+        .order_by(func.count(SpeciesVisit.id).desc())
         .limit(10)
         .all()
     )
@@ -273,19 +277,21 @@ def get_monthly_report_data(session, start_dt, end_dt):
         for row in top_query
     ]
 
-    # Stats
+    # Stats (visit rows, same semantics as Overview)
     stats_row = (
         session.query(
             func.count(distinct(SpeciesVisit.species_id)).label('uniqueSpecies'),
-            func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
+            func.count(SpeciesVisit.id).label('totalDetections'),
             func.avg(
                 func.strftime('%s', SpeciesVisit.end_time) -
                 func.strftime('%s', SpeciesVisit.start_time)
             ).label('avgVisitDuration'),
         )
+        .join(Species, SpeciesVisit.species_id == Species.id)
         .filter(
             SpeciesVisit.start_time >= start_dt,
             SpeciesVisit.start_time <= end_dt,
+            exclude_bird,
         )
         .first()
     )

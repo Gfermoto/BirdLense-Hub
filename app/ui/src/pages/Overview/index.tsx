@@ -238,6 +238,9 @@ export const Overview = () => {
                 <Typography variant="subtitle2" gutterBottom color="text.secondary">
                   {t('overview.bySource')}
                 </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  {t('overview.bySourceHint')}
+                </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   {Object.entries(overviewData.stats.detectionByProvider).map(
                     ([provider, count]) => (
@@ -324,7 +327,7 @@ export const Overview = () => {
 
         {/* Species Distribution */}
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{ p: 1, height: '100%', overflow: 'hidden', minWidth: 0 }}>
+          <Paper sx={{ p: 1, overflow: 'hidden', minWidth: 0 }}>
             <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
               {t('overview.topSpecies')}
             </Typography>

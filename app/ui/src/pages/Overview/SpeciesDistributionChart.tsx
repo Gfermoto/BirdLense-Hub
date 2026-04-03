@@ -62,17 +62,23 @@ export const SpeciesDistributionChart: React.FC<
         width: '100%',
         maxWidth: '100%',
         minWidth: 0,
-        height: '100%',
-        minHeight: isMobile ? 0 : 400,
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
         flexDirection: 'column',
+        alignItems: 'center',
         gap: 2,
         boxSizing: 'border-box',
-        overflow: 'hidden',
       }}
     >
+      <Box
+        sx={{
+          width: chartSize,
+          height: chartSize,
+          maxWidth: '100%',
+          position: 'relative',
+          margin: 'auto',
+          flexShrink: 0,
+        }}
+      >
       <PieChart
         series={[
           {
@@ -98,8 +104,9 @@ export const SpeciesDistributionChart: React.FC<
             hidden: true,
           },
         }}
-        margin={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
       />
+      </Box>
       <Box
         sx={{
           width: '100%',
@@ -111,6 +118,7 @@ export const SpeciesDistributionChart: React.FC<
           justifyContent: 'center',
           gap: 2,
           p: 1,
+          flexShrink: 0,
           boxSizing: 'border-box',
         }}
       >
@@ -146,9 +154,9 @@ export const SpeciesDistributionChart: React.FC<
           >
             <Box
               sx={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
+                width: 16,
+                height: 16,
+                flexShrink: 0,
                 backgroundColor: item.color,
               }}
             />

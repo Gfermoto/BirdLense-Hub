@@ -50,7 +50,8 @@ def get_overview_data(
     for visit in overview_visits:
         bucket_time = max(visit.start_time, start_of_day)
         hour = observer_local_hour(bucket_time)
-        busiest_by_hour[hour] += int(visit.max_simultaneous or 0)
+        # Один визит = одно событие в часе старта (как в таймлайне), без суммы max_simultaneous.
+        busiest_by_hour[hour] += 1
 
         species_bucket = species_hourly.setdefault(
             visit.species_id,
@@ -62,8 +63,8 @@ def get_overview_data(
             },
         )
         detections = species_bucket['detections']
-        detections[hour] += int(visit.max_simultaneous or 0)
-        species_bucket['total'] += int(visit.max_simultaneous or 0)
+        detections[hour] += 1
+        species_bucket['total'] += 1
 
     top_species = [
         {
@@ -79,15 +80,17 @@ def get_overview_data(
     ]
     busiest = max(range(24), key=lambda hour: busiest_by_hour[hour], default=0)
 
-    # Stats based on visits
+    # Статистика по визитам (строки SpeciesVisit за окно), не по max_simultaneous и не по сегментам VideoSpecies.
+    last_hour_start = now_utc - timedelta(hours=1)
     stats_q = session.query(
         func.count(distinct(SpeciesVisit.species_id)).label('uniqueSpecies'),
-        func.sum(SpeciesVisit.max_simultaneous).label('totalDetections'),
+        func.count(SpeciesVisit.id).label('totalDetections'),
         func.sum(
             case(
                 (
-                    SpeciesVisit.start_time >= now_utc - timedelta(hours=1),
-                    SpeciesVisit.max_simultaneous,
+                    (SpeciesVisit.end_time >= last_hour_start)
+                    & (SpeciesVisit.start_time <= now_utc),
+                    1,
                 ),
                 else_=0,
             )
@@ -144,10 +147,11 @@ def get_overview_data(
         *_visit_overlaps_window(start_of_day, end_of_day),
     ).first()
 
-    # Provider counts
+    # По провайдеру: число визитов, у которых есть хотя бы один сегмент с этим detection_provider
+    # (не число строк VideoSpecies — иначе не сходится с «визитами»).
     prov_q = session.query(
         VideoSpecies.detection_provider,
-        func.count(VideoSpecies.id).label('count'),
+        func.count(distinct(SpeciesVisit.id)).label('count'),
     ).join(
         SpeciesVisit,
         VideoSpecies.species_visit_id == SpeciesVisit.id,
