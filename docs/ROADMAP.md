@@ -132,7 +132,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
 - [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
 - [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
-- [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **open:** scales integration shipped; backlog is a **sharp weight-change trigger** (optional auto-tare / detections later).
+- [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **open:** scales integration shipped; backlog — **sharp weight-change trigger** and **estimated bird weight on the visit/video card** (like feeder/weather); optional auto-tare / detections later.
 
 | # | Issue | Summary |
 |---|--------|--------|
@@ -167,7 +167,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue closed; idea retained here; new issue when work starts | P3, infra |
-| 17 | Scales: MQTT/HA + UI shipped; next — **sharp weight-change trigger** (optional auto-tare + detections) | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) open | P3, processor, research |
+| 17 | Scales: MQTT/HA + UI shipped; next — weight spike trigger + **bird weight estimate on visit card** (feeder/weather style); optional auto-tare + detections | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) open | P3, processor, research |
 
 **System initiative (P1):**
 
