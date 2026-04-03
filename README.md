@@ -56,7 +56,7 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 - **UI** — React 19, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
-- **MCP** — Model Context Protocol for external tools
+- **MCP** — optional wire protocol for external clients (see `docs/MCP_SETUP.md`)
 
 ### Analytics & Export
 - **CSV/JSON export** — download visits for analysis in Excel/Python

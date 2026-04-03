@@ -65,7 +65,7 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 | **Admin (role)** | Unlocked with `settings_password` — full UI + feeder + system + restart processor. |
 | **Contributor (role)** | Unlocked with `contributor_password` — labeling and exports without admin powers. |
 | **Viewer** | Not unlocked — read-only browsing (exact export routes may still vary; see [ACCESS_CONTROL](./ACCESS_CONTROL.md)). |
-| **MCP** | Model Context Protocol server (optional) exposing tools; secured with `MCP_TOKEN` / `mcp.token`. |
+| **MCP** | Optional hub endpoint for external tool clients; secured with `MCP_TOKEN` / `mcp.token`. See [MCP_SETUP](./MCP_SETUP.md). |
 | **`PROCESSOR_SECRET`** | Shared secret for processor → web API (`X-Processor-Token`). |
 
 ---

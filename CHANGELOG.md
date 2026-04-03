@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
 - **Docs refactor:** MkDocs `nav` aligned with [SITE_MAP](docs/SITE_MAP.md) — `DEPLOY_SERVER`, `VERIFICATION`, pre-implementation checklist, `UX_TOOLTIPS`, Russian **A11Y** / **REPOSITORY_LAYOUT**; `INSTALL` cross-links the deploy checklist; [API](docs/API.md) version line tracks root `VERSION`; ROADMAP changelog links use [project/changelog](docs/project/changelog.md); `article/**` and `CONSILIUM_AUDIT.ru.md` excluded from the static site build; ROADMAP anchor IDs fixed for strict builds.
+- **Contributor docs:** removed `AGENTS.md`; maintainer workflow lives in [CONTRIBUTING](CONTRIBUTING.md) / RU. [GOVERNANCE](docs/GOVERNANCE.md) / RU, [MCP_SETUP](docs/MCP_SETUP.md), OpenAPI description, PR template, CodeQL/local dev guides, and related copy updated for a standard open-source tone (human reviewers, external clients, VS Code).
 
 ## [0.3.1] - 2026-04-04
 
@@ -236,7 +237,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **[AGENTS.md](AGENTS.md)** — инструкция для агентов: доводить задачи до конца (тесты, CHANGELOG/docs, push, PR на `main`, `make deploy`); ссылка из [CONTRIBUTING.md](CONTRIBUTING.md).
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — полный цикл работы для мейнтейнеров (тесты, CHANGELOG/docs, push, PR, `make deploy`).
 - **CI: CodeQL** — workflow `.github/workflows/codeql.yml` (Python `app/web` + `app/processor`, TypeScript `app/ui/src`), конфиги `.github/codeql/`; доки [CODEQL](docs/CODEQL.md) / [RU](docs/CODEQL.ru.md), пункты в mkdocs и SITE_MAP; рекомендация расширения **GitHub.vscode-codeql** в `.vscode/extensions.json`; скрипт **`scripts/codeql-local.sh`**; `.gitignore`: **`.tools/`** (локальный CLI, БД, SARIF); в доке — пример triage последнего локального прогона.
 - **#82**: на странице видео — кнопки «предыдущий / следующий» ролик за тот же календарный день UTC, что и `start_time`; API `GET /api/ui/videos/:id/neighbors` (`previous_id`, `next_id`, `index`, `total`, `day_utc`).
 - Скрипт `scripts/github-project-mark-done.sh` — пометить issue на доске **BirdLense Hub — Roadmap** как **Done** (поля **Status** и **Поток**); см. [CONTRIBUTING](CONTRIBUTING.md).
@@ -253,9 +254,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **Репозиторий:** в git добавлено **`.cursor/rules/deploy.mdc`** (правило деплоя для Cursor); в **`.gitignore`** — исключение только для этого файла, остальной `.cursor/` по-прежнему не коммитится.
+- **Репозиторий:** в git добавлено **`.cursor/rules/deploy.mdc`** (шаблон деплоя для локальной среды); в **`.gitignore`** — исключение только для этого файла, остальной `.cursor/` по-прежнему не коммитится.
 - **CI: CodeQL** — `github/codeql-action` **v3 → v4** ([changelog GitHub](https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/)): без предупреждений о Node 20 и deprecation v3 на раннере.
-- **Доки CodeQL** (EN/RU): `workflow_dispatch`, **codeql-action@v4** в вводном абзаце; установка расширения в Cursor/VS Code (CLI, VSIX, ID **`GitHub.vscode-codeql`**). **`.vscode/extensions.json`** — тот же ID издателя.
+- **Доки CodeQL** (EN/RU): `workflow_dispatch`, **codeql-action@v4** в вводном абзаце; установка расширения в VS Code (CLI, VSIX, ID **`GitHub.vscode-codeql`**). **`.vscode/extensions.json`** — тот же ID издателя.
 - ROADMAP (EN/RU): бэклог оператора — issues [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (коррекция видов Unknowns ↔ видео), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по видео); карточки на Project **BirdLense Hub — Roadmap**.
 - Безопасность [#46](https://github.com/Gfermoto/BirdLense-Hub/issues/46): rate limit `POST /api/ui/settings/verify-password` — IP клиента за nginx (`client_ip_for_rate_limit`: `X-Real-IP`, `X-Forwarded-For`; nginx передаёт оба для `/api` и `/metrics`), сброс счётчика при успешном входе, **`Retry-After`** при **429**; pytest `TestVerifyPasswordRateLimit`; доки ACCESS_CONTROL / API / SECURITY / TESTING / OPEN_SOURCE_PREP / ROADMAP.
 - Политика платформы: **официально только x86/amd64** (Intel/AMD); ARM / aarch64 не поддерживаются и не планируются — ROADMAP, доки, конфиг; бэклог без ARM64 Docker ([#49](https://github.com/Gfermoto/BirdLense-Hub/issues/49)).
@@ -268,7 +269,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - GitHub: ruleset **Protect** на default branch — обязательны успешные checks **`ui-build`** и **`docs`** (workflow CI); approvals по-прежнему 0 (solo).
 - Dependabot — не больше **одного открытого PR на блок** (`open-pull-requests-limit: 1`).
 - Локально: remote **`upstream`** к стороннему репозиторию не используется (репозиторий на GitHub — не форк).
-- Доки: [LOCAL_DEV](docs/LOCAL_DEV.md) / RU — Node 22 (nvm/fnm/Volta), WSL/Cursor, Python **3.11** (приложение) vs **3.12** (MkDocs), venv для доков, чеклист перед релизом; [TESTING](docs/TESTING.md) / RU — предупреждение про RAM и OOM при `make test`, workflow E2E по расписанию; [Documentation](docs/Documentation.md) / RU — явное разделение Python для MkDocs и runtime; [CONTRIBUTING](CONTRIBUTING.md) / RU — PR: полный набор тестов; [README](README.md) / RU — блок **Developers**.
+- Доки: [LOCAL_DEV](docs/LOCAL_DEV.md) / RU — Node 22 (nvm/fnm/Volta), WSL / VS Code, Python **3.11** (приложение) vs **3.12** (MkDocs), venv для доков, чеклист перед релизом; [TESTING](docs/TESTING.md) / RU — предупреждение про RAM и OOM при `make test`, workflow E2E по расписанию; [Documentation](docs/Documentation.md) / RU — явное разделение Python для MkDocs и runtime; [CONTRIBUTING](CONTRIBUTING.md) / RU — PR: полный набор тестов; [README](README.md) / RU — блок **Developers**.
 
 ---
 

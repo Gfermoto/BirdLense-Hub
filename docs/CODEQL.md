@@ -20,14 +20,14 @@ Forks and private repos need **GitHub Advanced Security** for full UI; the workf
 
 ## Local development (optional)
 
-### Cursor / VS Code
+### VS Code
 
 The repo recommends the [CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql) (extension ID **`GitHub.vscode-codeql`**, capital **G** for the publisher) via `.vscode/extensions.json`. Open the **repository root** so **Recommended** extensions appear. After a local run, use **CodeQL: View SARIF** or open a database from `.tools/codeql-dbs/`.
 
-**If Cursor’s Extensions search finds nothing:**
+**If the Marketplace search finds nothing:**
 
-- Terminal: `cursor --install-extension GitHub.vscode-codeql` (or `code --install-extension …` from VS Code’s CLI).
-- Or download the `.vsix` from the Marketplace page → Cursor **Extensions** → **⋯** → **Install from VSIX…**.
+- Terminal: `code --install-extension GitHub.vscode-codeql` (VS Code CLI).
+- Or download the `.vsix` from the Marketplace page → **Extensions** → **⋯** → **Install from VSIX…**.
 - CI and **`scripts/codeql-local.sh`** do not require the extension; use GitHub **Code scanning** or another SARIF viewer if needed.
 
 ### CLI
