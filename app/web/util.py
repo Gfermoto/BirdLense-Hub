@@ -131,30 +131,98 @@ def _path_is_under_data_dir(base: str, full: str) -> bool:
         return False
 
 
+def _relative_file_under_data_or_none(path: str | None) -> tuple[str, str, str] | None:
+    """Если path — обычный файл под DATA_DIR: (base_realpath, rel_from_base, full_realpath). Иначе None."""
+    if not path or not isinstance(path, str) or path != os.path.normpath(path):
+        return None
+    try:
+        base = os.path.realpath(_data_dir())
+        full = os.path.realpath(path)
+    except (OSError, ValueError):
+        return None
+    if not _path_is_under_data_dir(base, full) or not os.path.isfile(full):
+        return None
+    try:
+        rel = os.path.relpath(full, base)
+    except ValueError:
+        return None
+    if rel == os.pardir or rel.startswith(os.pardir + os.sep):
+        return None
+    if os.path.isabs(rel):
+        return None
+    candidate = os.path.normpath(os.path.join(base, rel))
+    try:
+        if os.path.realpath(candidate) != full:
+            return None
+    except (OSError, ValueError):
+        return None
+    return (base, rel, full)
+
+
 def _is_safe_image_path(path: str) -> bool:
     """Путь под DATA_DIR, файл существует. Защита от path traversal."""
-    if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return False
-    base = os.path.realpath(_data_dir())
-    try:
-        full = os.path.realpath(path)
-        return _path_is_under_data_dir(base, full) and os.path.isfile(full)
-    except (OSError, ValueError):
-        return False
+    return _relative_file_under_data_or_none(path) is not None
 
 
-def _safe_image_path_or_none(path: str | None) -> str | None:
-    """Вернуть realpath под DATA_DIR только после проверки (не исходная строка — снимает path-injection taint)."""
-    if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return None
-    base = os.path.realpath(_data_dir())
+def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
+    """Прочитать файл изображения только под DATA_DIR. (data, None) или (None, 'unsafe_path'|'read_failed')."""
+    triple = _relative_file_under_data_or_none(path)
+    if not triple:
+        return None, 'unsafe_path'
+    base, rel, _full = triple
     try:
-        full = os.path.realpath(path)
-        if _path_is_under_data_dir(base, full) and os.path.isfile(full):
-            return full
-    except (OSError, ValueError):
-        return None
-    return None
+        if os.name == 'nt':
+            candidate = os.path.normpath(os.path.join(base, rel))
+            with open(candidate, 'rb') as f:
+                return f.read(), None
+        dfd = os.open(base, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            fd = os.open(rel, os.O_RDONLY, dir_fd=dfd)
+        except OSError:
+            os.close(dfd)
+            return None, 'read_failed'
+        os.close(dfd)
+        try:
+            stream = os.fdopen(fd, 'rb')
+        except OSError as e:
+            logging.warning('Cannot read safe image: %s', e)
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            return None, 'read_failed'
+        try:
+            with stream:
+                return stream.read(), None
+        except OSError as e:
+            logging.warning('Cannot read safe image: %s', e)
+            return None, 'read_failed'
+    except OSError as e:
+        logging.warning('Cannot read safe image: %s', e)
+        return None, 'read_failed'
+
+
+def remove_safe_image_file(path: str | None) -> None:
+    """Удалить файл только если он под DATA_DIR (та же проверка, что для чтения)."""
+    triple = _relative_file_under_data_or_none(path)
+    if not triple:
+        return
+    base, rel, _full = triple
+    try:
+        if os.name == 'nt':
+            candidate = os.path.normpath(os.path.join(base, rel))
+            if os.path.isfile(candidate):
+                os.remove(candidate)
+            return
+        dfd = os.open(base, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.unlink(rel, dir_fd=dfd)
+        except OSError:
+            pass
+        finally:
+            os.close(dfd)
+    except OSError:
+        pass
 
 
 def ensure_utc(dt: datetime) -> datetime:

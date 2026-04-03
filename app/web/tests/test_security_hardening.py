@@ -213,5 +213,17 @@ class TestSafeImagePathDataDirBoundary:
         img = evil / 'x.jpg'
         img.write_bytes(b'x')
         monkeypatch.setenv('DATA_DIR', str(data))
-        assert util_mod._safe_image_path_or_none(str(img)) is None
+        raw, err = util_mod.read_safe_image_bytes(str(img))
+        assert raw is None and err == 'unsafe_path'
         assert util_mod._is_safe_image_path(str(img)) is False
+
+    def test_safe_image_reads_and_removes_under_data_dir(self, tmp_path, monkeypatch):
+        data = tmp_path / 'data'
+        data.mkdir()
+        img = data / 'preview.jpg'
+        img.write_bytes(b'jpeg-bytes')
+        monkeypatch.setenv('DATA_DIR', str(data))
+        raw, err = util_mod.read_safe_image_bytes(str(img))
+        assert err is None and raw == b'jpeg-bytes'
+        util_mod.remove_safe_image_file(str(img))
+        assert not img.is_file()

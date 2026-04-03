@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **Code scanning (path injection):** чтение и удаление превью для Telegram выполняются через **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py` (на POSIX — относительное открытие/удаление от дескриптора каталога `DATA_DIR`), без передачи резолвленного пути в `open`/`os.remove` из `notifications.py`. Удалён **`_safe_image_path_or_none`** (заменён проверкой `_relative_file_under_data_or_none`).
+
 ## [0.3.2] - 2026-04-03
 
 Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, CodeRabbit follow-up, синхронизация версий.
