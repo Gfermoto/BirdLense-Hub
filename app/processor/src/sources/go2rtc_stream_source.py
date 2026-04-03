@@ -18,22 +18,17 @@ logger = logging.getLogger(__name__)
 
 
 def _redact_url_for_log(url: str) -> str:
-    """Не логировать учётные данные в RTSP/HTTP URL (CodeQL py/clear-text-logging-sensitive-data)."""
+    """Не логировать userinfo (в т.ч. пароль) в RTSP/HTTP URL."""
     if not url or not isinstance(url, str):
         return ''
     try:
         p = urlparse(url)
-        if not p.password and not p.username:
+        if not p.username and not p.password:
             return url
-        auth = ''
-        if p.username:
-            auth = f'{p.username}:***@' if p.password else f'{p.username}@'
-        elif p.password:
-            auth = '***@'
+        host = p.hostname or ''
         port = f':{p.port}' if p.port else ''
-        host = (p.hostname or '') + port
-        netloc = f'{auth}{host}'
-        return urlunparse((p.scheme, netloc, p.path or '', p.params, p.query, p.fragment))
+        netloc = f'{host}{port}' if host else '***'
+        return urlunparse((p.scheme or '', netloc, p.path or '', p.params, p.query, p.fragment))
     except ValueError:
         return '<url>'
 

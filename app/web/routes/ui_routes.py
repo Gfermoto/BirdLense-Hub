@@ -6,7 +6,7 @@ import io
 import re
 import time
 import hashlib
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, urljoin
 import requests
 from flask import request, session, Response
 import json as json_module
@@ -157,6 +157,51 @@ from services.cache import cache_get, cache_set, cache_delete_prefix
 from services.http_response_cache import bust_response_caches
 
 UNKNOWNS_LIMIT_MAX = 500
+_SPECIES_PROXY_MAX_REDIRECTS = 5
+
+
+def _species_proxy_allowed_url(url: str) -> bool:
+    """Проверка схемы/хоста для прокси картинок (каждый hop редиректа — отдельно)."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return False
+    host = (parsed.hostname or '').lower()
+    return bool(
+        _host_is_wikipedia_family(host)
+        or _host_is_inaturalist(host)
+        or _url_suggests_inaturalist_asset(url)
+    )
+
+
+def _fetch_species_proxy_upstream(start_url: str):
+    """GET с allow_redirects=False и проверкой хоста на каждом редиректе (смягчает SSRF)."""
+    current = start_url
+    for _ in range(_SPECIES_PROXY_MAX_REDIRECTS + 1):
+        if not _species_proxy_allowed_url(current):
+            return None, 'image proxy: redirect to disallowed host'
+        try:
+            r = requests.get(
+                current,
+                timeout=8,
+                headers={
+                    'User-Agent': 'BirdLense-Hub/1.0',
+                    'Accept': 'image/*,*/*;q=0.8',
+                },
+                allow_redirects=False,
+                stream=True,
+            )
+        except requests.RequestException as exc:
+            return None, f'image proxy request failed: {exc}'
+        if 300 <= r.status_code < 400:
+            loc = (r.headers.get('Location') or '').strip()
+            next_url = urljoin(r.url, loc) if loc else ''
+            r.close()
+            if not next_url:
+                return None, 'image proxy: redirect without Location'
+            current = next_url
+            continue
+        return r, None
+    return None, 'image proxy: too many redirects'
 
 # TTL процессного кэша (секунды); при смене настроек — инвалидация в PATCH /settings
 _CACHE_STATUS_SEC = 5
@@ -1913,17 +1958,15 @@ def register_routes(app):
 
         last_err = None
         for attempt in range(2):
+            upstream = None
             try:
-                upstream = requests.get(
-                    raw,
-                    timeout=8,
-                    headers={
-                        'User-Agent': 'BirdLense-Hub/1.0',
-                        'Accept': 'image/*,*/*;q=0.8',
-                    },
-                    allow_redirects=True,
-                    stream=True,
-                )
+                upstream, fetch_err = _fetch_species_proxy_upstream(raw)
+                if fetch_err:
+                    last_err = fetch_err
+                    if attempt == 0:
+                        time.sleep(0.35)
+                        continue
+                    break
                 if upstream.status_code >= 400:
                     last_err = f'upstream status={upstream.status_code}'
                     if attempt == 0:
@@ -1944,12 +1987,9 @@ def register_routes(app):
                     pass
                 headers = {'Cache-Control': 'public, max-age=86400'}
                 return Response(body, status=200, mimetype=ctype or 'image/jpeg', headers=headers)
-            except requests.RequestException as exc:
-                last_err = f'image proxy request failed: {exc}'
-                if attempt == 0:
-                    time.sleep(0.35)
-                    continue
-                break
+            finally:
+                if upstream is not None:
+                    upstream.close()
 
         app.logger.warning('Species image proxy failed for %s: %s', raw, last_err)
         return {'error': last_err or 'image proxy failed'}, 502

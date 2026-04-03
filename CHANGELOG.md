@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **CodeQL-driven hardening (Python):** species image proxy (`GET /api/ui/species-image`) follows redirects manually with an allowlisted host check on every hop (mitigates SSRF via `Location`). Telegram/notification image paths use `_safe_image_path_or_none` that returns only a resolved path under `DATA_DIR`. Go2RTC stream logs redact credentials (no userinfo in log lines). eBird region comparison cache key uses **SHA-256** (truncated) instead of MD5. Species catalog allowlist parsing avoids a polynomial-ReDoS-prone regex.
 - **UI (`app/ui`):** refreshed `package-lock.json` and `overrides` so **lodash** resolves to **≥4.18.0** (addresses [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc), [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh)); **serialize-javascript** pinned via override to **≥7.0.5**. `npm audit` clean. Python `requests` / **Flask-Cors** were already at patched versions in `app/web` and `app/processor` requirements.
 
 ### Changed
