@@ -8,29 +8,13 @@ import os
 import subprocess
 import threading
 import time
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 import cv2
 
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
-
-
-def _redact_url_for_log(url: str) -> str:
-    """Не логировать userinfo (в т.ч. пароль) в RTSP/HTTP URL."""
-    if not url or not isinstance(url, str):
-        return ''
-    try:
-        p = urlparse(url)
-        if not p.username and not p.password:
-            return url
-        host = p.hostname or ''
-        port = f':{p.port}' if p.port else ''
-        netloc = f'{host}{port}' if host else '***'
-        return urlunparse((p.scheme or '', netloc, p.path or '', p.params, p.query, p.fragment))
-    except ValueError:
-        return '<url>'
 
 VAAPI_DEVICE = "/dev/dri/renderD128"
 
@@ -112,7 +96,16 @@ class Go2RTCStreamSource:
     def _connect(self) -> bool:
         """Open RTSP connection. Returns True if successful."""
         self._disconnect()
-        self.logger.info("Connecting to stream: %s", _redact_url_for_log(self.stream_url))
+        # Логируем только scheme/host (без userinfo) — CodeQL clear-text password в логах
+        try:
+            p = urlparse(self.stream_url)
+            self.logger.info(
+                "Connecting to stream scheme=%s host=%s",
+                p.scheme or '',
+                p.hostname or '',
+            )
+        except ValueError:
+            self.logger.info("Connecting to stream (unparsed URL)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
         cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
