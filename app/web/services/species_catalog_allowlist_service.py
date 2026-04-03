@@ -18,6 +18,21 @@ from functools import lru_cache
 from util import load_species_canonical_mapping, normalize_species_to_canonical
 
 
+def _split_scientific_common_display(s: str) -> tuple[str, str] | None:
+    """Разбор ``Scientific (Common)`` без regex с вложенными квантификаторами (ReDoS)."""
+    stripped = str(s).strip()
+    if not stripped.endswith(')'):
+        return None
+    open_idx = stripped.rfind('(')
+    if open_idx <= 0:
+        return None
+    sci = stripped[:open_idx].rstrip()
+    common = stripped[open_idx + 1 : -1].strip()
+    if not sci or not common:
+        return None
+    return (sci, common)
+
+
 def _processor_root() -> str:
     web_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.abspath(os.path.join(web_dir, '..', 'processor'))
@@ -50,17 +65,16 @@ def _load_allowlist_norm_keys_cached(abspath: str) -> frozenset[str]:
     match against allowlist entries like "Cyanistes caeruleus (Eurasian Blue Tit)".
     """
     keys: set[str] = set()
-    _sci_common_re = re.compile(r'^(.+?)\s*\(([^)]+)\)\s*$')
     with open(abspath, 'r', encoding='utf-8') as f:
         for raw in f:
             line = raw.split('#', 1)[0].strip()
             if not line:
                 continue
             keys.add(_norm_key(line))
-            m = _sci_common_re.match(line)
-            if m:
-                keys.add(_norm_key(m.group(1).strip()))  # scientific part
-                keys.add(_norm_key(m.group(2).strip()))  # common name part
+            pair = _split_scientific_common_display(line)
+            if pair:
+                keys.add(_norm_key(pair[0]))
+                keys.add(_norm_key(pair[1]))
     return frozenset(keys)
 
 
@@ -86,10 +100,10 @@ def species_name_match_norm_keys(name: str, mapping: dict[str, str] | None = Non
     keys.add(_norm_key(stripped))
     canon = normalize_species_to_canonical(stripped, mapping)
     keys.add(_norm_key(canon))
-    m = re.match(r'^(.+?)\s*\(([^)]+)\)\s*$', stripped)
-    if m:
-        keys.add(_norm_key(m.group(1).strip()))
-        keys.add(_norm_key(m.group(2).strip()))
+    pair = _split_scientific_common_display(stripped)
+    if pair:
+        keys.add(_norm_key(pair[0]))
+        keys.add(_norm_key(pair[1]))
     return {k for k in keys if k}
 
 

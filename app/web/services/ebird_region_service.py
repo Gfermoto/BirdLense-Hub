@@ -118,7 +118,7 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
 
     region_code = _build_region_code()
     sorted_names = sorted(n for n in user_species_names if n)
-    names_hash = hashlib.md5("|".join(sorted_names).encode()).hexdigest()
+    names_hash = hashlib.sha256("|".join(sorted_names).encode()).hexdigest()[:32]
     key_suffix = api_key[-12:] if len(api_key) >= 12 else api_key
     cache_key = f"ebird_region_comparison:{key_suffix}:{region_code}:{names_hash}"
 
