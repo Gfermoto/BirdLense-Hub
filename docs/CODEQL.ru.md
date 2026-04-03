@@ -47,7 +47,7 @@ bash scripts/codeql-local.sh
 
 Прогон: Python `app/web` + UI после `npm run build`, наборы **python/javascript-security-extended**.
 
-Исправления по открытым алертам (без «принятия риска»): парсинг хоста через **`urllib.parse.urlparse`** в `infer_metadata_source_fields`, линейный разбор скобок в **`_extract_common_for_hierarchy`**, **`read_safe_image_bytes`** / **`remove_safe_image_file`** (в т.ч. `openat`/`unlink` с `dir_fd` на POSIX) для Telegram-уведомлений вместо `open`/`remove` по пути из БД, **`mkstemp`** вместо `mktemp` в `spectrogram.py`, редактирование URL в логах go2RTC.
+Исправления по открытым алертам (без «принятия риска»): парсинг хоста через **`urllib.parse.urlparse`** в `infer_metadata_source_fields`, линейный разбор скобок в **`_extract_common_for_hierarchy`**, **`read_safe_image_bytes`** / **`remove_safe_image_file`** для Telegram-уведомлений: `realpath` + `commonpath` + **`full.startswith(base + os.sep)`** (условие, которое CodeQL учитывает как *safe access*), затем `open`/`remove` по резолвленному пути, **`mkstemp`** вместо `mktemp` в `spectrogram.py`, редактирование URL в логах go2RTC.
 
 | Разбор | Правило | Файл | Комментарий |
 |--------|---------|------|-------------|
