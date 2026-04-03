@@ -550,6 +550,35 @@ class TestTimeline:
         same_visit_rows = [row for row in r.json if row.get('id') == visit_id]
         assert len(same_visit_rows) == 1
 
+    def test_timeline_includes_video_not_attached_to_any_visit(self, app, client):
+        """Ролик за сутки без SpeciesVisit появляется как unlinked_video."""
+        from datetime import datetime, timezone
+        from models import Video, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            st = datetime(2026, 3, 24, 12, 0, 0)
+            v = Video(
+                processor_version='test',
+                start_time=st,
+                end_time=st.replace(minute=1),
+                video_path=f'2026/03/24/120000/orphan_timeline_{id(app)}.mp4',
+            )
+            db.session.add(v)
+            db.session.commit()
+
+        bust_response_caches()
+        ts_start = int(datetime(2026, 3, 24, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+        ts_end = int(datetime(2026, 3, 24, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={'start_time': ts_start, 'end_time': ts_end},
+        )
+        assert r.status_code == 200
+        assert any(row.get('timeline_kind') == 'unlinked_video' for row in r.json)
+        unlinked = [row for row in r.json if row.get('timeline_kind') == 'unlinked_video']
+        assert unlinked and all(row['id'] < 0 for row in unlinked)
+
 
 class TestOverview:
     """Overview API with lastDetection."""
@@ -728,65 +757,6 @@ class TestVideos:
         assert r2.status_code == 200
         assert r2.json['previous_id'] == v2_id
         assert r2.json['next_id'] is None
-
-    def test_video_neighbors_visit_day_omits_videos_not_in_any_visit(self, app, client):
-        """visit_day: только ролики с VideoSpecies↔визитом за сутки, не все файлы за день."""
-        from datetime import datetime, timedelta
-        from models import db, Video, Species, SpeciesVisit, VideoSpecies
-
-        with app.app_context():
-            base = datetime(2025, 3, 19, 10, 0, 0)
-            orphan = Video(
-                processor_version='test',
-                start_time=base,
-                end_time=base + timedelta(minutes=1),
-                video_path='2025/03/19/orphan.mp4',
-            )
-            linked = Video(
-                processor_version='test',
-                start_time=base + timedelta(hours=1),
-                end_time=base + timedelta(hours=1, minutes=1),
-                video_path='2025/03/19/linked.mp4',
-            )
-            db.session.add_all([orphan, linked])
-            db.session.flush()
-            species = Species(name='Visit Day Neighbor Sparrow')
-            db.session.add(species)
-            db.session.flush()
-            visit = SpeciesVisit(
-                species_id=species.id,
-                start_time=base + timedelta(hours=1),
-                end_time=base + timedelta(hours=1, minutes=2),
-                max_simultaneous=1,
-            )
-            db.session.add(visit)
-            db.session.flush()
-            db.session.add(
-                VideoSpecies(
-                    video_id=linked.id,
-                    species_id=species.id,
-                    species_visit_id=visit.id,
-                    start_time=0.0,
-                    end_time=1.0,
-                    confidence=0.9,
-                    source='video',
-                    detection_provider='yolo',
-                ),
-            )
-            db.session.commit()
-            linked_id = linked.id
-
-        r_day = client.get(
-            f'/api/ui/videos/{linked_id}/neighbors',
-            query_string={'neighbor_mode': 'visit_day', 'day_scope': 'utc'},
-        )
-        assert r_day.status_code == 200
-        assert r_day.json['total'] == 1
-        assert r_day.json['index'] == 0
-
-        r_all = client.get(f'/api/ui/videos/{linked_id}/neighbors', query_string={'day_scope': 'utc'})
-        assert r_all.status_code == 200
-        assert r_all.json['total'] == 2
 
     def test_video_neighbors_local_scope_and_cross_day(self, app, client):
         from datetime import datetime, timedelta

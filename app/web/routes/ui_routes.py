@@ -23,6 +23,7 @@ from util import (
     get_primary_video_for_visit,
     get_primary_video_for_visit_in_window,
     format_visit_for_timeline,
+    format_unlinked_video_for_timeline,
     observer_local_day_bounds,
     observer_local_range,
     settings_check_access,
@@ -64,6 +65,81 @@ def _timeline_visits_deduped_ordered(visits_raw):
         reverse=True,
     )
     return visits
+
+
+def _timeline_entry_sort_key(item: dict):
+    s = item.get('start_time')
+    if not isinstance(s, str):
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if s.endswith('Z'):
+        s = s[:-1] + '+00:00'
+    try:
+        parsed = datetime.fromisoformat(s)
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _parse_timeline_iso(s: str) -> datetime:
+    if s.endswith('Z'):
+        s = s[:-1] + '+00:00'
+    d = datetime.fromisoformat(s)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d
+
+
+def build_merged_timeline_items(session, start_dt, end_dt) -> list:
+    """Визиты за интервал + ролики, которые ни в один визит не попали (те же сутки, пересечение по времени)."""
+    visits_raw = (
+        session.query(SpeciesVisit)
+        .join(Species)
+        .join(VideoSpecies)
+        .join(Video)
+        .options(
+            joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+            joinedload(SpeciesVisit.species),
+        )
+        .filter(
+            SpeciesVisit.end_time >= start_dt,
+            SpeciesVisit.start_time <= end_dt,
+        )
+        .order_by(SpeciesVisit.start_time.desc())
+        .all()
+    )
+    visits = _timeline_visits_deduped_ordered(visits_raw)
+    visit_payloads = [format_visit_for_timeline(v) for v in visits]
+    video_ids_in_visits: set[int] = set()
+    for p in visit_payloads:
+        for d in p.get('detections') or []:
+            vid = d.get('video_id')
+            if vid is not None:
+                video_ids_in_visits.add(int(vid))
+    fallback_species = (
+        session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
+    )
+    unlinked_videos = (
+        session.query(Video)
+        .options(
+            joinedload(Video.video_species).joinedload(VideoSpecies.species),
+        )
+        .filter(
+            Video.end_time > start_dt,
+            Video.start_time < end_dt,
+        )
+        .order_by(Video.start_time.desc())
+        .all()
+    )
+    unlinked_payloads = [
+        format_unlinked_video_for_timeline(v, fallback_species=fallback_species)
+        for v in unlinked_videos
+        if v.id not in video_ids_in_visits
+    ]
+    merged = visit_payloads + unlinked_payloads
+    merged.sort(key=_timeline_entry_sort_key, reverse=True)
+    return merged
 from services.dataset_export_service import (
     build_dataset_zip,
     move_crop_on_species_correction,
@@ -428,14 +504,11 @@ def register_routes(app):
             return {'error': 'day_scope must be "utc" or "local"'}, 400
         cross_day = (request.args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
         neighbor_mode = (request.args.get('neighbor_mode') or 'video').strip().lower()
-        allowed_modes = ('video', 'visit_primary', 'visit_day', 'visit')
-        if neighbor_mode not in allowed_modes:
-            return {'error': f'neighbor_mode must be one of {allowed_modes}'}, 400
+        if neighbor_mode not in ('video', 'visit_primary'):
+            return {'error': 'neighbor_mode must be "video" or "visit_primary"'}, 400
         visit_id = request.args.get('visit_id', type=int)
         if neighbor_mode == 'visit_primary' and visit_id is None:
             return {'error': 'visit_id is required when neighbor_mode=visit_primary'}, 400
-        if neighbor_mode == 'visit' and visit_id is None:
-            return {'error': 'visit_id is required when neighbor_mode=visit'}, 400
 
         try:
             tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
@@ -459,10 +532,8 @@ def register_routes(app):
             day_end = day_start + timedelta(days=1)
             day_label = day_start.date().isoformat()
 
-        ids: list[int] = []
+        ids = []
         idx = None
-        used_custom_list = False
-
         if neighbor_mode == 'visit_primary' and visit_id:
             visit_rows = (
                 db.session.query(SpeciesVisit)
@@ -493,58 +564,7 @@ def register_routes(app):
                 idx = visit_ids.index(visit_id)
             except ValueError:
                 idx = None
-            used_custom_list = True
-
-        elif neighbor_mode == 'visit' and visit_id:
-            visit = (
-                db.session.query(SpeciesVisit)
-                .options(
-                    joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
-                )
-                .filter(SpeciesVisit.id == visit_id)
-                .first()
-            )
-            if not visit:
-                return {'error': 'Visit not found'}, 404
-            ordered = sorted(
-                visit.video_species,
-                key=lambda vs: (
-                    ensure_utc(vs.video.start_time).replace(tzinfo=None)
-                    if vs.video and vs.video.start_time
-                    else datetime.min,
-                    vs.video_id or 0,
-                ),
-            )
-            seen_v: set[int] = set()
-            for vs in ordered:
-                vid = vs.video_id
-                if vid is None or vid in seen_v:
-                    continue
-                seen_v.add(vid)
-                ids.append(vid)
-            used_custom_list = True
-
-        elif neighbor_mode == 'visit_day':
-            # Ролики из визитов за сутки (как на таймлайне), без «сиротских» записей за день.
-            rows = (
-                db.session.query(Video.id)
-                .join(VideoSpecies, VideoSpecies.video_id == Video.id)
-                .join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id)
-                .filter(
-                    SpeciesVisit.end_time > day_start,
-                    SpeciesVisit.start_time < day_end,
-                )
-                .order_by(Video.start_time.asc(), Video.id.asc())
-                .all()
-            )
-            seen_d: set[int] = set()
-            for (vid,) in rows:
-                if vid not in seen_d:
-                    seen_d.add(vid)
-                    ids.append(vid)
-            used_custom_list = True
-
-        if not used_custom_list:
+        if idx is None:
             # Пересечение с локальным/UTC-сутками (как в overview): клип, начавшийся до
             # полуночи, но попадающий в день по длительности, должен участвовать в списке.
             day_rows = (
@@ -912,26 +932,7 @@ def register_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
 
-        # Query SpeciesVisit records within the interval (eager load to avoid N+1)
-        visits_raw = (
-            db.session.query(SpeciesVisit)
-            .join(Species)
-            .join(VideoSpecies)
-            .join(Video)
-            .options(
-                joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
-                joinedload(SpeciesVisit.species),
-            )
-            .filter(
-                SpeciesVisit.end_time >= start_dt,
-                SpeciesVisit.start_time <= end_dt
-            )
-            .order_by(SpeciesVisit.start_time.desc())
-            .all()
-        )
-        visits = _timeline_visits_deduped_ordered(visits_raw)
-
-        response = [format_visit_for_timeline(visit) for visit in visits]
+        response = build_merged_timeline_items(db.session, start_dt, end_dt)
         cache_set(tck, response, _CACHE_TIMELINE_SEC)
         return response
 
@@ -969,38 +970,24 @@ def register_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'Interval must not exceed 1 day'}, 400
 
-        visits_raw = (
-            db.session.query(SpeciesVisit)
-            .options(
-                joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
-                joinedload(SpeciesVisit.species),
-            )
-            .join(Species)
-            .join(VideoSpecies)
-            .join(Video)
-            .filter(
-                SpeciesVisit.end_time >= start_dt,
-                SpeciesVisit.start_time <= end_dt
-            )
-            .order_by(SpeciesVisit.start_time.desc())
-            .all()
-        )
-        visits = _timeline_visits_deduped_ordered(visits_raw)
+        merged = build_merged_timeline_items(db.session, start_dt, end_dt)
 
         rows = []
-        for visit in visits:
-            video = get_primary_video_for_visit(visit)
-            duration = (visit.end_time - visit.start_time).total_seconds() if visit.end_time and visit.start_time else 0
+        for item in merged:
+            st_p = _parse_timeline_iso(item['start_time'])
+            et_p = _parse_timeline_iso(item['end_time'])
+            duration = max(0, round((et_p - st_p).total_seconds()))
+            w = item.get('weather') or {}
             rows.append({
-                'id': visit.id,
-                'species_name': visit.species.name,
-                'start_time': visit.start_time.astimezone(timezone.utc).isoformat(),
-                'end_time': visit.end_time.astimezone(timezone.utc).isoformat(),
-                'duration_sec': round(duration),
-                'max_simultaneous': visit.max_simultaneous,
-                'detection_count': len(visit.video_species),
-                'temp': video.weather_temp if video else None,
-                'clouds': video.weather_clouds if video else None,
+                'id': item['id'],
+                'species_name': item['species']['name'],
+                'start_time': st_p.astimezone(timezone.utc).isoformat(),
+                'end_time': et_p.astimezone(timezone.utc).isoformat(),
+                'duration_sec': duration,
+                'max_simultaneous': item.get('max_simultaneous', 1),
+                'detection_count': len(item.get('detections') or []),
+                'temp': w.get('temp'),
+                'clouds': w.get('clouds'),
             })
 
         if fmt == 'ebird':

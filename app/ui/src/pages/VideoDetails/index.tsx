@@ -30,33 +30,25 @@ export const VideoDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navigationContext = useMemo(() => {
+  /** Preserve return path when stepping prev/next. */
+  const neighborNavigationState = (() => {
     const s = location.state;
-    if (!s || typeof s !== 'object') {
-      return { fromPath: undefined as string | undefined, visitId: undefined as number | undefined };
+    if (s && typeof s === 'object') {
+      const from = (s as { from?: unknown }).from;
+      const state: { from?: string } = {};
+      if (
+        typeof from === 'string' &&
+        from.startsWith('/') &&
+        !from.startsWith('//')
+      ) {
+        state.from = from;
+      }
+      if (state.from) {
+        return state;
+      }
     }
-    const rawFrom = (s as { from?: unknown }).from;
-    const fromPath =
-      typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//')
-        ? rawFrom
-        : undefined;
-    let visitId: number | undefined;
-    const rawVid = (s as { visitId?: unknown }).visitId;
-    if (typeof rawVid === 'number' && Number.isFinite(rawVid)) {
-      visitId = rawVid;
-    } else if (typeof rawVid === 'string' && /^\d+$/.test(rawVid)) {
-      visitId = parseInt(rawVid, 10);
-    }
-    return { fromPath, visitId };
-  }, [location.state]);
-
-  /** Preserve timeline context when stepping prev/next (from + optional visitId). */
-  const neighborNavigationState = useMemo(() => {
-    const state: { from?: string; visitId?: number } = {};
-    if (navigationContext.fromPath) state.from = navigationContext.fromPath;
-    if (navigationContext.visitId != null) state.visitId = navigationContext.visitId;
-    return Object.keys(state).length ? state : undefined;
-  }, [navigationContext]);
+    return undefined;
+  })();
 
   const {
     data: video,
@@ -69,17 +61,8 @@ export const VideoDetails = () => {
   });
 
   const { data: neighbors } = useQuery({
-    queryKey: [
-      'video-neighbors',
-      params.id,
-      navigationContext.fromPath ?? '',
-      navigationContext.visitId ?? '',
-    ],
-    queryFn: () =>
-      fetchVideoNeighbors(params.id as string, {
-        fromPath: navigationContext.fromPath,
-        visitId: navigationContext.visitId,
-      }),
+    queryKey: ['video-neighbors', params.id],
+    queryFn: () => fetchVideoNeighbors(params.id as string),
     enabled: Boolean(params.id),
   });
 
