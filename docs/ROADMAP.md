@@ -223,6 +223,12 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 ---
 
+## Tech debt queue (simple → complex)
+
+Navigator issue: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) (levels 1.x–5.x). Details: [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (Flask split), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (processor). Full Russian context: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not tech debt: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+
+---
+
 ## Near-term priorities (public)
 
 | Priority | Focus |

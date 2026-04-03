@@ -272,6 +272,13 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [x] [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
 - [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
 
+**Волна D (техдолг, порядок простое → сложное):**
+
+- Навигатор очереди: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) — уровни 1.x (точечные правки) … 5.x (Alembic, декомпозиция `main.py`).
+- Детали web: [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (`ui_routes`, `util`, `ui_system_routes`).
+- Детали processor: [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (`main.py`, MQTT, дубли pipeline).
+- Вне этой волны по смыслу: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (классификатор), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) (весы).
+
 **Критерий выхода из этапа "мелкие баги/хвосты":**
 - Все issue из волн A+B закрыты (#152/#158/#160 — PR [#176](https://github.com/Gfermoto/BirdLense-Hub/pull/176)).
 - По волне C закрыты минимум 2 задачи с максимальной пользовательской ценностью.
