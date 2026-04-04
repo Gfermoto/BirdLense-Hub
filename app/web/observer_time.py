@@ -1,4 +1,4 @@
-"""Часовой пояс наблюдателя, локальные сутки/интервалы, восход/закат (#222 — вынесено из util.py)."""
+"""Часовой пояс наблюдателя, локальные сутки/интервалы, солнце (#222, было в util.py)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from weather_service import _normalize_coord
 
 
 def fetch_sun_times(date_str: str) -> dict | None:
-    """Sunrise, sunset, dawn, dusk for date at configured location. Returns None if no coords."""
+    """Sun times for date at configured location, or None if coords missing."""
     from datetime import date
 
     lat = _normalize_coord(app_config.get('secrets.latitude'))
@@ -66,6 +66,7 @@ def _observer_timezone_name_cached(lat: str, lon: str) -> str:
 
 
 def get_observer_timezone_name() -> str:
+    """IANA timezone name from configured lat/lon, or UTC."""
     lat = _normalize_coord(app_config.get('secrets.latitude'))
     lon = _normalize_coord(app_config.get('secrets.longitude'))
     if not lat or not lon:
@@ -74,6 +75,7 @@ def get_observer_timezone_name() -> str:
 
 
 def get_observer_timezone():
+    """ZoneInfo for observer (or UTC fallback)."""
     import zoneinfo
 
     try:
@@ -83,6 +85,7 @@ def get_observer_timezone():
 
 
 def observer_local_day_bounds(date_str: str) -> tuple[datetime, datetime]:
+    """UTC naive (start, end) for the observer-local calendar day date_str."""
     local_day = datetime.strptime(date_str, '%Y-%m-%d')
     tz = get_observer_timezone()
     start_local = local_day.replace(tzinfo=tz)
@@ -99,6 +102,7 @@ def observer_local_range(
     time_of_day: str = 'all',
     hour: int | None = None,
 ) -> tuple[datetime, datetime]:
+    """UTC naive bounds for a slot on date_str (hour, time_of_day, or full day)."""
     local_day = datetime.strptime(date_str, '%Y-%m-%d')
     tz = get_observer_timezone()
     start_local = local_day.replace(tzinfo=tz)
@@ -119,7 +123,9 @@ def observer_local_range(
             microsecond=999999,
         )
     elif time_of_day == 'all':
-        range_start = start_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        range_start = start_local.replace(
+            hour=0, minute=0, second=0, microsecond=0,
+        )
         range_end = start_local.replace(
             hour=23, minute=59, second=59, microsecond=999999,
         )
@@ -154,6 +160,7 @@ def observer_local_range(
 
 
 def observer_local_hour(dt: datetime | None) -> int:
+    """Hour 0..23 in observer local time for UTC-aware dt."""
     from util import ensure_utc
 
     if dt is None:

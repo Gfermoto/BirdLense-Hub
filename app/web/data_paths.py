@@ -1,4 +1,4 @@
-"""DATA_DIR, безопасные пути к файлам и разрешение путей к записям (#222 — вынесено из util.py)."""
+"""DATA_DIR, безопасные пути к файлам, пути к записям (#222, было в util.py)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 
 
 def _data_dir() -> str:
-    """Base data directory (recordings, saved images, etc.)."""
+    """Return base data directory (recordings, saved images, etc.)."""
     return os.environ.get('DATA_DIR') or os.path.join(
         os.path.dirname(__file__), '..', 'data'
     )
@@ -19,7 +19,7 @@ def data_dir() -> str:
 
 
 def _path_is_under_data_dir(base: str, full: str) -> bool:
-    """Проверка вложенности без обхода через префикс-соседей (например data_evil при base=data)."""
+    """True if full is under base (blocks prefix-neighbor tricks, e.g. data_evil)."""
     try:
         return os.path.commonpath([base, full]) == base
     except ValueError:
@@ -37,11 +37,12 @@ def _is_safe_image_path(path: str) -> bool:
         return False
     if not _path_is_under_data_dir(base, full):
         return False
-    # SafeAccessCheck: startswith в отдельном if (не внутри not (or …)) — иначе CodeQL не видит барьер.
+    # SafeAccessCheck: отдельный if для startswith — иначе CodeQL не видит барьер.
     if full != base and not full.startswith(base + os.sep):
         return False
     try:
-        return os.path.isfile(full)  # lgtm[py/path-injection] realpath+commonpath+startswith(base+sep)
+        # lgtm[py/path-injection] realpath+commonpath+startswith(base+sep)
+        return os.path.isfile(full)
     except OSError:
         return False
 
@@ -49,8 +50,8 @@ def _is_safe_image_path(path: str) -> bool:
 def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     """Прочитать файл только под DATA_DIR. (bytes, None) или (None, причина).
 
-    Проверки realpath + commonpath + ``full.startswith(base + os.sep)`` и обращение к ФС —
-    в одной функции (требование модели CodeQL py/path-injection).
+    Проверки realpath + commonpath + ``startswith(base + sep)`` и ФС —
+    в одной функции (требование CodeQL py/path-injection).
     """
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
         return None, 'unsafe_path'
@@ -64,12 +65,14 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     if full != base and not full.startswith(base + os.sep):
         return None, 'unsafe_path'
     try:
-        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
+        # lgtm[py/path-injection] validated under DATA_DIR
+        if not os.path.isfile(full):
             return None, 'unsafe_path'
     except OSError:
         return None, 'unsafe_path'
     try:
-        with open(full, 'rb') as f:  # lgtm[py/path-injection] validated under DATA_DIR
+        # lgtm[py/path-injection] validated under DATA_DIR
+        with open(full, 'rb') as f:
             return f.read(), None
     except OSError as e:
         logging.warning('Cannot read safe image: %s', e)
@@ -90,12 +93,14 @@ def remove_safe_image_file(path: str | None) -> None:
     if full != base and not full.startswith(base + os.sep):
         return
     try:
-        if not os.path.isfile(full):  # lgtm[py/path-injection] validated under DATA_DIR
+        # lgtm[py/path-injection] validated under DATA_DIR
+        if not os.path.isfile(full):
             return
     except OSError:
         return
     try:
-        os.remove(full)  # lgtm[py/path-injection] validated under DATA_DIR
+        # lgtm[py/path-injection] validated under DATA_DIR
+        os.remove(full)
     except OSError:
         pass
 
