@@ -1,6 +1,6 @@
 """Telegram outgoing HTTP/SOCKS proxy config (notifications.telegram_proxy_url)."""
 
-from web import util as util_mod
+import util as util_mod
 
 
 def test_telegram_http_proxies_empty(monkeypatch):
