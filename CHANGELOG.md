@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Web (tech debt #222):** лимит попыток verify-password, `Retry-After` и `client_ip_for_rate_limit` перенесены из `util.py` в `auth.py`; в `util` оставлен re-export для обратной совместимости ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
 - **Web (tech debt #222):** Wikipedia / iNaturalist, allowlist хостов для прокси, seed-иерархия и канонический маппинг видов, `update_species_info_from_wiki`, `filter_feeder_species` вынесены в **`species_metadata.py`**; `util.py` реэкспортирует прежние имена ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
 - **Web (tech debt #222):** `get_primary_video_for_visit*`, `format_visit_for_timeline`, `format_unlinked_video_for_timeline` вынесены в **`timeline_payloads.py`**; `util` реэкспортирует их для существующих импортов ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
+- **Web (tech debt #222):** каталог данных и безопасные пути к файлам — в **`data_paths.py`** (`_data_dir`, `read_safe_image_bytes`, `recordings_dir`, `full_path_for_video`, …); часовой пояс наблюдателя и солнечные интервалы — в **`observer_time.py`**; `util` реэкспортирует прежние имена ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
 - **Follow-up ([PR #226](https://github.com/Gfermoto/BirdLense-Hub/pull/226) review):** очистка устаревших IP в счётчике verify-password; разбор `Authorization` для метрик с регистронезависимым `Bearer`; Frigate остаётся primary motion при старте даже если MQTT ещё не live; MQTT-only детекции в `species_normalizer` не затирают друг друга при `one_per_species`; OpenAPI — `400` для `/system/activity`, путь `/system/logs`; UI Overview без небезопасного cast погоды; правки доков scales/`DATA_DIR`; устойчивость `github-issue-link-subissues.sh` к 404 от `gh api`.
 
 ### Docs
@@ -29,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Tests
 
+- **Telegram proxy:** `test_telegram_proxy.py` импортирует `util` как топ-уровневый модуль (`import util`), в духе `conftest` и остальных web-тестов — избегает двойной загрузки `web.util` vs `util` и цикла с `timeline_payloads` (#222).
 - **Xeno-canto:** `web/tests/test_xeno_canto_service.py` — парсинг и ошибки сети через мок `requests.get`; `GET /species/.../xeno-canto` в `test_api` без реального HTTP. Шаг в CI `openapi-contract` (#202).
 - **Birdfood / Web Push:** `web/tests/test_settings_mutations_smoke.py` — 403 при закрытых настройках, POST+PATCH кормушек, дубликат имени, успешный `push/subscribe` при включённых уведомлениях. CI `openapi-contract` (#202).
 - **Тот же файл:** стрим видео при `require_auth_for_video_stream` — гость 403, contributor 200; успешный `PATCH /api/ui/settings` с ролью admin (#202).
