@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import timedelta, datetime, timezone
 
+from species_constants import GENERIC_BIRD_SPECIES
 from time_util import ensure_utc
-from util import GENERIC_BIRD_SPECIES
 
 
 def get_primary_video_for_visit(visit) -> object | None:

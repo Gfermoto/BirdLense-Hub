@@ -16,6 +16,7 @@ from sqlalchemy import func, distinct, or_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription
+from species_constants import GENERIC_BIRD_SPECIES
 from auth import (
     client_ip_for_rate_limit,
     _check_verify_password_rate_limit,
@@ -36,7 +37,6 @@ from util import (
     format_unlinked_video_for_timeline,
     observer_local_day_bounds,
     observer_local_range,
-    GENERIC_BIRD_SPECIES,
     notify_telegram_test,
     _host_is_wikipedia_family,
     _host_is_inaturalist,
