@@ -78,6 +78,7 @@
     "recordingTime": "Время записи",
     "recordingTimeHint": "Сумма длительностей всех видеофайлов за день",
     "downloadPdf": "PDF-отчёт",
+    "weatherLoadError": "Не удалось загрузить погоду. Остальной обзор отображается.",
     "regionComparison": "Сравнение с регионом",
     "regionComparisonDesc": "У вас {{userCount}} видов. В топ-{{regionTop}} региона — {{matchCount}} из них.",
     "regionComparisonMatched": "Ваши виды в топе региона:",

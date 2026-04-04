@@ -6,7 +6,7 @@ import pytest
 
 import util as util_mod
 from routes import processor_routes as processor_routes_mod
-from auth import settings_check_access
+from auth import client_ip_for_rate_limit, settings_check_access
 
 
 class TestTrustedProxyIpParsing:
@@ -22,7 +22,7 @@ class TestTrustedProxyIpParsing:
             headers = {'X-Real-IP': '198.51.100.22'}
             remote_addr = '127.0.0.1'
 
-        assert util_mod.client_ip_for_rate_limit(_Req()) == '127.0.0.1'
+        assert client_ip_for_rate_limit(_Req()) == '127.0.0.1'
 
     def test_uses_forwarded_headers_with_trusted_proxy(self, monkeypatch):
         """Honor proxy headers only when deployment marks the proxy as trusted."""
@@ -32,7 +32,7 @@ class TestTrustedProxyIpParsing:
             headers = {'X-Real-IP': '198.51.100.22'}
             remote_addr = '127.0.0.1'
 
-        assert util_mod.client_ip_for_rate_limit(_Req()) == '198.51.100.22'
+        assert client_ip_for_rate_limit(_Req()) == '198.51.100.22'
 
 
 class TestPushSubscribeAuth:
@@ -227,3 +227,34 @@ class TestSafeImagePathDataDirBoundary:
         assert err is None and raw == b'jpeg-bytes'
         util_mod.remove_safe_image_file(str(img))
         assert not img.is_file()
+
+
+class TestMetricsBearerToken:
+    """Optional BIRDLENSE_METRICS_TOKEN for Prometheus/JSON export (#199)."""
+
+    def test_metrics_open_when_token_unset(self, client):
+        r = client.get('/api/metrics')
+        assert r.status_code == 200
+
+    def test_metrics_require_bearer_when_token_set(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        assert client.get('/api/metrics').status_code == 401
+        assert client.get('/metrics').status_code == 401
+        r = client.get('/api/metrics/summary')
+        assert r.status_code == 401
+        assert (r.get_json() or {}).get('error') == 'Unauthorized'
+
+    def test_metrics_ok_with_valid_bearer(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        h = {'Authorization': 'Bearer secret-metrics-token'}
+        r = client.get('/api/metrics', headers=h)
+        assert r.status_code == 200
+        assert 'birdlense_cpu_usage_percent' in r.get_data(as_text=True)
+        r2 = client.get('/api/metrics/summary', headers=h)
+        assert r2.status_code == 200
+        assert r2.get_json().get('service') == 'birdlense-hub'
+
+    def test_metrics_accepts_lowercase_bearer_scheme(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        h = {'Authorization': 'bearer secret-metrics-token'}
+        assert client.get('/api/metrics', headers=h).status_code == 200

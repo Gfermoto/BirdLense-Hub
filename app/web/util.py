@@ -1,9 +1,8 @@
-import ipaddress
+import hmac
 import json
 import logging
 import os
 import secrets
-import threading
 import time
 from datetime import timedelta, datetime, timezone
 from functools import lru_cache
@@ -11,10 +10,19 @@ from urllib.parse import urlparse
 
 # Re-exports for backward compatibility — do not remove
 from auth import (
+    VERIFY_PASSWORD_LIMIT,
+    VERIFY_PASSWORD_WINDOW,
+    _check_verify_password_rate_limit,
+    _clear_verify_password_attempts,
     _get_session_role,
     _has_contributor_password,
-    settings_check_access,
+    _record_verify_password_failure,
+    _verify_password_attempts,
+    _verify_password_lock,
+    client_ip_for_rate_limit,
     contributor_or_admin_access,
+    settings_check_access,
+    verify_password_retry_after_seconds,
 )
 from notifications import (
     notify,
@@ -39,73 +47,26 @@ from weather_service import (
     fetch_weather,
 )
 
-# Rate limit for verify-password: 5 failed attempts per 60 sec per IP
-_verify_password_attempts: dict = {}
-_verify_password_lock = threading.Lock()
-VERIFY_PASSWORD_LIMIT = 5
-VERIFY_PASSWORD_WINDOW = 60
+def metrics_bearer_denied(*, prometheus: bool = False):
+    """If ``BIRDLENSE_METRICS_TOKEN`` is set, require ``Authorization: Bearer <token>``.
 
-
-def client_ip_for_rate_limit(request) -> str:
-    """Client IP for throttling behind nginx. Prefer X-Real-IP / X-Forwarded-For, then remote_addr.
-
-    Nginx sets ``X-Real-IP`` for ``/api`` (see ``nginx/standalone.conf.template``). If the app is
-    reached **without** a trusted reverse proxy, clients could spoof these headers — use TLS and
-    firewall so only nginx talks to Gunicorn.
+    Returns a Flask response tuple or Response to return from the view, or ``None`` if the
+    request may proceed (token unset or bearer matches).
     """
-    def _parse_ip_fragment(raw: str):
-        s = (raw or '').strip()
-        if not s:
-            return None
-        if ',' in s:
-            s = s.split(',')[0].strip()
-        try:
-            ipaddress.ip_address(s)
-            return s
-        except ValueError:
-            return None
+    from flask import request, Response, jsonify
 
-    trusted_proxy = (os.environ.get('TRUSTED_PROXY') or '').strip().lower() in (
-        '1', 'true', 'yes',
-    )
-    if trusted_proxy:
-        for hdr in ('X-Real-IP', 'X-Forwarded-For'):
-            parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
-            if parsed:
-                return parsed
-    ra = (getattr(request, 'remote_addr', None) or '').strip()
-    return ra or 'unknown'
+    expected = (os.environ.get('BIRDLENSE_METRICS_TOKEN') or '').strip()
+    if not expected:
+        return None
+    auth = (request.headers.get('Authorization') or '').strip()
+    scheme, _, credentials = auth.partition(' ')
+    got = credentials.strip() if scheme.lower() == 'bearer' else ''
+    if got and hmac.compare_digest(got, expected):
+        return None
+    if prometheus:
+        return Response('# Unauthorized\n', status=401, mimetype='text/plain; charset=utf-8')
+    return jsonify({'error': 'Unauthorized'}), 401
 
-
-def _clear_verify_password_attempts(ip: str) -> None:
-    """Reset failed-attempt counter after successful unlock."""
-    with _verify_password_lock:
-        _verify_password_attempts.pop(ip, None)
-
-
-def _check_verify_password_rate_limit(ip: str) -> bool:
-    """Return True if under limit, False if rate limited (too many failed attempts)."""
-    with _verify_password_lock:
-        now = time.monotonic()
-        if ip not in _verify_password_attempts:
-            return True
-        attempts = [t for t in _verify_password_attempts[ip] if now - t < VERIFY_PASSWORD_WINDOW]
-        _verify_password_attempts[ip] = attempts
-        return len(attempts) < VERIFY_PASSWORD_LIMIT
-
-
-def _record_verify_password_failure(ip: str) -> None:
-    """Record a failed verify-password attempt for rate limiting."""
-    with _verify_password_lock:
-        now = time.monotonic()
-        if ip not in _verify_password_attempts:
-            _verify_password_attempts[ip] = []
-        _verify_password_attempts[ip].append(now)
-
-
-def verify_password_retry_after_seconds() -> int:
-    """HTTP Retry-After (seconds) for 429 on verify-password."""
-    return int(VERIFY_PASSWORD_WINDOW)
 
 # Вид «Bird» / «bird» — птица без определения вида, всегда неопределённый объект
 GENERIC_BIRD_SPECIES = 'Bird'

@@ -237,12 +237,17 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 ---
 
-## Integrations (reserved)
+## Integrations (scales)
 
 | Key | Description |
 |-----|-------------|
-| `integrations.scales.enabled` | Placeholder for smart-scale / feeder weight MQTT (default **false**). |
-| `integrations.scales.mqtt_topic` | MQTT topic to store for future processing (Hub does not consume weight yet; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). |
+| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). When enabled, the **processor** subscribes to MQTT (or reads Home Assistant) and persists the latest weight for the web UI. |
+| `integrations.scales.source` | `mqtt` (default) or `homeassistant`. |
+| `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
+| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
+| `integrations.scales.unit` | `kg` or `g` for display and stored values. |
+
+Future work: **trigger on sharp weight change** (threshold / debounce) — tracked in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 
@@ -412,6 +417,8 @@ scrape_configs:
 ```
 
 **Metrics:** CPU, memory, disk, GPU (if present), `birdlense_detections_total`, `birdlense_species_count`, `birdlense_videos_total`.
+
+**Optional (hub exposed beyond a trusted LAN):** set **`BIRDLENSE_METRICS_TOKEN`** to a non-empty secret — then `GET /metrics`, `GET /api/metrics`, and `GET /api/metrics/summary` return **401** unless the request includes `Authorization: Bearer <same token>`. Configure your Prometheus scrape job with `authorization` / bearer credentials per Prometheus docs.
 
 **Grafana** — Prometheus datasource, dashboard from metrics.
 

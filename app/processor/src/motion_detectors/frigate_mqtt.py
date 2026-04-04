@@ -40,7 +40,7 @@ class FrigateMotionFromAggregator:
 
     @property
     def _connected(self):
-        return self._aggregator.is_connected()
+        return self._aggregator.is_mqtt_live()
 
     def detect(self):
         if not self._connected:

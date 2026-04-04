@@ -198,7 +198,9 @@ def heartbeat():
             mqtt_aggregator_ref = _heartbeat_mqtt_ref[0] if _heartbeat_mqtt_ref else None
             if mqtt_aggregator_ref is not None:
                 try:
-                    data['mqtt_connected'] = mqtt_aggregator_ref.is_connected()
+                    data['mqtt_connected'] = (
+                        mqtt_aggregator_ref.is_mqtt_ok_for_heartbeat()
+                    )
                 except Exception:
                     data['mqtt_connected'] = False
             try:
@@ -378,18 +380,20 @@ def main():
         # Frigate + BirdNET: always when MQTT configured
         primary = None
         if use_frigate_from_aggregator and mqtt_aggregator:
+            primary = frigate_detector
             for _ in range(5):
-                if mqtt_aggregator.is_connected():
+                if mqtt_aggregator.is_mqtt_live():
                     break
                 time.sleep(1)
-            if mqtt_aggregator.is_connected():
-                primary = frigate_detector
+            if mqtt_aggregator.is_mqtt_live():
                 logging.info(
                     'Motion: Frigate (cameras=%s labels=%s)',
                     list(frigate_camera_filter) if frigate_camera_filter else 'any',
                     list(frigate_label_filter))
             else:
-                logging.warning('Frigate MQTT not connected')
+                logging.warning(
+                    'Frigate MQTT not live yet after startup wait; detector will keep retrying',
+                )
 
         add_source = app_config.get('motion.source', 'frigate')
         check_n = app_config.get('motion.check_every_n_frames', 1)

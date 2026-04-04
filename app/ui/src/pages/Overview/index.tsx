@@ -8,6 +8,7 @@ import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -29,6 +30,7 @@ import { PageHelp } from '../../components/PageHelp';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Tooltip from '@mui/material/Tooltip';
+import type { Weather } from '../../types';
 
 const formatHour = (hour: number) => {
   return `${String(hour).padStart(2, '0')}:00`;
@@ -51,10 +53,20 @@ export const Overview = () => {
     enabled: !!selectedDay,
   });
 
-  const { data: weather, error: errorWeather, refetch: refetchWeather } = useQuery({
+  const {
+    data: weather,
+    error: errorWeather,
+    isPending: isWeatherPending,
+    isFetching: isWeatherFetching,
+    refetch: refetchWeather,
+  } = useQuery({
     queryKey: ['weather'],
     queryFn: () => fetchWeather(),
   });
+
+  /** Пока overview ждёт только sightings; погода грузится отдельно — иначе ячейка пустая и «пропадает» карточка. */
+  const weatherAwaitingFirstPaint =
+    (isWeatherPending || isWeatherFetching) && weather === undefined;
 
   if (isLoadingSightings)
     return (
@@ -62,13 +74,13 @@ export const Overview = () => {
         <CircularProgress />
       </Box>
     );
-  if (errorSightings || errorWeather) {
-    const err = (errorSightings || errorWeather) as Error;
+  if (errorSightings) {
+    const err = errorSightings as Error;
     return (
       <Box sx={{ p: 2 }}>
         <Typography color="error">{t('overview.errorLoad')}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {err?.message || String(errorSightings || errorWeather)}
+          {err?.message || String(errorSightings)}
         </Typography>
         <Typography variant="body2" sx={{ mt: 2 }}>{t('overview.checkApi')}</Typography>
         <Button variant="outlined" sx={{ mt: 2 }} onClick={() => { refetchOverview(); refetchWeather(); }}>
@@ -265,11 +277,40 @@ export const Overview = () => {
 
         {/* Weather Card — высота как две StatCard слева */}
         <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex', alignItems: 'stretch' }}>
-          {weather && (
+          {errorWeather && weather === undefined ? (
+            <Paper sx={{ p: 2, width: '100%' }}>
+              <Typography variant="subtitle2" color="error" gutterBottom>
+                {t('overview.weatherLoadError')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {(errorWeather as Error)?.message || String(errorWeather)}
+              </Typography>
+              <Button size="small" variant="outlined" onClick={() => refetchWeather()}>
+                {t('common.retry')}
+              </Button>
+            </Paper>
+          ) : weatherAwaitingFirstPaint ? (
+            <Paper sx={{ p: 2, width: '100%', height: '100%', minHeight: 200 }}>
+              <Typography variant="h6" gutterBottom>
+                {t('weather.title')}
+              </Typography>
+              <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
+              <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
+              <Skeleton variant="rounded" width="55%" height={32} />
+            </Paper>
+          ) : weather &&
+            typeof weather === 'object' &&
+            Object.keys(weather as object).length > 0 ? (
             <WeatherCard
-              weather={weather}
+              weather={weather as Weather}
               date={selectedDay?.format('YYYY-MM-DD')}
             />
+          ) : (
+            <Paper sx={{ p: 2, width: '100%' }}>
+              <Typography variant="body2" color="text.secondary">
+                {t('weather.notConfigured')}
+              </Typography>
+            </Paper>
           )}
         </Grid>
 

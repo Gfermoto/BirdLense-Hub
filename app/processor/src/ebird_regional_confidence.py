@@ -2,18 +2,8 @@
 from __future__ import annotations
 
 import logging
-import os
-import sys
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_web_on_path() -> None:
-    """Ensure /app/web on sys.path (entrypoint sets PYTHONPATH; tests may not)."""
-    root = os.environ.get('BIRDLENSE_APP_ROOT', '/app')
-    web = os.path.join(root, 'web')
-    if os.path.isdir(web) and web not in sys.path:
-        sys.path.insert(0, web)
 
 
 def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, float]:
@@ -77,7 +67,7 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     auto_val = max(floor_v, base - delta)
     auto_val = max(0.01, min(auto_val, 0.99))
 
-    _ensure_web_on_path()
+    # Requires ``services`` from app/web on PYTHONPATH (Docker: /app:/app/web).
     try:
         from services.ebird_region_service import (
             _build_region_code,
@@ -86,7 +76,9 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
         )
     except ImportError as e:
         logger.warning(
-            'eBird regional auto-confidence: import failed: %s', e
+            'eBird regional auto-confidence: import failed (%s). '
+            'Set PYTHONPATH to include the web app (e.g. /app/web).',
+            e,
         )
         return manual
 

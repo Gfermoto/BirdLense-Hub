@@ -29,6 +29,9 @@ jobs:
       - name: Install web test dependencies
         run: pip install -r web/requirements.txt
 
+      - name: Ruff lint (web/tests only)
+        run: pip install ruff==0.9.2 && ruff check web/tests/
+
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
 
@@ -46,6 +49,18 @@ jobs:
 
       - name: Bird food seed idempotency
         run: python -m pytest web/tests/test_bird_food_seed.py -q
+
+      - name: Xeno-canto service (mocked HTTP)
+        run: python -m pytest web/tests/test_xeno_canto_service.py -q
+
+      - name: Birdfood / push subscribe smoke (auth gates)
+        run: python -m pytest web/tests/test_settings_mutations_smoke.py -q
+
+      - name: Processor POST /videos smoke
+        run: python -m pytest web/tests/test_processor_videos_smoke.py -q
+
+      - name: System routes smoke (activity, logs, metrics history)
+        run: python -m pytest web/tests/test_system_routes_smoke.py -q
 
   ui-build:
     runs-on: ubuntu-latest

@@ -245,7 +245,25 @@ def merge_detections(
                     )
             logger.debug("merge: MQTT %s into YOLO (offset=%.1fs)", species, offset if offset is not None else -1)
             continue
-        by_key[(key, -1)] = {
+        # MQTT-only (no overlapping YOLO visit). one_per_species: single bucket (key, -1) and merge.
+        if one_per_species:
+            existing_mqtt = by_key.get((key, -1))
+            if existing_mqtt is not None:
+                _merge_into(
+                    existing_mqtt,
+                    conf,
+                    ev_start,
+                    ev_end,
+                    new_provider=provider,
+                    new_providers=ev.get("contributing_providers"),
+                )
+                logger.debug("merge: MQTT %s into MQTT-only bucket", species)
+                continue
+            new_vid = -1
+        else:
+            new_vid = max((vid for (k0, vid) in by_key.keys() if k0 == key), default=-1) + 1
+
+        by_key[(key, new_vid)] = {
             "species_name": species,
             "species": species,
             "start_time": ev_start,
