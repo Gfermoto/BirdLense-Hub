@@ -253,3 +253,8 @@ class TestMetricsBearerToken:
         r2 = client.get('/api/metrics/summary', headers=h)
         assert r2.status_code == 200
         assert r2.get_json().get('service') == 'birdlense-hub'
+
+    def test_metrics_accepts_lowercase_bearer_scheme(self, client, monkeypatch):
+        monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
+        h = {'Authorization': 'bearer secret-metrics-token'}
+        assert client.get('/api/metrics', headers=h).status_code == 200

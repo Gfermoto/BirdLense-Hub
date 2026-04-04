@@ -122,17 +122,25 @@ def _clear_verify_password_attempts(ip: str) -> None:
         _verify_password_attempts.pop(ip, None)
 
 
+def _prune_verify_password_attempts_locked(now: float) -> None:
+    """Drop stale IPs under lock so the map does not grow without bound."""
+    stale = []
+    for key, attempts in list(_verify_password_attempts.items()):
+        fresh = [t for t in attempts if now - t < VERIFY_PASSWORD_WINDOW]
+        if fresh:
+            _verify_password_attempts[key] = fresh
+        else:
+            stale.append(key)
+    for key in stale:
+        _verify_password_attempts.pop(key, None)
+
+
 def _check_verify_password_rate_limit(ip: str) -> bool:
     """Return True if under limit, False if rate limited (too many failed attempts)."""
     with _verify_password_lock:
         now = time.monotonic()
-        if ip not in _verify_password_attempts:
-            return True
-        attempts = [
-            t for t in _verify_password_attempts[ip]
-            if now - t < VERIFY_PASSWORD_WINDOW
-        ]
-        _verify_password_attempts[ip] = attempts
+        _prune_verify_password_attempts_locked(now)
+        attempts = _verify_password_attempts.get(ip, [])
         return len(attempts) < VERIFY_PASSWORD_LIMIT
 
 
@@ -140,9 +148,8 @@ def _record_verify_password_failure(ip: str) -> None:
     """Record a failed verify-password attempt for rate limiting."""
     with _verify_password_lock:
         now = time.monotonic()
-        if ip not in _verify_password_attempts:
-            _verify_password_attempts[ip] = []
-        _verify_password_attempts[ip].append(now)
+        _prune_verify_password_attempts_locked(now)
+        _verify_password_attempts.setdefault(ip, []).append(now)
 
 
 def verify_password_retry_after_seconds() -> int:

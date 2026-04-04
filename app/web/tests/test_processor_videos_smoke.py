@@ -84,6 +84,11 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch):
 
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
+    monkeypatch.setitem(
+        app_config.config.setdefault('detection', {}),
+        'min_confidence_to_store',
+        0.05,
+    )
     monkeypatch.setitem(app_config.config.setdefault('gallery', {}), 'enabled', False)
     monkeypatch.setitem(app_config.config.setdefault('webhook', {}), 'url', '')
 
