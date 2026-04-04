@@ -16,26 +16,27 @@ from sqlalchemy import func, distinct, or_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
 from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription
+from auth import (
+    client_ip_for_rate_limit,
+    _check_verify_password_rate_limit,
+    _clear_verify_password_attempts,
+    _record_verify_password_failure,
+    verify_password_retry_after_seconds,
+    settings_check_access,
+    contributor_or_admin_access,
+)
 from util import (
     data_dir,
     fetch_weather,
     fetch_sun_times,
     ensure_utc,
     parse_utc_timestamp,
-    get_primary_video_for_visit,
     get_primary_video_for_visit_in_window,
     format_visit_for_timeline,
     format_unlinked_video_for_timeline,
     observer_local_day_bounds,
     observer_local_range,
-    settings_check_access,
-    contributor_or_admin_access,
     GENERIC_BIRD_SPECIES,
-    client_ip_for_rate_limit,
-    _check_verify_password_rate_limit,
-    _clear_verify_password_attempts,
-    _record_verify_password_failure,
-    verify_password_retry_after_seconds,
     notify_telegram_test,
     _host_is_wikipedia_family,
     _host_is_inaturalist,

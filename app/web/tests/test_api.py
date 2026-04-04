@@ -1776,13 +1776,13 @@ class TestVerifyPasswordRateLimit:
 
     @pytest.fixture(autouse=True)
     def _clear_buckets(self, client):
-        """Depends on ``client`` so the app (and ``util``) loads before touching rate-limit state."""
-        import util as util_mod
-        with util_mod._verify_password_lock:
-            util_mod._verify_password_attempts.clear()
+        """Depends on ``client`` so the app loads before touching rate-limit state."""
+        import auth as auth_mod
+        with auth_mod._verify_password_lock:
+            auth_mod._verify_password_attempts.clear()
         yield
-        with util_mod._verify_password_lock:
-            util_mod._verify_password_attempts.clear()
+        with auth_mod._verify_password_lock:
+            auth_mod._verify_password_attempts.clear()
 
     def test_five_wrong_then_429(self, client, monkeypatch):
         from app_config.app_config import app_config
@@ -1802,8 +1802,8 @@ class TestVerifyPasswordRateLimit:
         )
         assert r.status_code == 429
         assert r.json.get('error')
-        import util as util_mod
-        assert r.headers.get('Retry-After') == str(util_mod.VERIFY_PASSWORD_WINDOW)
+        import auth as auth_mod
+        assert r.headers.get('Retry-After') == str(auth_mod.VERIFY_PASSWORD_WINDOW)
 
     def test_success_clears_counter(self, client, monkeypatch):
         from app_config.app_config import app_config

@@ -6,7 +6,7 @@ import pytest
 
 import util as util_mod
 from routes import processor_routes as processor_routes_mod
-from auth import settings_check_access
+from auth import client_ip_for_rate_limit, settings_check_access
 
 
 class TestTrustedProxyIpParsing:
@@ -22,7 +22,7 @@ class TestTrustedProxyIpParsing:
             headers = {'X-Real-IP': '198.51.100.22'}
             remote_addr = '127.0.0.1'
 
-        assert util_mod.client_ip_for_rate_limit(_Req()) == '127.0.0.1'
+        assert client_ip_for_rate_limit(_Req()) == '127.0.0.1'
 
     def test_uses_forwarded_headers_with_trusted_proxy(self, monkeypatch):
         """Honor proxy headers only when deployment marks the proxy as trusted."""
@@ -32,7 +32,7 @@ class TestTrustedProxyIpParsing:
             headers = {'X-Real-IP': '198.51.100.22'}
             remote_addr = '127.0.0.1'
 
-        assert util_mod.client_ip_for_rate_limit(_Req()) == '198.51.100.22'
+        assert client_ip_for_rate_limit(_Req()) == '198.51.100.22'
 
 
 class TestPushSubscribeAuth:

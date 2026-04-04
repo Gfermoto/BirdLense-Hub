@@ -2,10 +2,19 @@
 
 Extracted from util.py. util.py re-exports everything here for backward compatibility.
 """
+import ipaddress
 import os
 import secrets
+import threading
+import time
 
 from app_config.app_config import app_config
+
+# Rate limit for verify-password: 5 failed attempts per 60 sec per IP
+_verify_password_attempts: dict = {}
+_verify_password_lock = threading.Lock()
+VERIFY_PASSWORD_LIMIT = 5
+VERIFY_PASSWORD_WINDOW = 60
 
 
 def _is_production_runtime() -> bool:
@@ -73,3 +82,69 @@ def contributor_or_admin_access():
     if not contrib_pw and session.get('settings_unlocked'):
         return True  # legacy
     return False
+
+
+def client_ip_for_rate_limit(request) -> str:
+    """Client IP for throttling behind nginx. Prefer X-Real-IP / X-Forwarded-For, then remote_addr.
+
+    Nginx sets ``X-Real-IP`` for ``/api`` (see ``nginx/standalone.conf.template``). If the app is
+    reached **without** a trusted reverse proxy, clients could spoof these headers — use TLS and
+    firewall so only nginx talks to Gunicorn.
+    """
+
+    def _parse_ip_fragment(raw: str):
+        s = (raw or '').strip()
+        if not s:
+            return None
+        if ',' in s:
+            s = s.split(',')[0].strip()
+        try:
+            ipaddress.ip_address(s)
+            return s
+        except ValueError:
+            return None
+
+    trusted_proxy = (os.environ.get('TRUSTED_PROXY') or '').strip().lower() in (
+        '1', 'true', 'yes',
+    )
+    if trusted_proxy:
+        for hdr in ('X-Real-IP', 'X-Forwarded-For'):
+            parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
+            if parsed:
+                return parsed
+    ra = (getattr(request, 'remote_addr', None) or '').strip()
+    return ra or 'unknown'
+
+
+def _clear_verify_password_attempts(ip: str) -> None:
+    """Reset failed-attempt counter after successful unlock."""
+    with _verify_password_lock:
+        _verify_password_attempts.pop(ip, None)
+
+
+def _check_verify_password_rate_limit(ip: str) -> bool:
+    """Return True if under limit, False if rate limited (too many failed attempts)."""
+    with _verify_password_lock:
+        now = time.monotonic()
+        if ip not in _verify_password_attempts:
+            return True
+        attempts = [
+            t for t in _verify_password_attempts[ip]
+            if now - t < VERIFY_PASSWORD_WINDOW
+        ]
+        _verify_password_attempts[ip] = attempts
+        return len(attempts) < VERIFY_PASSWORD_LIMIT
+
+
+def _record_verify_password_failure(ip: str) -> None:
+    """Record a failed verify-password attempt for rate limiting."""
+    with _verify_password_lock:
+        now = time.monotonic()
+        if ip not in _verify_password_attempts:
+            _verify_password_attempts[ip] = []
+        _verify_password_attempts[ip].append(now)
+
+
+def verify_password_retry_after_seconds() -> int:
+    """HTTP Retry-After (seconds) for 429 on verify-password."""
+    return int(VERIFY_PASSWORD_WINDOW)
