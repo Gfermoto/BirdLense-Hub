@@ -131,7 +131,8 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
 - [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
-- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
+- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
+- [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **open:** scales integration shipped; backlog — **sharp weight-change trigger** and **estimated bird weight on the visit/video card** (like feeder/weather); optional auto-tare / detections later.
 
 | # | Issue | Summary |
 |---|--------|--------|
@@ -166,7 +167,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue closed; idea retained here; new issue when work starts | P3, infra |
-| 17 | Long-term: feeder / bird scales (auto-tare + object detection) | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) ✅ issue closed; idea retained here; new issue when work starts | P3, processor, research |
+| 17 | Scales: MQTT/HA + UI shipped; next — weight spike trigger + **bird weight estimate on visit card** (feeder/weather style); optional auto-tare + detections | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) open | P3, processor, research |
 
 **System initiative (P1):**
 
@@ -219,6 +220,14 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 **Agreement:** first **complete** the agreed slice of work (open issues in the current wave / **BirdLense Hub — Roadmap** milestone: PR merged, issue **closed**, **`make deploy`** if needed, CI green). **Then** the operator runs **manual testing** on the live hub and files **feedback as new issues** (or flags regressions on an existing issue) — without growing the same wave in parallel.
 
 **Backlog vs acceptance:** rows in **New ideas** without ✅ are **future queue**; only items **explicitly in progress** on the board count toward “ready for acceptance”. The **detection consilium** ([item 17](#detection-strategy-consilium)) runs **after** the current wave stabilizes unless the board decides otherwise.
+
+---
+
+## Tech debt queue (simple → complex)
+
+**Execution lives in GitHub issues and the [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) board**; this section is a pointer only.
+
+- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225`. RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 

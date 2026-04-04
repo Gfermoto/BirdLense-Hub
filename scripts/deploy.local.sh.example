@@ -1,29 +1,36 @@
 # Локальные настройки деплоя — скопируйте в deploy.local.sh
 # cp scripts/deploy.local.sh.example scripts/deploy.local.sh
 # deploy.local.sh не коммитится в git
+#
+# Важно: держите активным ОДИН режим — LAN (на площадке в той же сети) или VPS (удалённо).
+# Перед поездкой на LAN / возвратом к удалёнке — переключите блоки ниже.
 
-# --- LAN (пример текущей площадки) ---
-# SSH (порт 22 по умолчанию):
+# =============================================================================
+# Режим A — на площадке (LAN): пара дней в сети с сервером
+# =============================================================================
 export DEPLOY_HOST="root@192.168.1.11"
-# Или alias из ~/.ssh/config:
+unset DEPLOY_SSH_PORT
+export DEPLOY_URL="http://192.168.1.11:8085"
+# CORS на сервере (app/.env): например CORS_ORIGINS=http://192.168.1.11:8085
+
+# Или ~/.ssh/config:
 #   Host birdlense-lan
 #     HostName 192.168.1.11
 #     Port 22
 #     User root
 # export DEPLOY_HOST="birdlense-lan"
 
-# Health check после деплоя идёт с вашей машины — укажите URL, с которого открываете UI:
-export DEPLOY_URL="http://192.168.1.11:8085"
+# =============================================================================
+# Режим B — удалённо (VPS / публичный URL): раскомментируйте и закомментируйте блок A
+# =============================================================================
+# unset DEPLOY_SSH_PORT
+# export DEPLOY_HOST="root@185.218.111.196"
+# export DEPLOY_SSH_PORT="2222"
+# export DEPLOY_URL="https://birdlense.eyera.info"
+# или по IP: export DEPLOY_URL="http://185.218.111.196:8085"
+# CORS: https://birdlense.eyera.info
 
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
 
-# На сервере в app/.env или задайте здесь (попадут в app/.env при деплое):
-#   CORS_ORIGINS=http://192.168.1.11:8085
-#   MCP_TOKEN=ваш-токен-для-mcp
-#   PROCESSOR_SECRET — генерируется при деплое, добавьте сюда для стабильности между деплоями
-
-# --- Публичный прод (если деплой туда): ---
-# export DEPLOY_HOST="birdlense"
-# export DEPLOY_URL="https://birdlense.eyera.info"
-# ~/.ssh/config: Host birdlense → HostName 185.218.111.196, Port 2222, User root
+# MCP_TOKEN, PROCESSOR_SECRET — см. комментарии в прежних версиях файла / docs

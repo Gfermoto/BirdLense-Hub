@@ -141,7 +141,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — реализовано и закрыто: диаграмма распределения видов на Overview (сектор и легенда) ведёт в Timeline с фильтрами вида и даты.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — реализовано и закрыто: добавлен фильтр периода по датам (день-точность) для Migration; применяется к таблице, но не к региональному справочнику.
 - [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — реализовано и закрыто: BirdNET MQTT bias, multi-camera boost, post-roll записи; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → Processor.
-- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — issues закрыты для нулевого открытого хвоста: ворота UX в [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), E2E — [TESTING.ru.md](./TESTING.ru.md), остальное — строки таблиц ниже + консилиум п.17.
+- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues закрыты для нулевого открытого хвоста: ворота UX в [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), E2E — [TESTING.ru.md](./TESTING.ru.md), остальное — строки таблиц ниже + консилиум п.17.
+- [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **открыт:** базовая интеграция весов уже в релизе; в backlog — триггер по скачку массы и **оценка веса птицы в карточке визита** (рядом с кормом/погодой); опционально auto-tare / детекции.
 
 **Новые идеи (март 2026) — таблица с историческими номерами GitHub; открытый issue заводится при старте работ:**
 
@@ -164,7 +165,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue закрыт; идея здесь; новый issue при старте работ | P2, processor, research                                      |
 | 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue закрыт; идея здесь; новый issue при старте | P3, web                                                      |
 | 16  | Интеграция с Heimdall                                                                                                                    | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue закрыт; идея здесь; новый issue при старте | P3, infra                                                    |
-| 17  | Дальний backlog: весы корма/птиц (auto-tare + object detection)                                                                          | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) ✅ issue закрыт; идея здесь; новый issue при старте | P3, processor, research                                      |
+| 17  | Весы: MQTT/HA + UI в релизе; дальше — скачок массы (триггер) и **оценка веса птицы в карточке визита** (как корм/погода); опционально auto-tare + детекции | [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) открыт | P3, processor, research                                      |
 
 
 **Системная инициатива (приоритет P1):**
@@ -270,6 +271,11 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [x] [#159](https://github.com/Gfermoto/BirdLense-Hub/issues/159) — consistency tooltips/встроенных пояснений.
 - [x] [#161](https://github.com/Gfermoto/BirdLense-Hub/issues/161) — понятный сценарий dataset в Library.
 - [x] [#162](https://github.com/Gfermoto/BirdLense-Hub/issues/162) — уменьшить пост-скрипты перед обучением.
+
+**Волна D (техдолг):** исполнение и чеклисты — **только в GitHub issues и на доске** [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2); здесь краткая отсылка.
+
+- Эпик-порядок: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (колонка иерархии на доске): сводные [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (web), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (processor) и уровни [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225). Восстановить связи: `bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225`.
+- Вне волны D: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (классификатор), [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) (весы).
 
 **Критерий выхода из этапа "мелкие баги/хвосты":**
 - Все issue из волн A+B закрыты (#152/#158/#160 — PR [#176](https://github.com/Gfermoto/BirdLense-Hub/pull/176)).

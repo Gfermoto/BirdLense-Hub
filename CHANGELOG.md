@@ -8,8 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Web / SQLAlchemy 2.x:** `ActivityLog` и `Video` загружаются через `db.session.get(...)` вместо устаревшего `.query.get()` (`processor_routes` activity log, `gallery_upload_service`). **Processor:** docstring у `DecisionMaker.decide_stop_recording`, комментарий к ключу `(key, -1)` в `species_normalizer` ([#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)).
+- **Processor (tech debt #222):** `ebird_regional_confidence` больше не правит `sys.path` — импорт `services.ebird_region_service` при нормальном `PYTHONPATH` (`/app:/app/web` в Docker). **MQTT:** разведены `is_mqtt_live()` (сокет к брокеру) и `is_mqtt_ok_for_heartbeat()` (с запасом после обрыва); heartbeat UI — второй, выбор Frigate primary и motion — первый ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
+- **Web (tech debt #222):** лимит попыток verify-password, `Retry-After` и `client_ip_for_rate_limit` перенесены из `util.py` в `auth.py`; в `util` оставлен re-export для обратной совместимости ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
+- **Follow-up ([PR #226](https://github.com/Gfermoto/BirdLense-Hub/pull/226) review):** очистка устаревших IP в счётчике verify-password; разбор `Authorization` для метрик с регистронезависимым `Bearer`; Frigate остаётся primary motion при старте даже если MQTT ещё не live; MQTT-only детекции в `species_normalizer` не затирают друг друга при `one_per_species`; OpenAPI — `400` для `/system/activity`, путь `/system/logs`; UI Overview без небезопасного cast погоды; правки доков scales/`DATA_DIR`; устойчивость `github-issue-link-subissues.sh` к 404 от `gh api`.
+
+### Docs
+
+- **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
+- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
+- **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — backlog: **триггер по скачку массы**, **оценка веса птицы в карточке визита** (в духе корма/погоды). [CONFIGURATION](docs/CONFIGURATION.ru.md) — ключи `integrations.scales.*` (MQTT / Home Assistant).
+
+### Fixed
+
+- **UI (Overview):** карточка погоды больше не пропадает из сетки: пока `/api/ui/weather` грузится, показывается скелетон; сбой погоды не блокирует весь обзор — только блок погоды с кнопкой «Повторить».
+
+### Tests
+
+- **Xeno-canto:** `web/tests/test_xeno_canto_service.py` — парсинг и ошибки сети через мок `requests.get`; `GET /species/.../xeno-canto` в `test_api` без реального HTTP. Шаг в CI `openapi-contract` (#202).
+- **Birdfood / Web Push:** `web/tests/test_settings_mutations_smoke.py` — 403 при закрытых настройках, POST+PATCH кормушек, дубликат имени, успешный `push/subscribe` при включённых уведомлениях. CI `openapi-contract` (#202).
+- **Тот же файл:** стрим видео при `require_auth_for_video_stream` — гость 403, contributor 200; успешный `PATCH /api/ui/settings` с ролью admin (#202).
+- **Processor / system:** `test_processor_videos_smoke.py` — секрет, пустой species, порог confidence, успешный ingest, невалидные даты; `test_system_routes_smoke.py` — activity, metrics/history, logs (403/200). CI `openapi-contract` (#202).
+- **OpenAPI / CI:** `openapi.yaml` — ответ `/overview` (`hourlyTemperature`, `lastDetection`, `observer_timezone`, `stats.detectionByProvider`), схема `VideoNeighbors` и query-параметры как в API; контракт-тест `GET /videos/{id}/neighbors`. В job `openapi-contract` — **ruff** только для `web/tests/`; мелкие правки импортов под ruff (#202).
+
 ### Security
 
+- **Metrics endpoints (optional auth):** если задан **`BIRDLENSE_METRICS_TOKEN`**, `GET /metrics`, `GET /api/metrics` и `GET /api/metrics/summary` требуют `Authorization: Bearer <тот же токен>` (`hmac.compare_digest`); без переменной поведение как раньше (удобно для scrape в LAN). См. [CONFIGURATION](docs/CONFIGURATION.ru.md) → Prometheus.
 - **Code scanning (path injection):** чтение и удаление превью для Telegram — **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py`: `realpath` + `commonpath` + **`startswith(DATA_DIR + sep)`**, затем `open`/`os.remove`; логика вынесена из `notifications.py`. Удалён **`_safe_image_path_or_none`**. Для **`py/path-injection`** на sink-строках — **`# lgtm[py/path-injection]`** (путь уже ограничен каталогом данных); иначе анализатор не снимает taint с `realpath(path)` до `open`/`remove`.
 
 ## [0.3.2] - 2026-04-03
