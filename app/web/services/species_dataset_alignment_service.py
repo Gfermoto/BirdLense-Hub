@@ -15,8 +15,8 @@ from sqlalchemy import func
 from models import Species, VideoSpecies
 from services.dataset_export_service import _sanitize_dirname
 from services.species_catalog_allowlist_service import load_catalog_allowlist_names
+from species_constants import GENERIC_BIRD_SPECIES
 from util import (
-    GENERIC_BIRD_SPECIES,
     data_dir,
     load_species_canonical_mapping,
     normalize_species_to_canonical,

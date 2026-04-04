@@ -9,8 +9,8 @@ from services.species_catalog_allowlist_service import (
     species_matches_allowlist,
 )
 from services.species_registry_service import resolve_species_name
+from species_constants import GENERIC_BIRD_SPECIES
 from util import (
-    GENERIC_BIRD_SPECIES,
     get_parent_name_for_species,
     load_species_canonical_mapping,
     update_species_info_from_wiki,

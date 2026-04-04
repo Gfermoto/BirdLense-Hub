@@ -17,7 +17,8 @@ from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
 )
-from util import GENERIC_BIRD_SPECIES, load_species_canonical_mapping
+from species_constants import GENERIC_BIRD_SPECIES
+from util import load_species_canonical_mapping
 
 
 def _norm_key(name: str) -> str:
