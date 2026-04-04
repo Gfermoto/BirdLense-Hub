@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from app_config.app_config import app_config
+from time_util import ensure_utc
 from weather_service import _normalize_coord
 
 
@@ -161,8 +162,6 @@ def observer_local_range(
 
 def observer_local_hour(dt: datetime | None) -> int:
     """Hour 0..23 in observer local time for UTC-aware dt."""
-    from util import ensure_utc
-
     if dt is None:
         return 0
     local = ensure_utc(dt).astimezone(get_observer_timezone())
