@@ -15,6 +15,9 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
+# After TCP drop, still report "connected" to heartbeat/UI for this many seconds.
+MQTT_DISCONNECT_DISPLAY_GRACE_SEC = 120
+
 FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
@@ -500,12 +503,23 @@ class MQTTEventAggregator:
             src = d.get("source", "yolo")
             self.publish_detection(species, conf, src, start_time, end_time)
 
-    def is_connected(self):
+    def is_mqtt_live(self) -> bool:
+        """True only while the broker socket is up (safe for Frigate / publish gating)."""
+        return bool(self._connected)
+
+    def is_mqtt_ok_for_heartbeat(self) -> bool:
+        """True if live or disconnected within MQTT_DISCONNECT_DISPLAY_GRACE_SEC (UI / API status)."""
         if self._connected:
             return True
-        if self._last_connected_at and (time.time() - self._last_connected_at) < 120:
+        if self._last_connected_at and (
+            time.time() - self._last_connected_at
+        ) < MQTT_DISCONNECT_DISPLAY_GRACE_SEC:
             return True
         return False
+
+    def is_connected(self):
+        """Backward compatible: relaxed status for heartbeat (see is_mqtt_ok_for_heartbeat)."""
+        return self.is_mqtt_ok_for_heartbeat()
 
     def stop(self):
         self._stopped = True
