@@ -1,6 +1,6 @@
 """Регрессия: разбор URL/имён без небезопасных подстроков (CodeQL)."""
 
-import web.util as util_mod
+import web.species_metadata as species_metadata_mod
 from web.util import (
     _extract_common_for_hierarchy,
     get_inaturalist_image_and_description,
@@ -106,7 +106,7 @@ class TestINaturalistMetadata:
             seen['params'] = params
             return _Resp()
 
-        monkeypatch.setattr(util_mod.requests, 'get', fake_get)
+        monkeypatch.setattr(species_metadata_mod.requests, 'get', fake_get)
 
         image_url, description, source_url = (
             get_inaturalist_image_and_description("Abert's Towhee")
