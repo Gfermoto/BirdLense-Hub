@@ -198,7 +198,9 @@ def heartbeat():
             mqtt_aggregator_ref = _heartbeat_mqtt_ref[0] if _heartbeat_mqtt_ref else None
             if mqtt_aggregator_ref is not None:
                 try:
-                    data['mqtt_connected'] = mqtt_aggregator_ref.is_connected()
+                    data['mqtt_connected'] = (
+                        mqtt_aggregator_ref.is_mqtt_ok_for_heartbeat()
+                    )
                 except Exception:
                     data['mqtt_connected'] = False
             try:
@@ -379,10 +381,10 @@ def main():
         primary = None
         if use_frigate_from_aggregator and mqtt_aggregator:
             for _ in range(5):
-                if mqtt_aggregator.is_connected():
+                if mqtt_aggregator.is_mqtt_live():
                     break
                 time.sleep(1)
-            if mqtt_aggregator.is_connected():
+            if mqtt_aggregator.is_mqtt_live():
                 primary = frigate_detector
                 logging.info(
                     'Motion: Frigate (cameras=%s labels=%s)',
