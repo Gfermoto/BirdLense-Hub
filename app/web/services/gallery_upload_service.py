@@ -153,9 +153,9 @@ def upload_video_detections_to_gallery(video_id: int):
     min_conf = float(app_config.get('gallery.min_confidence') or 0.5)
     only_corrected = app_config.get('gallery.only_manually_corrected') or False
 
-    from models import Video, VideoSpecies
+    from models import Video, VideoSpecies, db
 
-    video = Video.query.get(video_id)
+    video = db.session.get(Video, video_id)
     if not video or not video.video_path:
         return
 
