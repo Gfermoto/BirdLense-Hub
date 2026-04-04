@@ -129,3 +129,61 @@ class TestMergeBirdFilter(unittest.TestCase):
             result[0]['contributing_providers'],
             ['birdnet_mqtt', 'frigate', 'yolo'],
         )
+
+    def test_two_mqtt_only_events_merge_when_one_per_species(self):
+        """MQTT-only buckets must not overwrite prior same-species events (#226 review)."""
+        video_end = self.video_start + timedelta(seconds=120)
+        yolo = []
+        mqtt = [
+            {
+                'species': 'Eurasian Jay',
+                'source': 'frigate',
+                'confidence': 0.7,
+                'timestamp': (self.video_start + timedelta(seconds=10)).isoformat(),
+            },
+            {
+                'species': 'Eurasian Jay',
+                'source': 'frigate',
+                'confidence': 0.8,
+                'timestamp': (self.video_start + timedelta(seconds=100)).isoformat(),
+            },
+        ]
+        result = merge_detections(
+            yolo,
+            mqtt,
+            self.video_start,
+            video_end,
+            dedup_window_seconds=45,
+            one_per_species=True,
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Eurasian Jay')
+        self.assertLessEqual(result[0]['start_time'], 10)
+        self.assertGreaterEqual(result[0]['end_time'], 95)
+
+    def test_two_mqtt_only_separate_when_not_one_per_species(self):
+        video_end = self.video_start + timedelta(seconds=120)
+        yolo = []
+        mqtt = [
+            {
+                'species': 'Eurasian Jay',
+                'source': 'frigate',
+                'confidence': 0.7,
+                'timestamp': (self.video_start + timedelta(seconds=10)).isoformat(),
+            },
+            {
+                'species': 'Eurasian Jay',
+                'source': 'frigate',
+                'confidence': 0.8,
+                'timestamp': (self.video_start + timedelta(seconds=100)).isoformat(),
+            },
+        ]
+        result = merge_detections(
+            yolo,
+            mqtt,
+            self.video_start,
+            video_end,
+            dedup_window_seconds=45,
+            one_per_species=False,
+        )
+        self.assertEqual(len(result), 2)

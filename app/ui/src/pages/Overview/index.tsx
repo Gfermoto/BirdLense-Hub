@@ -298,11 +298,19 @@ export const Overview = () => {
               <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
               <Skeleton variant="rounded" width="55%" height={32} />
             </Paper>
-          ) : (
+          ) : weather &&
+            typeof weather === 'object' &&
+            Object.keys(weather as object).length > 0 ? (
             <WeatherCard
-              weather={(weather ?? {}) as Weather}
+              weather={weather as Weather}
               date={selectedDay?.format('YYYY-MM-DD')}
             />
+          ) : (
+            <Paper sx={{ p: 2, width: '100%' }}>
+              <Typography variant="body2" color="text.secondary">
+                {t('weather.notConfigured')}
+              </Typography>
+            </Paper>
           )}
         </Grid>
 

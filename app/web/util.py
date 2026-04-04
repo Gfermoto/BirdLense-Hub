@@ -59,10 +59,8 @@ def metrics_bearer_denied(*, prometheus: bool = False):
     if not expected:
         return None
     auth = (request.headers.get('Authorization') or '').strip()
-    if auth.startswith('Bearer '):
-        got = auth[7:].strip()
-    else:
-        got = ''
+    scheme, _, credentials = auth.partition(' ')
+    got = credentials.strip() if scheme.lower() == 'bearer' else ''
     if got and hmac.compare_digest(got, expected):
         return None
     if prometheus:

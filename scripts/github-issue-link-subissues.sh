@@ -29,21 +29,30 @@ fi
 parent_num="$1"
 shift
 
-parent_id=$(gh api "repos/${REPO_FULL}/issues/${parent_num}" -q .id)
+tmp_err=$(mktemp)
+trap 'rm -f "$tmp_err"' EXIT
+
+if ! parent_id=$(gh api "repos/${REPO_FULL}/issues/${parent_num}" -q .id 2>"$tmp_err"); then
+  err=$(tr '\n' ' ' <"$tmp_err")
+  echo "Не найден родительский issue #${parent_num} в ${REPO_FULL}: $err"
+  exit 1
+fi
 if [[ -z "$parent_id" || "$parent_id" == "null" ]]; then
   echo "Не найден родительский issue #${parent_num} в ${REPO_FULL}"
   exit 1
 fi
-
-tmp_err=$(mktemp)
-trap 'rm -f "$tmp_err"' EXIT
 
 linked=0
 skipped=0
 failed=0
 
 for child_num in "$@"; do
-  child_id=$(gh api "repos/${REPO_FULL}/issues/${child_num}" -q .id)
+  if ! child_id=$(gh api "repos/${REPO_FULL}/issues/${child_num}" -q .id 2>"$tmp_err"); then
+    err=$(tr '\n' ' ' <"$tmp_err")
+    echo "! нет issue #${child_num}: $err"
+    failed=$((failed + 1))
+    continue
+  fi
   if [[ -z "$child_id" || "$child_id" == "null" ]]; then
     echo "! нет issue #${child_num}"
     failed=$((failed + 1))

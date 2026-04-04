@@ -243,7 +243,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 |------|----------|
 | `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). При включении **processor** подписывается на MQTT (или читает Home Assistant) и сохраняет последний вес для веб-UI. |
 | `integrations.scales.source` | `mqtt` (по умолчанию) или `homeassistant`. |
-| `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние пишется в `app/data` для хаба). |
+| `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
 

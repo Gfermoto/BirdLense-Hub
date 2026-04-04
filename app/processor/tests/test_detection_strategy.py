@@ -471,6 +471,28 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         self.assertIsNotNone(results[0].boxes.id)
         self.assertEqual(results[0].boxes.id.tolist(), [42])
 
+    def test_track_maybe_does_not_retry_when_first_id_exists(self):
+        from detection_strategy import _track_maybe_retry
+
+        calls = []
+
+        def track_fn(*args, **kwargs):
+            calls.append(1)
+            good = _FakeBoxes(
+                [7],
+                [0.9],
+                [[0.1, 0.1, 0.4, 0.4]],
+                [[1, 1, 50, 50]],
+            )
+            return [_FakeDetectResult(good)]
+
+        model = type('M', (), {'track': track_fn})()
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        results = _track_maybe_retry(model, frame)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(results[0].boxes.id.tolist(), [7])
+
     def test_two_stage_returns_empty_when_ids_stay_none(self):
         if TwoStageStrategy is None:
             self.skipTest('TwoStageStrategy not available (import failed).')

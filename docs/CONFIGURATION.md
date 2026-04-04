@@ -243,7 +243,7 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 |-----|-------------|
 | `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). When enabled, the **processor** subscribes to MQTT (or reads Home Assistant) and persists the latest weight for the web UI. |
 | `integrations.scales.source` | `mqtt` (default) or `homeassistant`. |
-| `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor writes state under `app/data` for the hub). |
+| `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values. |
 
