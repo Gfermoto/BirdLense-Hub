@@ -95,8 +95,12 @@ class DecisionMaker():
             self.inactive_start_time = None
 
     def decide_stop_recording(self):
+        """True once when max duration or inactivity warrants stop; then always False.
+
+        One-shot: first True records the decision; later calls avoid re-triggering
+        shutdown on every tick.
+        """
         if self.stop_recording_decided:
-            # already decided once
             return False
         reached_max_record_seconds = (
             time.time() - self.start_time) >= self.max_record_seconds

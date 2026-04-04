@@ -315,7 +315,7 @@ def register_routes(app):
                 db.session.commit()
                 return {'message': 'Activity log created successfully', 'id': new_log.id}, 201
             else:
-                log = ActivityLog.query.get(activity_id)
+                log = db.session.get(ActivityLog, activity_id)
                 if not log:
                     return {'error': 'Activity log with this ID not found'}, 404
                 log.type = activity_type

@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Web / SQLAlchemy 2.x:** `ActivityLog` и `Video` загружаются через `db.session.get(...)` вместо устаревшего `.query.get()` (`processor_routes` activity log, `gallery_upload_service`). **Processor:** docstring у `DecisionMaker.decide_stop_recording`, комментарий к ключу `(key, -1)` в `species_normalizer` ([#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)).
+
 ### Docs
 
 - **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
