@@ -1,3 +1,4 @@
+"""Канонический реестр видов: taxon, алиасы, резолв имён, бэкфилл и обогащение метаданными."""
 import re
 import time
 import requests
@@ -66,6 +67,7 @@ def _parse_scientific_and_common(name: str) -> tuple[str | None, str]:
 
 @dataclass
 class SpeciesResolution:
+    """Результат сопоставления строки с ``SpeciesTaxon`` (метод и уверенность)."""
     found: bool
     taxon: SpeciesTaxon | None
     method: str
@@ -190,6 +192,7 @@ def ensure_species_registry_seeded() -> dict:
 
 
 def resolve_species_name(name: str, source: str | None = None) -> SpeciesResolution:
+    """Найти taxon по алиасу или common name; при неудаче залогировать в SpeciesUnresolvedName."""
     resolution = _resolve_without_logging(name)
     if not resolution.found:
         _log_unresolved_name(name, resolution.normalized_key, source=source, reason='no_match')
@@ -220,6 +223,7 @@ def _log_unresolved_name(raw_name: str, normalized_key: str, source: str | None,
 
 
 def backfill_species_taxa(dry_run: bool = True, limit: int | None = None) -> dict:
+    """Проставить ``Species.taxon_id`` по реестру; при ``dry_run`` откат без commit."""
     ensure_species_registry_seeded()
     q = Species.query.order_by(Species.id.asc())
     if limit:
@@ -268,6 +272,7 @@ def backfill_species_taxa(dry_run: bool = True, limit: int | None = None) -> dic
 
 
 def unresolved_species_report(limit: int = 100) -> list[dict]:
+    """Топ неразрешённых имён по счётчику для админки и triage."""
     rows = (SpeciesUnresolvedName.query
             .order_by(SpeciesUnresolvedName.seen_count.desc(), SpeciesUnresolvedName.last_seen_at.desc())
             .limit(max(1, min(limit, 1000)))

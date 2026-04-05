@@ -30,6 +30,7 @@ from species_metadata import (  # noqa: E402, F401
     _host_is_inaturalist_open_data_asset,
     _host_is_wikipedia_family,
     _url_hostname_lower,
+    bust_feeder_species_filter_cache,
     build_hierarchy_tree,
     filter_feeder_species,
     get_inaturalist_image_and_description,

@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Web (PR #227 follow-up):** кэш **`filter_feeder_species`** — сигнатура каталога Species учитывает сумму `length(name)` (переименования без смены id/parent); **`bust_feeder_species_filter_cache`** после seed / backfill (не dry-run) / materialize-allowlist species-registry; **`app/pyproject.toml`** — interrogate с порогом 80% (исключён `tests`, игнор вложенных функций, `__init__`, magic и `_semiprivate`); **`make docs-check`** запускает `interrogate` из `web/` без принудительного успеха.
 - **Processor (tech debt #223):** единая сборка пайплайна детекции — **`detection_stack.build_detection_stack`** (`resolve_single_stage_model_path`, стратегия two/single stage, `FrameProcessor`, `DecisionMaker`, eBird overrides); **`main.py`** и **`track_regenerator.build_detection_pipeline`** используют её вместо дублирования ([#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223)).
 - **Web (tech debt #223):** маршруты метрик/visitors/history — в **`ui_system_metrics_routes`**; species-registry — в **`ui_system_species_registry_routes`**; из **`ui_system_routes`** убраны дубликаты эндпоинтов (одна регистрация на Flask). Нарезка **`ui_routes.py`** по доменам остаётся в [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) ([#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223)).
 - **Follow-up ([PR #227](https://github.com/Gfermoto/BirdLense-Hub/pull/227) review):** **`data_paths`** — единый `_resolved_path_under_data_dir`, безопасный **`full_path_for_video`** (только под `DATA_DIR`); **`timeline_payloads`** — сравнение окон визитов в aware UTC; **`visitors/track`** — лимит POST по IP, сброс только префикса `system_visitors:`, retry при `IntegrityError` на уникальном `(browser_hash, seen_day)`; seed/backfill species-registry — инвалидация кэшей; **`observer_time`** — даты солнца из astral, вечер до конца суток; **`detection_stack`** — предупреждение при fallback `yolov8n.pt`; **`species_metadata`** — отсутствие `hierarchy_names.txt`, `build_hierarchy_tree` через `_load_hierarchy_parent_map`.
@@ -37,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Tests
 
+- **Visitors track:** `test_security_hardening.py` — **429** при превышении лимита POST `/api/ui/system/visitors/track` по IP (PR #227).
 - **Telegram proxy:** `test_telegram_proxy.py` импортирует `util` как топ-уровневый модуль (`import util`), в духе `conftest` и остальных web-тестов — избегает двойной загрузки `web.util` vs `util` и цикла с `timeline_payloads` (#222).
 - **Xeno-canto:** `web/tests/test_xeno_canto_service.py` — парсинг и ошибки сети через мок `requests.get`; `GET /species/.../xeno-canto` в `test_api` без реального HTTP. Шаг в CI `openapi-contract` (#202).
 - **Birdfood / Web Push:** `web/tests/test_settings_mutations_smoke.py` — 403 при закрытых настройках, POST+PATCH кормушек, дубликат имени, успешный `push/subscribe` при включённых уведомлениях. CI `openapi-contract` (#202).

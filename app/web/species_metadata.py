@@ -48,6 +48,7 @@ def _url_hostname_lower(url: str) -> str | None:
 
 
 def _host_is_wikipedia_family(hostname: str | None) -> bool:
+    """True if hostname is wikipedia.org / wikimedia.org (incl. subdomains)."""
     if not hostname:
         return False
     return hostname == 'wikipedia.org' or hostname.endswith(
@@ -56,6 +57,7 @@ def _host_is_wikipedia_family(hostname: str | None) -> bool:
 
 
 def _host_is_inaturalist(hostname: str | None) -> bool:
+    """True if hostname is inaturalist.org (incl. subdomains)."""
     if not hostname:
         return False
     return hostname == 'inaturalist.org' or hostname.endswith('.inaturalist.org')
@@ -203,6 +205,50 @@ def normalize_species_to_canonical(name: str, mapping: dict | None = None) -> st
 
 _hierarchy_parent_map = None
 
+_feeder_taxonomy_cache: tuple | None = None
+_feeder_included_names_cache: dict[frozenset, tuple] = {}
+
+
+def bust_feeder_species_filter_cache() -> None:
+    """Сбросить кэши filter_feeder_species (тесты или после массовых правок Species)."""
+    global _feeder_taxonomy_cache
+    _feeder_taxonomy_cache = None
+    _feeder_included_names_cache.clear()
+
+
+def _species_catalog_signature() -> tuple[int, int, int, int, int]:
+    """Отпечаток каталога Species: счётчики, суммы id/parent и сумма длин имён (переименования)."""
+    from sqlalchemy import func
+
+    row = db.session.query(
+        func.count(Species.id),
+        func.max(Species.id),
+        func.sum(Species.id),
+        func.sum(func.coalesce(Species.parent_id, 0)),
+        func.sum(func.length(Species.name)),
+    ).one()
+    return tuple(int(x or 0) for x in row)
+
+
+def _get_feeder_taxonomy_context():
+    """Словари parent→children и name→Species; кэш по _species_catalog_signature."""
+    global _feeder_taxonomy_cache
+    sig = _species_catalog_signature()
+    if _feeder_taxonomy_cache is not None and _feeder_taxonomy_cache[0] == sig:
+        return _feeder_taxonomy_cache[1]
+    children_by_parent: dict = {}
+    name_to_species: dict = {}
+    for species in Species.query.all():
+        children_by_parent.setdefault(
+            species.parent_id, set(),
+        ).add(species.name)
+        name_to_species[species.name] = species
+    birds_category = name_to_species.get('Birds')
+    data = (children_by_parent, name_to_species, birds_category)
+    _feeder_taxonomy_cache = (sig, data)
+    _feeder_included_names_cache.clear()
+    return data
+
 
 def get_parent_name_for_species(species_name: str) -> str | None:
     """Родительская категория для вида по иерархии (Frigate/BirdNET/YOLO)."""
@@ -214,6 +260,7 @@ def get_parent_name_for_species(species_name: str) -> str | None:
 
 
 def build_hierarchy_tree():
+    """Построить вложенный dict дерева таксоновии из seed/hierarchy_names.txt."""
     species_dict = _load_hierarchy_parent_map()
 
     children_map = {}
@@ -269,17 +316,17 @@ def get_wikipedia_image_and_description(title):
         _wiki_meta_cache[cache_key] = result
         return result
     except requests.RequestException as e:
-        logging.warning(f"Wikipedia API HTTP failed for '{title}': {e}")
+        logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
         result = (None, None)
         _wiki_meta_cache[cache_key] = result
         return result
     except ValueError as e:
-        logging.warning(f"Wikipedia API decode failed for '{title}': {e}")
+        logging.warning("Wikipedia API decode failed for '%s': %s", title, e)
         result = (None, None)
         _wiki_meta_cache[cache_key] = result
         return result
     except Exception as e:
-        logging.warning(f"Wikipedia API failed for '{title}': {e}")
+        logging.warning("Wikipedia API failed for '%s': %s", title, e)
         result = (None, None)
         _wiki_meta_cache[cache_key] = result
         return result
@@ -440,32 +487,31 @@ def filter_feeder_species(species_names):
     if not included_families:
         return species_names
 
-    all_species = Species.query.all()
-    children_by_parent = {}
-    name_to_species = {}
-    for species in all_species:
-        children_by_parent.setdefault(
-            species.parent_id, set()).add(species.name)
-        name_to_species[species.name] = species
-
-    birds_category = name_to_species.get('Birds')
+    sig = _species_catalog_signature()
+    children_by_parent, name_to_species, birds_category = _get_feeder_taxonomy_context()
     if not birds_category:
         return species_names
 
-    included_species = set()
+    fkey = frozenset(included_families)
+    hit = _feeder_included_names_cache.get(fkey)
+    if hit is not None and hit[0] == sig:
+        included_species = hit[1]
+    else:
+        included_species = set()
 
-    def add_descendants(parent_name):
-        species = name_to_species.get(parent_name)
-        if not species:
-            return
-        children = children_by_parent.get(species.id, set())
-        included_species.update(children)
-        for child in children:
-            add_descendants(child)
+        def add_descendants(parent_name):
+            species = name_to_species.get(parent_name)
+            if not species:
+                return
+            children = children_by_parent.get(species.id, set())
+            included_species.update(children)
+            for child in children:
+                add_descendants(child)
 
-    for family in included_families:
-        if family in children_by_parent.get(birds_category.id, set()):
-            add_descendants(family)
-            included_species.add(family)
+        for family in included_families:
+            if family in children_by_parent.get(birds_category.id, set()):
+                add_descendants(family)
+                included_species.add(family)
+        _feeder_included_names_cache[fkey] = (sig, included_species)
 
     return [name for name in species_names if name in included_species]

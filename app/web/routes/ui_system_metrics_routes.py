@@ -22,6 +22,7 @@ from routes import ui_system_routes as uis
 
 
 def register_ui_system_metrics_routes(app):
+    """Метрики Prometheus/JSON, live system metrics, visitors и история нагрузки."""
     @app.route('/api/metrics/summary', methods=['GET'])
     def metrics_summary_json():
         """JSON snapshot for Grafana/Heimdall widgets or external monitors."""

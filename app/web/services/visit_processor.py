@@ -1,3 +1,4 @@
+"""Сборка ``SpeciesVisit`` и ``VideoSpecies`` из детекций процессора (видео/аудио)."""
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
 import json
@@ -25,6 +26,8 @@ def _ensure_utc(dt: datetime) -> datetime:
 
 
 class VisitProcessor:
+    """Правила склейки визитов по таймауту и привязки детекций к видео."""
+
     def __init__(self, db, logger, visit_timeout: int = 60):
         self.db = db
         self.logger = logger

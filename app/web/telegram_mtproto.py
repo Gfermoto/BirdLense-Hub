@@ -242,6 +242,7 @@ def mtproto_send(
     timeout_sec: int,
     request_retries: int,
 ) -> _TelegramHttpShim:
+    """Синхронная обёртка: отправка через Telethon/MTProto с тем же контрактом, что и Bot API shim."""
     coro = _mtproto_send_inner(
         token=token,
         chat_id=chat_id,
@@ -260,6 +261,7 @@ def mtproto_send(
 
 
 def telegram_proxy_type() -> str:
+    """Тип прокси уведомлений: ``none``, ``mtproto`` или ``socks_http`` (по настройке UI)."""
     from app_config.app_config import app_config
 
     t = (app_config.get("notifications.telegram_proxy_type") or "socks_http").strip().lower()

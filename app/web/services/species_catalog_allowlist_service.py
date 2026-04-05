@@ -48,6 +48,7 @@ def _norm_key(name: str) -> str:
 
 
 def resolve_allowlist_path(app_config_get) -> str | None:
+    """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
     rel = (app_config_get('species.catalog_allowlist_file') or '').strip()
     if not rel:
         return None
@@ -87,6 +88,7 @@ def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
 
 
 def clear_allowlist_cache() -> None:
+    """Очистить lru_cache загрузки allowlist (после смены файла или конфига)."""
     _load_allowlist_norm_keys_cached.cache_clear()
 
 
@@ -112,6 +114,7 @@ def species_matches_allowlist(
     allow_keys: frozenset[str],
     mapping: dict[str, str] | None = None,
 ) -> bool:
+    """True если отображаемое имя пересекается с ключами allowlist (пустой allowlist = всё разрешено)."""
     if not allow_keys:
         return True
     return bool(species_name_match_norm_keys(display_name, mapping) & allow_keys)

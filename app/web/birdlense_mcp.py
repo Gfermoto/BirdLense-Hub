@@ -51,6 +51,7 @@ def get_api_base_url() -> str:
 
 
 def create_mcp_server() -> FastMCP:
+    """Собрать FastMCP из openapi.yaml с HTTP-клиентом к Hub и опциональной проверкой токена."""
     api_url = get_api_base_url()
     token = get_mcp_token()
     headers = {"Authorization": f"Bearer {token}"} if token else {}
@@ -72,6 +73,7 @@ def create_mcp_server() -> FastMCP:
 
 
 async def check_mcp(mcp: FastMCP) -> None:
+    """Вывести в stdout число tools/resources (режим ``--check``)."""
     tools = await mcp.get_tools()
     resources = await mcp.get_resources()
     templates = await mcp.get_resource_templates()
@@ -81,6 +83,7 @@ async def check_mcp(mcp: FastMCP) -> None:
 
 
 def main() -> None:
+    """CLI: stdio или HTTP transport для MCP-сервера."""
     parser = argparse.ArgumentParser(description="BirdLense Hub MCP server")
     parser.add_argument(
         "--transport",

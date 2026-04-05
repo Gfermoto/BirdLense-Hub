@@ -1,3 +1,8 @@
+"""Стартовое заполнение БД: иерархия видов из seed и каталог кормов BirdFood.
+
+Корм: кураторский список (EU/US), картинки в ``data/images/food/``.
+При каждом старте ``seed()`` добавляет отсутствующие строки по уникальному ``name``.
+"""
 import logging
 import os
 
@@ -5,10 +10,6 @@ from sqlalchemy import delete, func
 
 from models import Species, BirdFood, db, video_bird_food_association
 from util import build_hierarchy_tree
-
-# Default BirdFood catalog (Settings / feeder). Curated by maintainers from common EU + US practice.
-# Image paths are under data/images/food/ (served as static paths in the app).
-# On each startup, `seed()` merges any missing rows by unique `name` (existing installs get new items).
 
 
 def dfs_traverse_and_insert(tree, parent_id=None):
@@ -147,6 +148,7 @@ def _remove_legacy_apple_pieces_bird_food() -> bool:
 
 
 def seed():
+    """Первичная иерархия Species при пустой таблице и актуализация каталога BirdFood."""
     if not Species.query.first():
         logging.info('Seeding species hierarchy data...')
         tree = build_hierarchy_tree()

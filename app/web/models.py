@@ -1,3 +1,4 @@
+"""ORM-модели BirdLense: видео, детекции, визиты, каталог видов и вспомогательные сущности."""
 import datetime
 from typing import List
 from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc
@@ -7,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 
 class Base(DeclarativeBase):
+    """Базовый класс SQLAlchemy 2.0 для всех таблиц Hub."""
     pass
 
 
@@ -15,6 +17,7 @@ db = SQLAlchemy(model_class=Base)
 
 # Many-To-Many with additional columns
 class VideoSpecies(db.Model):
+    """Связь видео ↔ вид: интервалы, уверенность, провайдер детекции и трек."""
     id: Mapped[int] = mapped_column(primary_key=True)
     video_id: Mapped[int] = mapped_column(Integer, ForeignKey("video.id"))
     species_id: Mapped[int] = mapped_column(Integer, ForeignKey("species.id"))
@@ -65,6 +68,7 @@ video_bird_food_association = Table(
 
 
 class Species(db.Model):
+    """Строка каталога видов в UI: иерархия, метаданные, привязка к каноническому taxon."""
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(unique=True, nullable=False)
     taxon_id: Mapped[int] = mapped_column(
@@ -159,6 +163,7 @@ class SpeciesUnresolvedName(db.Model):
 
 
 class BirdFood(db.Model):
+    """Корм для настроек кормушки и связи many-to-many с видео."""
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(unique=True, nullable=False)
     description: Mapped[str] = mapped_column(String(), nullable=True)
@@ -170,6 +175,7 @@ class BirdFood(db.Model):
 
 
 class Video(db.Model):
+    """Запись ролика процессора: пути, погода, избранное, детекции и корм."""
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -207,6 +213,7 @@ class Video(db.Model):
 
 
 class ActivityLog(db.Model):
+    """Журнал событий UI/системы (тип + JSON payload)."""
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
