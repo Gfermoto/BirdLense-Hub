@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Processor (tech debt #224):** исходящие MQTT-публикации из потока записи идут в очередь и отправляются только из потока сетевого цикла (`Client.publish` — single writer); цикл `loop_forever` заменён на `loop` + слив очереди. **`frame_processor`:** при слабом свете троттлинг без `sleep(1)` на критическом пути записи ([#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224)).
 - **Настройки → General:** подсказка **`heimdall_url`** — явно указано, что Heimdall **не** импортирует сущности BirdLense; URL только для проверки доступности с Hub; плитка на хаб и `/metrics` — вручную.
 - **Трекинг:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт (основной объём весов); [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) (дельта на карточке визита) закрыт после реализации в timeline/UI; **ROADMAP** обновлён.
 - **Настройки весов (UI):** при источнике Home Assistant — информационный блок, почему нет опций дельты/триггера (процессор только MQTT); **CONFIGURATION** — уточнён разрыв `mqtt` vs `homeassistant`.
