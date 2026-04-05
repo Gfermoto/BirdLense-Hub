@@ -246,7 +246,7 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values. |
-| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. Requires **MQTT** scale updates (`source: mqtt` with a non-empty `mqtt_topic`): samples are appended to `feeder_scale_history.jsonl` under `DATA_DIR`. |
+| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires **MQTT** (`source: mqtt`, `mqtt_topic`) and `feeder_scale_history.jsonl` under `DATA_DIR`. |
 | `integrations.scales.estimate_require_video_detection` | **false** (default): estimate for **any** saved clip with species, including **BirdNET-only** (`audio`). **true**: only when there is at least one **non-`audio`** detection (video/track), to avoid tying a scale spike to “sound nearby but no bird on the platform”. |
 | `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) to persist an estimate; default **0.008** (~8 g) to ignore noise. |
 | `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
