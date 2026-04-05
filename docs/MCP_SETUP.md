@@ -84,6 +84,32 @@ You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** 
 
 ---
 
+## Connect timeout / `SSE error: fetch failed`
+
+A message like `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` means the **MCP client never completed TCP/TLS** to the server in time. This is usually **network path from your PC to the VPS**, not a wrong token (the Bearer check may never run).
+
+**On the same machine and network as Cursor:**
+
+```bash
+curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/api/ui/health
+curl -m 15 -sS -H "Authorization: Bearer YOUR_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/mcp
+```
+
+- If **curl also times out** — routing or firewall to `185.218.111.196:443`. Try another network or VPN.
+- If **curl is fast (200/401) but Cursor times out** — try disabling the **system proxy**, testing **IPv4-only** (add `185.218.111.196 birdlense.eyera.info` to hosts), or updating Cursor.
+
+**SSH tunnel** when SSH to the VPS works but direct HTTPS from the PC does not:
+
+```bash
+ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@185.218.111.196
+```
+
+Point MCP at **`http://127.0.0.1:18085/mcp`** with the same `Authorization: Bearer …` while the session stays open.
+
+**LAN:** if the hub is on your LAN, `http://<hub-ip>:8085/mcp` with the same Bearer is fine.
+
+---
+
 ## 4. Restart the MCP client
 
 Restart the MCP client after changing its configuration.
