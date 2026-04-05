@@ -133,7 +133,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
 - [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
 - [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **closed:** scales — MQTT/HA, **weight spike → recording**, per-clip **delta** on video page, HA settings split, perf defaults; optional auto-tare out of scope.
-- [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **open:** show scale **delta on visit card** (timeline/overview) like feeder/weather.
+- [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **closed:** scale **delta on visit card** (timeline/overview) like feeder/weather.
 
 | # | Issue | Summary |
 |---|--------|--------|
@@ -168,7 +168,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue closed; idea retained here; new issue when work starts | P3, infra |
-| 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); **visit card** + optional auto-tare | [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) open | P3, web + API |
+| 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); optional auto-tare | — | P3, web + API |
 
 **System initiative (P1):**
 
@@ -228,7 +228,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 **Execution lives in GitHub issues and the [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) board**; this section is a pointer only.
 
-- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225`. RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164), [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) (scales on visit card).
+- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225`. RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164); Heimdall/HA backlog [#229](https://github.com/Gfermoto/BirdLense-Hub/issues/229)–[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234).
 
 ---
 
