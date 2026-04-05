@@ -296,6 +296,7 @@ def main():
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
+    scale_weight_motion_pending = None
     _data_dir = os.environ.get('DATA_DIR', 'data')
     scales_topic_arg = None
     scales_unit_arg = 'kg'
@@ -330,6 +331,41 @@ def main():
         _scales_hist_lines = int(
             app_config.get('integrations.scales.history_max_lines') or 10000
         )
+        _scale_motion_cb = None
+        _scale_motion_min = None
+        _scale_motion_debounce = 1.5
+        if (
+            scales_topic_arg
+            and app_config.get('integrations.scales.motion_trigger_enabled', False)
+        ):
+            from motion_detectors.scale_weight_motion import ScaleWeightMotionPending
+
+            scale_weight_motion_pending = ScaleWeightMotionPending()
+            _scale_motion_cb = scale_weight_motion_pending.fire
+            try:
+                _scale_motion_min = float(
+                    app_config.get('integrations.scales.motion_trigger_min_delta_kg')
+                    or 0.02
+                )
+            except (TypeError, ValueError):
+                _scale_motion_min = 0.02
+            if _scale_motion_min <= 0:
+                _scale_motion_min = None
+                _scale_motion_cb = None
+                scale_weight_motion_pending = None
+            try:
+                _scale_motion_debounce = float(
+                    app_config.get('integrations.scales.motion_trigger_debounce_seconds')
+                    or 1.5
+                )
+            except (TypeError, ValueError):
+                _scale_motion_debounce = 1.5
+            if scale_weight_motion_pending:
+                logging.info(
+                    'Scales: motion trigger on weight delta >= %s kg (debounce %ss)',
+                    _scale_motion_min,
+                    _scale_motion_debounce,
+                )
         mqtt_aggregator = MQTTEventAggregator(
             broker=mqtt_broker,
             port=app_config.get('mqtt.port', 1883),
@@ -349,6 +385,9 @@ def main():
             scales_data_dir=_data_dir if scales_topic_arg else None,
             scales_unit=scales_unit_arg,
             scales_history_max_lines=_scales_hist_lines,
+            scale_motion_trigger_cb=_scale_motion_cb,
+            scale_motion_min_delta_kg=_scale_motion_min,
+            scale_motion_debounce_seconds=_scale_motion_debounce,
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator
@@ -396,6 +435,9 @@ def main():
             os.environ.get('MOTION_ESPHOME_SENSOR')
             or app_config.get('motion.esphome_sensor_id', '')
         ).strip()
+        _or_extras = None
+        if scale_weight_motion_pending and primary:
+            _or_extras = [scale_weight_motion_pending]
         motion_detector = build_motion_detector(
             motion_source=add_source,
             media_source=media_source,
@@ -408,6 +450,7 @@ def main():
             esphome_url=esphome_url,
             esphome_sensor=esphome_sensor,
             check_every_n_frames=check_n,
+            or_extras=_or_extras,
         )
         if add_source == 'frigate':
             logging.info(

@@ -250,6 +250,9 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `integrations.scales.estimate_require_video_detection` | **false** (по умолчанию): дельта считается для **любого** ролика с детекциями, в том числе если виды пришли только из **BirdNET** (`audio`). **true** — оценку пишем только если есть детекция **не** из `audio` (кадр/трек), чтобы не смешивать «звук в саду» с скачком на весах без птицы на платформе. |
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг), ниже которой оценка не сохраняется (шум), по умолчанию **0.008** (~8 г). |
 | `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
+| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, `source: mqtt` и `mqtt_topic`. Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
+| `integrations.scales.motion_trigger_min_delta_kg` | Минимум \|Δмассы\| между **двумя последовательными** MQTT-сообщениями (в кг), чтобы считать это триггером. По умолчанию **0.02** (20 г). |
+| `integrations.scales.motion_trigger_debounce_seconds` | Минимум секунд между двумя стартами записи по весам (анти-дребезг). По умолчанию **1.5**. |
 
 Процессор сравнивает min/max веса в окне `[start_time, end_time]` ролика; если дельта не ниже порога — в БД пишется `scales_weight_delta_kg`, в UI показывается блок «Весы (оценка)». Триггеры уведомлений и auto-tare в HA/ESPHome — по-прежнему в [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
