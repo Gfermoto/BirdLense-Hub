@@ -70,7 +70,16 @@ class API():
             payload['preview_source'] = preview_source
         self._send_request('POST', 'notify/detections', payload)
 
-    def create_video(self, species_video, species_audio, start_time, end_time, video_path, spectrogram_path):
+    def create_video(
+        self,
+        species_video,
+        species_audio,
+        start_time,
+        end_time,
+        video_path,
+        spectrogram_path,
+        scales_weight_delta_kg=None,
+    ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {'best_frame'}
         
@@ -88,6 +97,8 @@ class API():
             'video_path': video_path,
             'spectrogram_path': spectrogram_path
         }
+        if scales_weight_delta_kg is not None:
+            video_data['scales_weight_delta_kg'] = float(scales_weight_delta_kg)
         response = self._send_request('POST', 'videos', video_data)
         return response.json()
 

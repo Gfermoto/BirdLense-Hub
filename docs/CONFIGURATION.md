@@ -246,8 +246,11 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values. |
+| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. Requires **MQTT** scale updates (`source: mqtt` with a non-empty `mqtt_topic`): samples are appended to `feeder_scale_history.jsonl` under `DATA_DIR`. |
+| `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) to persist an estimate; default **0.008** (~8 g) to ignore noise. |
+| `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
 
-Future work: **trigger on sharp weight change** (threshold / debounce) — tracked in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+With a **non-audio** detection on the clip, the processor compares min/max scale readings between `start_time` and `end_time`; if the span is at least the threshold, `scales_weight_delta_kg` is saved and the video page shows a compact “Scales (estimate)” block. Notification triggers and auto-tare remain in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 

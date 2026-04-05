@@ -150,6 +150,13 @@ def create_app():
             db.session.commit()
         except Exception:
             db.session.rollback()
+        try:
+            db.session.execute(text(
+                "ALTER TABLE video ADD COLUMN scales_weight_delta_kg FLOAT"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         seed()
         try:
             seed_stats = ensure_species_registry_seeded()

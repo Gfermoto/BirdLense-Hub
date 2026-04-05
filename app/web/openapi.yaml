@@ -876,6 +876,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BirdFood"
+        scales:
+          type: object
+          nullable: true
+          description: Estimated feeder scale delta during the recording window (issue #167); null if not computed or scales disabled
+          properties:
+            delta_kg:
+              type: number
+            display_value:
+              type: number
+            display_unit:
+              type: string
+              enum: [kg, g]
     VideoNeighbors:
       type: object
       properties:

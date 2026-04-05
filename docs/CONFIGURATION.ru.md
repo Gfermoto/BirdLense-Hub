@@ -246,8 +246,11 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
+| `integrations.scales.weight_estimate_enabled` | Оценка **дельты массы за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). Нужны **MQTT**-показания (`source: mqtt` и непустой `mqtt_topic`): процессор пишет журнал `feeder_scale_history.jsonl` в `DATA_DIR`. |
+| `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг), ниже которой оценка не сохраняется (шум), по умолчанию **0.008** (~8 г). |
+| `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
 
-Дальше: **триггер по резкому изменению веса** (порог, дебаунс) — [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+При **видео-детекции** (есть детекция не только `audio`) процессор сравнивает min/max веса в окне `[start_time, end_time]` ролика; если дельта не ниже порога — в БД пишется `scales_weight_delta_kg`, в UI показывается блок «Весы (оценка)». Триггеры уведомлений и auto-tare — по-прежнему в [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 ---
 

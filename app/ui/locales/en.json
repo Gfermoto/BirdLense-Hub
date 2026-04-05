@@ -754,6 +754,9 @@
     "duration": "Duration",
     "processor": "Processor",
     "birdFood": "Bird Food",
+    "scalesEstimateTitle": "Scales (estimate)",
+    "scalesEstimateValue": "{{value}} {{unit}}",
+    "scalesEstimateHint": "Change in scale readings during the clip when a video detection exists; wind, noise, or multiple birds affect accuracy.",
     "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip."
   },
   "weather": {
