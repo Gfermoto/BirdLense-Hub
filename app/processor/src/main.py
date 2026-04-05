@@ -638,9 +638,7 @@ def main():
                     f'MQTT events in window: {len(mqtt_events)}')
             if len(video_detections) > 0:
                 scales_delta_kg = None
-                req_video = app_config.get(
-                    'integrations.scales.estimate_require_video_detection', False
-                )
+                # Дельту веса не привязываем к роликам только со звуком (BirdNET): нужен кадр/трек.
                 has_non_audio = any(
                     d.get('source') != 'audio' for d in video_detections
                 )
@@ -648,7 +646,7 @@ def main():
                     app_config.get('integrations.scales.enabled')
                     and app_config.get('integrations.scales.weight_estimate_enabled', True)
                     and scales_topic_arg
-                    and (not req_video or has_non_audio)
+                    and has_non_audio
                 ):
                     from scale_sample_log import estimate_weight_delta_kg
                     try:

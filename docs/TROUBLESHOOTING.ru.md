@@ -52,9 +52,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Что сделать:**
 
-1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **2 CPU / 2G RAM**. На слабом железе или при активной записи увеличьте `cpus` и `mem_limit` через `docker-compose.override.yml` (см. `docker-compose.intel.example.yml` как образец override).
+1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **4 CPU / 4G RAM**. При необходимости поднимите `cpus` и `mem_limit` через `docker-compose.override.yml` (см. `docker-compose.intel.example.yml` как образец override).
 2. **Кэш API** — **Настройки → Производительность**: включите Redis (`performance.cache_redis_enabled`), проверьте `REDIS_URL` в `.env` (в compose обычно `redis://redis:6379/0`). Без Redis кэш только в памяти процесса и менее эффективен при перезапусках.
-3. **Параллельные запросы** — один процесс gunicorn, потоки `gthread`. Увеличить очередь: в `.env` задать `GUNICORN_THREADS=12` (или выше, если RAM и CPU позволяют), затем `make restart`.
+3. **Параллельные запросы** — один процесс gunicorn, потоки `gthread` (по умолчанию **16**). Увеличить очередь: в `.env` задать `GUNICORN_THREADS=24` (или выше, если RAM и CPU позволяют), затем `make restart`.
 4. **Диск и БД** — очень большой `birdlense.db` или медленный диск усиливают задержки; страница **Система** показывает загрузку. При необходимости сделайте бэкап (**Система → Хранилище**), остановите хаб и выполните обслуживание SQLite (например `sqlite3 birdlense.db "VACUUM;"`).
 5. **Сеть** — доступ по Wi‑Fi или через удалённый VPS добавляет задержку независимо от сервера.
 
