@@ -658,8 +658,15 @@ def main():
                         )
                     except (TypeError, ValueError):
                         min_d = 0.008
+                    require_spike = app_config.get(
+                        'integrations.scales.estimate_require_consecutive_spike', True
+                    )
                     est, _n = estimate_weight_delta_kg(
-                        _data_dir, start_time, end_time, min_delta_kg=min_d
+                        _data_dir,
+                        start_time,
+                        end_time,
+                        min_delta_kg=min_d,
+                        require_consecutive_spike=bool(require_spike),
                     )
                     scales_delta_kg = est
                 resp = api.create_video(
