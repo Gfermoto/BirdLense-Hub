@@ -327,6 +327,9 @@ def main():
         mqtt_client_id = None
         if args.input:
             mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
+        _scales_hist_lines = int(
+            app_config.get('integrations.scales.history_max_lines') or 10000
+        )
         mqtt_aggregator = MQTTEventAggregator(
             broker=mqtt_broker,
             port=app_config.get('mqtt.port', 1883),
@@ -345,6 +348,7 @@ def main():
             scales_topic=scales_topic_arg,
             scales_data_dir=_data_dir if scales_topic_arg else None,
             scales_unit=scales_unit_arg,
+            scales_history_max_lines=_scales_hist_lines,
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator
@@ -590,8 +594,34 @@ def main():
                     f'No detections after merge. YOLO tracks: {len(frame_processor.tracks)}, '
                     f'MQTT events in window: {len(mqtt_events)}')
             if len(video_detections) > 0:
-                resp = api.create_video(video_detections, audio_detections, start_time,
-                                        end_time, video_path_for_api, spectrogram_path)
+                scales_delta_kg = None
+                if (
+                    app_config.get('integrations.scales.enabled')
+                    and app_config.get('integrations.scales.weight_estimate_enabled', True)
+                    and scales_topic_arg
+                    and any(d.get('source') != 'audio' for d in video_detections)
+                ):
+                    from scale_sample_log import estimate_weight_delta_kg
+                    try:
+                        min_d = float(
+                            app_config.get('integrations.scales.min_delta_kg_for_estimate')
+                            or 0.008
+                        )
+                    except (TypeError, ValueError):
+                        min_d = 0.008
+                    est, _n = estimate_weight_delta_kg(
+                        _data_dir, start_time, end_time, min_delta_kg=min_d
+                    )
+                    scales_delta_kg = est
+                resp = api.create_video(
+                    video_detections,
+                    audio_detections,
+                    start_time,
+                    end_time,
+                    video_path_for_api,
+                    spectrogram_path,
+                    scales_weight_delta_kg=scales_delta_kg,
+                )
                 video_id = resp.get('video_id') if isinstance(resp, dict) else None
                 if (video_id is not None and app_config.get('processor.save_dataset_crops')
                         and video_detections):

@@ -76,6 +76,31 @@ def _fetch_ha_scale(entity_id: str) -> dict | None:
         return None
 
 
+def video_scales_estimate_payload(video) -> dict | None:
+    """Блок для карточки записи: дельта массы в единицах из настроек (#167)."""
+    val = getattr(video, 'scales_weight_delta_kg', None)
+    if val is None:
+        return None
+    try:
+        kg = float(val)
+    except (TypeError, ValueError):
+        return None
+    if kg < 0 or kg > 50:
+        return None
+    unit = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
+    if unit == 'g':
+        return {
+            'delta_kg': kg,
+            'display_value': round(kg * 1000.0, 1),
+            'display_unit': 'g',
+        }
+    return {
+        'delta_kg': kg,
+        'display_value': round(kg, 4),
+        'display_unit': 'kg',
+    }
+
+
 def get_feeder_scale_snapshot() -> dict | None:
     """{ weight, unit, updated_at, source? } или None."""
     if not app_config.get('integrations.scales.enabled'):

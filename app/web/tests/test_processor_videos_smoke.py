@@ -113,6 +113,86 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch):
         assert db.session.get(Video, vid) is not None
 
 
+def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_headers, monkeypatch):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
+    monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
+    monkeypatch.setitem(
+        app_config.config.setdefault('detection', {}),
+        'min_confidence_to_store',
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault('gallery', {}), 'enabled', False)
+    monkeypatch.setitem(app_config.config.setdefault('webhook', {}), 'url', '')
+    monkeypatch.setitem(app_config.config.setdefault('integrations', {}), 'scales', {'enabled': True})
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    body['scales_weight_delta_kg'] = 0.0234
+    body['species'] = [{
+        'species_name': f'Pytest Scale {token}',
+        'confidence': 0.95,
+        'start_time': 0,
+        'end_time': 2,
+        'source': 'video',
+        'frames': [],
+    }]
+    r = client.post('/api/processor/videos', json=body, headers=proc_headers)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    vid = r.get_json()['video_id']
+    with app.app_context():
+        v = db.session.get(Video, vid)
+        assert v is not None
+        assert abs(float(v.scales_weight_delta_kg) - 0.0234) < 1e-6
+
+    gr = client.get(f'/api/ui/videos/{vid}')
+    assert gr.status_code == 200
+    js = gr.get_json()
+    assert js.get('scales') is not None
+    assert abs(js['scales']['delta_kg'] - 0.0234) < 1e-6
+    assert js['scales']['display_unit'] == 'kg'
+
+
+def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers, monkeypatch):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
+    monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
+    monkeypatch.setitem(
+        app_config.config.setdefault('detection', {}),
+        'min_confidence_to_store',
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault('gallery', {}), 'enabled', False)
+    monkeypatch.setitem(app_config.config.setdefault('webhook', {}), 'url', '')
+    monkeypatch.setitem(app_config.config.setdefault('integrations', {}), 'scales', {'enabled': False})
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    body['scales_weight_delta_kg'] = 0.05
+    body['species'] = [{
+        'species_name': f'Pytest NoScale {token}',
+        'confidence': 0.95,
+        'start_time': 0,
+        'end_time': 2,
+        'source': 'video',
+        'frames': [],
+    }]
+    r = client.post('/api/processor/videos', json=body, headers=proc_headers)
+    assert r.status_code == 201
+    vid = r.get_json()['video_id']
+    with app.app_context():
+        v = db.session.get(Video, vid)
+        assert v.scales_weight_delta_kg is None
+
+
 def test_processor_videos_invalid_iso_400(client, proc_headers, monkeypatch):
     from routes import processor_routes
 

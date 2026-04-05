@@ -27,6 +27,7 @@ from auth import (
     settings_check_access,
     contributor_or_admin_access,
 )
+from services.feeder_scale import video_scales_estimate_payload
 from util import (
     data_dir,
     fetch_weather,
@@ -583,7 +584,8 @@ def register_routes(app):
                     'name': bf.name,
                     'image_url': bf.image_url,
                 } for bf in video.food
-            ]
+            ],
+            'scales': video_scales_estimate_payload(video),
         }
         return video_json, 200
 

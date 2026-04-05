@@ -204,6 +204,9 @@ class Video(db.Model):
         Integer(), nullable=True)  # cloudiness, %
     weather_wind_speed: Mapped[int] = mapped_column(
         Float(precision=2), nullable=True)  # wind speed, meter/sec
+    # Оценка изменения массы на весах за интервал записи (кг), issue #167
+    scales_weight_delta_kg: Mapped[float | None] = mapped_column(
+        Float(precision=6), nullable=True)
 
     # Relations
     video_species: Mapped[List["VideoSpecies"]

@@ -79,6 +79,12 @@ export interface Video {
     /** Relative path (data/images/food/...) or null — use resolveImageUrl() */
     image_url: string | null;
   }[];
+  /** Оценка дельты на весах за ролик (#167); null если нет данных */
+  scales?: {
+    delta_kg: number;
+    display_value: number;
+    display_unit: 'kg' | 'g';
+  } | null;
 }
 
 export interface BirdFood {

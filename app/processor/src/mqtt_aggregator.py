@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
+from scale_sample_log import append_feeder_scale_sample
+
 logger = logging.getLogger(__name__)
 
 # After TCP drop, still report "connected" to heartbeat/UI for this many seconds.
@@ -47,18 +49,22 @@ def _parse_scale_payload(payload: bytes) -> float | None:
         return None
 
 
-def write_feeder_scale_state(data_dir: str, weight: float, unit: str) -> None:
-    """Сохранить последний вес для UI (карточка кормушки)."""
+def write_feeder_scale_state(
+    data_dir: str, weight: float, unit: str, *, history_max_lines: int = 10000
+) -> None:
+    """Сохранить последний вес для UI (карточка кормушки) и строку в журнал для оценки дельты."""
     try:
         os.makedirs(data_dir, exist_ok=True)
         path = os.path.join(data_dir, FEEDER_SCALE_STATE_FILE)
+        u = (unit or "kg").strip().lower()[:8] or "kg"
         rec = {
             "weight": float(weight),
-            "unit": (unit or "kg").strip().lower()[:8],
+            "unit": u,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(rec, f, ensure_ascii=False)
+        append_feeder_scale_sample(data_dir, float(weight), u, max_lines=history_max_lines)
     except OSError as e:
         logger.debug("write_feeder_scale_state: %s", e)
 
@@ -195,6 +201,7 @@ class MQTTEventAggregator:
         scales_topic: str | None = None,
         scales_data_dir: str | None = None,
         scales_unit: str = "kg",
+        scales_history_max_lines: int = 10000,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -235,6 +242,7 @@ class MQTTEventAggregator:
         self.scales_topic = st if st else None
         self.scales_data_dir = (scales_data_dir or "").strip() or None
         self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
+        self.scales_history_max_lines = max(100, int(scales_history_max_lines or 10000))
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -374,7 +382,12 @@ class MQTTEventAggregator:
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
             if w is not None and self.scales_data_dir:
-                write_feeder_scale_state(self.scales_data_dir, w, self.scales_unit)
+                write_feeder_scale_state(
+                    self.scales_data_dir,
+                    w,
+                    self.scales_unit,
+                    history_max_lines=self.scales_history_max_lines,
+                )
                 logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
             return
         if ev:
