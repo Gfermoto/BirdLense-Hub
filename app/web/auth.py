@@ -155,3 +155,22 @@ def _record_verify_password_failure(ip: str) -> None:
 def verify_password_retry_after_seconds() -> int:
     """HTTP Retry-After (seconds) for 429 on verify-password."""
     return int(VERIFY_PASSWORD_WINDOW)
+
+
+# --- Public POST /api/ui/system/visitors/track (анонимная аналитика)
+_visitor_track_hits: dict[str, list] = {}
+_visitor_track_lock = threading.Lock()
+VISITOR_TRACK_LIMIT = 120
+VISITOR_TRACK_WINDOW = 60.0
+
+
+def check_visitor_track_rate_limit(ip: str) -> bool:
+    """Return True if under per-IP POST limit for visitor analytics."""
+    now = time.monotonic()
+    with _visitor_track_lock:
+        hits = _visitor_track_hits.setdefault(ip, [])
+        hits[:] = [t for t in hits if now - t < VISITOR_TRACK_WINDOW]
+        if len(hits) >= VISITOR_TRACK_LIMIT:
+            return False
+        hits.append(now)
+        return True

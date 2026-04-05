@@ -37,13 +37,12 @@ def fetch_sun_times(date_str: str) -> dict | None:
         tz = zoneinfo.ZoneInfo('UTC')
         loc = LocationInfo('', '', 'UTC', lat_f, lon_f)
         s = sun(loc.observer, date=d, tzinfo=tz)
-        out_date = d.isoformat()
         return {
-            'dawn': f"{out_date}T{s['dawn'].strftime('%H:%M:%S')}Z",
-            'sunrise': f"{out_date}T{s['sunrise'].strftime('%H:%M:%S')}Z",
-            'noon': f"{out_date}T{s['noon'].strftime('%H:%M:%S')}Z",
-            'sunset': f"{out_date}T{s['sunset'].strftime('%H:%M:%S')}Z",
-            'dusk': f"{out_date}T{s['dusk'].strftime('%H:%M:%S')}Z",
+            'dawn': s['dawn'].strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'sunrise': s['sunrise'].strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'noon': s['noon'].strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'sunset': s['sunset'].strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'dusk': s['dusk'].strftime('%Y-%m-%dT%H:%M:%SZ'),
         }
     except Exception as e:
         logging.warning('Sun times calculation failed: %s', e)
@@ -136,7 +135,7 @@ def observer_local_range(
             'morning': (6, 10),
             'day': (10, 14),
             'afternoon': (14, 18),
-            'evening': (18, 22),
+            'evening': (18, 24),
         }
         if time_of_day not in ranges:
             raise ValueError('invalid time_of_day')
@@ -147,12 +146,20 @@ def observer_local_range(
             second=0,
             microsecond=0,
         )
-        range_end = start_local.replace(
-            hour=end_hour,
-            minute=0,
-            second=0,
-            microsecond=0,
-        ) - timedelta(microseconds=1)
+        if end_hour >= 24:
+            range_end = start_local.replace(
+                hour=23,
+                minute=59,
+                second=59,
+                microsecond=999999,
+            )
+        else:
+            range_end = start_local.replace(
+                hour=end_hour,
+                minute=0,
+                second=0,
+                microsecond=0,
+            ) - timedelta(microseconds=1)
 
     return (
         range_start.astimezone(timezone.utc).replace(tzinfo=None),

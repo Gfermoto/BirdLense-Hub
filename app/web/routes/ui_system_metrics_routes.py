@@ -5,7 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Response, jsonify, request
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
+from auth import check_visitor_track_rate_limit, client_ip_for_rate_limit
 from models import (
     db,
     SiteVisitor,
@@ -13,8 +15,7 @@ from models import (
     Video,
     VideoSpecies,
 )
-from services.cache import cache_get, cache_set
-from services.http_response_cache import bust_response_caches, bust_system_response_caches
+from services.cache import cache_delete_prefix, cache_get, cache_set
 from util import metrics_bearer_denied, settings_check_access
 
 from routes import ui_system_routes as uis
@@ -147,6 +148,10 @@ def register_ui_system_metrics_routes(app):
     @app.route('/api/ui/system/visitors/track', methods=['POST'])
     def system_visitors_track():
         try:
+            ip = client_ip_for_rate_limit(request)
+            if not check_visitor_track_rate_limit(ip):
+                return {'error': 'Too many requests'}, 429
+
             payload = request.get_json(silent=True) or {}
             raw_browser_id = str(payload.get('browser_id') or '').strip()
             if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', raw_browser_id):
@@ -175,9 +180,20 @@ def register_ui_system_metrics_routes(app):
             else:
                 row.last_seen_at = now_utc
                 row.device_class = device_class
-            db.session.commit()
-            bust_system_response_caches()
-            bust_response_caches()
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                row = db.session.query(SiteVisitor).filter(
+                    SiteVisitor.browser_hash == browser_hash,
+                    SiteVisitor.seen_day == seen_day,
+                ).first()
+                if row is None:
+                    raise
+                row.last_seen_at = now_utc
+                row.device_class = device_class
+                db.session.commit()
+            cache_delete_prefix('system_visitors:')
             return {'ok': True}, 200
         except Exception as e:
             db.session.rollback()

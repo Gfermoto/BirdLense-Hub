@@ -13,7 +13,10 @@ def ensure_utc(dt: datetime) -> datetime:
 
 
 def parse_utc_timestamp(param) -> datetime:
-    """Unix sec → naive UTC datetime. Raises ValueError."""
+    """Unix sec → naive UTC datetime (tzinfo=None). Raises ValueError.
+
+    Для SQLite и сравнений с naive полями БД. Нужен aware UTC — см. ``ensure_utc``.
+    """
     if param is None:
         raise ValueError('Timestamp is required')
     ts = int(param)

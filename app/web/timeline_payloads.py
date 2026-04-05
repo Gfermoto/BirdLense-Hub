@@ -26,13 +26,19 @@ def get_primary_video_for_visit_in_window(
         if getattr(vs, 'video', None) and getattr(vs.video, 'start_time', None)
     ]
     if window_start is not None or window_end is not None:
+        window_start_utc = (
+            ensure_utc(window_start) if window_start is not None else None
+        )
+        window_end_utc = (
+            ensure_utc(window_end) if window_end is not None else None
+        )
         filtered_vs = []
         for vs in vs_list:
-            video_start = ensure_utc(vs.video.start_time).replace(tzinfo=None)
-            video_end = ensure_utc(vs.video.end_time).replace(tzinfo=None)
-            if window_start is not None and video_end <= window_start:
+            video_start = ensure_utc(vs.video.start_time)
+            video_end = ensure_utc(vs.video.end_time)
+            if window_start_utc is not None and video_end <= window_start_utc:
                 continue
-            if window_end is not None and video_start >= window_end:
+            if window_end_utc is not None and video_start >= window_end_utc:
                 continue
             filtered_vs.append(vs)
         vs_list = filtered_vs
