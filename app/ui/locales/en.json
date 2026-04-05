@@ -339,6 +339,8 @@
     "scalesEnabled": "Show feeder scale in UI",
     "scalesMqttTopic": "MQTT topic for weight",
     "scalesMqttTopicHint": "Plain number or JSON with value/weight/state. Example: homeassistant/sensor/your_scale_weight/state (ESPHome).",
+    "scalesEstimateRequireVideo": "Weight delta estimate only with video detection",
+    "scalesEstimateRequireVideoHint": "Off (default): delta is computed for any clip with species, including BirdNET-only. Turn on if you do not want audio-only clips tied to scale changes.",
     "minTrackDuration": "Min track duration (sec)",
     "minTrackDurationHelp": "ByteTrack tracks shorter than this are discarded. Default 4s — fewer spurious tracks.",
     "confidenceThresholdsTitle": "Thresholds (3 levels)",

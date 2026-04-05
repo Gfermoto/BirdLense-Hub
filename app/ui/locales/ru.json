@@ -339,6 +339,8 @@
     "scalesEnabled": "Показывать вес в интерфейсе",
     "scalesMqttTopic": "MQTT-топик веса",
     "scalesMqttTopicHint": "Число в тексте или JSON с value/weight/state. Пример: homeassistant/sensor/…/state (ESPHome).",
+    "scalesEstimateRequireVideo": "Оценку дельты веса только при видео-детекции",
+    "scalesEstimateRequireVideoHint": "Выключено (по умолчанию): дельта за клип и при BirdNET без кадра. Включите, если не хотите связывать вес с роликами только по звуку.",
     "minTrackDuration": "Мин. длительность трека (сек)",
     "minTrackDurationHelp": "Треки ByteTrack короче — отбрасываются. По умолчанию 4 с — меньше ложных треков.",
     "confidenceThresholdsTitle": "Пороги (3 уровня)",
