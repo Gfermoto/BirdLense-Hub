@@ -1,42 +1,7 @@
-"""Backward-compatible facade: auth, paths, timeline, metadata, time (#222)."""
+"""Backward-compatible facade (#222)."""
 
-# Re-exports — do not remove
-from auth import (
-    VERIFY_PASSWORD_LIMIT,
-    VERIFY_PASSWORD_WINDOW,
-    _check_verify_password_rate_limit,
-    _clear_verify_password_attempts,
-    _get_session_role,
-    _has_contributor_password,
-    _record_verify_password_failure,
-    _verify_password_attempts,
-    _verify_password_lock,
-    client_ip_for_rate_limit,
-    contributor_or_admin_access,
-    settings_check_access,
-    verify_password_retry_after_seconds,
-)  # noqa: F401
-from notifications import (
-    notify,
-    notify_app_startup,
-    notify_telegram_test,
-    _telegram_http_proxies,
-    _telegram_request,
-    _telegram_send_message,
-    _telegram_button_open_live,
-    _get_button_custom_emoji_id,
-    _get_telegram_api_base,
-    _telegram_timeouts,
-    _payload_for_telegram_multipart,
-    _compress_image_for_telegram,
-)  # noqa: F401
-from weather_service import (
-    WeatherFetcher,
-    HAWeatherFetcher,
-    _create_weather_fetcher,
-    weather_fetcher,
-    fetch_weather,
-)  # noqa: F401
+from compat_reexports import *  # noqa: F401, F403
+
 from app_config.app_config import app_config  # noqa: F401
 from metrics_auth import metrics_bearer_denied  # noqa: F401
 from species_constants import GENERIC_BIRD_SPECIES  # noqa: F401
