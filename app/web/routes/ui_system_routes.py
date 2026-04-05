@@ -20,14 +20,8 @@ from models import (
 from sqlalchemy import func, select, delete
 from services.retention_service import run_retention, _delete_video_row_cascade
 from services.species_registry_service import (
-    ensure_species_registry_seeded,
-    backfill_species_taxa,
-    enrich_species_metadata_with_status,
-    ensure_allowlist_species_materialized,
-    repair_catalog_cards,
     catalog_cards_coverage_snapshot,
-    species_registry_health,
-    unresolved_species_report,
+    repair_catalog_cards,
     resolve_species_name,
 )
 from services.heimdall_service import probe_heimdall
@@ -531,6 +525,174 @@ def _sqlite_replace_live_db(live_db_path: str, restored_path: str) -> None:
     _sqlite_remove_sidecars(live_db_path)
 
 
+
+
+def _activity_log_payload(row):
+    try:
+        return row.data if isinstance(row.data, dict) else (
+            json.loads(row.data) if row.data else {}
+        )
+    except Exception:
+        return {}
+
+
+def _notify_preview_rows_24h():
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    preview_since = now_utc - timedelta(hours=24)
+    return (
+        db.session.query(ActivityLog)
+        .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
+        .all()
+    )
+
+
+def _notify_preview_generated_rows_24h():
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    preview_since = now_utc - timedelta(hours=24)
+    return (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == 'notify_preview_generated',
+            ActivityLog.created_at >= preview_since,
+        )
+        .all()
+    )
+
+
+def _notify_preview_by_source_24h():
+    preview_rows = _notify_preview_rows_24h()
+    preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
+    for row in preview_rows:
+        src = 'unknown'
+        payload = _activity_log_payload(row)
+        src = str((payload or {}).get('preview_source') or 'unknown')
+        if src not in preview_by_source:
+            src = 'unknown'
+        preview_by_source[src] += 1
+    return preview_by_source
+
+
+def _notify_preview_generated_by_source_24h():
+    preview_rows = _notify_preview_generated_rows_24h()
+    preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
+    for row in preview_rows:
+        payload = _activity_log_payload(row)
+        src = str((payload or {}).get('preview_source') or 'unknown')
+        if src not in preview_by_source:
+            src = 'unknown'
+        preview_by_source[src] += 1
+    return preview_by_source
+
+
+def _notify_fallback_by_reason_24h():
+    preview_rows = _notify_preview_rows_24h()
+    by_reason = {
+        'none': 0,
+        'no_preview': 0,
+        'decode_failed': 0,
+        'telegram_photo_failed': 0,
+        'notifications_disabled': 0,
+        'telegram_not_configured': 0,
+        'config_disabled': 0,
+        'unsafe_path': 0,
+        'read_failed': 0,
+        'telegram_text_failed': 0,
+        'unexpected_error': 0,
+        'unknown': 0,
+    }
+    for row in preview_rows:
+        payload = _activity_log_payload(row)
+        reason = str((payload or {}).get('fallback_reason') or 'none')
+        if reason not in by_reason:
+            reason = 'unknown'
+        by_reason[reason] += 1
+    return by_reason
+
+
+def _notify_delivery_24h():
+    preview_rows = _notify_preview_rows_24h()
+    by_delivery = {
+        'photo': 0,
+        'text': 0,
+        'text_fallback': 0,
+        'failed': 0,
+        'skipped': 0,
+        'unknown': 0,
+    }
+    for row in preview_rows:
+        payload = _activity_log_payload(row)
+        delivery = str((payload or {}).get('telegram_delivery') or 'unknown')
+        if delivery not in by_delivery:
+            delivery = 'unknown'
+        by_delivery[delivery] += 1
+    return by_delivery
+
+
+def _prometheus_metrics_body(app):
+    sys_m = _collect_live_system_metrics(app)
+    detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
+    species_count = db.session.query(VideoSpecies.species_id).distinct().count()
+    videos_count = db.session.query(func.count(Video.id)).scalar() or 0
+    preview_by_source = _notify_preview_by_source_24h()
+    preview_generated_by_source = _notify_preview_generated_by_source_24h()
+    fallback_by_reason = _notify_fallback_by_reason_24h()
+    delivery_counts = _notify_delivery_24h()
+    lines = [
+        '# HELP birdlense_cpu_usage_percent CPU usage',
+        '# TYPE birdlense_cpu_usage_percent gauge',
+        f'birdlense_cpu_usage_percent {sys_m["cpu"]["percent"]}',
+        '# HELP birdlense_memory_used_percent Memory usage percent',
+        '# TYPE birdlense_memory_used_percent gauge',
+        f'birdlense_memory_used_percent {sys_m["memory"]["percent"]}',
+        '# HELP birdlense_memory_total_bytes Memory total in bytes',
+        '# TYPE birdlense_memory_total_bytes gauge',
+        f'birdlense_memory_total_bytes {sys_m["memory"]["total_bytes"]}',
+        '# HELP birdlense_memory_used_bytes Memory used in bytes',
+        '# TYPE birdlense_memory_used_bytes gauge',
+        f'birdlense_memory_used_bytes {sys_m["memory"]["used_bytes"]}',
+        '# HELP birdlense_disk_used_percent Disk usage percent',
+        '# TYPE birdlense_disk_used_percent gauge',
+        f'birdlense_disk_used_percent {sys_m["disk"]["percent"]}',
+        '# HELP birdlense_detections_total Total number of bird detections',
+        '# TYPE birdlense_detections_total counter',
+        f'birdlense_detections_total {detections}',
+        '# HELP birdlense_species_count Number of unique species detected',
+        '# TYPE birdlense_species_count gauge',
+        f'birdlense_species_count {species_count}',
+        '# HELP birdlense_videos_total Total number of recorded videos',
+        '# TYPE birdlense_videos_total counter',
+        f'birdlense_videos_total {videos_count}',
+        '# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h',
+        '# TYPE birdlense_notify_preview_24h gauge',
+    ]
+    for src, count in preview_by_source.items():
+        lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
+    lines.extend([
+        '# HELP birdlense_notify_preview_generated_24h Notification preview generation counts for last 24h',
+        '# TYPE birdlense_notify_preview_generated_24h gauge',
+    ])
+    for src, count in preview_generated_by_source.items():
+        lines.append(f'birdlense_notify_preview_generated_24h{{source="{src}"}} {count}')
+    lines.extend([
+        '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
+        '# TYPE birdlense_notify_fallback_24h gauge',
+    ])
+    for reason, count in fallback_by_reason.items():
+        lines.append(f'birdlense_notify_fallback_24h{{reason="{reason}"}} {count}')
+    lines.extend([
+        '# HELP birdlense_notify_delivery_24h Notification delivery outcome counts for last 24h',
+        '# TYPE birdlense_notify_delivery_24h gauge',
+    ])
+    for delivery, count in delivery_counts.items():
+        lines.append(f'birdlense_notify_delivery_24h{{delivery="{delivery}"}} {count}')
+    if sys_m['gpu_percent'] is not None:
+        lines.extend([
+            '# HELP birdlense_gpu_usage_percent GPU usage',
+            '# TYPE birdlense_gpu_usage_percent gauge',
+            f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
+        ])
+    return '\n'.join(lines) + '\n'
+
 def register_routes(app):
     def _parse_video_ids(payload) -> list[int]:
         raw = (payload or {}).get('video_ids')
@@ -590,273 +752,8 @@ def register_routes(app):
             return None
         return db.engine.url.database
 
-    def _notify_preview_rows_24h():
-        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-        preview_since = now_utc - timedelta(hours=24)
-        return (
-            db.session.query(ActivityLog)
-            .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
-            .all()
-        )
-
-    def _notify_preview_generated_rows_24h():
-        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-        preview_since = now_utc - timedelta(hours=24)
-        return (
-            db.session.query(ActivityLog)
-            .filter(
-                ActivityLog.type == 'notify_preview_generated',
-                ActivityLog.created_at >= preview_since,
-            )
-            .all()
-        )
-
-    def _activity_log_payload(row):
-        try:
-            return row.data if isinstance(row.data, dict) else (
-                json.loads(row.data) if row.data else {}
-            )
-        except Exception:
-            return {}
-
-    def _notify_preview_by_source_24h():
-        preview_rows = _notify_preview_rows_24h()
-        preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
-        for row in preview_rows:
-            src = 'unknown'
-            payload = _activity_log_payload(row)
-            src = str((payload or {}).get('preview_source') or 'unknown')
-            if src not in preview_by_source:
-                src = 'unknown'
-            preview_by_source[src] += 1
-        return preview_by_source
-
-    def _notify_preview_generated_by_source_24h():
-        preview_rows = _notify_preview_generated_rows_24h()
-        preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
-        for row in preview_rows:
-            payload = _activity_log_payload(row)
-            src = str((payload or {}).get('preview_source') or 'unknown')
-            if src not in preview_by_source:
-                src = 'unknown'
-            preview_by_source[src] += 1
-        return preview_by_source
-
-    def _notify_fallback_by_reason_24h():
-        preview_rows = _notify_preview_rows_24h()
-        by_reason = {
-            'none': 0,
-            'no_preview': 0,
-            'decode_failed': 0,
-            'telegram_photo_failed': 0,
-            'notifications_disabled': 0,
-            'telegram_not_configured': 0,
-            'config_disabled': 0,
-            'unsafe_path': 0,
-            'read_failed': 0,
-            'telegram_text_failed': 0,
-            'unexpected_error': 0,
-            'unknown': 0,
-        }
-        for row in preview_rows:
-            payload = _activity_log_payload(row)
-            reason = str((payload or {}).get('fallback_reason') or 'none')
-            if reason not in by_reason:
-                reason = 'unknown'
-            by_reason[reason] += 1
-        return by_reason
-
-    def _notify_delivery_24h():
-        preview_rows = _notify_preview_rows_24h()
-        by_delivery = {
-            'photo': 0,
-            'text': 0,
-            'text_fallback': 0,
-            'failed': 0,
-            'skipped': 0,
-            'unknown': 0,
-        }
-        for row in preview_rows:
-            payload = _activity_log_payload(row)
-            delivery = str((payload or {}).get('telegram_delivery') or 'unknown')
-            if delivery not in by_delivery:
-                delivery = 'unknown'
-            by_delivery[delivery] += 1
-        return by_delivery
-
-    def _prometheus_metrics_body(app):
-        sys_m = _collect_live_system_metrics(app)
-        detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
-        species_count = db.session.query(VideoSpecies.species_id).distinct().count()
-        videos_count = db.session.query(func.count(Video.id)).scalar() or 0
-        preview_by_source = _notify_preview_by_source_24h()
-        preview_generated_by_source = _notify_preview_generated_by_source_24h()
-        fallback_by_reason = _notify_fallback_by_reason_24h()
-        delivery_counts = _notify_delivery_24h()
-        lines = [
-            '# HELP birdlense_cpu_usage_percent CPU usage',
-            '# TYPE birdlense_cpu_usage_percent gauge',
-            f'birdlense_cpu_usage_percent {sys_m["cpu"]["percent"]}',
-            '# HELP birdlense_memory_used_percent Memory usage percent',
-            '# TYPE birdlense_memory_used_percent gauge',
-            f'birdlense_memory_used_percent {sys_m["memory"]["percent"]}',
-            '# HELP birdlense_memory_total_bytes Memory total in bytes',
-            '# TYPE birdlense_memory_total_bytes gauge',
-            f'birdlense_memory_total_bytes {sys_m["memory"]["total_bytes"]}',
-            '# HELP birdlense_memory_used_bytes Memory used in bytes',
-            '# TYPE birdlense_memory_used_bytes gauge',
-            f'birdlense_memory_used_bytes {sys_m["memory"]["used_bytes"]}',
-            '# HELP birdlense_disk_used_percent Disk usage percent',
-            '# TYPE birdlense_disk_used_percent gauge',
-            f'birdlense_disk_used_percent {sys_m["disk"]["percent"]}',
-            '# HELP birdlense_detections_total Total number of bird detections',
-            '# TYPE birdlense_detections_total counter',
-            f'birdlense_detections_total {detections}',
-            '# HELP birdlense_species_count Number of unique species detected',
-            '# TYPE birdlense_species_count gauge',
-            f'birdlense_species_count {species_count}',
-            '# HELP birdlense_videos_total Total number of recorded videos',
-            '# TYPE birdlense_videos_total counter',
-            f'birdlense_videos_total {videos_count}',
-            '# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h',
-            '# TYPE birdlense_notify_preview_24h gauge',
-        ]
-        for src, count in preview_by_source.items():
-            lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
-        lines.extend([
-            '# HELP birdlense_notify_preview_generated_24h Notification preview generation counts for last 24h',
-            '# TYPE birdlense_notify_preview_generated_24h gauge',
-        ])
-        for src, count in preview_generated_by_source.items():
-            lines.append(f'birdlense_notify_preview_generated_24h{{source="{src}"}} {count}')
-        lines.extend([
-            '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
-            '# TYPE birdlense_notify_fallback_24h gauge',
-        ])
-        for reason, count in fallback_by_reason.items():
-            lines.append(f'birdlense_notify_fallback_24h{{reason="{reason}"}} {count}')
-        lines.extend([
-            '# HELP birdlense_notify_delivery_24h Notification delivery outcome counts for last 24h',
-            '# TYPE birdlense_notify_delivery_24h gauge',
-        ])
-        for delivery, count in delivery_counts.items():
-            lines.append(f'birdlense_notify_delivery_24h{{delivery="{delivery}"}} {count}')
-        if sys_m['gpu_percent'] is not None:
-            lines.extend([
-                '# HELP birdlense_gpu_usage_percent GPU usage',
-                '# TYPE birdlense_gpu_usage_percent gauge',
-                f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
-            ])
-        return '\n'.join(lines) + '\n'
-
-    @app.route('/api/metrics/summary', methods=['GET'])
-    def metrics_summary_json():
-        """JSON snapshot for Grafana/Heimdall widgets or external monitors (same data as /metrics)."""
-        denied = metrics_bearer_denied(prometheus=False)
-        if denied is not None:
-            return denied
-        try:
-            sys_m = _collect_live_system_metrics(app)
-            detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
-            species_count = db.session.query(VideoSpecies.species_id).distinct().count()
-            videos_count = db.session.query(func.count(Video.id)).scalar() or 0
-            preview = _notify_preview_by_source_24h()
-            preview_generated = _notify_preview_generated_by_source_24h()
-            fallback = _notify_fallback_by_reason_24h()
-            delivery = _notify_delivery_24h()
-            payload = {
-                'service': 'birdlense-hub',
-                'cpu_usage_percent': float(sys_m['cpu']['percent']),
-                'memory_used_percent': float(sys_m['memory']['percent']),
-                'memory_used_bytes': int(sys_m['memory']['used_bytes']),
-                'memory_total_bytes': int(sys_m['memory']['total_bytes']),
-                'disk_used_percent': float(sys_m['disk']['percent']),
-                'detections_total': int(detections),
-                'species_count': int(species_count),
-                'videos_total': int(videos_count),
-                'notify_preview_24h': preview,
-                'notify_preview_generated_24h': preview_generated,
-                'notify_fallback_24h': fallback,
-                'notify_delivery_24h': delivery,
-            }
-            if sys_m['gpu_percent'] is not None:
-                payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
-            return jsonify(payload)
-        except Exception as e:
-            app.logger.error('metrics summary: %s', e)
-            return jsonify({'error': 'Failed to build metrics summary'}), 500
-
-    @app.route('/api/metrics', methods=['GET'])
-    def prometheus_metrics_api():
-        """Prometheus exposition format для Grafana. CPU, память, диск, GPU, detections, species, videos."""
-        denied = metrics_bearer_denied(prometheus=True)
-        if denied is not None:
-            return denied
-        try:
-            body = _prometheus_metrics_body(app)
-            return Response(body, mimetype='text/plain; charset=utf-8')
-        except Exception as e:
-            app.logger.error(f"Error getting Prometheus metrics: {str(e)}")
-            return Response('# Error\n', mimetype='text/plain; charset=utf-8', status=500)
-
-    @app.route('/metrics', methods=['GET'])
-    def prometheus_metrics():
-        """Prometheus metrics (alias for /api/metrics)."""
-        denied = metrics_bearer_denied(prometheus=True)
-        if denied is not None:
-            return denied
-        try:
-            body = _prometheus_metrics_body(app)
-            return Response(body, mimetype='text/plain; charset=utf-8')
-        except Exception as e:
-            app.logger.error(f"Error getting Prometheus metrics: {str(e)}")
-            return Response('# Error\n', mimetype='text/plain; charset=utf-8', status=500)
-
-    @app.route('/api/ui/system/metrics', methods=['GET'])
-    def system_metrics():
-        """Мгновенные метрики хоста (опрос UI). Без агрегатов посетителей — см. /api/ui/system/visitors."""
-        hit, cached = cache_get('system_metrics:snapshot')
-        if hit:
-            return cached
-        try:
-            m = _collect_live_system_metrics(app)
-            payload = {
-                'cpu': m['cpu'],
-                'memory': m['memory'],
-                'disk': m['disk'],
-                'encoding': m['encoding'],
-                'gpu_percent': m['gpu_percent'],
-            }
-            cache_set('system_metrics:snapshot', payload, _CACHE_SYSTEM_METRICS_SEC)
-            return payload
-        except Exception as e:
-            app.logger.error(f"Error getting system metrics: {str(e)}")
-            return {'error': 'Failed to get system metrics'}, 500
-
-    @app.route('/api/ui/system/observability', methods=['GET'])
-    def system_observability():
-        """Telegram preview-source counts + URLs for exporting Hub metrics (Heimdall/Grafana)."""
-        if not settings_check_access():
-            return {'error': 'Unauthorized'}, 401
-        try:
-            preview = _notify_preview_by_source_24h()
-            preview_generated = _notify_preview_generated_by_source_24h()
-            fallback = _notify_fallback_by_reason_24h()
-            delivery = _notify_delivery_24h()
-            return {
-                'notify_preview_24h': preview,
-                'notify_preview_generated_24h': preview_generated,
-                'notify_fallback_24h': fallback,
-                'notify_delivery_24h': delivery,
-                'hub_metrics': {
-                    'prometheus_text': '/metrics',
-                    'prometheus_text_alt': '/api/metrics',
-                    'json_summary': '/api/metrics/summary',
-                },
-            }
-        except Exception as e:
-            app.logger.error('observability: %s', e)
-            return {'error': 'Failed'}, 500
+    from routes.ui_system_metrics_routes import register_ui_system_metrics_routes
+    register_ui_system_metrics_routes(app)
 
     @app.route('/api/ui/system/config-audit', methods=['GET'])
     def system_config_audit():
@@ -917,113 +814,6 @@ def register_routes(app):
                 'probe': probe_heimdall((app_config.get('general.heimdall_url') or '').strip()),
             },
         }
-
-    @app.route('/api/ui/system/visitors', methods=['GET'])
-    def system_visitors():
-        try:
-            try:
-                days = int(request.args.get('days', '7'))
-            except (TypeError, ValueError):
-                days = 7
-            vck = f'system_visitors:{days}'
-            hit, vc = cache_get(vck)
-            if hit:
-                return vc
-            out = _collect_visitor_stats(days)
-            cache_set(vck, out, _CACHE_SYSTEM_VISITORS_SEC)
-            return out
-        except Exception as e:
-            app.logger.error(f"Error getting visitor stats: {str(e)}")
-            return {'error': 'Failed to get visitor stats'}, 500
-
-    @app.route('/api/ui/system/visitors/track', methods=['POST'])
-    def system_visitors_track():
-        try:
-            payload = request.get_json(silent=True) or {}
-            raw_browser_id = str(payload.get('browser_id') or '').strip()
-            if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', raw_browser_id):
-                return {'error': 'Invalid browser_id'}, 400
-
-            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-            seen_day = now_utc.strftime('%Y-%m-%d')
-            browser_hash = _browser_hash(raw_browser_id)
-            device_class = _device_class_from_user_agent(
-                request.headers.get('User-Agent', ''),
-            )
-
-            row = db.session.query(SiteVisitor).filter(
-                SiteVisitor.browser_hash == browser_hash,
-                SiteVisitor.seen_day == seen_day,
-            ).first()
-            if row is None:
-                row = SiteVisitor(
-                    browser_hash=browser_hash,
-                    seen_day=seen_day,
-                    device_class=device_class,
-                    first_seen_at=now_utc,
-                    last_seen_at=now_utc,
-                )
-                db.session.add(row)
-            else:
-                row.last_seen_at = now_utc
-                row.device_class = device_class
-            db.session.commit()
-            bust_system_response_caches()
-            bust_response_caches()
-            return {'ok': True}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error('Error tracking site visitor: %s', e)
-            return {'error': 'Failed to track site visitor'}, 500
-
-    @app.route('/api/ui/system/metrics/history', methods=['GET'])
-    def system_metrics_history():
-        """Серверная история снимков (см. фоновый sampler), с прореживанием для графика."""
-        try:
-            try:
-                hours = int(request.args.get('hours', '24'))
-            except (TypeError, ValueError):
-                hours = 24
-            hours = max(1, min(hours, SYSTEM_METRICS_HISTORY_MAX_HOURS))
-            try:
-                max_points = int(
-                    request.args.get('max_points', str(SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS)),
-                )
-            except (TypeError, ValueError):
-                max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
-            max_points = max(50, min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP))
-            hck = f'system_metrics_hist:{hours}:{max_points}'
-            hit, hc = cache_get(hck)
-            if hit:
-                return hc
-            now = datetime.now(timezone.utc)
-            start = now - timedelta(hours=hours)
-            rows = db.session.scalars(
-                select(SystemResourceSample)
-                .where(SystemResourceSample.recorded_at >= start)
-                .order_by(SystemResourceSample.recorded_at.asc())
-            ).all()
-            rows = _downsample_evenly(rows, max_points)
-            payload = {
-                'samples': [
-                    {
-                        't': r.recorded_at.isoformat(),
-                        'cpu': round(r.cpu_percent, 2),
-                        'memory': round(r.memory_percent, 2),
-                        'disk': round(r.disk_percent, 2),
-                        'gpu': None if r.gpu_percent is None else round(r.gpu_percent, 2),
-                    }
-                    for r in rows
-                ],
-                'sample_interval_seconds': SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
-                'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
-                'hours_requested': hours,
-            }
-            cache_set(hck, payload, _CACHE_SYSTEM_METRICS_HIST_SEC)
-            return payload
-        except Exception as e:
-            app.logger.error(f"Error getting system metrics history: {str(e)}")
-            return {'error': 'Failed to get system metrics history'}, 500
 
     @app.route('/api/ui/system/logs', methods=['GET'])
     def get_processor_logs():
@@ -2405,305 +2195,7 @@ def register_routes(app):
             app.logger.exception('Species catalog reconcile failed: %s', e)
             return {'error': str(e)}, 500
 
-    @app.route('/api/ui/system/species-registry/seed', methods=['POST'])
-    def seed_species_registry():
-        """Seed canonical species registry and aliases from mapping file."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            stats = ensure_species_registry_seeded()
-            return {'ok': True, **stats}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Seed species registry failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/backfill', methods=['POST'])
-    def run_species_registry_backfill():
-        """
-        Backfill existing Species rows with canonical taxon links.
-        body: {"dry_run": true|false, "limit": 500}
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            limit = payload.get('limit')
-            if limit is not None:
-                try:
-                    limit = int(limit)
-                except (ValueError, TypeError):
-                    return {'error': 'limit must be int'}, 400
-            stats = backfill_species_taxa(dry_run=dry_run, limit=limit)
-            return {'ok': True, **stats}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Species registry backfill failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/unresolved', methods=['GET'])
-    def get_unresolved_species_names():
-        """Top unresolved species names captured by resolver."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            raw_limit = request.args.get('limit', 100)
-            try:
-                limit = int(raw_limit)
-            except (ValueError, TypeError):
-                limit = 100
-            items = unresolved_species_report(limit=limit)
-            return {'items': items, 'count': len(items)}, 200
-        except Exception as e:
-            app.logger.exception('Unresolved species report failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/enrich-metadata/start', methods=['POST'])
-    def start_species_registry_metadata_enrichment():
-        """
-        Start async enrichment batch.
-        body: {"limit": 300, "retry_failed_only": false}
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _species_metadata_lock:
-            if _species_metadata_status.get('status') == 'running':
-                return {'error': 'Enrichment already running', 'status': _species_metadata_status}, 409
-            payload = request.get_json(silent=True) or {}
-            try:
-                limit = int(payload.get('limit', 300))
-            except (ValueError, TypeError):
-                return {'error': 'limit must be int'}, 400
-            retry_failed_only = bool(payload.get('retry_failed_only', False))
-            _species_metadata_status.update({
-                'status': 'running',
-                'result': None,
-                'error': None,
-                'progress': {'limit': limit, 'retry_failed_only': retry_failed_only},
-            })
-
-            def _run():
-                try:
-                    with app.app_context():
-                        stats = enrich_species_metadata_with_status(
-                            limit=limit,
-                            dry_run=False,
-                            retry_failed_only=retry_failed_only,
-                        )
-                    with _species_metadata_lock:
-                        _species_metadata_status.update({
-                            'status': 'done',
-                            'result': stats,
-                            'error': None,
-                        })
-                except Exception as e:
-                    with _species_metadata_lock:
-                        _species_metadata_status.update({
-                            'status': 'error',
-                            'result': None,
-                            'error': str(e),
-                        })
-
-            threading.Thread(target=_run, daemon=True).start()
-            return {'message': 'Species metadata enrichment started', 'status': _species_metadata_status}, 202
-
-    @app.route('/api/ui/system/species-registry/enrich-metadata/status', methods=['GET'])
-    def species_registry_metadata_enrichment_status():
-        """Get async enrichment status."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _species_metadata_lock:
-            return dict(_species_metadata_status), 200
-
-    @app.route('/api/ui/system/species-registry/health', methods=['GET'])
-    def get_species_registry_health():
-        """Registry rollout health metrics."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            return species_registry_health(), 200
-        except Exception as e:
-            app.logger.exception('Species registry health failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/materialize-allowlist', methods=['POST'])
-    def species_registry_materialize_allowlist():
-        """Create missing Species rows for allowlist and optionally fill metadata."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        payload = request.get_json(silent=True) or {}
-        dry_run = bool(payload.get('dry_run', False))
-        fill_metadata = bool(payload.get('fill_metadata', True))
-        try:
-            limit = int(payload.get('limit', 5000))
-        except (TypeError, ValueError):
-            return {'error': 'limit must be int'}, 400
-        try:
-            body = ensure_allowlist_species_materialized(
-                app_config.get,
-                fill_metadata=fill_metadata,
-                dry_run=dry_run,
-                limit=limit,
-            )
-            bust_response_caches()
-            bust_system_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Materialize allowlist failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/repair-cards/start', methods=['POST'])
-    def species_registry_repair_cards_start():
-        """Start background repair for species cards."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _catalog_cards_lock:
-            if _catalog_cards_status.get('status') == 'running':
-                return {'error': 'Repair already running', 'status': _catalog_cards_status}, 409
-            payload = request.get_json(silent=True) or {}
-            try:
-                limit = int(payload.get('limit', 6000))
-            except (TypeError, ValueError):
-                return {'error': 'limit must be int'}, 400
-            _catalog_cards_status.update({
-                'status': 'running',
-                'result': None,
-                'error': None,
-                'progress': {
-                    'limit': limit,
-                    'coverage_before': catalog_cards_coverage_snapshot(app_config.get),
-                },
-            })
-
-            def _run():
-                try:
-                    with app.app_context():
-                        result = repair_catalog_cards(
-                            app_config.get,
-                            dry_run=False,
-                            limit=limit,
-                        )
-                        coverage_after = catalog_cards_coverage_snapshot(app_config.get)
-                    with _catalog_cards_lock:
-                        _catalog_cards_status.update({
-                            'status': 'done',
-                            'result': {**result, 'coverage_after': coverage_after},
-                            'error': None,
-                        })
-                except Exception as e:
-                    with _catalog_cards_lock:
-                        _catalog_cards_status.update({
-                            'status': 'error',
-                            'result': None,
-                            'error': str(e),
-                        })
-
-            threading.Thread(target=_run, daemon=True).start()
-            return {'message': 'Catalog cards repair started', 'status': _catalog_cards_status}, 202
-
-    @app.route('/api/ui/system/species-registry/repair-cards/status', methods=['GET'])
-    def species_registry_repair_cards_status():
-        """Read background repair status with live coverage counters."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _catalog_cards_lock:
-            snap = dict(_catalog_cards_status)
-        snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
-        snap['schedule'] = _catalog_cards_schedule_state()
-        return snap, 200
-
-    @app.route('/api/ui/system/species-registry/data-quality', methods=['GET'])
-    def species_registry_data_quality():
-        """Отчёт по мусорным/не-птица строкам каталога и дубликатам имён (слияние)."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        from services.species_data_quality_service import build_data_quality_report
-
-        dup_limit = request.args.get('duplicate_limit', type=int) or 80
-        dup_limit = max(10, min(dup_limit, 500))
-        try:
-            body = build_data_quality_report(
-                db.session,
-                duplicate_group_limit=dup_limit,
-            )
-            return body, 200
-        except Exception as e:
-            app.logger.exception('Species data quality report failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/classifier-dataset-alignment', methods=['GET'])
-    def species_registry_classifier_dataset_alignment():
-        """Классы классификатора (best.pt) ↔ каталог Species ↔ папки data/dataset."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        from services.species_dataset_alignment_service import build_classifier_dataset_alignment_report
-
-        clf_lim = request.args.get('classifier_limit', type=int) or 600
-        cat_lim = request.args.get('catalog_limit', type=int) or 400
-        ds_lim = request.args.get('dataset_limit', type=int) or 200
-        try:
-            body = build_classifier_dataset_alignment_report(
-                db.session,
-                app_config.get,
-                classifier_limit=clf_lim,
-                catalog_limit=cat_lim,
-                dataset_limit=ds_lim,
-            )
-            return body, 200
-        except Exception as e:
-            app.logger.exception('Classifier/dataset alignment report failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/coverage-metrics', methods=['GET'])
-    def species_registry_coverage_metrics():
-        """Coverage metrics for observed/dataset/full EU catalog segments."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        from services.species_dataset_alignment_service import build_catalog_coverage_metrics
-
-        try:
-            body = build_catalog_coverage_metrics(db.session, app_config.get)
-            return body, 200
-        except Exception as e:
-            app.logger.exception('Catalog coverage metrics failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-registry/tuning-targets/export', methods=['GET'])
-    def species_registry_tuning_targets_export():
-        """Export manually marked tuning targets for training pipeline."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        raw = app_config.get('species.tuning_target_species_ids') or []
-        ids = []
-        if isinstance(raw, list):
-            for x in raw:
-                try:
-                    v = int(x)
-                except (TypeError, ValueError):
-                    continue
-                if v > 0:
-                    ids.append(v)
-        ids = sorted(set(ids))
-        rows = Species.query.filter(Species.id.in_(ids)).all() if ids else []
-        by_id = {s.id: s for s in rows}
-
-        fmt = (request.args.get('format') or 'json').strip().lower()
-        body_rows = [{'id': sid, 'name': by_id[sid].name} for sid in ids if sid in by_id]
-        if fmt == 'csv':
-            buf = io.StringIO()
-            wr = csv.writer(buf)
-            wr.writerow(['species_id', 'species_name'])
-            for r in body_rows:
-                wr.writerow([r['id'], r['name']])
-            return Response(
-                buf.getvalue(),
-                mimetype='text/csv',
-                headers={
-                    'Content-Disposition': 'attachment; filename="birdlense_tuning_targets.csv"',
-                },
-            )
-        return {'count': len(body_rows), 'targets': body_rows}, 200
+    from routes.ui_system_species_registry_routes import register_ui_system_species_registry_routes
+    register_ui_system_species_registry_routes(app)
 
     _start_system_metrics_sampler(app)
