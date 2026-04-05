@@ -2,6 +2,8 @@
 
 Дата: `2026-03-30`. Не дублирует актуальный [ROADMAP.ru.md](./ROADMAP.ru.md) — это снимок обсуждения для истории.
 
+*Уточнение путей (2026-04): закрыт [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) — публичные маршруты вида разнесены по `ui_*_routes`; ниже для summary указан актуальный файл.*
+
 ## Большой консилиум BirdLense Hub
 
 Этот документ фиксирует findings-first аудит BirdLense Hub по направлениям:
@@ -43,7 +45,7 @@
 - [app/web/services/visit_processor.py](/home/gfer/BirdLense/app/web/services/visit_processor.py)
 - [app/web/services/species_registry_service.py](/home/gfer/BirdLense/app/web/services/species_registry_service.py)
 - [app/web/util.py](/home/gfer/BirdLense/app/web/util.py)
-- [app/web/routes/ui_routes.py](/home/gfer/BirdLense/app/web/routes/ui_routes.py)
+- [ui_species_media_routes.py](../app/web/routes/ui_species_media_routes.py) (карточка вида / summary / медиа); оркестратор [ui_routes.py](../app/web/routes/ui_routes.py)
 
 Почему это критично:
 - каталог видов становится недостоверным даже без падения API;
@@ -75,7 +77,7 @@
 ## High Findings
 
 ### H1. Read-path `/species/:id/summary` имеет write side-effect
-В [app/web/routes/ui_routes.py](/home/gfer/BirdLense/app/web/routes/ui_routes.py) страница summary может инициировать enrichment и `commit`.
+В [ui_species_media_routes.py](../app/web/routes/ui_species_media_routes.py) эндпоинт summary может инициировать enrichment и `commit`.
 
 Риск:
 - обычное открытие карточки способно менять БД;

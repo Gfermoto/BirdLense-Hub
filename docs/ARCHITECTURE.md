@@ -19,8 +19,8 @@ High-level layout of the single-container app, data paths, and integrations. For
 │                 /go2rtc/*     →  upstream Go2RTC               │
 │                 /data/*       →  /app/data (recordings, DB)      │
 ├─────────────────────────────────────────────────────────────────┤
-│  gunicorn:8000  →  Flask (ui_routes, ui_system_routes,           │
-│                      processor_routes)                           │
+│  gunicorn:8000  →  Flask (/api/ui: ui_routes + domain ui_*;       │
+│                      ui_system_*; processor_routes)               │
 ├─────────────────────────────────────────────────────────────────┤
 │  MCP :8001 (optional)  →  FastMCP, tools from OpenAPI          │
 ├─────────────────────────────────────────────────────────────────┤
@@ -65,6 +65,8 @@ High-level layout of the single-container app, data paths, and integrations. For
 3. **Metrics** — `GET /metrics`, `GET /api/metrics` (Prometheus).
 4. **Recorded media** — `/data/recordings/...` (nginx alias).
 5. **Live** — `/processor/live` (MJPEG from processor) or Go2RTC proxied UI under `/go2rtc/`.
+
+**Flask modules (`app/web/routes/`):** `ui_routes.register_routes` composes `ui_status_push_routes`, `ui_birdfood_routes`, `ui_video_routes`, `ui_overview_timeline_routes` (timeline merge helpers in `ui_timeline_helpers`), `ui_corrections_dataset_routes`, `ui_species_catalog_routes`, `ui_settings_routes`, `ui_species_media_routes`; shared literals in `ui_route_constants`. `/api/ui/system/*`, metrics, visitors, and species-registry use `ui_system_routes`, `ui_system_metrics_routes`, and `ui_system_species_registry_routes`. Processor ingest: `processor_routes`.
 
 ---
 

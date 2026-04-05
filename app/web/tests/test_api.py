@@ -740,11 +740,11 @@ class TestWeather:
         assert isinstance(r.json, dict)
 
     def test_weather_includes_source_metadata(self, app, client, monkeypatch):
-        import routes.ui_routes as ui_routes
+        import routes.ui_status_push_routes as ui_status_push
         from app_config.app_config import app_config
 
         monkeypatch.setattr(
-            ui_routes,
+            ui_status_push,
             'fetch_weather',
             lambda: {
                 'weather_main': 'Rain',
@@ -1429,7 +1429,7 @@ class TestSpeciesXenoCanto:
 
     def test_xeno_canto_returns_recordings_or_empty(self, client, monkeypatch):
         # Depends on seed data - get first species from /species; no real Xeno-canto HTTP.
-        from routes import ui_routes
+        from routes import ui_species_media_routes
 
         fake = [{
             'id': '1',
@@ -1439,7 +1439,7 @@ class TestSpeciesXenoCanto:
             'rec': 'r',
             'cnt': 'c',
         }]
-        monkeypatch.setattr(ui_routes, 'fetch_recordings', lambda species_name, limit=5: fake)
+        monkeypatch.setattr(ui_species_media_routes, 'fetch_recordings', lambda species_name, limit=5: fake)
 
         species_r = client.get('/api/ui/species')
         assert species_r.status_code == 200
