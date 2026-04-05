@@ -13,6 +13,12 @@ export interface SpeciesVisit {
     temp?: number;
     clouds?: number;
   };
+  /** Дельта весов за ролик (как на странице видео); снимок с «основного» ролика визита (самый ранний по start_time). */
+  scales?: {
+    delta_kg: number;
+    display_value: number;
+    display_unit: 'kg' | 'g';
+  } | null;
   species: {
     id: number;
     name: string;

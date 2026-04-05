@@ -8,8 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Timeline / карточка визита:** в ответе `/api/ui/timeline` и в UI (`VisitCard`) поле **`scales`** — оценка дельты весов с «основного» ролика визита (как на странице видео); [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228).
+
 ### Changed
 
+- **Настройки → General:** подсказка **`heimdall_url`** — явно указано, что Heimdall **не** импортирует сущности BirdLense; URL только для проверки доступности с Hub; плитка на хаб и `/metrics` — вручную.
 - **Трекинг:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт (основной объём весов); остаток UI — [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228); **ROADMAP** обновлён.
 - **Настройки весов (UI):** при источнике Home Assistant — информационный блок, почему нет опций дельты/триггера (процессор только MQTT); **CONFIGURATION** — уточнён разрыв `mqtt` vs `homeassistant`.
 - **Home Assistant:** URL и Long-Lived Token вынесены в отдельную секцию **`homeassistant.*`** и блок настроек «Home Assistant» (общие для погоды, весов с `source: homeassistant` и др.); в «Погода» при источнике HA остаётся только **`weather.ha_entity_id`**. Устаревшие `weather.ha_url` / `weather.ha_token` по-прежнему читаются как fallback и помечаются в аудите конфига; те же ключи игнорируются в списке «unknown» аудита. Env **`HA_URL`** / **`HA_TOKEN`** по-прежнему перекрывают YAML.

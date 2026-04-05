@@ -196,7 +196,7 @@
     "birdnetUrl": "Ссылка на BirdNET",
     "birdnetUrlHint": "URL установки BirdNET-Pi/Go. Пусто — иконка не показывается.",
     "heimdallUrl": "Ссылка на Heimdall",
-    "heimdallUrlHint": "Любой URL Heimdall, который резолвится с хоста Hub (например http://heimdall.local или IP в LAN). Для Docker: имя должно быть доступно из контейнера (extra_hosts, общая сеть). Метрики BirdLense для Heimdall — отдельно: System → «Наблюдаемость» (/metrics, /api/metrics/summary).",
+    "heimdallUrlHint": "Heimdall не подтягивает сущности BirdLense автоматически: поле нужно только для проверки «отвечает ли Heimdall» с сервера Hub (раздел System). Чтобы открывать хаб из Heimdall — добавьте плитку-ссылку на URL BirdLense вручную; для метрик используйте /metrics (System → «Наблюдаемость»). Для Docker: hostname должен резолвиться из контейнера Hub.",
     "donateUrl": "Ссылка для поддержки",
     "donateUrlHint": "Эта ссылка открывается при нажатии на единственную иконку-сердце в шапке (между языком и настройками). Не дублируется в карточке «Корм» и в меню шестерёнки.",
     "accordionPerformance": "Производительность / кэш API",
