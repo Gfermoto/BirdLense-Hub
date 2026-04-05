@@ -1,0 +1,9 @@
+[tool.interrogate]
+fail-under = 80
+exclude = ["tests"]
+ignore-init-method = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-nested-functions = true
+verbose = 1
+color = true

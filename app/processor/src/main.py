@@ -7,14 +7,11 @@ import os
 import shutil
 
 import cv2
-from frame_processor import FrameProcessor
-from detection_strategy import SingleStageStrategy, TwoStageStrategy
+from detection_stack import build_detection_stack
 from spectrogram import generate_spectrogram
 from motion_detectors.fake import FakeMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
 from species_normalizer import normalize, merge_detections
-from decision_maker import DecisionMaker
-from ebird_regional_confidence import merge_species_confidence_overrides_with_ebird_top
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from multi_camera_confidence import apply_multi_camera_confidence_boost
 from fps_tracker import FPSTracker
@@ -166,16 +163,6 @@ def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tupl
     except Exception as e:
         logging.warning("Encode video crop for notify failed: %s", e)
         return None, 'none'
-
-
-def _resolve_single_stage_model_path(config, processor_root: str) -> str:
-    """Return configured single-stage path or yolov8n fallback."""
-    single_path = config.get('processor.models.single_stage', 'yolov8n.pt')
-    if not os.path.isabs(single_path):
-        single_path = os.path.join(processor_root, single_path)
-    if os.path.isfile(single_path) or os.path.isdir(single_path):
-        return single_path
-    return 'yolov8n.pt'
 
 
 # Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
@@ -433,61 +420,18 @@ def main():
             else:
                 logging.warning('motion.source=esphome but URL/sensor empty')
 
-    merged_overrides = merge_species_confidence_overrides_with_ebird_top(
-        app_config)
-    decision_maker = DecisionMaker(
-        max_record_seconds=app_config.get('processor.max_record_seconds'),
-        max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
-        min_track_duration=app_config.get('processor.min_track_duration', 1),
-        min_confidence_to_process=app_config.get(
-            'processor.min_confidence_to_process'),
-        species_confidence_overrides=merged_overrides,
-        post_record_seconds=app_config.get('processor.post_record_seconds', 0),
+    frame_processor, decision_maker, merged_overrides = build_detection_stack(
+        app_config,
+        save_images=bool(app_config.get('processor.save_images')),
+        warn_two_stage_fallback=True,
     )
     # No local BirdNET — use YOLO + MQTT (Frigate, BirdNET-Pi/Go)
     regional_species = app_config.get('processor.regional_species') or []
     if regional_species:
         api.set_active_species(regional_species)
 
-    # Configure Detection Strategy
-    processor_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    strategy_type = app_config.get('processor.detection_strategy', 'single_stage')
-    binary_path = app_config.get('processor.models.binary', 'models/detection/weights/best.pt')
-    classifier_path = app_config.get('processor.models.classifier', 'models/classification/weights/best.pt')
-    if not os.path.isabs(binary_path):
-        binary_path = os.path.join(processor_root, binary_path)
-    if not os.path.isabs(classifier_path):
-        classifier_path = os.path.join(processor_root, classifier_path)
-
-    if strategy_type == 'two_stage' and os.path.isfile(binary_path) and os.path.isfile(classifier_path):
-        detection_strategy = TwoStageStrategy(
-            binary_model_path=binary_path,
-            classifier_model_path=classifier_path,
-            regional_species=regional_species
-        )
-    else:
-        if strategy_type == 'two_stage':
-            logging.warning(
-                f'YOLO two_stage: модели не найдены ({binary_path}, {classifier_path}). '
-                'Используем single_stage с yolov8n.pt. Добавьте best.pt в processor/models/ для полной детекции.'
-            )
-        single_path = _resolve_single_stage_model_path(app_config, processor_root)
-        _coco_anim = app_config.get('processor.single_stage_coco_animals_only_auto')
-        if _coco_anim is None:
-            _coco_anim = app_config.get('processor.single_stage_coco_bird_only_auto', True)
-        detection_strategy = SingleStageStrategy(
-            model_path=single_path,
-            regional_species=regional_species,
-            coco_animals_only_auto=bool(_coco_anim),
-        )
-
     tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
-    logging.info(f'Using tracker: {tracker}')
-    frame_processor = FrameProcessor(
-        detection_strategy=detection_strategy,
-        tracker=tracker,
-        save_images=app_config.get('processor.save_images')
-    )
+    logging.info('Using tracker: %s', tracker)
     fps_tracker = FPSTracker()
 
     # Main motion detection loop

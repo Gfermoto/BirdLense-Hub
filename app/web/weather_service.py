@@ -21,6 +21,8 @@ def _normalize_coord(v):
 
 
 class WeatherFetcher:
+    """OpenWeather: запрос текущей погоды по lat/lon с коротким TTL-кэшем в памяти."""
+
     def __init__(self, api_url, latitude, longitude, api_key, cache_duration=timedelta(minutes=10)):
         self.api_url = api_url
         self.latitude = _normalize_coord(latitude)
@@ -76,6 +78,7 @@ class WeatherFetcher:
                     return {}
 
     def fetch(self):
+        """Вернуть закэшированные или свежие поля ``weather_*`` для сохранения в Video."""
         if self._is_cache_valid():
             return self.cached_data
         new_data = self._fetch_weather_data()
@@ -127,6 +130,7 @@ class HAWeatherFetcher:
             return {}
 
     def fetch(self):
+        """Вернуть состояние сущности HA ``weather.*`` в том же формате, что и OpenWeather."""
         if self._is_cache_valid():
             return self.cached_data
         new_data = self._fetch()

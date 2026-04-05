@@ -90,9 +90,8 @@ docs-python:
 	@echo "Python docs: docs/api/"
 
 docs-check:
-	@echo "Проверка docstrings (interrogate)..."
-	@docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
-		interrogate -v web/ --fail-under 50 || true'
+	@echo "Проверка docstrings (interrogate, см. app/pyproject.toml)..."
+	@docker compose run --rm -v $$(pwd):/app birdlense bash -c 'cd /app/web && interrogate .'
 
 docs-ui:
 	@echo "Генерация UI (TypeDoc)..."

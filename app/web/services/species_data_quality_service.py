@@ -17,7 +17,8 @@ from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
 )
-from util import GENERIC_BIRD_SPECIES, load_species_canonical_mapping
+from species_constants import GENERIC_BIRD_SPECIES
+from util import load_species_canonical_mapping
 
 
 def _norm_key(name: str) -> str:
@@ -85,6 +86,7 @@ def build_data_quality_report(
     *,
     duplicate_group_limit: int = 80,
 ) -> dict[str, Any]:
+    """Сводка по каталогу: дубликаты имён, подсказки по merge и эндпоинтам качества."""
     dupes = find_duplicate_name_groups(session, limit_groups=duplicate_group_limit)
     total = session.query(func.count(Species.id)).scalar() or 0
     return {

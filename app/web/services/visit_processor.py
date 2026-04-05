@@ -1,3 +1,4 @@
+"""Сборка ``SpeciesVisit`` и ``VideoSpecies`` из детекций процессора (видео/аудио)."""
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
 import json
@@ -9,8 +10,8 @@ from services.species_catalog_allowlist_service import (
     species_matches_allowlist,
 )
 from services.species_registry_service import resolve_species_name
+from species_constants import GENERIC_BIRD_SPECIES
 from util import (
-    GENERIC_BIRD_SPECIES,
     get_parent_name_for_species,
     load_species_canonical_mapping,
     update_species_info_from_wiki,
@@ -25,6 +26,8 @@ def _ensure_utc(dt: datetime) -> datetime:
 
 
 class VisitProcessor:
+    """Правила склейки визитов по таймауту и привязки детекций к видео."""
+
     def __init__(self, db, logger, visit_timeout: int = 60):
         self.db = db
         self.logger = logger

@@ -173,8 +173,10 @@ make stop
 make docs          # Python (pdoc) + UI (TypeDoc)
 make docs-python   # Только Python → docs/api/
 make docs-ui       # Только UI → docs/ui/
-make docs-check    # interrogate — проверка docstrings (порог 80%)
+make docs-check    # interrogate по app/web; при провале make завершится с ошибкой
 ```
+
+Настройки: **`app/pyproject.toml`**, секция **`[tool.interrogate]`** — порог **80%**, каталог **`tests/`** исключён; игнорируются вложенные функции, magic-методы, `__init__` и **имена с одним начальным подчёркиванием** (`_helper`), чтобы в оценку попадала в основном публичная поверхность API. Раньше цель могла «молча» проходить; теперь **нет**: не прошли interrogate — не прошёл `make docs-check`.
 
 OpenAPI: `app/web/openapi.yaml`. Стиль: краткий docstring на русском, без Args/Returns для простых функций.
 

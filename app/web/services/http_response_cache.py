@@ -28,11 +28,13 @@ _SYSTEM_RESPONSE_PREFIXES = (
 
 
 def bust_response_caches() -> None:
+    """Сбросить TTL-кэш тяжёлых UI-ответов (таймлайн, виды, unknowns, …)."""
     for prefix in _RESPONSE_CACHE_PREFIXES:
         cache_delete_prefix(prefix)
 
 
 def bust_system_response_caches() -> None:
+    """Сбросить кэш system-виджетов: диск, метрики, посетители, активность."""
     for prefix in _SYSTEM_RESPONSE_PREFIXES:
         cache_delete_prefix(prefix)
 
