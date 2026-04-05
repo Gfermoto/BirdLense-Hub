@@ -78,6 +78,31 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 
 **Токен из Настроек:** если MCP включён и токен задан в разделе «8. MCP», MCP-сервер передаёт его при вызовах API. Инструменты Get_app_settings, Update_app_settings и др. работают без ввода пароля настроек.
 
+## Ошибка «Connect Timeout» / `SSE error: fetch failed`
+
+Сообщение вроде `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` означает, что **клиент Cursor не установил TCP/TLS до сервера** за отведённое время. Это **сеть между вашим ПК и VPS**, а не неверный токен (до проверки Bearer запрос часто не доходит).
+
+**Проверки на той же машине и в той же сети, где открыт Cursor:**
+
+```bash
+curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/api/ui/health
+curl -m 15 -sS -H "Authorization: Bearer ВАШ_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/mcp
+```
+
+- **curl тоже таймаут** — блокировка или плохой маршрут до `185.218.111.196:443` (провайдер, фаервол, офисная сеть). Попробуйте другую сеть, VPN или точку доступа.
+- **curl быстро (200/401), Cursor — таймаут** — иногда мешают **системный прокси**, **IPv6** (битая AAAA) или сеть процесса редактора. Обновите Cursor; временно отключите прокси; для проверки зафиксируйте IPv4 в `/etc/hosts` (Linux/macOS) или `C:\Windows\System32\drivers\etc\hosts`:  
+  `185.218.111.196 birdlense.eyera.info`
+
+**Обход через SSH**, если SSH до VPS стабилен, а прямой HTTPS с ПК — нет:
+
+```bash
+ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@185.218.111.196
+```
+
+В MCP укажите **`http://127.0.0.1:18085/mcp`** и тот же заголовок `Authorization: Bearer …`. Пока эта сессия SSH открыта, трафик к хабу идёт через туннель.
+
+**LAN:** если хаб в той же сети, можно `http://<LAN-IP>:8085/mcp` и тот же Bearer.
+
 ## 4. Перезапуск клиента
 
 После изменения конфигурации MCP перезапустите клиент или редактор.
