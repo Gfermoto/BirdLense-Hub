@@ -127,6 +127,7 @@ def _deserialize(raw: bytes | None) -> Any:
 
 
 def cache_get(key: str) -> tuple[bool, Any]:
+    """Прочитать значение по логическому ключу: ``(hit, value)``; источник Redis или память."""
     r = _redis()
     if r is not None:
         try:
@@ -150,6 +151,7 @@ def cache_get(key: str) -> tuple[bool, Any]:
 
 
 def cache_set(key: str, value: Any, ttl_seconds: float) -> None:
+    """Записать значение с TTL (секунды); сериализация JSON или pickle."""
     ttl = max(1, int(math.ceil(ttl_seconds)))
     r = _redis()
     if r is not None:
@@ -163,6 +165,7 @@ def cache_set(key: str, value: Any, ttl_seconds: float) -> None:
 
 
 def cache_delete(key: str) -> None:
+    """Удалить один ключ в Redis и/или in-memory store."""
     r = _redis()
     if r is not None:
         try:
@@ -174,6 +177,7 @@ def cache_delete(key: str) -> None:
 
 
 def cache_delete_prefix(prefix: str) -> None:
+    """Удалить все ключи с данным префиксом (SCAN в Redis, фильтр в памяти)."""
     pattern = _full_key(prefix) + "*"
     r = _redis()
     if r is not None:

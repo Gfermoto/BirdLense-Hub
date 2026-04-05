@@ -22,7 +22,7 @@ from services.species_registry_service import (
     species_registry_health,
     unresolved_species_report,
 )
-from util import settings_check_access
+from util import bust_feeder_species_filter_cache, settings_check_access
 
 from routes import ui_system_routes as uis
 
@@ -39,6 +39,7 @@ def register_ui_system_species_registry_routes(app):
             stats = ensure_species_registry_seeded()
             bust_response_caches()
             bust_system_response_caches()
+            bust_feeder_species_filter_cache()
             return {'ok': True, **stats}, 200
         except Exception as e:
             db.session.rollback()
@@ -66,6 +67,7 @@ def register_ui_system_species_registry_routes(app):
             if not dry_run:
                 bust_response_caches()
                 bust_system_response_caches()
+                bust_feeder_species_filter_cache()
             return {'ok': True, **stats}, 200
         except Exception as e:
             db.session.rollback()
@@ -196,6 +198,7 @@ def register_ui_system_species_registry_routes(app):
             )
             bust_response_caches()
             bust_system_response_caches()
+            bust_feeder_species_filter_cache()
             return body, 200
         except Exception as e:
             db.session.rollback()

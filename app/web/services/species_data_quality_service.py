@@ -86,6 +86,7 @@ def build_data_quality_report(
     *,
     duplicate_group_limit: int = 80,
 ) -> dict[str, Any]:
+    """Сводка по каталогу: дубликаты имён, подсказки по merge и эндпоинтам качества."""
     dupes = find_duplicate_name_groups(session, limit_groups=duplicate_group_limit)
     total = session.query(func.count(Species.id)).scalar() or 0
     return {

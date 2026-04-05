@@ -1,3 +1,4 @@
+"""Публичные и настройки UI: таймлайн, виды, видео, авторизация по паролю."""
 import os
 import shutil
 import secrets
@@ -270,6 +271,7 @@ _CACHE_DETECTION_FRAMES_SEC = 45
 
 
 def register_routes(app):
+    """Зарегистрировать основные маршруты ``/api/ui/*`` (не system — они в ui_system_routes)."""
     def _get_tuning_target_ids() -> list[int]:
         raw = app_config.get('species.tuning_target_species_ids') or []
         out: list[int] = []

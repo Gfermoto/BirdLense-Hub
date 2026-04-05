@@ -1,3 +1,4 @@
+"""Админские и служебные маршруты ``/api/ui/system/*``: БД, ретеншн, виды, конфиг, отчёты."""
 import os
 import re
 import threading
@@ -693,7 +694,9 @@ def _prometheus_metrics_body(app):
         ])
     return '\n'.join(lines) + '\n'
 
+
 def register_routes(app):
+    """Зарегистрировать расширенный набор system API (кроме metrics — отдельный модуль)."""
     def _parse_video_ids(payload) -> list[int]:
         raw = (payload or {}).get('video_ids')
         if raw is None:

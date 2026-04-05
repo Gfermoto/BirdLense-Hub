@@ -229,6 +229,40 @@ class TestSafeImagePathDataDirBoundary:
         assert not img.is_file()
 
 
+class TestVisitorTrackRateLimit:
+    """Лимит POST /api/ui/system/visitors/track по IP (#223)."""
+
+    def test_visitors_track_returns_429_when_over_limit(self, client, monkeypatch):
+        import auth as auth_mod
+
+        monkeypatch.setattr(auth_mod, 'VISITOR_TRACK_LIMIT', 2)
+        with auth_mod._visitor_track_lock:
+            auth_mod._visitor_track_hits.clear()
+        try:
+            payload = {'browser_id': 'aaaaaaaaaaaaaaaa'}
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            assert client.post(
+                '/api/ui/system/visitors/track',
+                json=payload,
+                headers=headers,
+            ).status_code == 200
+            assert client.post(
+                '/api/ui/system/visitors/track',
+                json=payload,
+                headers=headers,
+            ).status_code == 200
+            r = client.post(
+                '/api/ui/system/visitors/track',
+                json=payload,
+                headers=headers,
+            )
+            assert r.status_code == 429
+            assert (r.get_json() or {}).get('error') == 'Too many requests'
+        finally:
+            with auth_mod._visitor_track_lock:
+                auth_mod._visitor_track_hits.clear()
+
+
 class TestMetricsBearerToken:
     """Optional BIRDLENSE_METRICS_TOKEN for Prometheus/JSON export (#199)."""
 
