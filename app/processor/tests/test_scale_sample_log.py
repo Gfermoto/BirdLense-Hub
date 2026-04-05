@@ -46,6 +46,50 @@ def test_estimate_delta_max_min(tmp_path):
     assert abs(est - 0.05) < 1e-6
 
 
+def test_estimate_slow_drift_rejected_when_spike_required(tmp_path):
+    """Медленный дрейф: span может превысить порог, но ни один соседний шаг — нет."""
+    d = str(tmp_path)
+    t0 = datetime(2026, 4, 5, 12, 0, 0, tzinfo=timezone.utc)
+    path = tmp_path / "feeder_scale_history.jsonl"
+    lines = []
+    for i, w in enumerate([1.0, 1.002, 1.004, 1.006]):
+        lines.append(
+            json.dumps({
+                "t": (t0 + timedelta(seconds=i)).isoformat(),
+                "weight": w,
+                "unit": "kg",
+            })
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    est, n = estimate_weight_delta_kg(
+        d, t0, t0 + timedelta(seconds=10), min_delta_kg=0.005, require_consecutive_spike=True
+    )
+    assert n == 4
+    assert est is None
+
+
+def test_estimate_drift_ok_when_spike_not_required(tmp_path):
+    d = str(tmp_path)
+    t0 = datetime(2026, 4, 5, 12, 0, 0, tzinfo=timezone.utc)
+    path = tmp_path / "feeder_scale_history.jsonl"
+    lines = []
+    for i, w in enumerate([1.0, 1.003, 1.006, 1.012]):
+        lines.append(
+            json.dumps({
+                "t": (t0 + timedelta(seconds=i)).isoformat(),
+                "weight": w,
+                "unit": "kg",
+            })
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    est, n = estimate_weight_delta_kg(
+        d, t0, t0 + timedelta(seconds=10), min_delta_kg=0.008, require_consecutive_spike=False
+    )
+    assert n == 4
+    assert est is not None
+    assert abs(est - 0.012) < 1e-9
+
+
 def test_g_to_kg_in_estimate(tmp_path):
     d = str(tmp_path)
     t0 = datetime(2026, 4, 5, 12, 0, 0, tzinfo=timezone.utc)

@@ -425,6 +425,33 @@ export function VideoSection({ form }: Props) {
                                 >
                                   {(weOn) =>
                                     weOn ? (
+                                      <>
+                                      <Grid size={{ xs: 12 }}>
+                                        <form.Field name="integrations.scales.estimate_require_consecutive_spike">
+                                          {(field) => (
+                                            <>
+                                              <FormControlLabel
+                                                control={
+                                                  <Switch
+                                                    checked={field.state.value ?? true}
+                                                    onChange={(e) =>
+                                                      field.handleChange(e.target.checked)
+                                                    }
+                                                  />
+                                                }
+                                                label={t('settings.scalesEstimateRequireSpike')}
+                                              />
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                display="block"
+                                              >
+                                                {t('settings.scalesEstimateRequireSpikeHint')}
+                                              </Typography>
+                                            </>
+                                          )}
+                                        </form.Field>
+                                      </Grid>
                                       <Grid size={{ xs: 12 }}>
                                         <form.Field name="integrations.scales.estimate_require_video_detection">
                                           {(field) => (
@@ -451,6 +478,7 @@ export function VideoSection({ form }: Props) {
                                           )}
                                         </form.Field>
                                       </Grid>
+                                      </>
                                     ) : null
                                   }
                                 </form.Subscribe>

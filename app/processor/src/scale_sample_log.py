@@ -89,8 +89,14 @@ def estimate_weight_delta_kg(
     *,
     min_delta_kg: float,
     min_samples: int = 2,
+    require_consecutive_spike: bool = True,
 ) -> tuple[float | None, int]:
-    """max(weight_kg) - min(weight_kg) по точкам в [start, end] (UTC), если >= min_delta_kg."""
+    """Оценка размаха веса за окно [start, end] (UTC).
+
+    По умолчанию сохраняем оценку только если был **скачок**: максимальный шаг между
+    соседними по времени показаниями >= min_delta_kg (отсекает медленный дрейф при почти
+    нулевой платформе после тары). Величина в БД — по-прежнему max-min по всем точкам окна.
+    """
     path = os.path.join(data_dir, FEEDER_SCALE_HISTORY_FILE)
     if not os.path.isfile(path):
         return None, 0
@@ -103,7 +109,7 @@ def estimate_weight_delta_kg(
     else:
         end = end.astimezone(timezone.utc)
 
-    samples: list[float] = []
+    pairs: list[tuple[datetime, float]] = []
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -121,15 +127,22 @@ def estimate_weight_delta_kg(
                     continue
                 if ts < start or ts > end:
                     continue
-                samples.append(w_kg)
+                pairs.append((ts, w_kg))
     except OSError as e:
         logger.debug("estimate_weight_delta_kg read: %s", e)
         return None, 0
 
-    n = len(samples)
+    pairs.sort(key=lambda p: p[0])
+    ws = [p[1] for p in pairs]
+    n = len(ws)
     if n < min_samples:
         return None, n
-    delta = max(samples) - min(samples)
-    if delta < float(min_delta_kg):
+    min_d = float(min_delta_kg)
+    span = max(ws) - min(ws)
+    if span < min_d:
         return None, n
-    return float(delta), n
+    if require_consecutive_spike:
+        max_step = max(abs(ws[i] - ws[i - 1]) for i in range(1, n))
+        if max_step < min_d:
+            return None, n
+    return float(span), n
