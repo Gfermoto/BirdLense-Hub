@@ -50,6 +50,22 @@ docker logs birdlense --tail 200 2>&1
 
 ---
 
+## Slow web UI / API responses
+
+**Common cause:** one container runs the **processor** (decode, detection, recording) and **gunicorn** (API). Under load the CPU is busy with frames and models, so UI requests wait in the gthread queue.
+
+**What to try:**
+
+1. **Docker resources** — default in `app/docker-compose.yml` is **2 CPUs / 2G RAM**. Raise `cpus` and `mem_limit` via `docker-compose.override.yml` (see `docker-compose.intel.example.yml` as an override pattern).
+2. **API cache** — **Settings → Performance**: enable Redis (`performance.cache_redis_enabled`), confirm `REDIS_URL` in `.env` (compose default: `redis://redis:6379/0`). Without Redis, cache is in-process only.
+3. **Concurrent requests** — single gunicorn worker with `gthread`. Increase threads: set `GUNICORN_THREADS=12` (or higher if the host allows) in `.env`, then `make restart`.
+4. **Disk / DB** — a very large `birdlense.db` or slow storage increases latency; **System** shows load. If needed, back up (**System → Storage**), stop the hub, then maintain SQLite (e.g. `sqlite3 birdlense.db "VACUUM;"`).
+5. **Network** — Wi‑Fi or remote access adds latency unrelated to server CPU.
+
+**Quick check:** `docker stats birdlense` — if CPU stays near the cgroup limit, expect slower UI; reduce load (resolution/FPS, external Frigate) or raise limits.
+
+---
+
 ## Frigate / BirdNET: missed events
 
 Pipeline: **Camera → go2rtc → Frigate → MQTT → BirdLense**. Debug from BirdLense upward.
