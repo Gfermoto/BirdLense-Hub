@@ -1,212 +1,37 @@
-import threading
-import time
-from datetime import datetime, timezone
 import argparse
 import logging
 import os
 import shutil
+import threading
+import time
+from datetime import datetime, timezone
 
 import cv2
+from api import API
+from app_config.app_config import app_config
+from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
+from dataset_saver import save_dataset_crops
 from detection_stack import build_detection_stack
-from spectrogram import generate_spectrogram
+from fps_tracker import FPSTracker
 from motion_detectors.fake import FakeMotionDetector
 from mqtt_aggregator import MQTTEventAggregator
-from species_normalizer import normalize, merge_detections
-from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from multi_camera_confidence import apply_multi_camera_confidence_boost
-from fps_tracker import FPSTracker
-from api import API
-from dataset_saver import save_dataset_crops
+from notify_preview_encode import encode_notify_preview_base64
+from processor_support import (
+    check_restart_flag,
+    get_output_path,
+    heartbeat_mqtt_ref,
+    processor_status,
+    start_heartbeat_daemon,
+)
+from species_normalizer import merge_detections, normalize
+from spectrogram import generate_spectrogram
+from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
 from sources.video_file_source import VideoFileSource
-from sources.go2rtc_stream_source import Go2RTCStreamSource
-from sources.go2rtc_stream_source import _build_stream_url
-from app_config.app_config import app_config
-
-# Set up logging: console + file for remote diagnostics (System page)
-def _setup_logging():
-    fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    if not root.handlers:
-        h = logging.StreamHandler()
-        h.setFormatter(logging.Formatter(fmt))
-        root.addHandler(h)
-    data_dir = os.environ.get('DATA_DIR', 'data')
-    log_path = os.path.join(data_dir, 'processor.log')
-    try:
-        from logging.handlers import RotatingFileHandler
-        fh = RotatingFileHandler(
-            log_path, maxBytes=5 * 1024 * 1024, backupCount=2,
-            encoding='utf-8')
-        fh.setFormatter(logging.Formatter(fmt))
-        root.addHandler(fh)
-    except OSError:
-        pass
-
-
-_setup_logging()
-
-# Состояние для честной проверки Video/YOLO в статусе (обновляется в main loop)
-_processor_status = {'last_video_ok_at': None, 'last_yolo_ok_at': None}
-
-
-def get_output_path():
-    data_dir = os.environ.get('DATA_DIR', 'data')
-    subpath = time.strftime("%Y/%m/%d/%H%M%S")
-    output_dir = os.path.join(data_dir, 'recordings', subpath)
-    os.makedirs(output_dir, exist_ok=True)
-    return output_dir, f"data/recordings/{subpath}"
-
-
-def _restart_flag_path():
-    data_dir = os.environ.get('DATA_DIR', 'data')
-    return os.path.join(data_dir, 'restart_processor.flag')
-
-
-def _check_restart_flag():
-    """If flag exists, exit so docker restarts the container."""
-    flag_path = _restart_flag_path()
-    if os.path.exists(flag_path):
-        try:
-            os.remove(flag_path)
-        except OSError:
-            pass
-        logging.info("Restart flag found, exiting for restart")
-        raise SystemExit(0)
-
-
-def _encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
-    """Return (image_base64, source): best_frame | bbox_crop | full_frame | none."""
-    try:
-        import base64
-        import numpy as np
-
-        bf = detection.get('best_frame')
-        if isinstance(bf, np.ndarray):
-            ok, buf = cv2.imencode('.jpg', bf)
-            if ok and buf is not None:
-                return base64.b64encode(buf.tobytes()).decode('ascii'), 'best_frame'
-    except Exception as e:
-        logging.warning("Encode best_frame for notify failed: %s", e)
-
-    frames = detection.get('frames') or []
-    if not video_file_path:
-        return None, 'none'
-
-    def _pick_timestamp() -> float:
-        try:
-            st = float(detection.get('start_time') or 0)
-            et = float(detection.get('end_time') or st)
-            if et > st:
-                return st + (et - st) * 0.5
-            return st
-        except Exception:
-            return 0.0
-
-    mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
-    bbox = mid.get('bbox') if isinstance(mid, dict) else None
-    t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
-
-    def _read_frame_with_retries(ts: float):
-        retry_delays = (0.0, 0.2, 0.5)
-        for idx, delay in enumerate(retry_delays):
-            cap = cv2.VideoCapture(video_file_path)
-            try:
-                if not cap.isOpened():
-                    frame = None
-                else:
-                    fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-                    if fps > 0.01:
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(ts * fps)))
-                    else:
-                        cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
-                    ok_local, frame = cap.read()
-                    if not ok_local:
-                        frame = None
-                    if frame is None and ts > 0:
-                        cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
-                        ok_local, frame = cap.read()
-                        if not ok_local:
-                            frame = None
-                if frame is not None:
-                    return frame
-            finally:
-                cap.release()
-            if idx + 1 < len(retry_delays):
-                time.sleep(delay)
-        return None
-
-    try:
-        frame = _read_frame_with_retries(t)
-        if frame is None:
-            return None, 'none'
-        h, w = frame.shape[:2]
-        # Primary fallback: bbox crop when available.
-        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
-            x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
-            y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
-            x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
-            y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
-            crop = frame[y1:y2, x1:x2]
-            if crop.size > 0:
-                ok, buf = cv2.imencode('.jpg', crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-                if ok and buf is not None:
-                    import base64
-                    return base64.b64encode(buf.tobytes()).decode('ascii'), 'bbox_crop'
-
-        # Secondary fallback: full frame (avoid empty notifications even without bbox).
-        ok, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
-        if not ok or buf is None:
-            return None, 'none'
-        import base64
-        return base64.b64encode(buf.tobytes()).decode('ascii'), 'full_frame'
-    except Exception as e:
-        logging.warning("Encode video crop for notify failed: %s", e)
-        return None, 'none'
-
-
-# Ссылка на MQTT-агрегатор для heartbeat (устанавливается в main() при создании)
-_heartbeat_mqtt_ref = [None]
-
-
-def heartbeat():
-    """Отправляет heartbeat в API каждые 60 сек. Включает last_video_ok_at, last_yolo_ok_at, mqtt_connected, encoding_used."""
-    id = None
-    api = None
-    while True:
-        try:
-            if api is None:
-                api = API()
-            data = {"status": "up"}
-            if _processor_status.get('last_video_ok_at'):
-                data['last_video_ok_at'] = _processor_status['last_video_ok_at']
-            if _processor_status.get('last_yolo_ok_at'):
-                data['last_yolo_ok_at'] = _processor_status['last_yolo_ok_at']
-            mqtt_aggregator_ref = _heartbeat_mqtt_ref[0] if _heartbeat_mqtt_ref else None
-            if mqtt_aggregator_ref is not None:
-                try:
-                    data['mqtt_connected'] = (
-                        mqtt_aggregator_ref.is_mqtt_ok_for_heartbeat()
-                    )
-                except Exception:
-                    data['mqtt_connected'] = False
-            try:
-                from encoding_status import get_last_encoding_used
-                enc = get_last_encoding_used()
-                if enc:
-                    data['encoding_used'] = enc
-            except Exception:
-                pass
-            id = api.activity_log(type='heartbeat', data=data, id=id)
-        except Exception as e:
-            logging.error("Heartbeat failed: %s (will retry in 60s)", e)
-        _check_restart_flag()
-        time.sleep(60)
 
 
 def main():
-    heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
-    heartbeat_thread.start()
+    start_heartbeat_daemon()
 
     parser = argparse.ArgumentParser(description="Smart bird feeder program")
     parser.add_argument('input', type=str, nargs='?',
@@ -237,7 +62,7 @@ def main():
         logging.warning("video.cameras или video.go2rtc_url не заданы. Добавьте в Настройках. Processor будет ждать перезапуска.")
         hb_id = None
         while True:
-            _check_restart_flag()
+            check_restart_flag()
             try:
                 hb_id = api.activity_log(type='heartbeat', data={'status': 'waiting_cameras'}, id=hb_id)
             except Exception as e:
@@ -394,7 +219,7 @@ def main():
             scale_motion_debounce_seconds=_scale_motion_debounce,
         )
         mqtt_aggregator.start()
-        _heartbeat_mqtt_ref[0] = mqtt_aggregator
+        heartbeat_mqtt_ref[0] = mqtt_aggregator
         if use_frigate_from_aggregator:
             frigate_detector._aggregator = mqtt_aggregator
 
@@ -487,7 +312,7 @@ def main():
 
     # Main motion detection loop
     while True:
-        _check_restart_flag()
+        check_restart_flag()
         if not motion_detector.detect():
             continue
         api.notify_motion()
@@ -525,13 +350,13 @@ def main():
                 frame = media_source.capture()
                 if frame is None:
                     break
-                _processor_status['last_video_ok_at'] = datetime.now(timezone.utc).isoformat()
+                processor_status['last_video_ok_at'] = datetime.now(timezone.utc).isoformat()
                 # VideoFileSource: use video timestamp for correct track duration
                 frame_time = getattr(media_source, 'get_frame_time', lambda: None)()
                 with fps_tracker:
                     has_detections = frame_processor.run(
                         frame, frame_time=frame_time)
-                _processor_status['last_yolo_ok_at'] = datetime.now(timezone.utc).isoformat()
+                processor_status['last_yolo_ok_at'] = datetime.now(timezone.utc).isoformat()
 
                 # Decision making
                 decision_maker.update_has_detections(has_detections)
@@ -693,7 +518,7 @@ def main():
                     sn = d.get('species_name') or d.get('species') or ''
                     if sn and sn not in seen:
                         seen.add(sn)
-                        image_base64, preview_source = _encode_notify_preview_base64(d, video_output)
+                        image_base64, preview_source = encode_notify_preview_base64(d, video_output)
                         if image_base64 is None:
                             logging.info(
                                 "Notify %s without photo: no preview (provider=%s, source=%s)",
