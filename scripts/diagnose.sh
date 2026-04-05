@@ -7,7 +7,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -f "${SCRIPT_DIR}/deploy.local.sh" ] && . "${SCRIPT_DIR}/deploy.local.sh"
 HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
-SSH_OPTS="-o ServerAliveInterval=30 -o ServerAliveCountMax=60"
+_PORT_OPT=""
+if [ -n "${DEPLOY_SSH_PORT:-}" ] && [ "${DEPLOY_SSH_PORT}" != "22" ]; then
+  _PORT_OPT="-p ${DEPLOY_SSH_PORT}"
+fi
+SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 
 echo "=== Диагностика BirdLense на ${HOST} ==="
 echo ""
