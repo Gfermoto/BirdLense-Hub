@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Processor (tech debt #223):** единая сборка пайплайна детекции — **`detection_stack.build_detection_stack`** (`resolve_single_stage_model_path`, стратегия two/single stage, `FrameProcessor`, `DecisionMaker`, eBird overrides); **`main.py`** и **`track_regenerator.build_detection_pipeline`** используют её вместо дублирования ([#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223)).
 - **Web / SQLAlchemy 2.x:** `ActivityLog` и `Video` загружаются через `db.session.get(...)` вместо устаревшего `.query.get()` (`processor_routes` activity log, `gallery_upload_service`). **Processor:** docstring у `DecisionMaker.decide_stop_recording`, комментарий к ключу `(key, -1)` в `species_normalizer` ([#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)).
 - **Processor (tech debt #222):** `ebird_regional_confidence` больше не правит `sys.path` — импорт `services.ebird_region_service` при нормальном `PYTHONPATH` (`/app:/app/web` в Docker). **MQTT:** разведены `is_mqtt_live()` (сокет к брокеру) и `is_mqtt_ok_for_heartbeat()` (с запасом после обрыва); heartbeat UI — второй, выбор Frigate primary и motion — первый ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
 - **Web (tech debt #222):** лимит попыток verify-password, `Retry-After` и `client_ip_for_rate_limit` перенесены из `util.py` в `auth.py`; в `util` оставлен re-export для обратной совместимости ([#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222)).
