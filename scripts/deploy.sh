@@ -1,7 +1,7 @@
 #!/bin/bash
 # Деплой BirdLense Hub
 # Локальные настройки (IP, URL) — в scripts/deploy.local.sh (не коммитить)
-# Критично: не трогаем recordings/db/dataset в app/data; статические images синхронизируем. user_config не перезаписываем.
+# Критично: не трогаем recordings/db/dataset в app/data; корневой datasets/ (YOLO и т.д.) не синхронизируем. Статические images синхронизируем. user_config не перезаписываем.
 # Сам следит и исправляет: rsync на сервере, повтор при сбоях
 
 set -e
@@ -44,10 +44,10 @@ cd "$(dirname "$0")/.."
 (cd app/ui && npm run build) || { echo "Ошибка: сборка UI не удалась"; exit 1; }
 
 # 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
-# app/data: синхронизируем статику (images), НЕ трогаем recordings, db, dataset (тяжёлые/локальные)
+# app/data: синхронизируем статику (images), НЕ трогаем recordings, db, dataset (тяжёлые/локальные). Корень datasets/ — не на хаб.
 echo "1. Синхронизация кода..."
 RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/data/recordings --exclude=app/data/db --exclude=app/data/dataset"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=datasets --exclude=app/data/recordings --exclude=app/data/db --exclude=app/data/dataset"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
