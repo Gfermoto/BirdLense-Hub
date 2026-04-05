@@ -1,7 +1,7 @@
 """
 Общая логика фильтрации камер из video.cameras.
 
-Используется в web (ui_routes) и processor (main).
+Используется в web (например ui_status_push_routes, status_service) и processor (main).
 """
 
 

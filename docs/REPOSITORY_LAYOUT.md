@@ -29,7 +29,7 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 
 | Path | Role |
 |------|------|
-| **`app/web/`** | Flask app, REST API, OpenAPI (`openapi.yaml`). |
+| **`app/web/`** | Flask app, REST API, OpenAPI (`openapi.yaml`). Handlers: `routes/` — `ui_routes.register_routes`, domain `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE](./ARCHITECTURE.md)). |
 | **`app/processor/`** | Detection pipeline, YOLO/Ultralytics, model weights path (see repo `.gitignore` for large files). |
 | **`app/ui/`** | React 19 + Vite 6 frontend; `npm run build` output is consumed by the web tier (see [LOCAL_DEV](./LOCAL_DEV.md)). |
 | **`app/app_config/`** | **Shipped defaults** (`default_config` / templates). **`user_config.yaml`** is created per installation and is **not** committed (see [CONFIGURATION](./CONFIGURATION.md)). |

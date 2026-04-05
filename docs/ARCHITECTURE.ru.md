@@ -17,8 +17,8 @@
 │                 /go2rtc/*    →  внешний Go2RTC                    │
 │                 /data/*     →  /app/data (файлы)                  │
 ├─────────────────────────────────────────────────────────────────┤
-│  gunicorn:8000  →  Flask API (ui_routes, ui_system_routes,       │
-│                     processor_routes)                            │
+│  gunicorn:8000  →  Flask API (/api/ui: ui_routes + доменные       │
+│                     ui_*; ui_system_*; processor_routes)         │
 ├─────────────────────────────────────────────────────────────────┤
 │  MCP:8001 (опционально)  →  FastMCP, tools из OpenAPI            │
 ├─────────────────────────────────────────────────────────────────┤
@@ -61,6 +61,8 @@
 3. **Метрики** → `GET /metrics`, `GET /api/metrics` (Prometheus)
 4. **Видео** → `/data/recordings/...` (nginx alias)
 5. **Live** → `/processor/live` (MJPEG от processor) или `/go2rtc/stream.html`
+
+**Модули Flask (`app/web/routes/`):** `ui_routes.register_routes` подключает `ui_status_push_routes`, `ui_birdfood_routes`, `ui_video_routes`, `ui_overview_timeline_routes` (сборка таймлайна — `ui_timeline_helpers`), `ui_corrections_dataset_routes`, `ui_species_catalog_routes`, `ui_settings_routes`, `ui_species_media_routes`; общие константы — `ui_route_constants`. `/api/ui/system/*`, метрики, visitors и species-registry — `ui_system_routes`, `ui_system_metrics_routes`, `ui_system_species_registry_routes`. Ingest от процессора — `processor_routes`.
 
 ## База данных
 
