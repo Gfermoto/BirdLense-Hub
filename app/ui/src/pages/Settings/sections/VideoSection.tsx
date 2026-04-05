@@ -501,9 +501,12 @@ export function VideoSection({ form }: Props) {
                                                 type="number"
                                                 inputProps={{ min: 0.001, step: 0.001 }}
                                                 value={field.state.value ?? 0.02}
-                                                onChange={(e) =>
-                                                  field.handleChange(Number(e.target.value) || 0.02)
-                                                }
+                                                onChange={(e) => {
+                                                  const raw = Number(e.target.value);
+                                                  const v =
+                                                    Number.isFinite(raw) && raw >= 0.001 ? raw : 0.02;
+                                                  field.handleChange(v);
+                                                }}
                                                 label={t('settings.scalesMotionMinDelta')}
                                                 helperText={t('settings.scalesMotionMinDeltaHint')}
                                               />
@@ -518,9 +521,12 @@ export function VideoSection({ form }: Props) {
                                                 type="number"
                                                 inputProps={{ min: 0.2, step: 0.1 }}
                                                 value={field.state.value ?? 1.5}
-                                                onChange={(e) =>
-                                                  field.handleChange(Number(e.target.value) || 1.5)
-                                                }
+                                                onChange={(e) => {
+                                                  const raw = Number(e.target.value);
+                                                  const v =
+                                                    Number.isFinite(raw) && raw >= 0.2 ? raw : 1.5;
+                                                  field.handleChange(v);
+                                                }}
                                                 label={t('settings.scalesMotionDebounce')}
                                               />
                                             )}

@@ -200,8 +200,9 @@ feed:
 
 # Home Assistant REST API: общий URL и Long-Lived Token для нескольких функций (погода из сущности weather.*,
 # весы при integrations.scales.source=homeassistant и т.д.). Переопределение: HA_URL и HA_TOKEN в env.
+# url пустой — fallback на устаревшие weather.ha_url / weather.ha_token при апгрейде.
 homeassistant:
-  url: "http://homeassistant:8123"
+  url: ""
   token: ""
 
 # Weather: openweather | homeassistant (URL/токен — в homeassistant.* выше; здесь только сущность погоды)

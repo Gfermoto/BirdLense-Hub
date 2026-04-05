@@ -44,18 +44,16 @@ def append_feeder_scale_sample(data_dir: str, weight: float, unit: str, *, max_l
 
 
 def _trim_head_if_needed(path: str, max_lines: int) -> None:
-    try:
-        size = os.path.getsize(path)
-    except OSError:
-        return
-    if size < 512 * 1024:
-        return
+    """Обрезать начало файла, если строк больше max_lines (соблюдение лимита, не только после 512 KiB)."""
     try:
         with open(path, encoding="utf-8") as f:
             lines = f.readlines()
-        if len(lines) <= max_lines:
-            return
-        tail = lines[-max_lines:]
+    except OSError:
+        return
+    if len(lines) <= max_lines:
+        return
+    tail = lines[-max_lines:]
+    try:
         with open(path, "w", encoding="utf-8") as f:
             f.writelines(tail)
     except OSError as e:

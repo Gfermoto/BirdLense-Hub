@@ -8,6 +8,7 @@ from flask_cors import CORS
 import logging
 from sqlalchemy import text, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 import routes.ui_routes
 import routes.ui_system_routes
 import routes.processor_routes
@@ -155,8 +156,20 @@ def create_app():
                 "ALTER TABLE video ADD COLUMN scales_weight_delta_kg FLOAT"
             ))
             db.session.commit()
+        except OperationalError as e:
+            db.session.rollback()
+            orig = str(getattr(e, 'orig', e) or e).lower()
+            if 'duplicate' in orig and 'column' in orig:
+                pass
+            else:
+                _log.warning(
+                    'ALTER TABLE video ADD scales_weight_delta_kg failed: %s',
+                    e,
+                )
+                raise
         except Exception:
             db.session.rollback()
+            raise
         seed()
         try:
             seed_stats = ensure_species_registry_seeded()
