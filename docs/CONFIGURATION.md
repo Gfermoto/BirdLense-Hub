@@ -251,12 +251,14 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 ## Integrations (scales)
 
+**`source: mqtt` vs `homeassistant`:** With **MQTT**, the **processor** subscribes to `mqtt_topic`, writes `feeder_scale_state.json` / `feeder_scale_history.jsonl`, can **estimate per-clip delta**, and optionally **start recording** on a weight spike. With **homeassistant**, only the **web** app calls the HA REST API for the **current weight** on the feeder card; the processor does **not** poll HA, so history / delta / motion-trigger options apply only to **MQTT** (use the same HA/ESPHome state topic under **MQTT** if you need them).
+
 | Key | Description |
 |-----|-------------|
-| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). When enabled, the **processor** subscribes to MQTT (or reads Home Assistant) and persists the latest weight for the web UI. |
-| `integrations.scales.source` | `mqtt` (default) or `homeassistant`. |
+| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). |
+| `integrations.scales.source` | `mqtt` (default) — processor + file state/history; or `homeassistant` — REST in web for current weight only (see note above). |
 | `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
-| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
+| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant` (REST snapshot for UI). |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values. |
 | `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires **MQTT** (`source: mqtt`, `mqtt_topic`) and `feeder_scale_history.jsonl` under `DATA_DIR`. The delta is **not** saved when the clip only has BirdNET rows (`source=audio`) with no frame/track: audio helps species ID; it is not tied to feeder weight. |
 | `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) for both the **window span** (max−min) and the **spike** between consecutive time-ordered MQTT samples. Default **0.008** (~8 g). |

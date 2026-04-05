@@ -343,6 +343,7 @@
     "scalesSourceHint": "For the HA entity source, configure URL and token under Settings → Home Assistant.",
     "scalesHaEntity": "Entity ID",
     "scalesHaEntityHint": "e.g. sensor.smart_scale_weight — state must be numeric.",
+    "scalesHaProcessorHint": "The hub uses Home Assistant REST only for the current weight in the feeder card. Per-clip weight estimate, JSONL history, and \"start recording on weight change\" are implemented in the processor via MQTT: it must see every reading on a subscribed topic. For those features, choose MQTT as the source and set the same topic your integration publishes (often homeassistant/sensor/<id>/state). HA polling in the processor is not implemented yet.",
     "scalesUnit": "Display unit",
     "scalesEnabled": "Scales enabled (current weight in UI)",
     "scalesMqttTopic": "MQTT topic for weight",
