@@ -125,6 +125,11 @@ export interface Settings {
     /** Только ответ GET /settings: фактический URL кэша (пароль замаскирован), не сохранять */
     redis_url_effective_masked?: string;
   };
+  /** Home Assistant REST API: общий URL и токен для погоды, весов (HA entity) и др. */
+  homeassistant?: {
+    url?: string;
+    token?: string;
+  };
   integrations?: {
     scales?: {
       enabled?: boolean;
@@ -210,9 +215,7 @@ export interface Settings {
   };
   weather?: {
     source?: 'openweather' | 'homeassistant';
-    ha_url?: string;
     ha_entity_id?: string;
-    ha_token?: string; // LLAT для HA (погода и весы)
   };
   ebird?: {
     country?: string;

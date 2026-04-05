@@ -173,13 +173,25 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 ---
 
+## Home Assistant (REST API)
+
+Shared **URL** and **Long-Lived Access Token** for any feature that calls the Home Assistant REST API: weather (when `weather.source` is `homeassistant`), feeder scale when `integrations.scales.source` is `homeassistant`, and future integrations. **Environment:** `HA_URL` and `HA_TOKEN` override the YAML fields when set.
+
+| Key | Description |
+|-----|-------------|
+| `homeassistant.url` | Base URL (e.g. `http://homeassistant:8123`) |
+| `homeassistant.token` | Long-Lived Access Token (masked in API) |
+
+**Deprecated (still read as fallback):** `weather.ha_url`, `weather.ha_token` — migrate to `homeassistant.*`; System config audit may flag them.
+
+---
+
 ## Weather
 
 | Key | Description |
 |-----|-------------|
 | `source` | `openweather` \| `homeassistant` |
-| `ha_url` | Home Assistant URL |
-| `ha_entity_id` | Weather entity (`weather.home`) |
+| `ha_entity_id` | When `source` is `homeassistant`: which `weather.*` entity to read (e.g. `weather.home`). URL and token are **not** here — use `homeassistant.*` above. |
 
 ---
 

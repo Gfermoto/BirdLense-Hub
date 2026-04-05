@@ -1835,7 +1835,7 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         from services.cache import redis_url_effective_masked_for_api
 
-        cfg = app_config.mask_config_for_api(app_config.config)
+        cfg = app_config.prepare_settings_for_api(app_config.config)
         perf = cfg.setdefault('performance', {})
         perf['redis_url_effective_masked'] = redis_url_effective_masked_for_api()
         return cfg, 200
@@ -1893,7 +1893,7 @@ def register_routes(app):
             reset_redis_client()
 
             # Return the updated configuration (masked)
-            return app_config.mask_config_for_api(app_config.config)
+            return app_config.prepare_settings_for_api(app_config.config)
 
         except Exception as e:
             app.logger.exception('Update settings failed')

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset({
+    'homeassistant.token',
     'performance.redis_url',
     'general.settings_password',
     'general.contributor_password',
@@ -105,6 +106,22 @@ class AppConfig:
             if val is not None:
                 cls._set_nested(out, path, cls._mask_value(val))
         return out
+
+    @classmethod
+    def prepare_settings_for_api(cls, config):
+        """Копия для GET/PATCH settings: HA URL/токен только в homeassistant.*; legacy weather.ha_* скрыты."""
+        out = copy.deepcopy(config)
+        weather = out.get('weather') or {}
+        ha = out.setdefault('homeassistant', {})
+        if not str(ha.get('url') or '').strip() and weather.get('ha_url'):
+            ha['url'] = weather['ha_url']
+        if not str(ha.get('token') or '').strip() and weather.get('ha_token'):
+            ha['token'] = weather['ha_token']
+        w = out.get('weather')
+        if isinstance(w, dict):
+            w.pop('ha_url', None)
+            w.pop('ha_token', None)
+        return cls.mask_config_for_api(out)
 
     @classmethod
     def filter_sensitive_placeholders(cls, updates):

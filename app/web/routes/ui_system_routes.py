@@ -61,6 +61,8 @@ DEPRECATED_USER_CONFIG_KEYS = (
     'notifications.rate_limit_per_minute',
     'processor.detection_device',
     'processor.detection_frame_interval',
+    'weather.ha_token',
+    'weather.ha_url',
 )
 
 TERMINAL_CONFIG_MAP_KEYS = {

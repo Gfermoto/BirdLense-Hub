@@ -1,6 +1,10 @@
 # Full — MQTT (Frigate + BirdNET), несколько камер, погода HA, фидер
 # Использование: cp configs/full.yaml app_config/user_config.yaml
-# Настройте MQTT_BROKER, HA_TOKEN, GO2RTC_URL в .env
+# Настройте MQTT_BROKER, HA_TOKEN (или homeassistant.token), GO2RTC_URL в .env
+
+homeassistant:
+  url: "http://homeassistant:8123"
+  # token: через HA_TOKEN в .env или long-lived token здесь
 
 video:
   source: go2rtc

@@ -903,20 +903,6 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                           </Alert>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
-                          <form.Field name="weather.ha_url">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                label={t('settings.weatherHaUrl')}
-                                placeholder="http://homeassistant:8123"
-                                helperText={t('settings.weatherHaUrlHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="weather.ha_entity_id">
                             {(field) => (
                               <TextField
@@ -926,19 +912,6 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                                 label={t('settings.weatherHaEntity')}
                                 placeholder="weather.home"
                                 helperText={t('settings.weatherHaEntityHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <form.Field name="weather.ha_token">
-                            {(field) => (
-                              <PasswordField
-                                value={field.state.value ?? ''}
-                                onChange={(v) => field.handleChange(v)}
-                                label={t('settings.weatherHaToken')}
-                                placeholder={t('settings.weatherHaTokenPlaceholder')}
-                                helperText={t('settings.weatherHaTokenHint')}
                               />
                             )}
                           </form.Field>
