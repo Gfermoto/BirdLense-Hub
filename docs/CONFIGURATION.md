@@ -250,6 +250,9 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 | `integrations.scales.estimate_require_video_detection` | **false** (default): estimate for **any** saved clip with species, including **BirdNET-only** (`audio`). **true**: only when there is at least one **non-`audio`** detection (video/track), to avoid tying a scale spike to “sound nearby but no bird on the platform”. |
 | `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) to persist an estimate; default **0.008** (~8 g) to ignore noise. |
 | `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
+| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as a Frigate trigger (**OR** with Frigate and optional OpenCV). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, `source: mqtt`, and `mqtt_topic`. Not wired when `motion.source: pir` (separate code path). |
+| `integrations.scales.motion_trigger_min_delta_kg` | Minimum absolute weight change (kg) between **two consecutive** MQTT samples to fire the trigger. Default **0.02**. |
+| `integrations.scales.motion_trigger_debounce_seconds` | Minimum seconds between recording starts triggered by scales. Default **1.5**. |
 
 The processor compares min/max scale readings between `start_time` and `end_time`; if the span is at least the threshold, `scales_weight_delta_kg` is saved and the video page shows a compact “Scales (estimate)” block. Notification triggers and auto-tare in HA/ESPHome remain in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 

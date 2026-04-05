@@ -19,6 +19,11 @@ def _to_kg(weight: float, unit: str) -> float:
     return float(weight)
 
 
+def weight_reading_to_kg(weight: float, unit: str) -> float:
+    """Сырое значение с MQTT/конфига в килограммы (для порогов триггера и журнала)."""
+    return _to_kg(weight, unit)
+
+
 def append_feeder_scale_sample(data_dir: str, weight: float, unit: str, *, max_lines: int) -> None:
     """Добавить строку в журнал; при переполнении обрезать начало файла."""
     if max_lines < 100:

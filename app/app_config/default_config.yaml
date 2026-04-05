@@ -276,6 +276,10 @@ integrations:
     estimate_require_video_detection: false
     min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
     history_max_lines: 10000
+    # Триггер записи + конвейер YOLO: скачок веса на MQTT (параллельно с Frigate в OrMotion)
+    motion_trigger_enabled: false
+    motion_trigger_min_delta_kg: 0.02  # |Δ| между двумя подряд MQTT-сэмплами, кг
+    motion_trigger_debounce_seconds: 1.5
 
 # Кэш API: Redis (docker-compose) можно выключить или задать URL в UI (перекрывает REDIS_URL из env).
 performance:
