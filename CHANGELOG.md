@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Code review (PR #235):** пустой дефолт `homeassistant.url` в `default_config.yaml` — снова работает fallback на `weather.ha_url` при апгрейде; безопасный `int` для `history_max_lines` в процессоре; журнал весов обрезается по числу строк, а не только после 512 KiB; миграция `scales_weight_delta_kg` — игнор только дубликата колонки, остальные ошибки логируются и пробрасываются; OpenAPI `Settings` — блок `homeassistant`; валидация min в UI для порога/дебаунса триггера по весам; уточнены CONFIGURATION и RU-локали.
+
 ### Added
 
 - **Timeline / карточка визита:** в ответе `/api/ui/timeline` и в UI (`VisitCard`) поле **`scales`** — оценка дельты весов с «основного» ролика визита (как на странице видео). [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыт.

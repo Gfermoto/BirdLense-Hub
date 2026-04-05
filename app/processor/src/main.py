@@ -328,9 +328,13 @@ def main():
         mqtt_client_id = None
         if args.input:
             mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
-        _scales_hist_lines = int(
-            app_config.get('integrations.scales.history_max_lines') or 10000
-        )
+        _raw_hist = app_config.get('integrations.scales.history_max_lines')
+        try:
+            _scales_hist_lines = int(_raw_hist) if _raw_hist not in (None, '') else 10000
+        except (TypeError, ValueError):
+            _scales_hist_lines = 10000
+        if _scales_hist_lines < 100:
+            _scales_hist_lines = 100
         _scale_motion_cb = None
         _scale_motion_min = None
         _scale_motion_debounce = 1.5

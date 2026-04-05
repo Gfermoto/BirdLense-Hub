@@ -1429,3 +1429,11 @@ components:
               type: string
             longitude:
               type: string
+        homeassistant:
+          type: object
+          description: Shared Home Assistant REST base URL and long-lived token (weather entity, scales when source=homeassistant, etc.)
+          properties:
+            url:
+              type: string
+            token:
+              type: string
