@@ -246,7 +246,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
 | `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
-| `integrations.scales.weight_estimate_enabled` | Оценка **дельты массы за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). Нужны **MQTT**-показания (`source: mqtt` и непустой `mqtt_topic`): процессор пишет журнал `feeder_scale_history.jsonl` в `DATA_DIR`. |
+| `integrations.scales.weight_estimate_enabled` | Оценка **дельты массы за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от `motion_trigger_enabled`: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, `mqtt_topic`) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. |
 | `integrations.scales.estimate_require_video_detection` | **false** (по умолчанию): дельта считается для **любого** ролика с детекциями, в том числе если виды пришли только из **BirdNET** (`audio`). **true** — оценку пишем только если есть детекция **не** из `audio` (кадр/трек), чтобы не смешивать «звук в саду» с скачком на весах без птицы на платформе. |
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг), ниже которой оценка не сохраняется (шум), по умолчанию **0.008** (~8 г). |
 | `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |

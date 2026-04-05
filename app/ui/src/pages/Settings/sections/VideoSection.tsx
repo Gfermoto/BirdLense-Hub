@@ -314,22 +314,79 @@ export function VideoSection({ form }: Props) {
                     scalesOn ? (
                       <>
                         <Grid size={{ xs: 12 }}>
-                          <form.Field name="integrations.scales.estimate_require_video_detection">
+                          <form.Field name="integrations.scales.source">
                             {(field) => (
-                              <>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={field.state.value ?? false}
-                                      onChange={(e) => field.handleChange(e.target.checked)}
-                                    />
+                              <FormControl fullWidth>
+                                <InputLabel id="settings-scales-src">{t('settings.scalesSource')}</InputLabel>
+                                <Select
+                                  labelId="settings-scales-src"
+                                  value={field.state.value ?? 'mqtt'}
+                                  label={t('settings.scalesSource')}
+                                  onChange={(e) =>
+                                    field.handleChange(e.target.value as 'mqtt' | 'homeassistant')
                                   }
-                                  label={t('settings.scalesEstimateRequireVideo')}
-                                />
-                                <Typography variant="body2" color="text.secondary" display="block">
-                                  {t('settings.scalesEstimateRequireVideoHint')}
-                                </Typography>
-                              </>
+                                >
+                                  <MenuItem value="mqtt">{t('settings.scalesSourceMqtt')}</MenuItem>
+                                  <MenuItem value="homeassistant">{t('settings.scalesSourceHa')}</MenuItem>
+                                </Select>
+                                <FormHelperText>{t('settings.scalesSourceHint')}</FormHelperText>
+                              </FormControl>
+                            )}
+                          </form.Field>
+                        </Grid>
+                        <form.Subscribe selector={(s) => s.values.integrations?.scales?.source}>
+                          {(src) => (
+                            <>
+                              {(src ?? 'mqtt') === 'mqtt' && (
+                                <Grid size={{ xs: 12 }}>
+                                  <form.Field name="integrations.scales.mqtt_topic">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={field.state.value ?? ''}
+                                        onChange={(e) => field.handleChange(e.target.value)}
+                                        label={t('settings.scalesMqttTopic')}
+                                        placeholder="homeassistant/sensor/feeder_scale_weight/state"
+                                        helperText={t('settings.scalesMqttTopicHint')}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                              )}
+                              {src === 'homeassistant' && (
+                                <Grid size={{ xs: 12 }}>
+                                  <form.Field name="integrations.scales.homeassistant_entity_id">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={field.state.value ?? ''}
+                                        onChange={(e) => field.handleChange(e.target.value)}
+                                        label={t('settings.scalesHaEntity')}
+                                        placeholder="sensor.smart_scale_weight"
+                                        helperText={t('settings.scalesHaEntityHint')}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                              )}
+                            </>
+                          )}
+                        </form.Subscribe>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <form.Field name="integrations.scales.unit">
+                            {(field) => (
+                              <FormControl fullWidth>
+                                <InputLabel id="settings-scales-unit">{t('settings.scalesUnit')}</InputLabel>
+                                <Select
+                                  labelId="settings-scales-unit"
+                                  value={field.state.value ?? 'kg'}
+                                  label={t('settings.scalesUnit')}
+                                  onChange={(e) => field.handleChange(e.target.value as 'kg' | 'g')}
+                                >
+                                  <MenuItem value="kg">kg</MenuItem>
+                                  <MenuItem value="g">g</MenuItem>
+                                </Select>
+                              </FormControl>
                             )}
                           </form.Field>
                         </Grid>
@@ -337,6 +394,66 @@ export function VideoSection({ form }: Props) {
                           {(src) =>
                             (src ?? 'mqtt') === 'mqtt' ? (
                               <>
+                                <Grid size={{ xs: 12 }}>
+                                  <form.Field name="integrations.scales.weight_estimate_enabled">
+                                    {(field) => (
+                                      <>
+                                        <FormControlLabel
+                                          control={
+                                            <Switch
+                                              checked={field.state.value ?? true}
+                                              onChange={(e) => field.handleChange(e.target.checked)}
+                                            />
+                                          }
+                                          label={t('settings.scalesWeightEstimate')}
+                                        />
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          display="block"
+                                        >
+                                          {t('settings.scalesWeightEstimateHint')}
+                                        </Typography>
+                                      </>
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <form.Subscribe
+                                  selector={(s) =>
+                                    s.values.integrations?.scales?.weight_estimate_enabled !== false
+                                  }
+                                >
+                                  {(weOn) =>
+                                    weOn ? (
+                                      <Grid size={{ xs: 12 }}>
+                                        <form.Field name="integrations.scales.estimate_require_video_detection">
+                                          {(field) => (
+                                            <>
+                                              <FormControlLabel
+                                                control={
+                                                  <Switch
+                                                    checked={field.state.value ?? false}
+                                                    onChange={(e) =>
+                                                      field.handleChange(e.target.checked)
+                                                    }
+                                                  />
+                                                }
+                                                label={t('settings.scalesEstimateRequireVideo')}
+                                              />
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                display="block"
+                                              >
+                                                {t('settings.scalesEstimateRequireVideoHint')}
+                                              </Typography>
+                                            </>
+                                          )}
+                                        </form.Field>
+                                      </Grid>
+                                    ) : null
+                                  }
+                                </form.Subscribe>
                                 <Grid size={{ xs: 12 }}>
                                   <form.Field name="integrations.scales.motion_trigger_enabled">
                                     {(field) => (
@@ -363,39 +480,49 @@ export function VideoSection({ form }: Props) {
                                     )}
                                   </form.Field>
                                 </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                  <form.Field name="integrations.scales.motion_trigger_min_delta_kg">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0.001, step: 0.001 }}
-                                        value={field.state.value ?? 0.02}
-                                        onChange={(e) =>
-                                          field.handleChange(Number(e.target.value) || 0.02)
-                                        }
-                                        label={t('settings.scalesMotionMinDelta')}
-                                        helperText={t('settings.scalesMotionMinDeltaHint')}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                  <form.Field name="integrations.scales.motion_trigger_debounce_seconds">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0.2, step: 0.1 }}
-                                        value={field.state.value ?? 1.5}
-                                        onChange={(e) =>
-                                          field.handleChange(Number(e.target.value) || 1.5)
-                                        }
-                                        label={t('settings.scalesMotionDebounce')}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
+                                <form.Subscribe
+                                  selector={(s) => s.values.integrations?.scales?.motion_trigger_enabled}
+                                >
+                                  {(mtOn) =>
+                                    mtOn ? (
+                                      <>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                          <form.Field name="integrations.scales.motion_trigger_min_delta_kg">
+                                            {(field) => (
+                                              <TextField
+                                                fullWidth
+                                                type="number"
+                                                inputProps={{ min: 0.001, step: 0.001 }}
+                                                value={field.state.value ?? 0.02}
+                                                onChange={(e) =>
+                                                  field.handleChange(Number(e.target.value) || 0.02)
+                                                }
+                                                label={t('settings.scalesMotionMinDelta')}
+                                                helperText={t('settings.scalesMotionMinDeltaHint')}
+                                              />
+                                            )}
+                                          </form.Field>
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                          <form.Field name="integrations.scales.motion_trigger_debounce_seconds">
+                                            {(field) => (
+                                              <TextField
+                                                fullWidth
+                                                type="number"
+                                                inputProps={{ min: 0.2, step: 0.1 }}
+                                                value={field.state.value ?? 1.5}
+                                                onChange={(e) =>
+                                                  field.handleChange(Number(e.target.value) || 1.5)
+                                                }
+                                                label={t('settings.scalesMotionDebounce')}
+                                              />
+                                            )}
+                                          </form.Field>
+                                        </Grid>
+                                      </>
+                                    ) : null
+                                  }
+                                </form.Subscribe>
                               </>
                             ) : null
                           }
@@ -404,83 +531,6 @@ export function VideoSection({ form }: Props) {
                     ) : null
                   }
                 </form.Subscribe>
-                <Grid size={{ xs: 12 }}>
-                  <form.Field name="integrations.scales.source">
-                    {(field) => (
-                      <FormControl fullWidth>
-                        <InputLabel id="settings-scales-src">{t('settings.scalesSource')}</InputLabel>
-                        <Select
-                          labelId="settings-scales-src"
-                          value={field.state.value ?? 'mqtt'}
-                          label={t('settings.scalesSource')}
-                          onChange={(e) =>
-                            field.handleChange(e.target.value as 'mqtt' | 'homeassistant')
-                          }
-                        >
-                          <MenuItem value="mqtt">{t('settings.scalesSourceMqtt')}</MenuItem>
-                          <MenuItem value="homeassistant">{t('settings.scalesSourceHa')}</MenuItem>
-                        </Select>
-                        <FormHelperText>{t('settings.scalesSourceHint')}</FormHelperText>
-                      </FormControl>
-                    )}
-                  </form.Field>
-                </Grid>
-                <form.Subscribe selector={(s) => s.values.integrations?.scales?.source}>
-                  {(src) => (
-                    <>
-                      {(src ?? 'mqtt') === 'mqtt' && (
-                        <Grid size={{ xs: 12 }}>
-                          <form.Field name="integrations.scales.mqtt_topic">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                label={t('settings.scalesMqttTopic')}
-                                placeholder="homeassistant/sensor/feeder_scale_weight/state"
-                                helperText={t('settings.scalesMqttTopicHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                      )}
-                      {src === 'homeassistant' && (
-                        <Grid size={{ xs: 12 }}>
-                          <form.Field name="integrations.scales.homeassistant_entity_id">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                label={t('settings.scalesHaEntity')}
-                                placeholder="sensor.smart_scale_weight"
-                                helperText={t('settings.scalesHaEntityHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                      )}
-                    </>
-                  )}
-                </form.Subscribe>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <form.Field name="integrations.scales.unit">
-                    {(field) => (
-                      <FormControl fullWidth>
-                        <InputLabel id="settings-scales-unit">{t('settings.scalesUnit')}</InputLabel>
-                        <Select
-                          labelId="settings-scales-unit"
-                          value={field.state.value ?? 'kg'}
-                          label={t('settings.scalesUnit')}
-                          onChange={(e) => field.handleChange(e.target.value as 'kg' | 'g')}
-                        >
-                          <MenuItem value="kg">kg</MenuItem>
-                          <MenuItem value="g">g</MenuItem>
-                        </Select>
-                      </FormControl>
-                    )}
-                  </form.Field>
-                </Grid>
               </Grid>
             </ServiceBlock>
             </Box>
