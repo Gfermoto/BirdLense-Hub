@@ -358,7 +358,7 @@ paths:
     get:
       summary: Get timeline of species visits
       description: |
-        Retrieve a timeline of species visits, including start and end times, weather conditions, and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
+        Retrieve a timeline of species visits, including start and end times, weather conditions, optional feeder-scale delta (same shape as GET video `scales`, from the visit's earliest linked video), and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
       parameters:
         - in: query
           name: start_time
@@ -986,6 +986,18 @@ components:
             clouds:
               type: number
               nullable: true
+        scales:
+          type: object
+          nullable: true
+          description: Feeder scale delta from the visit's primary (earliest) video; same fields as GET /videos/:id `scales`
+          properties:
+            delta_kg:
+              type: number
+            display_value:
+              type: number
+            display_unit:
+              type: string
+              enum: [kg, g]
         species:
           type: object
           properties:

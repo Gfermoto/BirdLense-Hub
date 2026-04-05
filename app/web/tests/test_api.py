@@ -550,6 +550,64 @@ class TestTimeline:
         same_visit_rows = [row for row in r.json if row.get('id') == visit_id]
         assert len(same_visit_rows) == 1
 
+    def test_timeline_visit_includes_scales_from_primary_video(self, app, client):
+        """Дельта весов в payload визита — с «основного» (самого раннего) ролика (#228)."""
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            app_config.set('secrets.latitude', '55.7558')
+            app_config.set('secrets.longitude', '37.6176')
+            species = Species(name=f'Timeline Scales {id(app)}')
+            db.session.add(species)
+            db.session.flush()
+            species_name = species.name
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version='test',
+                start_time=datetime(2026, 3, 24, 21, 5, 0),
+                end_time=datetime(2026, 3, 24, 21, 5, 30),
+                video_path=f'data/recordings/2026/03/24/210502/scales_{id(app)}.mp4',
+                scales_weight_delta_kg=0.015,
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=5.0,
+                    confidence=0.9,
+                    source='video',
+                    detection_provider='yolo',
+                ),
+            )
+            db.session.commit()
+
+        bust_response_caches()
+        r = client.get(
+            '/api/ui/timeline',
+            query_string={'date': '2026-03-25'},
+        )
+        assert r.status_code == 200
+        row = next(
+            (x for x in r.json if x.get('species', {}).get('name') == species_name),
+            None,
+        )
+        assert row is not None
+        sc = row.get('scales')
+        assert sc is not None
+        assert abs(float(sc['delta_kg']) - 0.015) < 1e-6
+        assert sc['display_unit'] == 'kg'
+
     def test_timeline_includes_video_not_attached_to_any_visit(self, app, client):
         """Ролик за сутки без SpeciesVisit появляется как unlinked_video."""
         from datetime import datetime, timezone

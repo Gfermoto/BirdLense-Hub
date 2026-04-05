@@ -196,7 +196,7 @@
     "birdnetUrl": "BirdNET installation URL",
     "birdnetUrlHint": "URL to BirdNET-Pi/Go. Empty — icon hidden.",
     "heimdallUrl": "Heimdall URL",
-    "heimdallUrlHint": "Any Heimdall URL resolvable from the Hub host (e.g. http://heimdall.local or a LAN IP). For Docker, ensure the hostname resolves inside the container (extra_hosts, shared network). For BirdLense metrics in Heimdall, see System → Observability (/metrics, /api/metrics/summary).",
+    "heimdallUrlHint": "Heimdall does not auto-import BirdLense entities: this field is only for the Hub → Heimdall reachability probe (System page). To open BirdLense from Heimdall, add a manual bookmark/tile to your hub URL; for metrics use /metrics (System → Observability). For Docker, the hostname must resolve from the Hub container.",
     "donateUrl": "Support page URL",
     "donateUrlHint": "Opens when users tap the single heart icon in the top bar (next to language / settings). Not shown on the Food card or in the gear menu.",
     "accordionPerformance": "Performance / API cache",
