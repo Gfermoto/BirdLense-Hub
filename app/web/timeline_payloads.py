@@ -7,6 +7,8 @@ from datetime import timedelta, datetime, timezone
 from species_constants import GENERIC_BIRD_SPECIES
 from time_util import ensure_utc
 
+from services.feeder_scale import video_scales_estimate_payload
+
 
 def get_primary_video_for_visit(visit) -> object | None:
     """Deterministically pick the earliest video for a SpeciesVisit."""
@@ -90,6 +92,7 @@ def format_visit_for_timeline(visit) -> dict:
             'temp': video.weather_temp if video else None,
             'clouds': video.weather_clouds if video else None,
         } if video else None,
+        'scales': video_scales_estimate_payload(video) if video else None,
         'species': {
             'id': visit.species.id,
             'name': visit.species.name,
@@ -165,6 +168,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             'temp': video.weather_temp,
             'clouds': video.weather_clouds,
         },
+        'scales': video_scales_estimate_payload(video),
         'species': species_block,
         'detections': detections,
         'timeline_kind': 'unlinked_video',

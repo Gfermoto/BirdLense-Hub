@@ -173,13 +173,25 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 ---
 
+## Home Assistant (REST API)
+
+Shared **URL** and **Long-Lived Access Token** for any feature that calls the Home Assistant REST API: weather (when `weather.source` is `homeassistant`), feeder scale when `integrations.scales.source` is `homeassistant`, and future integrations. **Environment:** `HA_URL` and `HA_TOKEN` override the YAML fields when set.
+
+| Key | Description |
+|-----|-------------|
+| `homeassistant.url` | Base URL (e.g. `http://homeassistant:8123`) |
+| `homeassistant.token` | Long-Lived Access Token (masked in API) |
+
+**Deprecated (still read as fallback):** `weather.ha_url`, `weather.ha_token` — migrate to `homeassistant.*`; System config audit may flag them.
+
+---
+
 ## Weather
 
 | Key | Description |
 |-----|-------------|
 | `source` | `openweather` \| `homeassistant` |
-| `ha_url` | Home Assistant URL |
-| `ha_entity_id` | Weather entity (`weather.home`) |
+| `ha_entity_id` | When `source` is `homeassistant`: which `weather.*` entity to read (e.g. `weather.home`). URL and token are **not** here — use `homeassistant.*` above. |
 
 ---
 
@@ -239,15 +251,26 @@ Opt-in: when `enabled=true` and `upload_url` is set, Hub POSTs best frames. Mult
 
 ## Integrations (scales)
 
+**`source: mqtt` vs `homeassistant`:** With **MQTT**, the **processor** subscribes to `mqtt_topic`, writes `feeder_scale_state.json` / `feeder_scale_history.jsonl`, can **estimate per-clip delta**, and optionally **start recording** on a weight spike. With **homeassistant**, only the **web** app calls the HA REST API for the **current weight** on the feeder card; the processor does **not** poll HA, so history / delta / motion-trigger options apply only to **MQTT** (use the same HA/ESPHome state topic under **MQTT** if you need them).
+
 | Key | Description |
 |-----|-------------|
-| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). When enabled, the **processor** subscribes to MQTT (or reads Home Assistant) and persists the latest weight for the web UI. |
-| `integrations.scales.source` | `mqtt` (default) or `homeassistant`. |
+| `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). |
+| `integrations.scales.source` | `mqtt` (default) — processor + file state/history; or `homeassistant` — REST in web for current weight only (see note above). |
 | `integrations.scales.mqtt_topic` | MQTT topic carrying a numeric payload or JSON with weight (processor persists state under **`DATA_DIR`**; in Docker the default data tree is `app/data`). |
-| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant`. |
+| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant` (REST snapshot for UI). |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values. |
+| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires **MQTT** (`source: mqtt`, `mqtt_topic`) and `feeder_scale_history.jsonl` under `DATA_DIR`. The delta is **not** saved when the clip only has BirdNET rows (`source=audio`) with no frame/track: audio helps species ID; it is not tied to feeder weight. |
+| `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) for both the **window span** (max−min) and the **spike** between consecutive time-ordered MQTT samples. Default **0.008** (~8 g). |
+| `integrations.scales.estimate_require_consecutive_spike` | **true** (default): persist an estimate only if some **adjacent** sample pair in the clip has \|Δ\| ≥ `min_delta_kg_for_estimate` (reduces slow drift when the platform reads near zero after tare). **false**: legacy span-only check. The stored value remains **max−min** over the window. |
+| `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
+| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as a Frigate trigger (**OR** with Frigate and optional OpenCV). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, `source: mqtt`, and `mqtt_topic`. Not wired when `motion.source: pir` (separate code path). |
+| `integrations.scales.motion_trigger_min_delta_kg` | Minimum absolute weight change (kg) between **two consecutive** MQTT samples to fire the trigger. Default **0.02**. |
+| `integrations.scales.motion_trigger_debounce_seconds` | Minimum seconds between recording starts triggered by scales. Default **1.5**. |
 
-Future work: **trigger on sharp weight change** (threshold / debounce) — tracked in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+The processor compares min/max scale readings between `start_time` and `end_time`. With **`estimate_require_consecutive_spike: true`** (default), a value is persisted only if some adjacent sample pair in that window has a step ≥ the threshold (see key above), while the stored metric remains the max−min span. When the span meets the threshold, `scales_weight_delta_kg` is saved and the video page shows a compact “Scales (estimate)” block. Notification triggers and auto-tare in HA/ESPHome remain in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+
+**Stack like [ESPHome + Home Assistant smart scale](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, proximity, auto-tare in HA): tare and “object on platform” stay in **ESPHome/HA**. BirdLense does not replicate those entities: subscribe the processor to the **same MQTT state topic** your integration publishes (often `homeassistant/sensor/<sensor_id>/state` — set it in `mqtt_topic`). Current weight in the UI and the per-clip delta log then follow that single stream, compatible with that firmware.
 
 ---
 

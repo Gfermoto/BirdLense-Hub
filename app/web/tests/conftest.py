@@ -42,6 +42,8 @@ def app():
     app_config.set('secrets.openweather_api_key', '')
     app_config.set('weather.ha_token', '')
     app_config.set('weather.ha_url', '')
+    app_config.set('homeassistant.token', '')
+    app_config.set('homeassistant.url', '')
     app = create_app()
     app.config['TESTING'] = True
     return app

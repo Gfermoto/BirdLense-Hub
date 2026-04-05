@@ -38,7 +38,7 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy writes to `.env`. |
 | ~~**Critical**~~ **Fixed** | `GET /api/ui/settings` returned full config with secrets. | Secrets are masked (`***`), placeholder on save does not overwrite real value. |
-| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `weather.ha_token`, `settings_password`, `mcp.token`. | Store in env or secret manager; do not write to YAML. |
+| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Store in env or secret manager; do not write to YAML. |
 | **High** | OpenAPI describes `telegram_bot_token`, `secrets.openweather_api_key` in Settings schema. | Add `x-sensitive: true`, do not expose in examples. |
 | **Medium** | `settings_password` in plain text. In default_config: *"Consider hashing for production"*. | Store hash (bcrypt/argon2). |
 | **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |

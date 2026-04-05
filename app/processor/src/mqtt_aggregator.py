@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
+from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
+
 logger = logging.getLogger(__name__)
 
 # After TCP drop, still report "connected" to heartbeat/UI for this many seconds.
@@ -47,18 +49,22 @@ def _parse_scale_payload(payload: bytes) -> float | None:
         return None
 
 
-def write_feeder_scale_state(data_dir: str, weight: float, unit: str) -> None:
-    """Сохранить последний вес для UI (карточка кормушки)."""
+def write_feeder_scale_state(
+    data_dir: str, weight: float, unit: str, *, history_max_lines: int = 10000
+) -> None:
+    """Сохранить последний вес для UI (карточка кормушки) и строку в журнал для оценки дельты."""
     try:
         os.makedirs(data_dir, exist_ok=True)
         path = os.path.join(data_dir, FEEDER_SCALE_STATE_FILE)
+        u = (unit or "kg").strip().lower()[:8] or "kg"
         rec = {
             "weight": float(weight),
-            "unit": (unit or "kg").strip().lower()[:8],
+            "unit": u,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(rec, f, ensure_ascii=False)
+        append_feeder_scale_sample(data_dir, float(weight), u, max_lines=history_max_lines)
     except OSError as e:
         logger.debug("write_feeder_scale_state: %s", e)
 
@@ -195,6 +201,10 @@ class MQTTEventAggregator:
         scales_topic: str | None = None,
         scales_data_dir: str | None = None,
         scales_unit: str = "kg",
+        scales_history_max_lines: int = 10000,
+        scale_motion_trigger_cb=None,
+        scale_motion_min_delta_kg: float | None = None,
+        scale_motion_debounce_seconds: float = 1.5,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -235,6 +245,19 @@ class MQTTEventAggregator:
         self.scales_topic = st if st else None
         self.scales_data_dir = (scales_data_dir or "").strip() or None
         self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
+        self.scales_history_max_lines = max(100, int(scales_history_max_lines or 10000))
+        self._scale_motion_trigger_cb = scale_motion_trigger_cb
+        try:
+            md = float(scale_motion_min_delta_kg) if scale_motion_min_delta_kg is not None else None
+        except (TypeError, ValueError):
+            md = None
+        self._scale_motion_min_delta_kg = md if md and md > 0 else None
+        try:
+            self._scale_motion_debounce_seconds = max(0.2, float(scale_motion_debounce_seconds or 1.5))
+        except (TypeError, ValueError):
+            self._scale_motion_debounce_seconds = 1.5
+        self._prev_scale_kg: float | None = None
+        self._last_scale_motion_ts = 0.0
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -374,8 +397,30 @@ class MQTTEventAggregator:
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
             if w is not None and self.scales_data_dir:
-                write_feeder_scale_state(self.scales_data_dir, w, self.scales_unit)
+                write_feeder_scale_state(
+                    self.scales_data_dir,
+                    w,
+                    self.scales_unit,
+                    history_max_lines=self.scales_history_max_lines,
+                )
                 logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
+            if (
+                w is not None
+                and self._scale_motion_trigger_cb
+                and self._scale_motion_min_delta_kg
+            ):
+                w_kg = weight_reading_to_kg(w, self.scales_unit)
+                prev = self._prev_scale_kg
+                self._prev_scale_kg = w_kg
+                if prev is not None:
+                    if abs(w_kg - prev) >= self._scale_motion_min_delta_kg:
+                        now = time.time()
+                        if now - self._last_scale_motion_ts >= self._scale_motion_debounce_seconds:
+                            self._last_scale_motion_ts = now
+                            try:
+                                self._scale_motion_trigger_cb()
+                            except Exception as e:
+                                logger.debug("scale motion trigger cb: %s", e)
             return
         if ev:
             with self._lock:

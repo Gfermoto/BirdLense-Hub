@@ -21,6 +21,7 @@ def build_motion_detector(
     esphome_url='',
     esphome_sensor='',
     check_every_n_frames=1,
+    or_extras=None,
 ):
     """Build the effective motion detector chain for the processor."""
     additional = None
@@ -64,8 +65,11 @@ def build_motion_detector(
             )
             additional = None
 
-    if primary and additional:
-        return OrMotionDetector(primary=primary, additional=additional)
+    extra_list = [e for e in (or_extras or []) if e is not None]
+    if primary and (additional is not None or extra_list):
+        return OrMotionDetector(
+            primary=primary, additional=additional, extras=extra_list,
+        )
     if primary:
         return primary
     if additional:

@@ -198,12 +198,17 @@ feed:
   esphome_switch_id: "bird_feeder"
   esphome_type: switch  # switch | button
 
-# Weather: openweather | homeassistant
+# Home Assistant REST API: общий URL и Long-Lived Token для нескольких функций (погода из сущности weather.*,
+# весы при integrations.scales.source=homeassistant и т.д.). Переопределение: HA_URL и HA_TOKEN в env.
+# url пустой — fallback на устаревшие weather.ha_url / weather.ha_token при апгрейде.
+homeassistant:
+  url: ""
+  token: ""
+
+# Weather: openweather | homeassistant (URL/токен — в homeassistant.* выше; здесь только сущность погоды)
 weather:
   source: openweather
-  ha_url: "http://homeassistant:8123"
   ha_entity_id: "weather.home"
-  ha_token: ""  # Long-Lived Access Token; HA_TOKEN в env переопределяет
 
 # Retention
 retention:
@@ -269,8 +274,18 @@ integrations:
     mqtt_topic: ""  # ESPHome: homeassistant/sensor/<id>/state или свой топик с числом / JSON
     homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
     unit: kg  # kg | g — единица для отображения и записи из MQTT
+    # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167)
+    weight_estimate_enabled: true
+    min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
+    # Оценка на ролик только если между двумя соседними по времени MQTT-точками был скачок >= порога
+    estimate_require_consecutive_spike: true
+    history_max_lines: 10000
+    # Триггер записи + конвейер YOLO: скачок веса на MQTT (параллельно с Frigate в OrMotion)
+    motion_trigger_enabled: false
+    motion_trigger_min_delta_kg: 0.02  # |Δ| между двумя подряд MQTT-сэмплами, кг
+    motion_trigger_debounce_seconds: 1.5
 
-# Кэш API: Redis (docker-compose) можно выключить или задать URL в UI (перекрывает REDIS_URL из env).
+# Кэш API: Redis из docker-compose; URL можно задать в UI (перекрывает REDIS_URL). Выключать без веской причины не стоит.
 performance:
   cache_redis_enabled: true
   redis_url: ""  # непусто — использовать вместо REDIS_URL; секрет — маскируется в API

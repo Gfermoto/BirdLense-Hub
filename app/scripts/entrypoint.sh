@@ -28,7 +28,7 @@ fi
 nginx &
 sleep 1
 # gthread: несколько одновременных запросов к SQLite (WAL + check_same_thread=False в config)
-GUNICORN_THREADS="${GUNICORN_THREADS:-8}"
+GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
 cd /app/web && PYTHONPATH=/app gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 # create_app() блокируется на отправке в Telegram (telegram_timeout может быть 300+ сек в РФ).
 # Ждём до 400s, иначе контейнер выходит по таймауту и перезапускается → спам «App is UP!».

@@ -8,8 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Code review (PR #235):** пустой дефолт `homeassistant.url` в `default_config.yaml` — снова работает fallback на `weather.ha_url` при апгрейде; безопасный `int` для `history_max_lines` в процессоре; журнал весов обрезается по числу строк, а не только после 512 KiB; миграция `scales_weight_delta_kg` — игнор только дубликата колонки, остальные ошибки логируются и пробрасываются; OpenAPI `Settings` — блок `homeassistant`; валидация min в UI для порога/дебаунса триггера по весам; уточнены CONFIGURATION и RU-локали.
+
+### Added
+
+- **Timeline / карточка визита:** в ответе `/api/ui/timeline` и в UI (`VisitCard`) поле **`scales`** — оценка дельты весов с «основного» ролика визита (как на странице видео). [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыт.
+
 ### Changed
 
+- **Настройки → General:** подсказка **`heimdall_url`** — явно указано, что Heimdall **не** импортирует сущности BirdLense; URL только для проверки доступности с Hub; плитка на хаб и `/metrics` — вручную.
+- **Трекинг:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт (основной объём весов); [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) (дельта на карточке визита) закрыт после реализации в timeline/UI; **ROADMAP** обновлён.
+- **Настройки весов (UI):** при источнике Home Assistant — информационный блок, почему нет опций дельты/триггера (процессор только MQTT); **CONFIGURATION** — уточнён разрыв `mqtt` vs `homeassistant`.
+- **Home Assistant:** URL и Long-Lived Token вынесены в отдельную секцию **`homeassistant.*`** и блок настроек «Home Assistant» (общие для погоды, весов с `source: homeassistant` и др.); в «Погода» при источнике HA остаётся только **`weather.ha_entity_id`**. Устаревшие `weather.ha_url` / `weather.ha_token` по-прежнему читаются как fallback и помечаются в аудите конфига; те же ключи игнорируются в списке «unknown» аудита. Env **`HA_URL`** / **`HA_TOKEN`** по-прежнему перекрывают YAML.
+- **Scales:** убран ключ и переключатель `integrations.scales.estimate_require_video_detection` — дельта веса за клип **по умолчанию и всегда** не пишется для роликов только с BirdNET (`audio`); звук остаётся для вида, не для привязки к весам. **Docker:** лимиты контейнера хаба **4 CPU / 4G**, Redis **256M** maxmemory, **Gunicorn 16** потоков по умолчанию; кэш API по-прежнему `performance.cache_redis_enabled: true` + `REDIS_URL` в compose.
 - **Web (PR #227 follow-up):** кэш **`filter_feeder_species`** — сигнатура каталога Species учитывает сумму `length(name)` (переименования без смены id/parent); **`bust_feeder_species_filter_cache`** после seed / backfill (не dry-run) / materialize-allowlist species-registry; **`app/pyproject.toml`** — interrogate с порогом 80% (исключён `tests`, игнор вложенных функций, `__init__`, magic и `_semiprivate`); **`make docs-check`** запускает `interrogate` из `web/` без принудительного успеха.
 - **Processor (tech debt #223):** единая сборка пайплайна детекции — **`detection_stack.build_detection_stack`** (`resolve_single_stage_model_path`, стратегия two/single stage, `FrameProcessor`, `DecisionMaker`, eBird overrides); **`main.py`** и **`track_regenerator.build_detection_pipeline`** используют её вместо дублирования ([#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223)).
 - **Web (tech debt #223):** маршруты метрик/visitors/history — в **`ui_system_metrics_routes`**; species-registry — в **`ui_system_species_registry_routes`**; из **`ui_system_routes`** убраны дубликаты эндпоинтов (одна регистрация на Flask). Нарезка **`ui_routes.py`** по доменам остаётся в [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) ([#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223)).
@@ -30,7 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
 - **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
-- **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — backlog: **триггер по скачку массы**, **оценка веса птицы в карточке визита** (в духе корма/погоды). [CONFIGURATION](docs/CONFIGURATION.ru.md) — ключи `integrations.scales.*` (MQTT / Home Assistant).
+- **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) и [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыты. [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed
 

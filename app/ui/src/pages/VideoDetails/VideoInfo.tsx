@@ -15,6 +15,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Video } from '../../types';
@@ -72,7 +73,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       }
     },
   });
-  const { processor_version, start_time, end_time, favorite, weather, food } =
+  const { processor_version, start_time, end_time, favorite, weather, food, scales } =
     video;
 
   const formatDate = (date: string | Date) => formatLocalDateTime(date);
@@ -177,6 +178,30 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         weather={weather}
         date={start_time ? new Date(start_time).toISOString().slice(0, 10) : undefined}
       />
+
+      {scales && (
+        <Paper sx={{ p: 2 }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            <MonitorWeightIcon fontSize="small" />
+            {t('videoInfo.scalesEstimateTitle')}
+          </Typography>
+          <Chip
+            label={t('videoInfo.scalesEstimateValue', {
+              value: scales.display_value,
+              unit: scales.display_unit,
+            })}
+            variant="outlined"
+            sx={{ mb: 1 }}
+          />
+          <Typography variant="caption" color="text.secondary" display="block">
+            {t('videoInfo.scalesEstimateHint')}
+          </Typography>
+        </Paper>
+      )}
 
       {/* Food Section */}
       {food.length > 0 && (

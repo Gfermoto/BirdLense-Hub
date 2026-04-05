@@ -143,6 +143,14 @@ def register_routes(app):
                 spectrogram_path=data['spectrogram_path'],
                 **fetch_weather()
             )
+            raw_sw = data.get('scales_weight_delta_kg')
+            if raw_sw is not None and app_config.get('integrations.scales.enabled'):
+                try:
+                    swf = float(raw_sw)
+                    if swf >= 0 and swf <= 50:
+                        video.scales_weight_delta_kg = swf
+                except (TypeError, ValueError):
+                    pass
             db.session.add(video)
 
             # Add active bird foods

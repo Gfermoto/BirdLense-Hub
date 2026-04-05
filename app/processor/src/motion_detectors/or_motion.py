@@ -14,13 +14,15 @@ class OrMotionDetector:
     detect() returns True when the first of any child fires.
     """
 
-    def __init__(self, primary, additional=None):
+    def __init__(self, primary, additional=None, extras=None):
         """
         primary: main detector (e.g. Frigate) — must have detect() and optionally check_pending()
         additional: optional second detector (OpenCV, MQTT binary, ESPHome)
+        extras: optional list of objects with check_pending() (e.g. весы как триггер записи)
         """
         self._primary = primary
         self._additional = additional
+        self._extras = [e for e in (extras or []) if e is not None]
         self._triggered_by = None
 
     def _check_primary(self):
@@ -42,13 +44,25 @@ class OrMotionDetector:
                 return fn()
         return False
 
+    def _check_extras(self):
+        for i, ex in enumerate(self._extras):
+            fn = getattr(ex, 'check_pending', None)
+            if fn and callable(fn) and fn():
+                return i
+        return -1
+
     def detect(self):
-        """Block until primary OR additional fires. Returns True."""
+        """Block until primary OR extras OR additional fires. Returns True."""
         poll_interval = 0.05
         while True:
             if self._check_primary():
                 self._triggered_by = 'primary'
                 logger.info("Motion: primary (Frigate) trigger")
+                return True
+            xi = self._check_extras()
+            if xi >= 0:
+                self._triggered_by = f'extra_{xi}'
+                logger.info("Motion: extra trigger (index=%s)", xi)
                 return True
             if self._check_additional():
                 self._triggered_by = 'additional'
@@ -57,7 +71,7 @@ class OrMotionDetector:
             time.sleep(poll_interval)
 
     def get_triggered_camera(self):
-        """For Frigate: return camera. For additional: None."""
+        """For Frigate: return camera. For scales/extras/additional: None."""
         if self._triggered_by == 'primary' and self._primary:
             return getattr(self._primary, 'get_triggered_camera', lambda: None)()
         return None

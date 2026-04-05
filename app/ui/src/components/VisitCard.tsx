@@ -18,6 +18,7 @@ import Groups from '@mui/icons-material/Groups';
 import VideoCall from '@mui/icons-material/VideoCall';
 import Mic from '@mui/icons-material/Mic';
 import Share from '@mui/icons-material/Share';
+import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -283,6 +284,23 @@ export const VisitCard = memo(function VisitCard({
                   size="small"
                   sx={{ height: 28 }}
                 />
+              )}
+              {visit.scales && (
+                <Tooltip title={t('videoInfo.scalesEstimateHint')}>
+                  <Chip
+                    icon={
+                      <Box display="flex" alignItems="center">
+                        <MonitorWeightIcon sx={{ fontSize: 18 }} />
+                      </Box>
+                    }
+                    label={t('videoInfo.scalesEstimateValue', {
+                      value: visit.scales.display_value,
+                      unit: visit.scales.display_unit,
+                    })}
+                    size="small"
+                    sx={{ height: 28 }}
+                  />
+                </Tooltip>
               )}
             </Box>
           </Box>

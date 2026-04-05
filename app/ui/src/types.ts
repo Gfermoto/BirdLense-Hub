@@ -13,6 +13,12 @@ export interface SpeciesVisit {
     temp?: number;
     clouds?: number;
   };
+  /** Дельта весов за ролик (как на странице видео); снимок с «основного» ролика визита (самый ранний по start_time). */
+  scales?: {
+    delta_kg: number;
+    display_value: number;
+    display_unit: 'kg' | 'g';
+  } | null;
   species: {
     id: number;
     name: string;
@@ -79,6 +85,12 @@ export interface Video {
     /** Relative path (data/images/food/...) or null — use resolveImageUrl() */
     image_url: string | null;
   }[];
+  /** Оценка дельты на весах за ролик (#167); null если нет данных */
+  scales?: {
+    delta_kg: number;
+    display_value: number;
+    display_unit: 'kg' | 'g';
+  } | null;
 }
 
 export interface BirdFood {
@@ -118,6 +130,11 @@ export interface Settings {
     redis_url?: string;
     /** Только ответ GET /settings: фактический URL кэша (пароль замаскирован), не сохранять */
     redis_url_effective_masked?: string;
+  };
+  /** Home Assistant REST API: общий URL и токен для погоды, весов (HA entity) и др. */
+  homeassistant?: {
+    url?: string;
+    token?: string;
   };
   integrations?: {
     scales?: {
@@ -204,9 +221,7 @@ export interface Settings {
   };
   weather?: {
     source?: 'openweather' | 'homeassistant';
-    ha_url?: string;
     ha_entity_id?: string;
-    ha_token?: string; // LLAT для HA (погода и весы)
   };
   ebird?: {
     country?: string;

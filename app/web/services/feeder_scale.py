@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 import requests
 
 from app_config.app_config import app_config
+from services.homeassistant_config import (
+    get_homeassistant_token,
+    get_homeassistant_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +39,8 @@ def _read_scale_file() -> dict | None:
 
 
 def _fetch_ha_scale(entity_id: str) -> dict | None:
-    ha_url = (
-        os.environ.get('HA_URL') or app_config.get('weather.ha_url') or ''
-    ).strip().rstrip('/')
-    token = (
-        os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token') or ''
-    ).strip()
+    ha_url = get_homeassistant_url()
+    token = get_homeassistant_token()
     if not ha_url or not token or not entity_id:
         return None
     url = f'{ha_url}/api/states/{entity_id}'
@@ -74,6 +74,31 @@ def _fetch_ha_scale(entity_id: str) -> dict | None:
     except (requests.RequestException, ValueError, TypeError) as e:
         logger.debug('HA scale fetch: %s', e)
         return None
+
+
+def video_scales_estimate_payload(video) -> dict | None:
+    """Блок для карточки записи: дельта массы в единицах из настроек (#167)."""
+    val = getattr(video, 'scales_weight_delta_kg', None)
+    if val is None:
+        return None
+    try:
+        kg = float(val)
+    except (TypeError, ValueError):
+        return None
+    if kg < 0 or kg > 50:
+        return None
+    unit = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
+    if unit == 'g':
+        return {
+            'delta_kg': kg,
+            'display_value': round(kg * 1000.0, 1),
+            'display_unit': 'g',
+        }
+    return {
+        'delta_kg': kg,
+        'display_value': round(kg, 4),
+        'display_unit': 'kg',
+    }
 
 
 def get_feeder_scale_snapshot() -> dict | None:
