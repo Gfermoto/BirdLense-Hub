@@ -16,7 +16,7 @@ import json as json_module
 from sqlalchemy import func, distinct, or_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone, timedelta
-from models import db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit, PushSubscription
+from models import db, Video, Species, VideoSpecies, SpeciesVisit
 from species_constants import GENERIC_BIRD_SPECIES
 from auth import (
     client_ip_for_rate_limit,
@@ -30,8 +30,6 @@ from auth import (
 from services.feeder_scale import video_scales_estimate_payload
 from util import (
     data_dir,
-    fetch_weather,
-    fetch_sun_times,
     ensure_utc,
     parse_utc_timestamp,
     get_primary_video_for_visit_in_window,
@@ -45,15 +43,11 @@ from util import (
     _host_is_inaturalist_open_data_asset,
 )
 from app_config.app_config import app_config
-from app_config.cameras import get_valid_cameras, cameras_for_api
-from services.feed_service import dispense_feed, get_last_dispense, check_mqtt_connected, check_esphome_reachable
-from services.status_service import check_video_reachable, parse_yolo_status_from_heartbeat
 from services.visit_processor import VisitProcessor
 from services.report_service import get_monthly_report_data, build_monthly_report
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
 from services.ebird_export_service import build_ebird_csv
 from services.detection_crop_service import extract_detection_frame, crop_filename
-from services.web_push_service import get_vapid_public_key
 
 
 def _timeline_visits_deduped_ordered(visits_raw):
@@ -161,6 +155,17 @@ from services.species_regional_scope import compute_regional_scope_species_ids
 from services.cache import cache_get, cache_set, cache_delete_prefix
 from services.http_response_cache import bust_response_caches
 
+from routes.ui_route_constants import (
+    CACHE_BIRD_FAMILIES_SEC,
+    CACHE_DETECTION_FRAMES_SEC,
+    CACHE_MIGRATION_SEC,
+    CACHE_SPECIES_LIST_SEC,
+    CACHE_SPECIES_OBSERVED_SEC,
+    CACHE_SPECIES_TRACK_REGEN_SEC,
+    CACHE_TIMELINE_SEC,
+    CACHE_UNKNOWNS_SEC,
+)
+
 UNKNOWNS_LIMIT_MAX = 500
 _SPECIES_PROXY_MAX_REDIRECTS = 5
 
@@ -259,20 +264,14 @@ def _fetch_species_proxy_upstream(start_url: str):
         return r, None
     return None, 'image proxy: too many redirects'
 
-# TTL процессного кэша (секунды); при смене настроек — инвалидация в PATCH /settings
-_CACHE_STATUS_SEC = 5
-_CACHE_SPECIES_LIST_SEC = 45
-_CACHE_SPECIES_OBSERVED_SEC = 45
-_CACHE_SPECIES_TRACK_REGEN_SEC = 45
-_CACHE_BIRD_FAMILIES_SEC = 300
-_CACHE_MIGRATION_SEC = 120
-_CACHE_TIMELINE_SEC = 20
-_CACHE_UNKNOWNS_SEC = 12
-_CACHE_DETECTION_FRAMES_SEC = 45
-
-
 def register_routes(app):
     """Зарегистрировать основные маршруты ``/api/ui/*`` (не system — они в ui_system_routes)."""
+    from routes.ui_birdfood_routes import register_ui_birdfood_routes
+    from routes.ui_status_push_routes import register_ui_status_push_routes
+
+    register_ui_status_push_routes(app)
+    register_ui_birdfood_routes(app)
+
     def _get_tuning_target_ids() -> list[int]:
         raw = app_config.get('species.tuning_target_species_ids') or []
         out: list[int] = []
@@ -336,196 +335,6 @@ def register_routes(app):
         except Exception:
             db.session.rollback()
             app.logger.exception('Failed to write species_correction activity log')
-
-    @app.route('/api/ui/health', methods=['GET'])
-    def health():
-        return {'status': 'ok'}
-
-    @app.route('/api/ui/push/vapid-public', methods=['GET'])
-    def push_vapid_public():
-        """Public VAPID key for Web Push subscription."""
-        key = get_vapid_public_key()
-        if not key:
-            return {'error': 'Web Push not available'}, 503
-        return {'vapid_public_key': key}, 200
-
-    @app.route('/api/ui/push/subscribe', methods=['POST'])
-    def push_subscribe():
-        """Register a Web Push subscription. Requires web_push.enabled and general.enable_notifications."""
-        if not settings_check_access():
-            return {'error': 'Unauthorized'}, 401
-        if not app_config.get('general.enable_notifications'):
-            return {'error': 'Notifications disabled'}, 400
-        data = request.json or {}
-        sub = data.get('subscription')
-        if not sub or not isinstance(sub, dict):
-            return {'error': 'subscription required'}, 400
-        endpoint = (sub.get('endpoint') or '').strip()
-        keys = sub.get('keys') or {}
-        p256dh = (keys.get('p256dh') or '').strip()
-        auth = (keys.get('auth') or '').strip()
-        if not endpoint or not p256dh or not auth:
-            return {'error': 'subscription.endpoint and subscription.keys (p256dh, auth) required'}, 400
-        # Enable web_push when first subscription is added
-        app_config.set('web_push.enabled', True)
-        app_config.save()
-        existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
-        if existing:
-            existing.p256dh = p256dh
-            existing.auth = auth
-            existing.user_agent = (request.headers.get('User-Agent') or '')[:512]
-            db.session.commit()
-            return {'message': 'Subscription updated'}, 200
-        ps = PushSubscription(endpoint=endpoint, p256dh=p256dh, auth=auth,
-                              user_agent=(request.headers.get('User-Agent') or '')[:512])
-        db.session.add(ps)
-        db.session.commit()
-        return {'message': 'Subscribed'}, 201
-
-    @app.route('/api/ui/cameras', methods=['GET'])
-    def list_cameras():
-        """List cameras — только из video.cameras, добавлять по одной. Без default."""
-        cameras_config = app_config.get('video.cameras') or []
-        valid = get_valid_cameras(cameras_config)
-        return {'cameras': cameras_for_api(valid)}
-
-    @app.route('/api/ui/status', methods=['GET'])
-    def component_status():
-        """Component status for UI indicators (Video/MQTT/YOLO)."""
-        hit, cached = cache_get('component_status:v1')
-        if hit:
-            return cached
-        from datetime import datetime, timezone, timedelta
-        from models import ActivityLog
-        # Processor heartbeat: last activity_log of type heartbeat (процессор шлёт каждые 60 сек)
-        last_heartbeat = (
-            ActivityLog.query.filter_by(type='heartbeat')
-            .order_by(ActivityLog.updated_at.desc())
-            .first()
-        )
-        processor_ok = False
-        if last_heartbeat and last_heartbeat.updated_at:
-            cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
-            try:
-                updated = ensure_utc(last_heartbeat.updated_at)
-                processor_ok = updated >= cutoff
-            except (TypeError, ValueError):
-                processor_ok = False
-        heartbeat_data = None
-        if last_heartbeat and last_heartbeat.data:
-            try:
-                heartbeat_data = json_module.loads(last_heartbeat.data) if isinstance(last_heartbeat.data, str) else last_heartbeat.data
-            except (TypeError, ValueError):
-                pass
-        mqtt_status = check_mqtt_connected()
-        esphome_status = check_esphome_reachable()
-        feed_source = app_config.get('feed.source', 'mqtt')
-        motion_source = app_config.get('motion.source', 'opencv')
-        mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
-        # Источник правды — процессор (Frigate/BirdNET); веб-клиент birdlense_feed часто «error» из-за гонки loop_start.
-        if mqtt_broker:
-            if processor_ok and isinstance(heartbeat_data, dict) and 'mqtt_connected' in heartbeat_data:
-                mqtt_display = 'ok' if heartbeat_data.get('mqtt_connected') else 'error'
-            else:
-                mqtt_display = mqtt_status
-        elif feed_source == 'mqtt':
-            mqtt_display = mqtt_status
-        else:
-            mqtt_display = 'not_used'
-        # ESPHome: show real status if feed source is esphome
-        esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
-        birdnet_url = (app_config.get('general.birdnet_url') or '').strip()
-        heimdall_url = (app_config.get('general.heimdall_url') or '').strip()
-        # Триггер для отображения: frigate → mqtt (триггер идёт через MQTT)
-        trigger_display = 'mqtt' if motion_source == 'frigate' else motion_source
-        # Video: реальная проверка через go2rtc snapshot
-        video_display = check_video_reachable()
-        # YOLO: из heartbeat процессора (last_yolo_ok_at в пределах 5 мин)
-        yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else 'unknown'
-        payload = {
-            'web': 'ok',
-            'processor': 'ok' if processor_ok else 'offline',
-            'video': video_display,
-            'mqtt': mqtt_display,
-            'esphome': esphome_display,
-            'yolo': yolo_display,
-            'motion_source': motion_source,
-            'trigger_display': trigger_display,
-            'birdnet_url': birdnet_url or None,
-            'heimdall_url': heimdall_url or None,
-        }
-        cache_set('component_status:v1', payload, _CACHE_STATUS_SEC)
-        return payload
-
-    @app.route('/api/ui/status/debug', methods=['GET'])
-    def status_debug():
-        """Диагностика: почему статус серый. Проверить после деплоя."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        from datetime import datetime, timezone, timedelta
-        from models import ActivityLog
-        last = ActivityLog.query.filter_by(type='heartbeat').order_by(ActivityLog.updated_at.desc()).first()
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
-        return {
-            'last_heartbeat': {
-                'id': last.id if last else None,
-                'updated_at': last.updated_at.isoformat() if last and last.updated_at else None,
-                'data': last.data if last else None,
-            } if last else None,
-            'cutoff_utc': cutoff.isoformat(),
-            'processor_secret_configured': bool(os.environ.get('PROCESSOR_SECRET', '').strip()),
-            'api_url_base_configured': bool(os.environ.get('API_URL_BASE', '').strip()),
-        }
-
-    @app.route('/api/ui/feed/info', methods=['GET'])
-    def feed_info():
-        """Last dispense time, donate URL, feed source, optional scale weight. No auth required."""
-        from app_config.app_config import app_config
-        from services.feeder_scale import get_feeder_scale_snapshot
-
-        donate_url = (app_config.get('general.donate_url') or '').strip()
-        feed_source = app_config.get('feed.source', 'mqtt')
-        scale = get_feeder_scale_snapshot()
-        return {
-            'last_dispense_at': get_last_dispense(),
-            'donate_url': donate_url or None,
-            'feed_source': feed_source,
-            'scale': scale,
-        }, 200
-
-    @app.route('/api/ui/feed/dispense', methods=['POST'])
-    def feed_dispense():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        success, message = dispense_feed()
-        if success:
-            return {'message': message}, 200
-        return {'error': message}, 500
-
-    @app.route('/api/ui/weather', methods=['GET'])
-    def weather():
-        from app_config.app_config import app_config
-        weather = fetch_weather()
-        return {
-            'main': weather.get('weather_main'),
-            'description': weather.get('weather_description'),
-            'temp': weather.get('weather_temp'),
-            'humidity': weather.get('weather_humidity'),
-            'pressure': weather.get('weather_pressure'),
-            'clouds': weather.get('weather_clouds'),
-            'wind_speed': weather.get('weather_wind_speed'),
-            'source': app_config.get('weather.source', 'openweather'),
-            'fetched_at': datetime.now(timezone.utc).isoformat(),
-        } if weather else {}
-
-    @app.route('/api/ui/sun-times', methods=['GET'])
-    def sun_times():
-        """Sunrise, sunset, dawn, dusk for date at configured location. date=YYYY-MM-DD."""
-        date_param = request.args.get('date')
-        if not date_param:
-            return {'error': 'date (YYYY-MM-DD) required'}, 400
-        result = fetch_sun_times(date_param)
-        return result if result else {}, 200
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['GET'])
     def get_video_details(video_id):
@@ -770,7 +579,7 @@ def register_routes(app):
                 'frames': frames,
             })
         body = {'tracks': tracks}
-        cache_set(ck, body, _CACHE_DETECTION_FRAMES_SEC)
+        cache_set(ck, body, CACHE_DETECTION_FRAMES_SEC)
         return body, 200
 
     @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
@@ -881,52 +690,6 @@ def register_routes(app):
             conditional=True,
         )
 
-    @app.route('/api/ui/birdfood', methods=['POST'])
-    def add_birdfood():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        data = request.json
-        name = data.get('name')
-        if not name:
-            return {'error': 'Name is required'}, 400
-
-        bird_food = BirdFood.query.filter_by(name=name).first()
-        if bird_food:
-            return {'error': 'Bird food with this name already exists'}, 400
-
-        bird_food = BirdFood(name=name, active=data.get('active', True))
-        db.session.add(bird_food)
-        db.session.commit()
-
-        return {'message': 'Bird food added successfully'}, 201
-
-    @app.route('/api/ui/birdfood/<int:birdfood_id>/toggle', methods=['PATCH'])
-    def toggle_birdfood(birdfood_id):
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        bird_food = db.session.get(BirdFood, birdfood_id)
-        if not bird_food:
-            return {'error': 'Bird food not found'}, 404
-
-        bird_food.active = not bird_food.active
-        db.session.commit()
-
-        return {'message': 'Bird food active status toggled successfully'}, 200
-
-    @app.route('/api/ui/birdfood', methods=['GET'])
-    def get_birdfood():
-        bird_food = BirdFood.query.order_by(
-            BirdFood.name.asc()).all()
-        bird_food_list = [{
-            'id': food.id,
-            'name': food.name,
-            'active': food.active,
-            'description': food.description,
-            'image_url': food.image_url
-        } for food in bird_food]
-
-        return bird_food_list, 200
-
     @app.route('/api/ui/overview', methods=['GET'])
     def get_overview():
         date_param = request.args.get('date', None)
@@ -996,7 +759,7 @@ def register_routes(app):
             evidence=evidence,
             app_config_get=app_config.get,
         )
-        cache_set(mck, data, _CACHE_MIGRATION_SEC)
+        cache_set(mck, data, CACHE_MIGRATION_SEC)
         return data, 200
 
     @app.route('/api/ui/timeline', methods=['GET'])
@@ -1036,7 +799,7 @@ def register_routes(app):
             return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
 
         response = build_merged_timeline_items(db.session, start_dt, end_dt)
-        cache_set(tck, response, _CACHE_TIMELINE_SEC)
+        cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 
     @app.route('/api/ui/timeline/export', methods=['GET'])
@@ -1269,7 +1032,7 @@ def register_routes(app):
             if len(result) >= limit:
                 break
 
-        cache_set(uck, result, _CACHE_UNKNOWNS_SEC)
+        cache_set(uck, result, CACHE_UNKNOWNS_SEC)
         return result
 
     @app.route('/api/ui/detections/<int:detection_id>/crop', methods=['GET'])
@@ -1682,7 +1445,7 @@ def register_routes(app):
             }
             for species in species_list
         ]
-        cache_set(cache_key, result, _CACHE_SPECIES_LIST_SEC)
+        cache_set(cache_key, result, CACHE_SPECIES_LIST_SEC)
         return result
 
     @app.route('/api/ui/species/observed', methods=['GET'])
@@ -1701,7 +1464,7 @@ def register_routes(app):
             subq, Species.id == subq.c.species_id
         ).order_by(Species.name.asc()).all()
         out = [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
-        cache_set('species_observed:v1', out, _CACHE_SPECIES_OBSERVED_SEC)
+        cache_set('species_observed:v1', out, CACHE_SPECIES_OBSERVED_SEC)
         return out
 
     @app.route('/api/ui/species/track-regen-options', methods=['GET'])
@@ -1729,7 +1492,7 @@ def register_routes(app):
             .all()
         )
         out = [{'id': s.id, 'name': s.name, 'count': int(vc)} for s, vc in rows]
-        cache_set('species_track_regen:v1', out, _CACHE_SPECIES_TRACK_REGEN_SEC)
+        cache_set('species_track_regen:v1', out, CACHE_SPECIES_TRACK_REGEN_SEC)
         return out
 
     @app.route('/api/ui/bird_families', methods=['GET'])
@@ -1749,7 +1512,7 @@ def register_routes(app):
                 'id': family.id,
                 'name': family.name,
             } for family in families]
-            cache_set('bird_families:v1', payload, _CACHE_BIRD_FAMILIES_SEC)
+            cache_set('bird_families:v1', payload, CACHE_BIRD_FAMILIES_SEC)
             return payload
 
         except Exception as e:

@@ -740,11 +740,11 @@ class TestWeather:
         assert isinstance(r.json, dict)
 
     def test_weather_includes_source_metadata(self, app, client, monkeypatch):
-        import routes.ui_routes as ui_routes
+        import routes.ui_status_push_routes as ui_status_push
         from app_config.app_config import app_config
 
         monkeypatch.setattr(
-            ui_routes,
+            ui_status_push,
             'fetch_weather',
             lambda: {
                 'weather_main': 'Rain',
