@@ -354,20 +354,25 @@ export function VideoSection({ form }: Props) {
                                 </Grid>
                               )}
                               {src === 'homeassistant' && (
-                                <Grid size={{ xs: 12 }}>
-                                  <form.Field name="integrations.scales.homeassistant_entity_id">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        value={field.state.value ?? ''}
-                                        onChange={(e) => field.handleChange(e.target.value)}
-                                        label={t('settings.scalesHaEntity')}
-                                        placeholder="sensor.smart_scale_weight"
-                                        helperText={t('settings.scalesHaEntityHint')}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
+                                <>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.homeassistant_entity_id">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesHaEntity')}
+                                          placeholder="sensor.smart_scale_weight"
+                                          helperText={t('settings.scalesHaEntityHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                  <Grid size={{ xs: 12 }}>
+                                    <Alert severity="info">{t('settings.scalesHaProcessorHint')}</Alert>
+                                  </Grid>
+                                </>
                               )}
                             </>
                           )}

@@ -251,12 +251,14 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 ## Интеграции (весы)
 
+**`source: mqtt` и `homeassistant`:** при **MQTT** **processor** подписывается на `mqtt_topic`, пишет `feeder_scale_state.json` / `feeder_scale_history.jsonl`, может **оценивать дельту за ролик** и по желанию **запускать запись** по скачку веса. При **homeassistant** только **веб** запрашивает HA по REST для **текущего веса** в карточке кормушки; процессор **не** опрашивает HA, поэтому журнал / дельта / триггер — только для **MQTT** (при необходимости укажите тот же топик состояния ESPHome в **MQTT**).
+
 | Ключ | Описание |
 |------|----------|
-| `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). При включении **processor** подписывается на MQTT (или читает Home Assistant) и сохраняет последний вес для веб-UI. |
-| `integrations.scales.source` | `mqtt` (по умолчанию) или `homeassistant`. |
+| `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). |
+| `integrations.scales.source` | `mqtt` (по умолчанию) — processor и файлы состояния/журнала; или `homeassistant` — только REST в вебе для текущего веса (см. абзац выше). |
 | `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
-| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
+| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant` (снимок для UI). |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
 | `integrations.scales.weight_estimate_enabled` | Оценка **дельты массы за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от `motion_trigger_enabled**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, `mqtt_topic`) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг): и для **размаха** max−min по окну, и для **скачка** между соседними по времени MQTT-точками (см. ниже). По умолчанию **0.008** (~8 г). |
