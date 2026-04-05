@@ -135,7 +135,7 @@
     "accordionSecurity": "Security",
     "accordionSecurityDesc": "Passwords for settings access.",
     "accordionIntegrations": "Integrations",
-    "accordionIntegrationsDesc": "eBird, Xeno-canto, scales (MQTT), MCP.",
+    "accordionIntegrationsDesc": "eBird, Xeno-canto, Home Assistant (REST), MCP. Feeder scales are under Video → Feeder.",
     "accordionAdvanced": "Advanced",
     "accordionAdvancedDesc": "Species mapping, Frigate filters, tracker.",
     "serviceMqtt": "MQTT",

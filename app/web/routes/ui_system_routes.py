@@ -74,6 +74,9 @@ TERMINAL_CONFIG_MAP_KEYS = {
 IGNORED_CONFIG_AUDIT_KEYS = {
     'camera',
     'secrets.zip',
+    # Legacy HA connection (читается как fallback); см. homeassistant.*
+    'weather.ha_token',
+    'weather.ha_url',
 }
 
 

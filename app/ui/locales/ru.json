@@ -135,7 +135,7 @@
     "accordionSecurity": "Безопасность",
     "accordionSecurityDesc": "Пароли доступа к настройкам.",
     "accordionIntegrations": "Интеграции",
-    "accordionIntegrationsDesc": "eBird, Xeno-canto, весы (MQTT), MCP.",
+    "accordionIntegrationsDesc": "eBird, Xeno-canto, Home Assistant (REST), MCP. Весы у кормушки — в разделе «Видео» → кормушка.",
     "accordionAdvanced": "Расширенные",
     "accordionAdvancedDesc": "Маппинг видов, фильтры Frigate, трекер.",
     "serviceMqtt": "MQTT",
