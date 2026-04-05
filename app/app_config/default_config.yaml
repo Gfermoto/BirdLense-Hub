@@ -269,8 +269,11 @@ integrations:
     mqtt_topic: ""  # ESPHome: homeassistant/sensor/<id>/state или свой топик с числом / JSON
     homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
     unit: kg  # kg | g — единица для отображения и записи из MQTT
-    # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи при видео-детекции (#167)
+    # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167)
     weight_estimate_enabled: true
+    # true — считать дельту только если в ролике есть детекция не из audio (YOLO/Frigate и т.д.);
+    # false — для любого сохранённого ролика с видами (в т.ч. только BirdNET): вес с кормушки всё равно про клип
+    estimate_require_video_detection: false
     min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
     history_max_lines: 10000
 

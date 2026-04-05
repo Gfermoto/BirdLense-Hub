@@ -309,6 +309,32 @@ export function VideoSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
+                <form.Subscribe selector={(s) => s.values.integrations?.scales?.enabled}>
+                  {(scalesOn) =>
+                    scalesOn ? (
+                      <Grid size={{ xs: 12 }}>
+                        <form.Field name="integrations.scales.estimate_require_video_detection">
+                          {(field) => (
+                            <>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={field.state.value ?? false}
+                                    onChange={(e) => field.handleChange(e.target.checked)}
+                                  />
+                                }
+                                label={t('settings.scalesEstimateRequireVideo')}
+                              />
+                              <Typography variant="body2" color="text.secondary" display="block">
+                                {t('settings.scalesEstimateRequireVideoHint')}
+                              </Typography>
+                            </>
+                          )}
+                        </form.Field>
+                      </Grid>
+                    ) : null
+                  }
+                </form.Subscribe>
                 <Grid size={{ xs: 12 }}>
                   <form.Field name="integrations.scales.source">
                     {(field) => (
