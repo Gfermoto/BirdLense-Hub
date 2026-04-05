@@ -37,6 +37,8 @@ def register_ui_system_species_registry_routes(app):
             return {'error': 'Password required'}, 403
         try:
             stats = ensure_species_registry_seeded()
+            bust_response_caches()
+            bust_system_response_caches()
             return {'ok': True, **stats}, 200
         except Exception as e:
             db.session.rollback()
@@ -61,6 +63,9 @@ def register_ui_system_species_registry_routes(app):
                 except (ValueError, TypeError):
                     return {'error': 'limit must be int'}, 400
             stats = backfill_species_taxa(dry_run=dry_run, limit=limit)
+            if not dry_run:
+                bust_response_caches()
+                bust_system_response_caches()
             return {'ok': True, **stats}, 200
         except Exception as e:
             db.session.rollback()

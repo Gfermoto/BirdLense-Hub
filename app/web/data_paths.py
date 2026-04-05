@@ -1,4 +1,4 @@
-"""DATA_DIR, безопасные пути к файлам, пути к записям (#222, было в util.py)."""
+"""DATA_DIR и безопасные пути к файлам и записям (#222, было в util.py)."""
 
 from __future__ import annotations
 
@@ -14,31 +14,41 @@ def _data_dir() -> str:
 
 
 def data_dir() -> str:
-    """Public access to base data directory. Use for dataset, retention, etc."""
+    """Expose base data directory (dataset paths, retention, etc.)."""
     return _data_dir()
 
 
 def _path_is_under_data_dir(base: str, full: str) -> bool:
-    """True if full is under base (blocks prefix-neighbor tricks, e.g. data_evil)."""
+    """Return whether full is under base (block data_evil-style prefixes)."""
     try:
         return os.path.commonpath([base, full]) == base
     except ValueError:
         return False
 
 
-def _is_safe_image_path(path: str) -> bool:
-    """Путь под DATA_DIR, файл существует. Защита от path traversal."""
+def _resolved_path_under_data_dir(path: str) -> str | None:
+    """Resolve to a real path under DATA_DIR; join relatives to DATA_DIR first."""
     if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return False
+        return None
     try:
         base = os.path.realpath(_data_dir())
-        full = os.path.realpath(path)
+        if os.path.isabs(path):
+            full = os.path.realpath(path)
+        else:
+            full = os.path.realpath(os.path.join(base, path))
     except (OSError, ValueError):
-        return False
+        return None
     if not _path_is_under_data_dir(base, full):
-        return False
-    # SafeAccessCheck: отдельный if для startswith — иначе CodeQL не видит барьер.
+        return None
     if full != base and not full.startswith(base + os.sep):
+        return None
+    return full
+
+
+def _is_safe_image_path(path: str) -> bool:
+    """Путь под DATA_DIR, файл существует. Защита от path traversal."""
+    full = _resolved_path_under_data_dir(path)
+    if not full:
         return False
     try:
         # lgtm[py/path-injection] realpath+commonpath+startswith(base+sep)
@@ -53,16 +63,8 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     Проверки realpath + commonpath + ``startswith(base + sep)`` и ФС —
     в одной функции (требование CodeQL py/path-injection).
     """
-    if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return None, 'unsafe_path'
-    try:
-        base = os.path.realpath(_data_dir())
-        full = os.path.realpath(path)
-    except (OSError, ValueError):
-        return None, 'unsafe_path'
-    if not _path_is_under_data_dir(base, full):
-        return None, 'unsafe_path'
-    if full != base and not full.startswith(base + os.sep):
+    full = _resolved_path_under_data_dir(path) if path else None
+    if not full:
         return None, 'unsafe_path'
     try:
         # lgtm[py/path-injection] validated under DATA_DIR
@@ -81,16 +83,8 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
 
 def remove_safe_image_file(path: str | None) -> None:
     """Удалить файл только если он под DATA_DIR (те же проверки, что для чтения)."""
-    if not path or not isinstance(path, str) or path != os.path.normpath(path):
-        return
-    try:
-        base = os.path.realpath(_data_dir())
-        full = os.path.realpath(path)
-    except (OSError, ValueError):
-        return
-    if not _path_is_under_data_dir(base, full):
-        return
-    if full != base and not full.startswith(base + os.sep):
+    full = _resolved_path_under_data_dir(path) if path else None
+    if not full:
         return
     try:
         # lgtm[py/path-injection] validated under DATA_DIR
@@ -111,9 +105,26 @@ def recordings_dir():
 
 
 def full_path_for_video(video_path: str) -> str | None:
-    """Полный путь по video_path из БД (data/recordings/YYYY/MM/DD/...)."""
-    if not video_path:
+    """Абсолютный путь к видеофайлу по значению из БД.
+
+    Ожидается относительный путь ``data/recordings/YYYY/MM/...`` от родителя
+    ``DATA_DIR``. Результат всегда строго внутри ``DATA_DIR``.
+    """
+    if not video_path or not isinstance(video_path, str):
         return None
-    base = _data_dir()
-    app_base = os.path.dirname(base)
-    return os.path.normpath(os.path.join(app_base, video_path))
+    norm_vp = os.path.normpath(video_path)
+    if os.path.isabs(norm_vp):
+        return None
+    if norm_vp.startswith('..' + os.sep) or norm_vp == '..':
+        return None
+    try:
+        data_real = os.path.realpath(_data_dir())
+        app_base = os.path.realpath(os.path.dirname(data_real))
+        full = os.path.realpath(os.path.join(app_base, norm_vp))
+    except (OSError, ValueError):
+        return None
+    if not _path_is_under_data_dir(data_real, full):
+        return None
+    if full != data_real and not full.startswith(data_real + os.sep):
+        return None
+    return full

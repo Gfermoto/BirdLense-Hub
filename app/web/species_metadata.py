@@ -161,6 +161,9 @@ def _load_hierarchy_parent_map():
     """Загрузить маппинг child -> parent из hierarchy_names.txt."""
     path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
     result = {}
+    if not os.path.isfile(path):
+        logging.warning('Hierarchy file not found: %s', path)
+        return result
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -211,14 +214,7 @@ def get_parent_name_for_species(species_name: str) -> str | None:
 
 
 def build_hierarchy_tree():
-    species_dict = {}
-    path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
-    with open(path, "r", encoding="utf-8") as file:
-        lines = file.readlines()
-    for line in lines:
-        if "|" in line:
-            species_name, parent_name = line.strip().split("|", 1)
-            species_dict[species_name.strip()] = parent_name.strip()
+    species_dict = _load_hierarchy_parent_map()
 
     children_map = {}
     for child, parent in species_dict.items():

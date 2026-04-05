@@ -19,6 +19,10 @@ def resolve_single_stage_model_path(config, processor_root: str) -> str:
         single_path = os.path.join(processor_root, single_path)
     if os.path.isfile(single_path) or os.path.isdir(single_path):
         return single_path
+    logger.warning(
+        'Single-stage model missing at %s, falling back to yolov8n.pt',
+        single_path,
+    )
     return 'yolov8n.pt'
 
 
