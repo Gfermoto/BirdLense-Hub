@@ -173,13 +173,25 @@
 
 ---
 
+## Home Assistant (REST API)
+
+Общие **URL** и **Long-Lived Access Token** для любых функций, которые ходят в REST API Home Assistant: погода при `weather.source: homeassistant`, весы при `integrations.scales.source: homeassistant` и будущие интеграции. **Окружение:** `HA_URL` и `HA_TOKEN` перекрывают поля в YAML, если заданы.
+
+| Ключ | Описание |
+|------|----------|
+| `homeassistant.url` | Базовый URL (например `http://homeassistant:8123`) |
+| `homeassistant.token` | Long-Lived Access Token (в API маскируется) |
+
+**Устарело (всё ещё читается как запасной вариант):** `weather.ha_url`, `weather.ha_token` — перенесите в `homeassistant.*`; аудит конфига может пометить старые ключи.
+
+---
+
 ## Weather
 
 | Ключ | Описание |
 |------|----------|
 | `source` | `openweather` \| `homeassistant` |
-| `ha_url` | URL Home Assistant |
-| `ha_entity_id` | Entity погоды (weather.home) |
+| `ha_entity_id` | При `source: homeassistant` — какую сущность `weather.*` читать (например `weather.home`). URL и токен **не** здесь — см. `homeassistant.*` выше. |
 
 ---
 
@@ -239,15 +251,26 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 
 ## Интеграции (весы)
 
+**`source: mqtt` и `homeassistant`:** при **MQTT** **processor** подписывается на `mqtt_topic`, пишет `feeder_scale_state.json` / `feeder_scale_history.jsonl`, может **оценивать дельту за ролик** и по желанию **запускать запись** по скачку веса. При **homeassistant** только **веб** запрашивает HA по REST для **текущего веса** в карточке кормушки; процессор **не** опрашивает HA, поэтому журнал / дельта / триггер — только для **MQTT** (при необходимости укажите тот же топик состояния ESPHome в **MQTT**).
+
 | Ключ | Описание |
 |------|----------|
-| `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). При включении **processor** подписывается на MQTT (или читает Home Assistant) и сохраняет последний вес для веб-UI. |
-| `integrations.scales.source` | `mqtt` (по умолчанию) или `homeassistant`. |
+| `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). |
+| `integrations.scales.source` | `mqtt` (по умолчанию) — processor и файлы состояния/журнала; или `homeassistant` — только REST в вебе для текущего веса (см. абзац выше). |
 | `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
-| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant`. |
+| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant` (снимок для UI). |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
+| `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, `mqtt_topic`) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
+| `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг): и для **размаха** max−min по окну, и для **скачка** между соседними по времени MQTT-точками (см. ниже). По умолчанию **0.008** (~8 г). |
+| `integrations.scales.estimate_require_consecutive_spike` | **true** (по умолчанию): оценка на ролик сохраняется только если за интервал записи есть хотя бы одна пара **подряд идущих** (по времени) показаний с \|Δ\| ≥ `min_delta_kg_for_estimate`. Так отсекается в основном **медленный дрейф** при почти нулевой платформе после тары. **false** — прежняя логика только по max−min (для отладки). Сохраняемое значение по-прежнему **размах** max−min за клип. |
+| `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
+| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, `source: mqtt` и `mqtt_topic`. Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
+| `integrations.scales.motion_trigger_min_delta_kg` | Минимум \|Δмассы\| между **двумя последовательными** MQTT-сообщениями (в кг), чтобы считать это триггером. По умолчанию **0.02** (20 г). |
+| `integrations.scales.motion_trigger_debounce_seconds` | Минимум секунд между двумя стартами записи по весам (анти-дребезг). По умолчанию **1.5**. |
 
-Дальше: **триггер по резкому изменению веса** (порог, дебаунс) — [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+Процессор сравнивает min/max веса в окне `[start_time, end_time]` ролика. При **`estimate_require_consecutive_spike: true`** (по умолчанию) оценка в БД сохраняется только если за это окно есть соседняя пара показаний с шагом ≥ порога (см. ключ выше); иначе отсекается дрейф — при этом записываемое значение по-прежнему размах max−min. Если дельта не ниже порога — в БД пишется `scales_weight_delta_kg`, в UI показывается блок «Весы (оценка)». Триггеры уведомлений и auto-tare в HA/ESPHome — по-прежнему в [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
+
+**Стек как у [умных весов с ESPHome + HA](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, проксимити, auto-tare в Home Assistant): логика тары и «объект на платформе» остаётся в **ESPHome/HA**. BirdLense не дублирует эти сущности: хаб подписывается на **тот же MQTT-топик состояния веса**, который публикует интеграция (часто `homeassistant/sensor/<имя_датчика>/state` — укажите его в `mqtt_topic`). Тогда и «текущий вес» в UI, и журнал для дельты за клип идут из одного потока, совместимого с вашей прошивкой.
 
 ---
 

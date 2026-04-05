@@ -10,6 +10,10 @@ from datetime import timedelta, datetime
 import requests
 
 from app_config.app_config import app_config
+from services.homeassistant_config import (
+    get_homeassistant_token,
+    get_homeassistant_url,
+)
 
 
 def _normalize_coord(v):
@@ -142,11 +146,10 @@ class HAWeatherFetcher:
 def _create_weather_fetcher():
     source = app_config.get('weather.source', 'openweather')
     if source == 'homeassistant':
-        ha_url = os.environ.get('HA_URL') or app_config.get('weather.ha_url')
         return HAWeatherFetcher(
-            ha_url=ha_url,
+            ha_url=get_homeassistant_url(),
             entity_id=app_config.get('weather.ha_entity_id', 'weather.home'),
-            token=os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token'),
+            token=get_homeassistant_token(),
         )
     lat = _normalize_coord(app_config.get('secrets.latitude'))
     lon = _normalize_coord(app_config.get('secrets.longitude'))

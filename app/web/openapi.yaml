@@ -358,7 +358,7 @@ paths:
     get:
       summary: Get timeline of species visits
       description: |
-        Retrieve a timeline of species visits, including start and end times, weather conditions, and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
+        Retrieve a timeline of species visits, including start and end times, weather conditions, optional feeder-scale delta (same shape as GET video `scales`, from the visit's earliest linked video), and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
       parameters:
         - in: query
           name: start_time
@@ -876,6 +876,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BirdFood"
+        scales:
+          type: object
+          nullable: true
+          description: Estimated feeder scale delta during the recording window (issue #167); null if not computed or scales disabled
+          properties:
+            delta_kg:
+              type: number
+            display_value:
+              type: number
+            display_unit:
+              type: string
+              enum: [kg, g]
     VideoNeighbors:
       type: object
       properties:
@@ -974,6 +986,18 @@ components:
             clouds:
               type: number
               nullable: true
+        scales:
+          type: object
+          nullable: true
+          description: Feeder scale delta from the visit's primary (earliest) video; same fields as GET /videos/:id `scales`
+          properties:
+            delta_kg:
+              type: number
+            display_value:
+              type: number
+            display_unit:
+              type: string
+              enum: [kg, g]
         species:
           type: object
           properties:
@@ -1404,4 +1428,12 @@ components:
             latitude:
               type: string
             longitude:
+              type: string
+        homeassistant:
+          type: object
+          description: Shared Home Assistant REST base URL and long-lived token (weather entity, scales when source=homeassistant, etc.)
+          properties:
+            url:
+              type: string
+            token:
               type: string

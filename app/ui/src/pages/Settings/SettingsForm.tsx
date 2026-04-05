@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import type { Settings } from '../../types';
 import { GeneralSection } from './sections/GeneralSection';
+import { HomeAssistantSection } from './sections/HomeAssistantSection';
 import { VideoSection } from './sections/VideoSection';
 import { NotificationsSection } from './sections/NotificationsSection';
 import { EBirdSection } from './sections/EBirdSection';
@@ -37,6 +38,7 @@ export const SettingsForm = ({
       }}
     >
       <GeneralSection form={form} />
+      <HomeAssistantSection form={form} />
       <VideoSection form={form} />
       <NotificationsSection form={form} observedSpecies={observedSpecies} />
       <EBirdSection form={form} />

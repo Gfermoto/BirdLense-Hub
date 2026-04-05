@@ -296,6 +296,7 @@ def main():
     # MQTT broker for motion/aggregator
     mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     mqtt_aggregator = None
+    scale_weight_motion_pending = None
     _data_dir = os.environ.get('DATA_DIR', 'data')
     scales_topic_arg = None
     scales_unit_arg = 'kg'
@@ -327,6 +328,48 @@ def main():
         mqtt_client_id = None
         if args.input:
             mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
+        _raw_hist = app_config.get('integrations.scales.history_max_lines')
+        try:
+            _scales_hist_lines = int(_raw_hist) if _raw_hist not in (None, '') else 10000
+        except (TypeError, ValueError):
+            _scales_hist_lines = 10000
+        if _scales_hist_lines < 100:
+            _scales_hist_lines = 100
+        _scale_motion_cb = None
+        _scale_motion_min = None
+        _scale_motion_debounce = 1.5
+        if (
+            scales_topic_arg
+            and app_config.get('integrations.scales.motion_trigger_enabled', False)
+        ):
+            from motion_detectors.scale_weight_motion import ScaleWeightMotionPending
+
+            scale_weight_motion_pending = ScaleWeightMotionPending()
+            _scale_motion_cb = scale_weight_motion_pending.fire
+            try:
+                _scale_motion_min = float(
+                    app_config.get('integrations.scales.motion_trigger_min_delta_kg')
+                    or 0.02
+                )
+            except (TypeError, ValueError):
+                _scale_motion_min = 0.02
+            if _scale_motion_min <= 0:
+                _scale_motion_min = None
+                _scale_motion_cb = None
+                scale_weight_motion_pending = None
+            try:
+                _scale_motion_debounce = float(
+                    app_config.get('integrations.scales.motion_trigger_debounce_seconds')
+                    or 1.5
+                )
+            except (TypeError, ValueError):
+                _scale_motion_debounce = 1.5
+            if scale_weight_motion_pending:
+                logging.info(
+                    'Scales: motion trigger on weight delta >= %s kg (debounce %ss)',
+                    _scale_motion_min,
+                    _scale_motion_debounce,
+                )
         mqtt_aggregator = MQTTEventAggregator(
             broker=mqtt_broker,
             port=app_config.get('mqtt.port', 1883),
@@ -345,6 +388,10 @@ def main():
             scales_topic=scales_topic_arg,
             scales_data_dir=_data_dir if scales_topic_arg else None,
             scales_unit=scales_unit_arg,
+            scales_history_max_lines=_scales_hist_lines,
+            scale_motion_trigger_cb=_scale_motion_cb,
+            scale_motion_min_delta_kg=_scale_motion_min,
+            scale_motion_debounce_seconds=_scale_motion_debounce,
         )
         mqtt_aggregator.start()
         _heartbeat_mqtt_ref[0] = mqtt_aggregator
@@ -392,6 +439,9 @@ def main():
             os.environ.get('MOTION_ESPHOME_SENSOR')
             or app_config.get('motion.esphome_sensor_id', '')
         ).strip()
+        _or_extras = None
+        if scale_weight_motion_pending and primary:
+            _or_extras = [scale_weight_motion_pending]
         motion_detector = build_motion_detector(
             motion_source=add_source,
             media_source=media_source,
@@ -404,6 +454,7 @@ def main():
             esphome_url=esphome_url,
             esphome_sensor=esphome_sensor,
             check_every_n_frames=check_n,
+            or_extras=_or_extras,
         )
         if add_source == 'frigate':
             logging.info(
@@ -590,8 +641,45 @@ def main():
                     f'No detections after merge. YOLO tracks: {len(frame_processor.tracks)}, '
                     f'MQTT events in window: {len(mqtt_events)}')
             if len(video_detections) > 0:
-                resp = api.create_video(video_detections, audio_detections, start_time,
-                                        end_time, video_path_for_api, spectrogram_path)
+                scales_delta_kg = None
+                # Дельту веса не привязываем к роликам только со звуком (BirdNET): нужен кадр/трек.
+                has_non_audio = any(
+                    d.get('source') != 'audio' for d in video_detections
+                )
+                if (
+                    app_config.get('integrations.scales.enabled')
+                    and app_config.get('integrations.scales.weight_estimate_enabled', True)
+                    and scales_topic_arg
+                    and has_non_audio
+                ):
+                    from scale_sample_log import estimate_weight_delta_kg
+                    try:
+                        min_d = float(
+                            app_config.get('integrations.scales.min_delta_kg_for_estimate')
+                            or 0.008
+                        )
+                    except (TypeError, ValueError):
+                        min_d = 0.008
+                    require_spike = app_config.get(
+                        'integrations.scales.estimate_require_consecutive_spike', True
+                    )
+                    est, _n = estimate_weight_delta_kg(
+                        _data_dir,
+                        start_time,
+                        end_time,
+                        min_delta_kg=min_d,
+                        require_consecutive_spike=bool(require_spike),
+                    )
+                    scales_delta_kg = est
+                resp = api.create_video(
+                    video_detections,
+                    audio_detections,
+                    start_time,
+                    end_time,
+                    video_path_for_api,
+                    spectrogram_path,
+                    scales_weight_delta_kg=scales_delta_kg,
+                )
                 video_id = resp.get('video_id') if isinstance(resp, dict) else None
                 if (video_id is not None and app_config.get('processor.save_dataset_crops')
                         and video_detections):
