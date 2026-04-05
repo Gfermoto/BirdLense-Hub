@@ -6,6 +6,7 @@ __pycache__
 *.db-shm
 *.db-wal
 app/data/recordings
+app/data/dataset/
 app/data/notify_temp
 app/data/processor.log*
 app.log
