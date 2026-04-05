@@ -8,7 +8,7 @@ services:
     image: redis:7-alpine
     container_name: birdlense-redis
     restart: unless-stopped
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,7 +32,7 @@ services:
       - .env
     environment:
       - DATA_DIR=/app/data
-      # Кэш TTL в app (см. services/cache.py). Переопределите в .env, если Redis снаружи.
+      # Кэш API: Redis (см. services/cache.py). В UI «Производительность» держите включённым (дефолт true). URL переопределяется в .env при внешнем Redis.
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
@@ -47,8 +47,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
+          cpus: '4'
+          memory: 4G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
       interval: 30s

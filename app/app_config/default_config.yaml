@@ -271,9 +271,6 @@ integrations:
     unit: kg  # kg | g — единица для отображения и записи из MQTT
     # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167)
     weight_estimate_enabled: true
-    # true — считать дельту только если в ролике есть детекция не из audio (YOLO/Frigate и т.д.);
-    # false — для любого сохранённого ролика с видами (в т.ч. только BirdNET): вес с кормушки всё равно про клип
-    estimate_require_video_detection: false
     min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
     # Оценка на ролик только если между двумя соседними по времени MQTT-точками был скачок >= порога
     estimate_require_consecutive_spike: true
@@ -283,7 +280,7 @@ integrations:
     motion_trigger_min_delta_kg: 0.02  # |Δ| между двумя подряд MQTT-сэмплами, кг
     motion_trigger_debounce_seconds: 1.5
 
-# Кэш API: Redis (docker-compose) можно выключить или задать URL в UI (перекрывает REDIS_URL из env).
+# Кэш API: Redis из docker-compose; URL можно задать в UI (перекрывает REDIS_URL). Выключать без веской причины не стоит.
 performance:
   cache_redis_enabled: true
   redis_url: ""  # непусто — использовать вместо REDIS_URL; секрет — маскируется в API
