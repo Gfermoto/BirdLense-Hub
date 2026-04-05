@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Трекинг:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт (основной объём весов); остаток UI — [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228); **ROADMAP** обновлён.
 - **Настройки весов (UI):** при источнике Home Assistant — информационный блок, почему нет опций дельты/триггера (процессор только MQTT); **CONFIGURATION** — уточнён разрыв `mqtt` vs `homeassistant`.
 - **Home Assistant:** URL и Long-Lived Token вынесены в отдельную секцию **`homeassistant.*`** и блок настроек «Home Assistant» (общие для погоды, весов с `source: homeassistant` и др.); в «Погода» при источнике HA остаётся только **`weather.ha_entity_id`**. Устаревшие `weather.ha_url` / `weather.ha_token` по-прежнему читаются как fallback и помечаются в аудите конфига; те же ключи игнорируются в списке «unknown» аудита. Env **`HA_URL`** / **`HA_TOKEN`** по-прежнему перекрывают YAML.
 - **Scales:** убран ключ и переключатель `integrations.scales.estimate_require_video_detection` — дельта веса за клип **по умолчанию и всегда** не пишется для роликов только с BirdNET (`audio`); звук остаётся для вида, не для привязки к весам. **Docker:** лимиты контейнера хаба **4 CPU / 4G**, Redis **256M** maxmemory, **Gunicorn 16** потоков по умолчанию; кэш API по-прежнему `performance.cache_redis_enabled: true` + `REDIS_URL` в compose.
@@ -33,7 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
 - **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
-- **Scales / roadmap:** базовая интеграция весов отражена как реализованная; [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — backlog: **триггер по скачку массы**, **оценка веса птицы в карточке визита** (в духе корма/погоды). [CONFIGURATION](docs/CONFIGURATION.ru.md) — ключи `integrations.scales.*` (MQTT / Home Assistant).
+- **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт; остаток — [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) (дельта на карточке визита). [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed
 
