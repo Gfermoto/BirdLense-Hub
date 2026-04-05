@@ -43,7 +43,7 @@
 | `general.telegram_bot_token` | Telegram |
 | `mqtt.password` | Если не используете `MQTT_PASSWORD` в env |
 | `secrets.*` | Ключи API (дублирование с env — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md)) |
-| `weather.ha_token` | Если не `HA_TOKEN` в env |
+| `homeassistant.token` | Если не `HA_TOKEN` в env (устар.: `weather.ha_token`) |
 | `mcp.token` | Если не `MCP_TOKEN` в env |
 | `web_push.vapid_private_key` | Web Push |
 

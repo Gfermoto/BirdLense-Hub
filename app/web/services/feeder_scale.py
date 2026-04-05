@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 import requests
 
 from app_config.app_config import app_config
+from services.homeassistant_config import (
+    get_homeassistant_token,
+    get_homeassistant_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +39,8 @@ def _read_scale_file() -> dict | None:
 
 
 def _fetch_ha_scale(entity_id: str) -> dict | None:
-    ha_url = (
-        os.environ.get('HA_URL') or app_config.get('weather.ha_url') or ''
-    ).strip().rstrip('/')
-    token = (
-        os.environ.get('HA_TOKEN') or app_config.get('weather.ha_token') or ''
-    ).strip()
+    ha_url = get_homeassistant_url()
+    token = get_homeassistant_token()
     if not ha_url or not token or not entity_id:
         return None
     url = f'{ha_url}/api/states/{entity_id}'

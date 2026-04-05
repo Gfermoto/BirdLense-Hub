@@ -43,7 +43,7 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | `general.telegram_bot_token` | Telegram notifications |
 | `mqtt.password` | If not using `MQTT_PASSWORD` env |
 | `secrets.openweather_api_key`, `secrets.xeno_canto_api_key`, `secrets.ebird_api_key` | API keys (env vars override or duplicate — see [CONFIGURATION.md](./CONFIGURATION.md)) |
-| `weather.ha_token` | If not using `HA_TOKEN` env |
+| `homeassistant.token` | If not using `HA_TOKEN` env (legacy: `weather.ha_token`) |
 | `mcp.token` | If not using `MCP_TOKEN` env |
 | `web_push.vapid_private_key` | Web Push |
 

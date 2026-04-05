@@ -198,12 +198,16 @@ feed:
   esphome_switch_id: "bird_feeder"
   esphome_type: switch  # switch | button
 
-# Weather: openweather | homeassistant
+# Home Assistant REST API: общий URL и Long-Lived Token для нескольких функций (погода из сущности weather.*,
+# весы при integrations.scales.source=homeassistant и т.д.). Переопределение: HA_URL и HA_TOKEN в env.
+homeassistant:
+  url: "http://homeassistant:8123"
+  token: ""
+
+# Weather: openweather | homeassistant (URL/токен — в homeassistant.* выше; здесь только сущность погоды)
 weather:
   source: openweather
-  ha_url: "http://homeassistant:8123"
   ha_entity_id: "weather.home"
-  ha_token: ""  # Long-Lived Access Token; HA_TOKEN в env переопределяет
 
 # Retention
 retention:

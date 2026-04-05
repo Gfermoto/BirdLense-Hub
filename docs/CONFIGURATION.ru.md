@@ -173,13 +173,25 @@
 
 ---
 
+## Home Assistant (REST API)
+
+Общие **URL** и **Long-Lived Access Token** для любых функций, которые ходят в REST API Home Assistant: погода при `weather.source: homeassistant`, весы при `integrations.scales.source: homeassistant` и будущие интеграции. **Окружение:** `HA_URL` и `HA_TOKEN` перекрывают поля в YAML, если заданы.
+
+| Ключ | Описание |
+|------|----------|
+| `homeassistant.url` | Базовый URL (например `http://homeassistant:8123`) |
+| `homeassistant.token` | Long-Lived Access Token (в API маскируется) |
+
+**Устарело (всё ещё читается как запасной вариант):** `weather.ha_url`, `weather.ha_token` — перенесите в `homeassistant.*`; аудит конфига может пометить старые ключи.
+
+---
+
 ## Weather
 
 | Ключ | Описание |
 |------|----------|
 | `source` | `openweather` \| `homeassistant` |
-| `ha_url` | URL Home Assistant |
-| `ha_entity_id` | Entity погоды (weather.home) |
+| `ha_entity_id` | При `source: homeassistant` — какую сущность `weather.*` читать (например `weather.home`). URL и токен **не** здесь — см. `homeassistant.*` выше. |
 
 ---
 
