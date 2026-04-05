@@ -1,3 +1,4 @@
+"""Параметры Flask и SQLAlchemy: секрет сессии, путь к SQLite/Postgres, пул соединений."""
 import logging
 import os
 
@@ -20,6 +21,7 @@ if not _SECRET_KEY:
 
 
 class Config:
+    """Загрузка `SQLALCHEMY_*`, `SECRET_KEY`, каталога БД из DATA_DIR и переменных окружения."""
     _data_base = os.getenv('DATA_DIR') or os.path.join(
         os.path.abspath(os.path.dirname(__file__)), '..', 'data')
     db_directory = os.path.join(_data_base, 'db')

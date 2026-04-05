@@ -3,9 +3,9 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import func, case, distinct
 
 from models import Video, Species, SpeciesVisit, VideoSpecies
+from species_constants import GENERIC_BIRD_SPECIES
 from util import (
     ensure_utc,
-    GENERIC_BIRD_SPECIES,
     observer_local_hour,
     get_observer_timezone_name,
 )

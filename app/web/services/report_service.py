@@ -237,7 +237,7 @@ def get_monthly_report_data(session, start_dt, end_dt):
     """Query DB for monthly stats. Returns (top_species, stats)."""
     from models import Species, SpeciesVisit, VideoSpecies, Video
     from sqlalchemy import func, case, distinct
-    from util import GENERIC_BIRD_SPECIES
+    from species_constants import GENERIC_BIRD_SPECIES
 
     exclude_bird = Species.name != GENERIC_BIRD_SPECIES
 

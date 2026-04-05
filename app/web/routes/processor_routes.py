@@ -1,3 +1,4 @@
+"""HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды."""
 import ipaddress
 import json
 import os
@@ -106,6 +107,7 @@ def _check_processor_secret():
 
 
 def register_routes(app):
+    """Зарегистрировать маршруты ``/api/processor/*`` на переданном Flask-приложении."""
     @app.route('/api/processor/videos', methods=['POST'])
     def create_video():
         if not _check_processor_secret():

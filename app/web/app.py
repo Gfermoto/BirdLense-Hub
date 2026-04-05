@@ -1,3 +1,4 @@
+"""Точка входа Flask: фабрика приложения, SQLite-миграции на старте, регистрация маршрутов."""
 import os
 import threading
 from datetime import datetime, timezone
@@ -38,6 +39,7 @@ def _env_truthy(name: str, default: str = '0') -> bool:
 
 
 def create_app():
+    """Собрать приложение BirdLense Hub: CORS, БД, опциональные фоновые задачи, UI и processor API."""
     _log.info(
         "create_app() invoked (pid=%s)",
         os.getpid()

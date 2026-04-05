@@ -10,7 +10,8 @@ from services.species_catalog_allowlist_service import (
     species_name_match_norm_keys,
 )
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
-from util import GENERIC_BIRD_SPECIES, data_dir
+from species_constants import GENERIC_BIRD_SPECIES
+from util import data_dir
 
 
 def _norm_key(name: str) -> str:
