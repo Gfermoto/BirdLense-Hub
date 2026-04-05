@@ -157,8 +157,10 @@ Import existing files: **System → Scan and import** (if media is already under
 make docs          # Python (pdoc) + UI (TypeDoc)
 make docs-python   # → docs/api/
 make docs-ui       # → docs/ui/
-make docs-check    # interrogate (docstring coverage)
+make docs-check    # interrogate on app/web (fails if below threshold)
 ```
+
+Docstring coverage is configured in **`app/pyproject.toml`** (`[tool.interrogate]`): **fail-under 80%**, `tests/` excluded, plus ignores for nested functions, magic methods, `__init__`, and single-underscore helpers — so the check focuses on public module/class/function surface. The target **fails** if interrogate does not pass (no silent success).
 
 Authoritative HTTP contract: `app/web/openapi.yaml`.
 
