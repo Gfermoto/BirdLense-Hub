@@ -29,6 +29,21 @@ MQTT_DISCONNECT_DISPLAY_GRACE_SEC = 120
 FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
+def _parse_bird_present_payload(payload: bytes) -> bool | None:
+    """ON/OFF, 1/0, true/false — как HA binary_sensor / ESPHome."""
+    if not payload:
+        return None
+    try:
+        raw = payload.decode("utf-8", errors="replace").strip().lower()
+    except Exception:
+        return None
+    if raw in ("on", "true", "1", "yes"):
+        return True
+    if raw in ("off", "false", "0", "no"):
+        return False
+    return None
+
+
 def _parse_scale_payload(payload: bytes) -> float | None:
     """Число веса из plain text, JSON {value|weight|state} или HA state string."""
     if not payload:
@@ -56,21 +71,37 @@ def _parse_scale_payload(payload: bytes) -> float | None:
 
 
 def write_feeder_scale_state(
-    data_dir: str, weight: float, unit: str, *, history_max_lines: int = 10000
+    data_dir: str,
+    weight: float | None = None,
+    unit: str | None = None,
+    *,
+    bird_present: bool | None = None,
+    history_max_lines: int = 10000,
 ) -> None:
-    """Сохранить последний вес для UI (карточка кормушки) и строку в журнал для оценки дельты."""
+    """Сохранить вес и/или bird_present для UI; журнал JSONL только при новом весе."""
     try:
         os.makedirs(data_dir, exist_ok=True)
         path = os.path.join(data_dir, FEEDER_SCALE_STATE_FILE)
-        u = (unit or "kg").strip().lower()[:8] or "kg"
-        rec = {
-            "weight": float(weight),
-            "unit": u,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
+        now = datetime.now(timezone.utc).isoformat()
+        prev: dict = {}
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    prev = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                prev = {}
+        rec = dict(prev)
+        rec["updated_at"] = now
+        if weight is not None:
+            u = (unit or rec.get("unit") or "kg")
+            u = str(u).strip().lower()[:8] or "kg"
+            rec["weight"] = float(weight)
+            rec["unit"] = u
+            append_feeder_scale_sample(data_dir, float(weight), u, max_lines=history_max_lines)
+        if bird_present is not None:
+            rec["bird_present"] = bool(bird_present)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(rec, f, ensure_ascii=False)
-        append_feeder_scale_sample(data_dir, float(weight), u, max_lines=history_max_lines)
     except OSError as e:
         logger.debug("write_feeder_scale_state: %s", e)
 
@@ -211,6 +242,7 @@ class MQTTEventAggregator:
         scale_motion_trigger_cb=None,
         scale_motion_min_delta_kg: float | None = None,
         scale_motion_debounce_seconds: float = 1.5,
+        scales_bird_present_topic: str | None = None,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -252,6 +284,8 @@ class MQTTEventAggregator:
         self.reconnect_max_delay = max(self.reconnect_min_delay, int(reconnect_max_delay))
         st = (scales_topic or "").strip()
         self.scales_topic = st if st else None
+        sbp = (scales_bird_present_topic or "").strip()
+        self.scales_bird_present_topic = sbp if sbp else None
         self.scales_data_dir = (scales_data_dir or "").strip() or None
         self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
         self.scales_history_max_lines = max(100, int(scales_history_max_lines or 10000))
@@ -462,6 +496,19 @@ class MQTTEventAggregator:
                             except Exception as e:
                                 logger.debug("scale motion trigger cb: %s", e)
             return
+        elif (
+            self.scales_bird_present_topic
+            and msg.topic == self.scales_bird_present_topic
+        ):
+            bp = _parse_bird_present_payload(msg.payload)
+            if bp is not None and self.scales_data_dir:
+                write_feeder_scale_state(
+                    self.scales_data_dir,
+                    bird_present=bp,
+                    history_max_lines=self.scales_history_max_lines,
+                )
+                logger.debug("Scales MQTT: bird_present=%s", bp)
+            return
         if ev:
             with self._lock:
                 self._events.append(ev)
@@ -497,7 +544,13 @@ class MQTTEventAggregator:
                         logger.info("MQTT: subscribed BirdNET topic %s", t)
                 if self.scales_topic:
                     self._client.subscribe(self.scales_topic, qos=1)
-                    logger.info("MQTT: subscribed scales topic %s", self.scales_topic)
+                    logger.info("MQTT: subscribed scales weight topic %s", self.scales_topic)
+                if self.scales_bird_present_topic:
+                    self._client.subscribe(self.scales_bird_present_topic, qos=1)
+                    logger.info(
+                        "MQTT: subscribed scales bird_present topic %s",
+                        self.scales_bird_present_topic,
+                    )
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
                 retry_delay = self.reconnect_min_delay
                 # Manual loop so we drain _publish_queue in the same thread as loop

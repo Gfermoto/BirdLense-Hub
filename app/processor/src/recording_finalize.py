@@ -71,6 +71,14 @@ def finalize_motion_recording(
             min_dur,
         )
         if yolo_passed_count == 0 and yolo_tracks_count > 0:
+            logging.warning(
+                'YOLO: %s ByteTrack row(s) but none passed DecisionMaker '
+                '(duration < processor.min_track_duration and/or confidence below '
+                'processor.min_confidence_to_process / overrides). '
+                'Merged result may be Frigate/BirdNET-only — lower min_track_duration '
+                'or thresholds if you expect video tracks.',
+                yolo_tracks_count,
+            )
             for tid, t in frame_processor.tracks.items():
                 dur = t.get('end_time', 0) - t.get('start_time', 0)
                 preds = len(t.get('preds', []))
@@ -92,7 +100,8 @@ def finalize_motion_recording(
     has_birdnet_event = any(
         ev.get('source') == 'birdnet' for ev in mqtt_events
     )
-    if has_birdnet_event:
+    spectrogram_always = bool(app_config.get('processor.generate_spectrogram_always'))
+    if spectrogram_always or has_birdnet_event:
         px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
         spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
         spectrogram_output = os.path.join(

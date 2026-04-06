@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -299,13 +300,15 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       )}
       <Grid container spacing={2}>
         {groupedSpecies.map((group) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.species_id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.species_id} sx={{ minWidth: 0 }}>
             <Card
               sx={{
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 border: `2px solid ${labelToUniqueHexColor(group.species_name)}`,
+                overflow: 'hidden',
+                minWidth: 0,
               }}
             >
               <Box
@@ -359,55 +362,38 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   {t('video.confidence')}: {group.confidenceRange}
                 </Typography>
               </CardContent>
-              <CardActions sx={{ pt: 0, flexWrap: 'wrap', gap: 0.5 }}>
-                <Button
-                  size="small"
-                  component={RouterLink}
-                  to={`/species/${group.species_id}`}
-                >
-                  {t('video.learnMore')}
-                </Button>
-                {(() => {
-                  const bestDet = group.detections
-                    .filter((d) => d.source === 'video' && d.id)
-                    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-                  return bestDet ? (
-                    <INaturalistButton
-                      detectionId={bestDet.id!}
-                      speciesName={group.species_name}
-                    />
-                  ) : null;
-                })()}
-                {editingGroupKey === String(group.species_id) ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '1 1 100%', mt: 0.5 }}>
-                      <FormControl size="small" sx={{ minWidth: 160 }} disabled={!canEdit}>
-                        <InputLabel id={`video-correct-species-${group.species_id}`}>{t('unknowns.correctSpecies')}</InputLabel>
-                        <Select
-                          labelId={`video-correct-species-${group.species_id}`}
-                          value={selectedSpeciesId}
-                          label={t('unknowns.correctSpecies')}
-                          onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
-                        >
-                          {speciesList.map((s) => (
-                            <MenuItem key={s.id} value={s.id}>
-                              {s.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={selectedSpeciesId === '' || selectedSpeciesId === group.species_id || correctMutation.isPending || !canEdit}
-                        onClick={() => handleCorrectGroup(group)}
-                      >
-                        {correctMutation.isPending ? '...' : t('unknowns.apply')}
-                      </Button>
-                      <Button size="small" onClick={() => { setEditingGroupKey(null); setSelectedSpeciesId(''); }}>
-                        {t('common.cancel')}
-                      </Button>
-                    </Box>
-                ) : (
+              <CardActions
+                sx={{
+                  pt: 0,
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  alignItems: 'flex-start',
+                  flexDirection: 'column',
+                  alignSelf: 'stretch',
+                  px: 2,
+                  pb: 1.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: '100%' }}>
+                  <Button
+                    size="small"
+                    component={RouterLink}
+                    to={`/species/${group.species_id}`}
+                  >
+                    {t('video.learnMore')}
+                  </Button>
+                  {(() => {
+                    const bestDet = group.detections
+                      .filter((d) => d.source === 'video' && d.id)
+                      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+                    return bestDet ? (
+                      <INaturalistButton
+                        detectionId={bestDet.id!}
+                        speciesName={group.species_name}
+                      />
+                    ) : null;
+                  })()}
+                  {editingGroupKey !== String(group.species_id) && (
                     <Tooltip title={!canEdit ? t('unknowns.passwordRequired') : t('unknowns.correctSpecies')}>
                       <span>
                         <Button
@@ -423,6 +409,45 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                         </Button>
                       </span>
                     </Tooltip>
+                  )}
+                </Box>
+                {editingGroupKey === String(group.species_id) && (
+                  <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 0.5 }}>
+                    <FormControl fullWidth size="small" disabled={!canEdit} sx={{ minWidth: 0 }}>
+                      <InputLabel id={`video-correct-species-${group.species_id}`}>{t('unknowns.correctSpecies')}</InputLabel>
+                      <Select
+                        labelId={`video-correct-species-${group.species_id}`}
+                        value={selectedSpeciesId}
+                        label={t('unknowns.correctSpecies')}
+                        onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
+                      >
+                        {speciesList.map((s) => (
+                          <MenuItem key={s.id} value={s.id}>
+                            {s.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: '100%' }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={selectedSpeciesId === '' || selectedSpeciesId === group.species_id || correctMutation.isPending || !canEdit}
+                        onClick={() => handleCorrectGroup(group)}
+                      >
+                        {correctMutation.isPending ? '...' : t('unknowns.apply')}
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setEditingGroupKey(null);
+                          setSelectedSpeciesId('');
+                        }}
+                      >
+                        {t('common.cancel')}
+                      </Button>
+                    </Stack>
+                  </Stack>
                 )}
               </CardActions>
             </Card>

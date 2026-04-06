@@ -33,6 +33,8 @@ scripts/deploy.local.sh
 **/secrets/
 **/*password*
 **/*secret*
+# ESPHome: пример секретов — в репозитории (см. esphome/README.md)
+!esphome/secrets.yaml.example
 
 # Hugging Face — токены (hf_...) не должны попадать в репо
 **/.cache/huggingface/

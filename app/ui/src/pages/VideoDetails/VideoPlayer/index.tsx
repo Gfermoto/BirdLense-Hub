@@ -33,6 +33,8 @@ interface ViewToggleProps {
 
 interface VideoPlayerProps {
   video: Video;
+  /** After detection-frames load: video has YOLO rows but no bbox frames in DB */
+  showTracksRegenHint?: boolean;
 }
 
 const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
@@ -147,7 +149,10 @@ const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
   );
 };
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  video,
+  showTracksRegenHint = false,
+}) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const timeoutRef = useRef<number>();
@@ -533,6 +538,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video }) => {
       {filteredDetections.length > 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
           {t('video.timelineHint')}
+        </Typography>
+      )}
+      {showTracksRegenHint && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          {t('video.noTrackFramesHint')}
         </Typography>
       )}
       <ProgressBar
