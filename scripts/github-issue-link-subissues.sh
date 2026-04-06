@@ -5,8 +5,8 @@
 # Использование:
 #   bash scripts/github-issue-link-subissues.sh <родитель_номер> <ребёнок> [ребёнок ...]
 #
-# Пример (эпик техдолга #220 + уровни + сводные #198/#201):
-#   bash scripts/github-issue-link-subissues.sh 220 198 201 221 222 223 224 225
+# Пример (эпик техдолга #220 + уровни + сводные #198/#201/#238):
+#   bash scripts/github-issue-link-subissues.sh 220 198 201 238 221 222 223 224 225
 #
 # Требуется: gh auth (тот же GH_TOKEN, что для project-скриптов — см. scripts/env.project.example).
 # Повторный запуск: уже привязанные sub-issue дают 422 — скрипт их пропускает.
