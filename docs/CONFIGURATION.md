@@ -96,7 +96,8 @@ The System page also lists these endpoints under **Notification observability** 
 | `birdnet_mqtt_bias_floor` | Minimum auto threshold for BirdNET bias (default `0.05`). |
 | `multi_camera_groups` | List of Frigate camera-id groups at one location, e.g. `[["BirdBox","Forest"]]`. See [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
 | `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.05`, capped at 1.0). |
-| `spectrogram_px_per_sec` | Spectrogram pixels per second (only when BirdNET event in recording window) |
+| `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
+| `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
 | `regional_species` | Local species for BirdNET (empty = YOLO all classes) |
 | `single_stage_coco_animals_only_auto` | Default **true**: if single_stage loads a model with **exactly 80** classes (typical COCO, e.g. `yolov8n.pt`), detect only **animal** classes (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe) — excludes **person** and inanimate COCO objects. Set **false** for a custom 80-class detector. Legacy: `single_stage_coco_bird_only_auto` is read if this key is unset. |
 | `included_bird_families` | Family filter list (Perching Birds, Squirrel, …) |

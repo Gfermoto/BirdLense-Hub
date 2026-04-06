@@ -256,6 +256,7 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "processor.post_record_seconds",
     "processor.save_dataset_crops",
     "processor.spectrogram_px_per_sec",
+    "processor.generate_spectrogram_always",
     "processor.tracker",
     "processor.track_regen_detection_strategy",
     "processor.track_regen_frame_step",

@@ -63,6 +63,8 @@ processor:
   multi_camera_groups: []  # например: [["BirdBox","Forest"]]
   multi_camera_confidence_boost: 0.03
   spectrogram_px_per_sec: 200
+  # true — спектрограмма после каждой записи (FFmpeg+librosa). false — только если в окне записи было событие BirdNET MQTT.
+  generate_spectrogram_always: true
   # regional_species: [] — без локального BirdNET; YOLO использует все классы
   regional_species: []
   # single_stage + стандартный COCO (ровно 80 классов): только животные (bird, cat, dog, …), не person и не предметы.

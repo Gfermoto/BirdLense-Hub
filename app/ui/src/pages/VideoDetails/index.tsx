@@ -66,7 +66,7 @@ export const VideoDetails = () => {
     enabled: Boolean(params.id),
   });
 
-  const { data: detectionFrames } = useQuery({
+  const { data: detectionFrames, isPending: detectionFramesPending } = useQuery({
     queryKey: ['video-detection-frames', params.id],
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
     enabled: Boolean(params.id),
@@ -87,6 +87,17 @@ export const VideoDetails = () => {
       }),
     };
   }, [video, detectionFrames]);
+
+  const showTracksRegenHint = useMemo(() => {
+    if (!video || detectionFramesPending) return false;
+    const hasVideoRows = video.species.some((s) => s.source === 'video');
+    if (!hasVideoRows) return false;
+    const merged = displayVideo ?? video;
+    const anyFrames = merged.species.some(
+      (s) => s.source === 'video' && Array.isArray(s.frames) && s.frames.length > 0,
+    );
+    return !anyFrames;
+  }, [video, displayVideo, detectionFramesPending]);
 
   if (isLoading)
     return (
@@ -185,7 +196,10 @@ export const VideoDetails = () => {
               </Tooltip>
             </Stack>
           )}
-          <VideoPlayer video={(displayVideo ?? video) as Video} />
+          <VideoPlayer
+            video={(displayVideo ?? video) as Video}
+            showTracksRegenHint={showTracksRegenHint}
+          />
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}
             videoId={(video as Video).id}

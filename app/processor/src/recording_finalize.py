@@ -92,7 +92,8 @@ def finalize_motion_recording(
     has_birdnet_event = any(
         ev.get('source') == 'birdnet' for ev in mqtt_events
     )
-    if has_birdnet_event:
+    spectrogram_always = bool(app_config.get('processor.generate_spectrogram_always'))
+    if spectrogram_always or has_birdnet_event:
         px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
         spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
         spectrogram_output = os.path.join(
