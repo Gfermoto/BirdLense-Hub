@@ -12,8 +12,15 @@ from models import Species, db
 
 
 @pytest.fixture(autouse=True)
-def _disable_settings_passwords_for_registry_tests():
-    """Registry system endpoints are protected; disable passwords for this suite."""
+def _disable_settings_passwords_for_registry_tests(client, monkeypatch):
+    """Registry system endpoints are protected; open access like other settings smoke tests.
+
+    - Clear passwords **after** ``client`` exists so values from ``user_config.yaml`` apply first.
+    - Drop ``BIRDLENSE_ENV`` / ``FLASK_ENV`` production markers: empty passwords deny access
+      in production (``auth.settings_check_access``), which matches CI and developer shells.
+    """
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
     old_admin = app_config.get('general.settings_password')
     old_contrib = app_config.get('general.contributor_password')
     app_config.set('general.settings_password', '')
