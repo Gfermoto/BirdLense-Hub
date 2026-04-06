@@ -24,9 +24,9 @@ processor:
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  # Мин. длительность трека ByteTrack (сек), иначе YOLO-результат не попадает в merge/API.
-  # Слишком большое значение при коротких визитах на кормушке → 0 video-детекций, только Frigate MQTT.
-  min_track_duration: 4
+  # Мин. длительность трека ByteTrack (сек). 4с часто срезает короткие визиты на кормушке → только Frigate в API.
+  # 2с — баланс bbox/треков и шума; при мельканиях поднимите до 2.5–3.
+  min_track_duration: 2
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
@@ -46,8 +46,8 @@ processor:
   # При перегенерации не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
-  min_confidence_binary: 0.22  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
-  min_confidence_to_process: 0.36  # Классификатор (голосование × средняя уверенность)
+  min_confidence_binary: 0.21  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
+  min_confidence_to_process: 0.32  # Классификатор (голосование × средняя); чуть ниже — чаще проходят короткие треки
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
@@ -145,8 +145,8 @@ detection:
   source_priority: ["yolo", "frigate", "birdnet"]
   # Без дообучения: при первом совпадении вида с MQTT (Frigate/BirdNET) и YOLO — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
-  # = классификатору (30%). Не сохраняем в БД то, что не прошло бы классификатор
-  min_confidence_to_store: 0.36
+  # Не ниже практического порога классификатора; синхронизировано с processor.min_confidence_to_process
+  min_confidence_to_store: 0.30
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
