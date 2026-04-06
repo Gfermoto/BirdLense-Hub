@@ -4,11 +4,10 @@ import sys
 import unittest
 from unittest.mock import patch
 
-# @patch('services...') требует импорта пакета web (как в контейнере с PYTHONPATH).
 _tests_dir = os.path.dirname(os.path.abspath(__file__))
-_web = os.path.abspath(os.path.join(_tests_dir, '../../web'))
-if os.path.isdir(_web) and _web not in sys.path:
-    sys.path.insert(0, _web)
+_app_root = os.path.abspath(os.path.join(_tests_dir, '../..'))
+if _app_root not in sys.path:
+    sys.path.insert(0, _app_root)
 
 
 class _Cfg:
@@ -50,8 +49,8 @@ class TestMergeEbirdRegionalConfidence(unittest.TestCase):
         out = merge_species_confidence_overrides_with_ebird_top(cfg)
         self.assertEqual(out, {'A': 0.1})
 
-    @patch('services.ebird_region_service.get_region_top_species_cached')
-    @patch('services.ebird_region_service._build_region_code')
+    @patch('ebird_region_core.get_region_top_species_cached')
+    @patch('ebird_region_core._build_region_code')
     def test_adds_mapped_top_not_overwriting_manual(
         self, mock_region, mock_top
     ):

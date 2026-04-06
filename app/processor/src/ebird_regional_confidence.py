@@ -67,9 +67,8 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     auto_val = max(floor_v, base - delta)
     auto_val = max(0.01, min(auto_val, 0.99))
 
-    # Requires ``services`` from app/web on PYTHONPATH (Docker: /app:/app/web).
     try:
-        from services.ebird_region_service import (
+        from ebird_region_core import (
             _build_region_code,
             ebird_common_to_birdlense_name,
             get_region_top_species_cached,
@@ -77,7 +76,7 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     except ImportError as e:
         logger.warning(
             'eBird regional auto-confidence: import failed (%s). '
-            'Set PYTHONPATH to include the web app (e.g. /app/web).',
+            'Ensure PYTHONPATH includes /app (ebird_region_core).',
             e,
         )
         return manual
