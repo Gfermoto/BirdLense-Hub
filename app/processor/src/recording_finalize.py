@@ -71,6 +71,14 @@ def finalize_motion_recording(
             min_dur,
         )
         if yolo_passed_count == 0 and yolo_tracks_count > 0:
+            logging.warning(
+                'YOLO: %s ByteTrack row(s) but none passed DecisionMaker '
+                '(duration < processor.min_track_duration and/or confidence below '
+                'processor.min_confidence_to_process / overrides). '
+                'Merged result may be Frigate/BirdNET-only — lower min_track_duration '
+                'or thresholds if you expect video tracks.',
+                yolo_tracks_count,
+            )
             for tid, t in frame_processor.tracks.items():
                 dur = t.get('end_time', 0) - t.get('start_time', 0)
                 preds = len(t.get('preds', []))

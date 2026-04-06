@@ -697,7 +697,7 @@
     "detectionProviderBirdnetMqtt": "BirdNET",
     "detectionSource": "Source",
     "timelineHint": "Colored bars = species. Hover to see source: YOLO, Frigate, or BirdNET.",
-    "noTrackFramesHint": "No per-frame boxes stored for this clip’s video detections — the track overlay stays hidden. Use Library → regenerate tracks (enable it in Settings → Processor if needed), or check processor logs if tracks used to appear.",
+    "noTrackFramesHint": "No YOLO track bbox data on this clip (overlay hidden). Usually live tracks are filtered out: lower processor.min_track_duration (and min_confidence_to_process if needed) so short visits become video detections. Library track regeneration is heavy—use a narrow date range or after model/settings changes.",
     "confidence": "Confidence",
     "learnMore": "Learn More",
     "correctedInVideos": "Species corrected in {{count}} videos",
