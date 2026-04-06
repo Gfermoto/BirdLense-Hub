@@ -545,15 +545,15 @@ def notify(
                 )
                 photo_failed = True
                 photo_failure_text = (r.text or "")[:500]
-            if (
-                photo_failed
-                and _telegram_proxy_mode() != 'mtproto'
-                and photo_failure_text
-                and 'IMAGE_PROCESS_FAILED' in photo_failure_text
-            ):
+            # Повтор с агрессивным JPEG: не только IMAGE_PROCESS_FAILED — Telegram часто отклоняет
+            # кропы без этого кода в description (#sendPhoto 400).
+            if photo_failed and _telegram_proxy_mode() != 'mtproto' and image_to_send:
                 aggressive_photo = _compress_image_for_telegram(image_to_send, aggressive=True)
-                if aggressive_photo and aggressive_photo != image_to_send:
-                    logging.warning("Telegram: retrying photo with aggressive JPEG normalization")
+                if aggressive_photo:
+                    logging.warning(
+                        "Telegram: retrying sendPhoto after failure (%s)",
+                        (photo_failure_text or "")[:120],
+                    )
                     try:
                         r = _bot_api_send_photo(aggressive_photo)
                         if r is not None and r.ok:

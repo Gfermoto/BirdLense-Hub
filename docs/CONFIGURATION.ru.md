@@ -96,7 +96,8 @@
 | `birdnet_mqtt_bias_floor` | Нижняя граница авто-порога для BirdNET (по умолчанию `0.05`). |
 | `multi_camera_groups` | Список групп `id` камер Frigate одной локации, например `[["BirdBox","Forest"]]`. См. [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
 | `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.05`, не выше 1.0). |
-| `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
+| `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
+| `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `single_stage_coco_animals_only_auto` | По умолчанию **true**: при **ровно 80** классах COCO (`yolov8n.pt` и т.п.) — только **животные** (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe): без **person** и без предметов. **false** — для своей 80-классовой модели. Устаревший ключ `single_stage_coco_bird_only_auto` читается, если этот не задан. |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |

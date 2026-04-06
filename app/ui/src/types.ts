@@ -158,6 +158,8 @@ export interface Settings {
     ebird_regional_top_confidence_delta?: number;
     ebird_regional_top_confidence_floor?: number;
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
+    /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
+    generate_spectrogram_always?: boolean;
     included_bird_families: string[]; // List of bird families to use in detections
   };
   secrets: {
