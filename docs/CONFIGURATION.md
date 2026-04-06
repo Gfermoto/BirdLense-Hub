@@ -285,7 +285,9 @@ For a **dedicated topic family** (weight + bird presence + optional command), se
 | `{prefix}/bird_present` | `ON` / `OFF` | yes | Merges into `feeder_scale_state.json` as `bird_present` (Overview feeder card) |
 | `{prefix}/command` | e.g. `TARE` | no | Published by **`POST /api/ui/feed/scale-tare`** (admin); firmware must subscribe if you use tare from the Hub |
 
-**Firmware note:** publish weight as a **plain decimal string** (not a C struct). In ESPHome, prefer `to_string(x)` or an equivalent for `mqtt.publish` payload. Add an **`on_message`** (or automation) on `{prefix}/command` to call your tare action when payload matches `mqtt_tare_payload`.
+**Firmware note:** publish weight as a **plain decimal string** (not a C struct). In ESPHome, use e.g. `str_sprintf` in the `mqtt.publish` payload lambda. Subscribe to `{prefix}/command` for tare (BirdLense sends **`mqtt_tare_payload`**, default `TARE`).
+
+**Example firmware** in the repository: [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml) and [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 

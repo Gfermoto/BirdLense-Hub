@@ -285,7 +285,9 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `{prefix}/bird_present` | `ON` / `OFF` | да | поле `bird_present` в состоянии (карточка кормушки) |
 | `{prefix}/command` | например `TARE` | нет | публикация с **`POST /api/ui/feed/scale-tare`** (админ); прошивка должна подписаться |
 
-В прошивке публикуйте вес **текстовой десятичной строкой**. Для приёма тары добавьте обработчик MQTT на command topic (в ESPHome — `on_message` / automation).
+В прошивке публикуйте вес **текстовой десятичной строкой** (в ESPHome — например `str_sprintf` в lambda для `mqtt.publish`). Для тары подпишитесь на command topic (`on_message` в компоненте `mqtt`).
+
+**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 
