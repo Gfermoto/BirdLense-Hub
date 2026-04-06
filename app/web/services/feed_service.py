@@ -11,8 +11,7 @@ import paho.mqtt.client as mqtt
 import requests
 
 from app_config.app_config import app_config
-
-from util import data_dir
+from data_paths import data_dir
 
 logger = logging.getLogger(__name__)
 
