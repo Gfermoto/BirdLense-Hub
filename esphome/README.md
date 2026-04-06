@@ -2,6 +2,18 @@
 
 Здесь лежат **примеры YAML** для устройств, которые стыкуются с хабом по MQTT (весы, реле кормушки и т.д.). Сборка и прошивка — стандартным [ESPHome](https://esphome.io/).
 
+## Реле кормушки (`bird-feeder-relay.yaml`)
+
+- ESP8266, плата **esp01_1m**: шаблонная кнопка включает реле на **5 с** (после задержки **500 ms**).
+- Реле по умолчанию на **GPIO0** (для прошивки это неудобный пин); при возможности перенесите на другой GPIO и поправьте `switch` в YAML.
+- Wi‑Fi и пароль OTA — из **`secrets.yaml`** (`wifi_ssid`, `wifi_password`, `ota_password`). Точка доступа при сбое: `Bird Feeder Fallback Hotspot` / `12345678` (смените в файле при необходимости).
+- Интеграция с хабом: через **Home Assistant** (API ESPHome) или отдельный MQTT/автоматизация — этот конфиг только локальное управление реле и веб/API.
+
+```bash
+esphome compile esphome/bird-feeder-relay.yaml
+esphome upload esphome/bird-feeder-relay.yaml
+```
+
 ## Весы у кормушки (`bird-feeder-scale.yaml`)
 
 - Топики по умолчанию: **`birdlense/scale/weight`**, **`birdlense/scale/bird_present`**, **`birdlense/scale/command`** (см. `substitutions` в начале файла).
