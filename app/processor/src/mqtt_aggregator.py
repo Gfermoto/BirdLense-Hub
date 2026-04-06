@@ -5,6 +5,8 @@ Supports Home Assistant MQTT Autodiscovery when ha_discovery=true.
 
 Outbound publishes from the processor main thread go through ``_publish_queue`` and are
 sent only from the MQTT network loop thread (single writer to ``Client.publish``).
+On broker disconnect the queue is **retained** (and new publishes still enqueue if the
+broker is configured) so messages flush after reconnect; ``stop()`` clears the queue.
 """
 import json
 import logging
@@ -359,7 +361,6 @@ class MQTTEventAggregator:
 
     def _on_disconnect(self, client, userdata, *args):
         self._connected = False
-        self._clear_publish_queue()
         reason = args[0] if args else "unknown"
         logger.warning(f"MQTT aggregator disconnected: {reason}")
 
@@ -383,7 +384,6 @@ class MQTTEventAggregator:
     def _drain_publish_queue(self, max_items: int = 500) -> None:
         """Flush queued outbound messages (only from the MQTT loop thread)."""
         if not self._client or not self._connected:
-            self._clear_publish_queue()
             return
         for _ in range(max_items):
             try:
@@ -558,7 +558,7 @@ class MQTTEventAggregator:
 
     def publish_detection(self, species, confidence, source="yolo", start_time=None, end_time=None):
         """Publish detection to birdlense/detections and HA discovery state topics."""
-        if self._stopped or not self._client or not self._connected:
+        if self._stopped or not (self.broker or "").strip():
             return
         ts = start_time or datetime.now(timezone.utc)
         ts_iso = ts.isoformat()
@@ -581,7 +581,7 @@ class MQTTEventAggregator:
 
     def publish_detections(self, detections, start_time, end_time):
         """Publish all detections from a video session."""
-        if self._stopped or not self._client or not self._connected:
+        if self._stopped or not (self.broker or "").strip():
             return
         for d in detections:
             species = d.get("species") or d.get("name", "unknown")
