@@ -11,8 +11,7 @@ import paho.mqtt.client as mqtt
 import requests
 
 from app_config.app_config import app_config
-
-from util import data_dir
+from data_paths import data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -183,3 +182,51 @@ def dispense_feed():
             logger.error('ESPHome feed failed: %s', e)
             return False, str(e)
     return False, 'Unknown feed source'
+
+
+def mqtt_publish_once(
+    topic: str,
+    payload: str | bytes,
+    *,
+    qos: int = 1,
+    timeout: float = 5.0,
+) -> tuple[bool, str]:
+    """Одна публикация в MQTT (отдельное соединение; для тары весов и т.п.)."""
+    broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
+    if not broker or not (topic or '').strip():
+        return False, 'not_configured'
+    try:
+        raw_port = app_config.get('mqtt.port', 1883)
+        port = int(raw_port)
+    except (TypeError, ValueError):
+        port = 1883
+    username = os.environ.get('MQTT_USERNAME') or app_config.get(
+        'mqtt.username')
+    password = os.environ.get('MQTT_PASSWORD') or app_config.get(
+        'mqtt.password')
+    cid = f'birdlense_pub_{os.getpid()}_{time.time_ns()}'
+    client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        client_id=cid[:60],
+    )
+    if username:
+        client.username_pw_set(username, password)
+    try:
+        client.connect(broker, port, 60)
+        client.loop_start()
+        if isinstance(payload, (bytes, bytearray)):
+            data = payload
+        else:
+            data = str(payload).encode('utf-8')
+        inf = client.publish(topic.strip(), data, qos=qos, retain=False)
+        inf.wait_for_publish(timeout=timeout)
+        return True, 'ok'
+    except Exception as e:
+        logger.warning('mqtt_publish_once failed: %s', e)
+        return False, str(e)
+    finally:
+        try:
+            client.loop_stop()
+            client.disconnect()
+        except Exception:
+            pass

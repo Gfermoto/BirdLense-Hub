@@ -425,6 +425,24 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.generate_spectrogram_always">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={field.state.value !== false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.generateSpectrogramAlways')}
+                      />
+                      <FormHelperText>{t('settings.generateSpectrogramAlwaysHelp')}</FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="processor.tracker">
                   {(field) => (

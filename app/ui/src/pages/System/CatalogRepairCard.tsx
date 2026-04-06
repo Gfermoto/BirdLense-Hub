@@ -52,6 +52,10 @@ export function CatalogRepairCard() {
           </Button>
         </Box>
 
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          {t('system.catalogRepairWhatItDoes')}
+        </Typography>
+
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
           <Chip size="small" label={t('system.catalogRepairCompletion', { p: cov.completion_percent })} />
           <Chip size="small" variant="outlined" label={t('system.catalogRepairCompleteCards', { n: cov.complete_cards, total: cov.allowlist_total })} />

@@ -83,9 +83,9 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.15** |
-| `min_track_duration` | Мин. длительность трека (сек). По умолчанию **3** — меньше ложных срабатываний |
-| `min_confidence_to_process` | Порог классификатора (вид). По умолчанию **0.30**. Ниже — больше детекций, выше — строже |
+| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.21** |
+| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). По умолчанию **2**. Слишком много — только Frigate в merge; при мельканиях поднимите до 2.5–3. |
+| `min_confidence_to_process` | Порог классификатора (голосование × средняя). По умолчанию **0.32**. Ниже — больше детекций, выше — строже |
 | `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
@@ -96,7 +96,8 @@
 | `birdnet_mqtt_bias_floor` | Нижняя граница авто-порога для BirdNET (по умолчанию `0.05`). |
 | `multi_camera_groups` | Список групп `id` камер Frigate одной локации, например `[["BirdBox","Forest"]]`. См. [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
 | `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.05`, не выше 1.0). |
-| `spectrogram_px_per_sec` | Пикселей на секунду в спектрограмме (только при приходе события BirdNET в окне записи) |
+| `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
+| `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
 | `single_stage_coco_animals_only_auto` | По умолчанию **true**: при **ровно 80** классах COCO (`yolov8n.pt` и т.п.) — только **животные** (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe): без **person** и без предметов. **false** — для своей 80-классовой модели. Устаревший ключ `single_stage_coco_bird_only_auto` читается, если этот не задан. |
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
@@ -212,7 +213,7 @@
 | `one_per_species` | Один результат на вид (true) |
 | `source_priority` | При конфликте: `["yolo", "frigate", "birdnet"]` |
 | `cross_source_confidence_bonus` | При первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию — разово прибавить к confidence (потолок 1.0). По умолчанию **0.02**, без дообучения. `0` — выключить. |
-| `min_confidence_to_store` | Мин. confidence (0.05) |
+| `min_confidence_to_store` | Мин. итоговый confidence для записи в БД (по умолчанию **0.30**). Не ниже практического порога классификатора. |
 | `species_mapping` | Маппинг названий видов |
 
 **EU-модель:** `best.pt`. US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
@@ -257,20 +258,37 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 |------|----------|
 | `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). |
 | `integrations.scales.source` | `mqtt` (по умолчанию) — processor и файлы состояния/журнала; или `homeassistant` — только REST в вебе для текущего веса (см. абзац выше). |
-| `integrations.scales.mqtt_topic` | Топик MQTT с числом или JSON с массой (состояние сохраняется в **`DATA_DIR`**; в Docker по умолчанию это дерево `app/data`). |
+| `integrations.scales.mqtt_topic` | Полный топик **веса** (число или JSON с `value`/`weight`/`state`). Если **пусто** и задан **`mqtt_topic_prefix`**, процессор слушает **`{prefix}/weight`**. |
+| `integrations.scales.mqtt_topic_prefix` | Префикс для набора топиков: **`{prefix}/weight`**, **`{prefix}/bird_present`** (`ON`/`OFF`, retain). Кнопка «Тара» в UI шлёт **`mqtt_tare_payload`** в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример: `birdlense/scale`. |
+| `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Только YAML, не в форме настроек. |
+| `integrations.scales.mqtt_tare_payload` | Строка для тары (по умолчанию **`TARE`**); прошивка должна подписаться на command topic. |
 | `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant` (снимок для UI). |
-| `integrations.scales.unit` | `kg` или `g` для отображения и записи. |
-| `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, `mqtt_topic`) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
+| `integrations.scales.unit` | `kg` или `g` для отображения и записи (рецепты ESP32+HX711 часто в **граммах**). |
+| `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, топик веса через **`mqtt_topic`** или **`mqtt_topic_prefix`**) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг): и для **размаха** max−min по окну, и для **скачка** между соседними по времени MQTT-точками (см. ниже). По умолчанию **0.008** (~8 г). |
 | `integrations.scales.estimate_require_consecutive_spike` | **true** (по умолчанию): оценка на ролик сохраняется только если за интервал записи есть хотя бы одна пара **подряд идущих** (по времени) показаний с \|Δ\| ≥ `min_delta_kg_for_estimate`. Так отсекается в основном **медленный дрейф** при почти нулевой платформе после тары. **false** — прежняя логика только по max−min (для отладки). Сохраняемое значение по-прежнему **размах** max−min за клип. |
 | `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
-| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, `source: mqtt` и `mqtt_topic`. Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
+| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, `source: mqtt` и топик веса (**`mqtt_topic`** или **`{mqtt_topic_prefix}/weight`**). Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
 | `integrations.scales.motion_trigger_min_delta_kg` | Минимум \|Δмассы\| между **двумя последовательными** MQTT-сообщениями (в кг), чтобы считать это триггером. По умолчанию **0.02** (20 г). |
 | `integrations.scales.motion_trigger_debounce_seconds` | Минимум секунд между двумя стартами записи по весам (анти-дребезг). По умолчанию **1.5**. |
 
 Процессор сравнивает min/max веса в окне `[start_time, end_time]` ролика. При **`estimate_require_consecutive_spike: true`** (по умолчанию) оценка в БД сохраняется только если за это окно есть соседняя пара показаний с шагом ≥ порога (см. ключ выше); иначе отсекается дрейф — при этом записываемое значение по-прежнему размах max−min. Если дельта не ниже порога — в БД пишется `scales_weight_delta_kg`, в UI показывается блок «Весы (оценка)». Триггеры уведомлений и auto-tare в HA/ESPHome — по-прежнему в [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
 **Стек как у [умных весов с ESPHome + HA](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, проксимити, auto-tare в Home Assistant): логика тары и «объект на платформе» остаётся в **ESPHome/HA**. BirdLense не дублирует эти сущности: хаб подписывается на **тот же MQTT-топик состояния веса**, который публикует интеграция (часто `homeassistant/sensor/<имя_датчика>/state` — укажите его в `mqtt_topic`). Тогда и «текущий вес» в UI, и журнал для дельты за клип идут из одного потока, совместимого с вашей прошивкой.
+
+### ESPHome / своя прошивка (`birdlense/scale/*`)
+
+Задайте **`integrations.scales.mqtt_topic_prefix`**: например **`birdlense/scale`**, оставьте **`mqtt_topic`** пустым, при необходимости **`unit: g`**, брокер — тот же, что у процессора.
+
+| Топик | Данные | Retain (типично) | Хаб |
+|-------|--------|------------------|-----|
+| `{prefix}/weight` | Строка с числом | да | `feeder_scale_state.json`, журнал, опционально триггер записи |
+| `{prefix}/bird_present` | `ON` / `OFF` | да | поле `bird_present` в состоянии (карточка кормушки) |
+| `{prefix}/command` | например `TARE` | нет | публикация с **`POST /api/ui/feed/scale-tare`** (админ); прошивка должна подписаться |
+
+В прошивке публикуйте вес **текстовой десятичной строкой** (в ESPHome — например `str_sprintf` в lambda для `mqtt.publish`). Для тары подпишитесь на command topic (`on_message` в компоненте `mqtt`).
+
+**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 

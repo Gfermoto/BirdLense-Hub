@@ -1,14 +1,14 @@
-"""Точка входа Flask: фабрика приложения, SQLite-миграции на старте, регистрация маршрутов."""
+"""Точка входа Flask: фабрика приложения, БД (create_all + Alembic), регистрация маршрутов."""
 import os
 import threading
 from datetime import datetime, timezone
 from util import notify_app_startup
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate, upgrade
 import logging
-from sqlalchemy import text, event
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import OperationalError
 import routes.ui_routes
 import routes.ui_system_routes
 import routes.processor_routes
@@ -20,6 +20,8 @@ from services.species_registry_service import (
     repair_recently_reset_species_metadata,
     enrich_species_metadata_with_status,
 )
+
+migrate = Migrate()
 
 # Set up logging
 logging.basicConfig(
@@ -65,6 +67,8 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": cors_origins, "supports_credentials": True}})
 
     db.init_app(app)
+    _migrations_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'migrations')
+    migrate.init_app(app, db, directory=_migrations_dir)
 
     @event.listens_for(Engine, "connect")
     def _sqlite_optimize(dbapi_connection, _connection_record):
@@ -84,92 +88,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        # Add detection_provider column if missing (migration)
-        try:
-            db.session.execute(text(
-                "ALTER TABLE video_species ADD COLUMN detection_provider VARCHAR"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        # Add manually_corrected column if missing (migration)
-        try:
-            db.session.execute(text(
-                "ALTER TABLE video_species ADD COLUMN manually_corrected INTEGER DEFAULT 0"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        # Add species.taxon_id if missing (registry migration)
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN taxon_id INTEGER"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        # Species metadata enrichment columns (migration)
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_status VARCHAR DEFAULT 'pending'"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_attempts INTEGER DEFAULT 0"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_error VARCHAR"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_source VARCHAR"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_source_url VARCHAR"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE species ADD COLUMN metadata_updated_at DATETIME"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        try:
-            db.session.execute(text(
-                "ALTER TABLE video ADD COLUMN scales_weight_delta_kg FLOAT"
-            ))
-            db.session.commit()
-        except OperationalError as e:
-            db.session.rollback()
-            orig = str(getattr(e, 'orig', e) or e).lower()
-            if 'duplicate' in orig and 'column' in orig:
-                pass
-            else:
-                _log.warning(
-                    'ALTER TABLE video ADD scales_weight_delta_kg failed: %s',
-                    e,
-                )
-                raise
-        except Exception:
-            db.session.rollback()
-            raise
+        upgrade(directory=_migrations_dir)
         seed()
         try:
             seed_stats = ensure_species_registry_seeded()

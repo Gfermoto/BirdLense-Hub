@@ -1414,6 +1414,9 @@ components:
               type: integer
             spectrogram_px_per_sec:
               type: integer
+            generate_spectrogram_always:
+              type: boolean
+              description: If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window
             included_bird_families:
               type: array
               items:

@@ -1,0 +1,3 @@
+Alembic migrations for BirdLense Hub (Flask-Migrate).
+
+Идемпотентные правки схемы — в `versions/` (раньше try/except ALTER в `app.py`). Конфиг: `alembic.ini` в этой папке.

@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Весы / ESPHome MQTT ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) комментарий, [#232](https://github.com/Gfermoto/BirdLense-Hub/issues/232) закрыт):** префикс **`integrations.scales.mqtt_topic_prefix`** (`birdlense/scale` → топики `weight`, `bird_present`, `command`); процессор мержит **`bird_present`** в `feeder_scale_state.json`; **`POST /api/ui/feed/scale-tare`** публикует **`mqtt_tare_payload`** (по умолчанию `TARE`); карточка кормушки — строка присутствия и кнопка тары (админ). Ключи **`mqtt_command_topic`** / **`mqtt_tare_payload`** в YAML. Документация: **CONFIGURATION** (EN/RU).
+
+- **Processor (tech debt [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) / [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238)):** цикл motion → запись и финализация вынесены в **`MotionRecordingSession`** (`app/processor/src/recording_session.py`); **`main.py`** оставляет сбор зависимостей и вызов сессии.
+- **Web (миграции схемы, [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225)):** вместо try/except **`ALTER TABLE`** на старте — **Flask-Migrate / Alembic** (`app/web/migrations/`, ревизия **`001_schema_patches`**, идемпотентные колонки); после **`db.create_all()`** вызывается **`upgrade()`**; зависимость **`Flask-Migrate`** в `web/requirements.txt`.
+
 ### Docs
 
 - **Roadmap / техдолг:** [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) отмечен закрытым, активный processor backlog — [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238); обновлены [ROADMAP.md](docs/ROADMAP.md), [ROADMAP.ru.md](docs/ROADMAP.ru.md), пример `github-issue-link-subissues.sh`. Эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) в заголовке ссылается на processor [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238).
@@ -57,7 +64,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Docs
 
 - **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
-- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor фаза 2: опц. RecordingSession), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
+- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor фаза 2: **`MotionRecordingSession`** **сделано**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**#225** в хабе: Alembic **`001`** + сессия записи **сделано**); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
 - **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) и [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыты. [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed
