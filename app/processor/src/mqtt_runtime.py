@@ -14,17 +14,37 @@ if TYPE_CHECKING:
 
 
 def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
-    """DATA_DIR, MQTT topic весов (если source=mqtt), unit."""
+    """DATA_DIR, MQTT topic веса (если source=mqtt), unit.
+
+    Вес: явный ``mqtt_topic`` или, если пусто, ``{mqtt_topic_prefix}/weight``.
+    ``bird_present`` подписывается отдельно при непустом префиксе (см. ``start_mqtt_aggregator_session``).
+    """
     data_dir = os.environ.get('DATA_DIR', 'data')
     scales_topic_arg: Optional[str] = None
     scales_unit_arg = 'kg'
     if app_config.get('integrations.scales.enabled'):
         scales_unit_arg = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
         src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
-        mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
-        if src == 'mqtt' and mq_st:
-            scales_topic_arg = mq_st
+        if src == 'mqtt':
+            mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
+            prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
+            if mq_st:
+                scales_topic_arg = mq_st
+            elif prefix:
+                scales_topic_arg = f'{prefix}/weight'
     return data_dir, scales_topic_arg, scales_unit_arg
+
+
+def scales_mqtt_bird_present_topic() -> Optional[str]:
+    """``{prefix}/bird_present`` при включённых весах и source=mqtt."""
+    if not app_config.get('integrations.scales.enabled'):
+        return None
+    if (app_config.get('integrations.scales.source') or 'mqtt').strip().lower() != 'mqtt':
+        return None
+    prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
+    if not prefix:
+        return None
+    return f'{prefix}/bird_present'
 
 
 def _frigate_camera_filter_list(cameras: list) -> list:
@@ -129,6 +149,9 @@ def start_mqtt_aggregator_session(
                 scale_motion_debounce,
             )
 
+    bird_present_topic = scales_mqtt_bird_present_topic()
+    scales_data_for_file = data_dir if (scales_topic_arg or bird_present_topic) else None
+
     mqtt_aggregator = MQTTEventAggregator(
         broker=mqtt_broker,
         port=app_config.get('mqtt.port', 1883),
@@ -145,7 +168,8 @@ def start_mqtt_aggregator_session(
         reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
         reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
         scales_topic=scales_topic_arg,
-        scales_data_dir=data_dir if scales_topic_arg else None,
+        scales_bird_present_topic=bird_present_topic,
+        scales_data_dir=scales_data_for_file,
         scales_unit=scales_unit_arg,
         scales_history_max_lines=scales_hist_lines,
         scale_motion_trigger_cb=scale_motion_cb,

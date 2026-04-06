@@ -271,9 +271,16 @@ integrations:
   scales:
     enabled: false
     source: mqtt  # mqtt | homeassistant
-    mqtt_topic: ""  # ESPHome: homeassistant/sensor/<id>/state или свой топик с числом / JSON
+    # Топик веса (полный путь). Если пусто, но задан mqtt_topic_prefix — вес: {prefix}/weight
+    mqtt_topic: ""
+    # Префикс ESPHome/своей прошивки: вес {prefix}/weight, птица {prefix}/bird_present, команда тары {prefix}/command
+    mqtt_topic_prefix: ""
+    # Явный топик команды (тара). Пусто = {mqtt_topic_prefix}/command при непустом префиксе
+    mqtt_command_topic: ""
+    # Payload для POST /api/ui/feed/scale-tare (устройство должно подписаться на command topic)
+    mqtt_tare_payload: "TARE"
     homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
-    unit: kg  # kg | g — единица для отображения и записи из MQTT
+    unit: kg  # kg | g — единица для отображения и записи из MQTT (ESPHome birdlense/scale — обычно g)
     # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167)
     weight_estimate_enabled: true
     min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
