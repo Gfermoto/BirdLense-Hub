@@ -1,0 +1,138 @@
+"""Старт MQTT-агрегатора, Frigate-from-aggregator и опций весов (вынесено из main.py, tech debt #201)."""
+from __future__ import annotations
+
+import logging
+import os
+from typing import TYPE_CHECKING, Any, Optional, Tuple
+
+from app_config.app_config import app_config
+from mqtt_aggregator import MQTTEventAggregator
+from processor_support import heartbeat_mqtt_ref
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+
+
+def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
+    """DATA_DIR, MQTT topic весов (если source=mqtt), unit."""
+    data_dir = os.environ.get('DATA_DIR', 'data')
+    scales_topic_arg: Optional[str] = None
+    scales_unit_arg = 'kg'
+    if app_config.get('integrations.scales.enabled'):
+        scales_unit_arg = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
+        src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
+        mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
+        if src == 'mqtt' and mq_st:
+            scales_topic_arg = mq_st
+    return data_dir, scales_topic_arg, scales_unit_arg
+
+
+def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
+    camera_filter = (
+        app_config.get('motion.frigate_camera_filter')
+        or app_config.get('mqtt.frigate_camera_filter')
+        or [c['id'] for c in cameras]
+    )
+    label_filter = set(
+        app_config.get('motion.frigate_label_filter')
+        or app_config.get('mqtt.frigate_label_filter')
+        or ['bird', 'Bird']
+    )
+    label_exclude = set(
+        app_config.get('motion.frigate_label_exclude')
+        or app_config.get('mqtt.frigate_label_exclude')
+        or ['cat', 'dog']
+    )
+    return camera_filter, label_filter, label_exclude
+
+
+def start_mqtt_aggregator_session(
+    args: Namespace,
+    *,
+    mqtt_broker: str,
+    frigate_camera_filter,
+    frigate_label_filter: set,
+    frigate_label_exclude: set,
+    scales_topic_arg: Optional[str],
+    scales_unit_arg: str,
+    data_dir: str,
+) -> Tuple[MQTTEventAggregator, Optional[Any], Any]:
+    """Поднимает MQTTEventAggregator и связывает FrigateMotionFromAggregator. Возвращает (aggregator, scale_pending, frigate_detector)."""
+    from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator
+    from motion_detectors.scale_weight_motion import ScaleWeightMotionPending
+
+    frigate_detector = FrigateMotionFromAggregator(
+        None, frigate_camera_filter, frigate_label_filter
+    )
+    on_frigate_motion = frigate_detector.get_on_frigate_motion_tuple()
+
+    mqtt_client_id = None
+    if args.input:
+        mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
+
+    _raw_hist = app_config.get('integrations.scales.history_max_lines')
+    try:
+        scales_hist_lines = int(_raw_hist) if _raw_hist not in (None, '') else 10000
+    except (TypeError, ValueError):
+        scales_hist_lines = 10000
+    if scales_hist_lines < 100:
+        scales_hist_lines = 100
+
+    scale_weight_motion_pending = None
+    scale_motion_cb = None
+    scale_motion_min = None
+    scale_motion_debounce = 1.5
+    if scales_topic_arg and app_config.get('integrations.scales.motion_trigger_enabled', False):
+        scale_weight_motion_pending = ScaleWeightMotionPending()
+        scale_motion_cb = scale_weight_motion_pending.fire
+        try:
+            scale_motion_min = float(
+                app_config.get('integrations.scales.motion_trigger_min_delta_kg') or 0.02
+            )
+        except (TypeError, ValueError):
+            scale_motion_min = 0.02
+        if scale_motion_min <= 0:
+            scale_motion_min = None
+            scale_motion_cb = None
+            scale_weight_motion_pending = None
+        try:
+            scale_motion_debounce = float(
+                app_config.get('integrations.scales.motion_trigger_debounce_seconds') or 1.5
+            )
+        except (TypeError, ValueError):
+            scale_motion_debounce = 1.5
+        if scale_weight_motion_pending:
+            logging.info(
+                'Scales: motion trigger on weight delta >= %s kg (debounce %ss)',
+                scale_motion_min,
+                scale_motion_debounce,
+            )
+
+    mqtt_aggregator = MQTTEventAggregator(
+        broker=mqtt_broker,
+        port=app_config.get('mqtt.port', 1883),
+        frigate_topic=app_config.get('mqtt.frigate_topic', 'frigate/events'),
+        birdnet_topic=app_config.get('mqtt.birdnet_topic', 'birdnet'),
+        publish_topic=app_config.get('mqtt.publish_topic', 'birdlense/detections'),
+        username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
+        password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+        on_frigate_motion=on_frigate_motion,
+        frigate_label_exclude=list(frigate_label_exclude),
+        client_id=mqtt_client_id,
+        ha_discovery=app_config.get('mqtt.ha_discovery', True),
+        base_url=app_config.get('notifications.base_url', ''),
+        reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
+        reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
+        scales_topic=scales_topic_arg,
+        scales_data_dir=data_dir if scales_topic_arg else None,
+        scales_unit=scales_unit_arg,
+        scales_history_max_lines=scales_hist_lines,
+        scale_motion_trigger_cb=scale_motion_cb,
+        scale_motion_min_delta_kg=scale_motion_min,
+        scale_motion_debounce_seconds=scale_motion_debounce,
+    )
+    mqtt_aggregator.start()
+    heartbeat_mqtt_ref[0] = mqtt_aggregator
+    frigate_detector._aggregator = mqtt_aggregator
+
+    return mqtt_aggregator, scale_weight_motion_pending, frigate_detector
