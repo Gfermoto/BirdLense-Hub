@@ -27,21 +27,42 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     return data_dir, scales_topic_arg, scales_unit_arg
 
 
+def _frigate_camera_filter_list(cameras: list) -> list:
+    """Список id камер; скаляр YAML (str) → один элемент, не посимвольный iterable."""
+    raw = app_config.get('motion.frigate_camera_filter') or app_config.get(
+        'mqtt.frigate_camera_filter'
+    )
+    if raw is None:
+        return [c['id'] for c in cameras]
+    if isinstance(raw, str):
+        s = raw.strip()
+        return [s] if s else [c['id'] for c in cameras]
+    if isinstance(raw, (list, tuple)):
+        return list(raw)
+    return [c['id'] for c in cameras]
+
+
+def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
+    raw = app_config.get(motion_key) or app_config.get(mqtt_key)
+    if raw is None:
+        return set(default)
+    if isinstance(raw, str):
+        s = raw.strip()
+        return {s} if s else set(default)
+    return set(raw)
+
+
 def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
-    camera_filter = (
-        app_config.get('motion.frigate_camera_filter')
-        or app_config.get('mqtt.frigate_camera_filter')
-        or [c['id'] for c in cameras]
+    camera_filter = _frigate_camera_filter_list(cameras)
+    label_filter = _frigate_label_set(
+        'motion.frigate_label_filter',
+        'mqtt.frigate_label_filter',
+        ['bird', 'Bird'],
     )
-    label_filter = set(
-        app_config.get('motion.frigate_label_filter')
-        or app_config.get('mqtt.frigate_label_filter')
-        or ['bird', 'Bird']
-    )
-    label_exclude = set(
-        app_config.get('motion.frigate_label_exclude')
-        or app_config.get('mqtt.frigate_label_exclude')
-        or ['cat', 'dog']
+    label_exclude = _frigate_label_set(
+        'motion.frigate_label_exclude',
+        'mqtt.frigate_label_exclude',
+        ['cat', 'dog'],
     )
     return camera_filter, label_filter, label_exclude
 
@@ -131,8 +152,8 @@ def start_mqtt_aggregator_session(
         scale_motion_min_delta_kg=scale_motion_min,
         scale_motion_debounce_seconds=scale_motion_debounce,
     )
+    frigate_detector._aggregator = mqtt_aggregator
     mqtt_aggregator.start()
     heartbeat_mqtt_ref[0] = mqtt_aggregator
-    frigate_detector._aggregator = mqtt_aggregator
 
     return mqtt_aggregator, scale_weight_motion_pending, frigate_detector

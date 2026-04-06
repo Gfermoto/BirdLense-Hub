@@ -34,11 +34,14 @@ class FrameProcessor:
 
         now_m = time.monotonic()
         if now_m < self._low_light_cooldown_until:
+            # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
+            time.sleep(min(0.02, self._low_light_cooldown_until - now_m))
             return False
 
         if not self.light_detector.has_sufficient_light(img):
             # Throttle dark-frame handling without blocking the recording thread (#224).
             self._low_light_cooldown_until = now_m + 1.0
+            time.sleep(0.02)
             return False
 
         st = time.time()
