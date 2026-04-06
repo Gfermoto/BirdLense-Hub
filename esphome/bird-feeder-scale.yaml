@@ -1,0 +1,192 @@
+# Умные весы для кормушки: HX711 + ESP32, MQTT для BirdLense Hub.
+# Документация хаба: docs/CONFIGURATION.md → «ESPHome / custom firmware»
+#
+# Перед прошивкой:
+#  - задайте substitutions (топики, сущность температуры HA) и secrets (Wi‑Fi, MQTT);
+#  - откалибруйте calibrate_linear под свои сырые отсчёты и эталонный вес;
+#  - проверьте dout_pin / clk_pin.
+
+substitutions:
+  device_name: bird-feeder-scale
+  friendly_name: Bird feeder scale
+  # Должно совпадать с integrations.scales.mqtt_topic_prefix в BirdLense
+  topic_prefix: birdlense/scale
+  # Сенсор температуры в Home Assistant (для компенсации нуля). Замените на свой.
+  ha_temperature_entity: sensor.ws2350_v2_37_outdoor_temperature
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "BirdLense Hub — весы у кормушки (HX711, MQTT)"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} AP"
+    password: "12345678"
+
+mqtt:
+  broker: !secret mqtt_broker_ip
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  discovery: true
+  discovery_retain: true
+  # Команда тары с хаба: POST /api/ui/feed/scale-tare → payload mqtt_tare_payload (по умолчанию TARE)
+  on_message:
+    - topic: ${topic_prefix}/command
+      qos: 0
+      then:
+        - lambda: |-
+            std::string msg(x.begin(), x.end());
+            while (!msg.empty() && (msg.back() == '\r' || msg.back() == '\n' || msg.back() == ' '))
+              msg.pop_back();
+            if (msg == "TARE") {
+              id(tare_offset) = id(raw_hx711).state;
+              id(auto_tare_enabled) = false;
+              ESP_LOGI("scale", "MQTT tare (BirdLense), offset=%.2f", id(tare_offset));
+            }
+
+web_server:
+  port: 80
+  version: 3
+
+logger:
+  level: INFO
+
+globals:
+  - id: tare_offset
+    type: float
+    restore_value: true
+    initial_value: "0.0"
+  - id: is_taring
+    type: bool
+    initial_value: "false"
+  - id: tare_sum
+    type: float
+    initial_value: "0.0"
+  - id: tare_count
+    type: int
+    initial_value: "0"
+  - id: last_stable_weight
+    type: float
+    initial_value: "0.0"
+  - id: last_change_time
+    type: uint32_t
+    initial_value: "0"
+  - id: auto_tare_enabled
+    type: bool
+    initial_value: "true"
+  - id: reference_temperature
+    type: float
+    restore_value: true
+    initial_value: "20.0"
+  - id: temp_compensation_coefficient
+    type: float
+    restore_value: true
+    initial_value: "0.5"
+
+sensor:
+  - platform: homeassistant
+    id: outdoor_temperature
+    entity_id: ${ha_temperature_entity}
+    internal: true
+
+  - platform: hx711
+    id: raw_hx711
+    name: "Raw HX711 Value"
+    dout_pin: GPIO27
+    clk_pin: GPIO25
+    gain: 128
+    update_interval: 250ms
+    filters:
+      - calibrate_linear:
+          - 235839 -> 0.0
+          - 338674 -> 500.0
+      - median:
+          window_size: 5
+          send_every: 1
+      - sliding_window_moving_average:
+          window_size: 15
+          send_every: 1
+      - lambda: |-
+          float weight = x - id(tare_offset);
+          uint32_t now = millis();
+          const float STABLE_WINDOW = 10000;
+          const float ZERO_THRESHOLD = 5.0;
+
+          float current_temp = id(outdoor_temperature).state;
+          if (!isnan(current_temp)) {
+            float temp_diff = current_temp - id(reference_temperature);
+            float compensation = temp_diff * id(temp_compensation_coefficient);
+            weight = weight - compensation;
+          }
+
+          if (fabs(weight - id(last_stable_weight)) < 1.0) {
+            if (id(auto_tare_enabled) && fabs(weight) < ZERO_THRESHOLD) {
+              if ((now - id(last_change_time)) > STABLE_WINDOW) {
+                id(tare_offset) += weight;
+                if (!isnan(current_temp)) {
+                  id(reference_temperature) = current_temp;
+                }
+                ESP_LOGI("scale", "Auto tare, offset=%.2f, T_ref=%.1f C", id(tare_offset), id(reference_temperature));
+                id(auto_tare_enabled) = false;
+                id(last_change_time) = now;
+              }
+            }
+          } else {
+            id(last_change_time) = now;
+            id(auto_tare_enabled) = true;
+          }
+
+          id(last_stable_weight) = weight;
+          return weight;
+
+    unit_of_measurement: "g"
+    accuracy_decimals: 1
+    on_value:
+      then:
+        - mqtt.publish:
+            topic: ${topic_prefix}/weight
+            payload: !lambda |-
+              return str_sprintf("%.1f", x);
+            retain: true
+
+  - platform: template
+    name: "Raw Sensor Value (for Calibration)"
+    id: calibration_raw
+    lambda: return id(raw_hx711).state;
+    update_interval: 1s
+    internal: true
+
+binary_sensor:
+  - platform: template
+    name: "Bird Present"
+    id: bird_present
+    lambda: |-
+      return id(raw_hx711).state > 50.0;
+    filters:
+      - delayed_on_off: 3s
+    on_state:
+      then:
+        - mqtt.publish:
+            topic: ${topic_prefix}/bird_present
+            payload: !lambda |-
+              return x ? std::string("ON") : std::string("OFF");
+            retain: true
+
+button:
+  - platform: template
+    name: "Manual Tare"
+    id: manual_tare
+    on_press:
+      then:
+        - lambda: |-
+            id(tare_offset) = id(raw_hx711).state;
+            ESP_LOGI("scale", "Manual tare, offset=%.2f", id(tare_offset));
+            id(auto_tare_enabled) = false;
