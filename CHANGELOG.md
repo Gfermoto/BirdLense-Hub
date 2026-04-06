@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Processor (tech debt [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) / [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238)):** цикл motion → запись и финализация вынесены в **`MotionRecordingSession`** (`app/processor/src/recording_session.py`); **`main.py`** оставляет сбор зависимостей и вызов сессии.
+- **Web (миграции схемы, [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225)):** вместо try/except **`ALTER TABLE`** на старте — **Flask-Migrate / Alembic** (`app/web/migrations/`, ревизия **`001_schema_patches`**, идемпотентные колонки); после **`db.create_all()`** вызывается **`upgrade()`**; зависимость **`Flask-Migrate`** в `web/requirements.txt`.
+
 ### Docs
 
 - **Roadmap / техдолг:** [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) отмечен закрытым, активный processor backlog — [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238); обновлены [ROADMAP.md](docs/ROADMAP.md), [ROADMAP.ru.md](docs/ROADMAP.ru.md), пример `github-issue-link-subissues.sh`. Эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) в заголовке ссылается на processor [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238).

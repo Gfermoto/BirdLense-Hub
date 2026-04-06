@@ -1,11 +1,9 @@
 import argparse
 import logging
 import os
-from datetime import datetime, timezone
 
 from api import API
 from app_config.app_config import app_config
-from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from detection_stack import build_detection_stack
 from fps_tracker import FPSTracker
 from media_runtime import setup_processor_media
@@ -17,11 +15,9 @@ from mqtt_runtime import (
 )
 from processor_support import (
     check_restart_flag,
-    get_output_path,
-    processor_status,
     start_heartbeat_daemon,
 )
-from recording_finalize import finalize_motion_recording
+from recording_session import MotionRecordingSession
 
 
 def main():
@@ -108,91 +104,33 @@ def main():
     logging.info('Using tracker: %s', tracker)
     fps_tracker = FPSTracker()
 
+    media_source_ref = [media_source]
+    session = MotionRecordingSession(
+        args=args,
+        api=api,
+        motion_detector=motion_detector,
+        mqtt_aggregator=mqtt_aggregator,
+        frame_processor=frame_processor,
+        decision_maker=decision_maker,
+        merged_overrides=merged_overrides,
+        media_source_ref=media_source_ref,
+        get_media_source=get_media_source,
+        default_camera_id=default_camera_id,
+        scales_topic_arg=scales_topic_arg,
+        data_dir=_data_dir,
+        fps_tracker=fps_tracker,
+    )
+
     while True:
         check_restart_flag()
         if not motion_detector.detect():
             continue
         api.notify_motion()
 
-        session_overrides = merge_birdnet_mqtt_bias_into_overrides(
-            merged_overrides, app_config, mqtt_aggregator
-        )
-        decision_maker.species_confidence_overrides = session_overrides
-
-        camera_id = (
-            getattr(motion_detector, 'get_triggered_camera', lambda: None)()
-            or default_camera_id
-        )
-        if not args.input and app_config.get('video.source') == 'go2rtc':
-            media_source = get_media_source(camera_id)
-
-        output_path_physical, output_path_logical = get_output_path()
-        video_output = os.path.join(output_path_physical, 'video.mp4')
-        video_path_for_api = f'{output_path_logical}/video.mp4'
-
-        media_source.start_recording(video_output)
-
-        logging.info(
-            'Motion detected. Processing started. Recording video and audio to "%s"',
-            video_output,
-        )
-        start_time = datetime.now(timezone.utc)
-
-        try:
-            frame_processor.reset()
-            decision_maker.reset()
-            fps_tracker.reset()
-            while True:
-                frame = media_source.capture()
-                if frame is None:
-                    break
-                processor_status['last_video_ok_at'] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
-                frame_time = getattr(
-                    media_source, 'get_frame_time', lambda: None
-                )()
-                with fps_tracker:
-                    has_detections = frame_processor.run(
-                        frame, frame_time=frame_time
-                    )
-                processor_status['last_yolo_ok_at'] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
-
-                decision_maker.update_has_detections(has_detections)
-                decision_maker.get_first_species_result(
-                    frame_processor.tracks,
-                )
-                if decision_maker.decide_stop_recording():
-                    break
-            fps_tracker.log_summary()
-        finally:
-            media_source.stop_recording()
-            end_time = datetime.now(timezone.utc)
-
-        try:
-            finalize_motion_recording(
-                api,
-                motion_detector,
-                mqtt_aggregator,
-                frame_processor,
-                decision_maker,
-                start_time=start_time,
-                end_time=end_time,
-                output_path_physical=output_path_physical,
-                output_path_logical=output_path_logical,
-                video_output=video_output,
-                video_path_for_api=video_path_for_api,
-                scales_topic_arg=scales_topic_arg,
-                data_dir=_data_dir,
-            )
-        except Exception as e:
-            logging.error(e)
-
-        if args.input:
+        if session.run():
             break
 
+    media_source = media_source_ref[0]
     if app_config.get('video.source') == 'go2rtc':
         for src in media_sources_cache.values():
             src.close()
