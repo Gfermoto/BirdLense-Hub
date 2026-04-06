@@ -169,7 +169,7 @@ def register_ui_status_push_routes(app):
     @app.route('/api/ui/feed/info', methods=['GET'])
     def feed_info():
         """Last dispense time, donate URL, feed source, optional scale weight. No auth required."""
-        from services.feeder_scale import get_feeder_scale_snapshot
+        from services.feeder_scale import get_feeder_scale_snapshot, scale_tare_mqtt_available
 
         donate_url = (app_config.get('general.donate_url') or '').strip()
         feed_source = app_config.get('feed.source', 'mqtt')
@@ -179,7 +179,22 @@ def register_ui_status_push_routes(app):
             'donate_url': donate_url or None,
             'feed_source': feed_source,
             'scale': scale,
+            'scale_tare_available': scale_tare_mqtt_available(),
         }, 200
+
+    @app.route('/api/ui/feed/scale-tare', methods=['POST'])
+    def feed_scale_tare():
+        """MQTT-команда тары на весы (префикс birdlense/scale → …/command). Требует доступа к настройкам."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        from services.feeder_scale import publish_scale_tare_via_mqtt, scale_tare_mqtt_available
+
+        if not scale_tare_mqtt_available():
+            return {'error': 'Scale MQTT command topic not configured'}, 400
+        ok, msg = publish_scale_tare_via_mqtt()
+        if ok:
+            return {'ok': True, 'message': msg}, 200
+        return {'error': msg}, 500
 
     @app.route('/api/ui/feed/dispense', methods=['POST'])
     def feed_dispense():

@@ -189,6 +189,8 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "integrations.scales.history_max_lines",
     "integrations.scales.homeassistant_entity_id",
     "integrations.scales.min_delta_kg_for_estimate",
+    "integrations.scales.mqtt_command_topic",
+    "integrations.scales.mqtt_tare_payload",
     "integrations.scales.mqtt_topic",
     "integrations.scales.source",
     "integrations.scales.unit",

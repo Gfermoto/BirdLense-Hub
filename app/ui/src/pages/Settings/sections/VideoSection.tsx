@@ -338,20 +338,36 @@ export function VideoSection({ form }: Props) {
                           {(src) => (
                             <>
                               {(src ?? 'mqtt') === 'mqtt' && (
-                                <Grid size={{ xs: 12 }}>
-                                  <form.Field name="integrations.scales.mqtt_topic">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        value={field.state.value ?? ''}
-                                        onChange={(e) => field.handleChange(e.target.value)}
-                                        label={t('settings.scalesMqttTopic')}
-                                        placeholder="homeassistant/sensor/feeder_scale_weight/state"
-                                        helperText={t('settings.scalesMqttTopicHint')}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
+                                <>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.mqtt_topic">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesMqttTopic')}
+                                          placeholder="homeassistant/sensor/feeder_scale_weight/state"
+                                          helperText={t('settings.scalesMqttTopicHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.mqtt_topic_prefix">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesMqttPrefix')}
+                                          placeholder="birdlense/scale"
+                                          helperText={t('settings.scalesMqttPrefixHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                </>
                               )}
                               {src === 'homeassistant' && (
                                 <>

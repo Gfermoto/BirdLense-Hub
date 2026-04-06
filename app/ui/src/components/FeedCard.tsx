@@ -3,10 +3,11 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
+import ScaleIcon from '@mui/icons-material/Scale';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { dispenseFeed, fetchFeedInfo } from '../api/api';
+import { dispenseFeed, fetchFeedInfo, postScaleTare } from '../api/api';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../util';
 
@@ -50,6 +51,7 @@ export const FeedCard = () => {
   const { isAdmin } = useProtectedArea();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const [tareLoading, setTareLoading] = useState(false);
 
   const { data: feedInfo } = useQuery({
     queryKey: ['feed-info'],
@@ -79,6 +81,28 @@ export const FeedCard = () => {
     scale && typeof scale.weight === 'number'
       ? formatScale(scale.weight, scale.unit || 'kg', scale.updated_at, i18n.language)
       : null;
+  const birdLine =
+    scale && typeof scale.bird_present === 'boolean'
+      ? scale.bird_present
+        ? t('feed.birdPresentOn')
+        : t('feed.birdPresentOff')
+      : null;
+  const tareAvailable = Boolean(feedInfo?.scale_tare_available);
+
+  const handleScaleTare = async () => {
+    if (!isAdmin) return;
+    setTareLoading(true);
+    setMessage(null);
+    const result = await postScaleTare();
+    setTareLoading(false);
+    setMessage({
+      text: result.success ? t('feed.scaleTareOk') : result.message || t('feed.scaleTareFail'),
+      success: result.success,
+    });
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['feed-info'] });
+    }
+  };
 
   return (
     <Paper sx={{ padding: 2, height: '100%' }}>
@@ -107,11 +131,6 @@ export const FeedCard = () => {
                 {t('feed.lastDispense')}: {lastDispenseStr}
               </Typography>
             )}
-            {message && (
-              <Typography variant="body2" color={message.success ? 'success.main' : 'error.main'}>
-                {message.text}
-              </Typography>
-            )}
           </>
         )}
         {!feedEnabled && (
@@ -122,6 +141,27 @@ export const FeedCard = () => {
         {scaleLine && (
           <Typography variant="body2" color="text.secondary">
             {t('feed.scaleReading')}: {scaleLine}
+          </Typography>
+        )}
+        {birdLine && (
+          <Typography variant="body2" color="text.secondary">
+            {birdLine}
+          </Typography>
+        )}
+        {tareAvailable && isAdmin && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ScaleIcon />}
+            onClick={handleScaleTare}
+            disabled={tareLoading}
+          >
+            {tareLoading ? t('feed.scaleTaring') : t('feed.scaleTare')}
+          </Button>
+        )}
+        {message && (
+          <Typography variant="body2" color={message.success ? 'success.main' : 'error.main'}>
+            {message.text}
           </Typography>
         )}
       </Stack>

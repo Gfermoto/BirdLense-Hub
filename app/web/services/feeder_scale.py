@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import requests
 
 from app_config.app_config import app_config
+from services.feed_service import mqtt_publish_once
 from services.homeassistant_config import (
     get_homeassistant_token,
     get_homeassistant_url,
@@ -101,8 +102,35 @@ def video_scales_estimate_payload(video) -> dict | None:
     }
 
 
+def scale_mqtt_command_topic() -> str | None:
+    """Топик команд (тара): явный или ``{mqtt_topic_prefix}/command``."""
+    explicit = (app_config.get('integrations.scales.mqtt_command_topic') or '').strip()
+    if explicit:
+        return explicit
+    prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
+    return f'{prefix}/command' if prefix else None
+
+
+def scale_tare_mqtt_available() -> bool:
+    """Можно ли отправить тару через MQTT (префикс или явный command topic)."""
+    if not app_config.get('integrations.scales.enabled'):
+        return False
+    if (app_config.get('integrations.scales.source') or 'mqtt').strip().lower() != 'mqtt':
+        return False
+    return scale_mqtt_command_topic() is not None
+
+
+def publish_scale_tare_via_mqtt() -> tuple[bool, str]:
+    """Опубликовать payload тары (по умолчанию ``TARE``) в command topic."""
+    topic = scale_mqtt_command_topic()
+    if not topic:
+        return False, 'no_command_topic'
+    payload = (app_config.get('integrations.scales.mqtt_tare_payload') or 'TARE').strip() or 'TARE'
+    return mqtt_publish_once(topic, payload, qos=1)
+
+
 def get_feeder_scale_snapshot() -> dict | None:
-    """{ weight, unit, updated_at, source? } или None."""
+    """{ weight?, unit, updated_at, bird_present?, source? } или None."""
     if not app_config.get('integrations.scales.enabled'):
         return None
     src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
@@ -112,13 +140,32 @@ def get_feeder_scale_snapshot() -> dict | None:
     raw = _read_scale_file()
     if not raw:
         return None
+    weight_f = None
     try:
-        w = float(raw.get('weight'))
+        w = raw.get('weight')
+        if w is not None and str(w).strip() != '':
+            weight_f = float(w)
     except (TypeError, ValueError):
+        weight_f = None
+    bp_raw = raw.get('bird_present')
+    bp_out = None
+    if isinstance(bp_raw, bool):
+        bp_out = bp_raw
+    elif bp_raw is not None:
+        s = str(bp_raw).strip().lower()
+        if s in ('true', '1', 'on', 'yes'):
+            bp_out = True
+        elif s in ('false', '0', 'off', 'no'):
+            bp_out = False
+    if weight_f is None and bp_out is None:
         return None
-    return {
-        'weight': w,
+    out: dict = {
         'unit': str(raw.get('unit') or 'kg').lower()[:8],
         'updated_at': raw.get('updated_at'),
         'source': 'mqtt',
     }
+    if weight_f is not None:
+        out['weight'] = weight_f
+    if bp_out is not None:
+        out['bird_present'] = bp_out
+    return out
