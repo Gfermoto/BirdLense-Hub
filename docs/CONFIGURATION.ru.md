@@ -83,9 +83,9 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.15** |
-| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек), иначе детекция `video` отбрасывается. По умолчанию **4**. Короткий визит на кормушке часто даёт **0 строк YOLO**, а события **Frigate** по MQTT всё равно попадают в merge — кажется, что «работает только Frigate». Уменьшите (например 1.5–2), если нужны bbox; слишком мало — больше мельканий. |
-| `min_confidence_to_process` | Порог классификатора (вид). По умолчанию **0.30**. Ниже — больше детекций, выше — строже |
+| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.21** |
+| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). По умолчанию **2**. Слишком много — только Frigate в merge; при мельканиях поднимите до 2.5–3. |
+| `min_confidence_to_process` | Порог классификатора (голосование × средняя). По умолчанию **0.32**. Ниже — больше детекций, выше — строже |
 | `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
@@ -213,7 +213,7 @@
 | `one_per_species` | Один результат на вид (true) |
 | `source_priority` | При конфликте: `["yolo", "frigate", "birdnet"]` |
 | `cross_source_confidence_bonus` | При первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию — разово прибавить к confidence (потолок 1.0). По умолчанию **0.02**, без дообучения. `0` — выключить. |
-| `min_confidence_to_store` | Мин. confidence (0.05) |
+| `min_confidence_to_store` | Мин. итоговый confidence для записи в БД (по умолчанию **0.30**). Не ниже практического порога классификатора. |
 | `species_mapping` | Маппинг названий видов |
 
 **EU-модель:** `best.pt`. US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
