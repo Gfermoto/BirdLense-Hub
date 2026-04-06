@@ -75,6 +75,22 @@ def setup_processor_media(
     go2rtc_url = (
         os.environ.get('GO2RTC_URL') or app_config.get('video.go2rtc_url') or ''
     ).strip()
+
+    if args.input:
+        default_camera_id = cameras[0]['id'] if cameras else 'default'
+        vf = VideoFileSource(
+            args.input,
+            main_size=main_size,
+            lores_size=lores_size,
+        )
+        return ProcessorMediaSetup(
+            media_source=vf,
+            get_media_source=lambda _cid: vf,
+            media_sources_cache={},
+            default_camera_id=default_camera_id,
+            cameras=cameras,
+        )
+
     if not go2rtc_url:
         logging.warning(
             'video.go2rtc_url не задан. Укажите в Настройках: http://IP:1984',
@@ -111,20 +127,6 @@ def setup_processor_media(
                 encoding_mode=encoding,
             )
         return media_sources_cache[camera_id]
-
-    if args.input:
-        vf = VideoFileSource(
-            args.input,
-            main_size=main_size,
-            lores_size=lores_size,
-        )
-        return ProcessorMediaSetup(
-            media_source=vf,
-            get_media_source=lambda _cid: vf,
-            media_sources_cache={},
-            default_camera_id=default_camera_id,
-            cameras=cameras,
-        )
 
     if app_config.get('video.source') != 'go2rtc':
         logging.warning('video.source must be go2rtc; falling back')

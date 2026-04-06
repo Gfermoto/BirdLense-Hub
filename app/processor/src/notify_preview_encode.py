@@ -39,8 +39,12 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
     t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
 
     def _read_frame_with_retries(ts: float):
-        retry_delays = (0.0, 0.2, 0.5)
-        for idx, delay in enumerate(retry_delays):
+        # Пауза перед повтором i: retry_delays[i] (вкл. финальный 0.5s).
+        retry_delays = (0.2, 0.5)
+        max_attempts = 1 + len(retry_delays)
+        for attempt in range(max_attempts):
+            if attempt > 0:
+                time.sleep(retry_delays[attempt - 1])
             cap = cv2.VideoCapture(video_file_path)
             try:
                 if not cap.isOpened():
@@ -63,8 +67,6 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                     return frame
             finally:
                 cap.release()
-            if idx + 1 < len(retry_delays):
-                time.sleep(delay)
         return None
 
     try:

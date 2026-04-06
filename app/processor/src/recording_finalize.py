@@ -99,8 +99,8 @@ def finalize_motion_recording(
             output_path_physical, spectrogram_filename
         )
         if generate_spectrogram(video_output, spectrogram_output, px_per_sec):
-            parent = output_path_logical.rsplit('/', 1)[0]
-            spectrogram_path = f'{parent}/{spectrogram_filename}'
+            # output_path_logical — каталог сессии (см. get_output_path), файл в нём же.
+            spectrogram_path = f'{output_path_logical}/{spectrogram_filename}'
         else:
             logging.warning(
                 'Spectrogram generation failed (BirdNET event present)'

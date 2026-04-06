@@ -101,7 +101,8 @@ def heartbeat():
             )
         except Exception as e:
             logging.error('Heartbeat failed: %s (will retry in 60s)', e)
-        check_restart_flag()
+        # Restart: только основной цикл (check_restart_flag); SystemExit из потока
+        # не завершает процесс — см. PR #237 review.
         time.sleep(60)
 
 
