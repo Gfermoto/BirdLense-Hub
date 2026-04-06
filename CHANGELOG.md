@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Docs
+
+- **Roadmap / техдолг:** [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) отмечен закрытым, активный processor backlog — [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238); обновлены [ROADMAP.md](docs/ROADMAP.md), [ROADMAP.ru.md](docs/ROADMAP.ru.md), пример `github-issue-link-subissues.sh`. Эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220) в заголовке ссылается на processor [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238).
+
 ### Fixed
 
 - **Деплой:** rsync больше не синхронизирует корневой каталог **`datasets/`** (локальные данные для обучения), чтобы не заливать гигабайты на VPS.
@@ -47,7 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Docs
 
 - **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
-- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
+- **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor фаза 2), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
 - **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) и [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыты. [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
 ### Fixed
