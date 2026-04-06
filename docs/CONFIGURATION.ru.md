@@ -84,7 +84,7 @@
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.15** |
-| `min_track_duration` | Мин. длительность трека (сек). По умолчанию **3** — меньше ложных срабатываний |
+| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек), иначе детекция `video` отбрасывается. По умолчанию **4**. Короткий визит на кормушке часто даёт **0 строк YOLO**, а события **Frigate** по MQTT всё равно попадают в merge — кажется, что «работает только Frigate». Уменьшите (например 1.5–2), если нужны bbox; слишком мало — больше мельканий. |
 | `min_confidence_to_process` | Порог классификатора (вид). По умолчанию **0.30**. Ниже — больше детекций, выше — строже |
 | `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |

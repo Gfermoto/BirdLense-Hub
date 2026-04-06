@@ -49,7 +49,6 @@ class MotionRecordingSession:
         self.default_camera_id = default_camera_id
         self.scales_topic_arg = scales_topic_arg
         self.data_dir = data_dir
-        self.tracker = tracker
         self.fps_tracker = fps_tracker
 
     @property

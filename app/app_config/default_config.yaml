@@ -24,7 +24,9 @@ processor:
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  min_track_duration: 4  # сек; короче — отброс (меньше ложных «мельканий»)
+  # Мин. длительность трека ByteTrack (сек), иначе YOLO-результат не попадает в merge/API.
+  # Слишком большое значение при коротких визитах на кормушке → 0 video-детекций, только Frigate MQTT.
+  min_track_duration: 4
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6

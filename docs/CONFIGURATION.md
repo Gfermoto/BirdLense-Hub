@@ -84,7 +84,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.15** |
-| `min_track_duration` | Min track duration (s). Default **3** — fewer false triggers |
+| `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Default **4**. Short visits on the feeder often produce **no YOLO output** while **Frigate** MQTT still merges—then clips look “Frigate-only”. Lower (e.g. 1.5–2) if you need bbox/tracks; too low adds flicker. |
 | `min_confidence_to_process` | Classifier threshold: species. Default **0.30**. Lower = more detections, higher = stricter |
 | `species_confidence_overrides` | Per-species thresholds: `{"Rare Bird": 0.05}` |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
