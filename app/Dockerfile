@@ -44,7 +44,8 @@ WORKDIR /app
 # Статические изображения каталога (корм и т.д.) — копируются в volume при старте из entrypoint
 COPY data/images /app/_bundled_data/images
 
-# Web + processor + scripts
+# Web + processor + scripts + shared eBird helpers (processor imports without services.*)
+COPY ebird_region_core.py ./
 COPY web/ ./web/
 COPY processor/ ./processor/
 COPY app_config/ ./app_config/
