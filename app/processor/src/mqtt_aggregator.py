@@ -2,10 +2,14 @@
 MQTT event aggregator: subscribes to Frigate and BirdNET, stores events for merging,
 publishes to birdlense/detections for HA.
 Supports Home Assistant MQTT Autodiscovery when ha_discovery=true.
+
+Outbound publishes from the processor main thread go through ``_publish_queue`` and are
+sent only from the MQTT network loop thread (single writer to ``Client.publish``).
 """
 import json
 import logging
 import os
+import queue
 import threading
 import time
 from collections import deque
@@ -230,6 +234,9 @@ class MQTTEventAggregator:
         self.max_events = max_events
         self._events = deque(maxlen=max_events)
         self._lock = threading.Lock()
+        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
+            maxsize=2000
+        )
         self._client = None
         self._thread = None
         self._connected = False
@@ -352,8 +359,41 @@ class MQTTEventAggregator:
 
     def _on_disconnect(self, client, userdata, *args):
         self._connected = False
+        self._clear_publish_queue()
         reason = args[0] if args else "unknown"
         logger.warning(f"MQTT aggregator disconnected: {reason}")
+
+    def _clear_publish_queue(self) -> None:
+        while True:
+            try:
+                self._publish_queue.get_nowait()
+            except queue.Empty:
+                break
+
+    def _enqueue_publish(
+        self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False
+    ) -> None:
+        if self._stopped:
+            return
+        try:
+            self._publish_queue.put_nowait((topic, payload, qos, retain))
+        except queue.Full:
+            logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
+
+    def _drain_publish_queue(self, max_items: int = 500) -> None:
+        """Flush queued outbound messages (only from the MQTT loop thread)."""
+        if not self._client or not self._connected:
+            self._clear_publish_queue()
+            return
+        for _ in range(max_items):
+            try:
+                topic, payload, qos, retain = self._publish_queue.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                self._client.publish(topic, payload, qos=qos, retain=retain)
+            except Exception as e:
+                logger.warning("MQTT publish failed (drain): %s", e)
 
     def _on_message(self, client, userdata, msg):
         ev = None
@@ -460,8 +500,14 @@ class MQTTEventAggregator:
                     logger.info("MQTT: subscribed scales topic %s", self.scales_topic)
                 self._client.publish("birdlense/status", "online", qos=1, retain=True)
                 retry_delay = self.reconnect_min_delay
-                # paho handles exponential reconnect backoff inside the network loop.
-                self._client.loop_forever(retry_first_connection=True)
+                # Manual loop so we drain _publish_queue in the same thread as loop
+                # (processor thread never calls Client.publish directly).
+                while not self._stopped and self._client is not None:
+                    rc = self._client.loop(timeout=0.1)
+                    self._drain_publish_queue(500)
+                    if rc != mqtt.MQTT_ERR_SUCCESS:
+                        logger.debug("MQTT loop rc=%s, leaving inner loop", rc)
+                        break
             except Exception as e:
                 logger.error("MQTT aggregator error: %s, reconnecting in %ds", e, retry_delay)
             finally:
@@ -512,7 +558,7 @@ class MQTTEventAggregator:
 
     def publish_detection(self, species, confidence, source="yolo", start_time=None, end_time=None):
         """Publish detection to birdlense/detections and HA discovery state topics."""
-        if not self._client or not self._connected:
+        if self._stopped or not self._client or not self._connected:
             return
         ts = start_time or datetime.now(timezone.utc)
         ts_iso = ts.isoformat()
@@ -524,23 +570,18 @@ class MQTTEventAggregator:
         }
         if end_time:
             payload["end_time"] = end_time.isoformat()
-        try:
-            self._client.publish(
-                self.publish_topic,
-                json.dumps(payload),
-                qos=1,
+        self._enqueue_publish(self.publish_topic, json.dumps(payload), qos=1, retain=False)
+        if self.ha_discovery:
+            self._enqueue_publish(HA_TOPIC_LAST_SPECIES, str(species), qos=1, retain=True)
+            self._enqueue_publish(
+                HA_TOPIC_LAST_CONFIDENCE, f"{float(confidence):.2f}", qos=1, retain=True
             )
-            if self.ha_discovery:
-                self._client.publish(HA_TOPIC_LAST_SPECIES, str(species), qos=1, retain=True)
-                self._client.publish(HA_TOPIC_LAST_CONFIDENCE, f"{float(confidence):.2f}", qos=1, retain=True)
-                self._client.publish(HA_TOPIC_LAST_TIME, ts_iso, qos=1, retain=True)
-                self._client.publish(HA_TOPIC_BIRD_DETECTED, "ON", qos=1)
-        except Exception as e:
-            logger.warning("MQTT publish failed: %s", e)
+            self._enqueue_publish(HA_TOPIC_LAST_TIME, ts_iso, qos=1, retain=True)
+            self._enqueue_publish(HA_TOPIC_BIRD_DETECTED, "ON", qos=1, retain=False)
 
     def publish_detections(self, detections, start_time, end_time):
         """Publish all detections from a video session."""
-        if not self._client or not self._connected:
+        if self._stopped or not self._client or not self._connected:
             return
         for d in detections:
             species = d.get("species") or d.get("name", "unknown")
@@ -568,6 +609,7 @@ class MQTTEventAggregator:
 
     def stop(self):
         self._stopped = True
+        self._clear_publish_queue()
         if self._client:
             self._client.disconnect()
             self._client.loop_stop()

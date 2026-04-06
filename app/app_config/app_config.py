@@ -29,6 +29,49 @@ SENSITIVE_KEYS = frozenset({
 MASK_PLACEHOLDER = '***'
 
 
+def migrate_legacy_homeassistant_from_weather(user_config: dict) -> bool:
+    """Переносит weather.ha_url / weather.ha_token в homeassistant.* и удаляет устаревшие ключи.
+
+    Возвращает True, если user_config изменён (нужно сохранить файл).
+    """
+    if not isinstance(user_config, dict):
+        return False
+    weather = user_config.get('weather')
+    if not isinstance(weather, dict):
+        return False
+    if 'ha_url' not in weather and 'ha_token' not in weather:
+        return False
+
+    def _non_empty(val) -> bool:
+        return bool(str(val or '').strip())
+
+    changed = False
+    ha = user_config.get('homeassistant')
+    if not isinstance(ha, dict):
+        ha = {}
+        user_config['homeassistant'] = ha
+        changed = True
+
+    for leg_key, ha_key in (('ha_url', 'url'), ('ha_token', 'token')):
+        if leg_key not in weather:
+            continue
+        leg_val = weather[leg_key]
+        if not _non_empty(leg_val):
+            del weather[leg_key]
+            changed = True
+            continue
+        cur = ha.get(ha_key)
+        if not _non_empty(cur) and _non_empty(leg_val):
+            ha[ha_key] = leg_val
+            changed = True
+        cur = ha.get(ha_key)
+        if _non_empty(cur) and leg_key in weather:
+            del weather[leg_key]
+            changed = True
+
+    return changed
+
+
 class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
@@ -60,6 +103,15 @@ class AppConfig:
                     user_config = yaml.safe_load(file) or {}
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
+            if migrate_legacy_homeassistant_from_weather(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated weather.ha_url / weather.ha_token to homeassistant.* in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning('Could not persist HA legacy key migration: %s', e)
 
         # Merge configs (user_config overrides default_config)
         return self.merge_dicts(default_config, user_config)
@@ -162,6 +214,18 @@ class AppConfig:
         for k in keys[:-1]:
             config_section = config_section.setdefault(k, {})
         config_section[keys[-1]] = value
+
+    def _persist_raw_user_config(self, data: dict) -> None:
+        """Записать сырой user YAML (для миграции ключей без полного self.config)."""
+        save_file = self.user_config_file
+        if os.path.exists(save_file):
+            bak = f'{save_file}.bak'
+            try:
+                shutil.copy2(save_file, bak)
+            except OSError as e:
+                logger.warning('Could not create backup %s: %s', bak, e)
+        with open(save_file, 'w', encoding='utf-8') as file:
+            yaml.safe_dump(data, file, allow_unicode=True)
 
     def save(self, filename=None):
         save_file = filename or self.user_config_file
