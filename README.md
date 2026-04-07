@@ -88,7 +88,7 @@ UI: http://localhost:8085
 
 **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` automatically.
+For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, and starts the stack.
 
 ## Developers
 

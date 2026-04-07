@@ -44,6 +44,8 @@ def app():
     app_config.set('weather.ha_url', '')
     app_config.set('homeassistant.token', '')
     app_config.set('homeassistant.url', '')
+    app_config.set('notifications.telegram_proxy_type', '')
+    app_config.set('notifications.telegram_proxy_url', '')
     app = create_app()
     app.config['TESTING'] = True
     return app
@@ -76,6 +78,9 @@ def _reset_global_test_state():
         _uis._regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
         _uis._species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
         _uis._catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._fusion_export_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._fusion_eval_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._telegram_proxy_refresh_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
     except Exception:
         pass
     # Reset feed service mqtt client

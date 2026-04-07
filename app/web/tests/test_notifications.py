@@ -76,6 +76,46 @@ def test_notify_returns_photo_delivery_metadata_on_success(monkeypatch):
     assert sent[0][1].endswith('/sendPhoto')
 
 
+def test_telegram_request_triggers_proxy_refresh_after_connection_error(monkeypatch):
+    monkeypatch.setattr(
+        notifications_mod.app_config,
+        'get',
+        _fake_config({
+            'notifications.telegram_proxy_type': 'socks_http',
+            'notifications.telegram_proxy_url': 'socks5h://127.0.0.1:9050',
+            'notifications.telegram_retries': 1,
+        }),
+    )
+    monkeypatch.setattr(notifications_mod, '_telegram_proxy_mode', lambda: 'socks_http')
+    monkeypatch.setattr(
+        notifications_mod,
+        'refresh_telegram_proxy',
+        lambda: {'checked': 1, 'working': 1, 'best_proxy': 'socks5h://127.0.0.1:9050'},
+    )
+    monkeypatch.setattr(
+        notifications_mod.threading,
+        'Thread',
+        lambda target=None, daemon=None, **kwargs: type(
+            'ImmediateThread',
+            (),
+            {'start': lambda self: target() if target else None},
+        )(),
+    )
+
+    monkeypatch.setattr(
+        notifications_mod.requests,
+        'request',
+        lambda *args, **kwargs: (_ for _ in ()).throw(requests.ConnectionError('network unreachable')),
+    )
+
+    try:
+        notifications_mod._telegram_request('POST', 'https://api.telegram.org/bot/sendMessage', timeout=1)
+    except requests.ConnectionError:
+        pass
+
+    assert notifications_mod.app_config.get('notifications.telegram_proxy_url') == 'socks5h://127.0.0.1:9050'
+
+
 def test_notify_retries_photo_with_aggressive_jpeg_before_text_fallback(monkeypatch):
     monkeypatch.setattr(notifications_mod.app_config, 'get', _fake_config({}))
     monkeypatch.setattr(notifications_mod, '_telegram_proxy_mode', lambda: 'none')

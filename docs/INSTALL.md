@@ -16,7 +16,17 @@ BirdLense Hub — bird feeder monitoring: video and audio detection, recordings,
 
 ---
 
-## Option 1: Pre-built image (recommended)
+## Option 1: One-step Docker install
+
+```bash
+git clone https://github.com/Gfermoto/BirdLense-Hub.git
+cd BirdLense-Hub
+./install.sh
+```
+
+The script checks Docker, installs it if needed, creates `app/.env`, and starts the stack.
+
+## Option 2: Pre-built image (recommended)
 
 ```bash
 git clone https://github.com/Gfermoto/BirdLense-Hub.git
@@ -26,14 +36,14 @@ make pull
 
 Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
 
-## Option 2: Build from source
+## Option 3: Build from source
 
 ```bash
 cd BirdLense-Hub/app
 make build && make start
 ```
 
-## Option 3: Image without repo (for users)
+## Option 4: Image without repo (for users)
 
 No cloning — image and config only:
 
@@ -51,7 +61,7 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 
 ## First run
 
-1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`.
+1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`, and from `./install.sh`.
 2. **Config** — `app/app_config/user_config.yaml`. Examples: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
 4. **Cameras** — Settings → Cameras: stream names from Go2RTC.

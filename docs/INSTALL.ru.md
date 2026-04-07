@@ -16,7 +16,17 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 
 ---
 
-## Вариант 1: Готовый образ (рекомендуется)
+## Вариант 1: Одношаговая установка в Docker
+
+```bash
+git clone https://github.com/Gfermoto/BirdLense-Hub.git
+cd BirdLense-Hub
+./install.sh
+```
+
+Скрипт сам проверит Docker, при необходимости поставит его, создаст `app/.env` и поднимет стек из контейнеров.
+
+## Вариант 2: Готовый образ (рекомендуется)
 
 ```bash
 git clone https://github.com/Gfermoto/BirdLense-Hub.git
@@ -26,14 +36,14 @@ make pull
 
 Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
 
-## Вариант 2: Сборка из исходников
+## Вариант 3: Сборка из исходников
 
 ```bash
 cd BirdLense-Hub/app
 make build && make start
 ```
 
-## Вариант 3: Образ без сборки (для пользователей)
+## Вариант 4: Образ без сборки (для пользователей)
 
 Без клонирования репо — только образ и конфиг:
 
@@ -51,7 +61,7 @@ docker compose -f docker-compose.image.yml up -d
 
 ## Первый запуск
 
-1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`.
+1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`, а также из `./install.sh`.
 2. **Конфиг** — `app/app_config/user_config.yaml`. Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
 4. **Камеры** — Настройки → Камеры: stream names из Go2RTC.
