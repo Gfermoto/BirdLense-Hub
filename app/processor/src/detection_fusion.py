@@ -5,6 +5,7 @@ from typing import Iterable
 
 from multi_camera_confidence import apply_multi_camera_confidence_boost
 from species_normalizer import merge_detections, normalize
+from fusion_model import FusionScorer
 
 
 def _species_mapping(app_config) -> dict:
@@ -86,6 +87,47 @@ def build_fused_video_detections(
         frigate_events,
         app_config,
     )
+    # Optional learned fusion/calibration step. If enabled, the learned scorer
+    # produces a calibrated probability from multimodal features and is blended
+    # with the existing rule-based confidence.
+    try:
+        use_learned = bool(app_config.get('detection.use_learned_fusion') or False)
+    except Exception:
+        use_learned = False
+    if use_learned:
+        alpha = float(app_config.get('detection.fusion_alpha') or 0.6)
+        model_path = app_config.get('detection.fusion_model_path') or None
+        scorer = FusionScorer(model_path=model_path)
+        for d in fused:
+            # Build a small feature vector from available fields.
+            features = {
+                'detector_conf': (
+                    d.get('detector_confidence')
+                    or d.get('detector_conf')
+                    or d.get('confidence')
+                    or 0.0
+                ),
+                'classifier_conf': (
+                    d.get('classifier_confidence')
+                    or d.get('classifier_conf')
+                    or d.get('confidence')
+                    or 0.0
+                ),
+                'birdnet_prior': float(d.get('_birdnet_prior') or 0.0),
+                'key_frame_score': float(d.get('best_frame_score') or 0.0),
+                'key_frame_count': int(d.get('key_frame_count') or 0),
+                'multi_camera_count': int(d.get('_multi_camera_count') or 0),
+            }
+            try:
+                fused_score = float(scorer.score(features) or 0.0)
+            except Exception:
+                fused_score = 0.0
+            # blend learned score with existing confidence to be conservative by default
+            base_conf = float(d.get('confidence') or 0.0)
+            final_conf = alpha * fused_score + (1 - alpha) * base_conf
+            d['confidence'] = float(final_conf)
+            d['_fusion_used'] = 'learned'
+            d['_fusion_score'] = fused_score
     min_conf_store = float(
         app_config.get('detection.min_confidence_to_store') or 0.05
     )

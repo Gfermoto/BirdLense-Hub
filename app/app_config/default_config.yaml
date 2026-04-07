@@ -168,6 +168,11 @@ detection:
   cross_source_confidence_bonus: 0.02
   # Не ниже практического порога классификатора; синхронизировано с processor.min_confidence_to_process
   min_confidence_to_store: 0.30
+  # Learned fusion: optional learned scorer to blend multimodal signals and produce
+  # a calibrated confidence. Disabled by default for safety.
+  use_learned_fusion: false
+  fusion_model_path: ""  # optional path to serialized PyTorch model for fusion scorer
+  fusion_alpha: 0.6      # blend weight for learned score (alpha * learned + (1-alpha) * base)
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
