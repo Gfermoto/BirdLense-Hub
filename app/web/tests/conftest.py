@@ -53,3 +53,35 @@ def app():
 def client(app):
     """Flask test client."""
     return app.test_client()
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_test_state():
+    """Autouse fixture to reset global in-memory caches and module-level status between tests.
+
+    This avoids test-ordering flakiness caused by shared process-level state
+    (in-memory cache, module-level status dicts, MQTT clients).
+    """
+    # Reset in-memory cache store
+    try:
+        from services import cache as _cache
+        with _cache._lock:
+            _cache._store.clear()
+    except Exception:
+        pass
+    # Reset UI status globals
+    try:
+        import routes.ui_system_routes as _uis
+        _uis._regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _uis._catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+    except Exception:
+        pass
+    # Reset feed service mqtt client
+    try:
+        import services.feed_service as _fs
+        _fs._mqtt_client = None
+    except Exception:
+        pass
+    yield

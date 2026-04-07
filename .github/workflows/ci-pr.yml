@@ -145,6 +145,10 @@ jobs:
           test -f .env || cp .env.example .env
           mkdir -p data/db data/recordings
 
+      - name: Processor .pt weights for integration tests
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/fetch-processor-weights.sh
+
       - name: Build birdlense image
         run: docker compose build birdlense
         env:

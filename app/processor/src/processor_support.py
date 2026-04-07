@@ -10,6 +10,11 @@ from api import API
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
 processor_status = {'last_video_ok_at': None, 'last_yolo_ok_at': None}
 
+
+def get_data_dir() -> str:
+    """Каталог данных процессора (записи, логи, флаги). Совпадает с DATA_DIR в Docker."""
+    return (os.environ.get('DATA_DIR') or 'data').strip() or 'data'
+
 # MQTT-агрегатор для поля mqtt_connected в heartbeat (пишет main())
 heartbeat_mqtt_ref = [None]
 
@@ -22,7 +27,7 @@ def _setup_logging():
         h = logging.StreamHandler()
         h.setFormatter(logging.Formatter(fmt))
         root.addHandler(h)
-    data_dir = os.environ.get('DATA_DIR', 'data')
+    data_dir = get_data_dir()
     log_path = os.path.join(data_dir, 'processor.log')
     try:
         from logging.handlers import RotatingFileHandler
@@ -44,7 +49,7 @@ _setup_logging()
 
 def get_output_path():
     """Каталог и логический путь для новой записи video.mp4."""
-    data_dir = os.environ.get('DATA_DIR', 'data')
+    data_dir = get_data_dir()
     subpath = time.strftime('%Y/%m/%d/%H%M%S')
     output_dir = os.path.join(data_dir, 'recordings', subpath)
     os.makedirs(output_dir, exist_ok=True)
@@ -53,7 +58,7 @@ def get_output_path():
 
 def restart_flag_path():
     """Путь к флагу мягкого перезапуска процессора."""
-    data_dir = os.environ.get('DATA_DIR', 'data')
+    data_dir = get_data_dir()
     return os.path.join(data_dir, 'restart_processor.flag')
 
 

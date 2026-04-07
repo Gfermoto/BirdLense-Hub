@@ -2,7 +2,6 @@
 import os
 import sys
 import unittest
-from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,20 +30,19 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
         )
 
     def test_adds_species_from_recent_birdnet(self):
-        now = datetime.now(timezone.utc)
-        ev = {
-            'source': 'birdnet',
-            'species': 'Great Tit',
-            'timestamp': now.isoformat(),
-        }
         agg = MagicMock()
-        agg.get_events_in_window.return_value = [ev]
+        agg.get_birdnet_prior_scores.return_value = {
+            'Great Tit': {'score': 1.0, 'support_count': 1}
+        }
 
         cfg = {
             'processor.birdnet_mqtt_auto_confidence': True,
             'processor.min_confidence_to_process': 0.3,
             'processor.birdnet_mqtt_bias_delta': 0.05,
             'processor.birdnet_mqtt_bias_floor': 0.05,
+            'processor.birdnet_mqtt_prior_window_hours': 24,
+            'processor.birdnet_mqtt_prior_ttl_hours': 25,
+            'processor.birdnet_mqtt_prior_half_life_hours': 6,
             'detection.species_mapping': {},
         }
         out = merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
@@ -52,14 +50,10 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
         self.assertAlmostEqual(out['Great Tit'], 0.25)
 
     def test_manual_override_preserved(self):
-        now = datetime.now(timezone.utc)
-        ev = {
-            'source': 'birdnet',
-            'species': 'Great Tit',
-            'timestamp': now.isoformat(),
-        }
         agg = MagicMock()
-        agg.get_events_in_window.return_value = [ev]
+        agg.get_birdnet_prior_scores.return_value = {
+            'Great Tit': {'score': 1.0, 'support_count': 1}
+        }
         cfg = {
             'processor.birdnet_mqtt_auto_confidence': True,
             'processor.min_confidence_to_process': 0.3,
@@ -68,6 +62,21 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
         base = {'Great Tit': 0.08}
         out = merge_birdnet_mqtt_bias_into_overrides(base, cfg, agg)
         self.assertEqual(out['Great Tit'], 0.08)
+
+    def test_prior_score_scales_threshold_reduction(self):
+        agg = MagicMock()
+        agg.get_birdnet_prior_scores.return_value = {
+            'Great Tit': {'score': 0.4, 'support_count': 1}
+        }
+        cfg = {
+            'processor.birdnet_mqtt_auto_confidence': True,
+            'processor.min_confidence_to_process': 0.3,
+            'processor.birdnet_mqtt_bias_delta': 0.05,
+            'processor.birdnet_mqtt_bias_floor': 0.05,
+            'detection.species_mapping': {},
+        }
+        out = merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
+        self.assertAlmostEqual(out['Great Tit'], 0.28)
 
 
 if __name__ == '__main__':

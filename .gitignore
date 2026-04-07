@@ -16,6 +16,10 @@ scripts/datasets/.cache/
 .venv-datasets/
 app/.venv/
 
+# Local virtualenv created by developer tooling
+.venv/
+# Local model weight (do not commit large model blobs)
+app/yolo11n.pt
 # Настройки — не коммитить (только шаблоны в репо)
 user_config.yaml
 app/app_config/user_config.yaml

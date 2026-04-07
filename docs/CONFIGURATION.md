@@ -84,13 +84,13 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.21** |
-| `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Default **2**. Short visits: if too high, only Frigate MQTT may appear in merge. Raise to 2.5–3 if you get flicker. |
-| `min_confidence_to_process` | Classifier threshold: species (voting × avg conf). Default **0.32**. Lower = more detections, higher = stricter |
+| `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
+| `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Lower = more accepted species, higher = stricter classifier acceptance. |
 | `species_confidence_overrides` | Per-species thresholds: `{"Rare Bird": 0.05}` |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.05`). |
 | `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.05`). |
-| `birdnet_mqtt_auto_confidence` | If **true**, lower classifier thresholds for species seen in **recent** BirdNET MQTT messages (similar to eBird top). Default **false**. Manual `species_confidence_overrides` win. See [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
+| `birdnet_mqtt_auto_confidence` | If **true**, lower classifier thresholds for species seen in **recent** BirdNET MQTT messages (similar to eBird top). BirdNET is **confidence-only** here: it never creates a final video label. Manual `species_confidence_overrides` win. See [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
 | `birdnet_mqtt_bias_window_seconds` | Look-back window from recording start for BirdNET species (seconds, default 120). |
 | `birdnet_mqtt_bias_delta` | Subtracted from `min_confidence_to_process` for auto BirdNET species (default `0.05`). |
 | `birdnet_mqtt_bias_floor` | Minimum auto threshold for BirdNET bias (default `0.05`). |
@@ -98,12 +98,14 @@ The System page also lists these endpoints under **Notification observability** 
 | `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.05`, capped at 1.0). |
 | `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
 | `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
-| `regional_species` | Local species for BirdNET (empty = YOLO all classes) |
-| `single_stage_coco_animals_only_auto` | Default **true**: if single_stage loads a model with **exactly 80** classes (typical COCO, e.g. `yolov8n.pt`), detect only **animal** classes (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe) — excludes **person** and inanimate COCO objects. Set **false** for a custom 80-class detector. Legacy: `single_stage_coco_bird_only_auto` is read if this key is unset. |
+| `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
+| `detector_scope` | First-stage detector targets. Production default: `["Bird", "Squirrel"]`. |
+| `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
+| `single_stage_coco_animals_only_auto` | Deprecated compatibility key. Production runtime uses only `two_stage`. |
 | `included_bird_families` | Family filter list (Perching Birds, Squirrel, …) |
 | `save_images` | Save detection frames |
-| `detection_strategy` | `single_stage` or `two_stage` |
-| `models.single_stage` | Single-stage model path (NCNN) |
+| `detection_strategy` | Production runtime uses `two_stage` only. Other values are ignored with a warning. |
+| `models.single_stage` | Deprecated compatibility path; not used by the production runtime. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
 
@@ -128,7 +130,7 @@ The System page also lists these endpoints under **Notification observability** 
 |-----|-------------|
 | `source` | `opencv` \| `frigate` \| `mqtt` \| `esphome` |
 | `frigate_camera_filter` | Frigate cameras (from `cameras`) or empty = all |
-| `frigate_label_filter` | Frigate labels to allow (bird, Bird) |
+| `frigate_label_filter` | Frigate labels that may trigger recording (`bird`, `Bird`, `squirrel`, `Squirrel` by default). Triggering does **not** assign the final label on its own. |
 | `frigate_label_exclude` | Labels to ignore (cat, dog — mouse as cat) |
 | `mqtt_topic` | MQTT binary sensor topic (Tasmota PIR) |
 | `esphome_url` | ESPHome URL |
@@ -138,7 +140,7 @@ The System page also lists these endpoints under **Notification observability** 
 
 ## MQTT
 
-One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when MQTT), ESPHome, MQTT binary, OpenCV. YOLO runs after trigger.
+One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT binary, OpenCV, and other motion/event sources. Final labels still come from the shared detector/classifier fusion path.
 
 | Key | Description |
 |-----|-------------|
@@ -153,7 +155,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 **Topics:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (publish), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Feeder relay: `homeassistant/switch/bird_feeder/command`.
 
-**BirdNET:** `CommonName`, `Confidence`, `BeginTime` (merge), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label`.
+**BirdNET:** `CommonName`, `Confidence`, `BeginTime`, `ScientificName`, `BirdImage.URL`. BirdNET affects classifier confidence only. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label` and may promote a generic detector fallback when the video detector already confirmed a target.
 
 **Missed-event note:** during outages, MQTT events can be missed and are usually not replayed later (Frigate events are typically a live stream, not backlog replay). Use Frigate recording/clip retention as the source of historical truth.
 
@@ -196,9 +198,14 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 ---
 
-## Detection (merge YOLO + Frigate + BirdNET)
+## Detection (shared fusion path)
 
-**Sources:** YOLO (video, EU ~491 species), Frigate (`sub_label` from [Bird Classification](https://docs.frigate.video/configuration/bird_classification/)), BirdNET (audio). UI shows source per species. One result per species (max confidence).
+**Production path:** trigger source -> detector (`Bird | Squirrel`) -> YOLO species classifier -> fusion -> persistence.
+
+**Source semantics:**
+- YOLO detector/classifier is the primary source of every persisted video detection.
+- Frigate is a helper source: it can promote a generic detector fallback or add a confidence boost when it agrees with the video track.
+- BirdNET is confidence-only for video. It can bias thresholds before the classifier decision but does not create a final video label.
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 
@@ -211,9 +218,9 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `merge_window_seconds` | MQTT merge window (8 s) |
 | `dedup_window_seconds` | Gap > N s = new visit (60 s) |
 | `one_per_species` | One result per species (true) |
-| `source_priority` | On conflict: `["yolo", "frigate", "birdnet"]` |
-| `cross_source_confidence_bonus` | When MQTT (Frigate/BirdNET) first merges into an existing YOLO detection, add this to confidence once (cap 1.0). Default **0.02** — small lift without retraining. Set `0` to disable. |
-| `min_confidence_to_store` | Min merged confidence to persist (default **0.30**). Keep at or below effective classifier floor. |
+| `source_priority` | Conflict resolution order for fused sources. Default production order: `["yolo", "frigate"]`. |
+| `cross_source_confidence_bonus` | When Frigate first confirms an existing YOLO detection, add this to confidence once (cap 1.0). Set `0` to disable. |
+| `min_confidence_to_store` | Min fused confidence to persist (default **0.30**). Also used as the floor for detector-label fallbacks. |
 | `species_mapping` | Species name mapping |
 
 **EU model:** `best.pt`. US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
