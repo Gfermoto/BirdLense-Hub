@@ -898,6 +898,63 @@ export const fetchTrackRegenSpeciesOptions = async (): Promise<
   return response.data;
 };
 
+export interface TrackRegenerationJobStatus {
+  status: string;
+  result?: unknown;
+  error?: string | null;
+  progress?: unknown;
+}
+
+export const fetchTrackRegenerationStatus =
+  async (): Promise<TrackRegenerationJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/regenerate-tracks/status`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
+
+/** Перегенерация YOLO-треков для одной записи (только админ при двух паролях). */
+export const regenerateTracksForSingleVideo = async (
+  videoId: number,
+  options?: { force?: boolean },
+): Promise<{ message: string; started: boolean; video_id: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/videos/${videoId}/regenerate-tracks`,
+    { force: options?.force === true },
+    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
+  );
+  return response.data;
+};
+
+export interface SpectrogramRegenerationJobStatus {
+  status: string;
+  result?: unknown;
+  error?: string | null;
+  progress?: unknown;
+}
+
+export const fetchSpectrogramRegenerationStatus =
+  async (): Promise<SpectrogramRegenerationJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/regenerate-spectrograms/status`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
+
+/** Пересборка спектрограммы для одной записи (только админ при двух паролях). */
+export const regenerateSpectrogramForSingleVideo = async (
+  videoId: number,
+): Promise<{ message: string; started: boolean; video_id: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/videos/${videoId}/regenerate-spectrogram`,
+    {},
+    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
+  );
+  return response.data;
+};
+
 export interface MigrationCalendarData {
   species: Array<{
     id: number | null;

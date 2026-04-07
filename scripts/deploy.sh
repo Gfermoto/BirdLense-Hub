@@ -53,12 +53,14 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
+# Не удалять на сервере .pt при деплое с машины без весов (модификатор P в rsync, не слово protect).
+RSYNC_FILTER_PROTECT=(--filter "P app/processor/models/detection/weights/*.pt" --filter "P app/processor/models/classification/weights/*.pt")
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
-    rsync -a --delete ${RSYNC_EXCLUDES} ./ "${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -a --delete ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
   else
-    rsync -avz --delete -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -avz --delete -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
   fi
   echo "  Попытка ${attempt}/${SYNC_RETRIES} не удалась, повтор через 5 сек..."
   sleep 5

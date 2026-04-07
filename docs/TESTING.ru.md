@@ -26,9 +26,9 @@ Job **`docker-tests`** входит в **required checks** ruleset **Protect** �
 cd app && make test
 ```
 
-Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужны ultralytics, ncnn — тесты выполняются в контейнере.
+Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужен ultralytics; **в продакшене только two_stage** — бинарный детектор `.pt` + классификатор `.pt` (в CI: `scripts/fetch-processor-weights.sh`; локально — тот же скрипт перед `make test`, если весов нет).
 
-> **Память (RAM):** тесты процессора поднимают YOLO/NCNN в контейнере и могут занять **несколько ГБ ОЗУ**. На **слабом VPS или ноутбуке** с лимитом памяти `make test` (или job **`docker-tests`** в CI) может завершиться **SIGKILL / код 137** (OOM). Лучше **≥8 ГБ** свободно под Docker, закрыть тяжёлые приложения или гонять тесты на **GitHub Actions**, а не только локально.
+> **Память (RAM):** тесты процессора поднимают YOLO в контейнере и могут занять **несколько ГБ ОЗУ**. На **слабом VPS или ноутбуке** с лимитом памяти `make test` (или job **`docker-tests`** в CI) может завершиться **SIGKILL / код 137** (OOM). Лучше **≥8 ГБ** свободно под Docker, закрыть тяжёлые приложения или гонять тесты на **GitHub Actions**, а не только локально.
 
 ### API-тесты (web)
 
@@ -302,7 +302,7 @@ curl -s http://YOUR_HOST:8085/api/ui/status
 |--------|------------|
 | 403 | `API request failed` + `403` |
 | Падение | `Traceback`, `Error`, `Exception` в processor.log |
-| Модели не загружаются | `Loading ... ncnn_model` + `Error` |
+| Модели не загружаются | `YOLO ... best.pt` / `Error`, или `fetch-processor-weights.sh` не запускали |
 | Нет Go2RTC | `video.go2rtc_url не задан`, `waiting_cameras` |
 | Нет motion | `Frigate MQTT not connected`, `falling back to OpenCV` |
 | Frigate не триггерит | `Frigate event skipped` — проверить camera_filter, label_filter |

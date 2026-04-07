@@ -144,8 +144,11 @@ class TestMetrics:
 class TestLibraryDatasetFlow:
     """Smoke for critical Library dataset happy-path endpoints."""
 
-    def test_library_dataset_endpoints_smoke(self, app, client):
+    def test_library_dataset_endpoints_smoke(self, app, client, monkeypatch):
         from app_config.app_config import app_config
+
+        monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+        monkeypatch.delenv('FLASK_ENV', raising=False)
 
         with app.app_context():
             old_admin = app_config.get('general.settings_password')
@@ -178,6 +181,12 @@ class TestLibraryDatasetFlow:
                 )
                 assert r_tracks_bad_species_ids.status_code == 400
                 assert 'species_ids' in (r_tracks_bad_species_ids.json.get('error') or '')
+
+                r_tracks_one_missing = client.post(
+                    '/api/ui/videos/999999/regenerate-tracks',
+                    json={},
+                )
+                assert r_tracks_one_missing.status_code == 404
 
                 r_clean = client.post('/api/ui/dataset/clean', json={
                     'dry_run': True,

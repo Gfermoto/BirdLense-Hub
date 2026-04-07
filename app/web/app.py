@@ -230,4 +230,11 @@ def create_app():
     return app
 
 
-app = create_app()
+# Do not create the app automatically on import in test environments.
+# Tests use the `create_app` factory directly. For production (gunicorn),
+# set FLASK_CREATE_APP_ON_IMPORT=1 (default) or ensure WSGI loads the factory.
+_create_on_import = os.environ.get('FLASK_CREATE_APP_ON_IMPORT', '1').strip().lower()
+if _create_on_import in ('1', 'true', 'yes') and not os.environ.get('FLASK_TESTING'):
+    app = create_app()
+else:
+    app = None

@@ -67,6 +67,16 @@ def settings_check_access():
     return False
 
 
+def admin_track_regen_access():
+    """Тяжёлая перегенерация треков (одна запись): только админ, если включён пароль помощника."""
+    from flask import session
+    if not settings_check_access():
+        return False
+    if not _has_contributor_password():
+        return True
+    return session.get('access_role') == 'admin'
+
+
 def contributor_or_admin_access():
     """Check if contributor or admin can access a route."""
     from flask import session

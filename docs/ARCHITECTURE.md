@@ -38,23 +38,25 @@ High-level layout of the single-container app, data paths, and integrations. For
 1. **Go2RTC** (external) — RTSP / WebRTC / HLS into the hub.
 2. **Processor** reads frames from Go2RTC.
 3. **Motion** (OpenCV, Frigate MQTT, plain MQTT, or ESPHome) starts a recording segment.
-4. **YOLO** — bird/squirrel detection and species classification.
-5. **ByteTrack** — multi-object tracking.
-6. **Write** — `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`.
-7. **Spectrogram** (when BirdNET is in the merge window) — FFmpeg + librosa → e.g. `spectrogram_200.jpg`.
-8. **API** — processor `POST /api/processor/videos` with detection payload.
+4. **Detector** — first-stage target confirmation (`Bird | Squirrel`).
+5. **YOLO classifier** — species classification for detector-confirmed tracks.
+6. **ByteTrack** — multi-object tracking and per-frame boxes.
+7. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters.
+8. **Write** — `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`.
+9. **Spectrogram** (when enabled / needed) — FFmpeg + librosa → e.g. `spectrogram_200.jpg`.
+10. **API** — processor `POST /api/processor/videos` with fused detection payload.
 
 ### Frigate (optional)
 
 1. Frigate publishes to MQTT (e.g. `frigate/events`).
 2. **Bird Classification** in Frigate (`classification.bird.enabled: true`) adds `sub_label` (species).
-3. Processor merges `sub_label` with YOLO output (see [CONFIGURATION](./CONFIGURATION.md) → Detection).
+3. Processor uses Frigate as a helper source in fusion: it may promote a generic detector fallback or boost confidence, but it does not create a persisted video detection on its own.
 
 ### BirdNET (optional)
 
 1. BirdNET-Pi / BirdNET-Go publishes to MQTT (e.g. topic `birdnet`).
 2. Processor **MQTTEventAggregator** consumes messages.
-3. Detections merge with video results using `merge_window_seconds`.
+3. BirdNET adjusts classifier confidence thresholds and other confidence logic, but it does not create final video labels.
 
 **Models:** EU classifier (~491 species) in `best.pt`; US (NABirds) backup `best_US.pt`. See [TRAINING](./TRAINING.md).
 
