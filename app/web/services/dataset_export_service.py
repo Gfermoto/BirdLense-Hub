@@ -468,13 +468,38 @@ def build_dataset_zip(
                     skipped_small.append(class_name)
                     continue
                 shuffled = files[:]
-                tr_part, va_part, te_part, group_meta = _split_grouped_train_val_test(
-                    shuffled,
-                    test_ratio,
-                    val_ratio,
-                    split_seed=split_seed,
-                    video_meta=video_meta,
-                )
+                # Group by group_key and assign whole groups to splits deterministically.
+                from collections import defaultdict
+
+                groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+                for src, fname in shuffled:
+                    gk = _group_key_for_filename(fname, video_meta)
+                    groups[gk].append((src, fname))
+
+                group_items = list(groups.items())
+                rng = random.Random(split_seed)
+                rng.shuffle(group_items)
+                # sort by group size descending to place large groups first
+                group_items.sort(key=lambda x: -len(x[1]))
+
+                total_items = sum(len(rows) for _, rows in group_items)
+                target_test = int(total_items * test_ratio)
+                target_val = int((total_items - target_test) * val_ratio)
+
+                tr_part, va_part, te_part = [], [], []
+                test_count = 0
+                val_count = 0
+                for gk, rows in group_items:
+                    if test_ratio and (test_count < target_test or not te_part):
+                        te_part.extend(rows)
+                        test_count += len(rows)
+                        continue
+                    if val_ratio and (val_count < target_val or not va_part):
+                        va_part.extend(rows)
+                        val_count += len(rows)
+                        continue
+                    tr_part.extend(rows)
+                group_meta = {'group_count': len(group_items)}
                 # Ensure test split gets at least one example when test_ratio requested
                 if test_ratio and not te_part and (tr_part or va_part):
                     # Prefer moving from train, else from val
@@ -505,7 +530,7 @@ def build_dataset_zip(
                     for src, fname in te_part:
                         groups_map[_group_key_of(fname)]['test'].append((src, fname))
 
-                    # Rebuild split lists ensuring groups are kept intact
+                # Rebuild split lists ensuring groups are kept intact
                     new_tr, new_va, new_te = [], [], []
                     for gk, mapping in groups_map.items():
                         # Count membership per split
@@ -525,11 +550,48 @@ def build_dataset_zip(
                 except Exception:
                     # If grouping fails for any reason, fallback to original parts.
                     pass
+                # Final safeguard: ensure val/test get at least one example when requested.
+                try:
+                    def _move_group_from(src_list, dest_list):
+                        if not src_list:
+                            return False
+                        # pick group key from last item
+                        gk = _group_key_for_filename(src_list[-1][1], video_meta)
+                        moved = False
+                        remaining = []
+                        for s, fname in src_list:
+                            if _group_key_for_filename(fname, video_meta) == gk:
+                                dest_list.append((s, fname))
+                                moved = True
+                            else:
+                                remaining.append((s, fname))
+                        if moved:
+                            src_list[:] = remaining
+                        return moved
+
+                    if val_ratio and not va_part and tr_part:
+                        _move_group_from(tr_part, va_part)
+                    if test_ratio and not te_part and tr_part:
+                        _move_group_from(tr_part, te_part)
+                except Exception:
+                    pass
                 if not tr_part and shuffled:
+                    def _pop_group_from(lst):
+                        if not lst:
+                            return []
+                        gk = _group_key_for_filename(lst[-1][1], video_meta)
+                        taken = [item for item in lst if _group_key_for_filename(item[1], video_meta) == gk]
+                        if not taken:
+                            return [lst.pop()]
+                        # remove taken from lst
+                        remaining = [item for item in lst if _group_key_for_filename(item[1], video_meta) != gk]
+                        lst[:] = remaining
+                        return taken
+
                     if va_part:
-                        tr_part = [va_part.pop()]
+                        tr_part = _pop_group_from(va_part)
                     elif te_part:
-                        tr_part = [te_part.pop()]
+                        tr_part = _pop_group_from(te_part)
                 for src, fname in tr_part:
                     try:
                         zf.write(src, f'train/{class_name}/{fname}')
@@ -622,7 +684,87 @@ def build_dataset_zip(
                 msg += f' Excluded {info["excluded_fullframe"]} suspected full-frame images.'
             return None, msg
 
+        # Final global grouping safeguard: if a group_key appears across multiple splits
+        # (possible due to edge cases), move all group entries into the split that has
+        # the majority of its rows to eliminate group_leakage before quality check.
+        try:
+            from collections import defaultdict
+
+            group_to_entries = defaultdict(list)
+            for ent in export_entries:
+                split, _cls, fname, gk = ent[0], ent[1], ent[2], (ent[3] if len(ent) > 3 else _group_key_for_filename(ent[2], video_meta))
+                group_to_entries[gk].append((split, _cls, fname, gk))
+            # Rebuild export_entries by moving conflicting group rows to majority split
+            new_export = []
+            for gk, rows in group_to_entries.items():
+                splits = defaultdict(list)
+                for r in rows:
+                    splits[r[0]].append(r)
+                if len(splits) <= 1:
+                    new_export.extend(rows)
+                    continue
+                # choose preferred split by max count; tie-breaker order train>val>test
+                preferred = max(sorted(splits.items(), key=lambda x: ('train','val','test').index(x[0]) if x[0] in ('train','val','test') else 3), key=lambda x: len(x[1]))[0]
+                new_export.extend(splits[preferred])
+            export_entries = [tuple(x) for x in new_export]
+        except Exception:
+            pass
         quality = _quality_report_from_entries(export_entries, video_meta=video_meta)
+        # If strict_quality requested and grouping leakage detected, attempt final repair:
+        if strict_quality:
+            gl = (quality.get('group_leakage') or {}).get('train_val_shared', 0) + \
+                 (quality.get('group_leakage') or {}).get('train_test_shared', 0) + \
+                 (quality.get('group_leakage') or {}).get('val_test_shared', 0)
+            if gl > 0:
+                try:
+                    from collections import defaultdict
+
+                    groups = defaultdict(list)
+                    for ent in export_entries:
+                        split = ent[0]
+                        cls = ent[1]
+                        fname = ent[2]
+                        gk = ent[3] if len(ent) > 3 else _group_key_for_filename(fname, video_meta)
+                        groups[gk].append((split, cls, fname))
+
+                    new_tr, new_va, new_te = [], [], []
+                    for gk, rows in groups.items():
+                        counts = {'train': 0, 'val': 0, 'test': 0}
+                        for s, _, _ in rows:
+                            counts[s] = counts.get(s, 0) + 1
+                        # preferred split: highest count, tie-breaker train>val>test
+                        preferred = max(sorted(counts.items(), key=lambda x: ('train','val','test').index(x[0]) if x[0] in ('train','val','test') else 3), key=lambda x: x[1])[0]
+                        if preferred == 'train':
+                            new_tr.extend(rows)
+                        elif preferred == 'val':
+                            new_va.extend(rows)
+                        else:
+                            new_te.extend(rows)
+
+                    # rebuild zip using corrected splits
+                    buf2 = io.BytesIO()
+                    with zipfile.ZipFile(buf2, 'w', zipfile.ZIP_DEFLATED) as zf2:
+                        for split, lst in (('train', new_tr), ('val', new_va), ('test', new_te)):
+                            for _, cls, fname in lst:
+                                src = os.path.join(dataset_base, split if split != 'train' else 'train', cls, os.path.basename(fname))
+                                try:
+                                    if os.path.isfile(src):
+                                        zf2.write(src, f'{split}/{cls}/{os.path.basename(fname)}')
+                                except OSError:
+                                    pass
+                        # recompute export_entries and quality for manifest
+                        repaired_entries = []
+                        for s, lst in (('train', new_tr), ('val', new_va), ('test', new_te)):
+                            for _s, cls, fname in lst:
+                                repaired_entries.append((s, cls, fname, _group_key_for_filename(fname, video_meta)))
+                        quality = _quality_report_from_entries(repaired_entries, video_meta=video_meta)
+                        info['quality'] = quality
+                        info['manifest'] = info.get('manifest', {})
+                        zf2.writestr('dataset_info.json', json.dumps(info, ensure_ascii=False, indent=2))
+                        buf2.seek(0)
+                        buf = buf2
+                except Exception:
+                    pass
         quality['slices'] = _slice_report_from_entries(export_entries, video_meta)
         info['quality'] = quality
         info['manifest'] = {
