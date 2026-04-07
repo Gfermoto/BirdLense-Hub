@@ -325,6 +325,8 @@ def test_system_observability_includes_delivery_and_fallback_counts(app, client)
             assert payload['notify_delivery_24h']['photo'] >= 1
             assert payload['notify_delivery_24h']['text_fallback'] >= 1
             assert payload['notify_fallback_24h']['telegram_photo_failed'] >= 1
+            assert 'rolling_7d' in payload['ml_health']
+            assert 'config_fingerprint' in payload['model_lineage']
             assert 'json_summary' in payload['hub_metrics']
         finally:
             app_config.set('general.settings_password', old_admin)
@@ -367,6 +369,7 @@ def test_system_observability_ignores_processor_preview_generation_rows(app, cli
             assert payload['notify_preview_24h']['best_frame'] == 1
             assert payload['notify_delivery_24h']['photo'] == 1
             assert payload['notify_delivery_24h']['unknown'] == 0
+            assert payload['ml_health']['rolling_30d']['window_days'] == 30
         finally:
             app_config.set('general.settings_password', old_admin)
             app_config.set('general.contributor_password', old_contrib)

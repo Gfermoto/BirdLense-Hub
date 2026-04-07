@@ -1329,6 +1329,21 @@ components:
         updated_count:
           type: integer
           nullable: true
+        apply_scope:
+          type: string
+          enum: [single_track, whole_visit, legacy_fanout]
+        reason:
+          type: string
+          nullable: true
+        video_id:
+          type: integer
+          nullable: true
+        track_id:
+          type: integer
+          nullable: true
+        species_visit_id:
+          type: integer
+          nullable: true
     StorageStats:
       type: object
       properties:

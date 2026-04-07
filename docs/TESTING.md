@@ -26,7 +26,7 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **CI** runs:
 cd app && make test
 ```
 
-Runs processor `unittest` inside Docker (detection strategy, decision logic). Requires ultralytics; **production path is two_stage** (binary `.pt` + classifier `.pt`; CI runs `scripts/fetch-processor-weights.sh`; locally run the same before `make test` if paths are empty).
+Runs processor `unittest` inside Docker (detection strategy, decision logic). Requires ultralytics; **production path is two_stage** (binary `.pt` + classifier `.pt`; CI runs `scripts/fetch-processor-weights.sh` for the active pair, and `--legacy-single-stage` is only for the compatibility `app/yolo11n.pt`; locally run the same before `make test` if paths are empty).
 
 > **Memory / RAM:** Processor tests load YOLO inside the container and can use **several GB of RAM**. On a **small VPS or laptop** with tight limits, `make test` (or the **`docker-tests`** CI job) may exit with **SIGKILL / exit 137** (OOM). Prefer a machine with **≥8 GB** free for Docker, close other heavy apps, or run tests on **GitHub Actions** instead of locally.
 

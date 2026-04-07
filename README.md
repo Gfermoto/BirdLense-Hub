@@ -22,14 +22,14 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
-| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — unchanged in EU training |
-| **Classifier** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) or birds-525 + iNaturalist (≈490) | US or EU |
+| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — unchanged in EU training |
+| **Classifier** | YOLO11n-cls | birds-525 + iNaturalist (≈490) | EU default; US/NABirds is optional backup |
 
 **Current model:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
 
 **EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
 
-**Runtime weights:** large processor weights are stored in GitHub Releases, not in git history. Use `scripts/fetch-processor-weights.sh` to download and verify `app/yolo11n.pt` against `CHECKSUMS` before running smoke or deployment.
+**Runtime weights:** the active runtime is the two-stage pair at `app/processor/models/detection/weights/best.pt` and `app/processor/models/classification/weights/best.pt`. In `app/processor/models/`, keep only runtime artifacts like `best.pt` and `class_names.txt`; CSVs, `args.yaml`, NCNN exports, and notebook checkpoints are training leftovers and can be removed or regenerated. `app/yolo11n.pt` is legacy compatibility-only and is fetched only with `scripts/fetch-processor-weights.sh --legacy-single-stage`.
 
 **Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
 
@@ -95,7 +95,7 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 - **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
 - **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
-- **Weights workflow:** `scripts/fetch-processor-weights.sh` + `CHECKSUMS` + GitHub Release `weights/v1` keep runtime weights reproducible and outside git history.
+- **Weights workflow:** `scripts/fetch-processor-weights.sh` prefers the two-stage detector/classifier paths; use `--legacy-single-stage` only if you explicitly need the compatibility `app/yolo11n.pt` asset from GitHub Release `weights/v1`.
 
 ## Requirements
 

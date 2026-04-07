@@ -50,8 +50,8 @@ COPY web/ ./web/
 COPY processor/ ./processor/
 COPY app_config/ ./app_config/
 COPY scripts/ ./scripts/
-# two_stage: .pt не в git; бинарник из zip в репозитории, EU-классификатор с Hugging Face.
-# Пропуск, если в контексте сборки уже лежат свои веса (локальная дообученная best.pt).
+# two_stage: .pt не в git; бинарный детектор должен быть предоставлен в контексте сборки,
+# EU-классификатор скачивается с Hugging Face. Если свои веса уже лежат в контексте, пропускаем скачивание.
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
     && if [ ! -s processor/models/detection/weights/best.pt ]; then \
          unzip -j -o processor/models/detection/nabirds_yolo11n_binary.zip weights/best.pt \

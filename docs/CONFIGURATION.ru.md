@@ -105,7 +105,7 @@
 | `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
 | `save_images` | Сохранять кадры детекций |
 | `detection_strategy` | В production используется только `two_stage`; другие значения игнорируются с warning. |
-| `models.single_stage` | Устаревший compat-path; в production runtime не используется. |
+| `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
 

@@ -511,6 +511,39 @@ export type ObservabilityPayload = {
   notify_preview_24h: Record<string, number>;
   notify_fallback_24h: Record<string, number>;
   notify_delivery_24h: Record<string, number>;
+  ml_health: {
+    rolling_7d: {
+      window_days: number;
+      video_detections: number;
+      corrections_logged: number;
+      species_change_actions: number;
+      correction_rate: number;
+      manual_annotation_rate: number;
+      unknown_rate: number;
+      generic_rate: number;
+    };
+    rolling_30d: {
+      window_days: number;
+      video_detections: number;
+      corrections_logged: number;
+      species_change_actions: number;
+      correction_rate: number;
+      manual_annotation_rate: number;
+      unknown_rate: number;
+      generic_rate: number;
+    };
+  };
+  model_lineage: {
+    config_fingerprint: string;
+    artifacts: Record<
+      string,
+      {
+        configured_path: string | null;
+        exists: boolean;
+        sha256: string | null;
+      }
+    >;
+  };
   hub_metrics: {
     prometheus_text: string;
     prometheus_text_alt: string;

@@ -118,6 +118,11 @@ def register_ui_system_metrics_routes(app):
                 'notify_preview_generated_24h': preview_generated,
                 'notify_fallback_24h': fallback,
                 'notify_delivery_24h': delivery,
+                'ml_health': {
+                    'rolling_7d': uis._ml_health_snapshot(7),
+                    'rolling_30d': uis._ml_health_snapshot(30),
+                },
+                'model_lineage': uis._current_model_lineage_snapshot(),
                 'hub_metrics': {
                     'prometheus_text': '/metrics',
                     'prometheus_text_alt': '/api/metrics',

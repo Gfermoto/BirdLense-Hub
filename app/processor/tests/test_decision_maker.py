@@ -155,6 +155,7 @@ class TestDecisionMaker(unittest.TestCase):
             decisions[0]['decision_reason'],
             'rejected_classifier_fallback_disabled',
         )
+        self.assertEqual(decisions[0]['reject_reason_code'], 'low_confidence')
         self.assertEqual(decisions[0]['trust_band'], 'red')
 
     def test_detector_only_squirrel_fallback(self):
@@ -269,6 +270,29 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(decisions[0]['key_frame_count'], 2)
         self.assertAlmostEqual(decisions[0]['best_frame_score'], 7.5)
         self.assertAlmostEqual(decisions[0]['classifier_vote_share'], 1.0)
+
+    def test_conflicting_classifier_votes_get_conflict_reject_code(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.8,
+            min_confidence_to_store=0.9,
+            classifier_fallback_bird=False,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.4] * 4,
+                classifier_events=[
+                    ('Robin', 0.7, 0.5),
+                    ('Blue Jay', 0.7, 0.5),
+                    ('Robin', 0.7, 0.5),
+                    ('Blue Jay', 0.7, 0.5),
+                ],
+            )
+        }
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(decisions[0]['reject_reason_code'], 'conflicting_evidence')
+        self.assertEqual(decisions[0]['trust_band'], 'gray')
+        self.assertEqual(decisions[0]['decision_kind'], 'rejected')
 
 if __name__ == '__main__':
     unittest.main()
