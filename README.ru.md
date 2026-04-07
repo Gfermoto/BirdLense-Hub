@@ -88,7 +88,7 @@ UI: http://localhost:8085
 
 **Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-При первом запуске `make setup` создаёт `app/.env` с `PROCESSOR_SECRET` и `FLASK_SECRET_KEY` автоматически.
+Для одношагового запуска на Docker используйте `./install.sh` из корня репозитория. Скрипт сам ставит Docker при необходимости, создаёт `app/.env` и поднимает стек.
 
 ## Разработчикам
 

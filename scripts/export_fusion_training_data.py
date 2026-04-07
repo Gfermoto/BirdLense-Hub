@@ -10,9 +10,24 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Iterable
+
+
+def _maybe_reexec_with_project_venv() -> None:
+    """Run under app/.venv when the caller used system Python."""
+    project_root = Path(__file__).resolve().parents[1]
+    venv_python = project_root / 'app' / '.venv' / 'bin' / 'python'
+    if not venv_python.exists():
+        return
+    if getattr(sys, 'prefix', None) != getattr(sys, 'base_prefix', None):
+        return
+    os.execv(str(venv_python), [str(venv_python), *sys.argv])
+
+
+_maybe_reexec_with_project_venv()
 
 
 DEFAULT_COLUMNS = [
@@ -93,75 +108,110 @@ def export_from_csv(src: Path, out: Path) -> None:
 
 def export_from_db(out: Path) -> None:
     """Export calibration rows from decision traces, with a legacy fallback."""
+    project_root = Path(__file__).resolve().parents[1]
+    app_dir = project_root / "app"
+    web_dir = app_dir / "web"
+    for path in (str(app_dir), str(web_dir), str(project_root)):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
     try:
-        sys.path.insert(0, str(Path.cwd()))
-        from models import ActivityLog, VideoSpecies  # type: ignore
+        from flask import Flask
+        from web.models import ActivityLog, VideoSpecies, db  # type: ignore
     except Exception as e:
-        print("DB export failed: cannot import models. Run this inside project with DB available.", file=sys.stderr)
+        print(
+            "DB export failed: cannot import web app/models. "
+            "Run this from the repo root with the web package available.",
+            file=sys.stderr,
+        )
         print("Error:", e, file=sys.stderr)
         sys.exit(2)
 
-    with out.open("w", encoding="utf-8", newline="") as fout:
-        writer = csv.DictWriter(fout, fieldnames=DEFAULT_COLUMNS)
-        writer.writeheader()
+    app = Flask("fusion_export")
+    app.config.from_object("config.Config")
+    db.init_app(app)
+    with app.app_context():
+        with out.open("w", encoding="utf-8", newline="") as fout:
+            writer = csv.DictWriter(fout, fieldnames=DEFAULT_COLUMNS)
+            writer.writeheader()
 
-        trace_rows = (
-            db.session.query(ActivityLog)
-            .filter(ActivityLog.type == "decision_trace")
-            .order_by(ActivityLog.created_at.asc())
-            .all()
-        )
-        if trace_rows:
-            written = 0
-            for trace in trace_rows:
-                try:
-                    payload = json.loads(trace.data or "{}")
-                except (TypeError, ValueError):
-                    continue
-                for section_name in ("accepted_tracks", "rejected_tracks"):
-                    for row in payload.get(section_name) or []:
-                        writer.writerow(_normalize_trace_row(row))
-                        written += 1
-            print(f"Exported {written} decision-trace rows to {out}")
-            return
-
-        rows = (
-            db.session.query(VideoSpecies)
-            .filter(VideoSpecies.source == "video")
-            .all()
-        )
-        if not rows:
-            print("No rows found in ActivityLog or VideoSpecies. Nothing exported.", file=sys.stderr)
-            sys.exit(3)
-
-        written = 0
-        for r in rows:
-            extra = {}
-            raw_extra = getattr(r, "extra", None)
-            if raw_extra:
-                try:
-                    extra = json.loads(raw_extra) if isinstance(raw_extra, str) else dict(raw_extra)
-                except Exception:
-                    extra = {}
-            writer.writerow(
-                _normalize_trace_row(
-                    {
-                        "accepted": getattr(r, "manually_corrected", False),
-                        "decision_kind": "accepted_species" if getattr(r, "manually_corrected", False) else "accepted_generic",
-                        "species_name": getattr(getattr(r, "species", None), "name", None),
-                        "track_id": getattr(r, "track_id", None),
-                        "video_id": getattr(r, "video_id", None),
-                        "detector_confidence": extra.get("detector_confidence") or getattr(r, "confidence", 0.0),
-                        "classifier_confidence": extra.get("classifier_confidence") or getattr(r, "confidence", 0.0),
-                        "_birdnet_prior": extra.get("_birdnet_prior") or 0.0,
-                        "best_frame_score": extra.get("best_frame_score") or 0.0,
-                        "key_frame_count": extra.get("key_frame_count") or 0,
-                        "_multi_camera_count": extra.get("_multi_camera_count") or 0,
-                    }
-                )
+            trace_rows = (
+                db.session.query(ActivityLog)
+                .filter(ActivityLog.type == "decision_trace")
+                .order_by(ActivityLog.created_at.asc())
+                .all()
             )
-            written += 1
-        print(f"Exported {written} fallback rows to {out}")
+            if trace_rows:
+                written = 0
+                for trace in trace_rows:
+                    try:
+                        payload = json.loads(trace.data or "{}")
+                    except (TypeError, ValueError):
+                        continue
+                    for section_name in ("accepted_tracks", "rejected_tracks"):
+                        for row in payload.get(section_name) or []:
+                            writer.writerow(_normalize_trace_row(row))
+                            written += 1
+                print(f"Exported {written} decision-trace rows to {out}")
+                return
+
+            rows = (
+                db.session.query(VideoSpecies)
+                .filter(VideoSpecies.source == "video")
+                .all()
+            )
+            if not rows:
+                print(
+                    "No rows found in ActivityLog or VideoSpecies. Nothing exported.",
+                    file=sys.stderr,
+                )
+                sys.exit(3)
+
+            written = 0
+            for r in rows:
+                extra = {}
+                raw_extra = getattr(r, "extra", None)
+                if raw_extra:
+                    try:
+                        extra = (
+                            json.loads(raw_extra)
+                            if isinstance(raw_extra, str)
+                            else dict(raw_extra)
+                        )
+                    except Exception:
+                        extra = {}
+                writer.writerow(
+                    _normalize_trace_row(
+                        {
+                            "accepted": getattr(r, "manually_corrected", False),
+                            "decision_kind": (
+                                "accepted_species"
+                                if getattr(r, "manually_corrected", False)
+                                else "accepted_generic"
+                            ),
+                            "species_name": getattr(
+                                getattr(r, "species", None), "name", None
+                            ),
+                            "track_id": getattr(r, "track_id", None),
+                            "video_id": getattr(r, "video_id", None),
+                            "detector_confidence": (
+                                extra.get("detector_confidence")
+                                or getattr(r, "confidence", 0.0)
+                            ),
+                            "classifier_confidence": (
+                                extra.get("classifier_confidence")
+                                or getattr(r, "confidence", 0.0)
+                            ),
+                            "_birdnet_prior": extra.get("_birdnet_prior") or 0.0,
+                            "best_frame_score": extra.get("best_frame_score") or 0.0,
+                            "key_frame_count": extra.get("key_frame_count") or 0,
+                            "_multi_camera_count": extra.get("_multi_camera_count")
+                            or 0,
+                        }
+                    )
+                )
+                written += 1
+            print(f"Exported {written} fallback rows to {out}")
 
 
 def main(argv: Iterable[str] | None = None) -> int:

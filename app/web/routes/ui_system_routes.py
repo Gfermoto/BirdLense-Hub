@@ -14,6 +14,9 @@ from datetime import datetime, timezone, timedelta
 import psutil
 from flask import request, Response, send_file, jsonify, after_this_request
 import shutil
+import subprocess
+import sys
+from pathlib import Path
 from models import (
     ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit,
     SystemResourceSample, SiteVisitor,
@@ -40,6 +43,10 @@ from auth import admin_track_regen_access
 from util import settings_check_access, recordings_dir, metrics_bearer_denied
 from services.cache import cache_get, cache_set
 from services.http_response_cache import bust_system_response_caches, bust_response_caches
+from services.telegram_proxy_service import (
+    refresh_telegram_proxy as refresh_telegram_proxy_service,
+)
+from data_paths import data_dir
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -51,6 +58,12 @@ _species_metadata_lock = threading.Lock()
 _catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
 _catalog_cards_lock = threading.Lock()
 _catalog_cards_next_run_ts = 0.0
+_fusion_export_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_fusion_export_lock = threading.Lock()
+_fusion_eval_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_fusion_eval_lock = threading.Lock()
+_telegram_proxy_refresh_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_telegram_proxy_refresh_lock = threading.Lock()
 
 
 IMPORT_SPECIES_NAME = "Unknown"
@@ -79,6 +92,89 @@ IGNORED_CONFIG_AUDIT_KEYS = {
     'weather.ha_token',
     'weather.ha_url',
 }
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def _fusion_export_dir() -> Path:
+    out_dir = Path(data_dir()) / 'exports' / 'fusion'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir
+
+
+def _latest_fusion_export_path() -> Path | None:
+    out_dir = _fusion_export_dir()
+    candidates = sorted(
+        out_dir.glob('fusion_training_*.csv'),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
+
+
+def _run_fusion_export_job() -> dict:
+    script = _repo_root() / 'scripts' / 'export_fusion_training_data.py'
+    out_path = _fusion_export_dir() / f'fusion_training_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+    result = subprocess.run(
+        [sys.executable, str(script), '--source', 'db', '--out', str(out_path)],
+        cwd=str(_repo_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout or 'fusion export failed').strip())
+    written = 0
+    try:
+        with out_path.open('r', encoding='utf-8') as f:
+            written = max(0, sum(1 for _ in f) - 1)
+    except OSError:
+        written = 0
+    return {
+        'output_path': str(out_path),
+        'rows_written': written,
+        'stdout': (result.stdout or '').strip(),
+    }
+
+
+def _run_fusion_eval_job(
+    source_csv: str | None = None,
+    model_path: str | None = None,
+    score_col: str | None = None,
+    label_col: str = 'valid_track_label',
+    slice_fields: list[str] | None = None,
+) -> dict:
+    script = _repo_root() / 'scripts' / 'eval_fusion_calibration.py'
+    csv_path = Path(source_csv) if source_csv else _latest_fusion_export_path()
+    if not csv_path or not csv_path.exists():
+        raise RuntimeError('Fusion export CSV not found. Run export first.')
+    cmd = [
+        sys.executable,
+        str(script),
+        '--data',
+        str(csv_path),
+        '--label-col',
+        label_col,
+    ]
+    if model_path:
+        cmd.extend(['--model-path', model_path])
+    if score_col:
+        cmd.extend(['--score-col', score_col])
+    for field in slice_fields or []:
+        if field:
+            cmd.extend(['--slice-field', field])
+    result = subprocess.run(
+        cmd,
+        cwd=str(_repo_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout or 'fusion eval failed').strip())
+    return json.loads(result.stdout or '{}')
 
 
 def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
@@ -2124,6 +2220,8 @@ def register_routes(app):
                 app.logger.info(
                     f'Tracks: generated={generated}, frames_updated={frames_updated}, failed={failed}, skipped={skipped}'
                 )
+                if generated or frames_updated or precise_candidates:
+                    bust_response_caches()
                 result = {
                     'generated': generated,
                     'failed': failed,
@@ -2219,6 +2317,165 @@ def register_routes(app):
             'started': True,
             'video_id': video_id,
         }, 202
+
+    @app.route('/api/ui/system/fusion/export', methods=['POST'])
+    def fusion_export():
+        """Export decision traces to CSV for fusion calibration/training."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _fusion_export_lock:
+            if _fusion_export_status['status'] == 'running':
+                return {'error': 'Fusion export already in progress', 'status': _fusion_export_status}, 409
+            _fusion_export_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': None,
+            })
+
+        def _run():
+            try:
+                with app.app_context():
+                    result = _run_fusion_export_job()
+                with _fusion_export_lock:
+                    _fusion_export_status.update({
+                        'status': 'done',
+                        'result': result,
+                        'error': None,
+                        'progress': None,
+                    })
+            except Exception as e:
+                with _fusion_export_lock:
+                    _fusion_export_status.update({
+                        'status': 'error',
+                        'result': None,
+                        'error': str(e),
+                        'progress': None,
+                    })
+
+        threading.Thread(target=_run, daemon=True).start()
+        return {'message': 'Fusion export started', 'status': _fusion_export_status}, 202
+
+    @app.route('/api/ui/system/fusion/export/status', methods=['GET'])
+    def fusion_export_status():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _fusion_export_lock:
+            return dict(_fusion_export_status), 200
+
+    @app.route('/api/ui/system/fusion/export/download', methods=['GET'])
+    def fusion_export_download():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        latest = _latest_fusion_export_path()
+        if not latest or not latest.exists():
+            return {'error': 'Fusion export not found'}, 404
+        return send_file(
+            latest,
+            as_attachment=True,
+            download_name=latest.name,
+            mimetype='text/csv',
+        )
+
+    @app.route('/api/ui/system/fusion/eval', methods=['POST'])
+    def fusion_eval():
+        """Evaluate fusion calibration on a CSV export."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _fusion_eval_lock:
+            if _fusion_eval_status['status'] == 'running':
+                return {'error': 'Fusion eval already in progress', 'status': _fusion_eval_status}, 409
+            _fusion_eval_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': None,
+            })
+        payload = request.get_json(silent=True) or {}
+
+        def _run():
+            try:
+                with app.app_context():
+                    result = _run_fusion_eval_job(
+                        source_csv=payload.get('source_csv'),
+                        model_path=payload.get('model_path'),
+                        score_col=payload.get('score_col'),
+                        label_col=payload.get('label_col', 'valid_track_label'),
+                        slice_fields=list(payload.get('slice_fields') or []),
+                    )
+                with _fusion_eval_lock:
+                    _fusion_eval_status.update({
+                        'status': 'done',
+                        'result': result,
+                        'error': None,
+                        'progress': None,
+                    })
+            except Exception as e:
+                with _fusion_eval_lock:
+                    _fusion_eval_status.update({
+                        'status': 'error',
+                        'result': None,
+                        'error': str(e),
+                        'progress': None,
+                    })
+
+        threading.Thread(target=_run, daemon=True).start()
+        return {'message': 'Fusion eval started', 'status': _fusion_eval_status}, 202
+
+    @app.route('/api/ui/system/fusion/eval/status', methods=['GET'])
+    def fusion_eval_status():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _fusion_eval_lock:
+            return dict(_fusion_eval_status), 200
+
+    @app.route('/api/ui/system/telegram-proxy/refresh', methods=['POST'])
+    def refresh_telegram_proxy():
+        """Refresh Telegram SOCKS proxy using the backend service."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _telegram_proxy_refresh_lock:
+            if _telegram_proxy_refresh_status['status'] == 'running':
+                return {
+                    'error': 'Telegram proxy refresh already in progress',
+                    'status': _telegram_proxy_refresh_status,
+                }, 409
+            _telegram_proxy_refresh_status.update({
+                'status': 'running',
+                'result': None,
+                'error': None,
+                'progress': None,
+            })
+
+        def _run():
+            try:
+                with app.app_context():
+                    result = refresh_telegram_proxy_service()
+                with _telegram_proxy_refresh_lock:
+                    _telegram_proxy_refresh_status.update({
+                        'status': 'done',
+                        'result': result,
+                        'error': None,
+                        'progress': None,
+                    })
+            except Exception as e:
+                with _telegram_proxy_refresh_lock:
+                    _telegram_proxy_refresh_status.update({
+                        'status': 'error',
+                        'result': None,
+                        'error': str(e),
+                        'progress': None,
+                    })
+
+        threading.Thread(target=_run, daemon=True).start()
+        return {'message': 'Telegram proxy refresh started', 'status': _telegram_proxy_refresh_status}, 202
+
+    @app.route('/api/ui/system/telegram-proxy/refresh/status', methods=['GET'])
+    def refresh_telegram_proxy_status():
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        with _telegram_proxy_refresh_lock:
+            return dict(_telegram_proxy_refresh_status), 200
 
     @app.route('/api/ui/system/recordings/scan', methods=['POST'])
     def scan_recordings():

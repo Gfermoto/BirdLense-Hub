@@ -8,12 +8,14 @@ from util where needed to avoid a circular import at module load time (util impo
 import json
 import logging
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
 import requests
 
 from app_config.app_config import app_config
+from services.telegram_proxy_service import refresh_telegram_proxy
 
 
 def _telegram_button_open_live(link, emoji='▶', style='primary', icon_custom_emoji_id=None):
@@ -70,6 +72,41 @@ def _telegram_timeouts():
     return t // 2, t
 
 
+_TELEGRAM_PROXY_REFRESH_LOCK = threading.Lock()
+_TELEGRAM_PROXY_REFRESH_LAST_TS = 0.0
+_TELEGRAM_PROXY_REFRESH_COOLDOWN_SEC = 900
+
+
+def _refresh_telegram_proxy_after_failure(reason: str) -> bool:
+    """Try to refresh Telegram SOCKS proxy after a network failure."""
+    if _telegram_proxy_mode() != 'socks_http':
+        return False
+    proxy_url = (app_config.get('notifications.telegram_proxy_url') or '').strip()
+    if not proxy_url:
+        return False
+
+    global _TELEGRAM_PROXY_REFRESH_LAST_TS
+    with _TELEGRAM_PROXY_REFRESH_LOCK:
+        now = time.monotonic()
+        if now - _TELEGRAM_PROXY_REFRESH_LAST_TS < _TELEGRAM_PROXY_REFRESH_COOLDOWN_SEC:
+            return False
+        _TELEGRAM_PROXY_REFRESH_LAST_TS = now
+
+    def _run() -> None:
+        try:
+            result = refresh_telegram_proxy()
+            logging.warning(
+                'Telegram proxy refreshed after %s: %s',
+                reason,
+                result,
+            )
+        except Exception as e:
+            logging.warning('Telegram proxy refresh failed: %s', e)
+
+    threading.Thread(target=_run, daemon=True).start()
+    return True
+
+
 def _telegram_request(method, url, timeout, retries=None, **kwargs):
     """Запрос к Telegram API с повторами при таймауте/сетевой ошибке."""
     retries = retries or int(app_config.get('notifications.telegram_retries') or 3)
@@ -84,6 +121,8 @@ def _telegram_request(method, url, timeout, retries=None, **kwargs):
             return r
         except (requests.Timeout, requests.ConnectionError, OSError) as e:
             last_exc = e
+            if isinstance(e, (requests.ConnectionError, OSError)):
+                _refresh_telegram_proxy_after_failure(type(e).__name__)
             if attempt < retries - 1:
                 delay = 2 ** attempt
                 logging.warning(
