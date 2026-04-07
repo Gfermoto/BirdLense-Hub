@@ -16,21 +16,20 @@ except Exception:
     _TORCH_AVAILABLE = False
     import math
     import numpy as np
+if _TORCH_AVAILABLE:
+    class _TorchMLP(nn.Module):
+        def __init__(self, in_dim: int, hidden: int = 32):
+            super().__init__()
+            self.net = nn.Sequential(
+                nn.Linear(in_dim, hidden),
+                nn.ReLU(),
+                nn.Linear(hidden, hidden // 2),
+                nn.ReLU(),
+                nn.Linear(hidden // 2, 1),
+            )
 
-
-class _TorchMLP(nn.Module):
-    def __init__(self, in_dim: int, hidden: int = 32):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(in_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden // 2),
-            nn.ReLU(),
-            nn.Linear(hidden // 2, 1),
-        )
-
-    def forward(self, x):
-        return self.net(x).squeeze(-1)
+        def forward(self, x):
+            return self.net(x).squeeze(-1)
 
 
 class FusionScorer:
