@@ -4,11 +4,11 @@ from collections import defaultdict, Counter
 from ultralytics import YOLO
 from tqdm import tqdm
 
-# 1. Load Models
-# base_model = YOLO("yolo11n.pt") 
-base_model = YOLO("../../app/processor/models/detection/nabirds_yolo11n_binary/weights/best_ncnn_model", task="detect") 
-custom_cls_model = YOLO("../../app/processor/models/classification/nabirds_yolo11n_cls/weights/best_ncnn_model", task="classify")
-custom_det_model = YOLO("../../app/processor/models/detection/nabirds_yolov8n_ncnn_model", task="detect") 
+# 1. Load Models (см. scripts/fetch-processor-weights.sh для binary+EU cls .pt)
+# base_model = YOLO("yolo11n.pt")
+base_model = YOLO("../../app/processor/models/detection/weights/best.pt", task="detect")
+custom_cls_model = YOLO("../../app/processor/models/classification/weights/best.pt", task="classify")
+custom_det_model = YOLO("yolo11n.pt", task="detect") 
 
 # 2. Configuration
 # input_path = "./bird_videos/05-31-170950-video.mp4"

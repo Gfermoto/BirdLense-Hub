@@ -29,6 +29,18 @@ MQTT_DISCONNECT_DISPLAY_GRACE_SEC = 120
 FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
+def _parse_iso8601_utc(value) -> datetime | None:
+    if not value:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
 def _parse_bird_present_payload(payload: bytes) -> bool | None:
     """ON/OFF, 1/0, true/false — как HA binary_sensor / ESPHome."""
     if not payload:
@@ -184,28 +196,54 @@ def _parse_birdnet_event(payload):
     except (ValueError, TypeError):
         confidence = 0.0
 
+    source_obj = data.get("Source")
+    audio_source = None
+    if isinstance(source_obj, dict):
+        audio_source = (
+            source_obj.get("displayName")
+            or source_obj.get("safeString")
+            or source_obj.get("name")
+            or source_obj.get("id")
+        )
+    elif source_obj not in (None, ""):
+        audio_source = str(source_obj)
+    if not audio_source:
+        audio_source = (
+            data.get("SourceNode")
+            or data.get("source_node")
+            or data.get("audio_source")
+        )
+
     # BirdNET-Go: BeginTime — точное время детекции для слияния с YOLO/Frigate
     ts_str = data.get("BeginTime") or data.get("Date") or data.get("timestamp")
-    if ts_str:
-        try:
-            ts = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00"))
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            timestamp = ts.isoformat()
-        except (ValueError, TypeError):
-            timestamp = datetime.now(timezone.utc).isoformat()
-    else:
-        timestamp = datetime.now(timezone.utc).isoformat()
+    ts = _parse_iso8601_utc(ts_str)
+    if ts is None:
+        ts = datetime.now(timezone.utc)
+    timestamp = ts.isoformat()
 
     ev = {
         "source": "birdnet",
         "species": species,
+        "common_name": species,
         "confidence": confidence,
         "timestamp": timestamp,
+        "_ts_epoch": ts.timestamp(),
     }
     # BirdNET-Go: ScientificName для маппинга, BirdImage.URL для UI
     if data.get("ScientificName"):
         ev["scientific_name"] = data["ScientificName"]
+    if data.get("SpeciesCode"):
+        ev["species_code"] = data["SpeciesCode"]
+    if audio_source:
+        ev["audio_source"] = str(audio_source)
+    if data.get("camera") or data.get("CameraId") or data.get("camera_id"):
+        ev["camera_id"] = (
+            data.get("camera")
+            or data.get("CameraId")
+            or data.get("camera_id")
+        )
+    if data.get("site_id") or data.get("SiteId"):
+        ev["site_id"] = data.get("site_id") or data.get("SiteId")
     bird_img = data.get("BirdImage")
     if isinstance(bird_img, dict) and bird_img.get("URL"):
         ev["bird_image_url"] = bird_img["URL"]
@@ -267,6 +305,8 @@ class MQTTEventAggregator:
         self.password = password or os.environ.get("MQTT_PASSWORD")
         self.max_events = max_events
         self._events = deque(maxlen=max_events)
+        self._birdnet_events = deque()
+        self._birdnet_event_cap = max(1000, int(max_events or 500) * 20)
         self._lock = threading.Lock()
         self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
             maxsize=2000
@@ -301,6 +341,34 @@ class MQTTEventAggregator:
             self._scale_motion_debounce_seconds = 1.5
         self._prev_scale_kg: float | None = None
         self._last_scale_motion_ts = 0.0
+
+    def _prune_birdnet_events_locked(self, now=None, ttl_hours: float = 25.0) -> None:
+        now = now or datetime.now(timezone.utc)
+        try:
+            ttl_hours = float(ttl_hours)
+        except (TypeError, ValueError):
+            ttl_hours = 25.0
+        ttl_hours = max(1.0, min(ttl_hours, 168.0))
+        low_epoch = now.timestamp() - (ttl_hours * 3600.0)
+        kept = deque()
+        for ev in self._birdnet_events:
+            ts_epoch = ev.get("_ts_epoch")
+            if ts_epoch is None:
+                ts = _parse_iso8601_utc(ev.get("timestamp"))
+                if ts is None:
+                    continue
+                ts_epoch = ts.timestamp()
+                ev["_ts_epoch"] = ts_epoch
+            if ts_epoch >= low_epoch:
+                kept.append(ev)
+        while len(kept) > self._birdnet_event_cap:
+            kept.popleft()
+        self._birdnet_events = kept
+
+    def _remember_birdnet_event(self, ev: dict) -> None:
+        with self._lock:
+            self._birdnet_events.append(ev)
+            self._prune_birdnet_events_locked()
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -512,6 +580,8 @@ class MQTTEventAggregator:
         if ev:
             with self._lock:
                 self._events.append(ev)
+            if ev.get("source") == "birdnet":
+                self._remember_birdnet_event(ev)
 
     def _run_client(self):
         retry_delay = self.reconnect_min_delay
@@ -598,16 +668,111 @@ class MQTTEventAggregator:
         with self._lock:
             result = []
             for ev in self._events:
-                ts_str = ev.get("timestamp")
-                if not ts_str:
-                    continue
-                try:
-                    ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                except ValueError:
+                ts = _parse_iso8601_utc(ev.get("timestamp"))
+                if ts is None:
                     continue
                 if low <= ts <= high:
                     result.append(ev)
             return result
+
+    def get_birdnet_events(self, now=None, ttl_hours: float = 25.0) -> list[dict]:
+        now = now or datetime.now(timezone.utc)
+        with self._lock:
+            self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)
+            return list(self._birdnet_events)
+
+    def get_birdnet_prior_scores(
+        self,
+        *,
+        now=None,
+        window_hours: float = 24.0,
+        ttl_hours: float = 25.0,
+        half_life_hours: float = 6.0,
+        min_confidence: float = 0.0,
+    ) -> dict[str, dict]:
+        now = now or datetime.now(timezone.utc)
+        try:
+            window_hours = float(window_hours)
+        except (TypeError, ValueError):
+            window_hours = 24.0
+        try:
+            ttl_hours = float(ttl_hours)
+        except (TypeError, ValueError):
+            ttl_hours = 25.0
+        try:
+            half_life_hours = float(half_life_hours)
+        except (TypeError, ValueError):
+            half_life_hours = 6.0
+        try:
+            min_confidence = float(min_confidence)
+        except (TypeError, ValueError):
+            min_confidence = 0.0
+
+        window_hours = max(0.25, min(window_hours, ttl_hours))
+        ttl_hours = max(window_hours, min(ttl_hours, 168.0))
+        half_life_hours = max(0.1, min(half_life_hours, ttl_hours))
+        min_confidence = max(0.0, min(min_confidence, 1.0))
+
+        low_epoch = now.timestamp() - (window_hours * 3600.0)
+        decay_base = 0.5
+        out: dict[str, dict] = {}
+
+        with self._lock:
+            self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)
+            for ev in self._birdnet_events:
+                species = str(
+                    ev.get("species")
+                    or ev.get("common_name")
+                    or ""
+                ).strip()
+                if not species or species.lower() == "unknown":
+                    continue
+                try:
+                    conf = float(ev.get("confidence") or 0.0)
+                except (TypeError, ValueError):
+                    conf = 0.0
+                conf = max(0.0, min(conf, 1.0))
+                if conf < min_confidence:
+                    continue
+                ts_epoch = ev.get("_ts_epoch")
+                if ts_epoch is None:
+                    ts = _parse_iso8601_utc(ev.get("timestamp"))
+                    if ts is None:
+                        continue
+                    ts_epoch = ts.timestamp()
+                    ev["_ts_epoch"] = ts_epoch
+                if ts_epoch < low_epoch:
+                    continue
+                age_hours = max(0.0, (now.timestamp() - ts_epoch) / 3600.0)
+                decay = decay_base ** (age_hours / half_life_hours)
+                weighted = conf * decay
+                bucket = out.setdefault(
+                    species,
+                    {
+                        "score": 0.0,
+                        "support_count": 0,
+                        "latest_seen_at": ev.get("timestamp"),
+                        "scientific_name": ev.get("scientific_name"),
+                        "species_code": ev.get("species_code"),
+                        "audio_sources": set(),
+                    },
+                )
+                bucket["score"] += weighted
+                bucket["support_count"] += 1
+                if ev.get("audio_source"):
+                    bucket["audio_sources"].add(str(ev["audio_source"]))
+                latest_ts = _parse_iso8601_utc(bucket.get("latest_seen_at"))
+                if latest_ts is None or ts_epoch > latest_ts.timestamp():
+                    bucket["latest_seen_at"] = ev.get("timestamp")
+                if not bucket.get("scientific_name") and ev.get("scientific_name"):
+                    bucket["scientific_name"] = ev.get("scientific_name")
+                if not bucket.get("species_code") and ev.get("species_code"):
+                    bucket["species_code"] = ev.get("species_code")
+
+        for meta in out.values():
+            meta["score"] = round(float(meta["score"]), 6)
+            meta["audio_sources"] = sorted(meta["audio_sources"])
+        return out
 
     def publish_detection(self, species, confidence, source="yolo", start_time=None, end_time=None):
         """Publish detection to birdlense/detections and HA discovery state topics."""

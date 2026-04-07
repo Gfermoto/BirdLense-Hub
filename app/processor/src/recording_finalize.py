@@ -4,15 +4,16 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections import Counter
 from datetime import datetime
 from typing import Any, Optional
 
 from api import API
 from app_config.app_config import app_config
 from dataset_saver import save_dataset_crops
-from multi_camera_confidence import apply_multi_camera_confidence_boost
+from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
-from species_normalizer import merge_detections, normalize
+from processor_support import get_data_dir
 from spectrogram import generate_spectrogram
 
 
@@ -34,17 +35,14 @@ def finalize_motion_recording(
 ) -> None:
     """Свести YOLO+MQTT, сохранить видео в API, уведомления; без детекций — удалить папку."""
     yolo_tracks_count = len(frame_processor.tracks)
-    video_detections = decision_maker.get_results(frame_processor.tracks)
-    yolo_passed_count = len(video_detections)
-    species_mapping = app_config.get('detection.species_mapping') or {}
-    merge_window = app_config.get('detection.merge_window_seconds', 5)
-    dedup_window = app_config.get('detection.dedup_window_seconds', 45)
-    one_per_species = app_config.get('detection.one_per_species', True)
-    source_priority = app_config.get('detection.source_priority') or [
-        'yolo',
-        'frigate',
-        'birdnet',
+    decisions = decision_maker.get_decisions(frame_processor.tracks)
+    video_detections = [
+        item for item in decisions if item.get('accepted', False)
     ]
+    rejected_decisions = [
+        item for item in decisions if not item.get('accepted', False)
+    ]
+    yolo_passed_count = len(video_detections)
     mqtt_events = []
     if mqtt_aggregator:
         lookback = merge_window
@@ -73,25 +71,37 @@ def finalize_motion_recording(
         if yolo_passed_count == 0 and yolo_tracks_count > 0:
             logging.warning(
                 'YOLO: %s ByteTrack row(s) but none passed DecisionMaker '
-                '(duration < processor.min_track_duration and/or confidence below '
-                'processor.min_confidence_to_process / overrides). '
-                'Merged result may be Frigate/BirdNET-only — lower min_track_duration '
+                '(duration < processor.min_track_duration, confidence below '
+                'processor.min_confidence_to_process / overrides, or below '
+                'detection.min_confidence_to_store when falling back to detector label). '
+                'Final result will stay empty unless YOLO detector/classifier produce a valid track — lower min_track_duration '
                 'or thresholds if you expect video tracks.',
                 yolo_tracks_count,
             )
             for tid, t in frame_processor.tracks.items():
                 dur = t.get('end_time', 0) - t.get('start_time', 0)
-                preds = len(t.get('preds', []))
+                detector_events = len(t.get('detector_events', []))
+                classifier_events = len(t.get('classifier_events', []))
                 logging.info(
-                    '  track %s: duration=%.2fs, preds=%s',
+                    '  track %s: duration=%.2fs, detector_events=%s, classifier_events=%s',
                     tid,
                     dur,
-                    preds,
+                    detector_events,
+                    classifier_events,
                 )
+        if rejected_decisions:
+            rejected_summary = Counter(
+                str(item.get('decision_reason') or 'rejected_unknown')
+                for item in rejected_decisions
+            )
+            logging.info(
+                'DecisionMaker rejected tracks: %s',
+                dict(sorted(rejected_summary.items())),
+            )
     elif mqtt_events:
         logging.warning(
             'ByteTrack: 0 YOLO tracks but %s MQTT events. '
-            'YOLO не детектирует — треки пустые (только вид из Frigate).',
+            'Trigger/MQTT alone no longer creates final detections without YOLO confirmation.',
             len(mqtt_events),
         )
 
@@ -115,50 +125,13 @@ def finalize_motion_recording(
                 'Spectrogram generation failed (BirdNET event present)'
             )
 
-    video_list = []
-    for d in video_detections:
-        sn = normalize(
-            d.get('species_name')
-            or d.get('species')
-            or d.get('name', 'unknown'),
-            species_mapping,
-        )
-        video_list.append(
-            {
-                **d,
-                'species_name': sn,
-                'species': sn,
-                'source': 'video',
-                'detection_provider': 'yolo',
-            }
-        )
-    cross_bonus = float(
-        app_config.get('detection.cross_source_confidence_bonus') or 0
-    )
-    video_detections = merge_detections(
-        video_list,
+    video_detections = build_fused_video_detections(
+        video_detections,
         mqtt_events,
-        start_time,
-        end_time,
-        merge_window,
-        dedup_window,
-        one_per_species=one_per_species,
-        source_priority=source_priority,
-        cross_source_confidence_bonus=cross_bonus,
-        species_mapping=species_mapping,
+        start_time=start_time,
+        end_time=end_time,
+        app_config=app_config,
     )
-    video_detections = apply_multi_camera_confidence_boost(
-        video_detections, mqtt_events, app_config
-    )
-
-    min_conf_store = float(
-        app_config.get('detection.min_confidence_to_store') or 0.05
-    )
-    video_detections = [
-        d
-        for d in video_detections
-        if float(d.get('confidence') or 0) >= min_conf_store
-    ]
 
     for i, d in enumerate(video_detections):
         n_frames = len(d.get('frames') or [])
@@ -241,7 +214,7 @@ def finalize_motion_recording(
         video_id = resp.get('video_id') if isinstance(resp, dict) else None
         save_crops = app_config.get('processor.save_dataset_crops')
         if video_id is not None and save_crops and video_detections:
-            crops_data_dir = os.environ.get('DATA_DIR', 'data')
+            crops_data_dir = get_data_dir()
             raw_mc = app_config.get('processor.dataset_min_confidence', 0.5)
             min_conf = float(raw_mc)
             save_dataset_crops(
