@@ -29,6 +29,8 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 
 **EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
 
+**Runtime weights:** large processor weights are stored in GitHub Releases, not in git history. Use `scripts/fetch-processor-weights.sh` to download and verify `app/yolo11n.pt` against `CHECKSUMS` before running smoke or deployment.
+
 **Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
 
 <details>
@@ -93,6 +95,7 @@ On first run, `make setup` creates `app/.env` with `PROCESSOR_SECRET` and `FLASK
 - **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
 - **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
+- **Weights workflow:** `scripts/fetch-processor-weights.sh` + `CHECKSUMS` + GitHub Release `weights/v1` keep runtime weights reproducible and outside git history.
 
 ## Requirements
 
