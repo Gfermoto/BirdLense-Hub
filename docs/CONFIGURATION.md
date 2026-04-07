@@ -105,7 +105,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `included_bird_families` | Family filter list (Perching Birds, Squirrel, …) |
 | `save_images` | Save detection frames |
 | `detection_strategy` | Production runtime uses `two_stage` only. Other values are ignored with a warning. |
-| `models.single_stage` | Deprecated compatibility path; not used by the production runtime. |
+| `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
 

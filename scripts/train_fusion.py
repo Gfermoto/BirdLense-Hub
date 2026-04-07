@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-\"\"\"Train a small fusion scorer (MLP) on CSV features.
+"""Train a small fusion scorer (MLP) on CSV features.
 
 Usage example:
   python3 scripts/train_fusion.py --data features.csv --out-dir app/processor/models/fusion --epochs 5
 
 If CSV is missing, a tiny synthetic dataset is generated so the script runs on CPU
 for demonstration.
-\"\"\"
+"""
 from __future__ import annotations
 
 import argparse
@@ -24,8 +24,11 @@ try:
     TORCH = True
 except Exception:
     TORCH = False
-    from sklearn.linear_model import LogisticRegression
+
+try:
     import numpy as np
+except Exception:
+    np = None
 
 import csv
 import random
@@ -38,7 +41,11 @@ FEATURE_COLS = [
     "key_frame_count",
     "multi_camera_count",
 ]
-LABEL_COL = "label"
+LABEL_COLS = [
+    "valid_track_label",
+    "species_top1_label",
+    "label",
+]
 
 
 def load_csv(path: Path) -> Tuple[list, list]:
@@ -46,10 +53,14 @@ def load_csv(path: Path) -> Tuple[list, list]:
     y = []
     with path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
+        label_col = next(
+            (col for col in LABEL_COLS if reader.fieldnames and col in reader.fieldnames),
+            "label",
+        )
         for r in reader:
             x = [float(r.get(c, 0.0) or 0.0) for c in FEATURE_COLS]
             X.append(x)
-            y.append(int(float(r.get(LABEL_COL, 0) or 0)))
+            y.append(int(float(r.get(label_col, 0) or 0)))
     return X, y
 
 
@@ -130,7 +141,16 @@ def train_torch(X, y, device: str, epochs: int, out_dir: Path):
 
 
 def train_sklearn(X, y, out_dir: Path):
-    import numpy as np
+    try:
+        from sklearn.linear_model import LogisticRegression  # type: ignore
+    except Exception:
+        train_fallback(X, y, out_dir)
+        return
+
+    if np is None:
+        train_fallback(X, y, out_dir)
+        return
+
     Xn = np.array(X)
     yn = np.array(y)
     clf = LogisticRegression(max_iter=200)
@@ -138,6 +158,7 @@ def train_sklearn(X, y, out_dir: Path):
     out_dir.mkdir(parents=True, exist_ok=True)
     # save sklearn model as pickle
     import pickle
+
     p = out_dir / "fusion_state.pkl"
     with p.open("wb") as f:
         pickle.dump(clf, f)
@@ -145,6 +166,27 @@ def train_sklearn(X, y, out_dir: Path):
     acc = float((preds == yn).mean())
     save_metadata(out_dir, {"train_acc": acc}, model_name=str(p))
     print("Saved sklearn model:", p)
+
+
+def train_fallback(X, y, out_dir: Path):
+    """Save a simple heuristic calibration snapshot when ML deps are missing."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    positives = [row for row, label in zip(X, y) if label]
+    negatives = [row for row, label in zip(X, y) if not label]
+    weights = [0.15, 0.5, 0.15, 0.1, 0.05, 0.05]
+    if positives and negatives:
+        pos_mean = [sum(col) / len(col) for col in zip(*positives)]
+        neg_mean = [sum(col) / len(col) for col in zip(*negatives)]
+        weights = [max(-1.0, min(1.0, p - n)) for p, n in zip(pos_mean, neg_mean)]
+    payload = {
+        "feature_columns": FEATURE_COLS,
+        "weights": weights,
+        "note": "fallback metadata only; runtime uses deterministic scorer",
+    }
+    path = out_dir / "fusion_state.json"
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    save_metadata(out_dir, {"fallback_rows": len(X)}, model_name=str(path))
+    print("Saved fallback calibration snapshot:", path)
 
 
 def sha256_file(path: Path) -> str:

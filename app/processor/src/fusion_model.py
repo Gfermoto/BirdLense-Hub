@@ -8,14 +8,16 @@ from __future__ import annotations
 
 from typing import Mapping, Optional
 
+import math
+
+import numpy as np
+
 try:
     import torch
     import torch.nn as nn
     _TORCH_AVAILABLE = True
 except Exception:
     _TORCH_AVAILABLE = False
-    import math
-    import numpy as np
 if _TORCH_AVAILABLE:
     class _TorchMLP(nn.Module):
         def __init__(self, in_dim: int, hidden: int = 32):
@@ -43,38 +45,27 @@ class FusionScorer:
         """Initialize FusionScorer. model_path optional; device defaults to 'cpu'."""
         self.device = device
         self.model_path = model_path
-        if _TORCH_AVAILABLE:
-            # model topology small and robust; load state if given else init.
-            self._in_order = [
-                'detector_conf',
-                'classifier_conf',
-                'birdnet_prior',
-                'key_frame_score',
-                'key_frame_count',
-                'multi_camera_count',
-            ]
-            self._model = _TorchMLP(len(self._in_order))
-            self._model.to(self.device)
-            # optional load
-            if model_path:
-                try:
-                    state = torch.load(model_path, map_location=self.device)
-                    self._model.load_state_dict(state)
-                except Exception:
-                    # ignore load errors; keep initialized model
-                    pass
-            # default temperature for calibration (can be tuned)
-            self.temperature = torch.tensor(1.0, device=self.device)
-        else:
+        self._in_order = [
+            'detector_conf',
+            'classifier_conf',
+            'birdnet_prior',
+            'key_frame_score',
+            'key_frame_count',
+            'multi_camera_count',
+        ]
+        self._use_torch = False
+        if _TORCH_AVAILABLE and model_path:
+            try:
+                self._model = _TorchMLP(len(self._in_order))
+                self._model.to(self.device)
+                state = torch.load(model_path, map_location=self.device)
+                self._model.load_state_dict(state)
+                self.temperature = torch.tensor(1.0, device=self.device)
+                self._use_torch = True
+            except Exception:
+                self._use_torch = False
+        if not self._use_torch:
             # deterministic fallback weights (tuned heuristically)
-            self._in_order = [
-                'detector_conf',
-                'classifier_conf',
-                'birdnet_prior',
-                'key_frame_score',
-                'key_frame_count',
-                'multi_camera_count',
-            ]
             # higher weight to classifier confidence, moderate to detector and birdnet
             self._weights = np.array(
                 [0.15, 0.5, 0.15, 0.1, 0.05, 0.05], dtype=float
@@ -95,7 +86,7 @@ class FusionScorer:
     def score(self, features: Mapping[str, float]) -> float:
         """Return calibrated confidence in [0,1]."""
         vals = self._vec_from_features(features)
-        if _TORCH_AVAILABLE:
+        if self._use_torch and _TORCH_AVAILABLE:
             try:
                 x = torch.tensor(
                     vals, dtype=torch.float32, device=self.device

@@ -12,17 +12,37 @@ The goal of the cleanup is to:
 
 Actions already performed (by automation)
 ----------------------------------------
-- Uploaded canonical weight `app/yolo11n.pt` to draft Release `weights/v1`.
+- Uploaded legacy compatibility weight `app/yolo11n.pt` to draft Release `weights/v1`.
 - Added `CHECKSUMS` with SHA256 for `app/yolo11n.pt`.
-- Added `scripts/fetch-processor-weights.sh` to download+verify release assets.
+- Reworked `scripts/fetch-processor-weights.sh` so the default path is the active two-stage runtime and the legacy asset is opt-in.
 - Added fusion scaffold and unit tests (branch `feature/fusion-calibration`).
+
+Current inventory
+-----------------
+| Item | Status | Notes |
+|------|--------|-------|
+| `app/yolo11n.pt` | keep-for-now | Compatibility-only asset. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` when needed. |
+| `app/processor/models/detection/weights/best.pt` | active | Runtime detector weight for the two-stage pipeline. |
+| `app/processor/models/classification/weights/best.pt` | active | Runtime classifier weight for the two-stage pipeline. |
+| `app/processor/models/**/results.csv`, `args.yaml`, NCNN exports | removed | Training/export leftovers cleaned from the tree. |
+| `datasets/birdlense_export/` | keep-for-now | Generated export directory. Leave until a dedicated data-retention decision is made. |
+| `datasets/birdlense_ready_flat.zip` | keep-for-now | Regenerable artifact; do not delete without a fresh export/rebuild plan. |
+| `app/data/`, `app/app_config/user_config.yaml` | keep | Runtime data and user config are intentionally preserved during deploy/cleanup. |
+| `.pytest_cache`, `app/ui/dist`, `app/e2e/node_modules`, `processor.log*` | removed | Generated clutter removed from the repo checkout. |
+
+Repeatable cleanup checklist
+---------------------------
+1. Run a reference search for any path you plan to delete.
+2. Confirm the path is not used by runtime, tests, or docs.
+3. If the item is regenerable, prefer removing it from the working tree and documenting the regeneration command.
+4. If the item is ambiguous, mark it `keep-for-now` and split it into a follow-up issue.
+5. After cleanup, run focused smoke tests for the runtime path and the export path.
 
 Planned next steps (safe, reversible)
 ------------------------------------
-1. Review files under `app/processor/src/legacy/` and move anything needed into a single `app/processor/legacy_archive/<date>/` if requested.  
-2. Remove tracked large weight files from repository if still tracked (use git filter-repo / BFG if historical purge requested).  
-3. Add CI smoke step that fetches weights via `scripts/fetch-processor-weights.sh` and runs inference on a control set.  
-4. Create PR that applies the safe moves and runs full CI before merging.
+1. Add CI smoke step that fetches weights via `scripts/fetch-processor-weights.sh` and runs inference on a control set.  
+2. If more legacy source copies appear, move them into a dated archive instead of rediscovering them ad hoc.  
+3. If a future cleanup decision is made for `datasets/birdlense_export/` or `datasets/birdlense_ready_flat.zip`, split it into a separate issue/PR.
 
 Notes and safety
 ----------------

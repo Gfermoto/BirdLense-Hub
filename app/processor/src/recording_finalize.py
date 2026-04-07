@@ -17,6 +17,67 @@ from processor_support import get_data_dir
 from spectrogram import generate_spectrogram
 
 
+_DECISION_TRACE_FIELDS = (
+    'track_id',
+    'accepted',
+    'species_name',
+    'confidence',
+    'decision_reason',
+    'decision_kind',
+    'trust_band',
+    'reject_reason_code',
+    'evidence_state',
+    'detector_label',
+    'detector_confidence',
+    'detector_event_count',
+    'classifier_threshold',
+    'classifier_species_name',
+    'classifier_confidence',
+    'classifier_event_count',
+    'classifier_vote_share',
+    'best_frame_score',
+    'key_frame_count',
+    'audio_evidence',
+    'audio_support_count',
+    'audio_support_species',
+    'audio_conflict_species',
+    'audio_conflict_score',
+    '_birdnet_prior',
+    '_multi_camera_count',
+    '_multi_camera_support',
+    '_fusion_used',
+    '_fusion_score',
+)
+_DECISION_TRACE_LIMIT = 40
+
+
+def _decision_trace_row(item: dict) -> dict:
+    row = {}
+    for key in _DECISION_TRACE_FIELDS:
+        if key in item:
+            row[key] = item.get(key)
+    row['accepted'] = bool(item.get('accepted', False))
+    row['confidence'] = float(item.get('confidence') or 0.0)
+    row['best_frame_score'] = float(item.get('best_frame_score') or 0.0)
+    row['key_frame_count'] = int(item.get('key_frame_count') or 0)
+    row['classifier_vote_share'] = float(item.get('classifier_vote_share') or 0.0)
+    row['detector_event_count'] = int(item.get('detector_event_count') or 0)
+    row['classifier_event_count'] = int(item.get('classifier_event_count') or 0)
+    row['_birdnet_prior'] = float(item.get('_birdnet_prior') or 0.0)
+    row['_multi_camera_count'] = int(item.get('_multi_camera_count') or 0)
+    row['_multi_camera_support'] = bool(item.get('_multi_camera_support') or False)
+    if item.get('audio_evidence') is None:
+        row['audio_evidence'] = 'none'
+    return row
+
+
+def _clip_trace_rows(rows: list[dict], limit: int = _DECISION_TRACE_LIMIT) -> tuple[list[dict], int]:
+    rows = list(rows or [])
+    if len(rows) <= limit:
+        return rows, 0
+    return rows[:limit], len(rows) - limit
+
+
 def finalize_motion_recording(
     api: API,
     motion_detector: Any,
@@ -34,6 +95,7 @@ def finalize_motion_recording(
     data_dir: str,
 ) -> None:
     """Свести YOLO+MQTT, сохранить видео в API, уведомления; без детекций — удалить папку."""
+    merge_window = int(app_config.get('detection.merge_window_seconds') or 5)
     yolo_tracks_count = len(frame_processor.tracks)
     decisions = decision_maker.get_decisions(frame_processor.tracks)
     video_detections = [
@@ -91,7 +153,11 @@ def finalize_motion_recording(
                 )
         if rejected_decisions:
             rejected_summary = Counter(
-                str(item.get('decision_reason') or 'rejected_unknown')
+                str(
+                    item.get('reject_reason_code')
+                    or item.get('decision_reason')
+                    or 'rejected_unknown'
+                )
                 for item in rejected_decisions
             )
             logging.info(
@@ -159,6 +225,40 @@ def finalize_motion_recording(
         {k: v for k, v in d.items() if k != 'best_frame'}
         for d in video_detections
     ]
+    if video_detections:
+        audio_evidence_summary = Counter(
+            str(item.get('audio_evidence') or 'none')
+            for item in video_detections
+        )
+        logging.info(
+            'Fusion audio evidence summary: %s',
+            dict(sorted(audio_evidence_summary.items())),
+        )
+    decision_trace = {
+        'start_time': start_time.isoformat(),
+        'end_time': end_time.isoformat(),
+        'video_path': video_path_for_api,
+        'merge_window_seconds': merge_window,
+        'accepted_tracks': [],
+        'rejected_tracks': [],
+    }
+    accepted_trace_rows = [_decision_trace_row(item) for item in video_detections]
+    rejected_trace_rows = [_decision_trace_row(item) for item in rejected_decisions]
+    accepted_trace_rows, accepted_trimmed = _clip_trace_rows(accepted_trace_rows)
+    rejected_trace_rows, rejected_trimmed = _clip_trace_rows(rejected_trace_rows)
+    decision_trace['accepted_tracks'] = accepted_trace_rows
+    decision_trace['rejected_tracks'] = rejected_trace_rows
+    decision_trace['accepted_track_count'] = len(video_detections)
+    decision_trace['rejected_track_count'] = len(rejected_decisions)
+    if accepted_trimmed:
+        decision_trace['accepted_tracks_truncated'] = accepted_trimmed
+    if rejected_trimmed:
+        decision_trace['rejected_tracks_truncated'] = rejected_trimmed
+    try:
+        if api and (video_detections or rejected_decisions):
+            api.activity_log('decision_trace', decision_trace)
+    except Exception:
+        logging.exception('Failed to write decision_trace activity log')
     logging.info(
         'Processing stopped. Video Result: %s; Audio Result: %s',
         video_summary,

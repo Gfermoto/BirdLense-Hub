@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Iterable
+from datetime import datetime, timezone
 
 from multi_camera_confidence import apply_multi_camera_confidence_boost
 from species_normalizer import merge_detections, normalize
@@ -10,6 +11,116 @@ from fusion_model import FusionScorer
 
 def _species_mapping(app_config) -> dict:
     return app_config.get('detection.species_mapping') or {}
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _aggregate_birdnet_scores(
+    mqtt_events: Iterable[dict],
+    *,
+    end_time,
+    species_mapping: dict,
+    half_life_hours: float = 6.0,
+) -> dict[str, dict]:
+    scores: dict[str, dict] = {}
+    end_dt = end_time
+    if getattr(end_dt, 'tzinfo', None) is None:
+        end_dt = end_dt.replace(tzinfo=timezone.utc)
+    half_life_hours = max(0.1, float(half_life_hours or 6.0))
+    for ev in mqtt_events or []:
+        if str((ev or {}).get('source') or '').strip().lower() != 'birdnet':
+            continue
+        raw_species = (
+            ev.get('species')
+            or ev.get('common_name')
+            or ev.get('label')
+            or ''
+        )
+        species = normalize(str(raw_species), species_mapping)
+        if not species or species.lower() == 'unknown':
+            continue
+        conf = max(0.0, min(1.0, _safe_float(ev.get('confidence'), 0.0)))
+        ts = ev.get('timestamp')
+        age_hours = 0.0
+        if ts:
+            try:
+                parsed = datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                age_hours = max(0.0, (end_dt - parsed).total_seconds() / 3600.0)
+            except Exception:
+                age_hours = 0.0
+        weighted = conf * (0.5 ** (age_hours / half_life_hours))
+        bucket = scores.setdefault(
+            species,
+            {
+                'score': 0.0,
+                'support_count': 0,
+                'max_confidence': 0.0,
+            },
+        )
+        bucket['score'] += weighted
+        bucket['support_count'] += 1
+        bucket['max_confidence'] = max(bucket['max_confidence'], conf)
+    return scores
+
+
+def _attach_audio_evidence(
+    detections: list[dict],
+    mqtt_events: Iterable[dict],
+    *,
+    end_time,
+    app_config,
+) -> list[dict]:
+    species_mapping = _species_mapping(app_config)
+    birdnet_scores = _aggregate_birdnet_scores(
+        mqtt_events,
+        end_time=end_time,
+        species_mapping=species_mapping,
+        half_life_hours=_safe_float(
+            app_config.get('processor.birdnet_mqtt_half_life_hours') or 6.0,
+            6.0,
+        ),
+    )
+    if not birdnet_scores:
+        for d in detections:
+            d['_birdnet_prior'] = 0.0
+            d['audio_evidence'] = 'none'
+        return detections
+
+    top_species, top_bucket = max(
+        birdnet_scores.items(),
+        key=lambda item: (
+            _safe_float(item[1].get('score'), 0.0),
+            int(item[1].get('support_count') or 0),
+        ),
+    )
+    top_score = _safe_float(top_bucket.get('score'), 0.0)
+    for d in detections:
+        species_name = normalize(
+            str(d.get('species_name') or d.get('species') or ''),
+            species_mapping,
+        )
+        support = birdnet_scores.get(species_name)
+        prior = _safe_float((support or {}).get('score'), 0.0)
+        d['_birdnet_prior'] = prior
+        if support:
+            d['audio_evidence'] = 'support'
+            d['audio_support_count'] = int(support.get('support_count') or 0)
+            d['audio_support_species'] = species_name
+            continue
+        if top_score >= 0.35 and top_species != species_name:
+            d['audio_evidence'] = 'conflict'
+            d['audio_conflict_species'] = top_species
+            d['audio_conflict_score'] = top_score
+        else:
+            d['audio_evidence'] = 'none'
+    return detections
 
 
 def prepare_track_results_for_fusion(
@@ -86,6 +197,12 @@ def build_fused_video_detections(
         fused,
         frigate_events,
         app_config,
+    )
+    fused = _attach_audio_evidence(
+        fused,
+        mqtt_events,
+        end_time=end_time,
+        app_config=app_config,
     )
     # Optional learned fusion/calibration step. If enabled, the learned scorer
     # produces a calibrated probability from multimodal features and is blended

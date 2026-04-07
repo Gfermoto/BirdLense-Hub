@@ -77,12 +77,44 @@ class DecisionMaker():
         self.classifier_fallback_bird = bool(classifier_fallback_bird)
         self.reset()
 
-    def _trust_band_for_decision(self, accepted: bool, reason: str, confidence: float) -> str:
+    def _trust_band_for_decision(
+        self,
+        accepted: bool,
+        reason: str,
+        confidence: float,
+        reject_reason_code: str | None = None,
+    ) -> str:
         if not accepted:
+            if reject_reason_code == 'conflicting_evidence':
+                return 'gray'
             return 'red'
         if reason == 'accepted_species':
             return 'green' if float(confidence or 0.0) >= 0.75 else 'yellow'
         return 'gray'
+
+    def _reject_reason_code(
+        self,
+        *,
+        decision_reason: str,
+        detector_event_count: int,
+        classifier_event_count: int,
+        classifier_vote_share: float = 0.0,
+    ) -> str | None:
+        if decision_reason in {
+            'rejected_short_track',
+            'rejected_missing_detector_candidate',
+        }:
+            return 'insufficient_frames'
+        if decision_reason in {
+            'rejected_detector_below_store_floor',
+            'rejected_classifier_fallback_disabled',
+        }:
+            if classifier_event_count > 1 and float(classifier_vote_share or 0.0) <= 0.5:
+                return 'conflicting_evidence'
+            if detector_event_count <= 1 or classifier_event_count <= 1:
+                return 'insufficient_frames'
+            return 'low_confidence'
+        return None
 
     def _get_threshold_for_species(self, species_name):
         """Return min confidence threshold for species. Override or default."""
@@ -265,6 +297,8 @@ class DecisionMaker():
             classifier_candidate = self._pick_classifier_candidate(classifier_events)
             classifier_threshold = None
             accepted = True
+            decision_kind = 'accepted_species'
+            evidence_state = 'detector_only'
 
             if classifier_candidate is not None:
                 species_name = classifier_candidate['species_name']
@@ -275,6 +309,8 @@ class DecisionMaker():
                     out_species = species_name
                     out_conf = combined
                     decision_reason = 'accepted_species'
+                    decision_kind = 'accepted_species'
+                    evidence_state = 'species_supported'
                 else:
                     if not self.classifier_fallback_bird:
                         logger.debug(
@@ -289,6 +325,12 @@ class DecisionMaker():
                         out_species = detector_label
                         out_conf = combined
                         decision_reason = 'rejected_classifier_fallback_disabled'
+                        decision_kind = 'rejected'
+                        evidence_state = (
+                            'conflicting_classifier_votes'
+                            if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                            else 'weak_classifier'
+                        )
                     elif detector_conf < store_floor:
                         logger.debug(
                             'Skipping track %s: detector confidence=%.3f < min_confidence_to_store=%.3f',
@@ -300,6 +342,12 @@ class DecisionMaker():
                         out_species = detector_label
                         out_conf = detector_conf
                         decision_reason = 'rejected_detector_below_store_floor'
+                        decision_kind = 'rejected'
+                        evidence_state = (
+                            'conflicting_classifier_votes'
+                            if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                            else 'weak_classifier'
+                        )
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
@@ -307,6 +355,12 @@ class DecisionMaker():
                             'fallback_squirrel'
                             if detector_label.lower() == 'squirrel'
                             else 'fallback_bird'
+                        )
+                        decision_kind = 'accepted_generic'
+                        evidence_state = (
+                            'conflicting_classifier_votes'
+                            if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                            else 'detector_backed_generic'
                         )
             else:
                 if detector_conf < store_floor:
@@ -321,6 +375,8 @@ class DecisionMaker():
                     out_species = detector_label
                     out_conf = detector_conf
                     decision_reason = 'rejected_detector_below_store_floor'
+                    decision_kind = 'rejected'
+                    evidence_state = 'detector_only_low_confidence'
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
@@ -329,6 +385,23 @@ class DecisionMaker():
                         if detector_label.lower() == 'squirrel'
                         else 'fallback_bird'
                     )
+                    decision_kind = 'accepted_generic'
+                    evidence_state = 'detector_only'
+
+            reject_reason_code = self._reject_reason_code(
+                decision_reason=decision_reason,
+                detector_event_count=detector_candidate['event_count'],
+                classifier_event_count=(
+                    classifier_candidate['event_count']
+                    if classifier_candidate is not None
+                    else 0
+                ),
+                classifier_vote_share=(
+                    classifier_candidate['vote_share']
+                    if classifier_candidate is not None
+                    else 0.0
+                ),
+            )
 
             decisions.append({
                 'track_id': track_id,
@@ -367,8 +440,11 @@ class DecisionMaker():
                     if classifier_candidate is not None
                     else 0.0
                 ),
+                'decision_kind': decision_kind,
+                'reject_reason_code': reject_reason_code,
+                'evidence_state': evidence_state,
                 'trust_band': self._trust_band_for_decision(
-                    accepted, decision_reason, out_conf
+                    accepted, decision_reason, out_conf, reject_reason_code
                 ),
             })
 

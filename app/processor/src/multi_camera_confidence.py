@@ -58,10 +58,13 @@ def apply_multi_camera_confidence_boost(
         by_species.setdefault(key, set()).add(cam)
 
     boosted_keys: set[str] = set()
+    support_counts: dict[str, int] = {}
     for key, cams in by_species.items():
         for g in groups:
-            if len(cams & g) >= 2:
+            support = len(cams & g)
+            if support >= 2:
                 boosted_keys.add(key)
+                support_counts[key] = max(support_counts.get(key, 0), support)
                 break
 
     if not boosted_keys:
@@ -70,8 +73,11 @@ def apply_multi_camera_confidence_boost(
     changed = 0
     for d in detections:
         sp = d.get('species_name') or d.get('species') or ''
-        if canon(str(sp)) not in boosted_keys:
+        species_key = canon(str(sp))
+        if species_key not in boosted_keys:
             continue
+        d['_multi_camera_count'] = int(support_counts.get(species_key, 0))
+        d['_multi_camera_support'] = True
         try:
             c = float(d.get('confidence') or 0)
         except (TypeError, ValueError):

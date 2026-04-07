@@ -46,6 +46,9 @@ export function ObservabilityCard() {
   const counts = data.notify_preview_24h || {};
   const fallbackCounts = data.notify_fallback_24h || {};
   const deliveryCounts = data.notify_delivery_24h || {};
+  const ml7 = data.ml_health?.rolling_7d;
+  const ml30 = data.ml_health?.rolling_30d;
+  const lineage = data.model_lineage;
 
   return (
     <Card>
@@ -112,6 +115,59 @@ export function ObservabilityCard() {
             />
           ))}
         </Box>
+
+        {ml7 && ml30 ? (
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+              ML Health
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              <Chip size="small" variant="outlined" label={`7d corrections: ${ml7.corrections_logged}`} />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`7d correction rate: ${(ml7.correction_rate * 100).toFixed(1)}%`}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`30d manual annotations: ${(ml30.manual_annotation_rate * 100).toFixed(1)}%`}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`30d unknown rate: ${(ml30.unknown_rate * 100).toFixed(1)}%`}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`30d generic rate: ${(ml30.generic_rate * 100).toFixed(1)}%`}
+              />
+            </Box>
+          </>
+        ) : null}
+
+        {lineage ? (
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+              Model Lineage
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Config fingerprint: <code>{lineage.config_fingerprint.slice(0, 12)}</code>
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              {Object.entries(lineage.artifacts || {}).map(([key, value]) => (
+                <Chip
+                  key={key}
+                  size="small"
+                  color={value.exists ? 'success' : 'default'}
+                  variant="outlined"
+                  label={`${key}: ${value.exists ? 'ok' : 'missing'}`}
+                />
+              ))}
+            </Box>
+          </>
+        ) : null}
 
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
           {t('system.hubMetricsForHeimdall')}

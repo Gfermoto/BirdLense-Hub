@@ -1192,6 +1192,7 @@ class TestCorrectionsHistory:
                 assert 'created_at' in row
                 assert 'action' in row
                 assert 'source' in row
+                assert 'apply_scope' in row
 
 class TestBirdFamilies:
     def test_bird_families_returns_list(self, client):
