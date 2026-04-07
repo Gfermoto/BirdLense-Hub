@@ -45,7 +45,7 @@ logs:
 deploy:
 	@cd .. && ./scripts/deploy.sh
 
-# Тесты (в контейнере — нужны ultralytics, ncnn)
+# Тесты (в контейнере — ultralytics; для two-stage — веса .pt, см. scripts/fetch-processor-weights.sh)
 # -v монтирует локальный код: тесты идут по коду на диске, а не по образу
 test:
 	docker compose run --rm -v $$(pwd):/app birdlense \

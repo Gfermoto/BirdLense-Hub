@@ -18,7 +18,7 @@ import Fade from '@mui/material/Fade';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Video, VideoSpecies } from '../../../types';
-import { BASE_URL, BASE_API_URL } from '../../../api/api';
+import { BASE_URL, BASE_API_URL, resolveImageUrl } from '../../../api/api';
 import { ProgressBar } from './ProgressBar';
 import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
@@ -189,6 +189,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         .filter((s) => s.source === view)
         .sort((a, b) => a.start_time - b.start_time),
     [video.species, view],
+  );
+
+  const spectrogramDetections = useMemo(
+    () => [...video.species].sort((a, b) => a.start_time - b.start_time),
+    [video.species],
   );
 
   // Get video detections that have track frames data
@@ -527,9 +532,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <SpectrogramPlayer
               audioRef={videoRef}
               playing={playing}
-              imageUrl={`${BASE_URL}/${video.spectrogram_path}`}
-              detections={filteredDetections}
-              key={view}
+              imageUrl={
+                resolveImageUrl(video.spectrogram_path) ||
+                `${BASE_URL}/${video.spectrogram_path}`.replace(/^\/{2,}/, '/')
+              }
+              detections={spectrogramDetections}
+              visible={view === 'audio'}
             />
           )}
         </Box>

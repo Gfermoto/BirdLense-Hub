@@ -152,11 +152,19 @@ export interface Settings {
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
+    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Squirrel"]
+    /** If false, run YOLO on every frame (ignore brightness/contrast gate). */
+    light_gate_enabled?: boolean;
+    light_gate_min_brightness?: number;
+    light_gate_min_contrast?: number;
     species_confidence_overrides?: Record<string, number>; // Per-species thresholds (rare species — lower)
     /** Lower classifier threshold for eBird regional top species (#128); manual overrides win */
     ebird_regional_top_auto_confidence?: boolean;
     ebird_regional_top_confidence_delta?: number;
     ebird_regional_top_confidence_floor?: number;
+    /** BirdNET affects classifier confidence only; does not create video labels directly. */
+    birdnet_mqtt_auto_confidence?: boolean;
+    classifier_fallback_bird?: boolean; // Keep generic detector label when classifier stays uncertain
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
     generate_spectrogram_always?: boolean;

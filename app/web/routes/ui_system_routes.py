@@ -36,6 +36,7 @@ from services.species_visit_maintenance_service import (
 )
 from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
+from auth import admin_track_regen_access
 from util import settings_check_access, recordings_dir, metrics_bearer_denied
 from services.cache import cache_get, cache_set
 from services.http_response_cache import bust_system_response_caches, bust_response_caches
@@ -268,6 +269,15 @@ def _remap_detection_to_local_scope(
         if common and common in local_scope_names_lc:
             return {**detection, 'species_name': resolved.taxon.common_name}
     return {**detection, 'species_name': 'Unknown'}
+
+
+def _summarize_track_regen_detections(detections: list[dict]) -> dict:
+    """Сводка для UI после regen одного ролика: число треков и decision_reason из DecisionMaker."""
+    reasons: dict[str, int] = {}
+    for d in detections:
+        r = str(d.get('decision_reason') or 'unknown')
+        reasons[r] = reasons.get(r, 0) + 1
+    return {'track_count': len(detections), 'decision_reasons': reasons}
 
 
 def _record_system_resource_sample(app) -> None:
@@ -1209,8 +1219,16 @@ def register_routes(app):
             app.logger.exception('Retention failed')
             return {'error': 'Failed to run retention'}, 500
 
-    def _run_regenerate_spectrograms(force: bool, start_date: str | None, end_date: str | None):
-        """Background task: regenerate spectrograms. Uses own app context and db session."""
+    def _run_regenerate_spectrograms(
+        force: bool,
+        start_date: str | None,
+        end_date: str | None,
+        video_ids: list[int] | None = None,
+    ):
+        """Background task: regenerate spectrograms. Uses own app context and db session.
+
+        If ``video_ids`` is set, only those rows are processed (always overwrite existing file).
+        """
         global _regenerate_status
         _regenerate_status = {
             'status': 'running', 'result': None, 'error': None,
@@ -1232,7 +1250,10 @@ def register_routes(app):
                 spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
 
                 query = Video.query
-                if not force:
+                if video_ids:
+                    ids = sorted({int(x) for x in video_ids if x is not None})
+                    query = query.filter(Video.id.in_(ids))
+                elif not force:
                     query = query.filter(
                         (Video.spectrogram_path == None) | (Video.spectrogram_path == '')
                     )
@@ -1338,13 +1359,39 @@ def register_routes(app):
         end_date = data.get('end_date')
         t = threading.Thread(
             target=_run_regenerate_spectrograms,
-            args=(force, start_date, end_date),
+            args=(force, start_date, end_date, None),
             daemon=True,
         )
         t.start()
         return {
             'message': 'Regeneration started in background.',
             'started': True,
+        }, 202
+
+    @app.route('/api/ui/videos/<int:video_id>/regenerate-spectrogram', methods=['POST'])
+    def regenerate_spectrogram_single_video(video_id):
+        """Перегенерация спектрограммы для одной записи (админ при двухуровневом доступе)."""
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        video = db.session.get(Video, video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+        with _regenerate_lock:
+            if _regenerate_status['status'] == 'running':
+                return {
+                    'error': 'Regeneration already in progress',
+                    'status': _regenerate_status,
+                }, 409
+        t = threading.Thread(
+            target=_run_regenerate_spectrograms,
+            args=(True, None, None, [video_id]),
+            daemon=True,
+        )
+        t.start()
+        return {
+            'message': 'Spectrogram regeneration started for this video.',
+            'started': True,
+            'video_id': video_id,
         }, 202
 
     @app.route('/api/ui/system/regenerate-spectrograms/status', methods=['GET'])
@@ -1385,6 +1432,7 @@ def register_routes(app):
                     build_detection_pipeline,
                     process_video_for_tracks,
                 )
+                from detection_fusion import build_fused_video_detections
                 from services.visit_processor import VisitProcessor
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
@@ -1400,7 +1448,7 @@ def register_routes(app):
                 regen_strategy = (
                     app_config.get('processor.track_regen_detection_strategy')
                     or app_config.get('processor.detection_strategy')
-                    or 'single_stage'
+                    or 'two_stage'
                 )
                 max_runtime_sec = int(
                     app_config.get('processor.track_regen_video_timeout_sec') or 300
@@ -1408,6 +1456,7 @@ def register_routes(app):
                 dt_start = None
                 dt_end = None
                 species_ids_f = sorted(set(species_ids or []))
+                target_video_ids = sorted(set(video_ids or []))
                 regen_params = {
                     'frame_step': frame_step,
                     'lores_px': lores_px,
@@ -1422,7 +1471,12 @@ def register_routes(app):
                 )
                 _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
-                if force:
+                # Явные video_ids (один ролик из UI): не фильтровать по пустым frames.
+                # Иначе ролик с frames='[]', только audio-строками или «левыми» frames
+                # не попадал в join-выборку — пользователь видел «перегенерация ничего не сделала».
+                if target_video_ids:
+                    q = Video.query.filter(Video.id.in_(target_video_ids))
+                elif force:
                     q = Video.query
                 elif species_ids_f:
                     # Выбраны виды (напр. Rodent): брать все записи с этими детекциями,
@@ -1435,7 +1489,11 @@ def register_routes(app):
                 else:
                     from sqlalchemy import or_
                     q = Video.query.join(VideoSpecies).filter(
-                        or_(VideoSpecies.frames.is_(None), VideoSpecies.frames == '')
+                        or_(
+                            VideoSpecies.frames.is_(None),
+                            VideoSpecies.frames == '',
+                            VideoSpecies.frames == '[]',
+                        )
                     ).distinct()
 
                 if start_date:
@@ -1462,11 +1520,13 @@ def register_routes(app):
                     q = q.filter(Video.id.in_(vid_subq))
 
                 videos = q.order_by(Video.start_time.asc()).all()
-                target_video_ids = sorted(set(video_ids or []))
-                if target_video_ids:
-                    videos = [v for v in videos if v.id in target_video_ids]
                 total = len(videos)
                 _regenerate_tracks_status['progress']['total'] = total
+                if total == 0 and target_video_ids:
+                    app.logger.warning(
+                        'Track regen: no videos for explicit ids %s (missing or filtered out)',
+                        target_video_ids,
+                    )
                 if total == 0 and species_ids_f:
                     app.logger.info(
                         'Track regen: empty queue (species_ids=%s, start_date=%s, end_date=%s, force=%s)',
@@ -1480,6 +1540,7 @@ def register_routes(app):
                 failed = 0
                 skipped = 0
                 frames_updated = 0  # videos with manually_corrected: only frames updated
+                single_video_regen_summary: dict | None = None
                 precise_candidates: list[dict] = []
                 regen_species_scope = None
                 regen_species_scope_lc: set[str] = set()
@@ -1509,7 +1570,7 @@ def register_routes(app):
                     or
                     app_config.get('processor.detection_strategy')
                     or regen_strategy
-                    or 'single_stage'
+                    or 'two_stage'
                 )
                 precise_max_runtime_sec = min(
                     max_runtime_sec,
@@ -1661,8 +1722,6 @@ def register_routes(app):
                                 return None
                             if precise_pipeline is None:
                                 precise_scope_override = regen_species_scope
-                                if str(precise_strategy).strip() == 'single_stage':
-                                    precise_scope_override = None
                                 precise_pipeline = build_detection_pipeline(
                                     app_config,
                                     strategy_override=precise_strategy,
@@ -1685,7 +1744,14 @@ def register_routes(app):
                             fast_kwargs,
                             _precise_kwargs if precise_enabled else None,
                         )
-                        if precise_used and regen_species_scope_lc and str(precise_strategy).strip() == 'single_stage':
+                        detections = build_fused_video_detections(
+                            detections,
+                            [],
+                            start_time=video.start_time,
+                            end_time=video.end_time,
+                            app_config=app_config,
+                        )
+                        if regen_species_scope_lc:
                             detections = [
                                 _remap_detection_to_local_scope(d, regen_species_scope_lc)
                                 for d in detections
@@ -1810,6 +1876,10 @@ def register_routes(app):
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
                             frames_updated += 1
+                            if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
+                                single_video_regen_summary = _summarize_track_regen_detections(
+                                    unmatched,
+                                )
                             precise_candidates.append({
                                 'video_id': video.id,
                                 'video_path': video.video_path,
@@ -1829,10 +1899,18 @@ def register_routes(app):
                                 ).delete(synchronize_session=False)
                             visit_processor.process_detections(video, scoped_detections)
                             generated += 1
+                            if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
+                                single_video_regen_summary = _summarize_track_regen_detections(
+                                    scoped_detections,
+                                )
                         else:
                             VideoSpecies.query.filter_by(video_id=video.id).delete()
                             visit_processor.process_detections(video, detections)
                             generated += 1
+                            if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
+                                single_video_regen_summary = _summarize_track_regen_detections(
+                                    detections,
+                                )
                         db.session.commit()
                     except Exception as e:
                         db.session.rollback()
@@ -1858,6 +1936,8 @@ def register_routes(app):
                     'skipped': skipped,
                     'regen_params': regen_params,
                 }
+                if single_video_regen_summary is not None:
+                    result['single_video_regen'] = single_video_regen_summary
                 if frames_updated:
                     result['frames_updated'] = frames_updated
                 if precise_candidates:
@@ -1917,6 +1997,34 @@ def register_routes(app):
     def regenerate_tracks_status():
         """Return last track regeneration result."""
         return _regenerate_tracks_status, 200
+
+    @app.route('/api/ui/videos/<int:video_id>/regenerate-tracks', methods=['POST'])
+    def regenerate_tracks_single_video(video_id):
+        """Перегенерация треков только для одной записи (админ при двухуровневом доступе)."""
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        video = db.session.get(Video, video_id)
+        if not video:
+            return {'error': 'Video not found'}, 404
+        data = request.json or {}
+        force = bool(data.get('force', False))
+        with _regenerate_tracks_lock:
+            if _regenerate_tracks_status['status'] == 'running':
+                return {
+                    'error': 'Track regeneration already in progress',
+                    'status': _regenerate_tracks_status,
+                }, 409
+        t = threading.Thread(
+            target=_run_regenerate_tracks,
+            args=(force, None, None, None, [video_id], []),
+            daemon=True,
+        )
+        t.start()
+        return {
+            'message': 'Track regeneration started for this video.',
+            'started': True,
+            'video_id': video_id,
+        }, 202
 
     @app.route('/api/ui/system/recordings/scan', methods=['POST'])
     def scan_recordings():
@@ -2015,7 +2123,7 @@ def register_routes(app):
                     if _regenerate_status['status'] != 'running':
                         t = threading.Thread(
                             target=_run_regenerate_spectrograms,
-                            args=(False, None, None),
+                            args=(False, None, None, None),
                             daemon=True,
                         )
                         t.start()

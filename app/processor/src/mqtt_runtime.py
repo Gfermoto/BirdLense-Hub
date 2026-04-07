@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from app_config.app_config import app_config
 from mqtt_aggregator import MQTTEventAggregator
-from processor_support import heartbeat_mqtt_ref
+from processor_support import get_data_dir, heartbeat_mqtt_ref
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -19,7 +19,7 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     Вес: явный ``mqtt_topic`` или, если пусто, ``{mqtt_topic_prefix}/weight``.
     ``bird_present`` подписывается отдельно при непустом префиксе (см. ``start_mqtt_aggregator_session``).
     """
-    data_dir = os.environ.get('DATA_DIR', 'data')
+    data_dir = get_data_dir()
     scales_topic_arg: Optional[str] = None
     scales_unit_arg = 'kg'
     if app_config.get('integrations.scales.enabled'):

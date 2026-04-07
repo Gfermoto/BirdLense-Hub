@@ -11,7 +11,6 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import ExpandLess from '@mui/icons-material/ExpandLess';
-import AccessTime from '@mui/icons-material/AccessTime';
 import Thermostat from '@mui/icons-material/Thermostat';
 import CalendarToday from '@mui/icons-material/CalendarToday';
 import Groups from '@mui/icons-material/Groups';
@@ -25,6 +24,7 @@ import Alert from '@mui/material/Alert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { downloadDetectionCropForINaturalist } from '../api/api';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
@@ -308,29 +308,32 @@ export const VisitCard = memo(function VisitCard({
         <Collapse in={expanded} timeout="auto">
           <Box mt={2}>
             {groupDetectionsByVideo(visit.detections ?? []).map(
-              (group, groupIndex) => (
-                <Box key={`group-${groupIndex}`}>
-                  {group.map((detection, index) => (
-                    <DetectionItem
-                      key={`${detection.video_id}-${index}`}
-                      detection={detection}
-                      speciesName={visit.species.name}
-                      onClick={() =>
-                        navigate(`/videos/${detection.video_id}`, {
-                          state: {
-                            from: `${location.pathname}${location.search}`,
-                            ...(visit.timeline_kind !== 'unlinked_video' &&
-                            visit.id > 0
-                              ? { visitId: visit.id }
-                              : {}),
-                          },
-                        })
-                      }
-                      isLastInGroup={index === group.length - 1}
-                    />
-                  ))}
-                </Box>
-              ),
+              (group, groupIndex) => {
+                const vid = group[0]?.video_id;
+                return (
+                  <Box key={`group-${groupIndex}-${vid ?? 'x'}`}>
+                    {group.map((detection, index) => (
+                      <DetectionItem
+                        key={`${detection.video_id}-${index}`}
+                        detection={detection}
+                        speciesName={visit.species.name}
+                        onClick={() =>
+                          navigate(`/videos/${detection.video_id}`, {
+                            state: {
+                              from: `${location.pathname}${location.search}`,
+                              ...(visit.timeline_kind !== 'unlinked_video' &&
+                              visit.id > 0
+                                ? { visitId: visit.id }
+                                : {}),
+                            },
+                          })
+                        }
+                        isLastInGroup={index === group.length - 1}
+                      />
+                    ))}
+                  </Box>
+                );
+              },
             )}
           </Box>
         </Collapse>

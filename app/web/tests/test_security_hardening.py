@@ -292,3 +292,30 @@ class TestMetricsBearerToken:
         monkeypatch.setenv('BIRDLENSE_METRICS_TOKEN', 'secret-metrics-token')
         h = {'Authorization': 'bearer secret-metrics-token'}
         assert client.get('/api/metrics', headers=h).status_code == 200
+
+
+class TestSingleVideoTrackRegenAuth:
+    """Пересчёт треков одной записью — только админ при двух паролях (#199)."""
+
+    def test_contributor_cannot_start_single_video_track_regen(
+        self, client, monkeypatch,
+    ):
+        from app_config.app_config import app_config
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = 'admin-secret'
+        general['contributor_password'] = 'contrib-secret'
+        monkeypatch.setitem(app_config.config, 'general', general)
+        monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'contributor'
+
+        r = client.post('/api/ui/videos/1/regenerate-tracks', json={})
+        assert r.status_code == 403
+        assert 'Access denied' in (r.get_json() or {}).get('error', '')
+
+        r2 = client.post('/api/ui/videos/1/regenerate-spectrogram', json={})
+        assert r2.status_code == 403
+        assert 'Access denied' in (r2.get_json() or {}).get('error', '')

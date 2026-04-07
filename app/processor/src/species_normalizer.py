@@ -130,6 +130,27 @@ def merge_detections(
             providers.update(p for p in (new_providers or []) if p)
             existing["contributing_providers"] = sorted(providers)
 
+    def _is_squirrel_like(name: str) -> bool:
+        key = _extract_common_for_merge(name)
+        return any(token in key for token in ('squirrel', 'chipmunk', 'rodent'))
+
+    def _can_frigate_promote(det: dict, ev: dict) -> bool:
+        reason = str(det.get("decision_reason") or "").strip().lower()
+        if reason not in {"fallback_bird", "fallback_squirrel"}:
+            return False
+        detector_label = str(det.get("detector_label") or det.get("species_name") or "").strip()
+        if not detector_label:
+            return False
+        if detector_label.lower() == "bird":
+            return not _is_squirrel_like(
+                str(ev.get("species") or ev.get("sub_label") or ev.get("label") or "")
+            )
+        if detector_label.lower() in {"squirrel", "rodent"}:
+            return _is_squirrel_like(
+                str(ev.get("species") or ev.get("sub_label") or ev.get("label") or "")
+            )
+        return False
+
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
     sorted_yolo = sorted(yolo_detections, key=lambda d: d.get("start_time", 0))
     for d in sorted_yolo:
@@ -166,25 +187,27 @@ def merge_detections(
             logger.debug("merge: YOLO %s into existing (gap=%.1fs)", species, best_gap)
         else:
             visit_id = sum(1 for k in by_key if k[0] == key)
-            by_key[(key, visit_id)] = {
-                "species_name": species,
-                "species": species,
-                "start_time": start,
-                "end_time": end,
-                "confidence": conf,
-                "source": d.get("source", "video"),
-                "detection_provider": provider,
-                "track_id": d.get("track_id"),
-                "frames": d.get("frames"),
-                "contributing_providers": sorted(
-                    {provider, *(d.get("contributing_providers") or [])}
-                ),
-            }
-            if "best_frame" in d:
-                by_key[(key, visit_id)]["best_frame"] = d["best_frame"]
+            row = dict(d)
+            row["species_name"] = species
+            row["species"] = species
+            row["start_time"] = start
+            row["end_time"] = end
+            row["confidence"] = conf
+            row["source"] = d.get("source", "video")
+            row["detection_provider"] = provider
+            row["track_id"] = d.get("track_id")
+            row["frames"] = d.get("frames")
+            row["contributing_providers"] = sorted(
+                {provider, *(d.get("contributing_providers") or [])}
+            )
+            by_key[(key, visit_id)] = row
 
     # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
     for ev in mqtt_events:
+        provider = ev.get("source", "mqtt")
+        if provider == "birdnet":
+            # BirdNET only biases confidence thresholds before YOLO decision-making.
+            continue
         species = normalize(ev.get("species", "unknown"), species_mapping)
         conf = ev.get("confidence", 0)
         key = _canonical_key(species)
@@ -223,9 +246,6 @@ def merge_detections(
                     merged = det
                     break
 
-        provider = ev.get("source", "mqtt")
-        if provider == "birdnet":
-            provider = "birdnet_mqtt"
         if merged is not None:
             _merge_into(
                 merged,
@@ -245,56 +265,42 @@ def merge_detections(
                     )
             logger.debug("merge: MQTT %s into YOLO (offset=%.1fs)", species, offset if offset is not None else -1)
             continue
-        # MQTT-only (no overlapping YOLO visit). one_per_species: single bucket (key, -1) and merge.
-        if one_per_species:
-            existing_mqtt = by_key.get((key, -1))
-            if existing_mqtt is not None:
+        if provider == "frigate":
+            generic_candidate = None
+            best_overlap = -1
+            for det in by_key.values():
+                if not _can_frigate_promote(det, ev):
+                    continue
+                es, ee = det.get("start_time", 0), det.get("end_time", 0)
+                overlap = min(ee, ev_end) - max(es, ev_start)
+                if overlap > best_overlap or (overlap >= 0 and generic_candidate is None):
+                    best_overlap = overlap
+                    generic_candidate = det
+            if generic_candidate is not None:
+                generic_candidate["species_name"] = species
+                generic_candidate["species"] = species
+                generic_candidate["decision_reason"] = "promoted_by_frigate"
+                generic_candidate["frigate_promoted_label"] = species
                 _merge_into(
-                    existing_mqtt,
+                    generic_candidate,
                     conf,
                     ev_start,
                     ev_end,
                     new_provider=provider,
                     new_providers=ev.get("contributing_providers"),
                 )
-                logger.debug("merge: MQTT %s into MQTT-only bucket", species)
-                continue
-            new_vid = -1
-        else:
-            new_vid = max((vid for (k0, vid) in by_key.keys() if k0 == key), default=-1) + 1
+                if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
+                    generic_candidate["confidence"] = min(
+                        1.0,
+                        float(generic_candidate.get("confidence") or 0) + float(cross_source_confidence_bonus),
+                    )
+                logger.debug(
+                    "merge: Frigate promoted %s for detector fallback %s",
+                    species,
+                    generic_candidate.get("track_id"),
+                )
 
-        by_key[(key, new_vid)] = {
-            "species_name": species,
-            "species": species,
-            "start_time": ev_start,
-            "end_time": ev_end,
-            "confidence": conf,
-            "source": "video",
-            "detection_provider": provider,
-            "contributing_providers": sorted(
-                {provider, *(ev.get("contributing_providers") or [])}
-            ),
-        }
-        logger.debug("merge: MQTT %s new (offset=%.1fs)", species, offset if offset is not None else -1)
-
-    # Bird: при наличии другого вида — убрать Bird, перенести frames
-    bird_key = _canonical_key("Bird")
     result_list = list(by_key.values())
-    bird_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) == bird_key]
-    other_dets = [d for d in result_list if _canonical_key(d.get("species_name", "")) != bird_key]
-    if bird_dets and other_dets:
-        for other in other_dets:
-            if not (other.get("frames") or other.get("best_frame")):
-                for bird_d in bird_dets:
-                    if bird_d.get("frames") or bird_d.get("best_frame"):
-                        other["frames"] = bird_d.get("frames") or other.get("frames")
-                        if bird_d.get("best_frame") is not None:
-                            other["best_frame"] = bird_d.get("best_frame")
-                        if bird_d.get("track_id") is not None:
-                            other["track_id"] = bird_d.get("track_id")
-                        logger.debug("merge: transferred frames from Bird to %s", other.get("species_name"))
-                        break
-        result_list = other_dets
 
     # Финальное объединение: один результат на вид (устраняет дубликаты)
     if one_per_species and len(result_list) > 1:
@@ -342,6 +348,8 @@ def merge_detections(
                 overlap = min(ea, eb) - max(sa, sb)
                 if overlap >= conflict_overlap_sec:
                     rank_b = _provider_rank(b.get("detection_provider"))
+                    if rank_a == rank_b:
+                        continue
                     if rank_a < rank_b:
                         to_remove.add(j)
                         logger.debug(

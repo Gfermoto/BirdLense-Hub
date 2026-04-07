@@ -1,15 +1,16 @@
-"""Tests for track_regenerator model path handling."""
+"""Tests for track_regenerator / two-stage detection pipeline wiring."""
 
 import os
 import sys
 import unittest
-from types import ModuleType
 from unittest.mock import patch
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.insert(0, src_path)
+
+import detection_stack as detection_stack_mod
 
 from track_regenerator import build_detection_pipeline, _dedupe_track_detections
 
@@ -22,191 +23,104 @@ class _FakeConfig:
         return self._values.get(key, default)
 
 
-class TestTrackRegeneratorModelPath(unittest.TestCase):
-    """Track regen must honor configured NCNN directories."""
+def _base_cfg(extra=None):
+    base = {
+        'processor.detection_strategy': 'two_stage',
+        'processor.models.binary': '/tmp/binary_detector.pt',
+        'processor.models.classifier': '/tmp/classifier.pt',
+        'processor.max_record_seconds': 30,
+        'processor.max_inactive_seconds': 2,
+        'processor.min_track_duration': 1,
+        'processor.min_confidence_to_process': 0.4,
+        'processor.post_record_seconds': 0,
+        'processor.regional_species': [],
+        'processor.track_regen_ignore_regional_species': True,
+        'detection.min_confidence_to_store': 0.30,
+        'processor.classifier_fallback_bird': True,
+        'processor.tracker': 'bytetrack.yaml',
+    }
+    if extra:
+        base.update(extra)
+    return base
 
-    def test_single_stage_keeps_directory_model_path(self):
-        """A configured NCNN directory must not fall back to yolov8n.pt."""
-        cfg = _FakeConfig({
-            'processor.detection_strategy': 'single_stage',
-            'processor.models.single_stage': '/tmp/nabirds_yolov8n_ncnn_model',
-            'processor.single_stage_coco_animals_only_auto': True,
-            'processor.max_record_seconds': 30,
-            'processor.max_inactive_seconds': 2,
-            'processor.min_track_duration': 1,
-            'processor.min_confidence_to_process': 0.4,
-            'processor.post_record_seconds': 0,
-        })
 
-        fake_detection_strategy = ModuleType('detection_strategy')
-        fake_detection_strategy.SingleStageStrategy = object()
-        fake_detection_strategy.TwoStageStrategy = object()
-        fake_frame_processor = ModuleType('frame_processor')
-        fake_frame_processor.FrameProcessor = object()
-        fake_decision_maker = ModuleType('decision_maker')
-        fake_decision_maker.DecisionMaker = object()
-        fake_ebird = ModuleType('ebird_regional_confidence')
-        fake_ebird.merge_species_confidence_overrides_with_ebird_top = object()
+class TestTrackRegeneratorTwoStage(unittest.TestCase):
+    """Track regen delegates to ``build_detection_stack`` (two_stage .pt only)."""
 
-        with patch.dict(
-            sys.modules,
-            {
-                'detection_strategy': fake_detection_strategy,
-                'frame_processor': fake_frame_processor,
-                'decision_maker': fake_decision_maker,
-                'ebird_regional_confidence': fake_ebird,
-            },
-        ), patch('track_regenerator.os.path.isfile', return_value=False), patch(
-            'track_regenerator.os.path.isdir',
-            side_effect=lambda path: path == '/tmp/nabirds_yolov8n_ncnn_model',
-        ), patch(
-            'detection_strategy.SingleStageStrategy',
-        ) as single_stage_cls, patch(
-            'detection_strategy.TwoStageStrategy',
-        ), patch(
-            'ebird_regional_confidence.merge_species_confidence_overrides_with_ebird_top',
-            return_value={},
-        ), patch(
-            'frame_processor.FrameProcessor',
-            return_value='frame_processor',
-        ), patch(
-            'decision_maker.DecisionMaker',
-            return_value='decision_maker',
+    def test_build_detection_stack_called_for_track_regen(self):
+        cfg = _FakeConfig(_base_cfg())
+        captured = []
+
+        def _capture(app_config, **kwargs):
+            captured.append((app_config, kwargs))
+            return 'frame_processor', 'decision_maker', {}
+
+        with patch.object(
+            detection_stack_mod,
+            'build_detection_stack',
+            side_effect=_capture,
         ):
             frame_processor, decision_maker = build_detection_pipeline(
                 cfg,
-                strategy_override='single_stage',
+                strategy_override='two_stage',
                 for_track_regen=True,
             )
 
         self.assertEqual(frame_processor, 'frame_processor')
         self.assertEqual(decision_maker, 'decision_maker')
-        single_stage_cls.assert_called_once()
-        self.assertEqual(
-            single_stage_cls.call_args.kwargs['model_path'],
-            '/tmp/nabirds_yolov8n_ncnn_model',
-        )
+        self.assertEqual(len(captured), 1)
+        self.assertIs(captured[0][0], cfg)
+        kw = captured[0][1]
+        self.assertEqual(kw.get('strategy_override'), 'two_stage')
+        self.assertTrue(kw.get('for_track_regen'))
+        self.assertFalse(kw.get('warn_two_stage_fallback'))
 
-    def test_regional_species_override_is_honored_for_track_regen(self):
-        """An explicit local scope must bypass ignore_regional reset."""
-        cfg = _FakeConfig({
-            'processor.detection_strategy': 'single_stage',
-            'processor.models.single_stage': '/tmp/nabirds_yolov8n_ncnn_model',
-            'processor.single_stage_coco_animals_only_auto': True,
-            'processor.track_regen_ignore_regional_species': True,
-            'processor.max_record_seconds': 30,
-            'processor.max_inactive_seconds': 2,
-            'processor.min_track_duration': 1,
-            'processor.min_confidence_to_process': 0.4,
-            'processor.post_record_seconds': 0,
-        })
+    def test_regional_species_override_is_forwarded_to_stack(self):
+        cfg = _FakeConfig(_base_cfg())
+        captured = []
 
-        fake_detection_strategy = ModuleType('detection_strategy')
-        fake_detection_strategy.SingleStageStrategy = object()
-        fake_detection_strategy.TwoStageStrategy = object()
-        fake_frame_processor = ModuleType('frame_processor')
-        fake_frame_processor.FrameProcessor = object()
-        fake_decision_maker = ModuleType('decision_maker')
-        fake_decision_maker.DecisionMaker = object()
-        fake_ebird = ModuleType('ebird_regional_confidence')
-        fake_ebird.merge_species_confidence_overrides_with_ebird_top = object()
+        def _capture(app_config, **kwargs):
+            captured.append(kwargs)
+            return 'fp', 'dm', {}
 
-        with patch.dict(
-            sys.modules,
-            {
-                'detection_strategy': fake_detection_strategy,
-                'frame_processor': fake_frame_processor,
-                'decision_maker': fake_decision_maker,
-                'ebird_regional_confidence': fake_ebird,
-            },
-        ), patch('track_regenerator.os.path.isfile', return_value=False), patch(
-            'track_regenerator.os.path.isdir',
-            side_effect=lambda path: path == '/tmp/nabirds_yolov8n_ncnn_model',
-        ), patch(
-            'detection_strategy.SingleStageStrategy',
-        ) as single_stage_cls, patch(
-            'detection_strategy.TwoStageStrategy',
-        ), patch(
-            'ebird_regional_confidence.merge_species_confidence_overrides_with_ebird_top',
-            return_value={},
-        ), patch(
-            'frame_processor.FrameProcessor',
-            return_value='frame_processor',
-        ), patch(
-            'decision_maker.DecisionMaker',
-            return_value='decision_maker',
+        with patch.object(
+            detection_stack_mod,
+            'build_detection_stack',
+            side_effect=_capture,
         ):
             build_detection_pipeline(
                 cfg,
-                strategy_override='single_stage',
+                strategy_override='two_stage',
                 for_track_regen=True,
                 regional_species_override=['Eurasian Jay', 'Great Tit'],
             )
 
         self.assertEqual(
-            single_stage_cls.call_args.kwargs['regional_species'],
+            captured[0].get('regional_species_override'),
             ['Eurasian Jay', 'Great Tit'],
         )
 
-    def test_min_center_dist_override_is_forwarded(self):
-        """Track regen override must relax edge filtering when requested."""
-        cfg = _FakeConfig({
-            'processor.detection_strategy': 'single_stage',
-            'processor.models.single_stage': '/tmp/nabirds_yolov8n_ncnn_model',
-            'processor.single_stage_coco_animals_only_auto': True,
-            'processor.max_record_seconds': 30,
-            'processor.max_inactive_seconds': 2,
-            'processor.min_track_duration': 1,
-            'processor.min_confidence_to_process': 0.4,
-            'processor.post_record_seconds': 0,
-        })
+    def test_min_center_dist_override_is_forwarded_to_stack(self):
+        cfg = _FakeConfig(_base_cfg())
+        captured = []
 
-        fake_detection_strategy = ModuleType('detection_strategy')
-        fake_detection_strategy.SingleStageStrategy = object()
-        fake_detection_strategy.TwoStageStrategy = object()
-        fake_frame_processor = ModuleType('frame_processor')
-        fake_frame_processor.FrameProcessor = object()
-        fake_decision_maker = ModuleType('decision_maker')
-        fake_decision_maker.DecisionMaker = object()
-        fake_ebird = ModuleType('ebird_regional_confidence')
-        fake_ebird.merge_species_confidence_overrides_with_ebird_top = object()
+        def _capture(app_config, **kwargs):
+            captured.append(kwargs)
+            return 'fp', 'dm', {}
 
-        with patch.dict(
-            sys.modules,
-            {
-                'detection_strategy': fake_detection_strategy,
-                'frame_processor': fake_frame_processor,
-                'decision_maker': fake_decision_maker,
-                'ebird_regional_confidence': fake_ebird,
-            },
-        ), patch('track_regenerator.os.path.isfile', return_value=False), patch(
-            'track_regenerator.os.path.isdir',
-            side_effect=lambda path: path == '/tmp/nabirds_yolov8n_ncnn_model',
-        ), patch(
-            'detection_strategy.SingleStageStrategy',
-        ) as single_stage_cls, patch(
-            'detection_strategy.TwoStageStrategy',
-        ), patch(
-            'ebird_regional_confidence.merge_species_confidence_overrides_with_ebird_top',
-            return_value={},
-        ), patch(
-            'frame_processor.FrameProcessor',
-            return_value='frame_processor',
-        ), patch(
-            'decision_maker.DecisionMaker',
-            return_value='decision_maker',
+        with patch.object(
+            detection_stack_mod,
+            'build_detection_stack',
+            side_effect=_capture,
         ):
             build_detection_pipeline(
                 cfg,
-                strategy_override='single_stage',
+                strategy_override='two_stage',
                 for_track_regen=True,
                 min_center_dist_override=0.02,
             )
 
-        self.assertEqual(
-            single_stage_cls.call_args.kwargs['min_center_dist'],
-            0.02,
-        )
+        self.assertEqual(captured[0].get('min_center_dist_override'), 0.02)
 
 
 class TestTrackRegeneratorDedup(unittest.TestCase):
@@ -293,4 +207,3 @@ class TestTrackRegeneratorDedup(unittest.TestCase):
 
         self.assertEqual(len(deduped), 1)
         self.assertEqual(deduped[0]['species_name'], 'Eurasian Jay')
-
