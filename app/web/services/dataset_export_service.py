@@ -468,6 +468,8 @@ def build_dataset_zip(
                     skipped_small.append(class_name)
                     continue
                 shuffled = files[:]
+                # shuffle per-class deterministically
+                rng.shuffle(shuffled)
                 # Group by group_key and assign whole groups to splits deterministically.
                 from collections import defaultdict
 
@@ -570,9 +572,15 @@ def build_dataset_zip(
                         return moved
 
                     if val_ratio and not va_part and tr_part:
-                        _move_group_from(tr_part, va_part)
+                        moved = _move_group_from(tr_part, va_part)
+                        if not moved and tr_part:
+                            # fallback: move a single item if grouping couldn't move a whole group
+                            va_part.append(tr_part.pop())
                     if test_ratio and not te_part and tr_part:
-                        _move_group_from(tr_part, te_part)
+                        moved = _move_group_from(tr_part, te_part)
+                        if not moved and tr_part:
+                            # fallback: move a single item if grouping couldn't move a whole group
+                            te_part.append(tr_part.pop())
                 except Exception:
                     pass
                 if not tr_part and shuffled:
