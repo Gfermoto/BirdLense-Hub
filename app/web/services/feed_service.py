@@ -71,6 +71,10 @@ def _get_mqtt_client():
     broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     if not broker:
         return None
+    # If mqtt import is present but missing expected attributes (test stubs),
+    # behave as if MQTT is not configured.
+    if not mqtt or not hasattr(mqtt, 'Client'):
+        return None
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id='birdlense_feed',
