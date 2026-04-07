@@ -472,6 +472,8 @@ def build_dataset_zip(
                 from collections import defaultdict
 
                 groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+                rng = random.Random(split_seed)
+                rng.shuffle(shuffled)
                 for src, fname in shuffled:
                     gk = _group_key_for_filename(fname, video_meta)
                     groups[gk].append((src, fname))
@@ -481,6 +483,89 @@ def build_dataset_zip(
                 rng.shuffle(group_items)
                 # sort by group size descending to place large groups first
                 group_items.sort(key=lambda x: -len(x[1]))
+
+                # Fast path: single-group per-class (common in small datasets).
+                # Only split within the group if the group contains a single video_id.
+                if len(group_items) == 1:
+                    rows = list(group_items[0][1])
+                    # detect unique video ids in group
+                    vids = set()
+                    for _s, fname in rows:
+                        parts = fname.replace('.jpg', '').replace('.jpeg', '').replace('.png', '').split('_')
+                        if parts:
+                            try:
+                                vids.add(int(parts[0]))
+                            except Exception:
+                                pass
+                    if len(vids) == 1:
+                        # safe to split within group
+                        rng.shuffle(rows)
+                        n = len(rows)
+                        n_test = int(n * test_ratio)
+                        n_test = max(0, min(n_test, n - 1)) if n > 0 else 0
+                        rest = rows[n_test:]
+                        n_val = int(len(rest) * val_ratio) if rest else 0
+                        if rest and n_val == 0 and val_ratio > 0:
+                            n_val = 1
+                        te_part = rows[:n_test]
+                        va_part = rest[:n_val]
+                        tr_part = rest[n_val:]
+                        # proceed to writing parts
+                        group_meta = {'group_count': 1}
+                        # Final unconditional fallback
+                        if val_ratio and not va_part:
+                            if tr_part:
+                                va_part.append(tr_part.pop())
+                            elif te_part:
+                                va_part.append(te_part.pop())
+                        if test_ratio and not te_part:
+                            if tr_part:
+                                te_part.append(tr_part.pop())
+                            elif va_part:
+                                te_part.append(va_part.pop())
+                        # write out and continue to next class
+                        for src, fname in tr_part:
+                            try:
+                                zf.write(src, f'train/{class_name}/{fname}')
+                                export_entries.append((
+                                    'train',
+                                    class_name,
+                                    fname,
+                                    _group_key_for_filename(fname, video_meta),
+                                ))
+                                info['train'][class_name] = info['train'].get(class_name, 0) + 1
+                                info['total_images'] += 1
+                            except OSError:
+                                pass
+                        for src, fname in va_part:
+                            try:
+                                zf.write(src, f'val/{class_name}/{fname}')
+                                export_entries.append((
+                                    'val',
+                                    class_name,
+                                    fname,
+                                    _group_key_for_filename(fname, video_meta),
+                                ))
+                                info['val'][class_name] = info['val'].get(class_name, 0) + 1
+                                info['total_images'] += 1
+                            except OSError:
+                                pass
+                        for src, fname in te_part:
+                            try:
+                                zf.write(src, f'test/{class_name}/{fname}')
+                                export_entries.append((
+                                    'test',
+                                    class_name,
+                                    fname,
+                                    _group_key_for_filename(fname, video_meta),
+                                ))
+                                info['test'][class_name] = info['test'].get(class_name, 0) + 1
+                                info['total_images'] += 1
+                            except OSError:
+                                pass
+                        classes_txt.append(class_name)
+                        continue
+                    # else: fall through to group assignment logic (preserve group integrity)
 
                 total_items = sum(len(rows) for _, rows in group_items)
                 target_test = int(total_items * test_ratio)
@@ -570,11 +655,29 @@ def build_dataset_zip(
                         return moved
 
                     if val_ratio and not va_part and tr_part:
-                        _move_group_from(tr_part, va_part)
+                        moved = _move_group_from(tr_part, va_part)
+                        if not moved and tr_part:
+                            # fallback: move a single item if grouping couldn't move a whole group
+                            va_part.append(tr_part.pop())
                     if test_ratio and not te_part and tr_part:
-                        _move_group_from(tr_part, te_part)
+                        moved = _move_group_from(tr_part, te_part)
+                        if not moved and tr_part:
+                            # fallback: move a single item if grouping couldn't move a whole group
+                            te_part.append(tr_part.pop())
                 except Exception:
                     pass
+                # Final unconditional fallback: ensure val/test get at least one example
+                if val_ratio and not va_part:
+                    if tr_part:
+                        va_part.append(tr_part.pop())
+                    elif te_part:
+                        va_part.append(te_part.pop())
+                if test_ratio and not te_part:
+                    if tr_part:
+                        te_part.append(tr_part.pop())
+                    elif va_part:
+                        te_part.append(va_part.pop())
+
                 if not tr_part and shuffled:
                     def _pop_group_from(lst):
                         if not lst:
