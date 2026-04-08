@@ -58,7 +58,12 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         app_config.get('video.video_width', 1280),
         app_config.get('video.video_height', 720),
     )
-    lores_size = (640, 640)
+    try:
+        lpx = int(app_config.get('processor.inference_lores_px') or 640)
+    except (TypeError, ValueError):
+        lpx = 640
+    lpx = max(320, min(lpx, 960))
+    lores_size = (lpx, lpx)
 
     media_setup = setup_processor_media(args, main_size, lores_size, api)
 

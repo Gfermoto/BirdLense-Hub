@@ -7,6 +7,9 @@ Outbound publishes from the processor main thread go through ``_publish_queue`` 
 sent only from the MQTT network loop thread (single writer to ``Client.publish``).
 On broker disconnect the queue is **retained** (and new publishes still enqueue if the
 broker is configured) so messages flush after reconnect; ``stop()`` clears the queue.
+
+Feeder-scale JSON state + JSONL history are written from a **dedicated daemon thread**
+(queued from ``_on_message``) so disk I/O does not block the MQTT client loop (#265).
 """
 import json
 import logging
@@ -341,6 +344,64 @@ class MQTTEventAggregator:
             self._scale_motion_debounce_seconds = 1.5
         self._prev_scale_kg: float | None = None
         self._last_scale_motion_ts = 0.0
+        self._feeder_scale_queue: queue.Queue | None = None
+
+    def _ensure_feeder_scale_worker(self) -> None:
+        if self._feeder_scale_queue is not None:
+            return
+        q: queue.Queue = queue.Queue(maxsize=200)
+        self._feeder_scale_queue = q
+
+        def _loop() -> None:
+            while True:
+                item = q.get()
+                try:
+                    if item is None:
+                        break
+                    write_feeder_scale_state(
+                        item["data_dir"],
+                        item.get("weight"),
+                        item.get("unit"),
+                        bird_present=item.get("bird_present"),
+                        history_max_lines=item["history_max_lines"],
+                    )
+                except Exception as e:
+                    logger.debug("feeder scale worker: %s", e)
+                finally:
+                    q.task_done()
+
+        threading.Thread(
+            target=_loop,
+            daemon=True,
+            name="birdlense-feeder-scale-io",
+        ).start()
+
+    def _enqueue_feeder_scale_write(
+        self,
+        *,
+        weight: float | None,
+        unit: str | None,
+        bird_present: bool | None,
+    ) -> None:
+        ddir = self.scales_data_dir
+        if not ddir:
+            return
+        self._ensure_feeder_scale_worker()
+        assert self._feeder_scale_queue is not None
+        try:
+            self._feeder_scale_queue.put_nowait(
+                {
+                    "data_dir": ddir,
+                    "weight": weight,
+                    "unit": unit,
+                    "bird_present": bird_present,
+                    "history_max_lines": self.scales_history_max_lines,
+                }
+            )
+        except queue.Full:
+            logger.warning(
+                "feeder scale write queue full; dropping MQTT scale update",
+            )
 
     def _prune_birdnet_events_locked(self, now=None, ttl_hours: float = 25.0) -> None:
         now = now or datetime.now(timezone.utc)
@@ -524,6 +585,13 @@ class MQTTEventAggregator:
         ev = None
         if msg.topic == self.frigate_topic:
             ev = _parse_frigate_event(msg.payload)
+            if ev is None:
+                plen = len(msg.payload) if msg.payload else 0
+                logger.debug(
+                    "MQTT frigate: parse returned None topic=%s payload_len=%s",
+                    msg.topic,
+                    plen,
+                )
             if ev:
                 label = ev.get("label", "")
                 sub_label = ev.get("sub_label", "")
@@ -559,14 +627,20 @@ class MQTTEventAggregator:
                             list(lbl_f))
         elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
             ev = _parse_birdnet_event(msg.payload)
+            if ev is None:
+                plen = len(msg.payload) if msg.payload else 0
+                logger.debug(
+                    "MQTT birdnet: parse returned None topic=%s payload_len=%s",
+                    msg.topic,
+                    plen,
+                )
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
             if w is not None and self.scales_data_dir:
-                write_feeder_scale_state(
-                    self.scales_data_dir,
-                    w,
-                    self.scales_unit,
-                    history_max_lines=self.scales_history_max_lines,
+                self._enqueue_feeder_scale_write(
+                    weight=w,
+                    unit=self.scales_unit,
+                    bird_present=None,
                 )
                 logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
             if (
@@ -593,10 +667,10 @@ class MQTTEventAggregator:
         ):
             bp = _parse_bird_present_payload(msg.payload)
             if bp is not None and self.scales_data_dir:
-                write_feeder_scale_state(
-                    self.scales_data_dir,
+                self._enqueue_feeder_scale_write(
+                    weight=None,
+                    unit=None,
                     bird_present=bp,
-                    history_max_lines=self.scales_history_max_lines,
                 )
                 logger.debug("Scales MQTT: bird_present=%s", bp)
             return
@@ -848,6 +922,11 @@ class MQTTEventAggregator:
 
     def stop(self):
         self._stopped = True
+        if self._feeder_scale_queue is not None:
+            try:
+                self._feeder_scale_queue.put_nowait(None)
+            except queue.Full:
+                pass
         self._clear_publish_queue()
         if self._client:
             self._client.disconnect()

@@ -46,6 +46,11 @@ processor:
   # При перегенерации не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
+  # Размер lores для live/file-плейлиста и процессора (640 = прежнее поведение).
+  inference_lores_px: 640
+  # Перегенерация треков: как live-пайплайн — тот же lores (inference_lores_px), каждый кадр,
+  # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
+  track_regen_match_live_pipeline: false
   # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
   min_confidence_binary: 0.30  # Детектор «птица/не птица»; ниже — больше ложных bbox
   min_confidence_to_process: 0.40  # Классификатор (combined); запись/БД
