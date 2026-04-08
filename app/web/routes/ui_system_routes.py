@@ -36,7 +36,6 @@ from services.species_visit_maintenance_service import (
     preview_realign_visit_times,
     preview_split_large_gap_visits,
 )
-from routes.ui_overview_timeline_routes import fetch_review_queue_items
 from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
 from auth import admin_track_regen_access
@@ -303,105 +302,6 @@ def _start_system_metrics_sampler(app):
 
 def register_routes(app):
     """Зарегистрировать расширенный набор system API (кроме metrics — отдельный модуль)."""
-    def _parse_unknown_ids(payload) -> list[int]:
-        raw = (payload or {}).get('unknown_ids')
-        if raw is None:
-            return []
-        if not isinstance(raw, list):
-            raise ValueError('unknown_ids must be an array of integers')
-        out: list[int] = []
-        for x in raw:
-            try:
-                v = int(x)
-            except (TypeError, ValueError):
-                continue
-            if v > 0:
-                out.append(v)
-        return sorted(set(out))
-
-    def _resolve_review_queue_bulk_plan(payload) -> dict:
-        date = str((payload or {}).get('date') or '').strip()
-        if not date:
-            raise ValueError('date is required')
-        time_of_day = str((payload or {}).get('time_of_day') or 'all').strip().lower()
-        hour_raw = (payload or {}).get('hour')
-        hour = None
-        if hour_raw not in (None, ''):
-            hour = int(hour_raw)
-            if hour < 0 or hour > 23:
-                raise ValueError('hour must be between 0 and 23')
-        unknown_ids = _parse_unknown_ids(payload)
-        if not unknown_ids:
-            raise ValueError('unknown_ids is required')
-
-        queue_items = fetch_review_queue_items(
-            db.session,
-            date_param=date,
-            time_of_day=time_of_day,
-            hour=hour,
-            limit=500,
-        )
-        queue_by_id = {item['id']: item for item in queue_items}
-        missing_unknown_ids = [uid for uid in unknown_ids if uid not in queue_by_id]
-        if missing_unknown_ids:
-            raise ValueError(
-                'Selected review items are not present in the current review queue: '
-                + ', '.join(str(uid) for uid in missing_unknown_ids)
-            )
-        selected_items = [queue_by_id[uid] for uid in unknown_ids]
-        by_video: dict[int, dict] = {}
-        for item in selected_items:
-            bucket = by_video.setdefault(item['video_id'], {
-                'video_id': item['video_id'],
-                'unknown_ids': [],
-                'species_names': set(),
-                'review_reasons': set(),
-            })
-            bucket['unknown_ids'].append(item['id'])
-            bucket['species_names'].add(item.get('species_name'))
-            bucket['review_reasons'].add(item.get('review_reason'))
-
-        video_ids = sorted(by_video)
-        videos = db.session.query(Video).filter(Video.id.in_(video_ids)).all()
-        videos_by_id = {video.id: video for video in videos}
-
-        preview_videos = []
-        missing_video_ids = []
-        for video_id in video_ids:
-            video = videos_by_id.get(video_id)
-            bucket = by_video[video_id]
-            if not video:
-                missing_video_ids.append(video_id)
-                continue
-            full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
-            preview_videos.append({
-                'video_id': video.id,
-                'video_path': video.video_path,
-                'start_time': video.start_time.astimezone(timezone.utc).isoformat() if video.start_time else None,
-                'end_time': video.end_time.astimezone(timezone.utc).isoformat() if video.end_time else None,
-                'has_video_path': bool(video.video_path),
-                'file_exists': bool(full_path and os.path.isfile(full_path)),
-                'recording_dir': os.path.dirname(video.video_path) if video.video_path else None,
-                'unknown_count': len(bucket['unknown_ids']),
-                'unknown_ids': sorted(bucket['unknown_ids']),
-                'species_names': sorted(name for name in bucket['species_names'] if name),
-                'review_reasons': sorted(reason for reason in bucket['review_reasons'] if reason),
-            })
-
-        return {
-            'date': date,
-            'time_of_day': time_of_day,
-            'hour': hour,
-            'confirmation_phrase': 'permanent_full',
-            'unknown_ids': unknown_ids,
-            'unknown_count': len(selected_items),
-            'video_ids': video_ids,
-            'video_count': len(preview_videos),
-            'missing_video_ids': missing_video_ids,
-            'videos_by_id': videos_by_id,
-            'preview_videos': preview_videos,
-        }
-
     def _flatten_keys(d: dict, prefix: str = '') -> set[str]:
         out = set()
         if not isinstance(d, dict):
@@ -432,6 +332,8 @@ def register_routes(app):
     register_ui_system_metrics_routes(app)
     from routes.ui_system_diagnostics_routes import register_ui_system_diagnostics_routes
     register_ui_system_diagnostics_routes(app)
+    from routes.ui_system_review_queue_routes import register_ui_system_review_queue_routes
+    register_ui_system_review_queue_routes(app)
 
     @app.route('/api/ui/system/config-audit', methods=['GET'])
     def system_config_audit():
@@ -806,87 +708,6 @@ def register_routes(app):
             db.session.rollback()
             app.logger.exception('Purge storage failed')
             return {'error': 'Failed to purge storage'}, 500
-
-    @app.route('/api/ui/system/review-queue/delete-preview', methods=['POST'])
-    def preview_review_queue_delete():
-        if not admin_track_regen_access():
-            return {'error': 'Access denied'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            plan = _resolve_review_queue_bulk_plan(payload)
-            return {
-                'confirmation_phrase': plan['confirmation_phrase'],
-                'date': plan['date'],
-                'time_of_day': plan['time_of_day'],
-                'hour': plan['hour'],
-                'unknown_count': plan['unknown_count'],
-                'video_count': plan['video_count'],
-                'unknown_ids': plan['unknown_ids'],
-                'video_ids': plan['video_ids'],
-                'missing_video_ids': plan['missing_video_ids'],
-                'videos': plan['preview_videos'],
-            }, 200
-        except ValueError as exc:
-            return {'error': str(exc)}, 400
-        except Exception as e:
-            app.logger.exception('Review queue delete preview failed: %s', e)
-            return {'error': 'Failed to build review queue delete preview'}, 500
-
-    @app.route('/api/ui/system/review-queue/delete', methods=['POST'])
-    def delete_review_queue_videos():
-        if not admin_track_regen_access():
-            return {'error': 'Access denied'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            plan = _resolve_review_queue_bulk_plan(payload)
-            confirm_text = str((payload or {}).get('confirm_text') or '').strip()
-            if confirm_text != plan['confirmation_phrase']:
-                return {
-                    'error': f'Confirmation text must be "{plan["confirmation_phrase"]}"',
-                }, 400
-
-            deleted_video_ids = []
-            deleted_dirs = set()
-            deleted_files = 0
-            deleted_size = 0
-            for video_id in plan['video_ids']:
-                video = plan['videos_by_id'].get(video_id)
-                if not video:
-                    continue
-                full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
-                if full_path and os.path.isdir(os.path.dirname(full_path)):
-                    deleted_dirs.add(os.path.dirname(full_path))
-                _delete_video_row_cascade(video)
-                deleted_video_ids.append(video_id)
-
-            db.session.commit()
-
-            for dir_path in sorted(deleted_dirs):
-                if not os.path.isdir(dir_path):
-                    continue
-                count, size = get_tree_storage_info(dir_path)
-                deleted_files += count
-                deleted_size += size
-                shutil.rmtree(dir_path)
-
-            bust_response_caches()
-            bust_system_response_caches()
-            return {
-                'message': f'Deleted {len(deleted_video_ids)} review-queue videos',
-                'deletedCount': len(deleted_video_ids),
-                'deletedVideoIds': deleted_video_ids,
-                'deletedDirs': len(deleted_dirs),
-                'deletedFiles': deleted_files,
-                'deletedSize': deleted_size,
-                'confirmation_phrase': plan['confirmation_phrase'],
-            }, 200
-        except ValueError as exc:
-            db.session.rollback()
-            return {'error': str(exc)}, 400
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Review queue delete failed: %s', e)
-            return {'error': 'Failed to delete review queue videos'}, 500
 
     @app.route('/api/ui/system/db/backup', methods=['GET'])
     def backup_database():
