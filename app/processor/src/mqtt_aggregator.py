@@ -403,6 +403,21 @@ class MQTTEventAggregator:
                 "feeder scale write queue full; dropping MQTT scale update",
             )
 
+    def _validate_normalized_event(self, ev: dict) -> None:
+        """Сверка нормализованного события с Pydantic-схемой (``schemas.events``)."""
+        try:
+            from schemas.events import validate_mqtt_detection_dict
+        except ImportError:
+            return
+        _, err = validate_mqtt_detection_dict(ev)
+        if err:
+            logger.warning(
+                "MQTT normalized event failed schema check: %s | keys=%s | source=%s",
+                err,
+                sorted(ev.keys()),
+                ev.get("source"),
+            )
+
     def _prune_birdnet_events_locked(self, now=None, ttl_hours: float = 25.0) -> None:
         now = now or datetime.now(timezone.utc)
         try:
@@ -675,6 +690,7 @@ class MQTTEventAggregator:
                 logger.debug("Scales MQTT: bird_present=%s", bp)
             return
         if ev:
+            self._validate_normalized_event(ev)
             with self._lock:
                 self._events.append(ev)
             if ev.get("source") == "birdnet":

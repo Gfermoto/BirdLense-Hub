@@ -48,6 +48,12 @@ from services.http_response_cache import bust_system_response_caches, bust_respo
 from services.telegram_proxy_service import (
     refresh_telegram_proxy as refresh_telegram_proxy_service,
 )
+from services.track_regen_service import (
+    derive_track_regen_species_scope as _derive_track_regen_species_scope,
+    remap_detection_to_local_scope as _remap_detection_to_local_scope,
+    run_track_regen_with_precise_fallback as _run_track_regen_with_precise_fallback,
+    summarize_track_regen_detections as _summarize_track_regen_detections,
+)
 from data_paths import data_dir, resolve_recording_video_file
 
 # Last spectrogram regeneration result (for status polling)
@@ -480,24 +486,6 @@ def _downsample_evenly(items, max_n: int):
     return out
 
 
-def _run_track_regen_with_precise_fallback(
-    video_path: str,
-    process_video_for_tracks,
-    fast_kwargs: dict,
-    precise_kwargs_factory=None,
-):
-    """Run fast track regen first, then a precise pass only when needed."""
-    detections = process_video_for_tracks(video_path, **fast_kwargs)
-    precise_used = False
-    if detections or precise_kwargs_factory is None:
-        return detections, precise_used
-    precise_kwargs = precise_kwargs_factory()
-    if not precise_kwargs:
-        return detections, precise_used
-    precise_used = True
-    return process_video_for_tracks(video_path, **precise_kwargs), precise_used
-
-
 def _manual_conflict_with_detection(
     manual_rows,
     detection: dict,
@@ -522,56 +510,6 @@ def _manual_conflict_with_detection(
         if overlap > 0.3:
             return True
     return False
-
-
-def _derive_track_regen_species_scope(start_dt=None) -> list[str]:
-    """Local recovery scope: observed project species plus configured mappings."""
-    names: set[str] = set()
-    mapping = app_config.get('detection.species_mapping') or {}
-    for value in mapping.values():
-        value = str(value or '').strip()
-        if value and value not in {'Unknown', 'Bird'}:
-            names.add(value)
-
-    q = (
-        db.session.query(Species.name)
-        .join(VideoSpecies, VideoSpecies.species_id == Species.id)
-        .join(Video, Video.id == VideoSpecies.video_id)
-    )
-    if start_dt is not None:
-        q = q.filter(Video.start_time < start_dt)
-    for (name,) in q.distinct().all():
-        name = str(name or '').strip()
-        if name and name not in {'Unknown', 'Bird'}:
-            names.add(name)
-    return sorted(names)
-
-
-def _remap_detection_to_local_scope(
-    detection: dict,
-    local_scope_names_lc: set[str],
-) -> dict:
-    """Keep local species, remap exotic recovery guesses to Unknown."""
-    name = str(detection.get('species_name') or '').strip()
-    if not name or not local_scope_names_lc:
-        return detection
-    if name.lower() in local_scope_names_lc:
-        return detection
-    resolved = resolve_species_name(name, source='ingest')
-    if resolved.found and resolved.taxon:
-        common = str(resolved.taxon.common_name or '').strip().lower()
-        if common and common in local_scope_names_lc:
-            return {**detection, 'species_name': resolved.taxon.common_name}
-    return {**detection, 'species_name': 'Unknown'}
-
-
-def _summarize_track_regen_detections(detections: list[dict]) -> dict:
-    """Сводка для UI после regen одного ролика: число треков и decision_reason из DecisionMaker."""
-    reasons: dict[str, int] = {}
-    for d in detections:
-        r = str(d.get('decision_reason') or 'unknown')
-        reasons[r] = reasons.get(r, 0) + 1
-    return {'track_count': len(detections), 'decision_reasons': reasons}
 
 
 def _record_system_resource_sample(app) -> None:
