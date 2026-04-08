@@ -15,10 +15,36 @@ from models import (
     Video,
     VideoSpecies,
 )
+from services.activity_notify_insights_service import (
+    ingest_gate_reason_counts_24h,
+    notify_delivery_24h,
+    notify_fallback_by_reason_24h,
+    notify_preview_by_source_24h,
+    notify_preview_generated_by_source_24h,
+    notify_suppressed_reason_counts_24h,
+)
 from services.cache import cache_delete_prefix, cache_get, cache_set
+from services.ml_health_stats_service import ml_health_snapshot
+from services.ml_lineage_service import current_model_lineage_snapshot
+from services.prometheus_metrics_service import prometheus_metrics_body
+from services.system_live_metrics_service import collect_live_system_metrics
+from services.system_metrics_constants import (
+    SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS,
+    SYSTEM_METRICS_HISTORY_MAX_HOURS,
+    SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP,
+    SYSTEM_METRICS_RETENTION_HOURS,
+    SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+    _CACHE_SYSTEM_METRICS_HIST_SEC,
+    _CACHE_SYSTEM_METRICS_SEC,
+    _CACHE_SYSTEM_VISITORS_SEC,
+)
+from services.visitor_stats_service import (
+    browser_hash,
+    collect_visitor_stats,
+    device_class_from_user_agent,
+    downsample_evenly,
+)
 from util import metrics_bearer_denied, settings_check_access
-
-from routes import ui_system_routes as uis
 
 
 def register_ui_system_metrics_routes(app):
@@ -30,16 +56,16 @@ def register_ui_system_metrics_routes(app):
         if denied is not None:
             return denied
         try:
-            sys_m = uis._collect_live_system_metrics(app)
+            sys_m = collect_live_system_metrics(app)
             detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
             species_count = db.session.query(VideoSpecies.species_id).distinct().count()
             videos_count = db.session.query(func.count(Video.id)).scalar() or 0
-            preview = uis._notify_preview_by_source_24h()
-            preview_generated = uis._notify_preview_generated_by_source_24h()
-            fallback = uis._notify_fallback_by_reason_24h()
-            delivery = uis._notify_delivery_24h()
-            ingest_gate = uis._ingest_gate_reason_counts_24h()
-            notify_suppressed = uis._notify_suppressed_reason_counts_24h()
+            preview = notify_preview_by_source_24h()
+            preview_generated = notify_preview_generated_by_source_24h()
+            fallback = notify_fallback_by_reason_24h()
+            delivery = notify_delivery_24h()
+            ingest_gate = ingest_gate_reason_counts_24h()
+            notify_suppressed = notify_suppressed_reason_counts_24h()
             payload = {
                 'service': 'birdlense-hub',
                 'cpu_usage_percent': float(sys_m['cpu']['percent']),
@@ -70,7 +96,7 @@ def register_ui_system_metrics_routes(app):
         if denied is not None:
             return denied
         try:
-            body = uis._prometheus_metrics_body(app)
+            body = prometheus_metrics_body(app)
             return Response(body, mimetype='text/plain; charset=utf-8')
         except Exception as e:
             app.logger.error('Error getting Prometheus metrics: %s', e)
@@ -82,7 +108,7 @@ def register_ui_system_metrics_routes(app):
         if denied is not None:
             return denied
         try:
-            body = uis._prometheus_metrics_body(app)
+            body = prometheus_metrics_body(app)
             return Response(body, mimetype='text/plain; charset=utf-8')
         except Exception as e:
             app.logger.error('Error getting Prometheus metrics: %s', e)
@@ -94,7 +120,7 @@ def register_ui_system_metrics_routes(app):
         if hit:
             return cached
         try:
-            m = uis._collect_live_system_metrics(app)
+            m = collect_live_system_metrics(app)
             payload = {
                 'cpu': m['cpu'],
                 'memory': m['memory'],
@@ -102,7 +128,7 @@ def register_ui_system_metrics_routes(app):
                 'encoding': m['encoding'],
                 'gpu_percent': m['gpu_percent'],
             }
-            cache_set('system_metrics:snapshot', payload, uis._CACHE_SYSTEM_METRICS_SEC)
+            cache_set('system_metrics:snapshot', payload, _CACHE_SYSTEM_METRICS_SEC)
             return payload
         except Exception as e:
             app.logger.error('Error getting system metrics: %s', e)
@@ -113,12 +139,12 @@ def register_ui_system_metrics_routes(app):
         if not settings_check_access():
             return {'error': 'Unauthorized'}, 401
         try:
-            preview = uis._notify_preview_by_source_24h()
-            preview_generated = uis._notify_preview_generated_by_source_24h()
-            fallback = uis._notify_fallback_by_reason_24h()
-            delivery = uis._notify_delivery_24h()
-            ingest_gate = uis._ingest_gate_reason_counts_24h()
-            notify_suppressed = uis._notify_suppressed_reason_counts_24h()
+            preview = notify_preview_by_source_24h()
+            preview_generated = notify_preview_generated_by_source_24h()
+            fallback = notify_fallback_by_reason_24h()
+            delivery = notify_delivery_24h()
+            ingest_gate = ingest_gate_reason_counts_24h()
+            notify_suppressed = notify_suppressed_reason_counts_24h()
             return {
                 'notify_preview_24h': preview,
                 'notify_preview_generated_24h': preview_generated,
@@ -127,10 +153,10 @@ def register_ui_system_metrics_routes(app):
                 'ingest_gate_24h': ingest_gate,
                 'notify_suppressed_24h': notify_suppressed,
                 'ml_health': {
-                    'rolling_7d': uis._ml_health_snapshot(7),
-                    'rolling_30d': uis._ml_health_snapshot(30),
+                    'rolling_7d': ml_health_snapshot(7),
+                    'rolling_30d': ml_health_snapshot(30),
                 },
-                'model_lineage': uis._current_model_lineage_snapshot(),
+                'model_lineage': current_model_lineage_snapshot(),
                 'hub_metrics': {
                     'prometheus_text': '/metrics',
                     'prometheus_text_alt': '/api/metrics',
@@ -152,8 +178,8 @@ def register_ui_system_metrics_routes(app):
             hit, vc = cache_get(vck)
             if hit:
                 return vc
-            out = uis._collect_visitor_stats(days)
-            cache_set(vck, out, uis._CACHE_SYSTEM_VISITORS_SEC)
+            out = collect_visitor_stats(days)
+            cache_set(vck, out, _CACHE_SYSTEM_VISITORS_SEC)
             return out
         except Exception as e:
             app.logger.error('Error getting visitor stats: %s', e)
@@ -173,18 +199,18 @@ def register_ui_system_metrics_routes(app):
 
             now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
             seen_day = now_utc.strftime('%Y-%m-%d')
-            browser_hash = uis._browser_hash(raw_browser_id)
-            device_class = uis._device_class_from_user_agent(
+            bh = browser_hash(raw_browser_id)
+            device_class = device_class_from_user_agent(
                 request.headers.get('User-Agent', ''),
             )
 
             row = db.session.query(SiteVisitor).filter(
-                SiteVisitor.browser_hash == browser_hash,
+                SiteVisitor.browser_hash == bh,
                 SiteVisitor.seen_day == seen_day,
             ).first()
             if row is None:
                 row = SiteVisitor(
-                    browser_hash=browser_hash,
+                    browser_hash=bh,
                     seen_day=seen_day,
                     device_class=device_class,
                     first_seen_at=now_utc,
@@ -199,7 +225,7 @@ def register_ui_system_metrics_routes(app):
             except IntegrityError:
                 db.session.rollback()
                 row = db.session.query(SiteVisitor).filter(
-                    SiteVisitor.browser_hash == browser_hash,
+                    SiteVisitor.browser_hash == bh,
                     SiteVisitor.seen_day == seen_day,
                 ).first()
                 if row is None:
@@ -221,19 +247,19 @@ def register_ui_system_metrics_routes(app):
                 hours = int(request.args.get('hours', '24'))
             except (TypeError, ValueError):
                 hours = 24
-            hours = max(1, min(hours, uis.SYSTEM_METRICS_HISTORY_MAX_HOURS))
+            hours = max(1, min(hours, SYSTEM_METRICS_HISTORY_MAX_HOURS))
             try:
                 max_points = int(
                     request.args.get(
                         'max_points',
-                        str(uis.SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS),
+                        str(SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS),
                     ),
                 )
             except (TypeError, ValueError):
-                max_points = uis.SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
+                max_points = SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS
             max_points = max(
                 50,
-                min(max_points, uis.SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP),
+                min(max_points, SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP),
             )
             hck = f'system_metrics_hist:{hours}:{max_points}'
             hit, hc = cache_get(hck)
@@ -246,7 +272,7 @@ def register_ui_system_metrics_routes(app):
                 .where(SystemResourceSample.recorded_at >= start)
                 .order_by(SystemResourceSample.recorded_at.asc())
             ).all()
-            rows = uis._downsample_evenly(rows, max_points)
+            rows = downsample_evenly(rows, max_points)
             payload = {
                 'samples': [
                     {
@@ -258,11 +284,11 @@ def register_ui_system_metrics_routes(app):
                     }
                     for r in rows
                 ],
-                'sample_interval_seconds': uis.SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
-                'retention_hours': uis.SYSTEM_METRICS_RETENTION_HOURS,
+                'sample_interval_seconds': SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+                'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
                 'hours_requested': hours,
             }
-            cache_set(hck, payload, uis._CACHE_SYSTEM_METRICS_HIST_SEC)
+            cache_set(hck, payload, _CACHE_SYSTEM_METRICS_HIST_SEC)
             return payload
         except Exception as e:
             app.logger.error('Error getting system metrics history: %s', e)

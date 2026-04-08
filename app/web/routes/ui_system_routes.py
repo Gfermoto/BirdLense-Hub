@@ -98,6 +98,19 @@ from services.visitor_stats_service import (
     device_class_from_user_agent as _device_class_from_user_agent,
     downsample_evenly as _downsample_evenly,
 )
+from services.system_metrics_constants import (
+    SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS,
+    SYSTEM_METRICS_HISTORY_MAX_HOURS,
+    SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP,
+    SYSTEM_METRICS_RETENTION_HOURS,
+    SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+    _CACHE_STORAGE_STATS_SEC,
+    _CACHE_SYSTEM_ACTIVITY_SEC,
+    _CACHE_SYSTEM_METRICS_HIST_SEC,
+    _CACHE_SYSTEM_METRICS_SEC,
+    _CACHE_SYSTEM_VISITORS_SEC,
+    env_bounded_int,
+)
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -143,43 +156,16 @@ IGNORED_CONFIG_AUDIT_KEYS = {
     'weather.ha_url',
 }
 
-
-def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
-    raw = os.environ.get(name, '').strip()
-    if not raw:
-        return default
-    try:
-        v = int(raw)
-    except ValueError:
-        return default
-    return max(min_v, min(max_v, v))
-
-
-SYSTEM_METRICS_SAMPLE_INTERVAL_SEC = _env_bounded_int(
-    'BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC', 30, min_v=10, max_v=600,
-)
-SYSTEM_METRICS_RETENTION_HOURS = _env_bounded_int(
-    'BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS', 72, min_v=6, max_v=720,
-)
-SYSTEM_METRICS_HISTORY_MAX_HOURS = 168
-SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP = 2000
-SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS = 500
 CATALOG_REPAIR_AUTORUN_ENABLED = os.environ.get(
     'BIRDLENSE_CATALOG_REPAIR_AUTORUN',
     '1',
 ).strip().lower() in ('1', 'true', 'yes')
-CATALOG_REPAIR_INTERVAL_MIN = _env_bounded_int(
+CATALOG_REPAIR_INTERVAL_MIN = env_bounded_int(
     'BIRDLENSE_CATALOG_REPAIR_INTERVAL_MIN', 180, min_v=15, max_v=1440,
 )
-CATALOG_REPAIR_LIMIT = _env_bounded_int(
+CATALOG_REPAIR_LIMIT = env_bounded_int(
     'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
 )
-
-_CACHE_SYSTEM_METRICS_SEC = 2.5
-_CACHE_SYSTEM_VISITORS_SEC = 25
-_CACHE_SYSTEM_METRICS_HIST_SEC = 12
-_CACHE_STORAGE_STATS_SEC = 45
-_CACHE_SYSTEM_ACTIVITY_SEC = 50
 
 _sampler_lock = threading.Lock()
 _sampler_started = False
