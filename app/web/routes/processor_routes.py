@@ -17,6 +17,7 @@ from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 from services.http_response_cache import bust_response_caches
 import requests
+from data_paths import full_path_for_video
 
 
 def _run_gallery_upload_thread(flask_app, video_id: int):
@@ -30,6 +31,54 @@ def _run_gallery_upload_thread(flask_app, video_id: int):
 
 # Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
 VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+
+
+def _log_activity(type_name: str, payload: dict) -> None:
+    try:
+        db.session.add(ActivityLog(type=type_name, data=json.dumps(payload)))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _processor_detection_payload(raw: dict) -> dict:
+    """Strip unknown keys but keep explicit eligibility flags for VisitProcessor."""
+    if not isinstance(raw, dict):
+        return {}
+    allowed = {
+        'species_name',
+        'species',
+        'confidence',
+        'start_time',
+        'end_time',
+        'source',
+        'track_id',
+        'frames',
+        'detection_provider',
+        'visit_eligible',
+        'notification_eligible',
+        'decision_reason',
+        'decision_kind',
+        'evidence_state',
+        'trust_band',
+        'detector_confidence',
+        'classifier_confidence',
+    }
+    return {k: raw[k] for k in allowed if k in raw}
+
+
+def _validate_recording_file_exists(*, logical_path: str) -> tuple[bool, str | None, str | None]:
+    full = full_path_for_video(logical_path)
+    if not full:
+        return False, None, 'video_path_unresolvable'
+    try:
+        if not os.path.isfile(full):
+            return False, full, 'video_file_missing'
+        if os.path.getsize(full) <= 0:
+            return False, full, 'video_file_unreadable'
+    except OSError:
+        return False, full, 'video_file_unreadable'
+    return True, full, None
 
 
 def _is_public_ip(ip: str) -> bool:
@@ -124,6 +173,10 @@ def register_routes(app):
         species_list = data.get('species', []) or []
         if not species_list:
             return {'error': 'Missing species'}, 400
+        species_list = [_processor_detection_payload(s) for s in species_list if isinstance(s, dict)]
+        species_list = [s for s in species_list if s.get('species_name') or s.get('species')]
+        if not species_list:
+            return {'error': 'Missing species'}, 400
         # Отсечь детекции с низким confidence (4% и т.п.)
         min_conf = float(app_config.get('detection.min_confidence_to_store') or 0.05)
         species_list = [s for s in species_list if float(s.get('confidence') or 0) >= min_conf]
@@ -133,6 +186,30 @@ def register_routes(app):
         video_path = (data.get('video_path') or '').strip()
         if not VIDEO_PATH_RE.match(video_path):
             return {'error': 'Invalid video_path format'}, 400
+        ok_file, resolved_full, reason = _validate_recording_file_exists(logical_path=video_path)
+        if not ok_file:
+            _log_activity(
+                'ingest_gate',
+                {
+                    'reason': reason or 'video_file_missing',
+                    'video_path': video_path,
+                    'resolved_path': resolved_full,
+                },
+            )
+            return {
+                'error': 'Video file is missing or unreadable on hub storage',
+                'reason': reason or 'video_file_missing',
+                'video_path': video_path,
+            }, 400
+
+        spec_path = (data.get('spectrogram_path') or '').strip()
+        if spec_path:
+            spec_full = full_path_for_video(spec_path)
+            try:
+                if not spec_full or not os.path.isfile(spec_full):
+                    data['spectrogram_path'] = ''
+            except OSError:
+                data['spectrogram_path'] = ''
 
         try:
             video = Video(
@@ -140,7 +217,7 @@ def register_routes(app):
                 start_time=start_time,
                 end_time=end_time,
                 video_path=video_path,
-                spectrogram_path=data['spectrogram_path'],
+                spectrogram_path=data.get('spectrogram_path'),
                 **fetch_weather()
             )
             raw_sw = data.get('scales_weight_delta_kg')
@@ -229,8 +306,28 @@ def register_routes(app):
         image_base64 = data.get('image_base64')
         link = (data.get('link') or 'live')
         preview_source = (data.get('preview_source') or 'unknown')
+        notification_eligible = bool(data.get('notification_eligible', True))
+        suppress_reason = str(data.get('suppress_reason') or '').strip() or 'notification_ineligible'
         image_bytes = None
         image_status = 'missing'
+        if not notification_eligible:
+            app.logger.info(
+                "notify/detections: suppressed %s (eligible=false, reason=%s, preview_source=%s)",
+                detection,
+                suppress_reason,
+                preview_source,
+            )
+            _log_activity(
+                'notify_suppressed',
+                {
+                    'species': detection,
+                    'preview_source': preview_source,
+                    'suppress_reason': suppress_reason,
+                    'telegram_delivery': 'skipped',
+                    'has_image': bool(image_base64 or image_path),
+                },
+            )
+            return {'message': f'Successfully received notification of {detection}', 'skipped': True}, 200
         if image_base64:
             try:
                 import base64
@@ -256,6 +353,31 @@ def register_routes(app):
                 len(image_bytes or b''),
             )
             image_status = 'present'
+        if not image_base64 and not image_path:
+            app.logger.info(
+                "notify/detections: skipped %s (no preview context, preview_source=%s)",
+                detection,
+                preview_source,
+            )
+            try:
+                db.session.add(ActivityLog(
+                    type='notify_preview',
+                    data=json.dumps({
+                        'species': detection,
+                        'preview_source': preview_source,
+                        'has_image': False,
+                        'image_status': image_status,
+                        'telegram_delivery': 'skipped',
+                        'photo_requested': False,
+                        'photo_available': False,
+                        'photo_sent': False,
+                        'fallback_reason': 'no_preview_context',
+                    }),
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            return {'message': f'Successfully received notification of {detection}', 'skipped': True}, 200
         excluded_species = app_config.get(
             'general.notification_excluded_species', [])
         if detection not in excluded_species:

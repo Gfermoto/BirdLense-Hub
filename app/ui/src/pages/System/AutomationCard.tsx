@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Alert, Button, Card, CardContent, Chip, LinearProgress, Stack, Typography } from '@mui/material';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  LinearProgress,
+  Stack,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { BASE_API_URL } from '../../api/api';
 
 type JobStatus = {
@@ -22,10 +36,9 @@ function statusLabel(status?: JobStatus | null): string {
 
 export function AutomationCard() {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const [fusionExportPolling, setFusionExportPolling] = useState(false);
   const [fusionEvalPolling, setFusionEvalPolling] = useState(false);
-  const [proxyPolling, setProxyPolling] = useState(false);
+  const [maintenanceAction, setMaintenanceAction] = useState<string | null>(null);
   const [lastInfo, setLastInfo] = useState<string | null>(null);
 
   const fusionExportQuery = useQuery({
@@ -52,34 +65,6 @@ export function AutomationCard() {
     enabled: fusionEvalPolling,
     refetchInterval: (q) => (q.state.data?.status === 'running' ? 2_500 : false),
     staleTime: 0,
-  });
-
-  const proxyRefreshQuery = useQuery({
-    queryKey: ['telegram-proxy-refresh-status'],
-    queryFn: async (): Promise<JobStatus> => {
-      const response = await axios.get(`${BASE_API_URL}/system/telegram-proxy/refresh/status`, {
-        withCredentials: true,
-      });
-      return response.data;
-    },
-    enabled: proxyPolling,
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 2_500 : false),
-    staleTime: 0,
-  });
-
-  const trackRegenMutation = useMutation({
-    mutationFn: async () => {
-      const response = await axios.post(
-        `${BASE_API_URL}/system/regenerate-tracks`,
-        { force: false },
-        { withCredentials: true },
-      );
-      return response.data as { message?: string };
-    },
-    onSuccess: (data) => {
-      setLastInfo(data.message || t('system.automationTrackRegenStarted'));
-      qc.invalidateQueries({ queryKey: ['system-regenerate-tracks-status'] });
-    },
   });
 
   const fusionExportMutation = useMutation({
@@ -109,21 +94,6 @@ export function AutomationCard() {
     onSuccess: (data) => {
       setFusionEvalPolling(true);
       setLastInfo(data.message || t('system.automationFusionEvalStarted'));
-    },
-  });
-
-  const proxyRefreshMutation = useMutation({
-    mutationFn: async () => {
-      const response = await axios.post(
-        `${BASE_API_URL}/system/telegram-proxy/refresh`,
-        {},
-        { withCredentials: true },
-      );
-      return response.data as { message?: string };
-    },
-    onSuccess: (data) => {
-      setProxyPolling(true);
-      setLastInfo(data.message || t('system.automationProxyRefreshStarted'));
     },
   });
 
@@ -177,6 +147,46 @@ export function AutomationCard() {
             { withCredentials: true },
           )
         ).data,
+      brokenVideosPurgePreview: async () =>
+        (
+          await axios.post(
+            `${BASE_API_URL}/system/diagnostics/broken-videos/purge`,
+            { dry_run: true, max_scan: 200_000 },
+            { withCredentials: true },
+          )
+        ).data,
+      brokenVideosPurgeBatch: async (confirmText: string) =>
+        (
+          await axios.post(
+            `${BASE_API_URL}/system/diagnostics/broken-videos/purge`,
+            {
+              dry_run: false,
+              confirm_text: confirmText,
+              limit: 500,
+            },
+            { withCredentials: true },
+          )
+        ).data,
+      noSpeciesVideosPurgePreview: async () =>
+        (
+          await axios.post(
+            `${BASE_API_URL}/system/diagnostics/no-species-videos/purge`,
+            { dry_run: true },
+            { withCredentials: true },
+          )
+        ).data,
+      noSpeciesVideosPurgeBatch: async (confirmText: string) =>
+        (
+          await axios.post(
+            `${BASE_API_URL}/system/diagnostics/no-species-videos/purge`,
+            {
+              dry_run: false,
+              confirm_text: confirmText,
+              limit: 500,
+            },
+            { withCredentials: true },
+          )
+        ).data,
     }),
     [],
   );
@@ -193,12 +203,6 @@ export function AutomationCard() {
     }
   }, [fusionEvalQuery.data]);
 
-  useEffect(() => {
-    if (proxyRefreshQuery.data?.status && proxyRefreshQuery.data.status !== 'running') {
-      setProxyPolling(false);
-    }
-  }, [proxyRefreshQuery.data]);
-
   const downloadFusionExport = () => {
     window.open(`${BASE_API_URL}/system/fusion/export/download`, '_blank', 'noopener,noreferrer');
   };
@@ -208,6 +212,8 @@ export function AutomationCard() {
     fn: () => Promise<Record<string, unknown>>,
   ) => {
     try {
+      setMaintenanceAction(label);
+      setLastInfo(`${label}: ...`);
       const data = await fn();
       setLastInfo(`${label}: ${JSON.stringify(data)}`);
       return data;
@@ -215,7 +221,19 @@ export function AutomationCard() {
       const message = error instanceof Error ? error.message : String(error);
       setLastInfo(`${label}: ${message}`);
       throw error;
+    } finally {
+      setMaintenanceAction((current) => (current === label ? null : current));
     }
+  };
+
+  const confirmAndRunMaintenanceAction = async (
+    label: string,
+    hint: string,
+    fn: () => Promise<Record<string, unknown>>,
+  ) => {
+    const confirmed = window.confirm(`${label}\n\n${hint}`);
+    if (!confirmed) return;
+    await runMaintenanceAction(label, fn);
   };
 
   return (
@@ -230,8 +248,7 @@ export function AutomationCard() {
 
         {(fusionExportQuery.data?.status === 'running' ||
           fusionEvalQuery.data?.status === 'running' ||
-          proxyRefreshQuery.data?.status === 'running' ||
-          trackRegenMutation.isPending) && <LinearProgress sx={{ mb: 2 }} />}
+          maintenanceAction !== null) && <LinearProgress sx={{ mb: 2 }} />}
 
         {lastInfo && (
           <Alert severity="info" sx={{ mb: 2 }} onClose={() => setLastInfo(null)}>
@@ -239,99 +256,248 @@ export function AutomationCard() {
           </Alert>
         )}
 
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => fusionExportMutation.mutate()}
-            disabled={fusionExportMutation.isPending || fusionExportQuery.data?.status === 'running'}
-          >
-            {t('system.automationFusionExport')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={downloadFusionExport}
-          >
-            {t('system.automationFusionExportDownload')}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => fusionEvalMutation.mutate()}
-            disabled={fusionEvalMutation.isPending || fusionEvalQuery.data?.status === 'running'}
-          >
-            {t('system.automationFusionEval')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => proxyRefreshMutation.mutate()}
-            disabled={proxyRefreshMutation.isPending || proxyRefreshQuery.data?.status === 'running'}
-          >
-            {t('system.automationTelegramProxyRefresh')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => trackRegenMutation.mutate()}
-            disabled={trackRegenMutation.isPending}
-          >
-            {t('system.automationBulkTrackRegen')}
-          </Button>
-        </Stack>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t('system.automationDangerNote')}
+        </Alert>
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationRegistrySeed'), maintenanceMutations.seed).catch(() => undefined);
-            }}
-          >
-            {t('system.automationRegistrySeed')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationRegistryBackfill'), maintenanceMutations.backfill).catch(() => undefined);
-            }}
-          >
-            {t('system.automationRegistryBackfill')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationRegistryEnrich'), maintenanceMutations.enrich).catch(() => undefined);
-            }}
-          >
-            {t('system.automationRegistryEnrich')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationRegistryMaterialize'), maintenanceMutations.materialize).catch(() => undefined);
-            }}
-          >
-            {t('system.automationRegistryMaterialize')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationMergeDuplicateSpecies'), maintenanceMutations.merge).catch(() => undefined);
-            }}
-          >
-            {t('system.automationMergeDuplicateSpecies')}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              void runMaintenanceAction(t('system.automationSpeciesCatalogReconcile'), maintenanceMutations.reconcile).catch(() => undefined);
-            }}
-          >
-            {t('system.automationSpeciesCatalogReconcile')}
-          </Button>
+          <Tooltip title={t('system.automationFusionExportHint')} describeChild>
+            <span>
+              <Button
+                variant="contained"
+                onClick={() => fusionExportMutation.mutate()}
+                disabled={fusionExportMutation.isPending || fusionExportQuery.data?.status === 'running'}
+              >
+                {t('system.automationFusionExport')}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={t('system.automationFusionExportDownloadHint')} describeChild>
+            <span>
+              <Button variant="outlined" onClick={downloadFusionExport}>
+                {t('system.automationFusionExportDownload')}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={t('system.automationFusionEvalHint')} describeChild>
+            <span>
+              <Button
+                variant="contained"
+                onClick={() => fusionEvalMutation.mutate()}
+                disabled={fusionEvalMutation.isPending || fusionEvalQuery.data?.status === 'running'}
+              >
+                {t('system.automationFusionEval')}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
+
+        <Accordion sx={{ mb: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">{t('system.automationDangerZone')}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              {t('system.automationAdminMaintenanceHint')}
+            </Typography>
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              <Tooltip title={t('system.automationRegistrySeedHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationRegistrySeed'),
+                        t('system.automationRegistrySeedHint'),
+                        maintenanceMutations.seed,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationRegistrySeed')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationRegistryBackfillHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationRegistryBackfill'),
+                        t('system.automationRegistryBackfillHint'),
+                        maintenanceMutations.backfill,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationRegistryBackfill')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationRegistryEnrichHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationRegistryEnrich'),
+                        t('system.automationRegistryEnrichHint'),
+                        maintenanceMutations.enrich,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationRegistryEnrich')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationRegistryMaterializeHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationRegistryMaterialize'),
+                        t('system.automationRegistryMaterializeHint'),
+                        maintenanceMutations.materialize,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationRegistryMaterialize')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationMergeDuplicateSpeciesHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationMergeDuplicateSpecies'),
+                        t('system.automationMergeDuplicateSpeciesHint'),
+                        maintenanceMutations.merge,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationMergeDuplicateSpecies')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationSpeciesCatalogReconcileHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void confirmAndRunMaintenanceAction(
+                        t('system.automationSpeciesCatalogReconcile'),
+                        t('system.automationSpeciesCatalogReconcileHint'),
+                        maintenanceMutations.reconcile,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationSpeciesCatalogReconcile')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationBrokenVideosPurgePreviewHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void runMaintenanceAction(
+                        t('system.automationBrokenVideosPurgePreview'),
+                        maintenanceMutations.brokenVideosPurgePreview,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationBrokenVideosPurgePreview')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationBrokenVideosPurgeBatchHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      const phrase = window.prompt(
+                        t('system.automationBrokenVideosPurgePrompt'),
+                        'purge_all_broken_video_rows',
+                      );
+                      if (phrase === null) return;
+                      const trimmed = phrase.trim();
+                      if (!trimmed) return;
+                      void runMaintenanceAction(
+                        t('system.automationBrokenVideosPurgeBatch'),
+                        () => maintenanceMutations.brokenVideosPurgeBatch(trimmed),
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationBrokenVideosPurgeBatch')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationNoSpeciesVideosPurgePreviewHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      void runMaintenanceAction(
+                        t('system.automationNoSpeciesVideosPurgePreview'),
+                        maintenanceMutations.noSpeciesVideosPurgePreview,
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationNoSpeciesVideosPurgePreview')}
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={t('system.automationNoSpeciesVideosPurgeBatchHint')} describeChild>
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    disabled={maintenanceAction !== null}
+                    onClick={() => {
+                      const phrase = window.prompt(
+                        t('system.automationNoSpeciesVideosPurgePrompt'),
+                        'purge_videos_without_species',
+                      );
+                      if (phrase === null) return;
+                      const trimmed = phrase.trim();
+                      if (!trimmed) return;
+                      void runMaintenanceAction(
+                        t('system.automationNoSpeciesVideosPurgeBatch'),
+                        () => maintenanceMutations.noSpeciesVideosPurgeBatch(trimmed),
+                      ).catch(() => undefined);
+                    }}
+                  >
+                    {t('system.automationNoSpeciesVideosPurgeBatch')}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
 
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <Chip size="small" variant="outlined" label={`${t('system.automationFusionExportStatus')}: ${statusLabel(fusionExportQuery.data)}`} />
           <Chip size="small" variant="outlined" label={`${t('system.automationFusionEvalStatus')}: ${statusLabel(fusionEvalQuery.data)}`} />
-          <Chip size="small" variant="outlined" label={`${t('system.automationProxyRefreshStatus')}: ${statusLabel(proxyRefreshQuery.data)}`} />
-          <Chip size="small" variant="outlined" label={`${t('system.automationTrackRegenStatus')}: ${trackRegenMutation.isPending ? 'running' : 'idle'}`} />
         </Stack>
 
         {(fusionExportQuery.data?.result || fusionExportQuery.data?.error) && (
@@ -350,21 +516,6 @@ export function AutomationCard() {
           </Alert>
         )}
 
-        {(proxyRefreshQuery.data?.result || proxyRefreshQuery.data?.error) && (
-          <Alert severity={proxyRefreshQuery.data?.error ? 'error' : 'success'} sx={{ mt: 2 }}>
-            {proxyRefreshQuery.data?.error
-              ? proxyRefreshQuery.data.error
-              : JSON.stringify(proxyRefreshQuery.data.result)}
-          </Alert>
-        )}
-
-        {trackRegenMutation.error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {trackRegenMutation.error instanceof Error
-              ? trackRegenMutation.error.message
-              : t('system.automationTrackRegenError')}
-          </Alert>
-        )}
       </CardContent>
     </Card>
   );

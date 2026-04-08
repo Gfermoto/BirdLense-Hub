@@ -249,6 +249,7 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "processor.max_inactive_seconds",
     "processor.max_record_seconds",
     "processor.min_confidence_binary",
+    "processor.min_confidence_to_notify",
     "processor.min_confidence_to_process",
     "processor.min_track_duration",
     "processor.multi_camera_confidence_boost",

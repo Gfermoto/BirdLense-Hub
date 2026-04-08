@@ -51,14 +51,14 @@ export function ProcessorSection({ form }: Props) {
               {t('settings.confidenceThresholdsDesc')}
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.min_confidence_binary">
                   {(field) => (
                     <TextField
                       fullWidth
                       type="number"
                       inputProps={{ min: 0.05, max: 0.9, step: 0.05 }}
-                      value={field.state.value ?? 0.15}
+                      value={field.state.value ?? 0.22}
                       onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
                       label={t('settings.confidenceDetector')}
                       helperText={t('settings.confidenceDetectorHelp')}
@@ -66,7 +66,7 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.min_confidence_to_process">
                   {(field) => (
                     <TextField
@@ -81,7 +81,22 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <form.Field name="processor.min_confidence_to_notify">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 1, step: 0.05 }}
+                      value={field.state.value ?? 0.44}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.confidenceTelegram')}
+                      helperText={t('settings.confidenceTelegramHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.dataset_min_confidence">
                   {(field) => (
                     <TextField
@@ -133,10 +148,25 @@ export function ProcessorSection({ form }: Props) {
                     <TextField
                       fullWidth
                       type="number"
-                      value={field.state.value ?? 3}
+                      value={field.state.value ?? 1}
                       onChange={(e) => field.handleChange(Number(e.target.value))}
                       label={t('settings.minTrackDuration')}
                       helperText={t('settings.minTrackDurationHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.min_box_size_px">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 16, max: 256, step: 1 }}
+                      value={field.state.value ?? 64}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.minBoxSizePx')}
+                      helperText={t('settings.minBoxSizePxHint')}
                     />
                   )}
                 </form.Field>
@@ -404,6 +434,84 @@ export function ProcessorSection({ form }: Props) {
                       helperText={t('settings.unknownConfidenceThresholdHelp')}
                     />
                   )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.falsePositiveGuardrailsTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.falsePositiveGuardrailsDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <form.Field name="processor.detector_scope">
+                  {(field) => {
+                    const val = Array.isArray(field.state.value) ? field.state.value : [];
+                    const str = val.map((item) => String(item).trim()).filter(Boolean).join(', ');
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        value={str}
+                        onChange={(e) => {
+                          const items = e.target.value
+                            .split(/[\n,]/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          field.handleChange(items.length ? items : []);
+                        }}
+                        label={t('settings.detectorScope')}
+                        helperText={t('settings.detectorScopeHint')}
+                        placeholder="Bird, Squirrel"
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <form.Field name="processor.classifier_fallback_bird">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.state.value !== false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.classifierFallbackBird')}
+                      />
+                      <FormHelperText>{t('settings.classifierFallbackBirdHint')}</FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.included_bird_families">
+                  {(field) => {
+                    const val = Array.isArray(field.state.value) ? field.state.value : [];
+                    const str = val.map((item) => String(item).trim()).filter(Boolean).join('\n');
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        value={str}
+                        onChange={(e) => {
+                          const items = e.target.value
+                            .split(/[\n,]/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          field.handleChange(items.length ? items : []);
+                        }}
+                        label={t('settings.birdFamilies')}
+                        helperText={t('settings.includedBirdFamiliesHint')}
+                        placeholder="Perching Birds"
+                      />
+                    );
+                  }}
                 </form.Field>
               </Grid>
             </Grid>

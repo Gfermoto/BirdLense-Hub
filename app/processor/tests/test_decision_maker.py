@@ -106,6 +106,12 @@ class TestDecisionMaker(unittest.TestCase):
         tracks_common = {
             1: _make_track(
                 classifier_events=[('Common Bird', 0.05, 1.0)] * 3,
+                frames=[
+                    {'t': 0.0, 'bbox': [0.10, 0.10, 0.30, 0.30]},
+                    {'t': 0.1, 'bbox': [0.11, 0.11, 0.31, 0.31]},
+                    {'t': 0.2, 'bbox': [0.12, 0.12, 0.32, 0.32]},
+                ],
+                best_frame_score=7.0,
             )
         }
         results2 = dm2.get_results(tracks_common)
@@ -113,7 +119,7 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results2[0]['species_name'], 'Bird')
         self.assertEqual(results2[0]['decision_reason'], 'fallback_bird')
 
-    def test_classifier_uncertain_emits_bird_with_frames(self):
+    def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self):
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_process=0.5,
@@ -130,9 +136,31 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Bird')
-        self.assertEqual(results[0]['decision_reason'], 'fallback_bird')
+        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
+        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
+        self.assertFalse(results[0].get('visit_eligible', True))
+        self.assertFalse(results[0].get('notification_eligible', True))
         self.assertEqual(results[0]['detector_label'], 'Bird')
         self.assertEqual(len(results[0].get('frames') or []), 1)
+
+    def test_detector_only_weak_bird_is_review_only(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.25,
+            classifier_fallback_bird=True,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.35] * 5,
+                classifier_events=[],
+                frames=[{'t': 0.0, 'bbox': [0.1, 0.1, 0.2, 0.2]}],
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
+        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
 
     def test_classifier_uncertain_respects_fallback_off(self):
         dm = DecisionMaker(
@@ -270,6 +298,35 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(decisions[0]['key_frame_count'], 2)
         self.assertAlmostEqual(decisions[0]['best_frame_score'], 7.5)
         self.assertAlmostEqual(decisions[0]['classifier_vote_share'], 1.0)
+
+    def test_rodent_species_uses_relaxed_threshold_vs_passerines(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.34,
+        )
+        rodent = {
+            1: _make_track(
+                detector_label='Squirrel',
+                detector_confidences=[0.6] * 4,
+                classifier_events=[('Rodent', 0.9, 0.5)] * 4,
+            )
+        }
+        self.assertEqual(
+            dm.get_decisions(rodent)[0]['decision_reason'],
+            'accepted_species',
+        )
+        bird = {
+            1: _make_track(
+                detector_label='Bird',
+                detector_confidences=[0.6] * 4,
+                classifier_events=[('Great Tit', 0.9, 0.5)] * 4,
+            )
+        }
+        self.assertNotEqual(
+            dm.get_decisions(bird)[0]['decision_reason'],
+            'accepted_species',
+        )
 
     def test_conflicting_classifier_votes_get_conflict_reject_code(self):
         dm = DecisionMaker(

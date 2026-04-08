@@ -17,11 +17,12 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import util as util_mod
 from models import (
     ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit,
     SystemResourceSample, SiteVisitor,
 )
-from sqlalchemy import func, select, delete
+from sqlalchemy import delete, exists, func, select
 from services.retention_service import run_retention, _delete_video_row_cascade
 from services.species_registry_service import (
     catalog_cards_coverage_snapshot,
@@ -37,6 +38,7 @@ from services.species_visit_maintenance_service import (
     preview_realign_visit_times,
     preview_split_large_gap_visits,
 )
+from routes.ui_overview_timeline_routes import fetch_review_queue_items
 from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
 from auth import admin_track_regen_access
@@ -95,7 +97,31 @@ IGNORED_CONFIG_AUDIT_KEYS = {
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    current = Path(__file__).resolve()
+    candidates: list[Path] = []
+    candidates.extend(current.parents)
+    # cwd before /workspace so unit tests (monkeypatched cwd) win over the compose mount
+    candidates.append(Path.cwd().resolve())
+    # make test / test-web: repo root mounted here when only app/ is at /app
+    candidates.append(Path('/workspace'))
+    candidates.append(Path('/app'))
+    candidates.append(Path('/home/gfer/BirdLense'))
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        script = candidate / 'scripts' / 'export_fusion_training_data.py'
+        if script.exists():
+            return candidate
+    raise RuntimeError(
+        'Could not locate repository root with scripts/export_fusion_training_data.py. '
+        'Check the container layout and ensure the scripts directory is shipped with the app.',
+    )
 
 
 def _fusion_export_dir() -> Path:
@@ -114,29 +140,198 @@ def _latest_fusion_export_path() -> Path | None:
     return candidates[0] if candidates else None
 
 
-def _run_fusion_export_job() -> dict:
-    script = _repo_root() / 'scripts' / 'export_fusion_training_data.py'
-    out_path = _fusion_export_dir() / f'fusion_training_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
-    result = subprocess.run(
-        [sys.executable, str(script), '--source', 'db', '--out', str(out_path)],
-        cwd=str(_repo_root()),
-        capture_output=True,
-        text=True,
-        check=False,
+def _fusion_processor_src_dir() -> Path:
+    current = Path(__file__).resolve()
+    candidates: list[Path] = []
+    candidates.extend(current.parents)
+    candidates.append(Path.cwd().resolve())
+    candidates.append(Path('/app'))
+    candidates.append(Path('/workspace'))
+    candidates.append(Path('/home/gfer/BirdLense'))
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        src = candidate / 'processor' / 'src'
+        if (src / 'fusion_metrics.py').exists() and (src / 'fusion_model.py').exists():
+            return src
+    raise RuntimeError(
+        'Could not locate processor/src with fusion_metrics.py and fusion_model.py. '
+        'Check the container layout and ensure the processor sources are shipped with the app.',
     )
-    if result.returncode != 0:
-        raise RuntimeError((result.stderr or result.stdout or 'fusion export failed').strip())
-    written = 0
-    try:
-        with out_path.open('r', encoding='utf-8') as f:
-            written = max(0, sum(1 for _ in f) - 1)
-    except OSError:
-        written = 0
+
+
+def _ensure_fusion_processor_src_on_path() -> None:
+    src = _fusion_processor_src_dir()
+    if str(src) not in sys.path:
+        sys.path.insert(0, str(src))
+
+
+def _normalize_fusion_trace_row(row: dict) -> dict:
+    accepted = bool(row.get('accepted'))
+    decision_kind = str(row.get('decision_kind') or ('accepted_species' if accepted else 'rejected'))
+    label = 1 if accepted else 0
+    species_top1_label = 1 if accepted and decision_kind == 'accepted_species' else 0
     return {
-        'output_path': str(out_path),
-        'rows_written': written,
-        'stdout': (result.stdout or '').strip(),
+        'detector_conf': row.get('detector_conf') or row.get('detector_confidence') or row.get('confidence') or 0.0,
+        'classifier_conf': row.get('classifier_conf') or row.get('classifier_confidence') or row.get('confidence') or 0.0,
+        'birdnet_prior': row.get('birdnet_prior') or row.get('_birdnet_prior') or 0.0,
+        'key_frame_score': row.get('key_frame_score') or row.get('best_frame_score') or 0.0,
+        'key_frame_count': row.get('key_frame_count') or 0,
+        'multi_camera_count': row.get('multi_camera_count') or row.get('_multi_camera_count') or 0,
+        'label': label,
+        'valid_track_label': label,
+        'species_top1_label': species_top1_label,
+        'accepted': accepted,
+        'decision_kind': decision_kind,
+        'trust_band': row.get('trust_band') or ('green' if accepted else 'red'),
+        'reject_reason_code': row.get('reject_reason_code') or '',
+        'evidence_state': row.get('evidence_state') or '',
+        'audio_evidence': row.get('audio_evidence') or 'none',
+        'audio_support_count': row.get('audio_support_count') or 0,
+        'audio_support_species': row.get('audio_support_species') or '',
+        'audio_conflict_species': row.get('audio_conflict_species') or '',
+        'audio_conflict_score': row.get('audio_conflict_score') or 0.0,
+        'classifier_vote_share': row.get('classifier_vote_share') or 0.0,
+        'track_id': row.get('track_id') or 0,
+        'video_id': row.get('video_id') or 0,
+        'species_name': row.get('species_name') or row.get('species') or '',
     }
+
+
+def _score_fusion_rows(rows: list[dict], model_path: str | None, score_col: str | None) -> list[dict]:
+    _ensure_fusion_processor_src_on_path()
+    from fusion_model import FusionScorer  # type: ignore
+
+    if score_col:
+        scored = []
+        for row in rows:
+            out = dict(row)
+            out['score'] = row.get(score_col)
+            scored.append(out)
+        return scored
+
+    scorer = FusionScorer(model_path=model_path)
+    scored = []
+    for row in rows:
+        features = {
+            'detector_conf': row.get('detector_conf') or row.get('detector_confidence') or 0.0,
+            'classifier_conf': row.get('classifier_conf') or row.get('classifier_confidence') or 0.0,
+            'birdnet_prior': row.get('birdnet_prior') or row.get('_birdnet_prior') or 0.0,
+            'key_frame_score': row.get('key_frame_score') or row.get('best_frame_score') or 0.0,
+            'key_frame_count': row.get('key_frame_count') or 0.0,
+            'multi_camera_count': row.get('multi_camera_count') or row.get('_multi_camera_count') or 0.0,
+        }
+        out = dict(row)
+        out['score'] = scorer.score(features)
+        scored.append(out)
+    return scored
+
+
+def _run_fusion_export_job() -> dict:
+    out_path = _fusion_export_dir() / f'fusion_training_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+    _ensure_fusion_processor_src_on_path()
+    from web.models import VideoSpecies  # type: ignore
+
+    with out_path.open('w', encoding='utf-8', newline='') as fout:
+        writer = csv.DictWriter(fout, fieldnames=[
+            'detector_conf',
+            'classifier_conf',
+            'birdnet_prior',
+            'key_frame_score',
+            'key_frame_count',
+            'multi_camera_count',
+            'label',
+            'valid_track_label',
+            'species_top1_label',
+            'accepted',
+            'decision_kind',
+            'trust_band',
+            'reject_reason_code',
+            'evidence_state',
+            'audio_evidence',
+            'audio_support_count',
+            'audio_support_species',
+            'audio_conflict_species',
+            'audio_conflict_score',
+            'classifier_vote_share',
+            'track_id',
+            'video_id',
+            'species_name',
+        ])
+        writer.writeheader()
+
+        trace_rows = (
+            db.session.query(ActivityLog)
+            .filter(ActivityLog.type == 'decision_trace')
+            .order_by(ActivityLog.created_at.asc())
+            .all()
+        )
+        written = 0
+        if trace_rows:
+            for trace in trace_rows:
+                try:
+                    payload = json.loads(trace.data or '{}')
+                except (TypeError, ValueError):
+                    continue
+                for section_name in ('accepted_tracks', 'rejected_tracks'):
+                    for row in payload.get(section_name) or []:
+                        writer.writerow(_normalize_fusion_trace_row(row))
+                        written += 1
+            return {
+                'output_path': str(out_path),
+                'rows_written': written,
+                'source': 'decision_trace',
+            }
+
+        rows = (
+            db.session.query(VideoSpecies)
+            .filter(VideoSpecies.source == 'video')
+            .all()
+        )
+        if not rows:
+            raise RuntimeError('No rows found in ActivityLog or VideoSpecies. Nothing exported.')
+
+        for r in rows:
+            extra = {}
+            raw_extra = getattr(r, 'extra', None)
+            if raw_extra:
+                try:
+                    extra = json.loads(raw_extra) if isinstance(raw_extra, str) else dict(raw_extra)
+                except Exception:
+                    extra = {}
+            writer.writerow(
+                _normalize_fusion_trace_row(
+                    {
+                        'accepted': getattr(r, 'manually_corrected', False),
+                        'decision_kind': (
+                            'accepted_species'
+                            if getattr(r, 'manually_corrected', False)
+                            else 'accepted_generic'
+                        ),
+                        'species_name': getattr(getattr(r, 'species', None), 'name', None),
+                        'track_id': getattr(r, 'track_id', None),
+                        'video_id': getattr(r, 'video_id', None),
+                        'detector_confidence': extra.get('detector_confidence') or getattr(r, 'confidence', 0.0),
+                        'classifier_confidence': extra.get('classifier_confidence') or getattr(r, 'confidence', 0.0),
+                        '_birdnet_prior': extra.get('_birdnet_prior') or 0.0,
+                        'best_frame_score': extra.get('best_frame_score') or 0.0,
+                        'key_frame_count': extra.get('key_frame_count') or 0,
+                        '_multi_camera_count': extra.get('_multi_camera_count') or 0,
+                    }
+                )
+            )
+            written += 1
+        return {
+            'output_path': str(out_path),
+            'rows_written': written,
+            'source': 'video_species_fallback',
+        }
 
 
 def _run_fusion_eval_job(
@@ -146,35 +341,38 @@ def _run_fusion_eval_job(
     label_col: str = 'valid_track_label',
     slice_fields: list[str] | None = None,
 ) -> dict:
-    script = _repo_root() / 'scripts' / 'eval_fusion_calibration.py'
     csv_path = Path(source_csv) if source_csv else _latest_fusion_export_path()
     if not csv_path or not csv_path.exists():
         raise RuntimeError('Fusion export CSV not found. Run export first.')
-    cmd = [
-        sys.executable,
-        str(script),
-        '--data',
-        str(csv_path),
-        '--label-col',
-        label_col,
-    ]
-    if model_path:
-        cmd.extend(['--model-path', model_path])
-    if score_col:
-        cmd.extend(['--score-col', score_col])
-    for field in slice_fields or []:
-        if field:
-            cmd.extend(['--slice-field', field])
-    result = subprocess.run(
-        cmd,
-        cwd=str(_repo_root()),
-        capture_output=True,
-        text=True,
-        check=False,
+    _ensure_fusion_processor_src_on_path()
+    from fusion_metrics import evaluate_binary_scores, evaluate_by_slice  # type: ignore
+
+    with csv_path.open('r', encoding='utf-8') as f:
+        rows = [dict(row) for row in csv.DictReader(f)]
+    if not rows:
+        raise RuntimeError(f'No rows found in {csv_path}')
+
+    thresholds = (0.5, 0.7, 0.8, 0.9, 0.95)
+    scored = _score_fusion_rows(rows, model_path, score_col)
+    report = evaluate_binary_scores(
+        scored,
+        score_key='score',
+        label_key=label_col,
+        n_bins=10,
+        thresholds=thresholds,
     )
-    if result.returncode != 0:
-        raise RuntimeError((result.stderr or result.stdout or 'fusion eval failed').strip())
-    return json.loads(result.stdout or '{}')
+    if slice_fields:
+        report['slices'] = {
+            field: evaluate_by_slice(
+                scored,
+                score_key='score',
+                label_key=label_col,
+                slice_field=field,
+            )
+            for field in slice_fields
+            if field
+        }
+    return report
 
 
 def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
@@ -701,6 +899,7 @@ def _notify_fallback_by_reason_24h():
     by_reason = {
         'none': 0,
         'no_preview': 0,
+        'no_preview_context': 0,
         'decode_failed': 0,
         'telegram_photo_failed': 0,
         'notifications_disabled': 0,
@@ -738,6 +937,36 @@ def _notify_delivery_24h():
             delivery = 'unknown'
         by_delivery[delivery] += 1
     return by_delivery
+
+
+def _activity_rows_since(activity_type: str, *, hours: int = 24):
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    since = now_utc - timedelta(hours=max(1, int(hours or 24)))
+    return (
+        db.session.query(ActivityLog)
+        .filter(ActivityLog.type == activity_type, ActivityLog.created_at >= since)
+        .all()
+    )
+
+
+def _ingest_gate_reason_counts_24h() -> dict[str, int]:
+    rows = _activity_rows_since('ingest_gate', hours=24)
+    counts: dict[str, int] = {}
+    for row in rows:
+        payload = _activity_log_payload(row)
+        reason = str((payload or {}).get('reason') or 'unknown')
+        counts[reason] = counts.get(reason, 0) + 1
+    return counts
+
+
+def _notify_suppressed_reason_counts_24h() -> dict[str, int]:
+    rows = _activity_rows_since('notify_suppressed', hours=24)
+    counts: dict[str, int] = {}
+    for row in rows:
+        payload = _activity_log_payload(row)
+        reason = str((payload or {}).get('suppress_reason') or 'unknown')
+        counts[reason] = counts.get(reason, 0) + 1
+    return counts
 
 
 def _repo_root_path() -> str:
@@ -792,6 +1021,7 @@ def _current_model_lineage_snapshot() -> dict:
         },
         'processor': {
             'min_confidence_to_process': app_config.get('processor.min_confidence_to_process'),
+            'min_confidence_to_notify': app_config.get('processor.min_confidence_to_notify'),
             'min_track_duration': app_config.get('processor.min_track_duration'),
             'classification_scheduler': app_config.get('processor.classification_scheduler'),
             'species_confidence_overrides': app_config.get('processor.species_confidence_overrides') or {},
@@ -1000,6 +1230,117 @@ def _prometheus_metrics_body(app):
     return '\n'.join(lines) + '\n'
 
 
+# Admin diagnostics: broken Video rows (DB без доступного файла) — безопасный cleanup только по явному подтверждению.
+BROKEN_VIDEOS_DELETE_CONFIRMATION = 'delete_broken_video_rows'
+BROKEN_VIDEOS_PURGE_CONFIRMATION = 'purge_all_broken_video_rows'
+NO_SPECIES_VIDEOS_PURGE_CONFIRMATION = 'purge_videos_without_species'
+REVIEW_ONLY_NOISE_SPECIES = ('Bird', 'Squirrel', 'Rodent')
+
+
+def _broken_video_row_reason(video_path: str | None) -> tuple[str | None, str | None]:
+    """(reason_code, absolute_path_if_known). reason None — файл есть и читается."""
+    vp = (video_path or '').strip()
+    if not vp:
+        return 'video_path_empty', None
+    full = util_mod.full_path_for_video(vp)
+    if not full:
+        return 'video_path_unresolvable', None
+    if not os.path.isfile(full):
+        return 'video_file_missing', full
+    try:
+        if os.path.getsize(full) <= 0:
+            return 'video_file_empty', full
+    except OSError:
+        return 'video_file_unreadable', full
+    try:
+        if not os.access(full, os.R_OK):
+            return 'video_file_unreadable', full
+        with open(full, 'rb') as f:
+            f.read(1)
+    except OSError:
+        return 'video_file_unreadable', full
+    return None, full
+
+
+def _scan_broken_videos_inventory(
+    *,
+    max_scan: int,
+    collect_ids_limit: int | None,
+    sample_limit: int = 40,
+):
+    """Полный проход Video.id по возрастанию: счётчики по причинам, опционально id для удаления.
+
+    collect_ids_limit=None — не копить список id (только счётчики и sample).
+    """
+    from collections import Counter
+
+    by_reason: Counter = Counter()
+    total_broken = 0
+    sample_ids: list[int] = []
+    collect: list[int] = []
+    scanned = 0
+    cursor = 0
+    while scanned < max_scan:
+        batch = (
+            Video.query.filter(Video.id > cursor)
+            .order_by(Video.id.asc())
+            .limit(200)
+            .all()
+        )
+        if not batch:
+            break
+        for video in batch:
+            scanned += 1
+            if scanned > max_scan:
+                break
+            row = _broken_video_row_payload(video)
+            if not row:
+                continue
+            total_broken += 1
+            by_reason[row['reason']] += 1
+            if len(sample_ids) < sample_limit:
+                sample_ids.append(video.id)
+            if collect_ids_limit is not None and len(collect) < collect_ids_limit:
+                collect.append(video.id)
+        cursor = batch[-1].id
+    return {
+        'scanned': scanned,
+        'broken_total': total_broken,
+        'by_reason': dict(by_reason),
+        'sample_video_ids': sample_ids,
+        'ids_to_delete': collect,
+    }
+
+
+def _videos_with_species_exist_clause():
+    """EXISTS (SELECT 1 FROM video_species WHERE video_id = video.id)."""
+    return exists().where(VideoSpecies.video_id == Video.id)
+
+
+def _video_row_has_no_species(video_id: int) -> bool:
+    return (
+        db.session.query(VideoSpecies.id)
+        .filter(VideoSpecies.video_id == video_id)
+        .limit(1)
+        .first()
+        is None
+    )
+
+
+def _broken_video_row_payload(video: Video) -> dict | None:
+    reason, resolved = _broken_video_row_reason(video.video_path)
+    if not reason:
+        return None
+    st = video.start_time
+    return {
+        'video_id': video.id,
+        'video_path': video.video_path,
+        'reason': reason,
+        'resolved_path': resolved,
+        'start_time': st.isoformat() if st else None,
+    }
+
+
 def register_routes(app):
     """Зарегистрировать расширенный набор system API (кроме metrics — отдельный модуль)."""
     def _parse_video_ids(payload) -> list[int]:
@@ -1017,6 +1358,105 @@ def register_routes(app):
             if v > 0:
                 out.append(v)
         return sorted(set(out))
+
+    def _parse_unknown_ids(payload) -> list[int]:
+        raw = (payload or {}).get('unknown_ids')
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError('unknown_ids must be an array of integers')
+        out: list[int] = []
+        for x in raw:
+            try:
+                v = int(x)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                out.append(v)
+        return sorted(set(out))
+
+    def _resolve_review_queue_bulk_plan(payload) -> dict:
+        date = str((payload or {}).get('date') or '').strip()
+        if not date:
+            raise ValueError('date is required')
+        time_of_day = str((payload or {}).get('time_of_day') or 'all').strip().lower()
+        hour_raw = (payload or {}).get('hour')
+        hour = None
+        if hour_raw not in (None, ''):
+            hour = int(hour_raw)
+            if hour < 0 or hour > 23:
+                raise ValueError('hour must be between 0 and 23')
+        unknown_ids = _parse_unknown_ids(payload)
+        if not unknown_ids:
+            raise ValueError('unknown_ids is required')
+
+        queue_items = fetch_review_queue_items(
+            db.session,
+            date_param=date,
+            time_of_day=time_of_day,
+            hour=hour,
+            limit=500,
+        )
+        queue_by_id = {item['id']: item for item in queue_items}
+        missing_unknown_ids = [uid for uid in unknown_ids if uid not in queue_by_id]
+        if missing_unknown_ids:
+            raise ValueError(
+                'Selected review items are not present in the current review queue: '
+                + ', '.join(str(uid) for uid in missing_unknown_ids)
+            )
+        selected_items = [queue_by_id[uid] for uid in unknown_ids]
+        by_video: dict[int, dict] = {}
+        for item in selected_items:
+            bucket = by_video.setdefault(item['video_id'], {
+                'video_id': item['video_id'],
+                'unknown_ids': [],
+                'species_names': set(),
+                'review_reasons': set(),
+            })
+            bucket['unknown_ids'].append(item['id'])
+            bucket['species_names'].add(item.get('species_name'))
+            bucket['review_reasons'].add(item.get('review_reason'))
+
+        video_ids = sorted(by_video)
+        videos = db.session.query(Video).filter(Video.id.in_(video_ids)).all()
+        videos_by_id = {video.id: video for video in videos}
+
+        preview_videos = []
+        missing_video_ids = []
+        for video_id in video_ids:
+            video = videos_by_id.get(video_id)
+            bucket = by_video[video_id]
+            if not video:
+                missing_video_ids.append(video_id)
+                continue
+            full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
+            preview_videos.append({
+                'video_id': video.id,
+                'video_path': video.video_path,
+                'start_time': video.start_time.astimezone(timezone.utc).isoformat() if video.start_time else None,
+                'end_time': video.end_time.astimezone(timezone.utc).isoformat() if video.end_time else None,
+                'has_video_path': bool(video.video_path),
+                'file_exists': bool(full_path and os.path.isfile(full_path)),
+                'recording_dir': os.path.dirname(video.video_path) if video.video_path else None,
+                'unknown_count': len(bucket['unknown_ids']),
+                'unknown_ids': sorted(bucket['unknown_ids']),
+                'species_names': sorted(name for name in bucket['species_names'] if name),
+                'review_reasons': sorted(reason for reason in bucket['review_reasons'] if reason),
+            })
+
+        return {
+            'date': date,
+            'time_of_day': time_of_day,
+            'hour': hour,
+            'confirmation_phrase': 'permanent_full',
+            'unknown_ids': unknown_ids,
+            'unknown_count': len(selected_items),
+            'video_ids': video_ids,
+            'video_count': len(preview_videos),
+            'missing_video_ids': missing_video_ids,
+            'videos_by_id': videos_by_id,
+            'preview_videos': preview_videos,
+        }
 
     def _parse_species_ids(payload) -> list[int]:
         raw = (payload or {}).get('species_ids')
@@ -1402,6 +1842,546 @@ def register_routes(app):
             db.session.rollback()
             app.logger.exception('Purge storage failed')
             return {'error': 'Failed to purge storage'}, 500
+
+    @app.route('/api/ui/system/diagnostics/broken-videos', methods=['GET'])
+    def list_broken_video_rows():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            limit = int(request.args.get('limit') or 50)
+            limit = max(1, min(limit, 200))
+            after_id = int(request.args.get('after_id') or 0)
+            max_scan = int(request.args.get('max_scan') or 5000)
+            max_scan = max(1, min(max_scan, 20000))
+        except ValueError:
+            return {'error': 'Invalid numeric query parameter'}, 400
+
+        items: list[dict] = []
+        scanned = 0
+        cursor = after_id
+        while len(items) < limit and scanned < max_scan:
+            batch = (
+                Video.query.filter(Video.id > cursor)
+                .order_by(Video.id.asc())
+                .limit(200)
+                .all()
+            )
+            if not batch:
+                break
+            for video in batch:
+                scanned += 1
+                if scanned > max_scan:
+                    break
+                row = _broken_video_row_payload(video)
+                if row:
+                    items.append(row)
+                if len(items) >= limit:
+                    break
+            cursor = batch[-1].id
+
+        next_after = None
+        if items and len(items) == limit:
+            next_after = items[-1]['video_id']
+        return {
+            'bucket': 'broken_video_row',
+            'items': items,
+            'scanned': scanned,
+            'after_id': after_id,
+            'next_after_id': next_after,
+            'confirmation_phrase_delete': BROKEN_VIDEOS_DELETE_CONFIRMATION,
+            'confirmation_phrase_purge': BROKEN_VIDEOS_PURGE_CONFIRMATION,
+        }, 200
+
+    @app.route('/api/ui/system/diagnostics/broken-videos/delete-preview', methods=['POST'])
+    def preview_broken_video_rows_delete():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            video_ids = _parse_video_ids(payload)
+            if not video_ids:
+                return {'error': 'video_ids is required'}, 400
+            videos = Video.query.filter(Video.id.in_(video_ids)).all()
+            by_id = {v.id: v for v in videos}
+            missing = [vid for vid in video_ids if vid not in by_id]
+            if missing:
+                return {'error': 'Some video_ids not found', 'missing_video_ids': missing}, 400
+            previews = []
+            not_broken = []
+            for vid in video_ids:
+                v = by_id[vid]
+                row = _broken_video_row_payload(v)
+                if row:
+                    previews.append(row)
+                else:
+                    not_broken.append(vid)
+            if not_broken:
+                return {
+                    'error': 'Some videos are not broken (file exists); refusing preview',
+                    'not_broken_video_ids': sorted(not_broken),
+                }, 400
+            return {
+                'confirmation_phrase': BROKEN_VIDEOS_DELETE_CONFIRMATION,
+                'video_ids': video_ids,
+                'video_count': len(video_ids),
+                'videos': previews,
+            }, 200
+        except ValueError as exc:
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            app.logger.exception('Broken video delete preview failed: %s', e)
+            return {'error': 'Failed to build broken video delete preview'}, 500
+
+    @app.route('/api/ui/system/diagnostics/broken-videos/delete', methods=['POST'])
+    def delete_broken_video_rows():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            video_ids = _parse_video_ids(payload)
+            if not video_ids:
+                return {'error': 'video_ids is required'}, 400
+            confirm_text = str((payload or {}).get('confirm_text') or '').strip()
+            if confirm_text != BROKEN_VIDEOS_DELETE_CONFIRMATION:
+                return {
+                    'error': f'Confirmation text must be "{BROKEN_VIDEOS_DELETE_CONFIRMATION}"',
+                }, 400
+
+            videos = Video.query.filter(Video.id.in_(video_ids)).all()
+            by_id = {v.id: v for v in videos}
+            missing = [vid for vid in video_ids if vid not in by_id]
+            if missing:
+                return {'error': 'Some video_ids not found', 'missing_video_ids': missing}, 400
+
+            not_broken = []
+            for vid in video_ids:
+                if _broken_video_row_payload(by_id[vid]) is None:
+                    not_broken.append(vid)
+            if not_broken:
+                return {
+                    'error': 'Some videos are not broken (file exists); refusing delete',
+                    'not_broken_video_ids': sorted(not_broken),
+                }, 400
+
+            deleted_video_ids: list[int] = []
+            deleted_dirs: set[str] = set()
+            deleted_files = 0
+            deleted_size = 0
+            for vid in video_ids:
+                video = by_id[vid]
+                full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
+                if full_path and os.path.isdir(os.path.dirname(full_path)):
+                    deleted_dirs.add(os.path.dirname(full_path))
+                _delete_video_row_cascade(video)
+                deleted_video_ids.append(vid)
+
+            cleanup_log = ActivityLog(
+                type='admin_diagnostics_cleanup',
+                data=json.dumps({
+                    'action': 'broken_video_rows_delete',
+                    'bucket': 'broken_video_row',
+                    'video_ids': deleted_video_ids,
+                }),
+            )
+            db.session.add(cleanup_log)
+            db.session.commit()
+
+            for dir_path in sorted(deleted_dirs):
+                if not os.path.isdir(dir_path):
+                    continue
+                count, size = _get_tree_storage_info(dir_path)
+                deleted_files += count
+                deleted_size += size
+                shutil.rmtree(dir_path)
+
+            bust_response_caches()
+            bust_system_response_caches()
+            return {
+                'message': f'Deleted {len(deleted_video_ids)} broken video rows',
+                'deletedCount': len(deleted_video_ids),
+                'deletedVideoIds': deleted_video_ids,
+                'deletedDirs': len(deleted_dirs),
+                'deletedFiles': deleted_files,
+                'deletedSize': deleted_size,
+                'confirmation_phrase': BROKEN_VIDEOS_DELETE_CONFIRMATION,
+            }, 200
+        except ValueError as exc:
+            db.session.rollback()
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Broken video rows delete failed: %s', e)
+            return {'error': 'Failed to delete broken video rows'}, 500
+
+    @app.route('/api/ui/system/diagnostics/broken-videos/purge', methods=['POST'])
+    def purge_broken_video_rows():
+        """Массовая уборка: строки Video без читаемого файла (в т.ч. 0 байт).
+
+        dry_run (default true): только статистика по первым max_scan строкам Video.
+        dry_run false: удалить до limit битых записей за один запрос (повторять до deletedCount=0).
+        """
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            max_scan = int(payload.get('max_scan') or 100_000)
+            max_scan = max(1000, min(max_scan, 500_000))
+            limit = int(payload.get('limit') or 500)
+            limit = max(1, min(limit, 5000))
+
+            if dry_run:
+                inv = _scan_broken_videos_inventory(
+                    max_scan=max_scan,
+                    collect_ids_limit=None,
+                )
+                return {
+                    'dry_run': True,
+                    'scanned': inv['scanned'],
+                    'broken_total': inv['broken_total'],
+                    'by_reason': inv['by_reason'],
+                    'sample_video_ids': inv['sample_video_ids'],
+                    'confirmation_phrase': BROKEN_VIDEOS_PURGE_CONFIRMATION,
+                    'note': (
+                        'Повторяйте POST с dry_run:false и тем же confirm_text, '
+                        'пока deletedCount не станет 0.'
+                    ),
+                }, 200
+
+            confirm_text = str((payload or {}).get('confirm_text') or '').strip()
+            if confirm_text != BROKEN_VIDEOS_PURGE_CONFIRMATION:
+                return {
+                    'error': (
+                        f'Confirmation text must be "{BROKEN_VIDEOS_PURGE_CONFIRMATION}"'
+                    ),
+                }, 400
+
+            inv = _scan_broken_videos_inventory(
+                max_scan=max_scan,
+                collect_ids_limit=limit,
+            )
+            video_ids = inv['ids_to_delete']
+            if not video_ids:
+                return {
+                    'message': 'No broken video rows found in scan range',
+                    'deletedCount': 0,
+                    'scanned': inv['scanned'],
+                    'more_batches_suggested': False,
+                    'confirmation_phrase': BROKEN_VIDEOS_PURGE_CONFIRMATION,
+                }, 200
+
+            videos = Video.query.filter(Video.id.in_(video_ids)).all()
+            by_id = {v.id: v for v in videos}
+            missing = [vid for vid in video_ids if vid not in by_id]
+            if missing:
+                return {'error': 'Some video_ids not found', 'missing_video_ids': missing}, 400
+
+            not_broken = []
+            for vid in video_ids:
+                if _broken_video_row_payload(by_id[vid]) is None:
+                    not_broken.append(vid)
+            if not_broken:
+                return {
+                    'error': 'Race or stale list: some rows are no longer broken',
+                    'not_broken_video_ids': sorted(not_broken),
+                }, 409
+
+            deleted_video_ids: list[int] = []
+            deleted_dirs: set[str] = set()
+            deleted_files = 0
+            deleted_size = 0
+            for vid in video_ids:
+                video = by_id[vid]
+                full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
+                if full_path and os.path.isdir(os.path.dirname(full_path)):
+                    deleted_dirs.add(os.path.dirname(full_path))
+                _delete_video_row_cascade(video)
+                deleted_video_ids.append(vid)
+
+            cleanup_log = ActivityLog(
+                type='admin_diagnostics_cleanup',
+                data=json.dumps({
+                    'action': 'broken_video_rows_purge_batch',
+                    'bucket': 'broken_video_row',
+                    'video_ids': deleted_video_ids,
+                    'batch_limit': limit,
+                }),
+            )
+            db.session.add(cleanup_log)
+            db.session.commit()
+
+            for dir_path in sorted(deleted_dirs):
+                if not os.path.isdir(dir_path):
+                    continue
+                count, size = _get_tree_storage_info(dir_path)
+                deleted_files += count
+                deleted_size += size
+                shutil.rmtree(dir_path)
+
+            bust_response_caches()
+            bust_system_response_caches()
+            more = len(deleted_video_ids) >= limit
+            return {
+                'message': f'Deleted {len(deleted_video_ids)} broken video rows (batch)',
+                'deletedCount': len(deleted_video_ids),
+                'deletedVideoIds': deleted_video_ids,
+                'deletedDirs': len(deleted_dirs),
+                'deletedFiles': deleted_files,
+                'deletedSize': deleted_size,
+                'scanned': inv['scanned'],
+                'more_batches_suggested': more,
+                'confirmation_phrase': BROKEN_VIDEOS_PURGE_CONFIRMATION,
+            }, 200
+        except ValueError as exc:
+            db.session.rollback()
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Broken video purge failed: %s', e)
+            return {'error': 'Failed to purge broken video rows'}, 500
+
+    @app.route('/api/ui/system/diagnostics/no-species-videos/purge', methods=['POST'])
+    def purge_no_species_video_rows():
+        """Удаление записей Video без строк VideoSpecies (часто после scan import).
+
+        Нормальный приём от процессора всегда создаёт детекции; пустые строки — мусор в ленте.
+        dry_run (default true): счётчик и примеры id.
+        dry_run false: удалить до limit таких записей за запрос (повторять до deletedCount=0).
+        """
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            dry_run = bool(payload.get('dry_run', True))
+            limit = int(payload.get('limit') or 500)
+            limit = max(1, min(limit, 5000))
+            sample_limit = int(payload.get('sample_limit') or 40)
+            sample_limit = max(1, min(sample_limit, 200))
+
+            has_species = _videos_with_species_exist_clause()
+            base_q = Video.query.filter(~has_species).order_by(Video.id.asc())
+
+            if dry_run:
+                total = base_q.count()
+                sample_ids = [v.id for v in base_q.limit(sample_limit).all()]
+                return {
+                    'dry_run': True,
+                    'without_species_total': total,
+                    'sample_video_ids': sample_ids,
+                    'confirmation_phrase': NO_SPECIES_VIDEOS_PURGE_CONFIRMATION,
+                    'note': (
+                        'Повторяйте POST с dry_run:false и confirm_text, пока deletedCount не 0. '
+                        'Удаляются каталоги записей на диске.'
+                    ),
+                }, 200
+
+            confirm_text = str((payload or {}).get('confirm_text') or '').strip()
+            if confirm_text != NO_SPECIES_VIDEOS_PURGE_CONFIRMATION:
+                return {
+                    'error': (
+                        f'Confirmation text must be "{NO_SPECIES_VIDEOS_PURGE_CONFIRMATION}"'
+                    ),
+                }, 400
+
+            candidates = base_q.limit(limit).all()
+            if not candidates:
+                return {
+                    'message': 'No videos without species detections',
+                    'deletedCount': 0,
+                    'more_batches_suggested': False,
+                    'confirmation_phrase': NO_SPECIES_VIDEOS_PURGE_CONFIRMATION,
+                }, 200
+
+            stale: list[int] = []
+            for v in candidates:
+                if not _video_row_has_no_species(v.id):
+                    stale.append(v.id)
+            if stale:
+                return {
+                    'error': 'Race: some videos now have species rows',
+                    'stale_video_ids': sorted(stale),
+                }, 409
+
+            deleted_video_ids: list[int] = []
+            deleted_dirs: set[str] = set()
+            deleted_files = 0
+            deleted_size = 0
+            for video in candidates:
+                full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
+                if full_path and os.path.isdir(os.path.dirname(full_path)):
+                    deleted_dirs.add(os.path.dirname(full_path))
+                _delete_video_row_cascade(video)
+                deleted_video_ids.append(video.id)
+
+            cleanup_log = ActivityLog(
+                type='admin_diagnostics_cleanup',
+                data=json.dumps({
+                    'action': 'no_species_videos_purge_batch',
+                    'bucket': 'no_species_video',
+                    'video_ids': deleted_video_ids,
+                    'batch_limit': limit,
+                }),
+            )
+            db.session.add(cleanup_log)
+            db.session.commit()
+
+            for dir_path in sorted(deleted_dirs):
+                if not os.path.isdir(dir_path):
+                    continue
+                count, size = _get_tree_storage_info(dir_path)
+                deleted_files += count
+                deleted_size += size
+                shutil.rmtree(dir_path)
+
+            bust_response_caches()
+            bust_system_response_caches()
+            more = len(deleted_video_ids) >= limit
+            return {
+                'message': (
+                    f'Deleted {len(deleted_video_ids)} videos without species (batch)'
+                ),
+                'deletedCount': len(deleted_video_ids),
+                'deletedVideoIds': deleted_video_ids,
+                'deletedDirs': len(deleted_dirs),
+                'deletedFiles': deleted_files,
+                'deletedSize': deleted_size,
+                'more_batches_suggested': more,
+                'confirmation_phrase': NO_SPECIES_VIDEOS_PURGE_CONFIRMATION,
+            }, 200
+        except ValueError as exc:
+            db.session.rollback()
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('No-species video purge failed: %s', e)
+            return {'error': 'Failed to purge videos without species'}, 500
+
+    @app.route('/api/ui/system/diagnostics/review-only-noise-candidates', methods=['GET'])
+    def list_review_only_noise_candidates():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            limit = int(request.args.get('limit') or 100)
+            limit = max(1, min(limit, 500))
+        except ValueError:
+            return {'error': 'Invalid limit'}, 400
+
+        rows = (
+            db.session.query(VideoSpecies, Species, Video)
+            .join(Species, Species.id == VideoSpecies.species_id)
+            .join(Video, Video.id == VideoSpecies.video_id)
+            .filter(
+                VideoSpecies.source == 'video',
+                VideoSpecies.species_visit_id.is_(None),
+                Species.name.in_(REVIEW_ONLY_NOISE_SPECIES),
+            )
+            .order_by(VideoSpecies.id.desc())
+            .limit(limit)
+            .all()
+        )
+        items = []
+        for vs, sp, v in rows:
+            br, _ = _broken_video_row_reason(v.video_path)
+            vst = vs.created_at
+            items.append({
+                'detection_id': vs.id,
+                'video_id': v.id,
+                'species': sp.name,
+                'confidence': vs.confidence,
+                'detection_provider': vs.detection_provider,
+                'created_at': vst.isoformat() if vst else None,
+                'video_path': v.video_path,
+                'video_file_issue': br,
+            })
+        return {
+            'bucket': 'review_only_noise_candidate',
+            'items': items,
+            'note': (
+                'Автоудаление истории не выполняется. Для массового снятия unknowns используйте '
+                'review-queue delete при необходимости.'
+            ),
+        }, 200
+
+    @app.route('/api/ui/system/review-queue/delete-preview', methods=['POST'])
+    def preview_review_queue_delete():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            plan = _resolve_review_queue_bulk_plan(payload)
+            return {
+                'confirmation_phrase': plan['confirmation_phrase'],
+                'date': plan['date'],
+                'time_of_day': plan['time_of_day'],
+                'hour': plan['hour'],
+                'unknown_count': plan['unknown_count'],
+                'video_count': plan['video_count'],
+                'unknown_ids': plan['unknown_ids'],
+                'video_ids': plan['video_ids'],
+                'missing_video_ids': plan['missing_video_ids'],
+                'videos': plan['preview_videos'],
+            }, 200
+        except ValueError as exc:
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            app.logger.exception('Review queue delete preview failed: %s', e)
+            return {'error': 'Failed to build review queue delete preview'}, 500
+
+    @app.route('/api/ui/system/review-queue/delete', methods=['POST'])
+    def delete_review_queue_videos():
+        if not admin_track_regen_access():
+            return {'error': 'Access denied'}, 403
+        try:
+            payload = request.get_json(silent=True) or {}
+            plan = _resolve_review_queue_bulk_plan(payload)
+            confirm_text = str((payload or {}).get('confirm_text') or '').strip()
+            if confirm_text != plan['confirmation_phrase']:
+                return {
+                    'error': f'Confirmation text must be "{plan["confirmation_phrase"]}"',
+                }, 400
+
+            deleted_video_ids = []
+            deleted_dirs = set()
+            deleted_files = 0
+            deleted_size = 0
+            for video_id in plan['video_ids']:
+                video = plan['videos_by_id'].get(video_id)
+                if not video:
+                    continue
+                full_path = util_mod.full_path_for_video(video.video_path) if video.video_path else None
+                if full_path and os.path.isdir(os.path.dirname(full_path)):
+                    deleted_dirs.add(os.path.dirname(full_path))
+                _delete_video_row_cascade(video)
+                deleted_video_ids.append(video_id)
+
+            db.session.commit()
+
+            for dir_path in sorted(deleted_dirs):
+                if not os.path.isdir(dir_path):
+                    continue
+                count, size = _get_tree_storage_info(dir_path)
+                deleted_files += count
+                deleted_size += size
+                shutil.rmtree(dir_path)
+
+            bust_response_caches()
+            bust_system_response_caches()
+            return {
+                'message': f'Deleted {len(deleted_video_ids)} review-queue videos',
+                'deletedCount': len(deleted_video_ids),
+                'deletedVideoIds': deleted_video_ids,
+                'deletedDirs': len(deleted_dirs),
+                'deletedFiles': deleted_files,
+                'deletedSize': deleted_size,
+                'confirmation_phrase': plan['confirmation_phrase'],
+            }, 200
+        except ValueError as exc:
+            db.session.rollback()
+            return {'error': str(exc)}, 400
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Review queue delete failed: %s', e)
+            return {'error': 'Failed to delete review queue videos'}, 500
 
     @app.route('/api/ui/system/db/backup', methods=['GET'])
     def backup_database():
@@ -2252,39 +3232,6 @@ def register_routes(app):
                 'progress': None,
             }
 
-    @app.route('/api/ui/system/regenerate-tracks', methods=['POST'])
-    def regenerate_tracks():
-        """Start track regeneration in background. Processes videos without tracks (or all if force)."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _regenerate_tracks_lock:
-            if _regenerate_tracks_status['status'] == 'running':
-                return {'error': 'Track regeneration already in progress', 'status': _regenerate_tracks_status}, 409
-        data = request.json or {}
-        force = data.get('force', False)
-        start_date = data.get('start_date')  # YYYY-MM-DD or None
-        end_date = data.get('end_date')  # YYYY-MM-DD or None
-        frame_step = data.get('frame_step')
-        try:
-            video_ids = _parse_video_ids(data)
-        except ValueError as e:
-            return {'error': str(e)}, 400
-        try:
-            species_ids = _parse_species_ids(data)
-        except ValueError as e:
-            return {'error': str(e)}, 400
-        try:
-            frame_step = int(frame_step) if frame_step is not None else None
-        except Exception:
-            frame_step = None
-        t = threading.Thread(
-            target=_run_regenerate_tracks,
-            args=(force, start_date, end_date, frame_step, video_ids, species_ids),
-            daemon=True,
-        )
-        t.start()
-        return {'message': 'Track regeneration started.', 'started': True}, 202
-
     @app.route('/api/ui/system/regenerate-tracks/status', methods=['GET'])
     def regenerate_tracks_status():
         """Return last track regeneration result."""
@@ -2525,6 +3472,11 @@ def register_routes(app):
                                 continue
                             video_mp4 = os.path.join(ts_path, 'video.mp4')
                             if not os.path.isfile(video_mp4):
+                                continue
+                            try:
+                                if os.path.getsize(video_mp4) <= 0:
+                                    continue
+                            except OSError:
                                 continue
                             rel_path = f'data/recordings/{year}/{month}/{day}/{ts}/video.mp4'
                             if rel_path in existing_paths:

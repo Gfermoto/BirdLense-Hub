@@ -118,6 +118,9 @@ def setup_processor_media(
             encoding = (app_config.get('video.encoding') or 'cpu').strip().lower()
             if encoding not in ('cpu', 'intel'):
                 encoding = 'cpu'
+            rcodec = (app_config.get('video.record_stream_codec') or 'h264').strip().lower()
+            if rcodec not in ('h264', 'copy'):
+                rcodec = 'h264'
             media_sources_cache[camera_id] = Go2RTCStreamSource(
                 stream_url=stream_url,
                 main_size=main_size,
@@ -125,6 +128,7 @@ def setup_processor_media(
                 auto_reconnect=app_config.get('video.auto_reconnect', True),
                 mjpeg_port=mjpeg_base_port + idx,
                 encoding_mode=encoding,
+                record_stream_codec=rcodec,
             )
         return media_sources_cache[camera_id]
 

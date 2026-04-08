@@ -71,7 +71,6 @@
 | `/system/retention` | POST | Запуск политики retention |
 | `/system/regenerate-spectrograms` | POST | Регенерация спектрограмм |
 | `/system/regenerate-spectrograms/status` | GET | Статус регенерации спектрограмм |
-| `/system/regenerate-tracks` | POST | Регенерация треков |
 | `/system/regenerate-tracks/status` | GET | Статус регенерации треков |
 | `/system/recordings/scan` | POST | Сканирование и импорт записей |
 | `/system/logs` | GET | Логи процессора (последние N строк, ?lines=100) |

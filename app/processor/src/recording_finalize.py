@@ -191,6 +191,7 @@ def finalize_motion_recording(
                 'Spectrogram generation failed (BirdNET event present)'
             )
 
+    accepted_pre_fusion = list(video_detections)
     video_detections = build_fused_video_detections(
         video_detections,
         mqtt_events,
@@ -198,6 +199,29 @@ def finalize_motion_recording(
         end_time=end_time,
         app_config=app_config,
     )
+    try:
+        min_conf_store = float(app_config.get('detection.min_confidence_to_store') or 0.05)
+    except (TypeError, ValueError):
+        min_conf_store = 0.05
+    fused_ids = {d.get('track_id') for d in video_detections if d.get('track_id') is not None}
+    for item in accepted_pre_fusion:
+        tid = item.get('track_id')
+        if tid is None:
+            continue
+        if tid in fused_ids:
+            continue
+        conf = float(item.get('confidence') or 0.0)
+        if conf >= min_conf_store:
+            # Should not happen often; keep out of persistence path.
+            continue
+        rejected_decisions.append({
+            **item,
+            'accepted': False,
+            'decision_reason': 'rejected_post_fusion_below_store_threshold',
+            'decision_kind': 'rejected',
+            'trust_band': 'red',
+            'reject_reason_code': 'low_confidence',
+        })
 
     for i, d in enumerate(video_detections):
         n_frames = len(d.get('frames') or [])
@@ -272,7 +296,29 @@ def finalize_motion_recording(
             len(mqtt_events),
         )
 
-    if len(video_detections) > 0:
+    video_file_ok = bool(video_output and os.path.isfile(video_output))
+    if len(video_detections) > 0 and not video_file_ok:
+        logging.error(
+            'Finalize: %s detection(s) but video file missing: %s',
+            len(video_detections),
+            video_output,
+        )
+        try:
+            if api:
+                api.activity_log(
+                    type='ingest_gate',
+                    data={
+                        'reason': 'video_file_missing',
+                        'stage': 'processor_finalize',
+                        'video_path': video_path_for_api,
+                        'video_output': video_output,
+                        'detection_count': len(video_detections),
+                    },
+                )
+        except Exception:
+            logging.exception('ingest_gate activity_log failed')
+
+    if len(video_detections) > 0 and video_file_ok:
         scales_delta_kg = None
         has_non_audio = any(
             d.get('source') != 'audio' for d in video_detections
@@ -328,9 +374,20 @@ def finalize_motion_recording(
             sn = d.get('species_name') or d.get('species') or ''
             if sn and sn not in seen:
                 seen.add(sn)
+                notify_ok = bool(d.get('notification_eligible', True))
+                if str(d.get('decision_kind') or '').strip().lower() == 'review_only_generic':
+                    notify_ok = False
                 image_base64, preview_source = encode_notify_preview_base64(
                     d, video_output
                 )
+                if not notify_ok:
+                    logging.info(
+                        'Notify suppressed for %s (eligible=false, kind=%s, reason=%s)',
+                        sn,
+                        d.get('decision_kind'),
+                        d.get('decision_reason'),
+                    )
+                    continue
                 if image_base64 is None:
                     logging.info(
                         'Notify %s without photo: no preview '
@@ -339,6 +396,27 @@ def finalize_motion_recording(
                         d.get('detection_provider', 'unknown'),
                         preview_source,
                     )
+                    continue
+                raw_notify = app_config.get('processor.min_confidence_to_notify')
+                try:
+                    min_notify = (
+                        float(raw_notify)
+                        if raw_notify is not None and str(raw_notify).strip() != ''
+                        else float(app_config.get('processor.min_confidence_to_process') or 0.30)
+                    )
+                except (TypeError, ValueError):
+                    min_notify = float(
+                        app_config.get('processor.min_confidence_to_process') or 0.30
+                    )
+                if float(d.get('confidence') or 0.0) < min_notify:
+                    logging.info(
+                        'Notify suppressed for %s: confidence=%.3f < '
+                        'processor.min_confidence_to_notify=%.3f',
+                        sn,
+                        float(d.get('confidence') or 0.0),
+                        min_notify,
+                    )
+                    continue
                 else:
                     logging.info(
                         'Notify preview source: %s (%s)',
@@ -352,6 +430,7 @@ def finalize_motion_recording(
                         image_base64=image_base64,
                         link=link,
                         preview_source=preview_source,
+                        notification_eligible=True,
                     )
                     try:
                         api.activity_log(
@@ -375,5 +454,5 @@ def finalize_motion_recording(
                             hint = ' (check PROCESSOR_SECRET in app/.env)'
                         hint = f' {resp_err.status_code}{hint}'
                     logging.warning('Notify species failed%s: %s', hint, e)
-    else:
+    if len(video_detections) == 0 or not video_file_ok:
         shutil.rmtree(output_path_physical)

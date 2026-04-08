@@ -5,8 +5,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Default min confidence; can be overridden via app_config processor.min_confidence_to_process
-DEFAULT_MIN_CONFIDENCE = 0.03
+# Default min confidence; can be overridden via app_config processor.min_confidence_to_process.
+DEFAULT_MIN_CONFIDENCE = 0.30
 
 
 def _normalized_species_keys(species_name):
@@ -43,7 +43,7 @@ class DecisionMaker():
         self,
         max_record_seconds=60,
         max_inactive_seconds=10,
-        min_track_duration=0.35,
+        min_track_duration=1.0,
         min_confidence_to_process=None,
         species_confidence_overrides=None,
         post_record_seconds=0,
@@ -90,6 +90,8 @@ class DecisionMaker():
             return 'red'
         if reason == 'accepted_species':
             return 'green' if float(confidence or 0.0) >= 0.75 else 'yellow'
+        if reason == 'review_only_generic_bird':
+            return 'yellow'
         return 'gray'
 
     def _reject_reason_code(
@@ -108,6 +110,7 @@ class DecisionMaker():
         if decision_reason in {
             'rejected_detector_below_store_floor',
             'rejected_classifier_fallback_disabled',
+            'rejected_weak_generic_bird',
         }:
             if classifier_event_count > 1 and float(classifier_vote_share or 0.0) <= 0.5:
                 return 'conflicting_evidence'
@@ -115,6 +118,53 @@ class DecisionMaker():
                 return 'insufficient_frames'
             return 'low_confidence'
         return None
+
+    def _bbox_area_frac(self, bbox) -> float:
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            return 0.0
+        try:
+            x1, y1, x2, y2 = [float(b) for b in bbox]
+        except (TypeError, ValueError):
+            return 0.0
+        w = max(0.0, x2 - x1)
+        h = max(0.0, y2 - y1)
+        return max(0.0, min(1.0, w * h))
+
+    def _generic_bird_visual_support(self, track: dict) -> tuple[float, int]:
+        frames = track.get('frames') or []
+        best = 0.0
+        n = 0
+        for fr in frames:
+            if not isinstance(fr, dict):
+                continue
+            area = self._bbox_area_frac(fr.get('bbox'))
+            if area > 0:
+                n += 1
+                best = max(best, area)
+        return best, n
+
+    def _promotable_generic_bird(
+        self,
+        *,
+        detector_label: str,
+        detector_conf: float,
+        track: dict,
+    ) -> bool:
+        """Generic Bird is accepted for visits/notifications only with stronger visual support."""
+        if str(detector_label or '').strip().lower() != 'bird':
+            return True
+        # Conservative defaults: require multiple bbox samples + non-tiny object + decent detector conf.
+        min_det = max(float(self.min_confidence_to_store), 0.45)
+        if float(detector_conf or 0.0) < min_det:
+            return False
+        max_area, n_frames = self._generic_bird_visual_support(track)
+        if n_frames < 3:
+            return False
+        if max_area < 0.01:  # ~1% of frame area (normalized xyxy)
+            return False
+        if float(track.get('best_frame_score') or 0.0) < 6.5:
+            return False
+        return True
 
     def _get_threshold_for_species(self, species_name):
         """Return min confidence threshold for species. Override or default."""
@@ -125,6 +175,15 @@ class DecisionMaker():
             mapped = self._species_confidence_override_keys.get(key)
             if mapped is not None:
                 return mapped
+        keys = _normalized_species_keys(species_name)
+        for key in keys:
+            if any(
+                tok in key
+                for tok in ('rodent', 'squirrel', 'chipmunk', 'sciurus')
+            ):
+                store_floor = float(self.min_confidence_to_store)
+                relaxed = float(self.min_confidence_to_process) - 0.10
+                return max(store_floor, min(0.32, relaxed))
         return self.min_confidence_to_process
 
     def reset(self):
@@ -300,6 +359,9 @@ class DecisionMaker():
             decision_kind = 'accepted_species'
             evidence_state = 'detector_only'
 
+            visit_eligible = True
+            notification_eligible = True
+
             if classifier_candidate is not None:
                 species_name = classifier_candidate['species_name']
                 combined = float(classifier_candidate['combined_confidence'] or 0.0)
@@ -351,17 +413,44 @@ class DecisionMaker():
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
-                        decision_reason = (
-                            'fallback_squirrel'
-                            if detector_label.lower() == 'squirrel'
-                            else 'fallback_bird'
-                        )
-                        decision_kind = 'accepted_generic'
-                        evidence_state = (
-                            'conflicting_classifier_votes'
-                            if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
-                            else 'detector_backed_generic'
-                        )
+                        is_squirrel = detector_label.lower() == 'squirrel'
+                        is_bird = detector_label.lower() == 'bird'
+                        if is_squirrel:
+                            decision_reason = 'fallback_squirrel'
+                            decision_kind = 'accepted_generic'
+                            evidence_state = (
+                                'conflicting_classifier_votes'
+                                if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                                else 'detector_backed_generic'
+                            )
+                        elif is_bird and not self._promotable_generic_bird(
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            track=track,
+                        ):
+                            accepted = True
+                            visit_eligible = False
+                            notification_eligible = False
+                            decision_reason = 'review_only_generic_bird'
+                            decision_kind = 'review_only_generic'
+                            evidence_state = (
+                                'conflicting_classifier_votes'
+                                if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                                else 'weak_classifier'
+                            )
+                        else:
+                            if is_bird:
+                                decision_reason = 'fallback_bird'
+                            elif is_squirrel:
+                                decision_reason = 'fallback_squirrel'
+                            else:
+                                decision_reason = 'fallback_detector_generic'
+                            decision_kind = 'accepted_generic'
+                            evidence_state = (
+                                'conflicting_classifier_votes'
+                                if float(classifier_candidate['vote_share'] or 0.0) <= 0.5
+                                else 'detector_backed_generic'
+                            )
             else:
                 if detector_conf < store_floor:
                     logger.debug(
@@ -380,13 +469,32 @@ class DecisionMaker():
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
-                    decision_reason = (
-                        'fallback_squirrel'
-                        if detector_label.lower() == 'squirrel'
-                        else 'fallback_bird'
-                    )
-                    decision_kind = 'accepted_generic'
-                    evidence_state = 'detector_only'
+                    is_squirrel = detector_label.lower() == 'squirrel'
+                    is_bird = detector_label.lower() == 'bird'
+                    if is_squirrel:
+                        decision_reason = 'fallback_squirrel'
+                        decision_kind = 'accepted_generic'
+                        evidence_state = 'detector_only'
+                    elif is_bird and not self._promotable_generic_bird(
+                        detector_label=detector_label,
+                        detector_conf=detector_conf,
+                        track=track,
+                    ):
+                        accepted = True
+                        visit_eligible = False
+                        notification_eligible = False
+                        decision_reason = 'review_only_generic_bird'
+                        decision_kind = 'review_only_generic'
+                        evidence_state = 'detector_only'
+                    else:
+                        if is_bird:
+                            decision_reason = 'fallback_bird'
+                        elif is_squirrel:
+                            decision_reason = 'fallback_squirrel'
+                        else:
+                            decision_reason = 'fallback_detector_generic'
+                        decision_kind = 'accepted_generic'
+                        evidence_state = 'detector_only'
 
             reject_reason_code = self._reject_reason_code(
                 decision_reason=decision_reason,
@@ -406,6 +514,8 @@ class DecisionMaker():
             decisions.append({
                 'track_id': track_id,
                 'accepted': accepted,
+                'visit_eligible': bool(visit_eligible),
+                'notification_eligible': bool(notification_eligible),
                 'species_name': out_species,
                 'start_time': track['start_time'],
                 'end_time': track['end_time'],

@@ -168,20 +168,6 @@ class TestLibraryDatasetFlow:
                 assert r_tracks_status.status_code == 200
                 assert 'status' in r_tracks_status.json
 
-                r_tracks_bad_video_ids = client.post(
-                    '/api/ui/system/regenerate-tracks',
-                    json={'video_ids': 'not-an-array'},
-                )
-                assert r_tracks_bad_video_ids.status_code == 400
-                assert 'video_ids' in (r_tracks_bad_video_ids.json.get('error') or '')
-
-                r_tracks_bad_species_ids = client.post(
-                    '/api/ui/system/regenerate-tracks',
-                    json={'species_ids': 'not-an-array'},
-                )
-                assert r_tracks_bad_species_ids.status_code == 400
-                assert 'species_ids' in (r_tracks_bad_species_ids.json.get('error') or '')
-
                 r_tracks_one_missing = client.post(
                     '/api/ui/videos/999999/regenerate-tracks',
                     json={},
@@ -645,6 +631,7 @@ class TestTimeline:
         assert any(row.get('timeline_kind') == 'unlinked_video' for row in r.json)
         unlinked = [row for row in r.json if row.get('timeline_kind') == 'unlinked_video']
         assert unlinked and all(row['id'] < 0 for row in unlinked)
+        assert all(row.get('detections') == [] for row in unlinked)
 
 
 class TestOverview:

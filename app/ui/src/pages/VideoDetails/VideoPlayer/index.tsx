@@ -205,6 +205,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [video.species],
   );
 
+  useEffect(() => {
+    if (trackDetections.length > 0) {
+      setShowTracks(true);
+    }
+  }, [trackDetections.length]);
+
   const activeDetections = useMemo(
     () =>
       filteredDetections.filter(
@@ -331,9 +337,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   if (error) {
     return (
-      <Typography color="error" align="center">
-        {error}
-      </Typography>
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography color="error" align="center" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center">
+          {t('errors.loadVideoHint')}
+        </Typography>
+      </Box>
     );
   }
 
@@ -514,7 +525,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             preload="auto"
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
-            onError={() => setError(t('errors.loadVideo'))}
+            onError={(e) => {
+              const el = e.currentTarget;
+              const code = el.error?.code;
+              const msg = el.error?.message;
+              if (code != null || (msg && msg.length > 0)) {
+                setError(
+                  `${t('errors.loadVideo')} (${[code, msg].filter(Boolean).join(': ')})`,
+                );
+              } else {
+                setError(t('errors.loadVideo'));
+              }
+            }}
             style={{ height: '100%', width: '100%', objectFit: 'contain' }}
             playsInline
             controls={false}

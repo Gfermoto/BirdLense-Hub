@@ -359,16 +359,39 @@ class MQTTEventAggregator:
                     continue
                 ts_epoch = ts.timestamp()
                 ev["_ts_epoch"] = ts_epoch
+            else:
+                # If timestamp string is missing/unparseable, still honor explicit epoch.
+                ts = _parse_iso8601_utc(ev.get("timestamp"))
+                if ts is not None:
+                    parsed_epoch = ts.timestamp()
+                    # Prefer parsed string if it disagrees materially with stored epoch.
+                    if abs(float(parsed_epoch) - float(ts_epoch)) > 1.0:
+                        ts_epoch = parsed_epoch
+                        ev["_ts_epoch"] = ts_epoch
             if ts_epoch >= low_epoch:
                 kept.append(ev)
-        while len(kept) > self._birdnet_event_cap:
-            kept.popleft()
+        # FIFO cap: drop oldest *within TTL window* only. Previously this could
+        # remove still-valid history when transient spam arrived, collapsing support_count.
+        overflow = max(0, len(kept) - int(self._birdnet_event_cap))
+        if overflow:
+            kept = deque(list(kept)[overflow:])
         self._birdnet_events = kept
 
     def _remember_birdnet_event(self, ev: dict) -> None:
         with self._lock:
+            # Prefer parsing the canonical timestamp string when available; otherwise
+            # keep caller-provided epoch (tests / edge MQTT payloads).
+            ts = _parse_iso8601_utc(ev.get("timestamp"))
+            if ts is not None:
+                ev["_ts_epoch"] = ts.timestamp()
+            elif ev.get("_ts_epoch") is None:
+                # No time information — cannot reason about TTL/window; drop.
+                return
             self._birdnet_events.append(ev)
-            self._prune_birdnet_events_locked()
+            # Prune relative to the newest event time, not wall clock: unit tests and
+            # offline replays may inject historical timestamps while host time differs.
+            prune_now = ts or datetime.fromtimestamp(float(ev["_ts_epoch"]), tz=timezone.utc)
+            self._prune_birdnet_events_locked(now=prune_now)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -734,13 +757,11 @@ class MQTTEventAggregator:
                 conf = max(0.0, min(conf, 1.0))
                 if conf < min_confidence:
                     continue
-                ts_epoch = ev.get("_ts_epoch")
-                if ts_epoch is None:
-                    ts = _parse_iso8601_utc(ev.get("timestamp"))
-                    if ts is None:
-                        continue
-                    ts_epoch = ts.timestamp()
-                    ev["_ts_epoch"] = ts_epoch
+                ts = _parse_iso8601_utc(ev.get("timestamp"))
+                if ts is None:
+                    continue
+                ts_epoch = ts.timestamp()
+                ev["_ts_epoch"] = ts_epoch
                 if ts_epoch < low_epoch:
                     continue
                 age_hours = max(0.0, (now.timestamp() - ts_epoch) / 3600.0)

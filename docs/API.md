@@ -73,7 +73,6 @@ Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 | `/api/ui/system/retention` | POST | Run retention policy |
 | `/api/ui/system/regenerate-spectrograms` | POST | Regenerate spectrograms |
 | `/api/ui/system/regenerate-spectrograms/status` | GET | Job status |
-| `/api/ui/system/regenerate-tracks` | POST | Regenerate tracks |
 | `/api/ui/system/regenerate-tracks/status` | GET | Job status |
 | `/api/ui/system/recordings/scan` | POST | Scan & import recordings |
 | `/api/ui/system/logs` | GET | Processor log tail (`?lines=100`) |

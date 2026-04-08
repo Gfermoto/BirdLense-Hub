@@ -8,6 +8,15 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+CONFIDENCE_FLOORS = {
+    'detection.min_confidence_to_store': 0.30,
+    'processor.min_confidence_to_process': 0.30,
+    'processor.min_confidence_to_notify': 0.30,
+    'processor.min_confidence_binary': 0.22,
+    'processor.min_track_duration': 1.0,
+    'processor.min_box_size_px': 64,
+}
+
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset({
     'homeassistant.token',
@@ -114,7 +123,9 @@ class AppConfig:
                     logger.warning('Could not persist HA legacy key migration: %s', e)
 
         # Merge configs (user_config overrides default_config)
-        return self.merge_dicts(default_config, user_config)
+        merged = self.merge_dicts(default_config, user_config)
+        self._enforce_confidence_floors(merged)
+        return merged
 
     @staticmethod
     def merge_dicts(base, overrides):
@@ -126,6 +137,32 @@ class AppConfig:
             else:
                 result[key] = value
         return result
+
+    @staticmethod
+    def _coerce_float(value, fallback):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(fallback)
+
+    @classmethod
+    def _enforce_confidence_floors(cls, config):
+        """Clamp stale low-confidence settings to safe minimums."""
+        changed = False
+        for path, floor in CONFIDENCE_FLOORS.items():
+            current = cls._get_nested(config, path)
+            if current is None:
+                continue
+            coerced = cls._coerce_float(current, floor)
+            if coerced < floor:
+                cls._set_nested(config, path, floor)
+                changed = True
+        if changed:
+            logger.warning(
+                'Clamped legacy low confidence settings to safe floors: %s',
+                ', '.join(f'{key}>={value}' for key, value in CONFIDENCE_FLOORS.items()),
+            )
+        return changed
 
     @staticmethod
     def _mask_value(val):
@@ -214,6 +251,7 @@ class AppConfig:
         for k in keys[:-1]:
             config_section = config_section.setdefault(k, {})
         config_section[keys[-1]] = value
+        self._enforce_confidence_floors(self.config)
 
     def _persist_raw_user_config(self, data: dict) -> None:
         """Записать сырой user YAML (для миграции ключей без полного self.config)."""
@@ -229,6 +267,7 @@ class AppConfig:
 
     def save(self, filename=None):
         save_file = filename or self.user_config_file
+        self._enforce_confidence_floors(self.config)
         if os.path.exists(save_file):
             bak = f'{save_file}.bak'
             try:

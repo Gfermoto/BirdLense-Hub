@@ -705,6 +705,24 @@ export const sendTestNotification = async (): Promise<{ success: boolean; messag
   }
 };
 
+export const refreshTelegramProxy = async (): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await axios.post(`${BASE_API_URL}/system/telegram-proxy/refresh`, {}, {
+      withCredentials: true,
+    });
+    return {
+      success: true,
+      message: response.data?.message || 'Started',
+    };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      success: false,
+      message: err.response?.data?.error || 'Failed',
+    };
+  }
+};
+
 export const restartProcessor = async (): Promise<{ success: boolean; message?: string }> => {
   try {
     const response = await axios.post(`${BASE_API_URL}/restart-processor`, {}, {
@@ -1111,6 +1129,36 @@ export interface UnknownDetection {
   source: string;
   detection_provider?: string;
   image_url?: string;
+  review_state?: 'pending' | 'reviewed' | 'not_applicable';
+  review_reason?: 'low_confidence' | 'generic_bird' | string;
+  review_source?: string;
+}
+
+export interface ReviewQueueDeletePreviewVideo {
+  video_id: number;
+  video_path: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  has_video_path: boolean;
+  file_exists: boolean;
+  recording_dir: string | null;
+  unknown_count: number;
+  unknown_ids: number[];
+  species_names: string[];
+  review_reasons: string[];
+}
+
+export interface ReviewQueueDeletePreview {
+  confirmation_phrase: string;
+  date: string;
+  time_of_day: string;
+  hour: number | null;
+  unknown_count: number;
+  video_count: number;
+  unknown_ids: number[];
+  video_ids: number[];
+  missing_video_ids: number[];
+  videos: ReviewQueueDeletePreviewVideo[];
 }
 
 export const fetchUnknowns = async (
@@ -1183,6 +1231,46 @@ export const confirmDetection = async (
     { source },
     { withCredentials: true },
   );
+  return response.data;
+};
+
+export const previewReviewQueueDelete = async (params: {
+  date: string;
+  timeOfDay: TimeOfDay;
+  hour?: number | null;
+  unknownIds: number[];
+}): Promise<ReviewQueueDeletePreview> => {
+  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete-preview`, {
+    date: params.date,
+    time_of_day: params.timeOfDay,
+    ...(params.hour != null ? { hour: params.hour } : {}),
+    unknown_ids: params.unknownIds,
+  });
+  return response.data;
+};
+
+export const deleteReviewQueueVideos = async (params: {
+  date: string;
+  timeOfDay: TimeOfDay;
+  hour?: number | null;
+  unknownIds: number[];
+  confirmText: string;
+}): Promise<{
+  message: string;
+  deletedCount: number;
+  deletedVideoIds: number[];
+  deletedDirs: number;
+  deletedFiles: number;
+  deletedSize: number;
+  confirmation_phrase: string;
+}> => {
+  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete`, {
+    date: params.date,
+    time_of_day: params.timeOfDay,
+    ...(params.hour != null ? { hour: params.hour } : {}),
+    unknown_ids: params.unknownIds,
+    confirm_text: params.confirmText,
+  });
   return response.data;
 };
 
