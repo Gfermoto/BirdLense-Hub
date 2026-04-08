@@ -54,6 +54,10 @@ Rook|Rook
 Turdus merula (Common Blackbird)|Common Blackbird
 Common Blackbird|Common Blackbird
 
+Tetrastes bonasia (Hazel Grouse)|Hazel Grouse
+Hazel_Grouse|Hazel Grouse
+Hazel Grouse|Hazel Grouse
+
 Aegithalos caudatus (Long-tailed Tit)|Long-tailed Tit
 Long-tailed Tit|Long-tailed Tit
 

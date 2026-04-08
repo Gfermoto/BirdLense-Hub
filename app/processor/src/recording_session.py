@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from argparse import Namespace
@@ -92,10 +93,23 @@ class MotionRecordingSession:
             self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
+            file_mode = (
+                (app_config.get('video.source') or '').strip().lower() == 'file'
+            )
+            frame_n = 0
             while True:
                 frame = self.media_source.capture()
                 if frame is None:
                     break
+                frame_n += 1
+                if file_mode and frame_n % 500 == 0:
+                    clip = getattr(self.media_source, 'video_path', '') or ''
+                    clip_name = Path(str(clip)).name if clip else '?'
+                    logger.info(
+                        'video.source=file: processing clip=%s frames_in_session=%s',
+                        clip_name,
+                        frame_n,
+                    )
                 processor_status['last_video_ok_at'] = (
                     datetime.now(timezone.utc).isoformat()
                 )

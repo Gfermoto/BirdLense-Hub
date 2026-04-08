@@ -22,14 +22,45 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(result[0]['species_name'], 'Bird')
 
     def test_bird_can_coexist_with_other_species(self):
+        """Без поля classifier / accepted_species второй ряд не считается «уверенным видом»."""
         yolo = [
             {'species_name': 'Bird', 'confidence': 0.9, 'start_time': 0, 'end_time': 5},
-            {'species_name': 'Northern Cardinal', 'confidence': 0.5, 'start_time': 2, 'end_time': 7},
+            {
+                'species_name': 'Northern Cardinal',
+                'confidence': 0.5,
+                'start_time': 2,
+                'end_time': 7,
+            },
         ]
         result = merge_detections(yolo, [], self.video_start, self.video_end)
         names = [d['species_name'] for d in result]
         self.assertIn('Bird', names)
         self.assertIn('Northern Cardinal', names)
+
+    def test_generic_bird_absorbed_when_overlapping_classified_jay(self):
+        yolo = [
+            {
+                'species_name': 'Bird',
+                'confidence': 0.45,
+                'start_time': 0,
+                'end_time': 40,
+                'detection_provider': 'yolo',
+                'decision_reason': 'fallback_bird',
+            },
+            {
+                'species_name': 'Eurasian Jay',
+                'confidence': 0.62,
+                'start_time': 5,
+                'end_time': 35,
+                'detection_provider': 'yolo',
+                'classifier_confidence': 0.55,
+                'decision_kind': 'accepted_species',
+            },
+        ]
+        result = merge_detections(yolo, [], self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Eurasian Jay')
+        self.assertIn('absorbed_generic_bird', result[0].get('_fusion_used', ''))
 
     def test_frigate_does_not_create_detection_without_yolo(self):
         mqtt = [{

@@ -53,7 +53,7 @@ def build_detection_stack(
     min_center_dist = (
         float(min_center_dist_override)
         if min_center_dist_override is not None
-        else 0.1
+        else float(app_config.get('processor.min_center_dist', 0.1))
     )
     binary_path = _resolve_model_path(
         app_config.get(
@@ -109,6 +109,7 @@ def build_detection_stack(
         max_blur_checks=max_blur_checks,
         max_classifications_per_frame=max_classifications_per_frame,
         classification_scheduler=classification_scheduler,
+        binary_imgsz=app_config.get('processor.binary_imgsz', 320),
     )
 
     tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
@@ -127,9 +128,38 @@ def build_detection_stack(
     fallback_bird = bool(
         app_config.get('processor.classifier_fallback_bird', True),
     )
+    # Live camera: short max_record_seconds saves disk. File/playlist: merge uses camera defaults (60s)
+    # if we don't raise the floor, but a 7200s floor meant no finalize for hours while YOLO stays active —
+    # empty UI. Floor is configurable (processor.file_max_record_floor_seconds); playlist position is kept
+    # when segments end (media_runtime advance_on_start=False + VideoPlaylistSource.start_recording).
+    max_record_seconds = app_config.get('processor.max_record_seconds')
+    max_inactive_seconds = app_config.get('processor.max_inactive_seconds')
+    if (app_config.get('video.source') or '').strip().lower() == 'file':
+        try:
+            mrs = float(max_record_seconds) if max_record_seconds is not None else 60.0
+        except (TypeError, ValueError):
+            mrs = 60.0
+        try:
+            floor = float(
+                app_config.get('processor.file_max_record_floor_seconds', 86400.0),
+            )
+        except (TypeError, ValueError):
+            floor = 86400.0
+        max_record_seconds = max(mrs, max(60.0, floor))
+        try:
+            mis = float(max_inactive_seconds) if max_inactive_seconds is not None else 10.0
+        except (TypeError, ValueError):
+            mis = 10.0
+        max_inactive_seconds = max(mis, 120.0)
+        logger.info(
+            'video.source=file: session limits (wall clock) — '
+            'max_record_seconds=%s, max_inactive_seconds=%s',
+            max_record_seconds,
+            max_inactive_seconds,
+        )
     decision_maker = DecisionMaker(
-        max_record_seconds=app_config.get('processor.max_record_seconds'),
-        max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
+        max_record_seconds=max_record_seconds,
+        max_inactive_seconds=max_inactive_seconds,
         min_track_duration=app_config.get('processor.min_track_duration', 1.0),
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),

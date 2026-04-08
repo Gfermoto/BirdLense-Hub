@@ -8,10 +8,23 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { BarChart } from '@mui/x-charts/BarChart';
-import dayjs from 'dayjs';
-import { BASE_API_URL, downloadDbBackup, restoreDbBackup } from '../../api/api';
+import dayjs, { type Dayjs } from 'dayjs';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import {
+  BASE_API_URL,
+  downloadDbBackup,
+  purgeStorageRecordings,
+  restoreDbBackup,
+} from '../../api/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+
+type PurgeMode = 'before' | 'range';
 
 interface StorageStats {
   date: string;
@@ -40,12 +53,27 @@ const formatBytes = (bytes: number): string => {
 export const StorageOverview = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { isAdmin } = useProtectedArea();
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const [dbMessage, setDbMessage] = useState<string>('');
   const [dbError, setDbError] = useState<string>('');
   const [isDownloadingDb, setIsDownloadingDb] = useState(false);
   const [isRestoringDb, setIsRestoringDb] = useState(false);
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
+  const [purgeMode, setPurgeMode] = useState<PurgeMode>('before');
+  const [purgeBeforeDate, setPurgeBeforeDate] = useState<Dayjs | null>(() =>
+    dayjs().subtract(30, 'day').startOf('day'),
+  );
+  const [purgeRangeFrom, setPurgeRangeFrom] = useState<Dayjs | null>(() =>
+    dayjs().subtract(14, 'day').startOf('day'),
+  );
+  const [purgeRangeTo, setPurgeRangeTo] = useState<Dayjs | null>(() =>
+    dayjs().subtract(7, 'day').startOf('day'),
+  );
+  const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
+  const [purgeRunning, setPurgeRunning] = useState(false);
+  const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
   const { data: storageStats, isLoading } = useQuery<StorageStats[]>({
     queryKey: ['storageStats'],
     queryFn: async () => {
@@ -112,6 +140,51 @@ export const StorageOverview = () => {
       setDbError(msg);
     } finally {
       setIsRestoringDb(false);
+    }
+  };
+
+  const purgeRangeValid =
+    !!purgeRangeFrom &&
+    !!purgeRangeTo &&
+    (purgeRangeFrom.isBefore(purgeRangeTo, 'day') ||
+      purgeRangeFrom.isSame(purgeRangeTo, 'day'));
+  const canStartPurgeDialog =
+    purgeMode === 'before'
+      ? !!purgeBeforeDate
+      : purgeRangeValid;
+
+  const handlePurgeConfirmed = async () => {
+    setPurgeError(null);
+    setPurgeMessage(null);
+    setPurgeRunning(true);
+    try {
+      const body =
+        purgeMode === 'before' && purgeBeforeDate
+          ? { date: purgeBeforeDate.format('YYYY-MM-DD') }
+          : purgeRangeFrom && purgeRangeTo
+            ? {
+                start_date: purgeRangeFrom.format('YYYY-MM-DD'),
+                end_date: purgeRangeTo.format('YYYY-MM-DD'),
+              }
+            : null;
+      if (!body) {
+        setPurgeError(t('storage.purgeFailed'));
+        return;
+      }
+      const res = await purgeStorageRecordings(body);
+      setPurgeConfirmOpen(false);
+      setPurgeMessage(
+        t('storage.deleted', {
+          count: res.deletedCount,
+          size: formatBytes(res.deletedSize),
+        }),
+      );
+      await queryClient.invalidateQueries({ queryKey: ['storageStats'] });
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
+      setPurgeError(err.response?.data?.error || err.message || t('storage.purgeFailed'));
+    } finally {
+      setPurgeRunning(false);
     }
   };
 
@@ -196,6 +269,78 @@ export const StorageOverview = () => {
         {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
       </Paper>
 
+      {isAdmin && (
+        <Paper sx={{ p: 2, mt: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            {t('storage.purgeOld')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('storage.purgeHint')}
+          </Typography>
+          <ToggleButtonGroup
+            value={purgeMode}
+            exclusive
+            onChange={(_, value: PurgeMode | null) => {
+              if (value) setPurgeMode(value);
+            }}
+            size="small"
+            sx={{ mb: 2 }}
+          >
+            <ToggleButton value="before">{t('storage.purgeModeBefore')}</ToggleButton>
+            <ToggleButton value="range">{t('storage.purgeModeRange')}</ToggleButton>
+          </ToggleButtonGroup>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              sx={{ mb: 2 }}
+            >
+              {purgeMode === 'before' ? (
+                <DatePicker
+                  label={t('storage.deleteBeforeDate')}
+                  value={purgeBeforeDate}
+                  onChange={(v) => setPurgeBeforeDate(v)}
+                  maxDate={dayjs()}
+                  slotProps={{ textField: { size: 'small' } }}
+                />
+              ) : (
+                <>
+                  <DatePicker
+                    label={t('storage.periodFrom')}
+                    value={purgeRangeFrom}
+                    onChange={(v) => setPurgeRangeFrom(v)}
+                    maxDate={purgeRangeTo ?? dayjs()}
+                    slotProps={{ textField: { size: 'small' } }}
+                  />
+                  <DatePicker
+                    label={t('storage.periodTo')}
+                    value={purgeRangeTo}
+                    onChange={(v) => setPurgeRangeTo(v)}
+                    minDate={purgeRangeFrom ?? undefined}
+                    maxDate={dayjs()}
+                    slotProps={{ textField: { size: 'small' } }}
+                  />
+                </>
+              )}
+            </Stack>
+          </LocalizationProvider>
+          <Button
+            color="error"
+            variant="outlined"
+            disabled={!canStartPurgeDialog || purgeRunning}
+            onClick={() => {
+              setPurgeError(null);
+              setPurgeConfirmOpen(true);
+            }}
+          >
+            {t('storage.purge')}
+          </Button>
+          {purgeMessage && <Alert severity="success" sx={{ mt: 2 }}>{purgeMessage}</Alert>}
+          {purgeError && <Alert severity="error" sx={{ mt: 2 }}>{purgeError}</Alert>}
+        </Paper>
+      )}
+
       <ConfirmDialog
         open={pendingRestoreFile !== null}
         title={t('storage.dbRestoreTitle')}
@@ -205,6 +350,26 @@ export const StorageOverview = () => {
         confirmColor="error"
         onConfirm={handleRestoreConfirmed}
         onCancel={() => setPendingRestoreFile(null)}
+      />
+
+      <ConfirmDialog
+        open={purgeConfirmOpen}
+        title={t('storage.purgeOld')}
+        description={
+          purgeMode === 'before' && purgeBeforeDate
+            ? t('storage.purgeConfirm', { date: purgeBeforeDate.format('YYYY-MM-DD') })
+            : purgeRangeFrom && purgeRangeTo
+              ? t('storage.purgeConfirmRange', {
+                  start: purgeRangeFrom.format('YYYY-MM-DD'),
+                  end: purgeRangeTo.format('YYYY-MM-DD'),
+                })
+              : ''
+        }
+        confirmLabel={t('storage.purge')}
+        cancelLabel={t('common.cancel')}
+        confirmColor="error"
+        onConfirm={() => void handlePurgeConfirmed()}
+        onCancel={() => setPurgeConfirmOpen(false)}
       />
     </Box>
   );

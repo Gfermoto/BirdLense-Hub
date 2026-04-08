@@ -25,6 +25,12 @@ def build_processor_motion_detector(
     """Fake / PIR / Frigate+stack через factory (как в main ранее)."""
     from motion_detectors.factory import build_motion_detector
 
+    # File test mode: no live sensor is required, run processing continuously.
+    # Frigate/MQTT wiring still starts in background and can be used for logs/merge.
+    if (app_config.get('video.source') or '').strip().lower() == 'file':
+        logging.info('Motion: file source mode -> always-on synthetic trigger')
+        return FakeMotionDetector(motion=True, wait=1)
+
     if args.fake_motion:
         motion = args.fake_motion.lower() == 'true'
         return FakeMotionDetector(motion=motion, wait=10)
@@ -88,14 +94,21 @@ def build_processor_motion_detector(
         or_extras=or_extras,
     )
     if add_source == 'frigate':
-        logging.info(
-            'Motion: Frigate with local OpenCV fallback '
-            '(check_every_n_frames=%s)',
-            check_n,
-        )
+        if primary:
+            logging.info(
+                'Motion: Frigate MQTT + OpenCV parallel/fallback '
+                '(check_every_n_frames=%s)',
+                check_n,
+            )
+        else:
+            logging.warning(
+                'Motion: Frigate selected but MQTT/Frigate client inactive — '
+                'using OpenCV only (check_every_n_frames=%s)',
+                check_n,
+            )
     elif add_source == 'opencv':
         logging.info(
-            'Motion: + OpenCV (parallel, check_every_n_frames=%s)',
+            'Motion: OpenCV (check_every_n_frames=%s)',
             check_n,
         )
     elif (

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,6 @@ def merge_birdnet_mqtt_bias_into_overrides(
     if not enabled or mqtt_aggregator is None:
         return out
 
-    try:
-        window = float(app_config.get('processor.birdnet_mqtt_bias_window_seconds', 120))
-    except (TypeError, ValueError):
-        window = 120.0
-    window = max(10.0, min(window, 3600.0))
     try:
         prior_window_hours = float(
             app_config.get('processor.birdnet_mqtt_prior_window_hours', 24)
@@ -77,9 +72,6 @@ def merge_birdnet_mqtt_bias_into_overrides(
     auto_val = max(0.01, min(auto_val, 0.99))
 
     now = datetime.now(timezone.utc)
-    low = now - timedelta(seconds=window)
-    high = now
-
     from species_normalizer import normalize
 
     species_mapping = app_config.get('detection.species_mapping') or {}
@@ -95,22 +87,6 @@ def merge_birdnet_mqtt_bias_into_overrides(
     except Exception as e:
         logger.warning('BirdNET MQTT bias: get_birdnet_prior_scores failed: %s', e)
         prior_scores = {}
-
-    if not prior_scores:
-        try:
-            events = mqtt_aggregator.get_events_in_window(
-                low, high, window_seconds=0, lookback_seconds=window
-            )
-        except Exception as e:
-            logger.warning('BirdNET MQTT bias: get_events_in_window failed: %s', e)
-            return out
-        for ev in events or []:
-            if (ev or {}).get('source') != 'birdnet':
-                continue
-            raw = (ev.get('species') or '').strip()
-            if not raw or raw.lower() == 'unknown':
-                continue
-            prior_scores[raw] = {'score': 1.0}
 
     for raw_name, meta in prior_scores.items():
         bl = normalize(raw_name, species_mapping)
@@ -130,10 +106,9 @@ def merge_birdnet_mqtt_bias_into_overrides(
 
     if adjusted:
         logger.info(
-            'BirdNET MQTT auto-confidence: +%d species (recent_window=%.0fs prior_window=%.1fh '
+            'BirdNET MQTT auto-confidence: +%d species (prior_window=%.1fh '
             'ttl=%.1fh half_life=%.1fh base=%.3f delta=%.3f)',
             adjusted,
-            window,
             prior_window_hours,
             prior_ttl_hours,
             half_life_hours,

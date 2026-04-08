@@ -50,6 +50,85 @@ def _to_title_case(s: str) -> str:
     return " ".join(p.capitalize() for p in parts if p)
 
 
+def _is_squirrel_or_rodent_name(name: str) -> bool:
+    key = _extract_common_for_merge(name or '')
+    return any(
+        token in key for token in ('squirrel', 'chipmunk', 'rodent')
+    )
+
+
+def _canonical_merge_key(species_name: str) -> str:
+    return (
+        _extract_common_for_merge(species_name or '')
+        or (species_name or '').lower()
+    )
+
+
+def _collapse_overlapping_generic_bird_detection(
+    result_list: list,
+    *,
+    overlap_min_sec: float,
+    min_classifier_confidence: float,
+) -> list:
+    """Убрать generic ``Bird``, если на том же интервале есть уверенный YOLO-вид.
+
+    Иначе при ``source_priority`` с одинаковым рангом (оба yolo) конфликтный
+    блок в merge_detections не срабатывает и в UI остаются и «Bird», и вид.
+    """
+    if not result_list or len(result_list) < 2:
+        return result_list
+
+    def _is_generic_bird_row(det: dict) -> bool:
+        name = det.get('species_name') or det.get('species') or ''
+        return _canonical_merge_key(name) == 'bird'
+
+    def _is_confident_specific_bird(det: dict) -> bool:
+        name = det.get('species_name') or det.get('species') or ''
+        if not name or _is_generic_bird_row(det):
+            return False
+        if _is_squirrel_or_rodent_name(name):
+            return False
+        kind = str(det.get('decision_kind') or '').strip().lower()
+        if kind == 'accepted_species':
+            return True
+        clf = det.get('classifier_confidence')
+        if clf is not None:
+            try:
+                return float(clf) >= float(min_classifier_confidence)
+            except (TypeError, ValueError):
+                return False
+        return False
+
+    overlap_min_sec = max(0.0, float(overlap_min_sec or 0.0))
+    to_drop: set[int] = set()
+    for i, g in enumerate(result_list):
+        if not _is_generic_bird_row(g):
+            continue
+        gs = float(g.get('start_time') or 0)
+        ge = float(g.get('end_time') or 0)
+        for j, s in enumerate(result_list):
+            if i == j or j in to_drop:
+                continue
+            if not _is_confident_specific_bird(s):
+                continue
+            ss = float(s.get('start_time') or 0)
+            se = float(s.get('end_time') or 0)
+            overlap = min(ge, se) - max(gs, ss)
+            if overlap >= overlap_min_sec:
+                to_drop.add(i)
+                prev = s.get('_fusion_used')
+                s['_fusion_used'] = (
+                    f'{prev}+absorbed_generic_bird'
+                    if prev
+                    else 'absorbed_generic_bird'
+                )
+                break
+    if not to_drop:
+        return result_list
+    out = [d for k, d in enumerate(result_list) if k not in to_drop]
+    return out
+
+
 def _event_offset_seconds(ev, video_start):
     """Смещение MQTT-события от начала видео (сек). None если нет timestamp."""
     from datetime import datetime, timezone
@@ -76,6 +155,10 @@ def merge_detections(
     source_priority=None,
     cross_source_confidence_bonus=0.0,
     species_mapping=None,
+    *,
+    absorb_generic_bird=True,
+    absorb_generic_bird_overlap_min_sec=0.1,
+    absorb_generic_bird_min_classifier_confidence=0.22,
 ):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
@@ -327,6 +410,15 @@ def merge_detections(
                     existing["species"] = existing["species_name"]
         result_list = list(by_canonical.values())
         logger.debug("merge: collapsed to %d species (one per species)", len(result_list))
+
+    if absorb_generic_bird:
+        result_list = _collapse_overlapping_generic_bird_detection(
+            result_list,
+            overlap_min_sec=float(absorb_generic_bird_overlap_min_sec),
+            min_classifier_confidence=float(
+                absorb_generic_bird_min_classifier_confidence
+            ),
+        )
 
     # Конфликт: разные виды в одном временном окне — оставляем по source_priority
     conflict_overlap_sec = 3

@@ -115,6 +115,7 @@ class TwoStageStrategy(DetectionStrategy):
         max_blur_checks: int = 3,
         max_classifications_per_frame: int = 2,
         classification_scheduler: str = 'priority',
+        binary_imgsz: int = 320,
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -123,6 +124,7 @@ class TwoStageStrategy(DetectionStrategy):
         self.classification_scheduler = (
             str(classification_scheduler or 'priority').strip().lower()
         )
+        self.binary_imgsz = max(320, int(binary_imgsz or 320))
         raw_scope = detector_scope or ['Bird', 'Squirrel']
         self.detector_scope = {
             self._normalize_detector_label(name)
@@ -227,13 +229,14 @@ class TwoStageStrategy(DetectionStrategy):
         if not hasattr(self, 'classification_scheduler'):
             self.classification_scheduler = 'priority'
         self._frame_index += 1
+        imgsz = getattr(self, 'binary_imgsz', 320)
         results = _track_maybe_retry(
             self.binary_model,
             frame,
             persist=True,
             conf=min_confidence,
             verbose=False,
-            imgsz=320,
+            imgsz=imgsz,
             tracker=tracker_config,
         )
             

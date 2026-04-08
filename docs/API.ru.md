@@ -67,7 +67,7 @@
 | `/system/visitors` | GET | Уникальные сессии посетителей за `?days=` (агрегат SpeciesVisit) |
 | `/system/activity` | GET | Активность по дням |
 | `/storage/stats` | GET | Статистика записей |
-| `/storage/purge` | POST | Удаление записей по дате |
+| `/storage/purge` | POST | Удаление записей: `{"date"}` — всё до этой даты включительно; или `{"start_date","end_date"}` — календарный диапазон включительно |
 | `/system/retention` | POST | Запуск политики retention |
 | `/system/regenerate-spectrograms` | POST | Регенерация спектрограмм |
 | `/system/regenerate-spectrograms/status` | GET | Статус регенерации спектрограмм |

@@ -40,6 +40,43 @@ class TestMotionDetectorFactory(unittest.TestCase):
         self.assertIs(detector._primary, primary)
         self.assertIsInstance(detector._additional, OpenCVMotionDetector)
 
+    def test_frigate_without_primary_is_opencv_only(self):
+        media_source = type(
+            'FakeMediaSource',
+            (),
+            {'capture': lambda self: None},
+        )()
+
+        detector = build_motion_detector(
+            motion_source='frigate',
+            media_source=media_source,
+            primary=None,
+            mqtt_broker='',
+            mqtt_topic='',
+            check_every_n_frames=2,
+        )
+
+        self.assertIsInstance(detector, OpenCVMotionDetector)
+
+    def test_opencv_with_primary_uses_or(self):
+        media_source = type(
+            'FakeMediaSource',
+            (),
+            {'capture': lambda self: None},
+        )()
+        primary = object()
+
+        detector = build_motion_detector(
+            motion_source='opencv',
+            media_source=media_source,
+            primary=primary,
+            check_every_n_frames=2,
+        )
+
+        self.assertIsInstance(detector, OrMotionDetector)
+        self.assertIs(detector._primary, primary)
+        self.assertIsInstance(detector._additional, OpenCVMotionDetector)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -127,8 +127,25 @@ def register_ui_status_push_routes(app):
         esphome_display = esphome_status if feed_source == 'esphome' else 'not_used'
         birdnet_url = (app_config.get('general.birdnet_url') or '').strip()
         heimdall_url = (app_config.get('general.heimdall_url') or '').strip()
-        # Триггер для отображения: frigate → mqtt (триггер идёт через MQTT)
-        trigger_display = 'mqtt' if motion_source == 'frigate' else motion_source
+        # Короткая подпись для UI (без i18n на сервере).
+        # Раньше frigate маскировали как «mqtt», из‑за этого путали триггер и брокер.
+        _trigger_labels = {
+            'opencv': 'OpenCV',
+            'frigate': 'Frigate (MQTT)',
+            'mqtt': 'MQTT sensor',
+            'esphome': 'ESPHome',
+            'pir': 'PIR',
+        }
+        trigger_display = _trigger_labels.get(motion_source, motion_source)
+        frigate_parallel = bool(
+            mqtt_broker and (app_config.get('mqtt.frigate_topic') or '').strip()
+        )
+        if motion_source == 'opencv' and frigate_parallel:
+            trigger_display = 'OpenCV + Frigate (MQTT)'
+        elif motion_source == 'mqtt' and frigate_parallel:
+            trigger_display = 'MQTT sensor + Frigate (MQTT)'
+        elif motion_source == 'esphome' and frigate_parallel:
+            trigger_display = 'ESPHome + Frigate (MQTT)'
         # Video: реальная проверка через go2rtc snapshot
         video_display = check_video_reachable()
         # YOLO: из heartbeat процессора (last_yolo_ok_at в пределах 5 мин)

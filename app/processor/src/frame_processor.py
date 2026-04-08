@@ -49,7 +49,7 @@ class FrameProcessor:
             'crop': crop,
             'score': float(frame_score),
             't': frame_time,
-            'bbox': [round(float(b), 2) for b in bbox],
+            'bbox': [round(float(b), 4) for b in bbox],
         }
         key_frames.append(entry)
         key_frames.sort(key=lambda item: item['score'], reverse=True)
@@ -164,7 +164,7 @@ class FrameProcessor:
         
         self.tracks[track_id]['frames'].append({
             't': frame_time,
-            'bbox': [round(float(b), 2) for b in bbox]
+            'bbox': [round(float(b), 4) for b in bbox]
         })
         
         if crop is not None:

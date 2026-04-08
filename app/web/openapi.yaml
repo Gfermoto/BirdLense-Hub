@@ -755,19 +755,33 @@ paths:
                   $ref: "#/components/schemas/StorageStats"
   /storage/purge:
     post:
-      summary: Purge storage by date
+      summary: Purge storage by date or date range
       description: |
-        Purge (delete) storage data older than a specified date. This is useful for managing storage capacity and removing outdated data.
+        Purge (delete) recordings: either all videos with start_time before the end of a single calendar day (`date`),
+        or only those whose start_time falls within an inclusive calendar range (`start_date` … `end_date`).
+        Also removes matching day folders under recordings when they are empty of retained files.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
+              oneOf:
+                - type: object
+                  required: [date]
+                  properties:
+                    date:
+                      type: string
+                      format: date
+                      description: Delete all videos on or before this calendar day (legacy).
+                - type: object
+                  required: [start_date, end_date]
+                  properties:
+                    start_date:
+                      type: string
+                      format: date
+                    end_date:
+                      type: string
+                      format: date
       responses:
         "200":
           description: Purge result

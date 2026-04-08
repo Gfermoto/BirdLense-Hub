@@ -78,6 +78,42 @@ class TestEncodeNotifyPreview(unittest.TestCase):
         self.assertEqual(source, 'full_frame')
         self.assertEqual(len(opened_attempts), 2)
 
+    def test_prefers_video_crop_over_memory_best_frame(self):
+        """TG preview must match saved file: video bbox before in-memory best_frame."""
+        bf = np.full((8, 8, 3), 128, dtype=np.uint8)
+        frame = np.full((20, 20, 3), 255, dtype=np.uint8)
+
+        def fake_video_capture(_path):
+            return _FakeCapture(True, frame)
+
+        with patch.object(
+            notify_preview_encode_mod.cv2,
+            'VideoCapture',
+            fake_video_capture,
+        ), patch.object(
+            notify_preview_encode_mod.cv2,
+            'imencode',
+            lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
+        ), patch.object(
+            notify_preview_encode_mod.time,
+            'sleep',
+            lambda _d: None,
+        ):
+            image_b64, source = encode_notify_preview_base64(
+                {
+                    'best_frame': bf,
+                    'start_time': 0.0,
+                    'end_time': 2.0,
+                    'frames': [
+                        {'bbox': [0.1, 0.1, 0.5, 0.5], 't': 1.0},
+                    ],
+                },
+                '/tmp/fake-video.mp4',
+            )
+
+        self.assertIsNotNone(image_b64)
+        self.assertEqual(source, 'bbox_crop')
+
 
 class TestDetectionStackWeights(unittest.TestCase):
     def test_build_detection_stack_raises_when_binary_weights_missing(self):

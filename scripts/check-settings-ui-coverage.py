@@ -63,6 +63,16 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Storage/performance-sensitive low-level switch.",
         "next_step": "Consider exposing with explicit storage warning in UI.",
     },
+    "processor.file_max_record_floor_seconds": {
+        "category": "advanced",
+        "reason": "video.source=file only: min wall-clock segment before session finalize.",
+        "next_step": "Optional Processor advanced if users need tuning without YAML.",
+    },
+    "processor.keep_recording_when_no_detections": {
+        "category": "advanced",
+        "reason": "video.source=file: keep session mp4 when 0 detections; for offline crops, not main UI.",
+        "next_step": "Optional Processor advanced toggle if file-test users grow.",
+    },
     "processor.single_stage_coco_animals_only_auto": {
         "category": "advanced",
         "reason": "COCO 80-class detect filter; deployment tuning.",
@@ -241,7 +251,6 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "processor.birdnet_mqtt_auto_confidence",
     "processor.birdnet_mqtt_bias_delta",
     "processor.birdnet_mqtt_bias_floor",
-    "processor.birdnet_mqtt_bias_window_seconds",
     "processor.dataset_min_confidence",
     "processor.ebird_regional_top_auto_confidence",
     "processor.ebird_regional_top_confidence_delta",

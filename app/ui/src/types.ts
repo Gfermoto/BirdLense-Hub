@@ -182,7 +182,11 @@ export interface Settings {
     zip?: string;
   };
   video?: {
-    source?: string;
+    source?: 'go2rtc' | 'file' | string;
+    file_path?: string;
+    file_dir?: string;
+    file_loop?: boolean;
+    file_realtime_simulation?: boolean;
     go2rtc_url?: string;
     stream_name?: string;
     cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
