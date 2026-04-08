@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+import data_paths as data_paths_mod
+import services.broken_videos_inventory_service as broken_videos_inventory_mod
 from services.http_response_cache import bust_response_caches
 
 
@@ -576,6 +578,12 @@ class TestReviewQueueBulkDelete:
             visit_2_id = visit_2.id
 
         monkeypatch.setattr(util_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(data_paths_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(
+            broken_videos_inventory_mod,
+            'full_path_for_video',
+            _fake_full_path,
+        )
 
         preview = client.post(
             '/api/ui/system/review-queue/delete-preview',
@@ -715,6 +723,12 @@ class TestReviewQueueBulkDelete:
             det_broken_id = det_broken.id
 
         monkeypatch.setattr(util_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(data_paths_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(
+            broken_videos_inventory_mod,
+            'full_path_for_video',
+            _fake_full_path,
+        )
 
         listed = client.get('/api/ui/system/diagnostics/broken-videos?limit=20')
         assert listed.status_code == 200
@@ -807,6 +821,12 @@ class TestReviewQueueBulkDelete:
             v_empty_id = v_empty.id
 
         monkeypatch.setattr(util_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(data_paths_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(
+            broken_videos_inventory_mod,
+            'full_path_for_video',
+            _fake_full_path,
+        )
 
         dry = client.post(
             '/api/ui/system/diagnostics/broken-videos/purge',
@@ -886,6 +906,12 @@ class TestReviewQueueBulkDelete:
             v_ok_id = v_ok.id
 
         monkeypatch.setattr(util_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(data_paths_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(
+            broken_videos_inventory_mod,
+            'full_path_for_video',
+            _fake_full_path,
+        )
 
         dry = client.post(
             '/api/ui/system/diagnostics/no-species-videos/purge',
@@ -960,6 +986,12 @@ class TestReviewQueueBulkDelete:
             full.write_bytes(b'x')
 
         monkeypatch.setattr(util_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(data_paths_mod, 'full_path_for_video', _fake_full_path)
+        monkeypatch.setattr(
+            broken_videos_inventory_mod,
+            'full_path_for_video',
+            _fake_full_path,
+        )
 
         r = client.get('/api/ui/system/diagnostics/review-only-noise-candidates?limit=50')
         assert r.status_code == 200
