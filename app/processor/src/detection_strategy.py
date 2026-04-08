@@ -60,7 +60,7 @@ class DetectionResult:
     crop: Optional[np.ndarray] = None
 
 class DetectionStrategy(ABC):
-    def __init__(self, min_center_dist: float = 0.1, min_box_size_px: int = 50, blur_threshold: float = 100.0, max_blur_checks: int = 3):
+    def __init__(self, min_center_dist: float = 0.1, min_box_size_px: int = 64, blur_threshold: float = 100.0, max_blur_checks: int = 3):
         self.min_center_dist = min_center_dist
         self.min_box_size_px = min_box_size_px
         self.blur_threshold = blur_threshold
@@ -110,7 +110,7 @@ class TwoStageStrategy(DetectionStrategy):
         regional_species: Optional[List[str]] = None,
         detector_scope: Optional[List[str]] = None,
         min_center_dist: float = 0.1,
-        min_box_size_px: int = 50,
+        min_box_size_px: int = 64,
         blur_threshold: float = 100.0,
         max_blur_checks: int = 3,
         max_classifications_per_frame: int = 2,

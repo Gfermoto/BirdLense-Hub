@@ -26,7 +26,6 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import { Video } from '../../types';
 import { VideoInfo } from './VideoInfo';
@@ -180,14 +179,13 @@ export const VideoDetails = () => {
 
   const showTracksRegenHint = useMemo(() => {
     if (!video || detectionFramesPending || detectionFramesError) return false;
-    const hasVideoRows = video.species.some((s) => s.source === 'video');
-    if (!hasVideoRows) return false;
     const merged = displayVideo ?? video;
     const anyFrames = merged.species.some(
       (s) => s.source === 'video' && Array.isArray(s.frames) && s.frames.length > 0,
     );
-    return !anyFrames;
+    return Boolean(video.video_path) && !anyFrames;
   }, [video, displayVideo, detectionFramesPending, detectionFramesError]);
+  const canRegenTracks = Boolean(isAdmin && video?.video_path);
 
   const videoIdNum = Number(params.id);
 
@@ -380,7 +378,10 @@ export const VideoDetails = () => {
                 </Alert>
               )}
               {showTracksRegenHint && (
-                <Alert severity="info" sx={{ mb: 1 }}>
+                <Alert
+                  severity="info"
+                  sx={{ mb: 1 }}
+                >
                   {t('video.tracksMissingHint')}
                 </Alert>
               )}
@@ -403,21 +404,22 @@ export const VideoDetails = () => {
                 </Alert>
               )}
               <Stack direction="row" flexWrap="wrap" gap={1}>
-                <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
-                  <span>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      disabled={trackRegenMutation.isPending || specRegenMutation.isPending}
-                      startIcon={<RefreshIcon fontSize="small" />}
-                      onClick={() => trackRegenMutation.mutate()}
-                    >
-                      {trackRegenMutation.isPending
-                        ? t('video.regenerateTracksThisVideoRunning')
-                        : t('video.regenerateTracksThisVideo')}
-                    </Button>
-                  </span>
-                </Tooltip>
+                {canRegenTracks && (
+                  <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
+                    <span>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => trackRegenMutation.mutate()}
+                        disabled={trackRegenMutation.isPending || specRegenMutation.isPending}
+                      >
+                        {trackRegenMutation.isPending
+                          ? t('video.regenerateTracksThisVideoRunning')
+                          : t('video.regenerateTracksThisVideo')}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
                 <Tooltip title={t('video.regenerateSpectrogramThisVideoHelp')}>
                   <span>
                     <Button

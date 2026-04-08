@@ -66,6 +66,8 @@ Replace:
 
 With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
 
+If you use Cursor, add the always-on rule `.cursor/rules/mcp-skill-autopilot.mdc` so the agent can pick MCP skills proactively without repeated reminders.
+
 ### 3b. Repository documentation (GitMCP, read-only)
 
 For AI hosts that should read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub, add [GitMCP](https://gitmcp.io):

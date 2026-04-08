@@ -34,9 +34,24 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
         except Exception:
             return 0.0
 
+    key_frames = detection.get('key_frames') or []
+    best_kf = None
+    if isinstance(key_frames, list) and key_frames:
+        dict_frames = [kf for kf in key_frames if isinstance(kf, dict)]
+        if dict_frames:
+            best_kf = max(
+                dict_frames,
+                key=lambda k: float(k.get('score') or 0.0),
+            )
+
     mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
     bbox = mid.get('bbox') if isinstance(mid, dict) else None
     t = float(mid.get('t') or _pick_timestamp()) if isinstance(mid, dict) else _pick_timestamp()
+    if best_kf is not None:
+        bb = best_kf.get('bbox')
+        if isinstance(bb, (list, tuple)) and len(bb) == 4:
+            bbox = bb
+        t = float(best_kf.get('t') or t)
 
     def _read_frame_with_retries(ts: float):
         # Пауза перед повтором i: retry_delays[i] (вкл. финальный 0.5s).

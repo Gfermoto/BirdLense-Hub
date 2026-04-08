@@ -24,8 +24,8 @@ processor:
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  # Мин. длительность трека ByteTrack (сек). Ниже — чаще bbox в API; при шуме поднимите до 0.8–1.5.
-  min_track_duration: 0.35
+  # Мин. длительность трека ByteTrack (сек). Короткие визиты (белка) — 0.9–1.0; при шуме поднимите.
+  min_track_duration: 1.0
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
@@ -44,14 +44,17 @@ processor:
   # При перегенерации не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
-  min_confidence_binary: 0.18  # Детектор «птица/не птица»
-  min_confidence_to_process: 0.22  # Классификатор; ниже — чаще треки и виды в записи
+  # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
+  min_confidence_binary: 0.27  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  min_confidence_to_process: 0.38  # Классификатор (combined); запись/БД
+  # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
+  min_confidence_to_notify: 0.44
   # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
   light_gate_enabled: true
   light_gate_min_brightness: 25
   light_gate_min_contrast: 20
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
-  species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
+  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
@@ -86,7 +89,8 @@ processor:
   max_classifications_per_frame: 2
   max_blur_checks: 3
   blur_threshold: 100.0
-  min_box_size_px: 50
+  # Small boxes on feeder scenes are often debris or motion noise.
+  min_box_size_px: 72
   key_frame_limit: 3
   # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
   # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
@@ -117,6 +121,9 @@ video:
   go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
+  # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
+  # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
+  record_stream_codec: h264
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
   cameras: []
   # Пример после добавления:
@@ -166,8 +173,8 @@ detection:
   source_priority: ["yolo", "frigate"]
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
-  # Не ниже практического порога классификатора; синхронизировано с processor.min_confidence_to_process
-  min_confidence_to_store: 0.30
+  # Ниже порога детекция отбрасывается после fusion; держите чуть ниже processor.min_confidence_to_process
+  min_confidence_to_store: 0.34
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
   use_learned_fusion: false

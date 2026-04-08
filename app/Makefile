@@ -47,17 +47,18 @@ deploy:
 
 # Тесты (в контейнере — ultralytics; для two-stage — веса .pt, см. scripts/fetch-processor-weights.sh)
 # -v монтирует локальный код: тесты идут по коду на диске, а не по образу
+# -v ..:/workspace — корень репо (scripts/export_fusion_training_data.py и др. для _repo_root())
 test:
-	docker compose run --rm -v $$(pwd):/app birdlense \
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
 		env PYTHONPATH=/app:/app/web python -m unittest discover processor/tests -v
 
 test-web:
-	docker compose run --rm -v $$(pwd):/app birdlense python -m pytest web/tests/ -v
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)
 test-coverage:
-	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
 		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
@@ -65,7 +66,7 @@ test-coverage:
 
 # Покрытие + HTML-отчёт в app/htmlcov/
 test-report:
-	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
 		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \

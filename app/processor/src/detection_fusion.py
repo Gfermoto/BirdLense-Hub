@@ -147,8 +147,29 @@ def prepare_track_results_for_fusion(
                 detection.get('detection_provider') or 'yolo'
             ),
         }
+        try:
+            row['_pre_fusion_confidence'] = float(row.get('confidence') or 0.0)
+        except (TypeError, ValueError):
+            row['_pre_fusion_confidence'] = 0.0
         rows.append(row)
     return rows
+
+
+def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
+    """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks."""
+    for d in detections:
+        kind = str(d.get('decision_kind') or '').strip().lower()
+        if kind == 'accepted_species':
+            continue
+        try:
+            base = float(d.get('_pre_fusion_confidence') or 0.0)
+            cur = float(d.get('confidence') or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if cur > base:
+            d['confidence'] = float(base)
+            d['_fusion_clamped'] = True
+    return detections
 
 
 def build_fused_video_detections(
@@ -245,6 +266,7 @@ def build_fused_video_detections(
             d['confidence'] = float(final_conf)
             d['_fusion_used'] = 'learned'
             d['_fusion_score'] = fused_score
+    fused = _clamp_fusion_confidence_inflation(fused)
     min_conf_store = float(
         app_config.get('detection.min_confidence_to_store') or 0.05
     )

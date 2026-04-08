@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from app_config.app_config import app_config
-from models import Species, SpeciesVisit, Video, db
+from models import Species, SpeciesVisit, Video, VideoSpecies, db
 from services.visit_processor import VisitProcessor
 
 
@@ -206,3 +206,37 @@ def test_out_of_order_video_ingest_within_timeout_rewinds_visit_start(app):
         assert visit_from_earlier.start_time.replace(tzinfo=None) == datetime(
             2026, 4, 1, 8, 46, 30,
         )
+
+
+def test_visit_eligible_false_creates_detection_without_visit(app):
+    """Review-only rows must not create SpeciesVisit sessions."""
+    with app.app_context():
+        if not Species.query.filter_by(name='Birds').first():
+            db.session.add(Species(name='Birds'))
+        species = Species(name='Generic Bird Review')
+        video = Video(
+            processor_version='test',
+            start_time=datetime(2026, 4, 7, 12, 0, 0),
+            end_time=datetime(2026, 4, 7, 12, 0, 10),
+            video_path='data/recordings/2026/04/07/120000/video.mp4',
+        )
+        db.session.add_all([species, video])
+        db.session.commit()
+
+        vp = VisitProcessor(db, app.logger, visit_timeout=60)
+        vp.process_detections(video, [{
+            'species_name': species.name,
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'confidence': 0.4,
+            'source': 'video',
+            'visit_eligible': False,
+            'notification_eligible': False,
+            'track_id': 1,
+            'frames': [],
+        }])
+        db.session.commit()
+
+        assert SpeciesVisit.query.count() == 0
+        row = VideoSpecies.query.filter_by(video_id=video.id).one()
+        assert row.species_visit_id is None

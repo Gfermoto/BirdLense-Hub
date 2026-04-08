@@ -38,6 +38,8 @@ def register_ui_system_metrics_routes(app):
             preview_generated = uis._notify_preview_generated_by_source_24h()
             fallback = uis._notify_fallback_by_reason_24h()
             delivery = uis._notify_delivery_24h()
+            ingest_gate = uis._ingest_gate_reason_counts_24h()
+            notify_suppressed = uis._notify_suppressed_reason_counts_24h()
             payload = {
                 'service': 'birdlense-hub',
                 'cpu_usage_percent': float(sys_m['cpu']['percent']),
@@ -52,6 +54,8 @@ def register_ui_system_metrics_routes(app):
                 'notify_preview_generated_24h': preview_generated,
                 'notify_fallback_24h': fallback,
                 'notify_delivery_24h': delivery,
+                'ingest_gate_24h': ingest_gate,
+                'notify_suppressed_24h': notify_suppressed,
             }
             if sys_m['gpu_percent'] is not None:
                 payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
@@ -113,11 +117,15 @@ def register_ui_system_metrics_routes(app):
             preview_generated = uis._notify_preview_generated_by_source_24h()
             fallback = uis._notify_fallback_by_reason_24h()
             delivery = uis._notify_delivery_24h()
+            ingest_gate = uis._ingest_gate_reason_counts_24h()
+            notify_suppressed = uis._notify_suppressed_reason_counts_24h()
             return {
                 'notify_preview_24h': preview,
                 'notify_preview_generated_24h': preview_generated,
                 'notify_fallback_24h': fallback,
                 'notify_delivery_24h': delivery,
+                'ingest_gate_24h': ingest_gate,
+                'notify_suppressed_24h': notify_suppressed,
                 'ml_health': {
                     'rolling_7d': uis._ml_health_snapshot(7),
                     'rolling_30d': uis._ml_health_snapshot(30),

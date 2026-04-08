@@ -93,7 +93,7 @@ def build_detection_stack(
     )
     max_blur_checks = app_config.get('processor.max_blur_checks', 3)
     blur_threshold = app_config.get('processor.blur_threshold', 100.0)
-    min_box_size_px = app_config.get('processor.min_box_size_px', 50)
+    min_box_size_px = app_config.get('processor.min_box_size_px', 64)
     classification_scheduler = app_config.get(
         'processor.classification_scheduler', 'priority',
     )
@@ -130,7 +130,7 @@ def build_detection_stack(
     decision_maker = DecisionMaker(
         max_record_seconds=app_config.get('processor.max_record_seconds'),
         max_inactive_seconds=app_config.get('processor.max_inactive_seconds'),
-        min_track_duration=app_config.get('processor.min_track_duration', 1),
+        min_track_duration=app_config.get('processor.min_track_duration', 1.0),
         min_confidence_to_process=app_config.get(
             'processor.min_confidence_to_process'),
         species_confidence_overrides=merged_overrides,

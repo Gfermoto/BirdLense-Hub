@@ -152,6 +152,9 @@ export interface Settings {
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
+    /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
+    min_confidence_to_notify?: number;
+    min_box_size_px?: number; // Minimum bbox width/height in pixels for detector candidates
     detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Squirrel"]
     /** If false, run YOLO on every frame (ignore brightness/contrast gate). */
     light_gate_enabled?: boolean;
@@ -185,6 +188,10 @@ export interface Settings {
     cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
+    /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
+    encoding?: string;
+    /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
+    record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
     video_height?: number;
   };

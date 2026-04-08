@@ -1,5 +1,6 @@
 """Notification delivery and observability regressions."""
 
+import json
 import os
 from datetime import datetime, timezone
 
@@ -328,6 +329,96 @@ def test_notify_detections_logs_decode_failed_reason(app, client, monkeypatch):
             processor_routes_mod.os.environ['PROCESSOR_SECRET'] = old_secret
 
 
+def test_notify_detections_skips_when_no_preview_context(app, client, monkeypatch):
+    from models import ActivityLog, db
+
+    with app.app_context():
+        old_secret = processor_routes_mod.os.environ.get('PROCESSOR_SECRET')
+        processor_routes_mod.os.environ['PROCESSOR_SECRET'] = ''
+
+        called = []
+        monkeypatch.setattr(
+            processor_routes_mod.app_config,
+            'get',
+            lambda key, default=None: [] if key == 'general.notification_excluded_species' else default,
+        )
+        monkeypatch.setattr(
+            processor_routes_mod,
+            'notify',
+            lambda *args, **kwargs: called.append((args, kwargs)),
+        )
+
+        response = client.post('/api/processor/notify/detections', json={
+            'detection': 'Black-crowned Night-Heron',
+            'preview_source': 'none',
+            'link': 'live',
+        })
+
+        assert response.status_code == 200
+        assert called == []
+        row = db.session.query(ActivityLog).filter(ActivityLog.type == 'notify_preview').order_by(ActivityLog.id.desc()).first()
+        payload = __import__('json').loads(row.data)
+        assert payload['telegram_delivery'] == 'skipped'
+        assert payload['fallback_reason'] == 'no_preview_context'
+        assert payload['has_image'] is False
+
+        if old_secret is None:
+            processor_routes_mod.os.environ.pop('PROCESSOR_SECRET', None)
+        else:
+            processor_routes_mod.os.environ['PROCESSOR_SECRET'] = old_secret
+
+
+def test_notify_detections_skips_when_notification_ineligible_even_with_image(app, client, monkeypatch):
+    from models import ActivityLog, db
+    import base64
+
+    with app.app_context():
+        old_secret = processor_routes_mod.os.environ.get('PROCESSOR_SECRET')
+        processor_routes_mod.os.environ['PROCESSOR_SECRET'] = ''
+
+        called = []
+        monkeypatch.setattr(
+            processor_routes_mod.app_config,
+            'get',
+            lambda key, default=None: [] if key == 'general.notification_excluded_species' else default,
+        )
+        monkeypatch.setattr(
+            processor_routes_mod,
+            'notify',
+            lambda *args, **kwargs: called.append((args, kwargs)),
+        )
+
+        tiny_jpeg = base64.b64encode(
+            b'\xff\xd8\xff\xdb\x00C\x00\xff\xd9',
+        ).decode('ascii')
+
+        response = client.post('/api/processor/notify/detections', json={
+            'detection': 'Bird',
+            'preview_source': 'bbox_crop',
+            'link': 'videos/1',
+            'image_base64': tiny_jpeg,
+            'notification_eligible': False,
+            'suppress_reason': 'review_only_generic',
+        })
+
+        assert response.status_code == 200
+        assert called == []
+        row = (
+            db.session.query(ActivityLog)
+            .filter(ActivityLog.type == 'notify_suppressed')
+            .order_by(ActivityLog.id.desc())
+            .first()
+        )
+        payload = json.loads(row.data)
+        assert payload['suppress_reason'] == 'review_only_generic'
+        assert payload['telegram_delivery'] == 'skipped'
+
+        if old_secret is None:
+            processor_routes_mod.os.environ.pop('PROCESSOR_SECRET', None)
+        else:
+            processor_routes_mod.os.environ['PROCESSOR_SECRET'] = old_secret
+
+
 def test_system_observability_includes_delivery_and_fallback_counts(app, client):
     from app_config.app_config import app_config
     from models import ActivityLog, db
@@ -356,6 +447,14 @@ def test_system_observability_includes_delivery_and_fallback_counts(app, client)
                     'fallback_reason': 'telegram_photo_failed',
                 }),
             ))
+            db.session.add(ActivityLog(
+                type='ingest_gate',
+                data=json.dumps({'reason': 'video_file_missing', 'video_path': 'data/recordings/x.mp4'}),
+            ))
+            db.session.add(ActivityLog(
+                type='notify_suppressed',
+                data=json.dumps({'suppress_reason': 'review_only_generic', 'species': 'Bird'}),
+            ))
             db.session.commit()
 
             response = client.get('/api/ui/system/observability')
@@ -365,6 +464,8 @@ def test_system_observability_includes_delivery_and_fallback_counts(app, client)
             assert payload['notify_delivery_24h']['photo'] >= 1
             assert payload['notify_delivery_24h']['text_fallback'] >= 1
             assert payload['notify_fallback_24h']['telegram_photo_failed'] >= 1
+            assert payload['ingest_gate_24h']['video_file_missing'] >= 1
+            assert payload['notify_suppressed_24h']['review_only_generic'] >= 1
             assert 'rolling_7d' in payload['ml_health']
             assert 'config_fingerprint' in payload['model_lineage']
             assert 'json_summary' in payload['hub_metrics']

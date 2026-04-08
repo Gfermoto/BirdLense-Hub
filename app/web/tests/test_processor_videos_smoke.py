@@ -1,9 +1,23 @@
 """Smoke tests for POST /api/processor/videos (issue #202)."""
 from datetime import datetime, timezone
 
+import os
+
 import pytest
 
 PROC_SECRET = 'pytest-processor-secret-202'
+
+
+def _touch_video_file(video_path: str, *, data_root: str) -> str:
+    """Create an on-disk file for a logical ``data/recordings/.../video.mp4`` path."""
+    assert video_path.startswith('data/recordings/')
+    # full_path_for_video resolves relative paths against dirname(DATA_DIR)
+    app_base = os.path.dirname(os.path.abspath(data_root))
+    full = os.path.join(app_base, video_path)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, 'wb') as handle:
+        handle.write(b'\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom')
+    return full
 
 
 @pytest.fixture(autouse=True)
@@ -40,21 +54,24 @@ def test_processor_videos_forbidden_wrong_token(client, monkeypatch):
     assert r.status_code == 403
 
 
-def test_processor_videos_missing_species_400(client, proc_headers, monkeypatch):
+def test_processor_videos_missing_species_400(client, proc_headers, monkeypatch, tmp_path):
     from routes import processor_routes
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     body = _base_video_payload('090010')
+    _touch_video_file(body['video_path'], data_root=str(tmp_path / 'data'))
     body['species'] = []
     r = client.post('/api/processor/videos', json=body, headers=proc_headers)
     assert r.status_code == 400
     assert 'missing' in (r.get_json() or {}).get('error', '').lower()
 
 
-def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypatch):
+def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     monkeypatch.setitem(
         app_config.config.setdefault('detection', {}),
@@ -62,6 +79,7 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
         0.5,
     )
     body = _base_video_payload('090011')
+    _touch_video_file(body['video_path'], data_root=str(tmp_path / 'data'))
     body['species'] = [{
         'species_name': 'Great Tit',
         'confidence': 0.1,
@@ -76,12 +94,13 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
     assert 'threshold' in err.lower() or 'below' in err.lower()
 
 
-def test_processor_videos_success_201(app, client, proc_headers, monkeypatch):
+def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
     from models import Video, db
     import services.visit_processor as vp_mod
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
     monkeypatch.setitem(
@@ -94,6 +113,43 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch):
 
     token = str(id(app))[-6:].zfill(6)
     body = _base_video_payload(token)
+    body['species'] = [{
+        'species_name': f'Pytest MissingFile {token}',
+        'confidence': 0.95,
+        'start_time': 0,
+        'end_time': 2,
+        'source': 'video',
+        'frames': [],
+    }]
+
+    r = client.post('/api/processor/videos', json=body, headers=proc_headers)
+    assert r.status_code == 400, r.get_data(as_text=True)
+    payload = r.get_json() or {}
+    assert payload.get('reason') in {'video_file_missing', 'video_file_unreadable'}
+    with app.app_context():
+        assert db.session.query(Video).count() == 0
+
+
+def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tmp_path):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
+    monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
+    monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
+    monkeypatch.setitem(
+        app_config.config.setdefault('detection', {}),
+        'min_confidence_to_store',
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault('gallery', {}), 'enabled', False)
+    monkeypatch.setitem(app_config.config.setdefault('webhook', {}), 'url', '')
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    _touch_video_file(body['video_path'], data_root=str(tmp_path / 'data'))
     body['species'] = [{
         'species_name': f'Pytest Finch {token}',
         'confidence': 0.95,
@@ -113,12 +169,13 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch):
         assert db.session.get(Video, vid) is not None
 
 
-def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_headers, monkeypatch):
+def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
     from models import Video, db
     import services.visit_processor as vp_mod
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
     monkeypatch.setitem(
@@ -132,6 +189,7 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
 
     token = str(id(app))[-6:].zfill(6)
     body = _base_video_payload(token)
+    _touch_video_file(body['video_path'], data_root=str(tmp_path / 'data'))
     body['scales_weight_delta_kg'] = 0.0234
     body['species'] = [{
         'species_name': f'Pytest Scale {token}',
@@ -157,12 +215,13 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
     assert js['scales']['display_unit'] == 'kg'
 
 
-def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers, monkeypatch):
+def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
     from models import Video, db
     import services.visit_processor as vp_mod
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
     monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
     monkeypatch.setitem(
@@ -176,6 +235,7 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
 
     token = str(id(app))[-6:].zfill(6)
     body = _base_video_payload(token)
+    _touch_video_file(body['video_path'], data_root=str(tmp_path / 'data'))
     body['scales_weight_delta_kg'] = 0.05
     body['species'] = [{
         'species_name': f'Pytest NoScale {token}',
@@ -193,10 +253,12 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
         assert v.scales_weight_delta_kg is None
 
 
-def test_processor_videos_invalid_iso_400(client, proc_headers, monkeypatch):
+def test_processor_videos_invalid_iso_400(client, proc_headers, monkeypatch, tmp_path):
     from routes import processor_routes
 
+    monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
     monkeypatch.setattr(processor_routes, 'fetch_weather', lambda: {})
+    _touch_video_file('data/recordings/2026/04/04/090012/video.mp4', data_root=str(tmp_path / 'data'))
     body = {
         'processor_version': 'x',
         'start_time': 'not-a-date',

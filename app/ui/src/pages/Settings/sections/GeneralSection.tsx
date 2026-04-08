@@ -252,6 +252,29 @@ export function GeneralSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="video.record_stream_codec">
+                    {(field) => (
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-record-codec-label">
+                          {t('settings.recordStreamCodecLabel')}
+                        </InputLabel>
+                        <Select
+                          labelId="settings-record-codec-label"
+                          value={(field.state.value ?? 'h264').toLowerCase()}
+                          label={t('settings.recordStreamCodecLabel')}
+                          onChange={(e) =>
+                            field.handleChange(e.target.value as 'h264' | 'copy')
+                          }
+                        >
+                          <MenuItem value="h264">{t('settings.recordStreamCodecH264')}</MenuItem>
+                          <MenuItem value="copy">{t('settings.recordStreamCodecCopy')}</MenuItem>
+                        </Select>
+                        <FormHelperText>{t('settings.recordStreamCodecHint')}</FormHelperText>
+                      </FormControl>
+                    )}
+                  </form.Field>
+                </Grid>
                 <Grid size={{ xs: 12 }}>
                   <form.Field name="video.cameras">
                     {(field) => (

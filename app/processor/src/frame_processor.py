@@ -81,7 +81,7 @@ class FrameProcessor:
             return False
 
         st = time.time()
-        min_conf = float(app_config.get('processor.min_confidence_binary') or 0.15)
+        min_conf = float(app_config.get('processor.min_confidence_binary') or 0.22)
         results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
         
         if self.save_images and results:

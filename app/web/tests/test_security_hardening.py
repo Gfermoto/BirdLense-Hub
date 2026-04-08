@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+import os
+
 import pytest
 
 import util as util_mod
@@ -138,10 +140,11 @@ class TestWebhookUrlValidation:
         """Only http/https webhook schemes are allowed."""
         assert processor_routes_mod._is_safe_webhook_url('file:///tmp/hook') is False
 
-    def test_create_video_skips_unsafe_webhook_url(self, app, client, monkeypatch):
+    def test_create_video_skips_unsafe_webhook_url(self, app, client, monkeypatch, tmp_path):
         """Unsafe webhook config must not result in outbound POST."""
         from app_config.app_config import app_config
         from models import BirdFood
+        import services.visit_processor as vp_mod
 
         with app.app_context():
             BirdFood.query.delete()
@@ -151,12 +154,21 @@ class TestWebhookUrlValidation:
         posted = []
         monkeypatch.setattr(processor_routes_mod.requests, 'post', lambda *args, **kwargs: posted.append((args, kwargs)))
         monkeypatch.setattr(processor_routes_mod, 'fetch_weather', lambda: {})
+        monkeypatch.setattr(vp_mod, 'update_species_info_from_wiki', lambda *_a, **_k: None)
+        monkeypatch.setenv('DATA_DIR', str(tmp_path / 'data'))
+
+        video_path = 'data/recordings/2026/03/30/120000/video.mp4'
+        app_base = os.path.dirname(str(tmp_path / 'data'))
+        full_video = os.path.join(app_base, video_path)
+        os.makedirs(os.path.dirname(full_video), exist_ok=True)
+        with open(full_video, 'wb') as handle:
+            handle.write(b'\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom')
 
         response = client.post('/api/processor/videos', json={
             'processor_version': '1',
             'start_time': datetime.now(timezone.utc).isoformat(),
             'end_time': datetime.now(timezone.utc).isoformat(),
-            'video_path': 'data/recordings/2026/03/30/120000/video.mp4',
+            'video_path': video_path,
             'spectrogram_path': '',
             'species': [{
                 'species_name': 'Great Tit',
