@@ -190,7 +190,7 @@ class TestTrackRegenFallback:
     """Fast regen should escalate to a precise pass only when needed."""
 
     def test_precise_fallback_runs_after_empty_fast_pass(self):
-        from routes.ui_system_routes import _run_track_regen_with_precise_fallback
+        from services.track_regen_service import run_track_regen_with_precise_fallback
 
         calls = []
 
@@ -200,7 +200,7 @@ class TestTrackRegenFallback:
                 return []
             return [{'species_name': 'Eurasian Jay'}]
 
-        detections, precise_used = _run_track_regen_with_precise_fallback(
+        detections, precise_used = run_track_regen_with_precise_fallback(
             '/tmp/test.mp4',
             fake_process,
             {
@@ -221,7 +221,7 @@ class TestTrackRegenFallback:
         ]
 
     def test_precise_fallback_skips_second_pass_when_fast_found_detections(self):
-        from routes.ui_system_routes import _run_track_regen_with_precise_fallback
+        from services.track_regen_service import run_track_regen_with_precise_fallback
 
         calls = []
 
@@ -229,7 +229,7 @@ class TestTrackRegenFallback:
             calls.append((video_path, kwargs['frame_step']))
             return [{'species_name': 'Great Tit'}]
 
-        detections, precise_used = _run_track_regen_with_precise_fallback(
+        detections, precise_used = run_track_regen_with_precise_fallback(
             '/tmp/test.mp4',
             fake_process,
             {
@@ -285,7 +285,7 @@ class TestTrackRegenFallback:
 
     def test_derive_track_regen_species_scope_uses_mapping_and_prior_observed(self, app):
         from models import Species, Video, VideoSpecies, db
-        from routes.ui_system_routes import _derive_track_regen_species_scope
+        from services.track_regen_service import derive_track_regen_species_scope
         from app_config.app_config import app_config
         from datetime import datetime
 
@@ -317,7 +317,7 @@ class TestTrackRegenFallback:
                 ))
                 db.session.commit()
 
-                names = _derive_track_regen_species_scope(
+                names = derive_track_regen_species_scope(
                     datetime(2026, 3, 26, 0, 0, 0)
                 )
 
@@ -328,14 +328,14 @@ class TestTrackRegenFallback:
                 app_config.set('detection.species_mapping', old_mapping)
 
     def test_remap_detection_to_local_scope_maps_exotics_to_unknown(self, app):
-        from routes.ui_system_routes import _remap_detection_to_local_scope
+        from services.track_regen_service import remap_detection_to_local_scope
 
         with app.app_context():
-            kept = _remap_detection_to_local_scope(
+            kept = remap_detection_to_local_scope(
                 {'species_name': 'Eurasian Jay'},
                 {'eurasian jay', 'great tit'},
             )
-            remapped = _remap_detection_to_local_scope(
+            remapped = remap_detection_to_local_scope(
                 {'species_name': 'Gyrfalcon'},
                 {'eurasian jay', 'great tit'},
             )
