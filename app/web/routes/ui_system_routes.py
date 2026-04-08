@@ -2752,15 +2752,29 @@ def register_routes(app):
                 from detection_fusion import build_fused_video_detections
                 from services.visit_processor import VisitProcessor
 
-                lores_px = int(app_config.get('processor.track_regen_lores_px') or 640)
-                lores_px = max(320, min(lores_px, 960))
-                lores_size = (lores_px, lores_px)
-                frame_step = int(
-                    frame_step_override
-                    or app_config.get('processor.track_regen_frame_step')
-                    or 1
+                match_live = bool(
+                    app_config.get('processor.track_regen_match_live_pipeline', False),
                 )
-                frame_step = max(1, min(frame_step, 30))
+                if match_live:
+                    try:
+                        lores_px = int(
+                            app_config.get('processor.inference_lores_px') or 640,
+                        )
+                    except (TypeError, ValueError):
+                        lores_px = 640
+                    lores_px = max(320, min(lores_px, 960))
+                    lores_size = (lores_px, lores_px)
+                    frame_step = 1
+                else:
+                    lores_px = int(app_config.get('processor.track_regen_lores_px') or 640)
+                    lores_px = max(320, min(lores_px, 960))
+                    lores_size = (lores_px, lores_px)
+                    frame_step = int(
+                        frame_step_override
+                        or app_config.get('processor.track_regen_frame_step')
+                        or 1
+                    )
+                    frame_step = max(1, min(frame_step, 30))
                 regen_strategy = (
                     app_config.get('processor.track_regen_detection_strategy')
                     or app_config.get('processor.detection_strategy')
@@ -2785,6 +2799,7 @@ def register_routes(app):
                 regen_params['ignore_regional_species'] = bool(
                     app_config.get('processor.track_regen_ignore_regional_species', True)
                 )
+                regen_params['match_live_pipeline'] = match_live
                 _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 # Явные video_ids (один ролик из UI): не фильтровать по пустым frames.
@@ -2860,7 +2875,10 @@ def register_routes(app):
                 precise_candidates: list[dict] = []
                 regen_species_scope = None
                 regen_species_scope_lc: set[str] = set()
-                if app_config.get('processor.track_regen_ignore_regional_species', True):
+                if (
+                    app_config.get('processor.track_regen_ignore_regional_species', True)
+                    and not match_live
+                ):
                     regen_species_scope = _derive_track_regen_species_scope(dt_start)
                     if regen_species_scope:
                         regen_species_scope_lc = {

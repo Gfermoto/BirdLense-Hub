@@ -3,6 +3,7 @@ ultralytics==8.4.33
 # ByteTrack / BoT-SORT: без lap у boxes.id часто None — нестабильные тесты и пустая детекция.
 lap>=0.5.12
 pyyaml==6.0.3
+pydantic>=2.6,<3
 paho-mqtt==2.1.0
 requests==2.33.0
 

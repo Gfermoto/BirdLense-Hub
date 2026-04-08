@@ -82,10 +82,15 @@ def build_detection_stack(
     regional_species = regional_species_override
     if regional_species is None:
         regional_species = app_config.get('processor.regional_species') or []
-    if for_track_regen and app_config.get(
-        'processor.track_regen_ignore_regional_species',
-        True,
-    ) and regional_species_override is None:
+    match_live_regen = bool(
+        app_config.get('processor.track_regen_match_live_pipeline', False),
+    )
+    if (
+        for_track_regen
+        and app_config.get('processor.track_regen_ignore_regional_species', True)
+        and regional_species_override is None
+        and not match_live_regen
+    ):
         regional_species = []
     detector_scope = app_config.get('processor.detector_scope') or ['Bird', 'Squirrel']
     max_classifications_per_frame = app_config.get(
