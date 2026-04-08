@@ -7,11 +7,9 @@ import tempfile
 import json
 import io
 import csv
-import hashlib
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
-import psutil
 from flask import request, Response, send_file, jsonify, after_this_request
 import shutil
 import subprocess
@@ -20,7 +18,7 @@ from pathlib import Path
 import util as util_mod
 from models import (
     ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit,
-    SystemResourceSample, SiteVisitor,
+    SystemResourceSample,
 )
 from sqlalchemy import delete, exists, func, select
 from services.retention_service import run_retention, _delete_video_row_cascade
@@ -61,6 +59,45 @@ from services.fusion_training_service import (
     run_fusion_export_job as _run_fusion_export_job,
 )
 from data_paths import data_dir, resolve_recording_video_file
+from services.activity_notify_insights_service import (
+    ingest_gate_reason_counts_24h as _ingest_gate_reason_counts_24h,
+    notify_delivery_24h as _notify_delivery_24h,
+    notify_fallback_by_reason_24h as _notify_fallback_by_reason_24h,
+    notify_preview_by_source_24h as _notify_preview_by_source_24h,
+    notify_preview_generated_by_source_24h as _notify_preview_generated_by_source_24h,
+    notify_suppressed_reason_counts_24h as _notify_suppressed_reason_counts_24h,
+)
+from services.broken_videos_inventory_service import (
+    broken_video_row_payload as _broken_video_row_payload,
+    broken_video_row_reason as _broken_video_row_reason,
+    scan_broken_videos_inventory as _scan_broken_videos_inventory,
+    video_row_has_no_species as _video_row_has_no_species,
+    videos_with_species_exist_clause as _videos_with_species_exist_clause,
+)
+from services.legacy_import_cleanup_service import (
+    cleanup_legacy_import_placeholders as _cleanup_legacy_import_placeholders,
+)
+from services.ml_health_stats_service import ml_health_snapshot as _ml_health_snapshot
+from services.ml_lineage_service import (
+    current_model_lineage_snapshot as _current_model_lineage_snapshot,
+)
+from services.prometheus_metrics_service import (
+    prometheus_metrics_body as _prometheus_metrics_body,
+)
+from services.sqlite_admin_service import (
+    backup_sqlite_to_file as _sqlite_backup_to_file,
+    replace_live_sqlite_db as _sqlite_replace_live_db,
+    validate_sqlite_file as _sqlite_validate_file,
+)
+from services.system_live_metrics_service import (
+    collect_live_system_metrics as _collect_live_system_metrics,
+)
+from services.visitor_stats_service import (
+    browser_hash as _browser_hash,
+    collect_visitor_stats as _collect_visitor_stats,
+    device_class_from_user_agent as _device_class_from_user_agent,
+    downsample_evenly as _downsample_evenly,
+)
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -80,7 +117,6 @@ _telegram_proxy_refresh_status = {'status': 'idle', 'result': None, 'error': Non
 _telegram_proxy_refresh_lock = threading.Lock()
 
 
-IMPORT_SPECIES_NAME = "Unknown"
 LOG_LINES_DEFAULT = 200
 LOG_LINES_MAX = 500
 DEPRECATED_USER_CONFIG_KEYS = (
@@ -106,58 +142,6 @@ IGNORED_CONFIG_AUDIT_KEYS = {
     'weather.ha_token',
     'weather.ha_url',
 }
-
-
-def _is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
-    species = getattr(vs, 'species', None)
-    species_name = getattr(species, 'name', None)
-    frames = (getattr(vs, 'frames', None) or '').strip()
-    return (
-        getattr(vs, 'detection_provider', None) == 'legacy'
-        and species_name == IMPORT_SPECIES_NAME
-        and float(getattr(vs, 'confidence', 0) or 0) <= 0
-        and getattr(vs, 'source', None) == 'video'
-        and not bool(getattr(vs, 'manually_corrected', False))
-        and getattr(vs, 'track_id', None) is None
-        and not frames
-        and float(getattr(vs, 'start_time', 0) or 0) == 0
-        and float(getattr(vs, 'end_time', 0) or 0) == 30
-    )
-
-
-def _cleanup_legacy_import_placeholders() -> tuple[int, int]:
-    """Remove synthetic Unknown/legacy detections created by old disk-import flow."""
-    rows = (
-        db.session.query(VideoSpecies)
-        .join(Species)
-        .filter(
-            VideoSpecies.detection_provider == 'legacy',
-            Species.name == IMPORT_SPECIES_NAME,
-        )
-        .all()
-    )
-    placeholder_rows = [vs for vs in rows if _is_legacy_import_placeholder(vs)]
-    if not placeholder_rows:
-        return 0, 0
-
-    visit_ids = {vs.species_visit_id for vs in placeholder_rows if vs.species_visit_id}
-    for vs in placeholder_rows:
-        db.session.delete(vs)
-    db.session.flush()
-
-    cleaned_visits = 0
-    for visit_id in visit_ids:
-        other = VideoSpecies.query.filter(
-            VideoSpecies.species_visit_id == visit_id,
-        ).first()
-        if other:
-            continue
-        visit = db.session.get(SpeciesVisit, visit_id)
-        if visit:
-            db.session.delete(visit)
-            cleaned_visits += 1
-
-    return len(placeholder_rows), cleaned_visits
 
 
 def _env_bounded_int(name: str, default: int, *, min_v: int, max_v: int) -> int:
@@ -199,18 +183,6 @@ _CACHE_SYSTEM_ACTIVITY_SEC = 50
 
 _sampler_lock = threading.Lock()
 _sampler_started = False
-
-
-def _downsample_evenly(items, max_n: int):
-    """Равномерно проредить список до max_n элементов (сохраняем концы)."""
-    n = len(items)
-    if n <= max_n or max_n < 2:
-        return items
-    out = []
-    for i in range(max_n):
-        idx = int(round(i * (n - 1) / (max_n - 1)))
-        out.append(items[idx])
-    return out
 
 
 def _manual_conflict_with_detection(
@@ -349,661 +321,11 @@ def _start_system_metrics_sampler(app):
     ).start()
 
 
-def _collect_visitor_stats(visitors_days: int = 7) -> dict:
-    """Anonymous browser stats for System UI."""
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    days = max(1, min(int(visitors_days or 7), 365))
-    start_utc = now_utc - timedelta(days=days)
-    browser_count = db.session.query(
-        func.count(func.distinct(SiteVisitor.browser_hash)),
-    ).filter(
-        SiteVisitor.last_seen_at >= start_utc,
-    ).scalar() or 0
-    unique_visits = db.session.query(
-        func.count(SiteVisitor.id),
-    ).filter(
-        SiteVisitor.last_seen_at >= start_utc,
-    ).scalar() or 0
-    active_days = db.session.query(
-        func.count(func.distinct(SiteVisitor.seen_day)),
-    ).filter(
-        SiteVisitor.last_seen_at >= start_utc,
-    ).scalar() or 0
-    raw_breakdown = db.session.query(
-        SiteVisitor.device_class,
-        func.count(func.distinct(SiteVisitor.browser_hash)),
-    ).filter(
-        SiteVisitor.last_seen_at >= start_utc,
-    ).group_by(SiteVisitor.device_class).all()
-    breakdown = {'desktop': 0, 'mobile': 0, 'tablet': 0, 'unknown': 0}
-    for device_class, count in raw_breakdown:
-        key = str(device_class or 'unknown').strip().lower()
-        if key not in breakdown:
-            key = 'unknown'
-        breakdown[key] = int(count or 0)
-    return {
-        'period_days': days,
-        'browser_count': int(browser_count),
-        'unique_visits': int(unique_visits),
-        'active_days': int(active_days),
-        'device_breakdown': breakdown,
-        'method': 'anonymous_browser_id',
-    }
-
-
-def _device_class_from_user_agent(user_agent: str) -> str:
-    ua = (user_agent or '').strip().lower()
-    if not ua:
-        return 'unknown'
-    if 'ipad' in ua or 'tablet' in ua:
-        return 'tablet'
-    if 'android' in ua and 'mobile' not in ua:
-        return 'tablet'
-    if (
-        'iphone' in ua
-        or 'mobile' in ua
-        or 'android' in ua
-        or 'windows phone' in ua
-    ):
-        return 'mobile'
-    return 'desktop'
-
-
-def _browser_hash(raw_browser_id: str) -> str:
-    return hashlib.sha256(raw_browser_id.encode('utf-8')).hexdigest()
-
-
-def _collect_live_system_metrics(app):
-    """Мгновенный снимок: CPU, память, диск, GPU (без запросов к БД по посетителям)."""
-    cpu_percent = psutil.cpu_percent(interval=0.5)
-    memory = psutil.virtual_memory()
-    memory_total_gb = round(memory.total / (1024**3), 1)
-    memory_used_gb = round(memory.used / (1024**3), 1)
-    memory_percent = memory.percent
-    disk = psutil.disk_usage('/')
-    disk_total_gb = round(disk.total / (1024**3), 1)
-    disk_used_gb = round(disk.used / (1024**3), 1)
-    disk_percent = disk.percent
-
-    gpu_percent = None
-    for path in ('/sys/class/drm/card0/device/gpu_busy_percent',
-                 '/sys/class/drm/card0/device/utilization'):
-        try:
-            with open(path) as f:
-                raw = f.read().strip()
-            val = int(raw)
-            if 0 <= val <= 100:
-                gpu_percent = val
-            elif 0 <= val <= 255:
-                gpu_percent = round(100 * val / 255)
-            if gpu_percent is not None:
-                break
-        except (OSError, ValueError):
-            continue
-    encoding_setting = (app_config.get('video.encoding') or 'cpu').strip().lower()
-    if encoding_setting not in ('cpu', 'intel'):
-        encoding_setting = 'cpu'
-    intel_gpu = encoding_setting == 'intel' or os.path.exists('/dev/dri/renderD128')
-    if gpu_percent is None and intel_gpu:
-        try:
-            from gpu_stats import get_intel_gpu_percent
-            gpu_percent = get_intel_gpu_percent()
-        except Exception as e:
-            app.logger.warning("gpu_stats: %s", e)
-
-    return {
-        'cpu': {'percent': cpu_percent},
-        'memory': {
-            'total': memory_total_gb, 'used': memory_used_gb, 'percent': memory_percent,
-            'total_bytes': memory.total, 'used_bytes': memory.used,
-        },
-        'disk': {'total': disk_total_gb, 'used': disk_used_gb, 'percent': disk_percent},
-        'encoding': encoding_setting,
-        'gpu_percent': gpu_percent,
-    }
-
-
-def _sqlite_validate_file(path: str) -> None:
-    with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as conn:
-        check = conn.execute('PRAGMA integrity_check;').fetchone()
-        if not check or check[0] != 'ok':
-            raise sqlite3.DatabaseError('integrity_check failed')
-
-
-def _sqlite_backup_to_file(src_path: str, dst_path: str) -> None:
-    parent = os.path.dirname(dst_path)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    with sqlite3.connect(src_path, timeout=30) as src_conn:
-        src_conn.execute('PRAGMA busy_timeout = 30000')
-        with sqlite3.connect(dst_path, timeout=30) as dst_conn:
-            dst_conn.execute('PRAGMA busy_timeout = 30000')
-            src_conn.backup(dst_conn)
-            dst_conn.commit()
-
-
-def _sqlite_remove_sidecars(db_path: str) -> None:
-    for suffix in ('-wal', '-shm'):
-        sidecar = f'{db_path}{suffix}'
-        try:
-            if os.path.exists(sidecar):
-                os.remove(sidecar)
-        except OSError:
-            pass
-
-
-def _sqlite_replace_live_db(live_db_path: str, restored_path: str) -> None:
-    if os.path.isfile(live_db_path):
-        shutil.copymode(live_db_path, restored_path)
-    _sqlite_remove_sidecars(live_db_path)
-    os.replace(restored_path, live_db_path)
-    _sqlite_remove_sidecars(live_db_path)
-
-
-
-
-def _activity_log_payload(row):
-    try:
-        return row.data if isinstance(row.data, dict) else (
-            json.loads(row.data) if row.data else {}
-        )
-    except Exception:
-        return {}
-
-
-def _notify_preview_rows_24h():
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    preview_since = now_utc - timedelta(hours=24)
-    return (
-        db.session.query(ActivityLog)
-        .filter(ActivityLog.type == 'notify_preview', ActivityLog.created_at >= preview_since)
-        .all()
-    )
-
-
-def _notify_preview_generated_rows_24h():
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    preview_since = now_utc - timedelta(hours=24)
-    return (
-        db.session.query(ActivityLog)
-        .filter(
-            ActivityLog.type == 'notify_preview_generated',
-            ActivityLog.created_at >= preview_since,
-        )
-        .all()
-    )
-
-
-def _notify_preview_by_source_24h():
-    preview_rows = _notify_preview_rows_24h()
-    preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
-    for row in preview_rows:
-        src = 'unknown'
-        payload = _activity_log_payload(row)
-        src = str((payload or {}).get('preview_source') or 'unknown')
-        if src not in preview_by_source:
-            src = 'unknown'
-        preview_by_source[src] += 1
-    return preview_by_source
-
-
-def _notify_preview_generated_by_source_24h():
-    preview_rows = _notify_preview_generated_rows_24h()
-    preview_by_source = {'best_frame': 0, 'bbox_crop': 0, 'full_frame': 0, 'none': 0, 'unknown': 0}
-    for row in preview_rows:
-        payload = _activity_log_payload(row)
-        src = str((payload or {}).get('preview_source') or 'unknown')
-        if src not in preview_by_source:
-            src = 'unknown'
-        preview_by_source[src] += 1
-    return preview_by_source
-
-
-def _notify_fallback_by_reason_24h():
-    preview_rows = _notify_preview_rows_24h()
-    by_reason = {
-        'none': 0,
-        'no_preview': 0,
-        'no_preview_context': 0,
-        'decode_failed': 0,
-        'telegram_photo_failed': 0,
-        'notifications_disabled': 0,
-        'telegram_not_configured': 0,
-        'config_disabled': 0,
-        'unsafe_path': 0,
-        'read_failed': 0,
-        'telegram_text_failed': 0,
-        'unexpected_error': 0,
-        'unknown': 0,
-    }
-    for row in preview_rows:
-        payload = _activity_log_payload(row)
-        reason = str((payload or {}).get('fallback_reason') or 'none')
-        if reason not in by_reason:
-            reason = 'unknown'
-        by_reason[reason] += 1
-    return by_reason
-
-
-def _notify_delivery_24h():
-    preview_rows = _notify_preview_rows_24h()
-    by_delivery = {
-        'photo': 0,
-        'text': 0,
-        'text_fallback': 0,
-        'failed': 0,
-        'skipped': 0,
-        'unknown': 0,
-    }
-    for row in preview_rows:
-        payload = _activity_log_payload(row)
-        delivery = str((payload or {}).get('telegram_delivery') or 'unknown')
-        if delivery not in by_delivery:
-            delivery = 'unknown'
-        by_delivery[delivery] += 1
-    return by_delivery
-
-
-def _activity_rows_since(activity_type: str, *, hours: int = 24):
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    since = now_utc - timedelta(hours=max(1, int(hours or 24)))
-    return (
-        db.session.query(ActivityLog)
-        .filter(ActivityLog.type == activity_type, ActivityLog.created_at >= since)
-        .all()
-    )
-
-
-def _ingest_gate_reason_counts_24h() -> dict[str, int]:
-    rows = _activity_rows_since('ingest_gate', hours=24)
-    counts: dict[str, int] = {}
-    for row in rows:
-        payload = _activity_log_payload(row)
-        reason = str((payload or {}).get('reason') or 'unknown')
-        counts[reason] = counts.get(reason, 0) + 1
-    return counts
-
-
-def _notify_suppressed_reason_counts_24h() -> dict[str, int]:
-    rows = _activity_rows_since('notify_suppressed', hours=24)
-    counts: dict[str, int] = {}
-    for row in rows:
-        payload = _activity_log_payload(row)
-        reason = str((payload or {}).get('suppress_reason') or 'unknown')
-        counts[reason] = counts.get(reason, 0) + 1
-    return counts
-
-
-def _repo_root_path() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-
-
-def _resolve_artifact_path(raw_path: str | None) -> str | None:
-    path = str(raw_path or '').strip()
-    if not path:
-        return None
-    if os.path.isabs(path):
-        return path
-    repo_root = _repo_root_path()
-    candidates = [
-        os.path.join(repo_root, path),
-        os.path.join(repo_root, 'app', path),
-        os.path.join(repo_root, 'app', 'processor', path),
-        os.path.join(repo_root, 'app', 'web', path),
-    ]
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return candidate
-    return candidates[0]
-
-
-def _sha256_file(path: str | None) -> str | None:
-    if not path or not os.path.isfile(path):
-        return None
-    h = hashlib.sha256()
-    try:
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b''):
-                h.update(chunk)
-        return h.hexdigest()
-    except OSError:
-        return None
-
-
-def _config_fingerprint(payload: dict) -> str:
-    body = json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
-    return hashlib.sha256(body.encode('utf-8')).hexdigest()
-
-
-def _current_model_lineage_snapshot() -> dict:
-    relevant_config = {
-        'detection': {
-            'strategy': app_config.get('processor.detection_strategy'),
-            'use_learned_fusion': bool(app_config.get('detection.use_learned_fusion') or False),
-            'fusion_alpha': app_config.get('detection.fusion_alpha'),
-            'cross_source_confidence_bonus': app_config.get('detection.cross_source_confidence_bonus'),
-            'min_confidence_to_store': app_config.get('detection.min_confidence_to_store'),
-        },
-        'processor': {
-            'min_confidence_to_process': app_config.get('processor.min_confidence_to_process'),
-            'min_confidence_to_notify': app_config.get('processor.min_confidence_to_notify'),
-            'min_track_duration': app_config.get('processor.min_track_duration'),
-            'classification_scheduler': app_config.get('processor.classification_scheduler'),
-            'species_confidence_overrides': app_config.get('processor.species_confidence_overrides') or {},
-        },
-        'ebird': {
-            'enabled_region': app_config.get('ebird.region_code'),
-        },
-    }
-    artifacts = {
-        'detector': _resolve_artifact_path(
-            app_config.get('processor.detector_model_path')
-            or app_config.get('detection.detector_model_path')
-            or 'app/yolo11n.pt'
-        ),
-        'classifier': _resolve_artifact_path(
-            app_config.get('processor.classifier_model_path')
-            or app_config.get('classification.model_path')
-        ),
-        'fusion': _resolve_artifact_path(app_config.get('detection.fusion_model_path')),
-        'allowlist': _resolve_artifact_path(
-            app_config.get('species.catalog_allowlist_file')
-            or app_config.get('species.allowlist_file')
-        ),
-    }
-    resolved = {}
-    for name, path in artifacts.items():
-        resolved[name] = {
-            'configured_path': path,
-            'exists': bool(path and os.path.exists(path)),
-            'sha256': _sha256_file(path),
-        }
-    return {
-        'config_fingerprint': _config_fingerprint(relevant_config),
-        'artifacts': resolved,
-        'relevant_config': relevant_config,
-    }
-
-
-def _species_correction_rows_since(cutoff: datetime):
-    return (
-        db.session.query(ActivityLog)
-        .filter(
-            ActivityLog.type == 'species_correction',
-            ActivityLog.created_at >= cutoff,
-        )
-        .order_by(ActivityLog.created_at.desc())
-        .all()
-    )
-
-
-def _ml_health_snapshot(days: int) -> dict:
-    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    cutoff = now_utc - timedelta(days=max(1, int(days or 1)))
-    correction_rows = _species_correction_rows_since(cutoff)
-    action_counts = {
-        'confirm_species': 0,
-        'correct_species': 0,
-        'other': 0,
-    }
-    top_pairs: dict[str, int] = {}
-    for row in correction_rows:
-        payload = _activity_log_payload(row)
-        action = str(payload.get('action') or 'other')
-        if action not in action_counts:
-            action = 'other'
-        action_counts[action] += 1
-        if action == 'correct_species':
-            pair = f'{payload.get("from_species_name") or "?"} -> {payload.get("to_species_name") or "?"}'
-            top_pairs[pair] = top_pairs.get(pair, 0) + 1
-
-    total_video = (
-        db.session.query(func.count(VideoSpecies.id))
-        .join(Video, Video.id == VideoSpecies.video_id)
-        .filter(
-            Video.start_time >= cutoff,
-            VideoSpecies.source == 'video',
-        )
-        .scalar()
-        or 0
-    )
-    corrected_video = (
-        db.session.query(func.count(VideoSpecies.id))
-        .join(Video, Video.id == VideoSpecies.video_id)
-        .filter(
-            Video.start_time >= cutoff,
-            VideoSpecies.source == 'video',
-            VideoSpecies.manually_corrected == True,
-        )
-        .scalar()
-        or 0
-    )
-    unknown_video = (
-        db.session.query(func.count(VideoSpecies.id))
-        .join(Video, Video.id == VideoSpecies.video_id)
-        .join(Species, Species.id == VideoSpecies.species_id)
-        .filter(
-            Video.start_time >= cutoff,
-            VideoSpecies.source == 'video',
-            Species.name == 'Unknown',
-        )
-        .scalar()
-        or 0
-    )
-    generic_video = (
-        db.session.query(func.count(VideoSpecies.id))
-        .join(Video, Video.id == VideoSpecies.video_id)
-        .join(Species, Species.id == VideoSpecies.species_id)
-        .filter(
-            Video.start_time >= cutoff,
-            VideoSpecies.source == 'video',
-            Species.name.in_(['Bird', 'Squirrel', 'Rodent']),
-        )
-        .scalar()
-        or 0
-    )
-
-    def _rate(part: int, whole: int) -> float:
-        if not whole:
-            return 0.0
-        return round(float(part) / float(whole), 4)
-
-    return {
-        'window_days': int(days),
-        'video_detections': int(total_video),
-        'manually_corrected_video_detections': int(corrected_video),
-        'corrections_logged': int(len(correction_rows)),
-        'confirm_actions': int(action_counts['confirm_species']),
-        'species_change_actions': int(action_counts['correct_species']),
-        'correction_rate': _rate(action_counts['correct_species'], total_video),
-        'manual_annotation_rate': _rate(corrected_video, total_video),
-        'unknown_rate': _rate(unknown_video, total_video),
-        'generic_rate': _rate(generic_video, total_video),
-        'top_species_changes': [
-            {'pair': pair, 'count': count}
-            for pair, count in sorted(
-                top_pairs.items(),
-                key=lambda item: (-item[1], item[0]),
-            )[:5]
-        ],
-    }
-
-
-def _prometheus_metrics_body(app):
-    sys_m = _collect_live_system_metrics(app)
-    detections = db.session.query(func.count(VideoSpecies.id)).scalar() or 0
-    species_count = db.session.query(VideoSpecies.species_id).distinct().count()
-    videos_count = db.session.query(func.count(Video.id)).scalar() or 0
-    preview_by_source = _notify_preview_by_source_24h()
-    preview_generated_by_source = _notify_preview_generated_by_source_24h()
-    fallback_by_reason = _notify_fallback_by_reason_24h()
-    delivery_counts = _notify_delivery_24h()
-    lines = [
-        '# HELP birdlense_cpu_usage_percent CPU usage',
-        '# TYPE birdlense_cpu_usage_percent gauge',
-        f'birdlense_cpu_usage_percent {sys_m["cpu"]["percent"]}',
-        '# HELP birdlense_memory_used_percent Memory usage percent',
-        '# TYPE birdlense_memory_used_percent gauge',
-        f'birdlense_memory_used_percent {sys_m["memory"]["percent"]}',
-        '# HELP birdlense_memory_total_bytes Memory total in bytes',
-        '# TYPE birdlense_memory_total_bytes gauge',
-        f'birdlense_memory_total_bytes {sys_m["memory"]["total_bytes"]}',
-        '# HELP birdlense_memory_used_bytes Memory used in bytes',
-        '# TYPE birdlense_memory_used_bytes gauge',
-        f'birdlense_memory_used_bytes {sys_m["memory"]["used_bytes"]}',
-        '# HELP birdlense_disk_used_percent Disk usage percent',
-        '# TYPE birdlense_disk_used_percent gauge',
-        f'birdlense_disk_used_percent {sys_m["disk"]["percent"]}',
-        '# HELP birdlense_detections_total Total number of bird detections',
-        '# TYPE birdlense_detections_total counter',
-        f'birdlense_detections_total {detections}',
-        '# HELP birdlense_species_count Number of unique species detected',
-        '# TYPE birdlense_species_count gauge',
-        f'birdlense_species_count {species_count}',
-        '# HELP birdlense_videos_total Total number of recorded videos',
-        '# TYPE birdlense_videos_total counter',
-        f'birdlense_videos_total {videos_count}',
-        '# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h',
-        '# TYPE birdlense_notify_preview_24h gauge',
-    ]
-    for src, count in preview_by_source.items():
-        lines.append(f'birdlense_notify_preview_24h{{source="{src}"}} {count}')
-    lines.extend([
-        '# HELP birdlense_notify_preview_generated_24h Notification preview generation counts for last 24h',
-        '# TYPE birdlense_notify_preview_generated_24h gauge',
-    ])
-    for src, count in preview_generated_by_source.items():
-        lines.append(f'birdlense_notify_preview_generated_24h{{source="{src}"}} {count}')
-    lines.extend([
-        '# HELP birdlense_notify_fallback_24h Notification fallback reason counts for last 24h',
-        '# TYPE birdlense_notify_fallback_24h gauge',
-    ])
-    for reason, count in fallback_by_reason.items():
-        lines.append(f'birdlense_notify_fallback_24h{{reason="{reason}"}} {count}')
-    lines.extend([
-        '# HELP birdlense_notify_delivery_24h Notification delivery outcome counts for last 24h',
-        '# TYPE birdlense_notify_delivery_24h gauge',
-    ])
-    for delivery, count in delivery_counts.items():
-        lines.append(f'birdlense_notify_delivery_24h{{delivery="{delivery}"}} {count}')
-    if sys_m['gpu_percent'] is not None:
-        lines.extend([
-            '# HELP birdlense_gpu_usage_percent GPU usage',
-            '# TYPE birdlense_gpu_usage_percent gauge',
-            f'birdlense_gpu_usage_percent {sys_m["gpu_percent"]}',
-        ])
-    return '\n'.join(lines) + '\n'
-
-
 # Admin diagnostics: broken Video rows (DB без доступного файла) — безопасный cleanup только по явному подтверждению.
 BROKEN_VIDEOS_DELETE_CONFIRMATION = 'delete_broken_video_rows'
 BROKEN_VIDEOS_PURGE_CONFIRMATION = 'purge_all_broken_video_rows'
 NO_SPECIES_VIDEOS_PURGE_CONFIRMATION = 'purge_videos_without_species'
 REVIEW_ONLY_NOISE_SPECIES = ('Bird', 'Squirrel', 'Rodent')
-
-
-def _broken_video_row_reason(video_path: str | None) -> tuple[str | None, str | None]:
-    """(reason_code, absolute_path_if_known). reason None — файл есть и читается."""
-    vp = (video_path or '').strip()
-    if not vp:
-        return 'video_path_empty', None
-    full = util_mod.full_path_for_video(vp)
-    if not full:
-        return 'video_path_unresolvable', None
-    if not os.path.isfile(full):
-        return 'video_file_missing', full
-    try:
-        if os.path.getsize(full) <= 0:
-            return 'video_file_empty', full
-    except OSError:
-        return 'video_file_unreadable', full
-    try:
-        if not os.access(full, os.R_OK):
-            return 'video_file_unreadable', full
-        with open(full, 'rb') as f:
-            f.read(1)
-    except OSError:
-        return 'video_file_unreadable', full
-    return None, full
-
-
-def _scan_broken_videos_inventory(
-    *,
-    max_scan: int,
-    collect_ids_limit: int | None,
-    sample_limit: int = 40,
-):
-    """Полный проход Video.id по возрастанию: счётчики по причинам, опционально id для удаления.
-
-    collect_ids_limit=None — не копить список id (только счётчики и sample).
-    """
-    from collections import Counter
-
-    by_reason: Counter = Counter()
-    total_broken = 0
-    sample_ids: list[int] = []
-    collect: list[int] = []
-    scanned = 0
-    cursor = 0
-    while scanned < max_scan:
-        batch = (
-            Video.query.filter(Video.id > cursor)
-            .order_by(Video.id.asc())
-            .limit(200)
-            .all()
-        )
-        if not batch:
-            break
-        for video in batch:
-            scanned += 1
-            if scanned > max_scan:
-                break
-            row = _broken_video_row_payload(video)
-            if not row:
-                continue
-            total_broken += 1
-            by_reason[row['reason']] += 1
-            if len(sample_ids) < sample_limit:
-                sample_ids.append(video.id)
-            if collect_ids_limit is not None and len(collect) < collect_ids_limit:
-                collect.append(video.id)
-        cursor = batch[-1].id
-    return {
-        'scanned': scanned,
-        'broken_total': total_broken,
-        'by_reason': dict(by_reason),
-        'sample_video_ids': sample_ids,
-        'ids_to_delete': collect,
-    }
-
-
-def _videos_with_species_exist_clause():
-    """EXISTS (SELECT 1 FROM video_species WHERE video_id = video.id)."""
-    return exists().where(VideoSpecies.video_id == Video.id)
-
-
-def _video_row_has_no_species(video_id: int) -> bool:
-    return (
-        db.session.query(VideoSpecies.id)
-        .filter(VideoSpecies.video_id == video_id)
-        .limit(1)
-        .first()
-        is None
-    )
-
-
-def _broken_video_row_payload(video: Video) -> dict | None:
-    reason, resolved = _broken_video_row_reason(video.video_path)
-    if not reason:
-        return None
-    st = video.start_time
-    return {
-        'video_id': video.id,
-        'video_path': video.video_path,
-        'reason': reason,
-        'resolved_path': resolved,
-        'start_time': st.isoformat() if st else None,
-    }
 
 
 def register_routes(app):
