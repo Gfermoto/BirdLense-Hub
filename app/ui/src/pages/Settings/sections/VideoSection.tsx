@@ -50,12 +50,14 @@ export function VideoSection({ form }: Props) {
                         <InputLabel id="settings-trigger-label">{t('settings.triggerLabel')}</InputLabel>
                         <Select
                           labelId="settings-trigger-label"
-                          value={(field.state.value === 'frigate' ? 'auto' : field.state.value) ?? 'auto'}
+                          value={field.state.value ?? 'opencv'}
                           label={t('settings.triggerLabel')}
-                          onChange={(e) => field.handleChange(e.target.value === 'auto' ? 'frigate' : e.target.value as Settings['motion']['source'])}
+                          onChange={(e) =>
+                            field.handleChange(e.target.value as Settings['motion']['source'])
+                          }
                         >
-                          <MenuItem value="auto">{t('settings.triggerFrigate')}</MenuItem>
                           <MenuItem value="opencv">{t('settings.triggerOpencv')}</MenuItem>
+                          <MenuItem value="frigate">{t('settings.triggerFrigate')}</MenuItem>
                           <MenuItem value="mqtt">{t('settings.triggerMqtt')}</MenuItem>
                           <MenuItem value="esphome">{t('settings.triggerEsp')}</MenuItem>
                         </Select>

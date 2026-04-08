@@ -124,3 +124,46 @@ def full_path_for_video(video_path: str) -> str | None:
     if full != data_real and not full.startswith(data_real + os.sep):
         return None
     return full
+
+
+def resolve_recording_video_file(video_path: str) -> str | None:
+    """Абсолютный путь к mp4 для пересчёта треков и проверок на диске.
+
+    1. Стандартное значение из БД ``data/recordings/.../video.mp4`` —
+       через :func:`full_path_for_video`.
+    2. Устаревший относительный путь от каталога ``recordings/`` (только
+       ``YYYY/MM/DD/...``), если файл там действительно есть.
+    """
+    if not video_path or not isinstance(video_path, str):
+        return None
+    norm_vp = os.path.normpath(video_path.strip())
+    if norm_vp.startswith('..' + os.sep) or norm_vp == '..':
+        return None
+    if os.path.isabs(norm_vp):
+        return None
+
+    primary = full_path_for_video(video_path)
+    try:
+        if primary and os.path.isfile(primary):
+            return primary
+    except OSError:
+        pass
+
+    data_prefix = 'data' + os.sep + 'recordings' + os.sep
+    if norm_vp.startswith(data_prefix):
+        return None
+
+    try:
+        rec = os.path.realpath(recordings_dir())
+        cand = os.path.realpath(os.path.join(rec, norm_vp))
+    except (OSError, ValueError):
+        return None
+    data_real = os.path.realpath(_data_dir())
+    if not _path_is_under_data_dir(data_real, cand):
+        return None
+    if cand != rec and not cand.startswith(rec + os.sep):
+        return None
+    try:
+        return cand if os.path.isfile(cand) else None
+    except OSError:
+        return None

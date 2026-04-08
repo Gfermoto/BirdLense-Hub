@@ -651,14 +651,48 @@ export function UnknownsPage() {
       {unknowns?.length === 0 ? (
         <Alert severity="info">{t('unknowns.empty')}</Alert>
       ) : (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            {t('unknowns.count', { count: unknowns?.length ?? 0 })}
-          </Typography>
-          {unknowns?.length === 500 && (
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-              {t('unknowns.limitReached')}
+        <Box
+          sx={{
+            mb: 2,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 2,
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              {t('unknowns.count', { count: unknowns?.length ?? 0 })}
             </Typography>
+            {unknowns?.length === 500 && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                {t('unknowns.limitReached')}
+              </Typography>
+            )}
+          </Box>
+          {canEdit && unknowns && unknowns.length > 0 && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={
+                    unknowns.length > 0 && selectedUnknownIds.length === unknowns.length
+                  }
+                  indeterminate={
+                    selectedUnknownIds.length > 0 &&
+                    selectedUnknownIds.length < unknowns.length
+                  }
+                  onChange={(_, checked) => {
+                    if (checked) {
+                      setSelectedUnknownIds(unknowns.map((u) => u.id));
+                    } else {
+                      setSelectedUnknownIds([]);
+                    }
+                  }}
+                />
+              }
+              label={t('unknowns.bulkSelectAll')}
+            />
           )}
         </Box>
       )}

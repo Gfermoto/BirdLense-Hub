@@ -165,6 +165,19 @@ def process_video_for_tracks(
         }
         if r.get('decision_reason'):
             row['decision_reason'] = r['decision_reason']
+        for copy_key in (
+            'visit_eligible',
+            'notification_eligible',
+            'decision_kind',
+            'detector_label',
+            'detector_confidence',
+            'classifier_confidence',
+            'classifier_species_name',
+            'evidence_state',
+            'reject_reason_code',
+        ):
+            if copy_key in r:
+                row[copy_key] = r[copy_key]
         detections.append(row)
     detections = _dedupe_track_detections(detections)
     logger.info(

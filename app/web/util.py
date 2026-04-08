@@ -16,6 +16,7 @@ from data_paths import (  # noqa: E402, F401
     read_safe_image_bytes,
     recordings_dir,
     remove_safe_image_file,
+    resolve_recording_video_file,
 )
 from timeline_payloads import (  # noqa: E402, F401
     format_unlinked_video_for_timeline,

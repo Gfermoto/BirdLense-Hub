@@ -4,6 +4,12 @@ import sys
 
 import pytest
 
+# Не наследовать «прод» и секреты хоста разработчика (иначе 403 и рассинхрон MCP Bearer).
+os.environ.pop('BIRDLENSE_ENV', None)
+os.environ.pop('MCP_TOKEN', None)
+if (os.environ.get('FLASK_ENV') or '').strip().lower() in ('production', 'prod'):
+    os.environ['FLASK_ENV'] = 'development'
+
 # Set test DB before any app imports
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 # Не поднимать фоновый sampler метрик в тестах (поток + psutil sleep).

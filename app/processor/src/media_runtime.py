@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
@@ -12,7 +13,7 @@ from api import API
 from app_config.app_config import app_config
 from processor_support import check_restart_flag
 from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
-from sources.video_file_source import VideoFileSource
+from sources.video_file_source import VideoFileSource, VideoPlaylistSource
 
 
 @dataclass
@@ -69,6 +70,7 @@ def setup_processor_media(
     """Подготовить VideoFileSource или go2rtc + кэш потоков и фоновый MJPEG."""
     from app_config.cameras import cameras_for_processor, get_valid_cameras
 
+    source = (app_config.get('video.source') or 'go2rtc').strip().lower()
     cameras_config = app_config.get('video.cameras') or []
     valid = get_valid_cameras(cameras_config)
     cameras = cameras_for_processor(valid)
@@ -83,6 +85,59 @@ def setup_processor_media(
             main_size=main_size,
             lores_size=lores_size,
         )
+        return ProcessorMediaSetup(
+            media_source=vf,
+            get_media_source=lambda _cid: vf,
+            media_sources_cache={},
+            default_camera_id=default_camera_id,
+            cameras=cameras,
+        )
+
+    if source == 'file':
+        file_path = (app_config.get('video.file_path') or '').strip()
+        file_dir = (app_config.get('video.file_dir') or '/app/data/file_test').strip()
+        realtime_sim = bool(app_config.get('video.file_realtime_simulation', False))
+        rcodec = (app_config.get('video.record_stream_codec') or 'h264').strip().lower()
+        if rcodec not in ('h264', 'copy'):
+            rcodec = 'h264'
+        playlist_paths = []
+        if not file_path and file_dir:
+            exts = ('*.mp4', '*.MP4', '*.mov', '*.MOV', '*.mkv', '*.MKV')
+            pdir = Path(file_dir)
+            if pdir.exists() and pdir.is_dir():
+                for ext in exts:
+                    playlist_paths.extend(str(p) for p in sorted(pdir.glob(ext)))
+        if not file_path:
+            if not playlist_paths:
+                logging.warning(
+                    'video.source=file, но video.file_path пуст и в video.file_dir '
+                    'нет видео (%s). Жду перезапуска.',
+                    file_dir,
+                )
+                while True:
+                    check_restart_flag()
+                    time.sleep(30)
+        default_camera_id = cameras[0]['id'] if cameras else 'default'
+        if file_path:
+            vf = VideoFileSource(
+                file_path,
+                main_size=main_size,
+                lores_size=lores_size,
+                loop=bool(app_config.get('video.file_loop', False)),
+                realtime_simulation=realtime_sim,
+                record_stream_codec=rcodec,
+            )
+        else:
+            vf = VideoPlaylistSource(
+                playlist_paths,
+                main_size=main_size,
+                lores_size=lores_size,
+                loop=bool(app_config.get('video.file_loop', False)),
+                advance_on_start=False,
+                split_session_per_file=True,
+                realtime_simulation=realtime_sim,
+                record_stream_codec=rcodec,
+            )
         return ProcessorMediaSetup(
             media_source=vf,
             get_media_source=lambda _cid: vf,
@@ -132,8 +187,8 @@ def setup_processor_media(
             )
         return media_sources_cache[camera_id]
 
-    if app_config.get('video.source') != 'go2rtc':
-        logging.warning('video.source must be go2rtc; falling back')
+    if source != 'go2rtc':
+        logging.warning('video.source=%s not supported, falling back to go2rtc', source)
     media_source = get_media_source(default_camera_id)
     for cam in cameras:
         get_media_source(cam['id'])

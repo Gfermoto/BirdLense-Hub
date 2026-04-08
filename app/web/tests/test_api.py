@@ -1349,6 +1349,79 @@ class TestStoragePurge:
             app_config.set('general.settings_password', old_admin)
             app_config.set('general.contributor_password', old_contrib)
 
+    def test_purge_storage_range_deletes_only_in_range(self, app, client, tmp_path, monkeypatch):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        import routes.ui_system_routes as ui_system_routes
+
+        old_admin = app_config.get('general.settings_password')
+        old_contrib = app_config.get('general.contributor_password')
+        app_config.set('general.settings_password', '')
+        app_config.set('general.contributor_password', '')
+
+        recordings_root = tmp_path / 'app' / 'data' / 'recordings'
+        for day in ('25', '26', '27'):
+            clip = recordings_root / '2026' / '03' / day / '120000'
+            clip.mkdir(parents=True, exist_ok=True)
+            (clip / 'video.mp4').write_bytes(b'v')
+        monkeypatch.setattr(ui_system_routes, 'recordings_dir', lambda: str(recordings_root))
+
+        try:
+            with app.app_context():
+                species = Species(name='Range Test Bird')
+                db.session.add(species)
+                db.session.flush()
+                for start_d, suf in (
+                    (25, '25/120000/video.mp4'),
+                    (26, '26/120000/video.mp4'),
+                    (27, '27/120000/video.mp4'),
+                ):
+                    st = datetime(2026, 3, start_d, 12, 0, 0)
+                    et = datetime(2026, 3, start_d, 12, 0, 30)
+                    visit = SpeciesVisit(
+                        species=species,
+                        start_time=st,
+                        end_time=et,
+                        max_simultaneous=1,
+                    )
+                    video = Video(
+                        processor_version='test',
+                        start_time=st,
+                        end_time=et,
+                        video_path=f'data/recordings/2026/03/{suf}',
+                    )
+                    detection = VideoSpecies(
+                        video=video,
+                        species=species,
+                        species_visit=visit,
+                        start_time=0.0,
+                        end_time=1.0,
+                        confidence=0.9,
+                        source='video',
+                    )
+                    db.session.add_all([visit, video, detection])
+                db.session.commit()
+
+            response = client.post(
+                '/api/ui/storage/purge',
+                json={'start_date': '2026-03-26', 'end_date': '2026-03-26'},
+            )
+            assert response.status_code == 200
+
+            with app.app_context():
+                assert Video.query.count() == 2
+                remaining_days = {
+                    v.start_time.day for v in Video.query.all()
+                }
+                assert remaining_days == {25, 27}
+
+            assert (recordings_root / '2026' / '03' / '25' / '120000').exists()
+            assert not (recordings_root / '2026' / '03' / '26' / '120000').exists()
+            assert (recordings_root / '2026' / '03' / '27' / '120000').exists()
+        finally:
+            app_config.set('general.settings_password', old_admin)
+            app_config.set('general.contributor_password', old_contrib)
+
 
 class TestReportPdf:
     def test_report_requires_params(self, client):

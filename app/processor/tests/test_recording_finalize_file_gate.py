@@ -116,7 +116,10 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize.build_fused_video_detections',
                 side_effect=lambda det, *a, **k: det,
-            ), patch('recording_finalize.generate_spectrogram', return_value=False):
+            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
                 finalize_motion_recording(
                     api,
                     motion_detector,
@@ -135,6 +138,70 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         api.create_video.assert_called_once()
         api.notify_species.assert_not_called()
+
+    def test_keeps_session_when_no_detections_file_source_flag(self):
+        api = MagicMock()
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'detection.min_confidence_to_store': 0.36,
+                'processor.keep_recording_when_no_detections': True,
+                'video.source': 'file',
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            frame = np.zeros((32, 32, 3), dtype=np.uint8)
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                side_effect=lambda det, *a, **k: det,
+            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/04/08/130000',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/04/08/130000/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+            api.create_video.assert_not_called()
+            self.assertTrue(os.path.isdir(out_dir))
+            self.assertTrue(os.path.isfile(video_path))
 
 
 if __name__ == '__main__':

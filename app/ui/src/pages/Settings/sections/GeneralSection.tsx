@@ -234,6 +234,27 @@ export function GeneralSection({ form }: Props) {
             <ServiceBlock title={t('settings.serviceVideo')}>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="video.source">
+                    {(field) => (
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-video-source-label">
+                          {t('settings.videoSourceLabel')}
+                        </InputLabel>
+                        <Select
+                          labelId="settings-video-source-label"
+                          value={(field.state.value ?? 'go2rtc').toLowerCase()}
+                          label={t('settings.videoSourceLabel')}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        >
+                          <MenuItem value="go2rtc">{t('settings.videoSourceGo2rtc')}</MenuItem>
+                          <MenuItem value="file">{t('settings.videoSourceFile')}</MenuItem>
+                        </Select>
+                        <FormHelperText>{t('settings.videoSourceHint')}</FormHelperText>
+                      </FormControl>
+                    )}
+                  </form.Field>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <form.Field name="video.encoding">
                     {(field) => (
                       <FormControl fullWidth>
@@ -275,16 +296,61 @@ export function GeneralSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <form.Field name="video.cameras">
-                    {(field) => (
-                      <CamerasListField
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                      />
-                    )}
-                  </form.Field>
-                </Grid>
+                <form.Subscribe selector={(state) => state.values.video?.source}>
+                  {(videoSource) => (
+                    <>
+                      {videoSource === 'file' ? (
+                        <>
+                          <Grid size={{ xs: 12 }}>
+                            <form.Field name="video.file_dir">
+                              {(field) => (
+                                <TextField
+                                  fullWidth
+                                  value={field.state.value ?? ''}
+                                  onChange={(e) => field.handleChange(e.target.value)}
+                                  label={t('settings.videoFileDirLabel')}
+                                  placeholder="/app/data/file_test"
+                                  helperText={t('settings.videoFileDirHint')}
+                                />
+                              )}
+                            </form.Field>
+                          </Grid>
+                          <Grid size={{ xs: 12 }}>
+                            <form.Field name="video.file_loop">
+                              {(field) => (
+                                <>
+                                  <FormControlLabel
+                                    control={
+                                      <Switch
+                                        checked={field.state.value ?? false}
+                                        onChange={(e) => field.handleChange(e.target.checked)}
+                                      />
+                                    }
+                                    label={t('settings.videoFileLoopLabel')}
+                                  />
+                                  <FormHelperText>
+                                    {t('settings.videoFileLoopHint')}
+                                  </FormHelperText>
+                                </>
+                              )}
+                            </form.Field>
+                          </Grid>
+                        </>
+                      ) : (
+                        <Grid size={{ xs: 12 }}>
+                          <form.Field name="video.cameras">
+                            {(field) => (
+                              <CamerasListField
+                                value={field.state.value}
+                                onChange={field.handleChange}
+                              />
+                            )}
+                          </form.Field>
+                        </Grid>
+                      )}
+                    </>
+                  )}
+                </form.Subscribe>
               </Grid>
             </ServiceBlock>
 

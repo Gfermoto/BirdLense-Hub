@@ -48,7 +48,7 @@ from services.http_response_cache import bust_system_response_caches, bust_respo
 from services.telegram_proxy_service import (
     refresh_telegram_proxy as refresh_telegram_proxy_service,
 )
-from data_paths import data_dir
+from data_paths import data_dir, resolve_recording_video_file
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -1763,27 +1763,63 @@ def register_routes(app):
             return {'error': 'Password required'}, 403
         try:
             data = request.json or {}
-            date_str = data.get('date')
-            if not date_str:
-                return {'error': 'Date is required'}, 400
+            date_str = (data.get('date') or '').strip()
+            start_date_str = (data.get('start_date') or '').strip()
+            end_date_str = (data.get('end_date') or '').strip()
 
-            try:
-                purge_date = datetime.strptime(date_str, '%Y-%m-%d')
-            except ValueError:
-                return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
-            purge_cutoff = purge_date + timedelta(days=1)
+            range_mode = bool(start_date_str or end_date_str)
+            purge_date: datetime | None = None
+            range_start: datetime | None = None
+            range_end: datetime | None = None
+
+            if range_mode:
+                if not start_date_str or not end_date_str:
+                    return {'error': 'start_date and end_date are required together'}, 400
+                try:
+                    range_start = datetime.strptime(start_date_str, '%Y-%m-%d')
+                    range_end = datetime.strptime(end_date_str, '%Y-%m-%d')
+                except ValueError:
+                    return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+                if range_start > range_end:
+                    return {'error': 'start_date must be on or before end_date'}, 400
+                max_span_days = 366 * 5
+                if (range_end - range_start).days > max_span_days:
+                    return {'error': f'Date range too large (max {max_span_days} days)'}, 400
+            elif date_str:
+                try:
+                    purge_date = datetime.strptime(date_str, '%Y-%m-%d')
+                except ValueError:
+                    return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+            else:
+                return {'error': 'Provide date or both start_date and end_date'}, 400
 
             deleted_count = 0
             deleted_size = 0
             rec_dir = recordings_dir()
             app_base = os.path.dirname(os.path.dirname(rec_dir))
 
-            videos = (
-                Video.query
-                .filter(Video.start_time < purge_cutoff)
-                .order_by(Video.start_time.asc())
-                .all()
-            )
+            if range_mode:
+                assert range_start is not None and range_end is not None
+                range_end_exclusive = range_end + timedelta(days=1)
+                videos = (
+                    Video.query
+                    .filter(
+                        Video.start_time >= range_start,
+                        Video.start_time < range_end_exclusive,
+                    )
+                    .order_by(Video.start_time.asc())
+                    .all()
+                )
+            else:
+                assert purge_date is not None
+                purge_cutoff = purge_date + timedelta(days=1)
+                videos = (
+                    Video.query
+                    .filter(Video.start_time < purge_cutoff)
+                    .order_by(Video.start_time.asc())
+                    .all()
+                )
+
             video_dirs_to_delete = set()
             for video in videos:
                 rel_dir = os.path.dirname(video.video_path or '')
@@ -1816,14 +1852,25 @@ def register_routes(app):
                         if not os.path.isdir(day_path):
                             continue
 
-                        # Check if this directory is before or on purge date
-                        dir_date = datetime.strptime(
-                            f"{year}-{month}-{day}", '%Y-%m-%d')
-                        if dir_date <= purge_date:
-                            count, size = get_day_storage_info(day_path)
-                            deleted_count += count
-                            deleted_size += size
-                            shutil.rmtree(day_path)
+                        try:
+                            dir_date = datetime.strptime(
+                                f"{year}-{month}-{day}", '%Y-%m-%d')
+                        except ValueError:
+                            continue
+
+                        if range_mode:
+                            assert range_start is not None and range_end is not None
+                            if dir_date < range_start or dir_date > range_end:
+                                continue
+                        else:
+                            assert purge_date is not None
+                            if dir_date > purge_date:
+                                continue
+
+                        count, size = get_day_storage_info(day_path)
+                        deleted_count += count
+                        deleted_size += size
+                        shutil.rmtree(day_path)
 
                     if os.path.isdir(month_path) and not os.listdir(month_path):
                         os.rmdir(month_path)
@@ -2705,7 +2752,6 @@ def register_routes(app):
                 from detection_fusion import build_fused_video_detections
                 from services.visit_processor import VisitProcessor
 
-                base = os.path.dirname(os.path.dirname(recordings_dir()))
                 lores_px = int(app_config.get('processor.track_regen_lores_px') or 640)
                 lores_px = max(320, min(lores_px, 960))
                 lores_size = (lores_px, lores_px)
@@ -2963,8 +3009,8 @@ def register_routes(app):
                             generated=generated, failed=failed, skipped=skipped,
                         )
                         continue
-                    full_video = os.path.join(base, video.video_path)
-                    if not os.path.isfile(full_video):
+                    full_video = resolve_recording_video_file(video.video_path)
+                    if not full_video:
                         skipped += 1
                         precise_candidates.append({
                             'video_id': video.id,
@@ -3008,19 +3054,45 @@ def register_routes(app):
                                 'max_runtime_sec': precise_max_runtime_sec,
                             }
 
-                        detections, precise_used = _run_track_regen_with_precise_fallback(
+                        track_detections, precise_used = _run_track_regen_with_precise_fallback(
                             full_video,
                             process_video_for_tracks,
                             fast_kwargs,
                             _precise_kwargs if precise_enabled else None,
                         )
                         detections = build_fused_video_detections(
-                            detections,
+                            track_detections,
                             [],
                             start_time=video.start_time,
                             end_time=video.end_time,
                             app_config=app_config,
                         )
+                        if (
+                            not detections
+                            and track_detections
+                            and precise_enabled
+                            and not precise_used
+                        ):
+                            precise_kwargs = _precise_kwargs()
+                            if precise_kwargs:
+                                track_detections = process_video_for_tracks(
+                                    full_video,
+                                    **precise_kwargs,
+                                )
+                                precise_used = True
+                                detections = build_fused_video_detections(
+                                    track_detections,
+                                    [],
+                                    start_time=video.start_time,
+                                    end_time=video.end_time,
+                                    app_config=app_config,
+                                )
+                                app.logger.info(
+                                    'Track regen: post-fusion precise pass '
+                                    '(video_id=%s path=%s)',
+                                    video.id,
+                                    video.video_path,
+                                )
                         if regen_species_scope_lc:
                             detections = [
                                 _remap_detection_to_local_scope(d, regen_species_scope_lc)

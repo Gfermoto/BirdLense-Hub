@@ -777,6 +777,20 @@ export const restoreDbBackup = async (
   return res.json();
 };
 
+export type PurgeStorageBody =
+  | { date: string }
+  | { start_date: string; end_date: string };
+
+/** Delete recordings by cutoff date or inclusive calendar range (admin). */
+export const purgeStorageRecordings = async (
+  body: PurgeStorageBody,
+): Promise<{ message: string; deletedCount: number; deletedSize: number }> => {
+  const { data } = await axios.post(`${BASE_API_URL}/storage/purge`, body, {
+    withCredentials: true,
+  });
+  return data;
+};
+
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {

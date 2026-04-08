@@ -24,6 +24,8 @@ if [ -d /app/_bundled_data/images ]; then
   mkdir -p /app/data/images
   cp -a /app/_bundled_data/images/. /app/data/images/
 fi
+# Тестовый режим video.source=file: папка по умолчанию в volume ./data (см. video.file_dir)
+mkdir -p /app/data/file_test
 
 nginx &
 sleep 1

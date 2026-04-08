@@ -83,26 +83,25 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_record_seconds` | Max recording length (seconds) |
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.21** |
+| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
 | `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
-| `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Lower = more accepted species, higher = stricter classifier acceptance. |
-| `species_confidence_overrides` | Per-species thresholds: `{"Rare Bird": 0.05}` |
+| `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Default **0.40**. Lower = more accepted species, higher = stricter. |
+| `species_confidence_overrides` | Per-species thresholds: `{"Rodent": 0.28}` for squirrels; `{"Rare Bird": 0.05}` for rare birds |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
-| `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.05`). |
-| `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.05`). |
+| `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.03`). |
+| `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.08`). |
 | `birdnet_mqtt_auto_confidence` | If **true**, lower classifier thresholds for species seen in **recent** BirdNET MQTT messages (similar to eBird top). BirdNET is **confidence-only** here: it never creates a final video label. Manual `species_confidence_overrides` win. See [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
-| `birdnet_mqtt_bias_window_seconds` | Look-back window from recording start for BirdNET species (seconds, default 120). |
 | `birdnet_mqtt_bias_delta` | Subtracted from `min_confidence_to_process` for auto BirdNET species (default `0.05`). |
 | `birdnet_mqtt_bias_floor` | Minimum auto threshold for BirdNET bias (default `0.05`). |
 | `multi_camera_groups` | List of Frigate camera-id groups at one location, e.g. `[["BirdBox","Forest"]]`. See [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
-| `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.05`, capped at 1.0). |
+| `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.03`, capped at 1.0). |
 | `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
 | `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
 | `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
-| `detector_scope` | First-stage detector targets. Production default: `["Bird", "Squirrel"]`. |
+| `detector_scope` | First-stage detector targets. Default: `["Bird", "Squirrel"]`. EU classifier adds one non-bird class **Rodent** (squirrels map here in the species catalog — search «Rodent», not a separate «Squirrel» species row). |
 | `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
 | `single_stage_coco_animals_only_auto` | Deprecated compatibility key. Production runtime uses only `two_stage`. |
-| `included_bird_families` | Family filter list (Perching Birds, Squirrel, …) |
+| `included_bird_families` | Bird family filter list (e.g. Perching Birds); not related to Rodent |
 | `save_images` | Save detection frames |
 | `detection_strategy` | Production runtime uses `two_stage` only. Other values are ignored with a warning. |
 | `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
@@ -115,7 +114,11 @@ The System page also lists these endpoints under **Notification observability** 
 
 | Key | Description |
 |-----|-------------|
-| `source` | `go2rtc` (`file` — CLI only) |
+| `source` | `go2rtc` or `file` (test: mp4 folder or single path in container) |
+| `file_path` | Single mp4 absolute path in container; empty with `file_dir` for playlist |
+| `file_dir` | Folder with `*.mp4` / `*.mov` / `*.mkv` (flat list, not recursive). Default in repo: **`/app/data/file_test`** (Docker: host `./data` → `/app/data`). |
+| `file_loop` | Replay playlist/file in a loop |
+| *(behaviour)* | For **`video.source=file`** with a **folder playlist**, each **`VideoPlaylistSource`** clip triggers a **session finalize** when the file ends (crops/DB/notifications for that clip), then the next file continues in a new session. **`processor.max_inactive_seconds`** is floored to **120**s. **`processor.file_max_record_floor_seconds`** (default **86400**) is a wall-clock safety minimum for **`max_record_seconds`** so long files are not cut mid-clip by the live-camera default; lower it only if you want time-based splits. |
 | `go2rtc_url` | Go2RTC URL (`http://YOUR_HOST:1984`) |
 | `cameras` | List: `{id, stream_name, name}` |
 | `pre_record_seconds` | Pre-roll before trigger |
@@ -403,7 +406,7 @@ Browser push (addition or alternative to Telegram). Requires HTTPS (or localhost
 
 | Key | Description | Where |
 |-----|-------------|-------|
-| `unknown_confidence_threshold` | Threshold (0–1) for “Unknowns” list. Default 0.5 | Settings → Advanced |
+| `unknown_confidence_threshold` | Threshold (0–1) for “Unknowns” list. Default **0.48** | Settings → Processor → advanced block |
 
 ---
 

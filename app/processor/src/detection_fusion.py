@@ -213,6 +213,19 @@ def build_fused_video_detections(
         source_priority=source_priority,
         cross_source_confidence_bonus=cross_bonus,
         species_mapping=_species_mapping(app_config),
+        absorb_generic_bird=bool(
+            app_config.get('detection.absorb_generic_bird', True)
+        ),
+        absorb_generic_bird_overlap_min_sec=float(
+            app_config.get('detection.absorb_generic_bird_overlap_min_sec')
+            or 0.1
+        ),
+        absorb_generic_bird_min_classifier_confidence=float(
+            app_config.get(
+                'detection.absorb_generic_bird_min_classifier_confidence'
+            )
+            or 0.22
+        ),
     )
     fused = apply_multi_camera_confidence_boost(
         fused,

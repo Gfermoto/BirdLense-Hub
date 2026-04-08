@@ -69,7 +69,7 @@ Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 | `/api/ui/system/visitors` | GET | Unique visitor sessions over `?days=` (SpeciesVisit aggregate) |
 | `/api/ui/system/activity` | GET | Activity by day |
 | `/api/ui/storage/stats` | GET | Recording storage stats |
-| `/api/ui/storage/purge` | POST | Purge by date (**Admin**) |
+| `/api/ui/storage/purge` | POST | Purge recordings: JSON `{"date":"YYYY-MM-DD"}` (on or before that day) or `{"start_date","end_date"}` inclusive range (**Admin**) |
 | `/api/ui/system/retention` | POST | Run retention policy |
 | `/api/ui/system/regenerate-spectrograms` | POST | Regenerate spectrograms |
 | `/api/ui/system/regenerate-spectrograms/status` | GET | Job status |

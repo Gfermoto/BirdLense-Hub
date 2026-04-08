@@ -273,26 +273,7 @@ export function ProcessorSection({ form }: Props) {
                 {(birdnetBias) =>
                   birdnetBias ? (
                     <>
-                      <Grid size={{ xs: 12, sm: 4 }}>
-                        <form.Field name="processor.birdnet_mqtt_bias_window_seconds">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 10, max: 3600, step: 10 }}
-                              value={field.state.value ?? 120}
-                              onChange={(e) =>
-                                field.handleChange(
-                                  Math.max(10, Math.min(3600, Number(e.target.value) || 120)),
-                                )
-                              }
-                              label={t('settings.birdnetMqttBiasWindow')}
-                              helperText={t('settings.birdnetMqttBiasWindowHint')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <form.Field name="processor.birdnet_mqtt_bias_delta">
                           {(field) => (
                             <TextField
@@ -307,7 +288,7 @@ export function ProcessorSection({ form }: Props) {
                           )}
                         </form.Field>
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <form.Field name="processor.birdnet_mqtt_bias_floor">
                           {(field) => (
                             <TextField

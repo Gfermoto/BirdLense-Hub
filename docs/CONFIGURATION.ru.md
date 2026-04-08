@@ -83,26 +83,25 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.21** |
+| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
 | `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
-| `min_confidence_to_process` | Порог принятия вида после detector confirmation. Ниже — больше species labels, выше — строже. |
-| `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
+| `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
+| `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для белок; `{"Rare Bird": 0.05}` — редкие птицы |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
-| `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
-| `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.05`). |
+| `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.03`). |
+| `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.08`). |
 | `birdnet_mqtt_auto_confidence` | Если **true**, для видов из **недавних** сообщений BirdNET по MQTT подмешиваются более низкие пороги классификатора (как у eBird-топа). BirdNET здесь только **confidence-only**: финальный video label он не создаёт. |
-| `birdnet_mqtt_bias_window_seconds` | Окно назад от момента старта записи для учёта видов BirdNET (сек, по умолчанию 120). |
 | `birdnet_mqtt_bias_delta` | Вычитается из `min_confidence_to_process` для авто-видов из BirdNET (по умолчанию `0.05`). |
 | `birdnet_mqtt_bias_floor` | Нижняя граница авто-порога для BirdNET (по умолчанию `0.05`). |
 | `multi_camera_groups` | Список групп `id` камер Frigate одной локации, например `[["BirdBox","Forest"]]`. См. [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
-| `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.05`, не выше 1.0). |
+| `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.03`, не выше 1.0). |
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
-| `detector_scope` | Цели детектора первого уровня. Production default: `["Bird", "Squirrel"]`. |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Squirrel"]`. В EU-классификаторе один не-птица класс **Rodent** (белки в каталоге — ищите «Rodent», отдельной строки «Squirrel» в видах нет). |
 | `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
 | `single_stage_coco_animals_only_auto` | Устаревший compat-ключ. Production runtime использует только `two_stage`. |
-| `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
+| `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
 | `save_images` | Сохранять кадры детекций |
 | `detection_strategy` | В production используется только `two_stage`; другие значения игнорируются с warning. |
 | `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
@@ -115,7 +114,11 @@
 
 | Ключ | Описание |
 |------|----------|
-| `source` | `go2rtc` (file — только через CLI) |
+| `source` | `go2rtc` или `file` (тест: папка mp4 или один файл в контейнере) |
+| `file_path` | Один mp4, абсолютный путь в контейнере; пусто — плейлист из `file_dir` |
+| `file_dir` | Папка с `*.mp4` / `*.mov` / `*.mkv` (только файлы в каталоге, без рекурсии). В репозитории по умолчанию **`/app/data/file_test`** (Docker: `./data` хоста → `/app/data`). |
+| `file_loop` | Зацикливать плейлист/файл |
+| *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
 | `cameras` | Список: `{id, stream_name, name}` |
 | `pre_record_seconds` | Предзапись перед триггером |
@@ -403,7 +406,7 @@ Push-уведомления в браузере (дополнение или а�
 
 | Ключ | Описание | Где настраивать |
 |------|----------|-----------------|
-| `unknown_confidence_threshold` | Порог (0–1) для списка «Неизвестные»: детекции с confidence ниже попадают на страницу для ручной проверки. По умолчанию 0.5 | Настройки → Расширенные |
+| `unknown_confidence_threshold` | Порог (0–1) для «Неизвестные». По умолчанию **0.48** | Настройки → Процессор → блок «Дополнительно» |
 
 ---
 

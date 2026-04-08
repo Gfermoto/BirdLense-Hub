@@ -148,6 +148,12 @@ class AppConfig:
     @classmethod
     def _enforce_confidence_floors(cls, config):
         """Clamp stale low-confidence settings to safe minimums."""
+        source = str(cls._get_nested(config, 'video.source') or '').strip().lower()
+        if source == 'file':
+            logger.info(
+                'Skip confidence floors in file mode (test source) to allow low-threshold tuning.'
+            )
+            return False
         changed = False
         for path, floor in CONFIDENCE_FLOORS.items():
             current = cls._get_nested(config, path)

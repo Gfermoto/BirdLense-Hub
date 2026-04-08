@@ -21,6 +21,8 @@ general:
 processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
+  # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
+  file_max_record_floor_seconds: 86400
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
@@ -45,10 +47,10 @@ processor:
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
   # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
-  min_confidence_binary: 0.27  # Детектор «птица/не птица»; ниже — больше ложных bbox
-  min_confidence_to_process: 0.38  # Классификатор (combined); запись/БД
+  min_confidence_binary: 0.30  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  min_confidence_to_process: 0.40  # Классификатор (combined); запись/БД
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
-  min_confidence_to_notify: 0.44
+  min_confidence_to_notify: 0.46
   # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
   light_gate_enabled: true
   light_gate_min_brightness: 25
@@ -65,7 +67,6 @@ processor:
   # BirdNET не создаёт финальный label и не мержится в video detections напрямую.
   # Legacy-layer: сейчас это ещё threshold bias, но под ним уже может жить rolling audio prior.
   birdnet_mqtt_auto_confidence: false
-  birdnet_mqtt_bias_window_seconds: 120
   birdnet_mqtt_bias_delta: 0.05
   birdnet_mqtt_bias_floor: 0.05
   # Rolling BirdNET prior: события копятся в окне 24h, не сбрасываются разом,
@@ -89,8 +90,13 @@ processor:
   max_classifications_per_frame: 2
   max_blur_checks: 3
   blur_threshold: 100.0
+  # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
+  # Для мелких птиц у кромки кормушки снижайте до 0.03-0.05.
+  min_center_dist: 0.1
+  # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
+  binary_imgsz: 320
   # Small boxes on feeder scenes are often debris or motion noise.
-  min_box_size_px: 72
+  min_box_size_px: 78
   key_frame_limit: 3
   # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
   # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
@@ -103,8 +109,10 @@ processor:
     - "Woodpeckers"
   save_images: false
   # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
-  save_dataset_crops: false
-  dataset_min_confidence: 0.55
+  save_dataset_crops: true
+  dataset_min_confidence: 0.58
+  # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
+  keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
   models:
     # Production: только binary + classifier (.pt). single_stage в коде не подключается.
@@ -112,9 +120,18 @@ processor:
     binary: "models/detection/weights/best.pt"
     classifier: "models/classification/weights/best.pt"
 
-# Video source: go2rtc | file (file only via CLI arg)
+# Video source: go2rtc | file
 video:
   source: go2rtc
+  # Для тестового режима source=file: абсолютный путь к mp4.
+  file_path: ""
+  # Для тестового режима source=file: если file_path пуст, используется плейлист из всех видео в папке.
+  # В Docker смонтирован только /app/data — путь /workspace/datasets не существует без доп. volume.
+  file_dir: "/app/data/file_test"
+  # Для тестового режима source=file: зациклить файл (true) или остановиться в конце (false).
+  file_loop: false
+  # true — имитировать realtime (пропуск кадров по elapsed), false — кадр за кадром для дебага.
+  file_realtime_simulation: false
   # Хост Go2RTC: http://IP:1984
   go2rtc_url: ""
   go2rtc_username: ""
@@ -169,12 +186,16 @@ detection:
   dedup_window_seconds: 60
   # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
   one_per_species: true
+  # Generic «Bird» + тот же ролик с уверенным видом (YOLO classifier / accepted_species) → один результат
+  absorb_generic_bird: true
+  absorb_generic_bird_overlap_min_sec: 0.1
+  absorb_generic_bird_min_classifier_confidence: 0.24
   # При конфликте разных sources: YOLO track остаётся primary, Frigate помогает promotion/boost.
   source_priority: ["yolo", "frigate"]
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
   # Ниже порога детекция отбрасывается после fusion; держите чуть ниже processor.min_confidence_to_process
-  min_confidence_to_store: 0.34
+  min_confidence_to_store: 0.36
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
   use_learned_fusion: false
@@ -199,6 +220,9 @@ detection:
     "Streptopelia decaocto (Eurasian Collared-Dove)": "Eurasian Collared-Dove"
     "Pica pica (Eurasian Magpie)": "Eurasian Magpie"
     "Corvus corone (Carrion Crow)": "Carrion Crow"
+    "Tetrastes bonasia (Hazel Grouse)": "Hazel Grouse"
+    "Hazel_Grouse": "Hazel Grouse"
+    "Rodent": "Rodent"
     "Corvus cornix (Hooded Crow)": "Hooded Crow"
     "Corvus_cornix": "Hooded Crow"
     "Hooded_Crow": "Hooded Crow"

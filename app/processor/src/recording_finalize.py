@@ -51,6 +51,26 @@ _DECISION_TRACE_FIELDS = (
 _DECISION_TRACE_LIMIT = 40
 
 
+def _is_playable_video_file(path: str) -> bool:
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        if os.path.getsize(path) <= 1024:
+            return False
+        import cv2
+
+        cap = cv2.VideoCapture(path)
+        try:
+            if not cap.isOpened():
+                return False
+            ok, _frame = cap.read()
+            return bool(ok)
+        finally:
+            cap.release()
+    except Exception:
+        return False
+
+
 def _decision_trace_row(item: dict) -> dict:
     row = {}
     for key in _DECISION_TRACE_FIELDS:
@@ -296,7 +316,7 @@ def finalize_motion_recording(
             len(mqtt_events),
         )
 
-    video_file_ok = bool(video_output and os.path.isfile(video_output))
+    video_file_ok = _is_playable_video_file(video_output)
     if len(video_detections) > 0 and not video_file_ok:
         logging.error(
             'Finalize: %s detection(s) but video file missing: %s',
@@ -454,5 +474,28 @@ def finalize_motion_recording(
                             hint = ' (check PROCESSOR_SECRET in app/.env)'
                         hint = f' {resp_err.status_code}{hint}'
                     logging.warning('Notify species failed%s: %s', hint, e)
-    if len(video_detections) == 0 or not video_file_ok:
-        shutil.rmtree(output_path_physical)
+    if not video_file_ok:
+        try:
+            shutil.rmtree(output_path_physical)
+        except OSError as e:
+            logging.warning('Finalize: could not remove bad session dir %s: %s', output_path_physical, e)
+    elif len(video_detections) == 0:
+        keep_empty = bool(app_config.get(
+            'processor.keep_recording_when_no_detections',
+        ))
+        file_src = str(app_config.get('video.source') or '').strip().lower() == 'file'
+        if keep_empty and file_src:
+            logging.info(
+                'keep_recording_when_no_detections: retaining session (0 detections, '
+                'file source): %s',
+                output_path_physical,
+            )
+        else:
+            try:
+                shutil.rmtree(output_path_physical)
+            except OSError as e:
+                logging.warning(
+                    'Finalize: could not remove empty session dir %s: %s',
+                    output_path_physical,
+                    e,
+                )
