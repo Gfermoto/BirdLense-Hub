@@ -1066,10 +1066,11 @@ def register_routes(app):
 
                         manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                         if manual_vs:
-                            # Только обновить frames (bbox) — виды не трогаем.
+                            # Только обновить frames (bbox) у manually_corrected-строк — виды не трогаем.
                             # Критично: сопоставлять только при совпадении вида, иначе кадр от другой птицы.
                             import json
                             used_det_indices = set()
+                            manual_frames_rows_updated = 0
                             manuals_ordered = sorted(
                                 (
                                     [vs for vs in manual_vs if vs.species_id in species_scope]
@@ -1097,6 +1098,7 @@ def register_routes(app):
                                 if best_idx is not None and detections[best_idx].get('frames'):
                                     vs.frames = json.dumps(detections[best_idx]['frames'])
                                     used_det_indices.add(best_idx)
+                                    manual_frames_rows_updated += 1
                             db.session.flush()
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
                             unmatched = [
@@ -1131,15 +1133,23 @@ def register_routes(app):
                                 db.session.delete(vs)
                             if unmatched:
                                 visit_processor.process_detections(video, unmatched)
-                            frames_updated += 1
+                            if manual_frames_rows_updated:
+                                frames_updated += manual_frames_rows_updated
                             if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                                 single_video_regen_summary = _summarize_track_regen_detections(
                                     unmatched,
                                 )
+                                single_video_regen_summary['manual_frames_rows_updated'] = int(
+                                    manual_frames_rows_updated
+                                )
                             precise_candidates.append({
                                 'video_id': video.id,
                                 'video_path': video.video_path,
-                                'reason': 'has_manual_corrections',
+                                'reason': (
+                                    'has_manual_corrections'
+                                    if manual_frames_rows_updated
+                                    else 'has_manual_corrections_no_frame_match'
+                                ),
                             })
                         elif species_scope:
                             ids_touched = {
