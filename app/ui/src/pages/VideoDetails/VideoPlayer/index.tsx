@@ -365,14 +365,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <ViewToggle view={view} onChange={setView} />
         )}
 
-        {/* Tracks Toggle - show only when track data exists */}
-        {showControls && view === 'video' && trackDetections.length > 0 && (
+        {/* Tracks toggle: не привязываем к showControls — иначе при воспроизведении
+            переключатель исчезает вместе с остальными контролами */}
+        {view === 'video' && trackDetections.length > 0 && (
           <Box
             sx={{
               position: 'absolute',
               top: 16,
               right: 16,
-              zIndex: 10,
+              zIndex: 11,
               bgcolor: 'rgba(0, 0, 0, 0.6)',
               borderRadius: 1,
               backdropFilter: 'blur(4px)',

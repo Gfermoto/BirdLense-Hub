@@ -350,10 +350,70 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
         return result
 
 
+# iNaturalist rank_level: subspecies≈5, species=10; genus=20, order=40 — не брать выше вида.
+_INAT_MAX_RANK_LEVEL_FOR_SPECIES_CARD = 10
+_INAT_BINOMIAL_RE = re.compile(r'^[A-Z][a-z]+\s+[a-z][a-z0-9-]+$')
+
+
+def _inat_row_is_fine_avian_taxon(row: dict) -> bool:
+    if (row.get('iconic_taxon_name') or '') != 'Aves':
+        return False
+    rl = row.get('rank_level')
+    if rl is None:
+        return False
+    try:
+        return int(rl) <= _INAT_MAX_RANK_LEVEL_FOR_SPECIES_CARD
+    except (TypeError, ValueError):
+        return False
+
+
+def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
+    """Выбрать таксон уровня вида/подвида; для бинома — только точное совпадение name."""
+    fine = [r for r in results if _inat_row_is_fine_avian_taxon(r)]
+    if not fine:
+        return None
+    q = (query or '').strip()
+    if not q:
+        return None
+    q_lower = q.lower()
+
+    if _INAT_BINOMIAL_RE.match(q):
+        qnorm = ' '.join(q.split())
+        for row in fine:
+            if (row.get('name') or '').strip() == qnorm:
+                return row
+        for row in fine:
+            if (row.get('name') or '').strip().lower() == qnorm.lower():
+                return row
+        logging.warning(
+            "iNaturalist: no species-rank match for binomial %r among %s hits",
+            q,
+            len(fine),
+        )
+        return None
+
+    for row in fine:
+        pcn = (row.get('preferred_common_name') or '').strip().lower()
+        if pcn and pcn == q_lower:
+            return row
+    for row in fine:
+        if (row.get('name') or '').strip().lower() == q_lower:
+            return row
+
+    logging.warning(
+        "iNaturalist: using first species-rank hit for non-binomial query %r (no common-name match)",
+        q,
+    )
+    return fine[0]
+
+
 def get_inaturalist_image_and_description(title):
     """
     Fallback metadata source via iNaturalist taxa API.
     Returns (image_url, description, source_url) or (None, None, None).
+
+    Не использует заказы/семейства (напр. Piciformes id=17550): только виды/подвиды;
+    для запроса вида «Genus species» требуется точное совпадение scientific name.
     """
     try:
         query = (title or "").strip()
@@ -362,7 +422,7 @@ def get_inaturalist_image_and_description(title):
         url = "https://api.inaturalist.org/v1/taxa"
         params = {
             "q": query,
-            "per_page": 3,
+            "per_page": 30,
             "locale": "en",
             "is_active": "true",
             "iconic_taxa": "Aves",
@@ -374,10 +434,7 @@ def get_inaturalist_image_and_description(title):
         results = data.get("results") or []
         if not results:
             return None, None, None
-        top = next(
-            (row for row in results if (row.get("iconic_taxon_name") or "") == "Aves"),
-            None,
-        )
+        top = _pick_inaturalist_taxon_row(query, results)
         if not top:
             return None, None, None
         image_url = ((top.get("default_photo") or {}).get("medium_url")
@@ -555,6 +612,18 @@ def update_species_info_from_wiki(sp):
     ):
         sp.metadata_source_url = metadata_source_url or inferred_url
     return updated or bool(image_url or description)
+
+
+def refresh_species_metadata_from_sources(sp) -> bool:
+    """Сбросить и заново заполнить фото/описание/источник (Wikipedia, затем iNaturalist).
+
+    Для исправления ошибочных карточек без массовой «полировки» каталога.
+    """
+    sp.image_url = None
+    sp.description = None
+    sp.metadata_source = None
+    sp.metadata_source_url = None
+    return update_species_info_from_wiki(sp)
 
 
 def filter_feeder_species(species_names):

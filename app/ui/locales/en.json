@@ -830,7 +830,12 @@
     "noDescription": "Description is temporarily unavailable for this species.",
     "tuningMark": "Mark as tuning target",
     "tuningUnmark": "Unmark tuning target",
-    "tuningMarked": "This species is marked as a future fine-tuning target."
+    "tuningMarked": "This species is marked as a future fine-tuning target.",
+    "refreshMetadata": "Refresh card from Wikipedia / iNaturalist",
+    "refreshMetadataHint": "Re-fetch image and description for this species only (requires Settings password). Fixes wrong photos without running full catalog repair.",
+    "refreshMetadataRunning": "Refreshing…",
+    "refreshMetadataDone": "Card updated.",
+    "refreshMetadataError": "Could not refresh metadata"
   },
   "timelineStats": {
     "uniqueSpecies": "Unique Species",
@@ -987,6 +992,9 @@
     "automationNoSpeciesVideosPurgeBatch": "No-detection videos: delete batch",
     "automationNoSpeciesVideosPurgeBatchHint": "Deletes up to 500 videos that have no species rows (and their recording folders). Repeat until deletedCount is 0.",
     "automationNoSpeciesVideosPurgePrompt": "Type the confirmation phrase from the scan response (confirmation_phrase).",
+    "automationDiagnosticsTitle": "Diagnostics",
+    "automationBirdnetFifoSnapshot": "BirdNET FIFO snapshot",
+    "automationBirdnetFifoSnapshotHint": "Recent BirdNET MQTT events queued in the processor (written to disk). If the file is missing or stale, check that the processor and MQTT are running.",
     "processorActivityTitle": "Processor heartbeat",
     "processorActivityLoading": "Loading processor heartbeat...",
     "processorActivityLoadFailed": "Failed to load processor heartbeat activity.",

@@ -70,9 +70,17 @@ def remap_detection_to_local_scope(
 
 
 def summarize_track_regen_detections(detections: list[dict]) -> dict:
-    """Сводка для UI после regen одного ролика."""
+    """Сводка для UI после regen одного ролика (в т.ч. tracks_overlay_expected по списку детекций)."""
     reasons: dict[str, int] = {}
+    with_frames = 0
     for d in detections:
         r = str(d.get('decision_reason') or 'unknown')
         reasons[r] = reasons.get(r, 0) + 1
-    return {'track_count': len(detections), 'decision_reasons': reasons}
+        if d.get('frames'):
+            with_frames += 1
+    return {
+        'track_count': len(detections),
+        'decision_reasons': reasons,
+        'detections_with_frames': with_frames,
+        'tracks_overlay_expected': with_frames > 0,
+    }

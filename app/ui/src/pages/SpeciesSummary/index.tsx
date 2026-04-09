@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -19,6 +19,7 @@ import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
 import { LineChart, ScatterChart } from '@mui/x-charts';
 import InfoIcon from '@mui/icons-material/Info';
+import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CloudIcon from '@mui/icons-material/Cloud';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -28,12 +29,14 @@ import { SpeciesSummary } from '../../types';
 import {
   fetchSpeciesSummary,
   fetchXenoCantoRecordings,
+  refreshSpeciesMetadata,
 } from '../../api/api';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { resolveImageUrl } from '../../api/api';
+import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 
 const BirdSongButton = ({
   speciesId,
@@ -144,6 +147,8 @@ const StatCard = ({
 
 const SpeciesSummaryPage = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { isAdmin } = useProtectedArea();
   const { id } = useParams<{ id: string }>();
   const speciesId =
     id && /^\d+$/.test(id) ? parseInt(id, 10) : undefined;
@@ -156,6 +161,16 @@ const SpeciesSummaryPage = () => {
     queryKey: ['speciesSummary', speciesId],
     queryFn: () => fetchSpeciesSummary(speciesId!),
     enabled: speciesIdValid,
+  });
+
+  const refreshMetaMutation = useMutation({
+    mutationFn: () => refreshSpeciesMetadata(speciesId as number),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['speciesSummary', speciesId] });
+      void queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      void queryClient.invalidateQueries({ queryKey: ['species'] });
+      setImageLoadFailed(false);
+    },
   });
 
   useEffect(() => {
@@ -303,17 +318,46 @@ const SpeciesSummaryPage = () => {
             >
               {data.species.description || t('speciesSummary.noDescription')}
             </Typography>
-            {data.species.metadata_source_url && (
-              <Typography variant="caption" color="text.secondary">
-                Source:{' '}
-                <a
-                  href={data.species.metadata_source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {data.species.metadata_source || data.species.metadata_source_url}
-                </a>
-              </Typography>
+            <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1} sx={{ mt: 0.5 }}>
+              {data.species.metadata_source_url && (
+                <Typography variant="caption" color="text.secondary" component="span">
+                  Source:{' '}
+                  <a
+                    href={data.species.metadata_source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {data.species.metadata_source || data.species.metadata_source_url}
+                  </a>
+                </Typography>
+              )}
+              {isAdmin && speciesIdValid && (
+                <Tooltip title={t('speciesSummary.refreshMetadataHint')}>
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<CloudSyncIcon fontSize="small" />}
+                      disabled={refreshMetaMutation.isPending}
+                      onClick={() => refreshMetaMutation.mutate()}
+                    >
+                      {refreshMetaMutation.isPending
+                        ? t('speciesSummary.refreshMetadataRunning')
+                        : t('speciesSummary.refreshMetadata')}
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </Stack>
+            {refreshMetaMutation.isError && (
+              <Alert severity="error" sx={{ mt: 1 }} onClose={() => refreshMetaMutation.reset()}>
+                {t('speciesSummary.refreshMetadataError')}
+              </Alert>
+            )}
+            {refreshMetaMutation.isSuccess && (
+              <Alert severity="success" sx={{ mt: 1 }} onClose={() => refreshMetaMutation.reset()}>
+                {t('speciesSummary.refreshMetadataDone')}
+              </Alert>
             )}
           </Grid>
         </Grid>

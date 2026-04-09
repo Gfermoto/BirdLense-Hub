@@ -39,6 +39,7 @@ from species_metadata import (  # noqa: E402, F401
     infer_metadata_source_fields,
     load_species_canonical_mapping,
     normalize_species_to_canonical,
+    refresh_species_metadata_from_sources,
     update_species_info_from_wiki,
 )
 from observer_time import (  # noqa: E402, F401

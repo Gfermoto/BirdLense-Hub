@@ -49,7 +49,11 @@ UI: http://localhost:8085
 
 ## Конфигурация
 
-- `app_config/user_config.yaml` — основной конфиг
+- `app_config/default_config.yaml` — значения по умолчанию из образа/репозитория (базовая линия).
+- `app_config/user_config.yaml` — **переоператорские настройки**: глубокий merge поверх default; основной файл для сохранения настроек из UI. При деплое на сервер не перезаписываются живые `data/` и `user_config.yaml` (см. `docs/INSTALL.md` и правила deploy в репозитории).
+- **Переменные окружения** — слой рантайма для секретов и инфраструктуры: `DATA_DIR`, `MQTT_BROKER`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `GO2RTC_URL`, `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_*`, `MCP_TOKEN` и др. Во многих местах порядок **сначала env, потом YAML** (например брокер MQTT в bootstrap процессора и части UI).
+- При загрузке выполняется проверка **типов верхнеуровневых секций** merged-конфига (известные секции должны быть mapping, не скаляр). Ошибки пишутся в лог; `BIRDLENSE_STRICT_CONFIG=1` — **падать при старте**, если валидация не прошла.
+
 - **Go2RTC URL:** Настройки → Видео — `http://IP:1984` (хост, где доступен Go2RTC)
 - Камеры: Настройки → Камеры (stream name из Go2RTC)
 - Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`

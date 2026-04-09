@@ -359,6 +359,7 @@ class MQTTEventAggregator:
         reconnect_max_delay: int = 300,
         scales_topic: str | None = None,
         scales_data_dir: str | None = None,
+        fifo_snapshot_data_dir: str | None = None,
         scales_unit: str = "kg",
         scales_history_max_lines: int = 10000,
         scale_motion_trigger_cb=None,
@@ -420,6 +421,9 @@ class MQTTEventAggregator:
         sbp = (scales_bird_present_topic or "").strip()
         self.scales_bird_present_topic = sbp if sbp else None
         self.scales_data_dir = (scales_data_dir or "").strip() or None
+        fs_dir = (fifo_snapshot_data_dir or "").strip()
+        self._fifo_snapshot_dir = fs_dir or None
+        self._fifo_snapshot_last_monotonic = 0.0
         self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
         self.scales_history_max_lines = max(100, int(scales_history_max_lines or 10000))
         self._scale_motion_trigger_cb = scale_motion_trigger_cb
@@ -568,6 +572,35 @@ class MQTTEventAggregator:
                 overflow,
                 ttl_hours,
             )
+        self._maybe_write_birdnet_fifo_snapshot_locked()
+
+    def _maybe_write_birdnet_fifo_snapshot_locked(self) -> None:
+        """Обновить JSON-снимок FIFO (только под lock; дешёвый no-op если рано для throttle)."""
+        if not self._fifo_snapshot_dir:
+            return
+        if not bool(app_config.get("processor.birdnet_fifo_snapshot_enabled", True)):
+            return
+        try:
+            interval = float(app_config.get("processor.birdnet_fifo_snapshot_interval_sec") or 3)
+        except (TypeError, ValueError):
+            interval = 3.0
+        interval = max(1.0, min(interval, 300.0))
+        now_m = time.monotonic()
+        if now_m - self._fifo_snapshot_last_monotonic < interval:
+            return
+        from birdnet_fifo_snapshot import write_birdnet_fifo_snapshot
+
+        try:
+            write_birdnet_fifo_snapshot(
+                data_dir=self._fifo_snapshot_dir,
+                events=list(self._birdnet_events),
+                fifo_cap=self._birdnet_event_cap,
+                mqtt_connected=bool(self._connected),
+                processor_pid=os.getpid(),
+            )
+            self._fifo_snapshot_last_monotonic = now_m
+        except Exception:
+            logger.debug("BirdNET FIFO snapshot failed", exc_info=True)
 
     def _remember_birdnet_event(self, ev: dict) -> None:
         with self._lock:

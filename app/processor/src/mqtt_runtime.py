@@ -63,10 +63,7 @@ def _frigate_camera_filter_list(cameras: list) -> list:
 
 
 def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
-    # Respect explicit empty list [] in motion.* (wildcard), do not fallback
-    # to mqtt.* defaults just because [] is falsy.
-    raw_motion = app_config.get(motion_key)
-    raw = raw_motion if raw_motion is not None else app_config.get(mqtt_key)
+    raw = app_config.get(motion_key) or app_config.get(mqtt_key)
     if raw is None:
         return set(default)
     if isinstance(raw, str):
@@ -173,6 +170,7 @@ def start_mqtt_aggregator_session(
         scales_topic=scales_topic_arg,
         scales_bird_present_topic=bird_present_topic,
         scales_data_dir=scales_data_for_file,
+        fifo_snapshot_data_dir=data_dir,
         scales_unit=scales_unit_arg,
         scales_history_max_lines=scales_hist_lines,
         scale_motion_trigger_cb=scale_motion_cb,

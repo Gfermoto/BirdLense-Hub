@@ -830,7 +830,12 @@
     "noDescription": "Описание временно недоступно для этого вида.",
     "tuningMark": "Пометить как цель дообучения",
     "tuningUnmark": "Снять метку цели дообучения",
-    "tuningMarked": "Вид отмечен как цель для будущего дообучения модели."
+    "tuningMarked": "Вид отмечен как цель для будущего дообучения модели.",
+    "refreshMetadata": "Обновить карточку из Wikipedia / iNaturalist",
+    "refreshMetadataHint": "Перезапросить фото и описание только для этого вида (нужен пароль из Настроек). Исправляет ошибочные картинки без полной «полировки» каталога.",
+    "refreshMetadataRunning": "Обновление…",
+    "refreshMetadataDone": "Карточка обновлена.",
+    "refreshMetadataError": "Не удалось обновить метаданные"
   },
   "timelineStats": {
     "uniqueSpecies": "Уникальных видов",
@@ -989,6 +994,9 @@
     "automationNoSpeciesVideosPurgeBatch": "Без детекций: удалить партию",
     "automationNoSpeciesVideosPurgeBatchHint": "До 500 записей без видов и их папок на диске. Повторять, пока deletedCount не 0.",
     "automationNoSpeciesVideosPurgePrompt": "Фраза из ответа «оценить» (поле confirmation_phrase).",
+    "automationDiagnosticsTitle": "Диагностика",
+    "automationBirdnetFifoSnapshot": "BirdNET FIFO: снимок",
+    "automationBirdnetFifoSnapshotHint": "Очередь последних MQTT-событий BirdNET в процессоре (агрегат на диске). Если файл отсутствует или устарел — проверьте, что процессор и MQTT работают.",
     "processorActivityTitle": "Heartbeat процессора",
     "processorActivityLoading": "Загрузка heartbeat процессора...",
     "processorActivityLoadFailed": "Не удалось загрузить активность heartbeat процессора.",

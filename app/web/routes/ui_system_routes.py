@@ -1,45 +1,26 @@
 """Админские и служебные маршруты ``/api/ui/system/*``: БД, ретеншн, виды, конфиг, отчёты."""
 import os
-import re
 import threading
-import sqlite3
-import tempfile
 import json
-import io
-import csv
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
-from flask import request, Response, send_file, jsonify, after_this_request
-import shutil
-import subprocess
+from flask import request
 import sys
-from pathlib import Path
-import util as util_mod
 from models import (
-    ActivityLog, db, Video, Species, VideoSpecies, SpeciesVisit,
+    ActivityLog, db, Video, Species, VideoSpecies,
     SystemResourceSample,
 )
-from sqlalchemy import delete, exists, func, select
-from services.retention_service import run_retention, _delete_video_row_cascade
+from sqlalchemy import delete, func, select
 from services.species_registry_service import (
     catalog_cards_coverage_snapshot,
     repair_catalog_cards,
     resolve_species_name,
 )
 from services.heimdall_service import probe_heimdall
-from services.species_visit_maintenance_service import (
-    apply_clean_orphaned_visits,
-    apply_realign_visit_times,
-    apply_split_large_gap_visits,
-    preview_clean_orphaned_visits,
-    preview_realign_visit_times,
-    preview_split_large_gap_visits,
-)
-from services.species_merge_service import merge_species_into
 from app_config.app_config import app_config
 from auth import admin_track_regen_access
-from util import settings_check_access, recordings_dir, metrics_bearer_denied
+from util import settings_check_access, recordings_dir
 from services.cache import cache_get, cache_set
 from services.http_response_cache import bust_system_response_caches, bust_response_caches
 from services.track_regen_service import (
@@ -48,8 +29,7 @@ from services.track_regen_service import (
     run_track_regen_with_precise_fallback as _run_track_regen_with_precise_fallback,
     summarize_track_regen_detections as _summarize_track_regen_detections,
 )
-from services.fusion_training_service import repo_root as _repo_root
-from data_paths import data_dir, resolve_recording_video_file
+from data_paths import resolve_recording_video_file
 from services.activity_notify_insights_service import (
     ingest_gate_reason_counts_24h as _ingest_gate_reason_counts_24h,
     notify_delivery_24h as _notify_delivery_24h,
@@ -61,6 +41,10 @@ from services.activity_notify_insights_service import (
 from services.legacy_import_cleanup_service import (
     cleanup_legacy_import_placeholders as _cleanup_legacy_import_placeholders,
 )
+from services.sqlite_admin_service import (
+    backup_sqlite_to_file as _sqlite_backup_to_file,
+    replace_live_sqlite_db as _sqlite_replace_live_db,
+)
 from services.ml_health_stats_service import ml_health_snapshot as _ml_health_snapshot
 from services.ml_lineage_service import (
     current_model_lineage_snapshot as _current_model_lineage_snapshot,
@@ -68,15 +52,9 @@ from services.ml_lineage_service import (
 from services.prometheus_metrics_service import (
     prometheus_metrics_body as _prometheus_metrics_body,
 )
-from services.sqlite_admin_service import (
-    backup_sqlite_to_file as _sqlite_backup_to_file,
-    replace_live_sqlite_db as _sqlite_replace_live_db,
-    validate_sqlite_file as _sqlite_validate_file,
-)
 from services.system_live_metrics_service import (
     collect_live_system_metrics as _collect_live_system_metrics,
 )
-from services.storage_tree_utils import get_tree_storage_info
 from services.visitor_stats_service import (
     browser_hash as _browser_hash,
     collect_visitor_stats as _collect_visitor_stats,
@@ -89,7 +67,6 @@ from services.system_metrics_constants import (
     SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP,
     SYSTEM_METRICS_RETENTION_HOURS,
     SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
-    _CACHE_STORAGE_STATS_SEC,
     _CACHE_SYSTEM_ACTIVITY_SEC,
     _CACHE_SYSTEM_METRICS_HIST_SEC,
     _CACHE_SYSTEM_METRICS_SEC,
@@ -97,7 +74,16 @@ from services.system_metrics_constants import (
     env_bounded_int,
 )
 
-import routes.ui_system_jobs_state as job_state
+# Last spectrogram regeneration result (for status polling)
+_regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_regenerate_lock = threading.Lock()
+_regenerate_tracks_lock = threading.Lock()
+_species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_species_metadata_lock = threading.Lock()
+_catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+_catalog_cards_lock = threading.Lock()
+_catalog_cards_next_run_ts = 0.0
 
 
 LOG_LINES_DEFAULT = 200
@@ -137,6 +123,8 @@ CATALOG_REPAIR_LIMIT = env_bounded_int(
     'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
 )
 
+_sampler_lock = threading.Lock()
+_sampler_started = False
 
 
 def _manual_conflict_with_detection(
@@ -200,15 +188,16 @@ def _system_metrics_sampler_worker(app):
 
 
 def _maybe_run_catalog_cards_repair(app) -> None:
+    global _catalog_cards_next_run_ts
     if not CATALOG_REPAIR_AUTORUN_ENABLED:
         return
     now_ts = datetime.now(timezone.utc).timestamp()
-    if job_state._catalog_cards_next_run_ts and now_ts < job_state._catalog_cards_next_run_ts:
+    if _catalog_cards_next_run_ts and now_ts < _catalog_cards_next_run_ts:
         return
-    with job_state._catalog_cards_lock:
-        if job_state._catalog_cards_status.get('status') == 'running':
+    with _catalog_cards_lock:
+        if _catalog_cards_status.get('status') == 'running':
             return
-        job_state._catalog_cards_status.update({
+        _catalog_cards_status.update({
             'status': 'running',
             'result': None,
             'error': None,
@@ -225,29 +214,29 @@ def _maybe_run_catalog_cards_repair(app) -> None:
             limit=CATALOG_REPAIR_LIMIT,
         )
         coverage_after = catalog_cards_coverage_snapshot(app_config.get)
-        with job_state._catalog_cards_lock:
-            job_state._catalog_cards_status.update({
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
                 'status': 'done',
                 'result': {**result, 'auto': True, 'coverage_after': coverage_after},
                 'error': None,
             })
     except Exception as e:
         db.session.rollback()
-        with job_state._catalog_cards_lock:
-            job_state._catalog_cards_status.update({
+        with _catalog_cards_lock:
+            _catalog_cards_status.update({
                 'status': 'error',
                 'result': None,
                 'error': str(e),
             })
     finally:
-        job_state._catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
+        _catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
 
 
 def _catalog_cards_schedule_state() -> dict:
     now_ts = datetime.now(timezone.utc).timestamp()
     next_in = 0
-    if job_state._catalog_cards_next_run_ts > now_ts:
-        next_in = int(job_state._catalog_cards_next_run_ts - now_ts)
+    if _catalog_cards_next_run_ts > now_ts:
+        next_in = int(_catalog_cards_next_run_ts - now_ts)
     return {
         'autorun_enabled': CATALOG_REPAIR_AUTORUN_ENABLED,
         'interval_min': CATALOG_REPAIR_INTERVAL_MIN,
@@ -257,14 +246,15 @@ def _catalog_cards_schedule_state() -> dict:
 
 
 def _start_system_metrics_sampler(app):
+    global _sampler_started
     if os.environ.get('DISABLE_SYSTEM_METRICS_SAMPLER', '').strip().lower() in (
         '1', 'true', 'yes',
     ):
         return
-    with job_state._sampler_lock:
-        if job_state._sampler_started:
+    with _sampler_lock:
+        if _sampler_started:
             return
-        job_state._sampler_started = True
+        _sampler_started = True
     threading.Thread(
         target=_system_metrics_sampler_worker,
         args=(app,),
@@ -440,7 +430,8 @@ def register_routes(app):
 
         If ``video_ids`` is set, only those rows are processed (always overwrite existing file).
         """
-        job_state._regenerate_status = {
+        global _regenerate_status
+        _regenerate_status = {
             'status': 'running', 'result': None, 'error': None,
             'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
         }
@@ -452,7 +443,7 @@ def register_routes(app):
                     from spectrogram import generate_spectrogram
                 except ImportError as e:
                     app.logger.exception('Spectrogram import failed')
-                    job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
                     return
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
@@ -484,7 +475,7 @@ def register_routes(app):
                 videos = query.order_by(Video.start_time.asc()).all()
 
                 total = len(videos)
-                job_state._regenerate_status['progress']['total'] = total
+                _regenerate_status['progress']['total'] = total
 
                 generated = 0
                 failed = 0
@@ -493,7 +484,7 @@ def register_routes(app):
                 for video in videos:
                     if not video.video_path:
                         skipped += 1
-                        job_state._regenerate_status['progress'].update(
+                        _regenerate_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -501,7 +492,7 @@ def register_routes(app):
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
-                        job_state._regenerate_status['progress'].update(
+                        _regenerate_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -518,7 +509,7 @@ def register_routes(app):
                     else:
                         failed += 1
 
-                    job_state._regenerate_status['progress'].update(
+                    _regenerate_status['progress'].update(
                         processed=generated + failed + skipped,
                         generated=generated, failed=failed, skipped=skipped,
                     )
@@ -528,7 +519,7 @@ def register_routes(app):
                     app.logger.info(
                         f'Spectrograms: generated={generated}, failed={failed}, skipped={skipped}'
                     )
-                    job_state._regenerate_status = {
+                    _regenerate_status = {
                         'status': 'done',
                         'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
                         'error': None,
@@ -537,14 +528,10 @@ def register_routes(app):
                 except Exception as e:
                     db.session.rollback()
                     app.logger.exception(f'Spectrogram commit failed: {e}')
-                    job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
         except Exception:
             app.logger.exception('Regenerate spectrograms failed')
-            job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
-
-    app.extensions.setdefault('birdlense', {})['run_regenerate_spectrograms'] = (
-        _run_regenerate_spectrograms
-    )
+            _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
 
     @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
     def regenerate_spectrograms():
@@ -564,9 +551,9 @@ def register_routes(app):
             return {
                 'error': 'Spectrogram regeneration requires BirdNET (MQTT broker + birdnet_topic)',
             }, 400
-        with job_state._regenerate_lock:
-            if job_state._regenerate_status['status'] == 'running':
-                return {'error': 'Regeneration already in progress', 'status': job_state._regenerate_status}, 409
+        with _regenerate_lock:
+            if _regenerate_status['status'] == 'running':
+                return {'error': 'Regeneration already in progress', 'status': _regenerate_status}, 409
         data = request.json or {}
         force = data.get('force', False)
         start_date = data.get('start_date')
@@ -590,11 +577,11 @@ def register_routes(app):
         video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
-        with job_state._regenerate_lock:
-            if job_state._regenerate_status['status'] == 'running':
+        with _regenerate_lock:
+            if _regenerate_status['status'] == 'running':
                 return {
                     'error': 'Regeneration already in progress',
-                    'status': job_state._regenerate_status,
+                    'status': _regenerate_status,
                 }, 409
         t = threading.Thread(
             target=_run_regenerate_spectrograms,
@@ -611,7 +598,7 @@ def register_routes(app):
     @app.route('/api/ui/system/regenerate-spectrograms/status', methods=['GET'])
     def regenerate_spectrograms_status():
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
-        return job_state._regenerate_status, 200
+        return _regenerate_status, 200
 
     def _run_regenerate_tracks(
         force: bool,
@@ -625,7 +612,8 @@ def register_routes(app):
         start_date, end_date: YYYY-MM-DD — период. None = все.
         species_ids: если задан — только видео, где есть детекция хотя бы одного из видов.
         """
-        job_state._regenerate_tracks_status = {
+        global _regenerate_tracks_status
+        _regenerate_tracks_status = {
             'status': 'running', 'result': None, 'error': None,
             'progress': {
                 'processed': 0,
@@ -696,7 +684,14 @@ def register_routes(app):
                     app_config.get('processor.track_regen_ignore_regional_species', True)
                 )
                 regen_params['match_live_pipeline'] = match_live
-                job_state._regenerate_tracks_status['progress']['regen_params'] = regen_params
+                parallel_auto_with_manual = bool(
+                    app_config.get(
+                        'processor.track_regen_parallel_auto_with_manual',
+                        False,
+                    ),
+                )
+                regen_params['parallel_auto_with_manual'] = parallel_auto_with_manual
+                _regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 # Явные video_ids (один ролик из UI): не фильтровать по пустым frames.
                 # Иначе ролик с frames='[]', только audio-строками или «левыми» frames
@@ -748,7 +743,7 @@ def register_routes(app):
 
                 videos = q.order_by(Video.start_time.asc()).all()
                 total = len(videos)
-                job_state._regenerate_tracks_status['progress']['total'] = total
+                _regenerate_tracks_status['progress']['total'] = total
                 if total == 0 and target_video_ids:
                     app.logger.warning(
                         'Track regen: no videos for explicit ids %s (missing or filtered out)',
@@ -908,7 +903,7 @@ def register_routes(app):
 
                 for video in videos:
                     species_name_to_id_cache.clear()
-                    job_state._regenerate_tracks_status['progress']['current_video'] = (
+                    _regenerate_tracks_status['progress']['current_video'] = (
                         video.video_path or None
                     )
                     if not video.video_path:
@@ -918,7 +913,7 @@ def register_routes(app):
                             'video_path': None,
                             'reason': 'missing_video_path',
                         })
-                        job_state._regenerate_tracks_status['progress'].update(
+                        _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -931,7 +926,7 @@ def register_routes(app):
                             'video_path': video.video_path,
                             'reason': 'video_file_missing',
                         })
-                        job_state._regenerate_tracks_status['progress'].update(
+                        _regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -1020,7 +1015,7 @@ def register_routes(app):
                                 'video_path': video.video_path,
                                 'reason': reason,
                             })
-                            job_state._regenerate_tracks_status['progress'].update(
+                            _regenerate_tracks_status['progress'].update(
                                 processed=generated + failed + skipped,
                                 generated=generated, failed=failed, skipped=skipped,
                             )
@@ -1058,7 +1053,7 @@ def register_routes(app):
                                     'video_path': video.video_path,
                                     'reason': 'no_detections_for_selected_species',
                                 })
-                                job_state._regenerate_tracks_status['progress'].update(
+                                _regenerate_tracks_status['progress'].update(
                                     processed=generated + failed + skipped,
                                     generated=generated, failed=failed, skipped=skipped,
                                 )
@@ -1066,7 +1061,7 @@ def register_routes(app):
 
                         manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                         if manual_vs:
-                            # Только обновить frames (bbox) у manually_corrected-строк — виды не трогаем.
+                            # Только обновить frames (bbox) — виды не трогаем.
                             # Критично: сопоставлять только при совпадении вида, иначе кадр от другой птицы.
                             import json
                             used_det_indices = set()
@@ -1101,12 +1096,13 @@ def register_routes(app):
                                     manual_frames_rows_updated += 1
                             db.session.flush()
                             unmatched = [d for i, d in enumerate(detections) if i not in used_det_indices]
-                            unmatched = [
-                                d for d in unmatched
-                                if not _manual_conflict_with_detection(
-                                    manuals_ordered, d, _tracks_same_species
-                                )
-                            ]
+                            if not parallel_auto_with_manual:
+                                unmatched = [
+                                    d for d in unmatched
+                                    if not _manual_conflict_with_detection(
+                                        manuals_ordered, d, _tracks_same_species
+                                    )
+                                ]
                             if species_scope:
                                 unmatched = [
                                     _remap_det_for_scope(d)
@@ -1141,6 +1137,13 @@ def register_routes(app):
                                 )
                                 single_video_regen_summary['manual_frames_rows_updated'] = int(
                                     manual_frames_rows_updated
+                                )
+                                single_video_regen_summary['manual_tracks_overlay_expected'] = (
+                                    manual_frames_rows_updated > 0
+                                )
+                                single_video_regen_summary['tracks_overlay_expected'] = bool(
+                                    manual_frames_rows_updated > 0
+                                    or single_video_regen_summary.get('tracks_overlay_expected')
                                 )
                             precise_candidates.append({
                                 'video_id': video.id,
@@ -1188,7 +1191,7 @@ def register_routes(app):
                             'reason': 'processing_failed',
                         })
 
-                    job_state._regenerate_tracks_status['progress'].update(
+                    _regenerate_tracks_status['progress'].update(
                         processed=generated + failed + skipped,
                         generated=generated, failed=failed, skipped=skipped,
                     )
@@ -1206,6 +1209,9 @@ def register_routes(app):
                 }
                 if single_video_regen_summary is not None:
                     result['single_video_regen'] = single_video_regen_summary
+                    result['tracks_overlay_expected'] = bool(
+                        single_video_regen_summary.get('tracks_overlay_expected')
+                    )
                 if frames_updated:
                     result['frames_updated'] = frames_updated
                 if precise_candidates:
@@ -1214,7 +1220,7 @@ def register_routes(app):
                         dedup[(item['video_id'], item['reason'])] = item
                     result['precise_rerun_candidates'] = list(dedup.values())[:500]
                     result['precise_rerun_candidate_count'] = len(dedup)
-                job_state._regenerate_tracks_status = {
+                _regenerate_tracks_status = {
                     'status': 'done',
                     'result': result,
                     'error': None,
@@ -1223,7 +1229,7 @@ def register_routes(app):
         except Exception:
             db.session.rollback()
             app.logger.exception('Regenerate tracks failed')
-            job_state._regenerate_tracks_status = {
+            _regenerate_tracks_status = {
                 'status': 'done', 'result': None, 'error': 'Track regeneration failed',
                 'progress': None,
             }
@@ -1231,7 +1237,7 @@ def register_routes(app):
     @app.route('/api/ui/system/regenerate-tracks/status', methods=['GET'])
     def regenerate_tracks_status():
         """Return last track regeneration result."""
-        return job_state._regenerate_tracks_status, 200
+        return _regenerate_tracks_status, 200
 
     @app.route('/api/ui/videos/<int:video_id>/regenerate-tracks', methods=['POST'])
     def regenerate_tracks_single_video(video_id):
@@ -1243,11 +1249,11 @@ def register_routes(app):
             return {'error': 'Video not found'}, 404
         data = request.json or {}
         force = bool(data.get('force', False))
-        with job_state._regenerate_tracks_lock:
-            if job_state._regenerate_tracks_status['status'] == 'running':
+        with _regenerate_tracks_lock:
+            if _regenerate_tracks_status['status'] == 'running':
                 return {
                     'error': 'Track regeneration already in progress',
-                    'status': job_state._regenerate_tracks_status,
+                    'status': _regenerate_tracks_status,
                 }, 409
         t = threading.Thread(
             target=_run_regenerate_tracks,
@@ -1260,6 +1266,8 @@ def register_routes(app):
             'started': True,
             'video_id': video_id,
         }, 202
+
+
 
     from routes.ui_system_species_registry_routes import register_ui_system_species_registry_routes
     register_ui_system_species_registry_routes(app)
