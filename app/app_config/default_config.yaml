@@ -164,9 +164,15 @@ motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
   check_every_n_frames: 2
+  # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
+  opencv_diff_threshold: 22
+  opencv_min_contour_area: 320
   frigate_camera_filter: []  # from cameras list; frigate/events
-  frigate_label_filter: ["bird", "Bird", "squirrel", "Squirrel"]
+  # Добавлены animal — часть моделей Frigate; при странном label см. frigate_trigger_on_tracked_object.
+  frigate_label_filter: ["bird", "Bird", "squirrel", "Squirrel", "animal", "Animal"]
   frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
+  # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).
+  frigate_trigger_on_tracked_object: true
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
   esphome_url: ""
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
