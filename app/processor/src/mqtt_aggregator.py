@@ -690,7 +690,7 @@ class MQTTEventAggregator:
                     cam_ok = not cam_f or (camera.lower() in cam_lower)
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
-                    lbl_ok = bool(lbl_f_lower & labels_lower)
+                    lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     relaxed = bool(
                         app_config.get('motion.frigate_trigger_on_tracked_object', True)
                     )

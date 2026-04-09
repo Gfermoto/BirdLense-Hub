@@ -96,6 +96,41 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'BirdBox')
 
+
+    def test_empty_label_filter_means_any_label(self):
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_label_exclude = set()
+        agg._on_frigate_motion = (
+            set(),
+            set(),
+            cb,
+        )
+        payload = json.dumps(
+            {
+                'after': {
+                    'camera': 'BirdBox',
+                    'label': 'jay',
+                }
+            }
+        ).encode()
+        msg = MagicMock()
+        msg.topic = 'frigate/events'
+        msg.payload = payload
+
+        with patch.object(ma.app_config, 'get', return_value=True):
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], 'BirdBox')
+
     def test_excluded_cat_still_triggers_recording_not_queued_for_merge(self):
         """frigate_label_exclude must not return() before motion; event must not enter _events."""
         calls = []
