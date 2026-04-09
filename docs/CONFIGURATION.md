@@ -16,6 +16,20 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 ---
 
+## Starter YAML profiles (`app/configs/`)
+
+Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and add passwords/tokens via **env** or local YAML only.
+
+| File | Typical use |
+|------|-------------|
+| [`app/configs/minimal.yaml`](../app/configs/minimal.yaml) | Simple LAN stack: Go2RTC + OpenCV motion; MQTT broker left empty |
+| [`app/configs/frigate-only.yaml`](../app/configs/frigate-only.yaml) | MQTT triggers from Frigate only (no BirdNET topic) |
+| [`app/configs/full.yaml`](../app/configs/full.yaml) | Reference “production-shaped” layout: several cameras, Frigate + BirdNET MQTT, HA weather, feeder — set `HA_TOKEN`, `MQTT_BROKER`, etc. in `.env` or YAML locally |
+
+**Production vs file-replay test:** Normal operation uses `video.source: go2rtc`. For **offline mp4 replay**, set `video.source: file` with `file_dir` / `file_path` and tune `processor.file_max_record_floor_seconds` (see **Video** behaviour row). Use `processor.keep_recording_when_no_detections: true` only in this **file** mode if you need to keep sessions with **zero** detections (e.g. crops / QA). For **live / Go2RTC**, that flag is **ignored** — empty sessions are still removed to save disk (no change from pre-#264 behaviour).
+
+---
+
 ## How keys are named
 
 - Tables use **dotted paths** that mirror YAML nesting, e.g. `video.go2rtc_url` → `video:` → `go2rtc_url:` in `user_config.yaml`.
@@ -107,6 +121,9 @@ The System page also lists these endpoints under **Notification observability** 
 | `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
+| `file_max_record_floor_seconds` | **`video.source=file` only:** minimum wall-clock segment (seconds) before finalize can split a long clip; default **86400**. See **Video** behaviour row. |
+| `keep_recording_when_no_detections` | **`video.source=file` only** (default **false**). If **true**, keep the finalized session (valid mp4) when there were **zero** stored detections — useful for offline pipelines. For **`go2rtc` / live** this key has **no effect**; empty sessions are still deleted. |
+| `track_regen_parallel_auto_with_manual` | Advanced track-regeneration parallelism when mixing auto and manual scope; ops tuning, YAML-only (see System → track regen docs in UI). |
 
 ---
 
@@ -215,6 +232,10 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 **Catalog quality:** `app/web/seed/species_suspect_blocklist.txt` lists terms used to hide non-bird / object rows from filtered species pickers (`GET /api/ui/species?exclude_suspects=1` when requested). Full report (suspects, duplicate-name merge candidates): System → “Species catalog data quality” or `GET /api/ui/system/species-registry/data-quality` (settings password). New ingest matching the blocklist does not create a junk species row — it is routed to “Unknown”.
 
 **Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
+
+**Classifier output vs DB / manual names:** Automatic labels are only strings that exist in the trained head inside the `.pt` (the merged class list). Adding a row in the SQLite species table or fixing text in the UI does **not** create a new classifier output — for example there is no “chicken” label unless that exact class name was trained in. Use the allowlist file to stay aligned with the model; to add new auto species, retrain or swap weights ([TRAINING](./TRAINING.md)).
+
+**Unknowns UX:** With strict ingest, out-of-allowlist names are stored against **Unknown** (no new species row). Contributors fix labels in **Unknowns**; operators use System → species data quality / reconcile for bulk cleanup. Display names for the same taxon should follow **canonical** rules above (`species_mapping`, `species_canonical_mapping.txt`, merge duplicates).
 
 | Key | Description |
 |-----|-------------|
