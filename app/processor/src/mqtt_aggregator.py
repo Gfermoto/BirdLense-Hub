@@ -129,6 +129,22 @@ HA_TOPIC_LAST_TIME = "birdlense/sensor/last_detection_time/state"
 HA_TOPIC_BIRD_DETECTED = "birdlense/binary_sensor/bird_detected/state"
 
 
+def _frigate_labels_match_exclude(labels: set, exclude: set) -> bool:
+    """True if any non-empty label matches ``exclude`` (case-insensitive)."""
+    if not exclude:
+        return False
+    ex = {str(x).strip().lower() for x in exclude if x is not None and str(x).strip()}
+    if not ex:
+        return False
+    for lab in labels:
+        if lab is None:
+            continue
+        s = str(lab).strip().lower()
+        if s and s in ex:
+            return True
+    return False
+
+
 def _frigate_after_has_tracked_geometry(after: dict) -> bool:
     """True if Frigate ``after`` still carries a tracked box/region (label string may differ)."""
     if not isinstance(after, dict):
@@ -641,11 +657,22 @@ class MQTTEventAggregator:
                 sub_label = ev.get("sub_label", "")
                 species = ev.get("species", "")
                 labels = {label, sub_label, species} if sub_label else {label, species}
-                if self._frigate_label_exclude and (labels & self._frigate_label_exclude):
+                # Excluded labels must not enter merge/fusion (no «cat» as species),
+                # but must NOT block motion/recording: OpenCV may miss night/mice while
+                # Frigate already has a tracked box (e.g. cat mis-ID for mouse).
+                skip_merge_queue = bool(
+                    self._frigate_label_exclude
+                    and _frigate_labels_match_exclude(
+                        labels, self._frigate_label_exclude
+                    )
+                )
+                if skip_merge_queue:
                     logger.debug(
-                        "Frigate event excluded (label_exclude): label=%s sub=%s",
-                        label, sub_label)
-                    return
+                        "Frigate exclude list (skip merge queue only): label=%s sub=%s",
+                        label,
+                        sub_label,
+                    )
+                    ev["_skip_mqtt_merge_queue"] = True
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
                     camera = ev.get("camera", "")
@@ -661,11 +688,19 @@ class MQTTEventAggregator:
                         after if isinstance(after, dict) else {}
                     ):
                         lbl_ok = True
-                        logger.info(
-                            "Frigate trigger: geometry fallback (label not in filter) "
-                            "camera=%s label=%s sub_label=%s",
-                            camera, label, sub_label,
-                        )
+                        if skip_merge_queue:
+                            logger.info(
+                                "Frigate trigger: geometry fallback (excluded label, "
+                                "recording only) camera=%s label=%s",
+                                camera,
+                                label,
+                            )
+                        else:
+                            logger.info(
+                                "Frigate trigger: geometry fallback (label not in filter) "
+                                "camera=%s label=%s sub_label=%s",
+                                camera, label, sub_label,
+                            )
                     if cam_ok and lbl_ok:
                         logger.info(
                             "Frigate trigger: camera=%s label=%s sub_label=%s -> recording",
@@ -731,9 +766,11 @@ class MQTTEventAggregator:
                 logger.debug("Scales MQTT: bird_present=%s", bp)
             return
         if ev:
+            skip_merge = bool(ev.pop("_skip_mqtt_merge_queue", False))
             self._validate_normalized_event(ev)
-            with self._lock:
-                self._events.append(ev)
+            if not skip_merge:
+                with self._lock:
+                    self._events.append(ev)
             if ev.get("source") == "birdnet":
                 self._remember_birdnet_event(ev)
 

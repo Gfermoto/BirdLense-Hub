@@ -16,6 +16,14 @@ import mqtt_aggregator as ma  # noqa: E402
 
 
 class TestFrigateGeometryTrigger(unittest.TestCase):
+    def test_labels_match_exclude_case_insensitive(self):
+        self.assertTrue(
+            ma._frigate_labels_match_exclude({'Cat', ''}, {'cat'}),
+        )
+        self.assertFalse(
+            ma._frigate_labels_match_exclude({'bird'}, {'cat'}),
+        )
+
     def test_parse_frigate_event_dict_bad_score(self):
         d = {
             'after': {
@@ -73,6 +81,47 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'BirdBox')
+
+    def test_excluded_cat_still_triggers_recording_not_queued_for_merge(self):
+        """frigate_label_exclude must not return() before motion; event must not enter _events."""
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_label_exclude = {'cat', 'dog'}
+        agg._on_frigate_motion = (
+            set(),
+            {'bird'},
+            cb,
+        )
+        payload = json.dumps(
+            {
+                'after': {
+                    'camera': 'BirdBox',
+                    'label': 'cat',
+                    'box': [0.02, 0.02, 0.2, 0.25],
+                }
+            }
+        ).encode()
+        msg = MagicMock()
+        msg.topic = 'frigate/events'
+        msg.payload = payload
+
+        def cfg_get(key, default=None):
+            if key == 'motion.frigate_trigger_on_tracked_object':
+                return True
+            return default
+
+        with patch.object(ma.app_config, 'get', side_effect=cfg_get):
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(agg._events), 0)
 
 
 if __name__ == '__main__':
