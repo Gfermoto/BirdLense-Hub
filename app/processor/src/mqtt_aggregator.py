@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
+from app_config.app_config import app_config
 from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -128,22 +129,31 @@ HA_TOPIC_LAST_TIME = "birdlense/sensor/last_detection_time/state"
 HA_TOPIC_BIRD_DETECTED = "birdlense/binary_sensor/bird_detected/state"
 
 
-def _parse_frigate_event(payload):
-    """Parse Frigate event: before/after, type (new/update/end). Uses after for final state.
+def _frigate_after_has_tracked_geometry(after: dict) -> bool:
+    """True if Frigate ``after`` still carries a tracked box/region (label string may differ)."""
+    if not isinstance(after, dict):
+        return False
+    box = after.get("box")
+    if isinstance(box, (list, tuple)) and len(box) >= 4:
+        return True
+    if box is not None and box != "":
+        return True
+    region = after.get("region")
+    if isinstance(region, (list, tuple)) and len(region) >= 2:
+        return True
+    if region is not None and region != "":
+        return True
+    return False
 
-    sub_label: species from Frigate Bird Classification (MobileNet INat), when enabled.
-    See https://docs.frigate.video/configuration/bird_classification/
-    """
-    try:
-        data = json.loads(payload.decode())
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        logger.warning("Frigate parse error: %s", e)
+
+def _parse_frigate_event_dict(data: dict) -> dict | None:
+    """Parse Frigate JSON object (already decoded). Uses after for final state."""
+    if not isinstance(data, dict):
         return None
     after = data.get("after") or data
     before = data.get("before") or {}
     camera = after.get("camera") or before.get("camera", "")
     label = after.get("label") or before.get("label", "")
-    # sub_label = bird species from Frigate Bird Classification (INat model)
     sub_label_raw = after.get("sub_label") or before.get("sub_label")
     sub_label = ""
     if isinstance(sub_label_raw, str):
@@ -151,7 +161,10 @@ def _parse_frigate_event(payload):
     elif isinstance(sub_label_raw, (list, tuple)) and sub_label_raw:
         sub_label = str(sub_label_raw[0]) if sub_label_raw else ""
     score = after.get("top_score") or after.get("score") or before.get("top_score") or before.get("score", 0)
-    # frame_time — Unix timestamp для слияния по времени (after, before, или root)
+    try:
+        confidence = float(score)
+    except (TypeError, ValueError):
+        confidence = 0.0
     frame_time = after.get("frame_time") or before.get("frame_time") or data.get("frame_time")
     if frame_time is not None:
         try:
@@ -163,13 +176,23 @@ def _parse_frigate_event(payload):
         timestamp = datetime.now(timezone.utc).isoformat()
     return {
         "source": "frigate",
-        "species": sub_label or label or "unknown",  # prefer sub_label (species) over label (bird)
+        "species": sub_label or label or "unknown",
         "label": label,
         "sub_label": sub_label,
-        "confidence": float(score),
+        "confidence": confidence,
         "camera": camera,
         "timestamp": timestamp,
     }
+
+
+def _parse_frigate_event(payload):
+    """Parse Frigate event bytes (MQTT payload)."""
+    try:
+        data = json.loads(payload.decode())
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        logger.warning("Frigate parse error: %s", e)
+        return None
+    return _parse_frigate_event_dict(data)
 
 
 def _parse_birdnet_event(payload):
@@ -599,7 +622,13 @@ class MQTTEventAggregator:
     def _on_message(self, client, userdata, msg):
         ev = None
         if msg.topic == self.frigate_topic:
-            ev = _parse_frigate_event(msg.payload)
+            try:
+                fdata = json.loads(msg.payload.decode())
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                logger.warning("Frigate parse error: %s", e)
+                return
+            after = fdata.get("after") or fdata
+            ev = _parse_frigate_event_dict(fdata)
             if ev is None:
                 plen = len(msg.payload) if msg.payload else 0
                 logger.debug(
@@ -625,6 +654,18 @@ class MQTTEventAggregator:
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     lbl_ok = bool(lbl_f_lower & labels_lower)
+                    relaxed = bool(
+                        app_config.get('motion.frigate_trigger_on_tracked_object', True)
+                    )
+                    if not lbl_ok and relaxed and _frigate_after_has_tracked_geometry(
+                        after if isinstance(after, dict) else {}
+                    ):
+                        lbl_ok = True
+                        logger.info(
+                            "Frigate trigger: geometry fallback (label not in filter) "
+                            "camera=%s label=%s sub_label=%s",
+                            camera, label, sub_label,
+                        )
                     if cam_ok and lbl_ok:
                         logger.info(
                             "Frigate trigger: camera=%s label=%s sub_label=%s -> recording",

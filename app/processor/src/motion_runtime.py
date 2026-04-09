@@ -66,6 +66,16 @@ def build_processor_motion_detector(
 
     add_source = app_config.get('motion.source', 'frigate')
     check_n = app_config.get('motion.check_every_n_frames', 1)
+    try:
+        oc_thresh = int(app_config.get('motion.opencv_diff_threshold', 25))
+    except (TypeError, ValueError):
+        oc_thresh = 25
+    try:
+        oc_area = int(app_config.get('motion.opencv_min_contour_area', 500))
+    except (TypeError, ValueError):
+        oc_area = 500
+    oc_thresh = max(5, min(oc_thresh, 80))
+    oc_area = max(50, min(oc_area, 20000))
     esphome_url = (
         os.environ.get('MOTION_ESPHOME_URL')
         or app_config.get('motion.esphome_url', '')
@@ -92,6 +102,8 @@ def build_processor_motion_detector(
         esphome_sensor=esphome_sensor,
         check_every_n_frames=check_n,
         or_extras=or_extras,
+        opencv_threshold=oc_thresh,
+        opencv_min_contour_area=oc_area,
     )
     if add_source == 'frigate':
         if primary:

@@ -37,12 +37,15 @@ class OpenCVMotionDetector:
             if frame is None:
                 time.sleep(self.check_interval)
                 continue
-            if not self._should_analyze():
-                time.sleep(self.check_interval)
-                continue
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             gray = cv2.GaussianBlur(gray, (21, 21), 0)
             if self._prev_gray is None:
+                self._prev_gray = gray
+                time.sleep(self.check_interval)
+                continue
+            if not self._should_analyze():
+                # Keep temporal baseline aligned with the stream (skip frames without
+                # letting _prev_gray drift hundreds of ms — misses small / brief motion).
                 self._prev_gray = gray
                 time.sleep(self.check_interval)
                 continue
@@ -64,11 +67,12 @@ class OpenCVMotionDetector:
         frame = self.capture_fn()
         if frame is None:
             return False
-        if not self._should_analyze():
-            return False
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
         if self._prev_gray is None:
+            self._prev_gray = gray
+            return False
+        if not self._should_analyze():
             self._prev_gray = gray
             return False
         diff = cv2.absdiff(self._prev_gray, gray)

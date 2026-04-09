@@ -22,6 +22,8 @@ def build_motion_detector(
     esphome_sensor='',
     check_every_n_frames=1,
     or_extras=None,
+    opencv_threshold=25,
+    opencv_min_contour_area=500,
 ):
     """Build the effective motion detector chain for the processor."""
     additional = None
@@ -30,6 +32,8 @@ def build_motion_detector(
     opencv_detector = OpenCVMotionDetector(
         capture_fn=media_source.capture,
         check_every_n_frames=check_every_n_frames,
+        threshold=int(opencv_threshold),
+        min_contour_area=int(opencv_min_contour_area),
     )
     # OpenCV parallel to Frigate only when Frigate MQTT path is actually active.
     # If broker/topic is missing or Frigate client is None, OpenCV must become the
