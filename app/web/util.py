@@ -38,7 +38,6 @@ from species_metadata import (  # noqa: E402, F401
     get_parent_name_for_species,
     infer_metadata_source_fields,
     load_species_canonical_mapping,
-    manual_species_image_override,
     normalize_species_to_canonical,
     update_species_info_from_wiki,
 )

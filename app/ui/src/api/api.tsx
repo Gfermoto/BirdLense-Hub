@@ -893,6 +893,7 @@ export interface CatalogRepairStatus {
     checked: number;
     metadata_fixed: number;
     images_replaced_from_inat: number;
+    images_realigned_allowlist_science?: number;
     still_missing: number;
     dry_run: boolean;
     auto?: boolean;
