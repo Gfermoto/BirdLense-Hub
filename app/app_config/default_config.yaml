@@ -168,8 +168,9 @@ motion:
   opencv_diff_threshold: 22
   opencv_min_contour_area: 320
   frigate_camera_filter: []  # from cameras list; frigate/events
-  # Добавлены animal — часть моделей Frigate; при странном label см. frigate_trigger_on_tracked_object.
-  frigate_label_filter: ["bird", "Bird", "squirrel", "Squirrel", "animal", "Animal"]
+  # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
+  # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.
+  frigate_label_filter: ["bird", "Bird", "jay", "Jay", "corvid", "Corvid", "squirrel", "Squirrel", "animal", "Animal"]
   # Не подмешивать в merge как вид; запись по Frigate всё равно может стартовать по box/region.
   frigate_label_exclude: ["cat", "dog"]
   # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).

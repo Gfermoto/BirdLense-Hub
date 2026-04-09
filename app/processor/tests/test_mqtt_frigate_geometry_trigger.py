@@ -42,6 +42,20 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         )
         self.assertFalse(ma._frigate_after_has_tracked_geometry({}))
 
+    def test_tracked_geometry_detects_snapshot_box(self):
+        """Новые версии Frigate держат box внутри snapshot, не только в корне after."""
+        self.assertTrue(
+            ma._frigate_after_has_tracked_geometry({
+                'label': 'jay',
+                'snapshot': {'box': [10, 20, 100, 200]},
+            }),
+        )
+        self.assertTrue(
+            ma._frigate_after_has_tracked_geometry({
+                'snapshot': {'region': [0, 0, 640, 480]},
+            }),
+        )
+
     def test_on_message_triggers_on_box_when_label_mismatch(self):
         calls = []
 

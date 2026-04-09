@@ -118,6 +118,14 @@ class TestINaturalistMetadata:
         assert source_url is None
 
 
+class TestEnWikipediaBirdTitleVariant:
+    def test_eurasian_magpie_matches_wikipedia_url_style(self):
+        from web.species_metadata import _en_wikipedia_bird_title_variant
+
+        assert _en_wikipedia_bird_title_variant('Eurasian Magpie') == 'Eurasian magpie'
+        assert _en_wikipedia_bird_title_variant('Great Tit') == 'Great tit'
+
+
 class TestAllowlistScientificForDisplayName:
     """Бином из allowlist для общего имени вида в БД (регрессия сороки / Pica pica)."""
 
