@@ -31,6 +31,11 @@ _wiki_title_overrides = {
 
 _manual_image_overrides = {
     'jacobin pigeon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG',
+    # Pica pica: иногда в БД остаётся чужое фото при верном описании (wiki не перезапрашивается).
+    'pica pica (eurasian magpie)': (
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Pica_pica1.jpg/'
+        '330px-Pica_pica1.jpg'
+    ),
 }
 
 
@@ -384,8 +389,23 @@ def update_species_info_from_wiki(sp):
     Frontend must use resolveImageUrl() to handle both full URLs and relative paths.
     Prefer common name for lookup (Eurasian Jay) — Wikipedia often has image on common-name page.
     """
+    updated = False
+    key = (sp.name or '').strip().lower()
+    forced_url = _manual_image_overrides.get(key)
+    if forced_url and (sp.image_url or '').strip() != forced_url:
+        sp.image_url = forced_url
+        inf_src, inf_url = infer_metadata_source_fields(
+            getattr(sp, 'name', None), forced_url, None
+        )
+        if inf_src and not getattr(sp, 'metadata_source', None):
+            sp.metadata_source = inf_src
+        if inf_url and not getattr(sp, 'metadata_source_url', None):
+            sp.metadata_source_url = inf_url
+        updated = True
+
     if sp.image_url and sp.description:
-        return False
+        return updated
+
     metadata_source = None
     metadata_source_url = None
     # Prefer canonical wiki title from taxon registry when available.
@@ -463,7 +483,6 @@ def update_species_info_from_wiki(sp):
             description = f"{title} is a bird taxon represented in the BirdLense registry."
 
     if not image_url:
-        key = (sp.name or '').strip().lower()
         image_url = _manual_image_overrides.get(key) or image_url
     if image_url and not sp.image_url:
         sp.image_url = image_url
@@ -478,7 +497,7 @@ def update_species_info_from_wiki(sp):
         sp.metadata_source = metadata_source or inferred_source
     if (metadata_source_url or inferred_url) and not getattr(sp, 'metadata_source_url', None):
         sp.metadata_source_url = metadata_source_url or inferred_url
-    return bool(image_url or description)
+    return updated or bool(image_url or description)
 
 
 def filter_feeder_species(species_names):
