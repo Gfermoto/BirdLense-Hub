@@ -63,7 +63,10 @@ def _frigate_camera_filter_list(cameras: list) -> list:
 
 
 def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
-    raw = app_config.get(motion_key) or app_config.get(mqtt_key)
+    # Respect explicit empty list [] in motion.* (wildcard), do not fallback
+    # to mqtt.* defaults just because [] is falsy.
+    raw_motion = app_config.get(motion_key)
+    raw = raw_motion if raw_motion is not None else app_config.get(mqtt_key)
     if raw is None:
         return set(default)
     if isinstance(raw, str):

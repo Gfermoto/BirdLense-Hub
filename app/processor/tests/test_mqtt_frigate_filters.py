@@ -69,3 +69,20 @@ class TestMqttFrigateFilters(unittest.TestCase):
                 ['bird'],
             )
             self.assertEqual(out, {'Bird'})
+
+    def test_empty_motion_label_filter_stays_empty_wildcard(self):
+        def fake_get(key, default=None):
+            if key == 'motion.frigate_label_filter':
+                return []
+            if key == 'mqtt.frigate_label_filter':
+                return ['bird', 'Bird']
+            return default
+
+        with patch.object(mqtt_runtime_mod.app_config, 'get', side_effect=fake_get):
+            out = mqtt_runtime_mod._frigate_label_set(
+                'motion.frigate_label_filter',
+                'mqtt.frigate_label_filter',
+                ['bird'],
+            )
+            self.assertEqual(out, set())
+
