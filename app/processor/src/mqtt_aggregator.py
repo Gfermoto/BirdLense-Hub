@@ -936,7 +936,10 @@ class MQTTEventAggregator:
                             False,
                             False,
                         )
-        elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
+        elif any(
+            mqtt.topic_matches_sub(sub, msg.topic)
+            for sub in getattr(self, 'birdnet_topics', ())
+        ):
             ev, reason = _parse_birdnet_event_with_reason(msg.payload)
             if ev is None:
                 plen = len(msg.payload) if msg.payload else 0

@@ -11,10 +11,15 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.insert(0, src_path)
 
+# Wildcard topic matching must stay real: mqtt_aggregator uses +/# for Frigate snapshot
+# and BirdNET subtrees. A naive ``sub == topic`` breaks other processor tests in the same
+# pytest session (order-dependent flakes).
+import paho.mqtt.client as _real_paho_client  # noqa: E402
+
 fake_paho = types.ModuleType('paho')
 fake_paho_mqtt = types.ModuleType('paho.mqtt')
 fake_paho_mqtt_client = types.ModuleType('paho.mqtt.client')
-fake_paho_mqtt_client.topic_matches_sub = lambda sub, topic: sub == topic
+fake_paho_mqtt_client.topic_matches_sub = _real_paho_client.topic_matches_sub
 fake_paho_mqtt.client = fake_paho_mqtt_client
 fake_paho.mqtt = fake_paho_mqtt
 sys.modules.setdefault('paho', fake_paho)

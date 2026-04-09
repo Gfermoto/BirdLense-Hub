@@ -63,13 +63,24 @@ def _frigate_camera_filter_list(cameras: list) -> list:
 
 
 def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
-    raw = app_config.get(motion_key) or app_config.get(mqtt_key)
-    if raw is None:
-        return set(default)
-    if isinstance(raw, str):
-        s = raw.strip()
-        return {s} if s else set(default)
-    return set(raw)
+    """Resolve label set. Empty list ``[]`` is explicit (wildcard: match any label), not falsy.
+
+    Precedence: ``motion.*`` if the key is present in merged config (including ``[]``),
+    else ``mqtt.*``, else ``default``.
+    """
+    motion_raw = app_config.get(motion_key)
+    if motion_raw is not None:
+        if isinstance(motion_raw, str):
+            s = motion_raw.strip()
+            return {s} if s else set(default)
+        return set(motion_raw)
+    mqtt_raw = app_config.get(mqtt_key)
+    if mqtt_raw is not None:
+        if isinstance(mqtt_raw, str):
+            s = mqtt_raw.strip()
+            return {s} if s else set(default)
+        return set(mqtt_raw)
+    return set(default)
 
 
 def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
