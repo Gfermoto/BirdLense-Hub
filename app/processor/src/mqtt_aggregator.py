@@ -145,19 +145,29 @@ def _frigate_labels_match_exclude(labels: set, exclude: set) -> bool:
     return False
 
 
-def _frigate_after_has_tracked_geometry(after: dict) -> bool:
-    """True if Frigate ``after`` still carries a tracked box/region (label string may differ)."""
-    if not isinstance(after, dict):
-        return False
-    box = after.get("box")
+def _frigate_dict_has_box_or_region(obj: dict) -> bool:
+    """True if Frigate object state has box or region (coordinates may be nested)."""
+    box = obj.get("box")
     if isinstance(box, (list, tuple)) and len(box) >= 4:
         return True
     if box is not None and box != "":
         return True
-    region = after.get("region")
+    region = obj.get("region")
     if isinstance(region, (list, tuple)) and len(region) >= 2:
         return True
     if region is not None and region != "":
+        return True
+    return False
+
+
+def _frigate_after_has_tracked_geometry(after: dict) -> bool:
+    """True if Frigate ``after`` carries a tracked box/region (incl. ``snapshot.box`` on newer Frigate)."""
+    if not isinstance(after, dict):
+        return False
+    if _frigate_dict_has_box_or_region(after):
+        return True
+    snap = after.get("snapshot")
+    if isinstance(snap, dict) and _frigate_dict_has_box_or_region(snap):
         return True
     return False
 

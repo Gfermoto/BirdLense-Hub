@@ -395,8 +395,19 @@ def get_inaturalist_image_and_description(title):
         return None, None, None
 
 
+def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
+    """Стиль заголовка en.wikipedia: «Eurasian Magpie» → «Eurasian magpie» (как в URL / pageimages)."""
+    raw = (display_name or '').strip()
+    if not raw or '(' in raw:
+        return None
+    parts = raw.split()
+    if len(parts) < 2:
+        return None
+    return f"{parts[0]} {' '.join(p.lower() for p in parts[1:])}"
+
+
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
-    """Порядок заголовков для Wikipedia/iNaturalist: таксон → allowlist binomial → имя в БД."""
+    """Порядок заголовков для Wikipedia/iNaturalist: таксон → allowlist binomial → enwiki common → имя в БД."""
     titles: list[str] = []
     taxon = getattr(sp, 'taxon', None)
     wt = (getattr(taxon, 'wiki_title', None) or '').strip()
@@ -408,6 +419,10 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
     sci_allow = _allowlist_scientific_for_species_name(sp.name or '')
     if sci_allow:
         titles.append(sci_allow)
+
+    wiki_common = _en_wikipedia_bird_title_variant(sp.name or '')
+    if wiki_common:
+        titles.append(wiki_common)
 
     extracted = _extract_wiki_search_title(sp.name) or ''
     if extracted:
