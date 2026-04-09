@@ -5,10 +5,14 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import time
+from datetime import datetime, timezone
 
 from flask import request
 
+from app_config.app_config import app_config
 from auth import admin_track_regen_access
+from data_paths import data_dir as app_data_dir
 from models import ActivityLog, Species, Video, VideoSpecies, db
 from services.broken_videos_inventory_service import (
     broken_video_row_payload,
@@ -22,6 +26,7 @@ from services.retention_service import _delete_video_row_cascade
 from services.storage_tree_utils import get_tree_storage_info
 from services.system_route_payload_parsers import parse_video_ids
 import util as util_mod
+from util import settings_check_access
 
 BROKEN_VIDEOS_DELETE_CONFIRMATION = 'delete_broken_video_rows'
 BROKEN_VIDEOS_PURGE_CONFIRMATION = 'purge_all_broken_video_rows'
@@ -444,6 +449,55 @@ def register_ui_system_diagnostics_routes(app):
             db.session.rollback()
             app.logger.exception('No-species video purge failed: %s', e)
             return {'error': 'Failed to purge videos without species'}, 500
+
+    @app.route('/api/ui/system/diagnostics/birdnet-fifo', methods=['GET'])
+    def diagnostics_birdnet_fifo_snapshot():
+        """Снимок FIFO BirdNET с диска (пишет процессор; см. processor.birdnet_fifo_snapshot_*)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        rel = os.path.join('diagnostics', 'birdnet_fifo_snapshot.json').replace('\\', '/')
+        path = os.path.join(app_data_dir(), 'diagnostics', 'birdnet_fifo_snapshot.json')
+        try:
+            stale_sec = int(app_config.get('processor.birdnet_fifo_snapshot_stale_sec') or 180)
+        except (TypeError, ValueError):
+            stale_sec = 180
+        stale_sec = max(30, min(stale_sec, 86_400))
+        meta: dict = {
+            'snapshot_relative_path': rel,
+            'file_exists': os.path.isfile(path),
+        }
+        if not meta['file_exists']:
+            return {
+                **meta,
+                'available': False,
+                'reason': 'snapshot_file_missing',
+                'note': (
+                    'Файл ещё не создан: нет процессора/MQTT, нет событий BirdNET, '
+                    'или отключено processor.birdnet_fifo_snapshot_enabled.'
+                ),
+            }, 200
+        try:
+            st = os.stat(path)
+            meta['file_size_bytes'] = st.st_size
+            meta['file_mtime_iso'] = datetime.fromtimestamp(
+                st.st_mtime, tz=timezone.utc
+            ).isoformat()
+            age_sec = max(0.0, time.time() - st.st_mtime)
+            meta['file_age_sec'] = round(age_sec, 1)
+            snapshot_stale = age_sec > float(stale_sec)
+            meta['snapshot_stale'] = snapshot_stale
+            meta['stale_threshold_sec'] = stale_sec
+            with open(path, encoding='utf-8') as f:
+                snapshot = json.load(f)
+        except OSError as e:
+            return {'error': f'Failed to read snapshot: {e}', **meta}, 500
+        except json.JSONDecodeError as e:
+            return {'error': f'Invalid snapshot JSON: {e}', **meta}, 500
+        return {
+            **meta,
+            'available': True,
+            'snapshot': snapshot,
+        }, 200
 
     @app.route('/api/ui/system/diagnostics/review-only-noise-candidates', methods=['GET'])
     def list_review_only_noise_candidates():

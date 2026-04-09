@@ -1066,6 +1066,28 @@ export const fetchSpeciesSummary = async (
   return response.data;
 };
 
+export interface RefreshSpeciesMetadataResponse {
+  ok: boolean;
+  species_id: number;
+  name: string;
+  image_url: string | null;
+  description: string | null;
+  metadata_source: string | null;
+  metadata_source_url: string | null;
+}
+
+/** Перезапрос фото/описания для одной карточки вида (нужен пароль настроек, withCredentials). */
+export const refreshSpeciesMetadata = async (
+  speciesId: number,
+): Promise<RefreshSpeciesMetadataResponse> => {
+  const response = await axios.post<RefreshSpeciesMetadataResponse>(
+    `${BASE_API_URL}/species/${speciesId}/refresh-metadata`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 export interface TuningTargetEntry {
   id: number;
   name: string;

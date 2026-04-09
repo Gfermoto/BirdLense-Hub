@@ -2108,6 +2108,18 @@ class TestSpeciesSummaryReadOnly:
         data = r.get_json()
         assert data['stats']['hourlyActivity'][0] == 4
 
+    def test_refresh_metadata_requires_settings_password(self, app, client):
+        from models import Species, db
+
+        unique = f'API Refresh Meta Finch {id(app)}'
+        with app.app_context():
+            sp = Species(name=unique, metadata_status='ok')
+            db.session.add(sp)
+            db.session.commit()
+            sid = sp.id
+        r = client.post(f'/api/ui/species/{sid}/refresh-metadata', json={})
+        assert r.status_code == 403
+
 
 class TestVideoStreamAccess:
     """Поток видео для плеера: по умолчанию без пароля (Viewer)."""

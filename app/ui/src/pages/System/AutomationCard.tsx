@@ -260,6 +260,33 @@ export function AutomationCard() {
           {t('system.automationDangerNote')}
         </Alert>
 
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          {t('system.automationDiagnosticsTitle')}
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
+          <Tooltip title={t('system.automationBirdnetFifoSnapshotHint')} describeChild>
+            <span>
+              <Button
+                variant="outlined"
+                disabled={maintenanceAction !== null}
+                onClick={() => {
+                  void runMaintenanceAction(
+                    t('system.automationBirdnetFifoSnapshot'),
+                    async () =>
+                      (
+                        await axios.get(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
+                          withCredentials: true,
+                        })
+                      ).data as Record<string, unknown>,
+                  ).catch(() => undefined);
+                }}
+              >
+                {t('system.automationBirdnetFifoSnapshot')}
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
+
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
           <Tooltip title={t('system.automationFusionExportHint')} describeChild>
             <span>

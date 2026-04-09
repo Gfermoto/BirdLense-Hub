@@ -37,6 +37,45 @@ SENSITIVE_KEYS = frozenset({
 })
 MASK_PLACEHOLDER = '***'
 
+# Верхнеуровневые секции YAML: при ошибке типа (строка вместо mapping) ломается .get по вложенным ключам.
+_CONFIG_TOP_LEVEL_MAPPING_KEYS = frozenset({
+    'camera',
+    'detection',
+    'ebird',
+    'gallery',
+    'general',
+    'homeassistant',
+    'mcp',
+    'mqtt',
+    'notifications',
+    'performance',
+    'processor',
+    'secrets',
+    'species',
+    'video',
+    'weather',
+    'web_push',
+})
+
+
+def validate_merged_config(merged: dict) -> list[str]:
+    """Проверка структуры объединённого конфига после merge default + user.
+
+    Возвращает список сообщений об ошибках; пустой список — ок.
+    Не проверяет семантику значений (порты, URL) — только типы верхнего уровня.
+    """
+    issues: list[str] = []
+    if not isinstance(merged, dict):
+        return ['config root must be a mapping (dict), not %s' % type(merged).__name__]
+    for key in sorted(_CONFIG_TOP_LEVEL_MAPPING_KEYS & set(merged.keys())):
+        val = merged.get(key)
+        if val is not None and not isinstance(val, dict):
+            issues.append(
+                'top-level key %r must be a mapping or null, got %s'
+                % (key, type(val).__name__),
+            )
+    return issues
+
 
 def migrate_legacy_homeassistant_from_weather(user_config: dict) -> bool:
     """Переносит weather.ha_url / weather.ha_token в homeassistant.* и удаляет устаревшие ключи.
@@ -125,6 +164,17 @@ class AppConfig:
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
         self._enforce_confidence_floors(merged)
+        config_issues = validate_merged_config(merged)
+        for msg in config_issues:
+            logger.error('Config structure validation: %s', msg)
+        strict = (os.environ.get('BIRDLENSE_STRICT_CONFIG') or '').strip().lower() in (
+            '1', 'true', 'yes',
+        )
+        if strict and config_issues:
+            raise ValueError(
+                'Invalid merged config (set BIRDLENSE_STRICT_CONFIG=0 or fix YAML): '
+                + '; '.join(config_issues),
+            )
         return merged
 
     @staticmethod
