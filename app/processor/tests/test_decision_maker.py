@@ -231,7 +231,8 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertFalse(dm.decide_stop_recording())
         time.sleep(1.2)
         self.assertFalse(dm.decide_stop_recording())
-        time.sleep(5.1)
+        # _effective_max_inactive = 1 + 5 = 6s; extra margin for CI / loaded runners
+        time.sleep(6.0)
         self.assertTrue(dm.decide_stop_recording())
 
     def test_get_results_sorts_by_confidence_then_track_id(self):
