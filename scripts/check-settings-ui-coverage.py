@@ -73,6 +73,41 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "video.source=file: keep session mp4 when 0 detections; for offline crops, not main UI.",
         "next_step": "Optional Processor advanced toggle if file-test users grow.",
     },
+    "processor.birdnet_fifo_snapshot_enabled": {
+        "category": "ops-only",
+        "reason": "Processor writes BirdNET FIFO snapshot JSON for System diagnostics; not end-user Settings.",
+        "next_step": "Keep config-level or tie to a single Diagnostics toggle if productized.",
+    },
+    "processor.birdnet_fifo_snapshot_interval_sec": {
+        "category": "ops-only",
+        "reason": "Snapshot write interval; tuning for diagnostics load only.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_fifo_snapshot_recent_limit": {
+        "category": "ops-only",
+        "reason": "Max recent FIFO rows in snapshot payload.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_fifo_snapshot_stale_sec": {
+        "category": "ops-only",
+        "reason": "Web UI stale threshold when reading snapshot from disk.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_mqtt_observability_level": {
+        "category": "ops-only",
+        "reason": "Log verbosity for BirdNET MQTT path; operator tuning.",
+        "next_step": "Optional advanced Processor logging block.",
+    },
+    "processor.birdnet_mqtt_observability_debug": {
+        "category": "ops-only",
+        "reason": "Extra BirdNET MQTT debug logging; not for general UI.",
+        "next_step": "Same as birdnet_mqtt_observability_level.",
+    },
+    "processor.track_regen_parallel_auto_with_manual": {
+        "category": "advanced",
+        "reason": "Track regeneration parallelism when mixing auto and manual scope; heavy ops.",
+        "next_step": "Expose under System/track regen advanced if users need it without YAML.",
+    },
     "processor.single_stage_coco_animals_only_auto": {
         "category": "advanced",
         "reason": "COCO 80-class detect filter; deployment tuning.",
