@@ -264,6 +264,7 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "processor.birdnet_mqtt_prior_min_confidence",
     "processor.birdnet_mqtt_prior_ttl_hours",
     "processor.birdnet_mqtt_prior_window_hours",
+    "processor.birdnet_mqtt_bias_window_seconds",
     "processor.blur_threshold",
     "processor.classification_scheduler",
     "processor.key_frame_limit",

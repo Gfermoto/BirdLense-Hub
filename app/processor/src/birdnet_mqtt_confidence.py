@@ -27,12 +27,28 @@ def merge_birdnet_mqtt_bias_into_overrides(
     if not enabled or mqtt_aggregator is None:
         return out
 
-    try:
-        prior_window_hours = float(
-            app_config.get('processor.birdnet_mqtt_prior_window_hours', 24)
-        )
-    except (TypeError, ValueError):
-        prior_window_hours = 24.0
+    raw_window = app_config.get('processor.birdnet_mqtt_prior_window_hours', None)
+    if raw_window is None:
+        raw_window_seconds = app_config.get('processor.birdnet_mqtt_bias_window_seconds', 0)
+        try:
+            raw_window_seconds = float(raw_window_seconds or 0)
+        except (TypeError, ValueError):
+            raw_window_seconds = 0.0
+        if raw_window_seconds > 0:
+            prior_window_hours = raw_window_seconds / 3600.0
+            logger.info(
+                'BirdNET MQTT: using deprecated processor.birdnet_mqtt_bias_window_seconds=%ss '
+                '-> prior_window_hours=%.3f',
+                raw_window_seconds,
+                prior_window_hours,
+            )
+        else:
+            prior_window_hours = 24.0
+    else:
+        try:
+            prior_window_hours = float(raw_window)
+        except (TypeError, ValueError):
+            prior_window_hours = 24.0
     try:
         prior_ttl_hours = float(
             app_config.get('processor.birdnet_mqtt_prior_ttl_hours', 25)
