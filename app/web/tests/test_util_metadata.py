@@ -116,3 +116,13 @@ class TestINaturalistMetadata:
         assert image_url is None
         assert description is None
         assert source_url is None
+
+
+class TestManualSpeciesImageOverride:
+    """Ручные URL превью: совпадение с каноническим именем в БД (allowlist → common name)."""
+
+    def test_eurasian_magpie_common_name_matches_allowlist_row(self):
+        from web.species_metadata import manual_species_image_override
+
+        u = manual_species_image_override('Eurasian Magpie')
+        assert u and 'Pica_pica1' in u and u.startswith('https://upload.wikimedia.org/')

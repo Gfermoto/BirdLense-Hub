@@ -29,14 +29,27 @@ _wiki_title_overrides = {
     'grey headed fish eagle': 'Grey-headed fish eagle',
 }
 
+# Pica pica: Commons thumb path 5/5f (не 9/9d), иначе 404 в UI.
+_WIKI_EURASIAN_MAGPIE = (
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Pica_pica1.jpg/'
+    '330px-Pica_pica1.jpg'
+)
+
 _manual_image_overrides = {
     'jacobin pigeon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG',
-    # Pica pica: Commons thumb hash — 5/5f (не 9/9d), иначе 404 в UI.
-    'pica pica (eurasian magpie)': (
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Pica_pica1.jpg/'
-        '330px-Pica_pica1.jpg'
-    ),
+    # Allowlist materializes common name «Eurasian Magpie» — ключ только sci+common не срабатывал.
+    'eurasian magpie': _WIKI_EURASIAN_MAGPIE,
+    'pica pica (eurasian magpie)': _WIKI_EURASIAN_MAGPIE,
+    'pica pica': _WIKI_EURASIAN_MAGPIE,
 }
+
+
+def manual_species_image_override(species_name: str | None) -> str | None:
+    """Фиксированный URL превью для вида (если задан); иначе None."""
+    key = (species_name or '').strip().lower()
+    if not key:
+        return None
+    return _manual_image_overrides.get(key)
 
 
 def _url_hostname_lower(url: str) -> str | None:

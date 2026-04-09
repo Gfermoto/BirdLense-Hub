@@ -18,6 +18,7 @@ from util import (
     _extract_wiki_search_title,
     infer_metadata_source_fields,
     get_inaturalist_image_and_description,
+    manual_species_image_override,
     _host_is_wikipedia_family,
     _url_hostname_lower,
 )
@@ -625,6 +626,18 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
     images_replaced_from_inat = 0
 
     for sp in targets:
+        manual_img = manual_species_image_override(sp.name or '')
+        if manual_img and (sp.image_url or '').strip() != manual_img:
+            sp.image_url = manual_img
+            inf_src, inf_url = infer_metadata_source_fields(
+                getattr(sp, 'name', None), manual_img, None
+            )
+            if inf_src and not getattr(sp, 'metadata_source', None):
+                sp.metadata_source = inf_src
+            if inf_url and not getattr(sp, 'metadata_source_url', None):
+                sp.metadata_source_url = inf_url
+            metadata_fixed += 1
+
         before_img = bool((sp.image_url or '').strip())
         before_desc = bool((sp.description or '').strip())
 
