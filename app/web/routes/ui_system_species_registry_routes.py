@@ -24,6 +24,7 @@ from services.species_registry_service import (
 )
 from util import bust_feeder_species_filter_cache, settings_check_access
 
+import routes.ui_system_jobs_state as job_state
 from routes import ui_system_routes as uis
 
 
@@ -102,11 +103,11 @@ def register_ui_system_species_registry_routes(app):
         """
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        with uis._species_metadata_lock:
-            if uis._species_metadata_status.get('status') == 'running':
+        with job_state._species_metadata_lock:
+            if job_state._species_metadata_status.get('status') == 'running':
                 return {
                     'error': 'Enrichment already running',
-                    'status': uis._species_metadata_status,
+                    'status': job_state._species_metadata_status,
                 }, 409
             payload = request.get_json(silent=True) or {}
             try:
@@ -114,7 +115,7 @@ def register_ui_system_species_registry_routes(app):
             except (ValueError, TypeError):
                 return {'error': 'limit must be int'}, 400
             retry_failed_only = bool(payload.get('retry_failed_only', False))
-            uis._species_metadata_status.update({
+            job_state._species_metadata_status.update({
                 'status': 'running',
                 'result': None,
                 'error': None,
@@ -132,15 +133,15 @@ def register_ui_system_species_registry_routes(app):
                             dry_run=False,
                             retry_failed_only=retry_failed_only,
                         )
-                    with uis._species_metadata_lock:
-                        uis._species_metadata_status.update({
+                    with job_state._species_metadata_lock:
+                        job_state._species_metadata_status.update({
                             'status': 'done',
                             'result': stats,
                             'error': None,
                         })
                 except Exception as e:
-                    with uis._species_metadata_lock:
-                        uis._species_metadata_status.update({
+                    with job_state._species_metadata_lock:
+                        job_state._species_metadata_status.update({
                             'status': 'error',
                             'result': None,
                             'error': str(e),
@@ -149,7 +150,7 @@ def register_ui_system_species_registry_routes(app):
             threading.Thread(target=_run, daemon=True).start()
             return {
                 'message': 'Species metadata enrichment started',
-                'status': uis._species_metadata_status,
+                'status': job_state._species_metadata_status,
             }, 202
 
     @app.route(
@@ -160,8 +161,8 @@ def register_ui_system_species_registry_routes(app):
         """Get async enrichment status."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        with uis._species_metadata_lock:
-            return dict(uis._species_metadata_status), 200
+        with job_state._species_metadata_lock:
+            return dict(job_state._species_metadata_status), 200
 
     @app.route('/api/ui/system/species-registry/health', methods=['GET'])
     def get_species_registry_health():
@@ -213,11 +214,11 @@ def register_ui_system_species_registry_routes(app):
         """Start background repair for species cards."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        with uis._catalog_cards_lock:
-            if uis._catalog_cards_status.get('status') == 'running':
+        with job_state._catalog_cards_lock:
+            if job_state._catalog_cards_status.get('status') == 'running':
                 return {
                     'error': 'Repair already running',
-                    'status': uis._catalog_cards_status,
+                    'status': job_state._catalog_cards_status,
                 }, 409
             payload = request.get_json(silent=True) or {}
             try:
@@ -225,7 +226,7 @@ def register_ui_system_species_registry_routes(app):
             except (TypeError, ValueError):
                 return {'error': 'limit must be int'}, 400
             cov_before = catalog_cards_coverage_snapshot(app_config.get)
-            uis._catalog_cards_status.update({
+            job_state._catalog_cards_status.update({
                 'status': 'running',
                 'result': None,
                 'error': None,
@@ -246,16 +247,16 @@ def register_ui_system_species_registry_routes(app):
                         cov_after = catalog_cards_coverage_snapshot(
                             app_config.get,
                         )
-                    with uis._catalog_cards_lock:
+                    with job_state._catalog_cards_lock:
                         merged = {**result, 'coverage_after': cov_after}
-                        uis._catalog_cards_status.update({
+                        job_state._catalog_cards_status.update({
                             'status': 'done',
                             'result': merged,
                             'error': None,
                         })
                 except Exception as e:
-                    with uis._catalog_cards_lock:
-                        uis._catalog_cards_status.update({
+                    with job_state._catalog_cards_lock:
+                        job_state._catalog_cards_status.update({
                             'status': 'error',
                             'result': None,
                             'error': str(e),
@@ -264,7 +265,7 @@ def register_ui_system_species_registry_routes(app):
             threading.Thread(target=_run, daemon=True).start()
             return {
                 'message': 'Catalog cards repair started',
-                'status': uis._catalog_cards_status,
+                'status': job_state._catalog_cards_status,
             }, 202
 
     @app.route(
@@ -275,8 +276,8 @@ def register_ui_system_species_registry_routes(app):
         """Read background repair status with live coverage counters."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        with uis._catalog_cards_lock:
-            snap = dict(uis._catalog_cards_status)
+        with job_state._catalog_cards_lock:
+            snap = dict(job_state._catalog_cards_status)
         snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
         snap['schedule'] = uis._catalog_cards_schedule_state()
         return snap, 200

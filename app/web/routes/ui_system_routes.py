@@ -42,21 +42,13 @@ from auth import admin_track_regen_access
 from util import settings_check_access, recordings_dir, metrics_bearer_denied
 from services.cache import cache_get, cache_set
 from services.http_response_cache import bust_system_response_caches, bust_response_caches
-from services.telegram_proxy_service import (
-    refresh_telegram_proxy as refresh_telegram_proxy_service,
-)
 from services.track_regen_service import (
     derive_track_regen_species_scope as _derive_track_regen_species_scope,
     remap_detection_to_local_scope as _remap_detection_to_local_scope,
     run_track_regen_with_precise_fallback as _run_track_regen_with_precise_fallback,
     summarize_track_regen_detections as _summarize_track_regen_detections,
 )
-from services.fusion_training_service import (
-    latest_fusion_export_path as _latest_fusion_export_path,
-    repo_root as _repo_root,
-    run_fusion_eval_job as _run_fusion_eval_job,
-    run_fusion_export_job as _run_fusion_export_job,
-)
+from services.fusion_training_service import repo_root as _repo_root
 from data_paths import data_dir, resolve_recording_video_file
 from services.activity_notify_insights_service import (
     ingest_gate_reason_counts_24h as _ingest_gate_reason_counts_24h,
@@ -105,22 +97,7 @@ from services.system_metrics_constants import (
     env_bounded_int,
 )
 
-# Last spectrogram regeneration result (for status polling)
-_regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_regenerate_lock = threading.Lock()
-_regenerate_tracks_lock = threading.Lock()
-_species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_species_metadata_lock = threading.Lock()
-_catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_catalog_cards_lock = threading.Lock()
-_catalog_cards_next_run_ts = 0.0
-_fusion_export_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_fusion_export_lock = threading.Lock()
-_fusion_eval_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_fusion_eval_lock = threading.Lock()
-_telegram_proxy_refresh_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-_telegram_proxy_refresh_lock = threading.Lock()
+import routes.ui_system_jobs_state as job_state
 
 
 LOG_LINES_DEFAULT = 200
@@ -160,8 +137,6 @@ CATALOG_REPAIR_LIMIT = env_bounded_int(
     'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
 )
 
-_sampler_lock = threading.Lock()
-_sampler_started = False
 
 
 def _manual_conflict_with_detection(
@@ -225,16 +200,15 @@ def _system_metrics_sampler_worker(app):
 
 
 def _maybe_run_catalog_cards_repair(app) -> None:
-    global _catalog_cards_next_run_ts
     if not CATALOG_REPAIR_AUTORUN_ENABLED:
         return
     now_ts = datetime.now(timezone.utc).timestamp()
-    if _catalog_cards_next_run_ts and now_ts < _catalog_cards_next_run_ts:
+    if job_state._catalog_cards_next_run_ts and now_ts < job_state._catalog_cards_next_run_ts:
         return
-    with _catalog_cards_lock:
-        if _catalog_cards_status.get('status') == 'running':
+    with job_state._catalog_cards_lock:
+        if job_state._catalog_cards_status.get('status') == 'running':
             return
-        _catalog_cards_status.update({
+        job_state._catalog_cards_status.update({
             'status': 'running',
             'result': None,
             'error': None,
@@ -251,29 +225,29 @@ def _maybe_run_catalog_cards_repair(app) -> None:
             limit=CATALOG_REPAIR_LIMIT,
         )
         coverage_after = catalog_cards_coverage_snapshot(app_config.get)
-        with _catalog_cards_lock:
-            _catalog_cards_status.update({
+        with job_state._catalog_cards_lock:
+            job_state._catalog_cards_status.update({
                 'status': 'done',
                 'result': {**result, 'auto': True, 'coverage_after': coverage_after},
                 'error': None,
             })
     except Exception as e:
         db.session.rollback()
-        with _catalog_cards_lock:
-            _catalog_cards_status.update({
+        with job_state._catalog_cards_lock:
+            job_state._catalog_cards_status.update({
                 'status': 'error',
                 'result': None,
                 'error': str(e),
             })
     finally:
-        _catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
+        job_state._catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
 
 
 def _catalog_cards_schedule_state() -> dict:
     now_ts = datetime.now(timezone.utc).timestamp()
     next_in = 0
-    if _catalog_cards_next_run_ts > now_ts:
-        next_in = int(_catalog_cards_next_run_ts - now_ts)
+    if job_state._catalog_cards_next_run_ts > now_ts:
+        next_in = int(job_state._catalog_cards_next_run_ts - now_ts)
     return {
         'autorun_enabled': CATALOG_REPAIR_AUTORUN_ENABLED,
         'interval_min': CATALOG_REPAIR_INTERVAL_MIN,
@@ -283,15 +257,14 @@ def _catalog_cards_schedule_state() -> dict:
 
 
 def _start_system_metrics_sampler(app):
-    global _sampler_started
     if os.environ.get('DISABLE_SYSTEM_METRICS_SAMPLER', '').strip().lower() in (
         '1', 'true', 'yes',
     ):
         return
-    with _sampler_lock:
-        if _sampler_started:
+    with job_state._sampler_lock:
+        if job_state._sampler_started:
             return
-        _sampler_started = True
+        job_state._sampler_started = True
     threading.Thread(
         target=_system_metrics_sampler_worker,
         args=(app,),
@@ -322,18 +295,20 @@ def register_routes(app):
         except Exception:
             return {}
 
-    def _sqlite_db_path() -> str | None:
-        uri = str(db.engine.url)
-        if not uri.startswith('sqlite:///'):
-            return None
-        return db.engine.url.database
-
     from routes.ui_system_metrics_routes import register_ui_system_metrics_routes
     register_ui_system_metrics_routes(app)
     from routes.ui_system_diagnostics_routes import register_ui_system_diagnostics_routes
     register_ui_system_diagnostics_routes(app)
     from routes.ui_system_review_queue_routes import register_ui_system_review_queue_routes
     register_ui_system_review_queue_routes(app)
+    from routes.ui_system_storage_routes import register_ui_system_storage_routes
+    register_ui_system_storage_routes(app)
+    from routes.ui_system_db_routes import register_ui_system_db_routes
+    register_ui_system_db_routes(app)
+    from routes.ui_system_fusion_routes import register_ui_system_fusion_routes
+    register_ui_system_fusion_routes(app)
+    from routes.ui_system_maintenance_routes import register_ui_system_maintenance_routes
+    register_ui_system_maintenance_routes(app)
 
     @app.route('/api/ui/system/config-audit', methods=['GET'])
     def system_config_audit():
@@ -455,366 +430,6 @@ def register_routes(app):
         cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
         return out
 
-    def get_day_storage_info(day_path):
-        """Get total size and file count for a day directory including all timestamp subdirs"""
-        total_size = 0
-        total_files = 0
-        try:
-            # Iterate through timestamp directories
-            for timestamp in os.listdir(day_path):
-                timestamp_path = os.path.join(day_path, timestamp)
-                if not os.path.isdir(timestamp_path):
-                    continue
-
-                # Count all files in timestamp directory
-                for file in os.listdir(timestamp_path):
-                    file_path = os.path.join(timestamp_path, file)
-                    if os.path.isfile(file_path):
-                        try:
-                            total_size += os.path.getsize(file_path)
-                            total_files += 1
-                        except OSError as e:
-                            app.logger.error(
-                                f"Error getting size for {file_path}: {e}")
-
-        except Exception as e:
-            app.logger.error(f"Error processing day directory {day_path}: {e}")
-
-        return total_files, total_size
-
-    def _recording_days_with_files():
-        days = set()
-        rec_dir = recordings_dir()
-        if not os.path.exists(rec_dir):
-            return days
-        try:
-            for year in os.listdir(rec_dir):
-                year_path = os.path.join(rec_dir, year)
-                if not os.path.isdir(year_path):
-                    continue
-                for month in os.listdir(year_path):
-                    month_path = os.path.join(year_path, month)
-                    if not os.path.isdir(month_path):
-                        continue
-                    for day in os.listdir(month_path):
-                        day_path = os.path.join(month_path, day)
-                        if not os.path.isdir(day_path):
-                            continue
-                        file_count, _ = get_day_storage_info(day_path)
-                        if file_count > 0:
-                            days.add(f'{year}-{month}-{day}')
-        except Exception as e:
-            app.logger.error(f'Error scanning recording days: {e}')
-        return days
-
-    @app.route('/api/ui/storage/stats', methods=['GET'])
-    def get_storage_stats():
-        sck = 'storage_stats:v1'
-        hit, sc = cache_get(sck)
-        if hit:
-            return sc, 200
-        if not os.path.exists(recordings_dir()):
-            cache_set(sck, [], 30)
-            return [], 200
-
-        stats = []
-        # Walk through year/month/day structure
-        try:
-            rec_dir = recordings_dir()
-            for year in sorted(os.listdir(rec_dir), reverse=True):
-                year_path = os.path.join(rec_dir, year)
-                if not os.path.isdir(year_path):
-                    continue
-
-                for month in sorted(os.listdir(year_path), reverse=True):
-                    month_path = os.path.join(year_path, month)
-                    if not os.path.isdir(month_path):
-                        continue
-
-                    for day in sorted(os.listdir(month_path), reverse=True):
-                        day_path = os.path.join(month_path, day)
-                        if not os.path.isdir(day_path):
-                            continue
-
-                        # Get storage info for this day (including all timestamp subdirs)
-                        file_count, total_size = get_day_storage_info(day_path)
-
-                        if file_count > 0:  # Only include days with files
-                            stats.append({
-                                'date': f"{year}-{month}-{day}",
-                                'fileCount': file_count,
-                                'totalSize': total_size
-                            })
-
-        except Exception as e:
-            app.logger.error(f"Error scanning recordings directory: {e}")
-
-        cache_set(sck, stats, _CACHE_STORAGE_STATS_SEC)
-        return stats, 200
-
-    @app.route('/api/ui/storage/nearest-recording-day', methods=['GET'])
-    def get_nearest_recording_day():
-        raw_date = (request.args.get('date') or '').strip()
-        direction = (request.args.get('direction') or 'next').strip().lower()
-        if not raw_date:
-            return {'error': 'date is required'}, 400
-        if direction not in ('prev', 'next'):
-            return {'error': 'direction must be "prev" or "next"'}, 400
-        try:
-            pivot = datetime.strptime(raw_date, '%Y-%m-%d').date()
-        except ValueError:
-            return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
-
-        day_values = sorted(_recording_days_with_files())
-        if direction == 'prev':
-            match = next((day for day in reversed(day_values) if day < pivot.isoformat()), None)
-        else:
-            match = next((day for day in day_values if day > pivot.isoformat()), None)
-        return {
-            'date': match,
-            'direction': direction,
-            'found': match is not None,
-        }, 200
-
-    @app.route('/api/ui/storage/purge', methods=['POST'])
-    def purge_storage():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            data = request.json or {}
-            date_str = (data.get('date') or '').strip()
-            start_date_str = (data.get('start_date') or '').strip()
-            end_date_str = (data.get('end_date') or '').strip()
-
-            range_mode = bool(start_date_str or end_date_str)
-            purge_date: datetime | None = None
-            range_start: datetime | None = None
-            range_end: datetime | None = None
-
-            if range_mode:
-                if not start_date_str or not end_date_str:
-                    return {'error': 'start_date and end_date are required together'}, 400
-                try:
-                    range_start = datetime.strptime(start_date_str, '%Y-%m-%d')
-                    range_end = datetime.strptime(end_date_str, '%Y-%m-%d')
-                except ValueError:
-                    return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
-                if range_start > range_end:
-                    return {'error': 'start_date must be on or before end_date'}, 400
-                max_span_days = 366 * 5
-                if (range_end - range_start).days > max_span_days:
-                    return {'error': f'Date range too large (max {max_span_days} days)'}, 400
-            elif date_str:
-                try:
-                    purge_date = datetime.strptime(date_str, '%Y-%m-%d')
-                except ValueError:
-                    return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
-            else:
-                return {'error': 'Provide date or both start_date and end_date'}, 400
-
-            deleted_count = 0
-            deleted_size = 0
-            rec_dir = recordings_dir()
-            app_base = os.path.dirname(os.path.dirname(rec_dir))
-
-            if range_mode:
-                assert range_start is not None and range_end is not None
-                range_end_exclusive = range_end + timedelta(days=1)
-                videos = (
-                    Video.query
-                    .filter(
-                        Video.start_time >= range_start,
-                        Video.start_time < range_end_exclusive,
-                    )
-                    .order_by(Video.start_time.asc())
-                    .all()
-                )
-            else:
-                assert purge_date is not None
-                purge_cutoff = purge_date + timedelta(days=1)
-                videos = (
-                    Video.query
-                    .filter(Video.start_time < purge_cutoff)
-                    .order_by(Video.start_time.asc())
-                    .all()
-                )
-
-            video_dirs_to_delete = set()
-            for video in videos:
-                rel_dir = os.path.dirname(video.video_path or '')
-                if rel_dir:
-                    video_dirs_to_delete.add(os.path.join(app_base, rel_dir))
-                _delete_video_row_cascade(video)
-            db.session.commit()
-
-            for dir_path in sorted(video_dirs_to_delete):
-                if not os.path.isdir(dir_path):
-                    continue
-                count, size = get_tree_storage_info(dir_path)
-                deleted_count += count
-                deleted_size += size
-                shutil.rmtree(dir_path)
-
-            # Walk the recordings tree to remove stray day directories that no longer have DB rows.
-            for year in os.listdir(rec_dir):
-                year_path = os.path.join(rec_dir, year)
-                if not os.path.isdir(year_path):
-                    continue
-
-                for month in os.listdir(year_path):
-                    month_path = os.path.join(year_path, month)
-                    if not os.path.isdir(month_path):
-                        continue
-
-                    for day in os.listdir(month_path):
-                        day_path = os.path.join(month_path, day)
-                        if not os.path.isdir(day_path):
-                            continue
-
-                        try:
-                            dir_date = datetime.strptime(
-                                f"{year}-{month}-{day}", '%Y-%m-%d')
-                        except ValueError:
-                            continue
-
-                        if range_mode:
-                            assert range_start is not None and range_end is not None
-                            if dir_date < range_start or dir_date > range_end:
-                                continue
-                        else:
-                            assert purge_date is not None
-                            if dir_date > purge_date:
-                                continue
-
-                        count, size = get_day_storage_info(day_path)
-                        deleted_count += count
-                        deleted_size += size
-                        shutil.rmtree(day_path)
-
-                    if os.path.isdir(month_path) and not os.listdir(month_path):
-                        os.rmdir(month_path)
-
-                if os.path.isdir(year_path) and not os.listdir(year_path):
-                    os.rmdir(year_path)
-
-            bust_system_response_caches()
-            return {
-                'message': f'Successfully deleted {deleted_count} files',
-                'deletedCount': deleted_count,
-                'deletedSize': deleted_size
-            }, 200
-
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Purge storage failed')
-            return {'error': 'Failed to purge storage'}, 500
-
-    @app.route('/api/ui/system/db/backup', methods=['GET'])
-    def backup_database():
-        """Download current SQLite database snapshot."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        db_path = _sqlite_db_path()
-        if not db_path:
-            return {'error': 'DB backup is supported only for SQLite'}, 400
-        if not os.path.isfile(db_path):
-            return {'error': 'Database file not found'}, 404
-        ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
-        filename = f'birdlense_db_backup_{ts}.db'
-        tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-backup-')
-        snapshot_path = os.path.join(tmp_dir, filename)
-        try:
-            _sqlite_backup_to_file(db_path, snapshot_path)
-            _sqlite_validate_file(snapshot_path)
-        except Exception:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            app.logger.exception('DB backup failed')
-            return {'error': 'Failed to create DB backup snapshot'}, 500
-
-        @after_this_request
-        def _cleanup_snapshot(response):
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            return response
-
-        return send_file(
-            snapshot_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/octet-stream',
-        )
-
-    @app.route('/api/ui/system/db/restore', methods=['POST'])
-    def restore_database():
-        """Restore SQLite DB from uploaded .db file; keep pre-restore backup."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        upload = request.files.get('file')
-        if not upload:
-            return {'error': 'file is required (multipart/form-data)'}, 400
-        db_path = _sqlite_db_path()
-        if not db_path:
-            return {'error': 'DB restore is supported only for SQLite'}, 400
-        if not os.path.isfile(db_path):
-            return {'error': 'Database file not found'}, 404
-
-        tmp_dir = tempfile.mkdtemp(prefix='birdlense-db-restore-')
-        uploaded_path = os.path.join(tmp_dir, 'uploaded.db')
-        restored_path = os.path.join(tmp_dir, 'restored.db')
-        backup_path = ''
-        try:
-            upload.save(uploaded_path)
-            if not os.path.isfile(uploaded_path) or os.path.getsize(uploaded_path) == 0:
-                return {'error': 'Uploaded file is empty'}, 400
-
-            try:
-                _sqlite_validate_file(uploaded_path)
-            except sqlite3.DatabaseError:
-                return {'error': 'Uploaded SQLite file failed integrity_check'}, 400
-
-            db.session.remove()
-            db.engine.dispose()
-
-            ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%SZ')
-            backup_path = f'{db_path}.pre_restore_{ts}.bak'
-            _sqlite_backup_to_file(db_path, backup_path)
-            _sqlite_backup_to_file(uploaded_path, restored_path)
-            _sqlite_validate_file(restored_path)
-            _sqlite_replace_live_db(db_path, restored_path)
-            bust_system_response_caches()
-
-            return {
-                'message': 'Database restored successfully',
-                'backup_path': backup_path,
-            }, 200
-        except sqlite3.DatabaseError:
-            app.logger.exception('DB restore failed: invalid SQLite payload')
-            return {'error': 'Invalid SQLite database file'}, 400
-        except Exception as e:
-            app.logger.exception('DB restore failed')
-            return {'error': f'Failed to restore DB: {e}'}, 500
-        finally:
-            try:
-                shutil.rmtree(tmp_dir)
-            except OSError:
-                pass
-
-    @app.route('/api/ui/system/retention', methods=['POST'])
-    def trigger_retention():
-        """Run retention policy (delete old recordings)."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            count, size = run_retention()
-            bust_system_response_caches()
-            return {
-                'message': f'Deleted {count} recordings',
-                'deletedCount': count,
-                'deletedSize': size,
-            }, 200
-        except Exception as e:
-            app.logger.exception('Retention failed')
-            return {'error': 'Failed to run retention'}, 500
-
     def _run_regenerate_spectrograms(
         force: bool,
         start_date: str | None,
@@ -825,8 +440,7 @@ def register_routes(app):
 
         If ``video_ids`` is set, only those rows are processed (always overwrite existing file).
         """
-        global _regenerate_status
-        _regenerate_status = {
+        job_state._regenerate_status = {
             'status': 'running', 'result': None, 'error': None,
             'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
         }
@@ -838,7 +452,7 @@ def register_routes(app):
                     from spectrogram import generate_spectrogram
                 except ImportError as e:
                     app.logger.exception('Spectrogram import failed')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+                    job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
                     return
 
                 base = os.path.dirname(os.path.dirname(recordings_dir()))
@@ -870,7 +484,7 @@ def register_routes(app):
                 videos = query.order_by(Video.start_time.asc()).all()
 
                 total = len(videos)
-                _regenerate_status['progress']['total'] = total
+                job_state._regenerate_status['progress']['total'] = total
 
                 generated = 0
                 failed = 0
@@ -879,7 +493,7 @@ def register_routes(app):
                 for video in videos:
                     if not video.video_path:
                         skipped += 1
-                        _regenerate_status['progress'].update(
+                        job_state._regenerate_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -887,7 +501,7 @@ def register_routes(app):
                     full_video = os.path.join(base, video.video_path)
                     if not os.path.isfile(full_video):
                         skipped += 1
-                        _regenerate_status['progress'].update(
+                        job_state._regenerate_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -904,7 +518,7 @@ def register_routes(app):
                     else:
                         failed += 1
 
-                    _regenerate_status['progress'].update(
+                    job_state._regenerate_status['progress'].update(
                         processed=generated + failed + skipped,
                         generated=generated, failed=failed, skipped=skipped,
                     )
@@ -914,7 +528,7 @@ def register_routes(app):
                     app.logger.info(
                         f'Spectrograms: generated={generated}, failed={failed}, skipped={skipped}'
                     )
-                    _regenerate_status = {
+                    job_state._regenerate_status = {
                         'status': 'done',
                         'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
                         'error': None,
@@ -923,10 +537,14 @@ def register_routes(app):
                 except Exception as e:
                     db.session.rollback()
                     app.logger.exception(f'Spectrogram commit failed: {e}')
-                    _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+                    job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
         except Exception:
             app.logger.exception('Regenerate spectrograms failed')
-            _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+            job_state._regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
+
+    app.extensions.setdefault('birdlense', {})['run_regenerate_spectrograms'] = (
+        _run_regenerate_spectrograms
+    )
 
     @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
     def regenerate_spectrograms():
@@ -946,9 +564,9 @@ def register_routes(app):
             return {
                 'error': 'Spectrogram regeneration requires BirdNET (MQTT broker + birdnet_topic)',
             }, 400
-        with _regenerate_lock:
-            if _regenerate_status['status'] == 'running':
-                return {'error': 'Regeneration already in progress', 'status': _regenerate_status}, 409
+        with job_state._regenerate_lock:
+            if job_state._regenerate_status['status'] == 'running':
+                return {'error': 'Regeneration already in progress', 'status': job_state._regenerate_status}, 409
         data = request.json or {}
         force = data.get('force', False)
         start_date = data.get('start_date')
@@ -972,11 +590,11 @@ def register_routes(app):
         video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
-        with _regenerate_lock:
-            if _regenerate_status['status'] == 'running':
+        with job_state._regenerate_lock:
+            if job_state._regenerate_status['status'] == 'running':
                 return {
                     'error': 'Regeneration already in progress',
-                    'status': _regenerate_status,
+                    'status': job_state._regenerate_status,
                 }, 409
         t = threading.Thread(
             target=_run_regenerate_spectrograms,
@@ -993,7 +611,7 @@ def register_routes(app):
     @app.route('/api/ui/system/regenerate-spectrograms/status', methods=['GET'])
     def regenerate_spectrograms_status():
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
-        return _regenerate_status, 200
+        return job_state._regenerate_status, 200
 
     def _run_regenerate_tracks(
         force: bool,
@@ -1007,8 +625,7 @@ def register_routes(app):
         start_date, end_date: YYYY-MM-DD — период. None = все.
         species_ids: если задан — только видео, где есть детекция хотя бы одного из видов.
         """
-        global _regenerate_tracks_status
-        _regenerate_tracks_status = {
+        job_state._regenerate_tracks_status = {
             'status': 'running', 'result': None, 'error': None,
             'progress': {
                 'processed': 0,
@@ -1079,7 +696,7 @@ def register_routes(app):
                     app_config.get('processor.track_regen_ignore_regional_species', True)
                 )
                 regen_params['match_live_pipeline'] = match_live
-                _regenerate_tracks_status['progress']['regen_params'] = regen_params
+                job_state._regenerate_tracks_status['progress']['regen_params'] = regen_params
 
                 # Явные video_ids (один ролик из UI): не фильтровать по пустым frames.
                 # Иначе ролик с frames='[]', только audio-строками или «левыми» frames
@@ -1131,7 +748,7 @@ def register_routes(app):
 
                 videos = q.order_by(Video.start_time.asc()).all()
                 total = len(videos)
-                _regenerate_tracks_status['progress']['total'] = total
+                job_state._regenerate_tracks_status['progress']['total'] = total
                 if total == 0 and target_video_ids:
                     app.logger.warning(
                         'Track regen: no videos for explicit ids %s (missing or filtered out)',
@@ -1291,7 +908,7 @@ def register_routes(app):
 
                 for video in videos:
                     species_name_to_id_cache.clear()
-                    _regenerate_tracks_status['progress']['current_video'] = (
+                    job_state._regenerate_tracks_status['progress']['current_video'] = (
                         video.video_path or None
                     )
                     if not video.video_path:
@@ -1301,7 +918,7 @@ def register_routes(app):
                             'video_path': None,
                             'reason': 'missing_video_path',
                         })
-                        _regenerate_tracks_status['progress'].update(
+                        job_state._regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -1314,7 +931,7 @@ def register_routes(app):
                             'video_path': video.video_path,
                             'reason': 'video_file_missing',
                         })
-                        _regenerate_tracks_status['progress'].update(
+                        job_state._regenerate_tracks_status['progress'].update(
                             processed=generated + failed + skipped,
                             generated=generated, failed=failed, skipped=skipped,
                         )
@@ -1403,7 +1020,7 @@ def register_routes(app):
                                 'video_path': video.video_path,
                                 'reason': reason,
                             })
-                            _regenerate_tracks_status['progress'].update(
+                            job_state._regenerate_tracks_status['progress'].update(
                                 processed=generated + failed + skipped,
                                 generated=generated, failed=failed, skipped=skipped,
                             )
@@ -1441,7 +1058,7 @@ def register_routes(app):
                                     'video_path': video.video_path,
                                     'reason': 'no_detections_for_selected_species',
                                 })
-                                _regenerate_tracks_status['progress'].update(
+                                job_state._regenerate_tracks_status['progress'].update(
                                     processed=generated + failed + skipped,
                                     generated=generated, failed=failed, skipped=skipped,
                                 )
@@ -1561,7 +1178,7 @@ def register_routes(app):
                             'reason': 'processing_failed',
                         })
 
-                    _regenerate_tracks_status['progress'].update(
+                    job_state._regenerate_tracks_status['progress'].update(
                         processed=generated + failed + skipped,
                         generated=generated, failed=failed, skipped=skipped,
                     )
@@ -1587,7 +1204,7 @@ def register_routes(app):
                         dedup[(item['video_id'], item['reason'])] = item
                     result['precise_rerun_candidates'] = list(dedup.values())[:500]
                     result['precise_rerun_candidate_count'] = len(dedup)
-                _regenerate_tracks_status = {
+                job_state._regenerate_tracks_status = {
                     'status': 'done',
                     'result': result,
                     'error': None,
@@ -1596,7 +1213,7 @@ def register_routes(app):
         except Exception:
             db.session.rollback()
             app.logger.exception('Regenerate tracks failed')
-            _regenerate_tracks_status = {
+            job_state._regenerate_tracks_status = {
                 'status': 'done', 'result': None, 'error': 'Track regeneration failed',
                 'progress': None,
             }
@@ -1604,7 +1221,7 @@ def register_routes(app):
     @app.route('/api/ui/system/regenerate-tracks/status', methods=['GET'])
     def regenerate_tracks_status():
         """Return last track regeneration result."""
-        return _regenerate_tracks_status, 200
+        return job_state._regenerate_tracks_status, 200
 
     @app.route('/api/ui/videos/<int:video_id>/regenerate-tracks', methods=['POST'])
     def regenerate_tracks_single_video(video_id):
@@ -1616,11 +1233,11 @@ def register_routes(app):
             return {'error': 'Video not found'}, 404
         data = request.json or {}
         force = bool(data.get('force', False))
-        with _regenerate_tracks_lock:
-            if _regenerate_tracks_status['status'] == 'running':
+        with job_state._regenerate_tracks_lock:
+            if job_state._regenerate_tracks_status['status'] == 'running':
                 return {
                     'error': 'Track regeneration already in progress',
-                    'status': _regenerate_tracks_status,
+                    'status': job_state._regenerate_tracks_status,
                 }, 409
         t = threading.Thread(
             target=_run_regenerate_tracks,
@@ -1633,455 +1250,6 @@ def register_routes(app):
             'started': True,
             'video_id': video_id,
         }, 202
-
-    @app.route('/api/ui/system/fusion/export', methods=['POST'])
-    def fusion_export():
-        """Export decision traces to CSV for fusion calibration/training."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _fusion_export_lock:
-            if _fusion_export_status['status'] == 'running':
-                return {'error': 'Fusion export already in progress', 'status': _fusion_export_status}, 409
-            _fusion_export_status.update({
-                'status': 'running',
-                'result': None,
-                'error': None,
-                'progress': None,
-            })
-
-        def _run():
-            try:
-                with app.app_context():
-                    result = _run_fusion_export_job()
-                with _fusion_export_lock:
-                    _fusion_export_status.update({
-                        'status': 'done',
-                        'result': result,
-                        'error': None,
-                        'progress': None,
-                    })
-            except Exception as e:
-                with _fusion_export_lock:
-                    _fusion_export_status.update({
-                        'status': 'error',
-                        'result': None,
-                        'error': str(e),
-                        'progress': None,
-                    })
-
-        threading.Thread(target=_run, daemon=True).start()
-        return {'message': 'Fusion export started', 'status': _fusion_export_status}, 202
-
-    @app.route('/api/ui/system/fusion/export/status', methods=['GET'])
-    def fusion_export_status():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _fusion_export_lock:
-            return dict(_fusion_export_status), 200
-
-    @app.route('/api/ui/system/fusion/export/download', methods=['GET'])
-    def fusion_export_download():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        latest = _latest_fusion_export_path()
-        if not latest or not latest.exists():
-            return {'error': 'Fusion export not found'}, 404
-        return send_file(
-            latest,
-            as_attachment=True,
-            download_name=latest.name,
-            mimetype='text/csv',
-        )
-
-    @app.route('/api/ui/system/fusion/eval', methods=['POST'])
-    def fusion_eval():
-        """Evaluate fusion calibration on a CSV export."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _fusion_eval_lock:
-            if _fusion_eval_status['status'] == 'running':
-                return {'error': 'Fusion eval already in progress', 'status': _fusion_eval_status}, 409
-            _fusion_eval_status.update({
-                'status': 'running',
-                'result': None,
-                'error': None,
-                'progress': None,
-            })
-        payload = request.get_json(silent=True) or {}
-
-        def _run():
-            try:
-                with app.app_context():
-                    result = _run_fusion_eval_job(
-                        source_csv=payload.get('source_csv'),
-                        model_path=payload.get('model_path'),
-                        score_col=payload.get('score_col'),
-                        label_col=payload.get('label_col', 'valid_track_label'),
-                        slice_fields=list(payload.get('slice_fields') or []),
-                    )
-                with _fusion_eval_lock:
-                    _fusion_eval_status.update({
-                        'status': 'done',
-                        'result': result,
-                        'error': None,
-                        'progress': None,
-                    })
-            except Exception as e:
-                with _fusion_eval_lock:
-                    _fusion_eval_status.update({
-                        'status': 'error',
-                        'result': None,
-                        'error': str(e),
-                        'progress': None,
-                    })
-
-        threading.Thread(target=_run, daemon=True).start()
-        return {'message': 'Fusion eval started', 'status': _fusion_eval_status}, 202
-
-    @app.route('/api/ui/system/fusion/eval/status', methods=['GET'])
-    def fusion_eval_status():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _fusion_eval_lock:
-            return dict(_fusion_eval_status), 200
-
-    @app.route('/api/ui/system/telegram-proxy/refresh', methods=['POST'])
-    def refresh_telegram_proxy():
-        """Refresh Telegram SOCKS proxy using the backend service."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _telegram_proxy_refresh_lock:
-            if _telegram_proxy_refresh_status['status'] == 'running':
-                return {
-                    'error': 'Telegram proxy refresh already in progress',
-                    'status': _telegram_proxy_refresh_status,
-                }, 409
-            _telegram_proxy_refresh_status.update({
-                'status': 'running',
-                'result': None,
-                'error': None,
-                'progress': None,
-            })
-
-        def _run():
-            try:
-                with app.app_context():
-                    result = refresh_telegram_proxy_service()
-                with _telegram_proxy_refresh_lock:
-                    _telegram_proxy_refresh_status.update({
-                        'status': 'done',
-                        'result': result,
-                        'error': None,
-                        'progress': None,
-                    })
-            except Exception as e:
-                with _telegram_proxy_refresh_lock:
-                    _telegram_proxy_refresh_status.update({
-                        'status': 'error',
-                        'result': None,
-                        'error': str(e),
-                        'progress': None,
-                    })
-
-        threading.Thread(target=_run, daemon=True).start()
-        return {'message': 'Telegram proxy refresh started', 'status': _telegram_proxy_refresh_status}, 202
-
-    @app.route('/api/ui/system/telegram-proxy/refresh/status', methods=['GET'])
-    def refresh_telegram_proxy_status():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        with _telegram_proxy_refresh_lock:
-            return dict(_telegram_proxy_refresh_status), 200
-
-    @app.route('/api/ui/system/recordings/scan', methods=['POST'])
-    def scan_recordings():
-        """
-        Scan data/recordings/ for video.mp4 not in DB and add them.
-        Fixes recordings missing from stats after server restart.
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        if not os.path.exists(recordings_dir()):
-            return {'imported': 0, 'message': 'No recordings directory'}, 200
-
-        existing_paths = {
-            v.video_path for v in db.session.query(Video.video_path).all()
-        }
-        imported = 0
-        cleaned_legacy_placeholders = 0
-        cleaned_legacy_visits = 0
-        # YYYY/MM/DD/HHMMSS или YYYY/MM/DD/HH-MM-SS
-        pattern = re.compile(
-            r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$'
-        )
-
-        try:
-            cleaned_legacy_placeholders, cleaned_legacy_visits = (
-                _cleanup_legacy_import_placeholders()
-            )
-            rec_dir = recordings_dir()
-            for year in os.listdir(rec_dir):
-                year_path = os.path.join(rec_dir, year)
-                if not os.path.isdir(year_path) or not year.isdigit():
-                    continue
-                for month in os.listdir(year_path):
-                    month_path = os.path.join(year_path, month)
-                    if not os.path.isdir(month_path) or not month.isdigit():
-                        continue
-                    for day in os.listdir(month_path):
-                        day_path = os.path.join(month_path, day)
-                        if not os.path.isdir(day_path) or not day.isdigit():
-                            continue
-                        for ts in os.listdir(day_path):
-                            ts_path = os.path.join(day_path, ts)
-                            if not os.path.isdir(ts_path):
-                                continue
-                            m = pattern.match(f'{year}/{month}/{day}/{ts}')
-                            if not m:
-                                continue
-                            video_mp4 = os.path.join(ts_path, 'video.mp4')
-                            if not os.path.isfile(video_mp4):
-                                continue
-                            try:
-                                if os.path.getsize(video_mp4) <= 0:
-                                    continue
-                            except OSError:
-                                continue
-                            rel_path = f'data/recordings/{year}/{month}/{day}/{ts}/video.mp4'
-                            if rel_path in existing_paths:
-                                continue
-
-                            try:
-                                with db.session.begin_nested():
-                                    y, mo, d, h, mi, s = map(int, m.groups())
-                                    start_time = datetime(
-                                        y, mo, d, h, mi, s,
-                                        tzinfo=timezone.utc
-                                    )
-                                    end_time = start_time + timedelta(
-                                        seconds=30
-                                    )
-                                    spectrogram = None
-                                    for f in os.listdir(ts_path):
-                                        if (f.startswith('spectrogram') and
-                                                f.endswith('.jpg')):
-                                            spectrogram = f'data/recordings/{year}/{month}/{day}/{ts}/{f}'
-                                            break
-
-                                    video = Video(
-                                        processor_version='1',
-                                        start_time=start_time,
-                                        end_time=end_time,
-                                        video_path=rel_path,
-                                        spectrogram_path=spectrogram,
-                                    )
-                                    db.session.add(video)
-                                existing_paths.add(rel_path)
-                                imported += 1
-                            except Exception as e:
-                                app.logger.warning(
-                                    f'Import failed {rel_path}: {e}'
-                                )
-                                continue
-
-            db.session.commit()
-            bust_response_caches()
-            bust_system_response_caches()
-
-            # Auto-start spectrogram regeneration for newly imported videos (если не запущена)
-            spectrogram_started = False
-            if imported > 0:
-                with _regenerate_lock:
-                    if _regenerate_status['status'] != 'running':
-                        t = threading.Thread(
-                            target=_run_regenerate_spectrograms,
-                            args=(False, None, None, None),
-                            daemon=True,
-                        )
-                        t.start()
-                        spectrogram_started = True
-
-            message = f'Imported {imported} recordings'
-            if cleaned_legacy_placeholders:
-                message += (
-                    f'; cleaned {cleaned_legacy_placeholders} legacy placeholders'
-                )
-            return {
-                'imported': imported,
-                'cleaned_legacy_placeholders': cleaned_legacy_placeholders,
-                'cleaned_legacy_visits': cleaned_legacy_visits,
-                'message': message,
-                'spectrogramRegenerationStarted': spectrogram_started,
-            }, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Scan recordings failed')
-            return {'error': 'Failed to scan recordings'}, 500
-
-    @app.route('/api/ui/system/clean-orphaned-visits', methods=['POST'])
-    def clean_orphaned_visits():
-        """
-        Удалить осиротевшие SpeciesVisit (без VideoSpecies) и синхронизировать
-        VideoSpecies.species_id с visit.species_id. Исправляет некорректные счётчики
-        в календаре миграций и каталоге после старых коррекций.
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            if dry_run:
-                return preview_clean_orphaned_visits(db.session), 200
-
-            body = apply_clean_orphaned_visits(db.session)
-            db.session.commit()
-            bust_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Clean orphaned visits failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/realign-visit-times', methods=['POST'])
-    def realign_visit_times():
-        """Preview/apply SpeciesVisit time realignment from actual detection timestamps."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            if dry_run:
-                return preview_realign_visit_times(db.session), 200
-
-            body = apply_realign_visit_times(db.session)
-            db.session.commit()
-            bust_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Realign visit times failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/split-large-gap-visits', methods=['POST'])
-    def split_large_gap_visits():
-        """Preview/apply splitting of visits with large internal detection gaps."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            gap_seconds = int(app_config.get('detection.dedup_window_seconds') or 60)
-            if dry_run:
-                return preview_split_large_gap_visits(db.session, gap_seconds), 200
-
-            body = apply_split_large_gap_visits(db.session, gap_seconds)
-            db.session.commit()
-            bust_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Split large-gap visits failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/merge-duplicate-species', methods=['POST'])
-    def merge_duplicate_species():
-        """
-        Объединить дубликаты видов (Garrulus glandarius (Eurasian Jay) -> Eurasian Jay).
-        Использует species_canonical_mapping.txt. Сопоставление без учёта регистра.
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            from util import load_species_canonical_mapping
-            mapping = load_species_canonical_mapping()
-            if not mapping:
-                return {'merged': 0, 'message': 'No species_canonical_mapping.txt'}, 200
-            # variant_lower -> canonical (для сопоставления без учёта регистра)
-            variant_to_canonical = {}
-            for variant, canonical in mapping.items():
-                variant_to_canonical[variant] = canonical
-                variant_to_canonical[variant.lower().strip()] = canonical
-            canonical_to_species = {}  # canonical -> [Species]
-            for sp in Species.query.all():
-                canonical = variant_to_canonical.get(sp.name) or variant_to_canonical.get(sp.name.lower().strip())
-                if canonical:
-                    canonical_to_species.setdefault(canonical, []).append(sp)
-            merged = 0
-            details = []
-            for canonical, species_list in canonical_to_species.items():
-                if len(species_list) <= 1:
-                    continue
-                target = next((s for s in species_list if s.name == canonical), species_list[0])
-                for other in [s for s in species_list if s.id != target.id]:
-                    if target.name != canonical:
-                        target.name = canonical
-                    merge_species_into(other.id, target.id)
-                    details.append(f"{other.name} -> {canonical}")
-                    merged += 1
-            db.session.commit()
-            bust_response_caches()
-            return {'merged': merged, 'details': details, 'message': f'Merged {merged} duplicate species'}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Merge duplicate species failed: %s', e)
-            return {'error': str(e)}, 500
-
-    @app.route('/api/ui/system/species-catalog/reconcile', methods=['POST'])
-    def species_catalog_reconcile():
-        """
-        Привести каталог видов: слияние дубликатов по нормализованному имени;
-        опционально перенос подозрительных (блоклист) и строк вне allowlist на «Unknown».
-
-        body JSON:
-          dry_run (default true),
-          merge_normalized_duplicate_names (default true),
-          reassign_suspects_to_unknown, delete_empty_suspects,
-          reassign_off_allowlist_to_unknown, delete_empty_off_allowlist,
-          duplicate_group_limit (default 500).
-
-        Allowlist: species.catalog_allowlist_file → scripts/datasets/dump_classifier_allowlist.py
-        """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        try:
-            from services.species_catalog_allowlist_service import clear_allowlist_cache
-            from services.species_catalog_reconcile_service import reconcile_species_catalog
-
-            payload = request.get_json(silent=True) or {}
-            dry_run = bool(payload.get('dry_run', True))
-            dup_limit = payload.get('duplicate_group_limit', 500)
-            try:
-                dup_limit = int(dup_limit)
-            except (TypeError, ValueError):
-                return {'error': 'duplicate_group_limit must be int'}, 400
-            dup_limit = max(10, min(dup_limit, 5000))
-
-            body = reconcile_species_catalog(
-                dry_run=dry_run,
-                merge_normalized_duplicate_names=bool(
-                    payload.get('merge_normalized_duplicate_names', True),
-                ),
-                reassign_suspects_to_unknown=bool(
-                    payload.get('reassign_suspects_to_unknown', False),
-                ),
-                reassign_off_allowlist_to_unknown=bool(
-                    payload.get('reassign_off_allowlist_to_unknown', False),
-                ),
-                delete_empty_suspects=bool(payload.get('delete_empty_suspects', False)),
-                delete_empty_off_allowlist=bool(
-                    payload.get('delete_empty_off_allowlist', False),
-                ),
-                duplicate_group_limit=dup_limit,
-                app_config_get=app_config.get,
-            )
-            if not dry_run:
-                clear_allowlist_cache()
-                bust_response_caches()
-            return body, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception('Species catalog reconcile failed: %s', e)
-            return {'error': str(e)}, 500
 
     from routes.ui_system_species_registry_routes import register_ui_system_species_registry_routes
     register_ui_system_species_registry_routes(app)

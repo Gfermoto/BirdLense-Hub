@@ -77,16 +77,17 @@ def _reset_global_test_state():
             _cache._store.clear()
     except Exception:
         pass
-    # Reset UI status globals
+    # Reset UI long-job status (shared module, not ui_system_routes)
     try:
-        import routes.ui_system_routes as _uis
-        _uis._regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._regenerate_tracks_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._species_metadata_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._catalog_cards_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._fusion_export_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._fusion_eval_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
-        _uis._telegram_proxy_refresh_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        import routes.ui_system_jobs_state as _js
+        idle = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _js._regenerate_status = dict(idle)
+        _js._regenerate_tracks_status = dict(idle)
+        _js._species_metadata_status = dict(idle)
+        _js._catalog_cards_status = dict(idle)
+        _js._fusion_export_status = dict(idle)
+        _js._fusion_eval_status = dict(idle)
+        _js._telegram_proxy_refresh_status = dict(idle)
     except Exception:
         pass
     # Reset feed service mqtt client
