@@ -14,33 +14,33 @@ class _ImmediateThread:
 
 def test_repo_root_contains_fusion_export_script():
     """Repository root should expose the bundled fusion export script."""
-    import routes.ui_system_routes as uis
+    from services import fusion_training_service as fts
 
-    script = uis._repo_root() / 'scripts' / 'export_fusion_training_data.py'
+    script = fts.repo_root() / 'scripts' / 'export_fusion_training_data.py'
     assert script.exists()
 
 
 def test_repo_root_finds_script_in_container_layout(tmp_path, monkeypatch):
     """Repo root lookup should walk upward until it finds the shipped scripts dir."""
-    import routes.ui_system_routes as uis
+    from services import fusion_training_service as fts
 
-    fake_module = tmp_path / 'app' / 'web' / 'routes' / 'ui_system_routes.py'
+    fake_module = tmp_path / 'app' / 'web' / 'services' / 'fusion_training_service.py'
     fake_script = tmp_path / 'app' / 'scripts' / 'export_fusion_training_data.py'
     fake_script.parent.mkdir(parents=True, exist_ok=True)
     fake_script.write_text('#!/usr/bin/env python3\n', encoding='utf-8')
     fake_module.parent.mkdir(parents=True, exist_ok=True)
     fake_module.write_text('', encoding='utf-8')
 
-    monkeypatch.setattr(uis, '__file__', str(fake_module))
+    monkeypatch.setattr(fts, '__file__', str(fake_module))
 
-    assert uis._repo_root() == tmp_path / 'app'
+    assert fts.repo_root() == tmp_path / 'app'
 
 
 def test_repo_root_falls_back_to_cwd(tmp_path, monkeypatch):
     """Repo root lookup should also work when the source file path is opaque."""
-    import routes.ui_system_routes as uis
+    from services import fusion_training_service as fts
 
-    fake_module = tmp_path / 'site-packages' / 'routes' / 'ui_system_routes.py'
+    fake_module = tmp_path / 'site-packages' / 'services' / 'fusion_training_service.py'
     repo_root = tmp_path / 'repo'
     fake_script = repo_root / 'scripts' / 'export_fusion_training_data.py'
     fake_script.parent.mkdir(parents=True, exist_ok=True)
@@ -48,22 +48,22 @@ def test_repo_root_falls_back_to_cwd(tmp_path, monkeypatch):
     fake_module.parent.mkdir(parents=True, exist_ok=True)
     fake_module.write_text('', encoding='utf-8')
 
-    monkeypatch.setattr(uis, '__file__', str(fake_module))
-    monkeypatch.setattr(uis.Path, 'cwd', staticmethod(lambda: repo_root))
+    monkeypatch.setattr(fts, '__file__', str(fake_module))
+    monkeypatch.setattr(fts.Path, 'cwd', staticmethod(lambda: repo_root))
 
-    assert uis._repo_root() == repo_root
+    assert fts.repo_root() == repo_root
 
 
 def test_fusion_export_route_runs_job_and_exposes_status(client, monkeypatch):
     """Fusion export should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_routes as uis
+    import routes.ui_system_fusion_routes as uisf
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uis.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uis,
+        uisf,
         '_run_fusion_export_job',
         lambda: {'output_path': '/tmp/fusion.csv', 'rows_written': 12},
     )
@@ -81,13 +81,13 @@ def test_fusion_export_route_runs_job_and_exposes_status(client, monkeypatch):
 def test_fusion_eval_route_runs_job_and_exposes_status(client, monkeypatch):
     """Fusion eval should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_routes as uis
+    import routes.ui_system_fusion_routes as uisf
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uis.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uis,
+        uisf,
         '_run_fusion_eval_job',
         lambda **kwargs: {'accuracy': 0.91, 'n': 123},
     )
@@ -108,13 +108,13 @@ def test_fusion_eval_route_runs_job_and_exposes_status(client, monkeypatch):
 def test_telegram_proxy_refresh_route_runs_job_and_exposes_status(client, monkeypatch):
     """Telegram proxy refresh should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_routes as uis
+    import routes.ui_system_fusion_routes as uisf
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uis.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uis,
+        uisf,
         'refresh_telegram_proxy_service',
         lambda: {
             'checked': 3,
