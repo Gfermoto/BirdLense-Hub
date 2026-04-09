@@ -2108,8 +2108,14 @@ class TestSpeciesSummaryReadOnly:
         data = r.get_json()
         assert data['stats']['hourlyActivity'][0] == 4
 
-    def test_refresh_metadata_requires_settings_password(self, app, client):
+    def test_refresh_metadata_requires_settings_password(self, app, client, monkeypatch):
+        from app_config.app_config import app_config
         from models import Species, db
+
+        general = dict(app_config.config.get('general') or {})
+        general['settings_password'] = 'test-secret-refresh-metadata'
+        general['contributor_password'] = ''
+        monkeypatch.setitem(app_config.config, 'general', general)
 
         unique = f'API Refresh Meta Finch {id(app)}'
         with app.app_context():
