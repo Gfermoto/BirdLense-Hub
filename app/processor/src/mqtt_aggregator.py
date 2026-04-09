@@ -221,6 +221,20 @@ def _parse_frigate_event(payload):
     return _parse_frigate_event_dict(data)
 
 
+def _parse_frigate_snapshot_topic(topic: str) -> tuple[str, str] | None:
+    """Parse topic ``<prefix>/<camera>/<label>/snapshot`` -> (camera, label)."""
+    parts = [p for p in str(topic or '').split('/') if p]
+    if len(parts) < 4:
+        return None
+    if parts[-1].lower() != 'snapshot':
+        return None
+    camera = parts[-3].strip()
+    label = parts[-2].strip()
+    if not camera or not label:
+        return None
+    return camera, label
+
+
 def _parse_birdnet_event(payload):
     """Parse BirdNET-Pi (birdnet/sightings) or BirdNET-Go (birdnet) JSON.
 
@@ -343,6 +357,9 @@ class MQTTEventAggregator:
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
+        fp = [x for x in (self.frigate_topic or '').split('/') if x]
+        prefix = fp[0] if fp else 'frigate'
+        self._frigate_snapshot_topic = f"{prefix}/+/+/snapshot"
         # Support comma-separated topics and subtree subscriptions.
         # Example: "birdnet/sightings" will also match "birdnet/sightings/#".
         self.birdnet_topics = []
@@ -752,6 +769,73 @@ class MQTTEventAggregator:
                             has_geometry,
                             relaxed,
                         )
+        elif mqtt.topic_matches_sub(getattr(self, '_frigate_snapshot_topic', ''), msg.topic):
+            # Fallback when frigate/events is sparse/disabled: topic like
+            # frigate/<camera>/<label>/snapshot (ignore retained bootstrap payloads).
+            if getattr(msg, 'retain', False):
+                return
+            parsed = _parse_frigate_snapshot_topic(msg.topic)
+            if parsed:
+                camera, label = parsed
+                ev = {
+                    'source': 'frigate',
+                    'species': label,
+                    'label': label,
+                    'sub_label': '',
+                    'confidence': 0.0,
+                    'camera': camera,
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                }
+                after = {}
+                labels = {label}
+                skip_merge_queue = bool(
+                    self._frigate_label_exclude
+                    and _frigate_labels_match_exclude(
+                        labels, self._frigate_label_exclude
+                    )
+                )
+                if skip_merge_queue:
+                    ev["_skip_mqtt_merge_queue"] = True
+                if self._on_frigate_motion:
+                    cam_f, lbl_f, cb = self._on_frigate_motion
+                    cam_lower = {c.lower() for c in cam_f} if cam_f else set()
+                    cam_ok = not cam_f or (camera.lower() in cam_lower)
+                    labels_lower = {s.lower() for s in labels}
+                    lbl_f_lower = {s.lower() for s in lbl_f}
+                    lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
+                    if cam_ok and lbl_ok:
+                        logger.info(
+                            "Frigate trigger accepted: reason=snapshot_topic camera=%s "
+                            "label=%s sub_label=%s skip_merge=%s has_geometry=%s filter_empty=%s",
+                            camera,
+                            label,
+                            '',
+                            skip_merge_queue,
+                            False,
+                            not bool(lbl_f_lower),
+                        )
+                        try:
+                            cb(camera, label)
+                        except Exception as e:
+                            logger.debug("Frigate motion callback: %s", e)
+                    else:
+                        reasons = []
+                        if not cam_ok:
+                            reasons.append('camera_filter_miss')
+                        if not lbl_ok:
+                            reasons.append('label_filter_miss')
+                        logger.info(
+                            "Frigate trigger rejected: reason=%s camera=%s label=%s "
+                            "sub_label=%s camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s",
+                            ','.join(reasons) if reasons else 'unknown',
+                            camera,
+                            label,
+                            '',
+                            list(cam_f) if cam_f else "any",
+                            list(lbl_f) if lbl_f else "any",
+                            False,
+                            False,
+                        )
         elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
             ev = _parse_birdnet_event(msg.payload)
             if ev is None:
@@ -830,6 +914,12 @@ class MQTTEventAggregator:
                 self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
                 self._client.connect(self.broker, self.port, 60)
                 self._client.subscribe(self.frigate_topic, qos=1)
+                if self._frigate_snapshot_topic and self._frigate_snapshot_topic != self.frigate_topic:
+                    self._client.subscribe(self._frigate_snapshot_topic, qos=0)
+                    logger.info(
+                        "MQTT: subscribed Frigate fallback snapshot topic %s",
+                        self._frigate_snapshot_topic,
+                    )
                 for t in self.birdnet_topics:
                     self._client.subscribe(t, qos=1)
                     # If exact topic was configured, also subscribe subtree to

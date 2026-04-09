@@ -97,6 +97,33 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         self.assertEqual(calls[0][0], 'BirdBox')
 
 
+
+    def test_snapshot_topic_triggers_recording_when_events_missing(self):
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_snapshot_topic = 'frigate/+/+/snapshot'
+        agg._frigate_label_exclude = set()
+        agg._on_frigate_motion = (set(), {'bird'}, cb)
+
+        msg = MagicMock()
+        msg.topic = 'frigate/BirdBox/bird/snapshot'
+        msg.payload = b'/api/events/x/snapshot.jpg'
+        msg.retain = False
+
+        with patch.object(ma.app_config, 'get', return_value=True):
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], 'BirdBox')
+        self.assertGreaterEqual(len(agg._events), 1)
+
     def test_empty_label_filter_means_any_label(self):
         calls = []
 

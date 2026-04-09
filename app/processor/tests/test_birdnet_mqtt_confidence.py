@@ -78,6 +78,18 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
         out = merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
         self.assertAlmostEqual(out['Great Tit'], 0.28)
 
+    def test_deprecated_window_seconds_alias_used_when_hours_missing(self):
+        agg = MagicMock()
+        agg.get_birdnet_prior_scores.return_value = {}
+        cfg = {
+            'processor.birdnet_mqtt_auto_confidence': True,
+            'processor.birdnet_mqtt_bias_window_seconds': 7200,
+            'detection.species_mapping': {},
+        }
+        merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
+        kwargs = agg.get_birdnet_prior_scores.call_args.kwargs
+        self.assertAlmostEqual(float(kwargs.get('window_hours')), 2.0)
+
 
 if __name__ == '__main__':
     unittest.main()

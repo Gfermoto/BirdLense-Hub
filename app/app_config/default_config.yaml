@@ -77,6 +77,9 @@ processor:
   # Rolling BirdNET prior: события копятся в окне 24h, не сбрасываются разом,
   # а вытесняются по TTL 25h с time-decay по свежести.
   birdnet_mqtt_prior_window_hours: 24
+  # Backward-compat alias (deprecated): old installs may still send this key in user_config;
+  # interpreted as seconds and converted to hours in processor.
+  birdnet_mqtt_bias_window_seconds: 0
   birdnet_mqtt_prior_ttl_hours: 25
   birdnet_mqtt_prior_half_life_hours: 6
   birdnet_mqtt_prior_min_confidence: 0.0
