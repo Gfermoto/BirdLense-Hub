@@ -678,9 +678,23 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
             targets.append(match)
     # unique by ID, keep order
     uniq: dict[int, Species] = {}
-    for sp in targets[: max(1, min(limit, 20000))]:
+    for sp in targets:
         uniq.setdefault(int(sp.id), sp)
     targets = list(uniq.values())
+
+    cap = max(1, min(limit, 20000))
+    if len(targets) > cap:
+        # Prioritize clearly problematic rows when limit is low (autorun),
+        # so repairs do not get stuck on an arbitrary prefix of allowlist.
+        def _priority_key(sp: Species):
+            img = (sp.image_url or '').strip()
+            desc = (sp.description or '').strip()
+            host = _url_hostname_lower(img)
+            missing = 0 if (not img or not desc) else 1
+            wiki_host = 0 if (img and _host_is_wikipedia_family(host)) else 1
+            return (missing, wiki_host, int(sp.id or 0))
+
+        targets = sorted(targets, key=_priority_key)[:cap]
 
     metadata_fixed = 0
     images_replaced_from_inat = 0

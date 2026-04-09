@@ -690,18 +690,22 @@ class MQTTEventAggregator:
                     cam_ok = not cam_f or (camera.lower() in cam_lower)
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
+                    # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     relaxed = bool(
                         app_config.get('motion.frigate_trigger_on_tracked_object', True)
                     )
-                    if not lbl_ok and relaxed and _frigate_after_has_tracked_geometry(
+                    has_geometry = _frigate_after_has_tracked_geometry(
                         after if isinstance(after, dict) else {}
-                    ):
+                    )
+                    accepted_by = 'label_filter'
+                    if not lbl_ok and relaxed and has_geometry:
                         lbl_ok = True
+                        accepted_by = 'geometry_fallback'
                         if skip_merge_queue:
                             logger.info(
-                                "Frigate trigger: geometry fallback (excluded label, "
-                                "recording only) camera=%s label=%s",
+                                "Frigate trigger: geometry fallback (excluded label, recording only) "
+                                "camera=%s label=%s",
                                 camera,
                                 label,
                             )
@@ -713,19 +717,41 @@ class MQTTEventAggregator:
                             )
                     if cam_ok and lbl_ok:
                         logger.info(
-                            "Frigate trigger: camera=%s label=%s sub_label=%s -> recording",
-                            camera, label, sub_label)
+                            "Frigate trigger accepted: reason=%s camera=%s label=%s sub_label=%s "
+                            "skip_merge=%s has_geometry=%s filter_empty=%s",
+                            accepted_by,
+                            camera,
+                            label,
+                            sub_label,
+                            skip_merge_queue,
+                            has_geometry,
+                            not bool(lbl_f_lower),
+                        )
                         try:
                             cb(camera, species)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        reasons = []
+                        if not cam_ok:
+                            reasons.append('camera_filter_miss')
+                        if not lbl_ok:
+                            if bool(lbl_f_lower):
+                                reasons.append('label_filter_miss')
+                            if not has_geometry:
+                                reasons.append('no_tracked_geometry')
                         logger.info(
-                            "Frigate event skipped (no trigger): camera=%s label=%s "
-                            "sub_label=%s | camera_filter=%s label_filter=%s",
-                            camera, label, sub_label,
+                            "Frigate trigger rejected: reason=%s camera=%s label=%s sub_label=%s "
+                            "camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s",
+                            ','.join(reasons) if reasons else 'unknown',
+                            camera,
+                            label,
+                            sub_label,
                             list(cam_f) if cam_f else "any",
-                            list(lbl_f))
+                            list(lbl_f) if lbl_f else "any",
+                            has_geometry,
+                            relaxed,
+                        )
         elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
             ev = _parse_birdnet_event(msg.payload)
             if ev is None:
