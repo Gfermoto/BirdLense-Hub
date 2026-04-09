@@ -170,7 +170,8 @@ motion:
   frigate_camera_filter: []  # from cameras list; frigate/events
   # Добавлены animal — часть моделей Frigate; при странном label см. frigate_trigger_on_tracked_object.
   frigate_label_filter: ["bird", "Bird", "squirrel", "Squirrel", "animal", "Animal"]
-  frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
+  # Не подмешивать в merge как вид; запись по Frigate всё равно может стартовать по box/region.
+  frigate_label_exclude: ["cat", "dog"]
   # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).
   frigate_trigger_on_tracked_object: true
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
