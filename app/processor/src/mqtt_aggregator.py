@@ -33,6 +33,13 @@ MQTT_DISCONNECT_DISPLAY_GRACE_SEC = 120
 FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
+def _normalize_obs_level(raw) -> str:
+    v = str(raw or "info").strip().lower()
+    if v in ("off", "info", "debug"):
+        return v
+    return "info"
+
+
 def _parse_iso8601_utc(value) -> datetime | None:
     if not value:
         return None
@@ -235,16 +242,14 @@ def _parse_frigate_snapshot_topic(topic: str) -> tuple[str, str] | None:
     return camera, label
 
 
-def _parse_birdnet_event(payload):
-    """Parse BirdNET-Pi (birdnet/sightings) or BirdNET-Go (birdnet) JSON.
-
-    BirdNET-Go format: ID, SourceNode, Date, Time, BeginTime, EndTime,
-    SpeciesCode, ScientificName, CommonName, Confidence, Source, BirdImage, ...
-    """
+def _parse_birdnet_event_with_reason(payload):
+    """Return ``(event, reason_code)`` for BirdNET-Pi/BirdNET-Go MQTT payloads."""
     try:
         data = json.loads(payload.decode())
     except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
+        return None, "parse_json_error"
+    if not isinstance(data, dict):
+        return None, "payload_not_object"
     # BirdNET-Pi: Common_Name, Confidence_Score
     # BirdNET-Go: CommonName, Confidence
     species = (
@@ -253,6 +258,9 @@ def _parse_birdnet_event(payload):
         data.get("common_name") or data.get("label") or
         data.get("Com_Name") or "unknown"
     )
+    species = str(species).strip() if species is not None else "unknown"
+    if not species:
+        species = "unknown"
     conf_raw = (
         data.get("Confidence_Score") or data.get("confidence") or
         data.get("score") or data.get("Confidence") or 0
@@ -283,8 +291,10 @@ def _parse_birdnet_event(payload):
     # BirdNET-Go: BeginTime — точное время детекции для слияния с YOLO/Frigate
     ts_str = data.get("BeginTime") or data.get("Date") or data.get("timestamp")
     ts = _parse_iso8601_utc(ts_str)
+    ts_reason = "provided"
     if ts is None:
         ts = datetime.now(timezone.utc)
+        ts_reason = "fallback_now"
     timestamp = ts.isoformat()
 
     ev = {
@@ -313,6 +323,14 @@ def _parse_birdnet_event(payload):
     bird_img = data.get("BirdImage")
     if isinstance(bird_img, dict) and bird_img.get("URL"):
         ev["bird_image_url"] = bird_img["URL"]
+    if species.lower() == "unknown":
+        return ev, f"ok_unknown_species_timestamp_{ts_reason}"
+    return ev, f"ok_timestamp_{ts_reason}"
+
+
+def _parse_birdnet_event(payload):
+    """Back-compatible helper returning event only."""
+    ev, _ = _parse_birdnet_event_with_reason(payload)
     return ev
 
 
@@ -376,6 +394,12 @@ class MQTTEventAggregator:
         self._events = deque(maxlen=max_events)
         self._birdnet_events = deque()
         self._birdnet_event_cap = max(1000, int(max_events or 500) * 20)
+        self._birdnet_obs_level = _normalize_obs_level(
+            app_config.get('processor.birdnet_mqtt_observability_level', 'info')
+        )
+        self._birdnet_obs_debug = bool(
+            app_config.get('processor.birdnet_mqtt_observability_debug', False)
+        )
         self._lock = threading.Lock()
         self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
             maxsize=2000
@@ -469,6 +493,17 @@ class MQTTEventAggregator:
                 "feeder scale write queue full; dropping MQTT scale update",
             )
 
+    def _birdnet_log(self, level: str, message: str, *args) -> None:
+        level_norm = str(level or 'info').strip().lower()
+        if self._birdnet_obs_level == 'off':
+            return
+        if level_norm == 'debug':
+            if self._birdnet_obs_level == 'debug' or self._birdnet_obs_debug:
+                logger.info(message, *args)
+            return
+        if level_norm == 'info' and self._birdnet_obs_level in ('info', 'debug'):
+            logger.info(message, *args)
+
     def _validate_normalized_event(self, ev: dict) -> None:
         """Сверка нормализованного события с Pydantic-схемой (``schemas.events``)."""
         try:
@@ -517,7 +552,22 @@ class MQTTEventAggregator:
         overflow = max(0, len(kept) - int(self._birdnet_event_cap))
         if overflow:
             kept = deque(list(kept)[overflow:])
+        before_count = len(self._birdnet_events)
+        after_count = len(kept)
         self._birdnet_events = kept
+        expired_dropped = max(0, before_count - after_count - overflow)
+        if expired_dropped or overflow:
+            self._birdnet_log(
+                'info',
+                'BirdNET FIFO prune: reason=ttl_or_fifo cap=%s before=%s after=%s '
+                'expired_dropped=%s fifo_dropped=%s ttl_hours=%.2f',
+                self._birdnet_event_cap,
+                before_count,
+                after_count,
+                expired_dropped,
+                overflow,
+                ttl_hours,
+            )
 
     def _remember_birdnet_event(self, ev: dict) -> None:
         with self._lock:
@@ -526,10 +576,27 @@ class MQTTEventAggregator:
             ts = _parse_iso8601_utc(ev.get("timestamp"))
             if ts is not None:
                 ev["_ts_epoch"] = ts.timestamp()
+                ts_reason = 'timestamp_parse_ok'
             elif ev.get("_ts_epoch") is None:
-                # No time information — cannot reason about TTL/window; drop.
+                self._birdnet_log(
+                    'info',
+                    'BirdNET FIFO ingest: reason=drop_no_timestamp species=%s confidence=%s',
+                    ev.get('species', 'unknown'),
+                    ev.get('confidence', 0.0),
+                )
                 return
+            else:
+                ts_reason = 'timestamp_epoch_fallback'
             self._birdnet_events.append(ev)
+            self._birdnet_log(
+                'debug',
+                'BirdNET FIFO ingest: reason=accepted_%s species=%s confidence=%.3f queue_len=%s cap=%s',
+                ts_reason,
+                ev.get('species', 'unknown'),
+                float(ev.get('confidence') or 0.0),
+                len(self._birdnet_events),
+                self._birdnet_event_cap,
+            )
             # Prune relative to the newest event time, not wall clock: unit tests and
             # offline replays may inject historical timestamps while host time differs.
             prune_now = ts or datetime.fromtimestamp(float(ev["_ts_epoch"]), tz=timezone.utc)
@@ -837,13 +904,25 @@ class MQTTEventAggregator:
                             False,
                         )
         elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in self.birdnet_topics):
-            ev = _parse_birdnet_event(msg.payload)
+            ev, reason = _parse_birdnet_event_with_reason(msg.payload)
             if ev is None:
                 plen = len(msg.payload) if msg.payload else 0
-                logger.debug(
-                    "MQTT birdnet: parse returned None topic=%s payload_len=%s",
+                self._birdnet_log(
+                    'info',
+                    'BirdNET MQTT event: reason=%s topic=%s payload_len=%s',
+                    reason,
                     msg.topic,
                     plen,
+                )
+            else:
+                self._birdnet_log(
+                    'debug',
+                    'BirdNET MQTT event: reason=%s topic=%s species=%s confidence=%.3f audio_source=%s',
+                    reason,
+                    msg.topic,
+                    ev.get('species', 'unknown'),
+                    float(ev.get('confidence') or 0.0),
+                    ev.get('audio_source', ''),
                 )
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
@@ -1087,6 +1166,17 @@ class MQTTEventAggregator:
         for meta in out.values():
             meta["score"] = round(float(meta["score"]), 6)
             meta["audio_sources"] = sorted(meta["audio_sources"])
+        self._birdnet_log(
+            'debug',
+            'BirdNET FIFO prior: reason=window_ready species_count=%s queue_len=%s '
+            'window_hours=%.2f ttl_hours=%.2f half_life_hours=%.2f min_confidence=%.3f',
+            len(out),
+            len(self._birdnet_events),
+            window_hours,
+            ttl_hours,
+            half_life_hours,
+            min_confidence,
+        )
         return out
 
     def publish_detection(self, species, confidence, source="yolo", start_time=None, end_time=None):

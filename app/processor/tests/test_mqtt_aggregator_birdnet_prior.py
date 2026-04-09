@@ -21,7 +21,11 @@ sys.modules.setdefault('paho', fake_paho)
 sys.modules.setdefault('paho.mqtt', fake_paho_mqtt)
 sys.modules.setdefault('paho.mqtt.client', fake_paho_mqtt_client)
 
-from mqtt_aggregator import MQTTEventAggregator, _parse_birdnet_event  # noqa: E402
+from mqtt_aggregator import (
+    MQTTEventAggregator,
+    _parse_birdnet_event,
+    _parse_birdnet_event_with_reason,
+)  # noqa: E402
 
 
 class TestBirdnetEventParsing(unittest.TestCase):
@@ -46,6 +50,14 @@ class TestBirdnetEventParsing(unittest.TestCase):
         self.assertEqual(event["audio_source"], "garden_mic_1")
         self.assertIn("_ts_epoch", event)
 
+
+
+
+    def test_parse_birdnet_event_with_reason_code(self):
+        payload = json.dumps({"CommonName": "Robin", "Confidence": 0.8}).encode("utf-8")
+        event, reason = _parse_birdnet_event_with_reason(payload)
+        self.assertIsNotNone(event)
+        self.assertTrue(reason.startswith("ok_"))
 
 class TestBirdnetRollingPrior(unittest.TestCase):
     def setUp(self):

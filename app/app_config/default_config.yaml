@@ -83,6 +83,12 @@ processor:
   birdnet_mqtt_prior_ttl_hours: 25
   birdnet_mqtt_prior_half_life_hours: 6
   birdnet_mqtt_prior_min_confidence: 0.0
+  # BirdNET observability logs for FIFO/parse reasons: off | info | debug.
+  # - info: only decision/prune reasons
+  # - debug: +accepted ingest and prior-window summaries
+  birdnet_mqtt_observability_level: info
+  # Emergency switch: keep level=info but also print debug-level BirdNET reason logs.
+  birdnet_mqtt_observability_debug: false
   # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
   multi_camera_groups: []  # например: [["BirdBox","Forest"]]
   multi_camera_confidence_boost: 0.03
