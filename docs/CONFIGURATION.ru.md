@@ -16,6 +16,20 @@
 
 ---
 
+## Стартовые профили YAML (`app/configs/`)
+
+Примеры **без секретов**; копируйте в `app/app_config/user_config.yaml`, пароли и токены задавайте только в **env** или локально (не коммитьте).
+
+| Файл | Типичное применение |
+|------|---------------------|
+| [`app/configs/minimal.yaml`](../app/configs/minimal.yaml) | Простой LAN: Go2RTC + OpenCV motion; MQTT broker пустой |
+| [`app/configs/frigate-only.yaml`](../app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
+| [`app/configs/full.yaml`](../app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
+
+**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск.
+
+---
+
 ## Как читать ключи
 
 - В таблицах — **точечные пути**, как в YAML: `video.go2rtc_url` → секция `video:`, поле `go2rtc_url:`.
@@ -107,6 +121,9 @@
 | `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
+| `file_max_record_floor_seconds` | Только **`video.source=file`:** минимальный отрезок по «настенным часам» (сек) до возможного split длинного клипа; по умолчанию **86400**. См. *(поведение)* в **Video**. |
+| `keep_recording_when_no_detections` | Только **`video.source=file`** (по умолчанию **false**). Если **true** — оставлять финализированную сессию (валидный mp4) при **нуле** сохранённых детекций (офлайн-пайплайны). Для **`go2rtc` / live** ключ **не действует**; пустые сессии удаляются. |
+| `track_regen_parallel_auto_with_manual` | Продвинутая параллельность перегенерации треков (auto + manual scope); тюнинг для ops, только YAML (см. System → track regen в UI). |
 
 ---
 
@@ -215,6 +232,10 @@
 **Качество каталога:** `app/web/seed/species_suspect_blocklist.txt` — термины для скрытия не-птиц/объектов из фильтрованных списков видов (`GET /api/ui/species?exclude_suspects=1`, когда это явно запрошено). Полный отчёт (подозрительные строки, дубликаты имён для слияния): System → карточка «Качество каталога видов» или `GET /api/ui/system/species-registry/data-quality` (с паролем настроек). Новые детекции по строкам из блоклиста не создают отдельный вид — уходят в «Unknown».
 
 **Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt`: `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
+
+**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](./TRAINING.ru.md)).
+
+**UX «Неизвестные»:** при strict ingest подписи вне allowlist попадают в **Unknown** (без новой строки вида). Contributor исправляет в разделе **Неизвестные**; массовая уборка — System → качество каталога / reconcile. Отображаемые имена одного таксона согласуйте с каноном выше (`species_mapping`, `species_canonical_mapping.txt`, объединение дубликатов).
 
 | Ключ | Описание |
 |------|----------|
