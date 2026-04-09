@@ -22,9 +22,9 @@
 
 | Файл | Типичное применение |
 |------|---------------------|
-| [`app/configs/minimal.yaml`](../app/configs/minimal.yaml) | Простой LAN: Go2RTC + OpenCV motion; MQTT broker пустой |
-| [`app/configs/frigate-only.yaml`](../app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
-| [`app/configs/full.yaml`](../app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
+| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Простой LAN: Go2RTC + OpenCV motion; MQTT broker пустой |
+| [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
+| [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
 
 **Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск.
 

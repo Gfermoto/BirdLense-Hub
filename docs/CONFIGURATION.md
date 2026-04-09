@@ -22,9 +22,9 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 
 | File | Typical use |
 |------|-------------|
-| [`app/configs/minimal.yaml`](../app/configs/minimal.yaml) | Simple LAN stack: Go2RTC + OpenCV motion; MQTT broker left empty |
-| [`app/configs/frigate-only.yaml`](../app/configs/frigate-only.yaml) | MQTT triggers from Frigate only (no BirdNET topic) |
-| [`app/configs/full.yaml`](../app/configs/full.yaml) | Reference “production-shaped” layout: several cameras, Frigate + BirdNET MQTT, HA weather, feeder — set `HA_TOKEN`, `MQTT_BROKER`, etc. in `.env` or YAML locally |
+| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Simple LAN stack: Go2RTC + OpenCV motion; MQTT broker left empty |
+| [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | MQTT triggers from Frigate only (no BirdNET topic) |
+| [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Reference “production-shaped” layout: several cameras, Frigate + BirdNET MQTT, HA weather, feeder — set `HA_TOKEN`, `MQTT_BROKER`, etc. in `.env` or YAML locally |
 
 **Production vs file-replay test:** Normal operation uses `video.source: go2rtc`. For **offline mp4 replay**, set `video.source: file` with `file_dir` / `file_path` and tune `processor.file_max_record_floor_seconds` (see **Video** behaviour row). Use `processor.keep_recording_when_no_detections: true` only in this **file** mode if you need to keep sessions with **zero** detections (e.g. crops / QA). For **live / Go2RTC**, that flag is **ignored** — empty sessions are still removed to save disk (no change from pre-#264 behaviour).
 
