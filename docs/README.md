@@ -56,7 +56,7 @@ Pick what matches you — you can read the rest as reference.
 | Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | MCP (Model Context Protocol — external AI assistants) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
-| Cursor MCP skill autopilot rule | [`.cursor/rules/mcp-skill-autopilot.mdc`](../.cursor/rules/mcp-skill-autopilot.mdc) |
+| Cursor MCP skill autopilot rule | [repo: `.cursor/rules/mcp-skill-autopilot.mdc`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.cursor/rules/mcp-skill-autopilot.mdc) |
 
 ---
 
