@@ -149,3 +149,37 @@ def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
     if not path or not os.path.isfile(path):
         return None
     return _load_allowlist_names_cached(os.path.abspath(path))
+
+
+def allowlist_scientific_name_for_display_name(
+    display_name: str,
+    app_config_get,
+) -> str | None:
+    """Биноминальное имя из строки allowlist «Scientific (Common)» при совпадении с видом в БД.
+
+    Классификатор хранит «Pica pica (Eurasian Magpie)», а Species.name часто только
+    «Eurasian Magpie» — для Wikipedia/iNaturalist надёжнее искать по **Pica pica**,
+    иначе попадаем на нерелевантную страницу общего имени.
+    """
+    if not (display_name or '').strip():
+        return None
+    target_keys = species_name_match_norm_keys(display_name)
+    if not target_keys:
+        return None
+    path = resolve_allowlist_path(app_config_get)
+    if not path or not os.path.isfile(path):
+        return None
+    abspath = os.path.abspath(path)
+    for raw in _load_allowlist_names_cached(abspath):
+        pair = _split_scientific_common_display(raw)
+        if not pair:
+            continue
+        sci, common = pair
+        line_keys = {
+            _norm_key(raw),
+            _norm_key(sci),
+            _norm_key(common),
+        }
+        if target_keys & line_keys:
+            return sci.strip()
+    return None

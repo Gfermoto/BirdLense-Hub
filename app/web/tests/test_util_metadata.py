@@ -118,11 +118,27 @@ class TestINaturalistMetadata:
         assert source_url is None
 
 
-class TestManualSpeciesImageOverride:
-    """Ручные URL превью: совпадение с каноническим именем в БД (allowlist → common name)."""
+class TestAllowlistScientificForDisplayName:
+    """Бином из allowlist для общего имени вида в БД (регрессия сороки / Pica pica)."""
 
-    def test_eurasian_magpie_common_name_matches_allowlist_row(self):
-        from web.species_metadata import manual_species_image_override
+    def test_magpie_common_name_maps_to_pica_pica(self, tmp_path, monkeypatch):
+        from services.species_catalog_allowlist_service import (
+            allowlist_scientific_name_for_display_name,
+            _load_allowlist_names_cached,
+        )
 
-        u = manual_species_image_override('Eurasian Magpie')
-        assert u and 'Pica_pica1' in u and u.startswith('https://upload.wikimedia.org/')
+        p = tmp_path / 'allow.txt'
+        p.write_text('Pica pica (Eurasian Magpie)\n', encoding='utf-8')
+        abspath = str(p.resolve())
+
+        monkeypatch.setattr(
+            'services.species_catalog_allowlist_service.resolve_allowlist_path',
+            lambda _get: abspath,
+        )
+        _load_allowlist_names_cached.cache_clear()
+        assert (
+            allowlist_scientific_name_for_display_name(
+                'Eurasian Magpie', lambda *_a, **_k: None
+            )
+            == 'Pica pica'
+        )

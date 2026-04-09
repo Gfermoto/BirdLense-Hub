@@ -948,7 +948,7 @@
     "catalogRepairWithDescription": "With description: {{n}}",
     "catalogRepairNextRun": "Next auto-run: ~{{n}} min",
     "catalogRepairWhatItDoes": "The “complete” percent only means each species has some image and description — not that the photo is the right bird. Polish fills empty fields from Wikipedia/iNaturalist, swaps Wikimedia thumbs when the CDN blocks the hub, and applies built-in image URL fixes (e.g. Eurasian Magpie). Cards that already have both fields are mostly left alone — low numbers in the report are normal.",
-    "catalogRepairLastRun": "Last run: checked {{checked}}, metadata updated {{fixed}}, images replaced {{swapped}}, incomplete left {{missing}}.",
+    "catalogRepairLastRun": "Last run: checked {{checked}}, metadata updated {{fixed}}, images replaced (iNat/CDN) {{swapped}}, allowlist-binomial preview updates {{science}}, incomplete left {{missing}}. Species list cache is cleared — refresh the catalog page.",
     "automationTitle": "Automation hub",
     "automationHint": "Run admin and operational workflows from the UI. Fusion export/eval and catalog maintenance all stay behind settings access.",
     "automationDangerZone": "Danger zone",
