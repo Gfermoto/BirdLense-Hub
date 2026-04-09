@@ -31,9 +31,9 @@ _wiki_title_overrides = {
 
 _manual_image_overrides = {
     'jacobin pigeon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG',
-    # Pica pica: иногда в БД остаётся чужое фото при верном описании (wiki не перезапрашивается).
+    # Pica pica: Commons thumb hash — 5/5f (не 9/9d), иначе 404 в UI.
     'pica pica (eurasian magpie)': (
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Pica_pica1.jpg/'
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Pica_pica1.jpg/'
         '330px-Pica_pica1.jpg'
     ),
 }
