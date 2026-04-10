@@ -1,7 +1,6 @@
 """Публичная галерея: opt-in загрузка лучших кадров на общий сайт сообщества."""
 import logging
-import os
-from datetime import datetime, timezone
+from datetime import timezone
 
 import requests
 
@@ -166,7 +165,7 @@ def upload_video_detections_to_gallery(video_id: int):
         VideoSpecies.frames.isnot(None),
     )
     if only_corrected:
-        q = q.filter(VideoSpecies.manually_corrected == True)
+        q = q.filter(VideoSpecies.manually_corrected.is_(True))
 
     rows = q.all()
     if not rows:

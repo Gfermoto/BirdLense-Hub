@@ -7,7 +7,6 @@ BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты
 import argparse
 import asyncio
 import os
-import sys
 
 import httpx
 import yaml

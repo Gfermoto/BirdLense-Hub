@@ -72,7 +72,7 @@ def fetch_review_queue_items(
         .filter(
             Video.end_time >= start_dt,
             Video.start_time <= end_dt,
-            VideoSpecies.manually_corrected == False,
+            VideoSpecies.manually_corrected.is_(False),
             or_(
                 VideoSpecies.confidence < threshold,
                 Species.name == GENERIC_BIRD_SPECIES,

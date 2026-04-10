@@ -9,7 +9,7 @@
 """
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app_config.app_config import app_config
 

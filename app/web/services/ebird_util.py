@@ -1,7 +1,6 @@
 """Shared utilities for eBird-related services (export, region comparison)."""
 import re
 
-from ebird_region_core import REGION_NAME_TO_CODE
 
 
 def common_name_from_species(name: str) -> str:

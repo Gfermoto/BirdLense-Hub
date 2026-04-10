@@ -1,7 +1,6 @@
 """Точка входа Flask: фабрика приложения, БД (create_all + Alembic), регистрация маршрутов."""
 import os
 import threading
-from datetime import datetime, timezone
 from util import notify_app_startup
 from flask import Flask
 from flask_cors import CORS

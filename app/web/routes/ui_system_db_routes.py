@@ -132,6 +132,6 @@ def register_ui_system_db_routes(app):
                 'deletedCount': count,
                 'deletedSize': size,
             }, 200
-        except Exception as e:
+        except Exception:
             app.logger.exception('Retention failed')
             return {'error': 'Failed to run retention'}, 500

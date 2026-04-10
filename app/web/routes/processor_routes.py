@@ -10,7 +10,7 @@ from flask import request
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-from models import ActivityLog, db, BirdFood, Video, Species, VideoSpecies, SpeciesVisit
+from models import ActivityLog, db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from services.gallery_upload_service import upload_video_detections_to_gallery
@@ -420,7 +420,7 @@ def register_routes(app):
     def notify_motion_route():
         if not _check_processor_secret():
             return {'error': 'Forbidden'}, 403
-        return {'message': f'Successfully received notification of motion'}, 200
+        return {'message': 'Successfully received notification of motion'}, 200
 
     @app.route('/api/processor/activity_log', methods=['POST'])
     def add_or_update_activity_log():
