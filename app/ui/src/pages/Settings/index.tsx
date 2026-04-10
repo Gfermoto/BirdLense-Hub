@@ -107,6 +107,7 @@ export const Settings: React.FC = () => {
             currentSettings={settings as SettingsType}
             observedSpecies={observedSpecies}
             onSubmit={updateMutation.mutate}
+            yamlBackupEnabled={isAdmin}
           />
           <Snackbar
             open={showSuccessAlert}

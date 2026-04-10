@@ -77,6 +77,24 @@ def admin_track_regen_access():
     return session.get('access_role') == 'admin'
 
 
+def admin_settings_yaml_access():
+    """Экспорт/импорт user_config YAML: админ при двух паролях; MCP Bearer как в settings_check_access."""
+    from flask import request, session
+
+    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
+    if mcp_token:
+        auth = request.headers.get('Authorization') or ''
+        if auth.startswith('Bearer '):
+            token = auth[7:].strip()
+            if secrets.compare_digest(token, mcp_token):
+                return True
+    if not settings_check_access():
+        return False
+    if not _has_contributor_password():
+        return True
+    return session.get('access_role') == 'admin'
+
+
 def contributor_or_admin_access():
     """Check if contributor or admin can access a route."""
     from flask import session

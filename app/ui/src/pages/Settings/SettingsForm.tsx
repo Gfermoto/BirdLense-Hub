@@ -15,10 +15,12 @@ export const SettingsForm = ({
   currentSettings,
   observedSpecies,
   onSubmit,
+  yamlBackupEnabled = false,
 }: {
   currentSettings: Settings;
   observedSpecies: Array<{ id: number; name: string; count: number }>;
   onSubmit: (settings: Settings) => void;
+  yamlBackupEnabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const form = useForm<Settings>({
@@ -37,7 +39,7 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      <GeneralSection form={form} />
+      <GeneralSection form={form} yamlBackupEnabled={yamlBackupEnabled} />
       <HomeAssistantSection form={form} />
       <VideoSection form={form} />
       <NotificationsSection form={form} observedSpecies={observedSpecies} />
