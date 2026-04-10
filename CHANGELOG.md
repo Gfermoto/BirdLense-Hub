@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Processor (tech debt [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) / [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238)):** цикл motion → запись и финализация вынесены в **`MotionRecordingSession`** (`app/processor/src/recording_session.py`); **`main.py`** оставляет сбор зависимостей и вызов сессии.
 - **Web (миграции схемы, [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225)):** вместо try/except **`ALTER TABLE`** на старте — **Flask-Migrate / Alembic** (`app/web/migrations/`, ревизия **`001_schema_patches`**, идемпотентные колонки); после **`db.create_all()`** вызывается **`upgrade()`**; зависимость **`Flask-Migrate`** в `web/requirements.txt`.
 
+### CI
+
+- **[#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284):** `.github/workflows/npm-audit-scheduled.yml` — еженедельно + `workflow_dispatch`: `npm audit --omit=dev --audit-level=moderate` в `app/ui`; политика в комментариях workflow. Док: [TESTING](docs/TESTING.md) / [RU](docs/TESTING.ru.md).
+
 ### Docs
 
 - **[#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287):** аудит завершён — в `create_app`/рантайме web нет `ALTER TABLE`; DDL только в Alembic; зафиксировано в [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md) (политика DDL + PRAGMA).
