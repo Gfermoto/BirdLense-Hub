@@ -30,7 +30,7 @@
 
 1. **Клонируйте** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (при необходимости — **fork** в свой аккаунт) и создайте ветку от **`dev`**.
 2. **Вносите изменения** — следуйте существующему стилю кода.
-3. **Тестируйте** — в `app/`: `make test` и `make test-web` (Docker), либо убедитесь, что PR зелёный в CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
+3. **Тестируйте** — в `app/`: `make test` и `make test-web` (Docker), либо убедитесь, что PR зелёный в CI: **`python-security`**, **`openapi-contract`**, **`ui-build`**, **`docs`**, **`docker-tests`** (см. [docs/TESTING.ru.md](docs/TESTING.ru.md) §1).
 4. **Откройте Pull Request** с базой **`dev`**.
 
 **Вторая пара глаз:** для защищённых веток желательно одобрение другого человека. См. [docs/GOVERNANCE.ru.md](docs/GOVERNANCE.ru.md) — как добавить наблюдателя; приглашение collaborator принимает только **живой аккаунт GitHub**, для автоматизации используйте бот-аккаунт или GitHub App.
@@ -69,7 +69,7 @@ make start
 - Один PR — одна фича или исправление.
 - Добавляйте тесты для новых API и логики процессора.
 - Обновляйте документацию при изменении поведения.
-- Должны проходить **`make test`** и **`make test-web`** в `app/` (Docker), либо PR зелёный в CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
+- Должны проходить **`make test`** и **`make test-web`** в `app/` (Docker), либо PR зелёный в CI (все job из [docs/TESTING.ru.md](docs/TESTING.ru.md) §1).
 - Для PR, которые меняют **размещение в UI** или добавляют новый экран (`area:web`): в описании PR кратко подтвердите **ворота UX-контекста** (после [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114)): какая страница отвечает за намерение пользователя, переиспользуется ли поток данных/API, что покажется оператору «не на своём месте».
 
 ### Чеклист перед релизом (мейнтейнер)

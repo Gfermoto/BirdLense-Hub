@@ -43,7 +43,7 @@
 python3 scripts/check-docs-version.py
 ```
 
-Скрипт сверяет `VERSION` с `mkdocs.yml`, `package.json` и `openapi.yaml` (в CI — перед сборкой MkDocs). Видимый баннер задаётся в **`overrides/main.html`** (блок `announce`); ключ `theme.announcement` в YAML Material не используется.
+Скрипт сверяет `VERSION` с `mkdocs.yml`, `package.json` и `openapi.yaml`. В CI он запускается в job **`openapi-contract`** и повторно в **`docs`** перед MkDocs (см. [TESTING.ru.md](./TESTING.ru.md) §1). Видимый баннер задаётся в **`overrides/main.html`** (блок `announce`); ключ `theme.announcement` в YAML Material не используется.
 
 ## Релизы и теги
 
