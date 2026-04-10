@@ -23,12 +23,12 @@ export const Settings: React.FC = () => {
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [restartMessage, setRestartMessage] = useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
-  const { requiresPassword, isAdmin } = useProtectedArea();
+  const { requiresPassword, isAdmin, canEdit } = useProtectedArea();
 
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    enabled: !requiresPassword || isAdmin,
+    enabled: !requiresPassword || canEdit,
     retry: false,
   });
 
@@ -68,7 +68,7 @@ export const Settings: React.FC = () => {
   }, [settings]);
 
   return (
-    <ProtectedRoute title={t('settings.updateTitle')}>
+    <ProtectedRoute title={t('settings.updateTitle')} requireAdmin={false}>
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <CircularProgress />
@@ -107,7 +107,8 @@ export const Settings: React.FC = () => {
             currentSettings={settings as SettingsType}
             observedSpecies={observedSpecies}
             onSubmit={updateMutation.mutate}
-            yamlBackupEnabled={isAdmin}
+            yamlSafeExportEnabled={canEdit}
+            yamlAdminBackupEnabled={isAdmin}
           />
           <Snackbar
             open={showSuccessAlert}

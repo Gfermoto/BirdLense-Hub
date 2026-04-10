@@ -16,6 +16,7 @@ from auth import (
     client_ip_for_rate_limit,
     contributor_or_admin_access,
     settings_check_access,
+    settings_yaml_safe_export_access,
     verify_password_retry_after_seconds,
 )
 from services.cache import cache_delete_prefix
@@ -97,7 +98,7 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/settings', methods=['GET'])
     def get_settings():
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         from services.cache import redis_url_effective_masked_for_api
 
@@ -116,12 +117,12 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/settings/yaml-export', methods=['GET'])
     def settings_yaml_export():
-        """Скачать user_config: mode=safe (секреты ***) или mode=full (сырой YAML; ack=full)."""
-        if not admin_settings_yaml_access():
-            return {'error': 'Forbidden'}, 403
+        """Скачать user_config: safe — ***, оператор+админ; full — с секретами, только админ (+MCP)."""
         mode = (request.args.get('mode') or 'safe').strip().lower()
         stamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         if mode == 'full':
+            if not admin_settings_yaml_access():
+                return {'error': 'Forbidden'}, 403
             ack = (request.args.get('ack') or '').strip().lower()
             if ack not in ('full', '1', 'yes', 'true'):
                 return {
@@ -142,6 +143,8 @@ def register_ui_settings_routes(app):
             )
         if mode != 'safe':
             return {'error': 'mode must be safe or full'}, 400
+        if not settings_yaml_safe_export_access():
+            return {'error': 'Forbidden'}, 403
         raw = app_config.load_raw_user_config_dict()
         masked = app_config.mask_sensitive_in_user_tree(raw)
         body = yaml.safe_dump(
@@ -199,7 +202,7 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/settings', methods=['PATCH'])
     def update_settings():
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         try:
             updates = request.json
@@ -216,6 +219,8 @@ def register_ui_settings_routes(app):
                     if (c.get('stream_name') or '').strip()
                 ]
 
+            if session.get('access_role') == 'contributor' and _has_contributor_tier():
+                updates = app_config.strip_contributor_admin_only_updates(updates)
             updates = app_config.filter_sensitive_placeholders(updates)
 
             if isinstance(updates.get('secrets'), dict):
@@ -257,7 +262,7 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         base = data_dir()
         flag_path = os.path.join(base, 'restart_processor.flag')

@@ -34,6 +34,13 @@ SENSITIVE_KEYS = frozenset({
     'secrets.ebird_api_key',
     'mcp.token',
 })
+
+# Только админ (при двух паролях): оператор не может менять даже реальными значениями
+CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS = frozenset({
+    'general.settings_password',
+    'general.contributor_password',
+    'mcp.token',
+})
 MASK_PLACEHOLDER = '***'
 
 # Верхнеуровневые секции YAML: при ошибке типа (строка вместо mapping) ломается .get по вложенным ключам.
@@ -277,6 +284,14 @@ class AppConfig:
                 continue
             if isinstance(val, str) and (val.strip() == MASK_PLACEHOLDER or not val.strip()):
                 cls._remove_nested(out, path)
+        return out
+
+    @classmethod
+    def strip_contributor_admin_only_updates(cls, updates):
+        """Убрать из PATCH поля, которые оператор не должен менять (пароли доступа, MCP)."""
+        out = copy.deepcopy(updates)
+        for path in CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS:
+            cls._remove_nested(out, path)
         return out
 
     @staticmethod

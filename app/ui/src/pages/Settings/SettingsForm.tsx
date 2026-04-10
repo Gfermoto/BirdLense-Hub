@@ -15,12 +15,14 @@ export const SettingsForm = ({
   currentSettings,
   observedSpecies,
   onSubmit,
-  yamlBackupEnabled = false,
+  yamlSafeExportEnabled = false,
+  yamlAdminBackupEnabled = false,
 }: {
   currentSettings: Settings;
   observedSpecies: Array<{ id: number; name: string; count: number }>;
   onSubmit: (settings: Settings) => void;
-  yamlBackupEnabled?: boolean;
+  yamlSafeExportEnabled?: boolean;
+  yamlAdminBackupEnabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const form = useForm<Settings>({
@@ -39,7 +41,11 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      <GeneralSection form={form} yamlBackupEnabled={yamlBackupEnabled} />
+      <GeneralSection
+        form={form}
+        yamlSafeExportEnabled={yamlSafeExportEnabled}
+        yamlAdminBackupEnabled={yamlAdminBackupEnabled}
+      />
       <HomeAssistantSection form={form} />
       <VideoSection form={form} />
       <NotificationsSection form={form} observedSpecies={observedSpecies} />
