@@ -2,7 +2,6 @@ import copy
 import logging
 import os
 import shutil
-from datetime import datetime
 
 import yaml
 
@@ -308,6 +307,37 @@ class AppConfig:
             config_section = config_section.setdefault(k, {})
         config_section[keys[-1]] = value
         self._enforce_confidence_floors(self.config)
+
+    def load_raw_user_config_dict(self) -> dict:
+        """Содержимое user_config.yaml без merge с default."""
+        path = self.user_config_file
+        if not os.path.exists(path):
+            return {}
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                return yaml.safe_load(file) or {}
+        except yaml.YAMLError as e:
+            logger.error('Invalid YAML in %s: %s', path, e)
+            return {}
+
+    @classmethod
+    def mask_sensitive_in_user_tree(cls, user: dict) -> dict:
+        """Копия user-дерева с маскировкой SENSITIVE_KEYS (для безопасного экспорта)."""
+        out = copy.deepcopy(user) if isinstance(user, dict) else {}
+        for path in SENSITIVE_KEYS:
+            if cls._get_nested(out, path) is not None:
+                cls._set_nested(out, path, MASK_PLACEHOLDER)
+        return out
+
+    def validate_user_config_tree(self, user_dict: dict) -> list[str]:
+        """Проверка user-снимка после merge с default (типы верхнего уровня)."""
+        try:
+            with open(self.default_config_file, 'r', encoding='utf-8') as file:
+                default_config = yaml.safe_load(file) or {}
+        except yaml.YAMLError as e:
+            return ['default_config YAML error: %s' % e]
+        merged = self.merge_dicts(default_config, user_dict)
+        return validate_merged_config(merged)
 
     def _persist_raw_user_config(self, data: dict) -> None:
         """Записать сырой user YAML (для миграции ключей без полного self.config)."""
