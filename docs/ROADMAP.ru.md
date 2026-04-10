@@ -16,8 +16,9 @@
 | **Архитектура** | two_stage: binary (.pt) + YOLO11n-cls (EU). single_stage — fallback при отсутствии моделей                           |
 | **EU-модель**   | `best.pt` — birds-525 + iNaturalist (~491 вид)                                                                       |
 | **US-модель**   | `best_US.pt` — NABirds (резерв)                                                                                      |
-| **React**       | 19.2.4                                                                                                               |
-| **Vite**        | 6.4.1                                                                                                                |
+| **React**       | **19.x** (`^19.0.0` в `app/ui/package.json`; точный patch — по lock-файлу)                                         |
+| **Vite**        | **6.x** (`^6.4.2` в `app/ui/package.json`)                                                                         |
+| **Схема БД web** | **Flask-Migrate / Alembic** — ревизии в `app/web/migrations/`; в `create_app()` после `create_all()` вызывается `upgrade()` (см. [CHANGELOG на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) *[Unreleased]* / [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); локально: [project/changelog](./project/changelog.md)) |
 
 
 ---
@@ -278,6 +279,8 @@ bash scripts/github-project-add-backlog-consilium.sh
 - Эпик-порядок: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (колонка иерархии на доске): сводные [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — нарезка `ui_routes` на доменные `ui_*_routes`, см. [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md)), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — декомпозиция процессора, миграция HA в `user_config`, PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor **фаза 2** **`MotionRecordingSession`** **сделано**; MQTT + **ebird_region_core** без `services.*` — **сделано**) и уровни [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) (**закрыт** — очередь MQTT + `frame_processor` без sleep) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**сделано** в хабе: Alembic `001` + `MotionRecordingSession`; детали — в issue). Восстановить связи: `bash scripts/github-issue-link-subissues.sh 220 198 201 238 221 222 223 224 225`.
 - Вне волны D: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (классификатор); Heimdall/HA — бэклог [#229](https://github.com/Gfermoto/BirdLense-Hub/issues/229)–[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234).
 
+**Архитектура и сопровождаемость (следующая волна, апр. 2026):** на той же доске [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) — [#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292) (декомпозиция `app/web/app.py`), [#293](https://github.com/Gfermoto/BirdLense-Hub/issues/293) (сервисный слой / тонкие роуты), [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281) (Pydantic на mutating API), [#294](https://github.com/Gfermoto/BirdLense-Hub/issues/294) (N+1 / индексы), [#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295) (DI процессора), [#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296) (состояние UI / TanStack Query), [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297) (CI: сложность, OpenAPI→TS, политика аудитов). **Security / hardening:** [#277](https://github.com/Gfermoto/BirdLense-Hub/issues/277)–[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286). **#287** ✅ **закрыт** — аудит: в `create_app`/рантайме web нет `ALTER TABLE`; DDL только через Alembic; см. [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md) § База данных.
+
 **Критерий выхода из этапа "мелкие баги/хвосты":**
 - Все issue из волн A+B закрыты (#152/#158/#160 — PR [#176](https://github.com/Gfermoto/BirdLense-Hub/pull/176)).
 - По волне C закрыты минимум 2 задачи с максимальной пользовательской ценностью.
@@ -301,7 +304,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | Приоритет        | Фокус                                                                                                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **Сообщество**   | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), метка `good first issue`, обратная связь по докам |
-| **Качество**     | CI на PR (сборка UI + MkDocs `--strict`), Dependabot / зависимости                                                      |
+| **Качество**     | CI на PR — см. [TESTING.ru.md](./TESTING.ru.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, сборка UI, MkDocs, Docker-тесты + Playwright smoke + аудит карточек); Dependabot |
 | **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте                                        |
 | **Релизы**       | Теги + GitHub Release → semver-образ Docker + деплой Pages                                                              |
 
