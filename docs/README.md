@@ -35,6 +35,7 @@ Pick what matches you — you can read the rest as reference.
 | **HTTP API narrative** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc RU](./reference/openapi.ru.md) |
 | **Versioning** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | **Server deploy checklist** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
+| **Heimdall dashboard tiles** | [HEIMDALL](./HEIMDALL.md) | [RU](./HEIMDALL.ru.md) |
 
 ---
 

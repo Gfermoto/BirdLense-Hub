@@ -33,6 +33,7 @@
 | **API** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc](./reference/openapi.ru.md) |
 | **Версионирование** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | **Чеклист деплоя на сервер** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
+| **Плитки Heimdall** | [HEIMDALL](./HEIMDALL.md) | [RU](./HEIMDALL.ru.md) |
 
 ---
 

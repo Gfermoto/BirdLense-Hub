@@ -28,6 +28,7 @@
 | Проблемы | [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md) |
 | Восстановление конфига | [RECOVERY_CONFIG.ru.md](./RECOVERY_CONFIG.ru.md) |
 | Глоссарий | [GLOSSARY.ru.md](./GLOSSARY.ru.md) |
+| Плитки Heimdall | [HEIMDALL.ru.md](./HEIMDALL.ru.md) · [EN](./HEIMDALL.md) |
 
 ---
 

@@ -58,6 +58,7 @@ nav:
       - Troubleshooting: TROUBLESHOOTING.md
       - Recover config: RECOVERY_CONFIG.md
       - Glossary: GLOSSARY.md
+      - "Heimdall (tiles)": HEIMDALL.md
   - "Develop & integrate":
       - Architecture: ARCHITECTURE.md
       - HTTP API: API.md
@@ -106,6 +107,7 @@ nav:
       - Решение проблем: TROUBLESHOOTING.ru.md
       - Восстановление конфига: RECOVERY_CONFIG.ru.md
       - Глоссарий: GLOSSARY.ru.md
+      - "Heimdall (плитки)": HEIMDALL.ru.md
       - Архитектура: ARCHITECTURE.ru.md
       - API: API.ru.md
       - OpenAPI (Redoc): reference/openapi.ru.md
