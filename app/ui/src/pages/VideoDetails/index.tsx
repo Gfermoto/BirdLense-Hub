@@ -231,8 +231,7 @@ export const VideoDetails = () => {
   useEffect(() => {
     trackRegenMutation.reset();
     specRegenMutation.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- сброс при смене ролика, не при каждом render мутаций
-  }, [params.id]);
+  }, [params.id, trackRegenMutation, specRegenMutation]);
 
   const trackJobSummary = useMemo(
     () => summarizeTrackRegenJob(trackRegenMutation.data, videoIdNum, t),

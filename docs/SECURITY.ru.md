@@ -63,7 +63,7 @@
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
 | **Высокий** | Нет rate limiting. | Flask-Limiter или аналог. |
-| **Средний** | CORS: `supports_credentials: True`, origins из `CORS_ORIGINS`. | Документировать для внешнего доступа. |
+| **Средний** | CORS: `supports_credentials: True`; allowlist из `CORS_LOCAL_DEV_ORIGINS` (дефолт — локальная разработка), `CORS_DEFAULT_ORIGINS`, `CORS_ORIGINS`. | Документировать для внешнего доступа; пустой `CORS_LOCAL_DEV_ORIGINS` — без встроенного локального набора. |
 | **Средний** | Валидация входных данных частичная. | Схемы и лимиты для мутирующих эндпоинтов. |
 | ~~**Средний**~~ **Исправлено** | `X-Real-IP` / `X-Forwarded-For` учитывались без trusted proxy. | Заголовки используются только при `TRUSTED_PROXY=1`; иначе rate-limit берёт `remote_addr`. |
 | ~~**Средний**~~ **Исправлено** | Web Push подписка могла включить `web_push.enabled` без доступа к настройкам. | `POST /api/ui/push/subscribe` теперь требует `settings_check_access()`. |

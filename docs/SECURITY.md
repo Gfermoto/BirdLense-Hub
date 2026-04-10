@@ -63,7 +63,7 @@
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
 | **High** | No rate limiting. | Add Flask-Limiter or similar. |
-| **Medium** | CORS: `supports_credentials: True`, origins via `CORS_ORIGINS`. When empty — localhost only. | Document CORS setup for external access. |
+| **Medium** | CORS: `supports_credentials: True`; allowlist from `CORS_LOCAL_DEV_ORIGINS` (default local dev), `CORS_DEFAULT_ORIGINS`, `CORS_ORIGINS`. | Document CORS for external access; set `CORS_LOCAL_DEV_ORIGINS` empty to drop built-in local origins. |
 | **Medium** | Input validation is partial. | Extend validation (schemas, sizes) for mutating endpoints. |
 | ~~**Medium**~~ **Fixed** | `X-Real-IP` / `X-Forwarded-For` were trusted without a trusted proxy boundary. | Proxy headers are used only when `TRUSTED_PROXY=1`; otherwise rate limiting uses `remote_addr`. |
 | ~~**Medium**~~ **Fixed** | Web Push subscription could enable `web_push.enabled` without settings access. | `POST /api/ui/push/subscribe` now requires `settings_check_access()`. |

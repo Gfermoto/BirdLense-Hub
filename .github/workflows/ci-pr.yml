@@ -101,9 +101,10 @@ jobs:
           cache: npm
           cache-dependency-path: app/ui/package-lock.json
 
-      - name: Install & build UI
+      - name: Install, lint & build UI
         run: |
           npm ci
+          npm run lint
           npm run build
 
   docs:

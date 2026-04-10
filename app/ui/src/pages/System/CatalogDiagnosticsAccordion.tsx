@@ -4,7 +4,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Box } from '@mui/material';
+import Box from '@mui/material/Box';
 import { SpeciesDataQualityCard } from './SpeciesDataQualityCard';
 import { ClassifierDatasetAlignmentCard } from './ClassifierDatasetAlignmentCard';
 

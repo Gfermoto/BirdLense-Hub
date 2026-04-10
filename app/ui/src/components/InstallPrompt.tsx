@@ -42,17 +42,23 @@ export function InstallPrompt() {
     setOpen(false);
     setDeferredPrompt(null);
     if (outcome === 'accepted') {
+      setDismissed(true);
       try {
         sessionStorage.setItem(STORAGE_KEY, '1');
-      } catch {}
+      } catch {
+        /* sessionStorage unavailable */
+      }
     }
   };
 
   const handleClose = () => {
     setOpen(false);
+    setDismissed(true);
     try {
       sessionStorage.setItem(STORAGE_KEY, '1');
-    } catch {}
+    } catch {
+      /* sessionStorage unavailable */
+    }
   };
 
   if (!deferredPrompt || dismissed) return null;

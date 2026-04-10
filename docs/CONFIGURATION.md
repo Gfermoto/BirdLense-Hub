@@ -48,6 +48,7 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token`) |
 | `MCP_TOKEN` | MCP token (overrides `mcp.token`) |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
+| `CORS_LOCAL_DEV_ORIGINS` | Local/dev CORS origins (comma-separated): Vite, `birdlense.local`, hub port. Default matches former in-code list; set empty to omit |
 | `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
 | `CORS_ORIGINS` | Extra CORS origins (comma-separated) |
 | `OPENWEATHER_API_KEY` | OpenWeather key |

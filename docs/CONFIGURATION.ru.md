@@ -48,6 +48,7 @@
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
+| `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
 | `CORS_ORIGINS` | Доп. origins для CORS (через запятую) |
 | `OPENWEATHER_API_KEY` | Ключ OpenWeather |
