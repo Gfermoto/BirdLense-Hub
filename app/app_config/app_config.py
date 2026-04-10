@@ -211,6 +211,7 @@ class AppConfig:
             )
             return False
         changed = False
+        adjusted: list[str] = []
         for path, floor in CONFIDENCE_FLOORS.items():
             current = cls._get_nested(config, path)
             if current is None:
@@ -219,10 +220,11 @@ class AppConfig:
             if coerced < floor:
                 cls._set_nested(config, path, floor)
                 changed = True
+                adjusted.append(f'{path}: {current!r} -> {floor}')
         if changed:
             logger.warning(
                 'Clamped legacy low confidence settings to safe floors: %s',
-                ', '.join(f'{key}>={value}' for key, value in CONFIDENCE_FLOORS.items()),
+                '; '.join(adjusted),
             )
         return changed
 

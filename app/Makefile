@@ -1,4 +1,10 @@
-.PHONY: build start stop logs deploy pull setup test test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs deploy pull setup test test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+
+all: build
+
+clean:
+	@docker compose down --remove-orphans 2>/dev/null || true
+	@rm -rf htmlcov .coverage
 
 # Локальный venv для pytest без Docker (тот же requirements, что в CI openapi job).
 VENV ?= .venv
@@ -61,9 +67,11 @@ test-web:
 
 # Один раз: python3 -m venv .venv && pip install -r web/requirements.txt
 venv-web:
-	@if [ ! -x "$(VENV)/bin/python" ]; then python3 -m venv "$(VENV)"; fi
-	@"$(VENV)/bin/python" -m pip install -U pip
-	env PIP_NO_USER=1 "$(VENV)/bin/python" -m pip install -r web/requirements.txt
+	@if [ ! -x "$(VENV)/bin/python" ]; then \
+		python3 -m venv "$(VENV)" && \
+		"$(VENV)/bin/python" -m pip install -U pip; \
+	fi
+	env PIP_NO_USER=1 "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
 	@echo "venv-web: готово $(abspath $(VENV)) (используйте: make test-web-local)"
 
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
