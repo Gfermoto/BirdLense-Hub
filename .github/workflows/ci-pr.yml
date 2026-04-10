@@ -172,7 +172,16 @@ jobs:
 
       - name: Processor .pt weights for integration tests
         working-directory: ${{ github.workspace }}
-        run: ./scripts/fetch-processor-weights.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./scripts/fetch-processor-weights.sh; then
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "Failed to fetch processor weights after retries" >&2
+          exit 1
 
       - name: Build birdlense image
         run: docker compose build birdlense

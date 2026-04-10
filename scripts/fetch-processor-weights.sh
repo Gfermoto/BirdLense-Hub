@@ -107,7 +107,24 @@ ensure_two_stage_classifier() {
   fi
   echo "Downloading EU classifier weights..."
   ensure_dir "$CLASSIFIER_DEST"
-  curl -fsSL -o "$CLASSIFIER_DEST" "$CLASSIFIER_URL"
+  tmp="$(mktemp)"
+  curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 -o "$tmp" "$CLASSIFIER_URL"
+  echo "Verifying classifier checksum against CHECKSUMS..."
+  expected="$(awk '/  app\/processor\/models\/classification\/weights\/best\.pt$/ {print $1}' "${ROOT}/CHECKSUMS")"
+  actual="$(sha256sum "$tmp" | awk '{print $1}')"
+  if [[ -z "$expected" ]]; then
+    echo "ERROR: CHECKSUMS entry missing for app/processor/models/classification/weights/best.pt" >&2
+    rm -f "$tmp"
+    exit 7
+  fi
+  if [[ "$expected" != "$actual" ]]; then
+    echo "ERROR: checksum mismatch for classifier weights" >&2
+    echo "expected=$expected" >&2
+    echo "actual=$actual" >&2
+    rm -f "$tmp"
+    exit 8
+  fi
+  mv "$tmp" "$CLASSIFIER_DEST"
 }
 
 if [[ "$MODE" == "legacy" ]]; then
