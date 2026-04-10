@@ -47,6 +47,8 @@ _DECISION_TRACE_FIELDS = (
     '_multi_camera_support',
     '_fusion_used',
     '_fusion_score',
+    'frigate_standalone',
+    'frigate_merge_suppressed',
 )
 _DECISION_TRACE_LIMIT = 40
 
@@ -187,7 +189,8 @@ def finalize_motion_recording(
     elif mqtt_events:
         logging.warning(
             'ByteTrack: 0 YOLO tracks but %s MQTT events. '
-            'Trigger/MQTT alone no longer creates final detections without YOLO confirmation.',
+            'Without YOLO, Frigate MQTT does not become a final detection unless '
+            'detection.frigate_standalone_when_no_yolo is enabled (see detection_fusion).',
             len(mqtt_events),
         )
 
@@ -395,7 +398,8 @@ def finalize_motion_recording(
             if sn and sn not in seen:
                 seen.add(sn)
                 notify_ok = bool(d.get('notification_eligible', True))
-                if str(d.get('decision_kind') or '').strip().lower() == 'review_only_generic':
+                _dk = str(d.get('decision_kind') or '').strip().lower()
+                if _dk in ('review_only_generic', 'frigate_standalone_excluded'):
                     notify_ok = False
                 image_base64, preview_source = encode_notify_preview_base64(
                     d, video_output

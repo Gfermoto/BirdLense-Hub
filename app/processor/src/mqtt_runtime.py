@@ -6,6 +6,7 @@ import os
 from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from app_config.app_config import app_config
+from frigate_scope import frigate_camera_allow_ids, frigate_label_resolve_set
 from mqtt_aggregator import MQTTEventAggregator
 from processor_support import get_data_dir, heartbeat_mqtt_ref
 
@@ -47,19 +48,18 @@ def scales_mqtt_bird_present_topic() -> Optional[str]:
     return f'{prefix}/bird_present'
 
 
-def _frigate_camera_filter_list(cameras: list) -> list:
-    """Список id камер; скаляр YAML (str) → один элемент, не посимвольный iterable."""
-    raw = app_config.get('motion.frigate_camera_filter') or app_config.get(
-        'mqtt.frigate_camera_filter'
-    )
-    if raw is None:
-        return [c['id'] for c in cameras]
-    if isinstance(raw, str):
-        s = raw.strip()
-        return [s] if s else [c['id'] for c in cameras]
-    if isinstance(raw, (list, tuple)):
-        return list(raw)
-    return [c['id'] for c in cameras]
+def _frigate_camera_filter_list(
+    cameras: list,
+    *,
+    config: Optional[Any] = None,
+) -> list:
+    """Список id камер; скаляр YAML (str) → один элемент, не посимвольный iterable.
+
+    Пустой список в YAML ``[]`` трактуется как «не задано» — те же id, что и при
+    ``None``: только камеры из ``video.cameras`` (не «любая камера на брокере»).
+    """
+    cfg = config if config is not None else app_config
+    return frigate_camera_allow_ids(cameras, cfg)
 
 
 def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
@@ -68,19 +68,7 @@ def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
     Precedence: ``motion.*`` if the key is present in merged config (including ``[]``),
     else ``mqtt.*``, else ``default``.
     """
-    motion_raw = app_config.get(motion_key)
-    if motion_raw is not None:
-        if isinstance(motion_raw, str):
-            s = motion_raw.strip()
-            return {s} if s else set(default)
-        return set(motion_raw)
-    mqtt_raw = app_config.get(mqtt_key)
-    if mqtt_raw is not None:
-        if isinstance(mqtt_raw, str):
-            s = mqtt_raw.strip()
-            return {s} if s else set(default)
-        return set(mqtt_raw)
-    return set(default)
+    return frigate_label_resolve_set(motion_key, mqtt_key, default, app_config)
 
 
 def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:

@@ -44,6 +44,7 @@ scripts/deploy.local.sh
 **/.cache/huggingface/
 
 # E2E — скриншоты/отчёты могут содержать данные из UI
+app/e2e/node_modules/
 app/e2e/playwright-report/
 app/e2e/test-results/
 

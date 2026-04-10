@@ -113,33 +113,7 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "COCO 80-class detect filter; deployment tuning.",
         "next_step": "Document in Settings advanced if single_stage becomes common in UI.",
     },
-    # Motion fine tuning.
-    "motion.frigate_camera_filter": {
-        "category": "planned-ui",
-        "reason": "Advanced routing; kept config-level for now.",
-        "next_step": "Add multi-select camera picker when trigger UX is expanded.",
-    },
-    "motion.frigate_label_filter": {
-        "category": "planned-ui",
-        "reason": "Advanced routing; kept config-level for now.",
-        "next_step": "Add tokenized label editor in MQTT/Frigate block.",
-    },
-    # Merge internals.
-    "detection.merge_window_seconds": {
-        "category": "advanced",
-        "reason": "Advanced merge tuning; kept config-level for now.",
-        "next_step": "Keep config-level until merge strategy presets are designed.",
-    },
-    "detection.dedup_window_seconds": {
-        "category": "advanced",
-        "reason": "Advanced merge tuning; kept config-level for now.",
-        "next_step": "Keep config-level until merge strategy presets are designed.",
-    },
-    "detection.one_per_species": {
-        "category": "advanced",
-        "reason": "Advanced merge tuning; kept config-level for now.",
-        "next_step": "Keep config-level until merge strategy presets are designed.",
-    },
+    # Merge internals (partially in UI: see Processor → Frigate fusion).
     "detection.source_priority": {
         "category": "advanced",
         "reason": "Advanced merge tuning; kept config-level for now.",
@@ -149,11 +123,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Bulk mapping maintained as config dictionary.",
         "next_step": "Consider import/export UI when species tools are expanded.",
-    },
-    "detection.min_confidence_to_store": {
-        "category": "planned-ui",
-        "reason": "Advanced filtering; currently config-level only.",
-        "next_step": "Evaluate as optional control in Processor -> Advanced.",
     },
     # Ops/security-sensitive/infra-generated values.
     "web_push.enabled": {
@@ -207,10 +176,6 @@ AUTO_ALLOWLIST_META = {
     "next_step": "Expose in Settings UI or move to strict allowlist section with dedicated rationale.",
 }
 AUTO_ALLOWLIST_KEYS: set[str] = {
-    "detection.absorb_generic_bird",
-    "detection.absorb_generic_bird_min_classifier_confidence",
-    "detection.absorb_generic_bird_overlap_min_sec",
-    "detection.cross_source_confidence_bonus",
     "detection.fusion_alpha",
     "detection.fusion_model_path",
     "detection.use_learned_fusion",
@@ -250,8 +215,6 @@ AUTO_ALLOWLIST_KEYS: set[str] = {
     "motion.check_every_n_frames",
     "motion.esphome_sensor_id",
     "motion.esphome_url",
-    "motion.frigate_label_exclude",
-    "motion.frigate_trigger_on_tracked_object",
     "motion.opencv_diff_threshold",
     "motion.opencv_min_contour_area",
     "motion.mqtt_topic",

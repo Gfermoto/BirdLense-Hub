@@ -128,6 +128,107 @@ export function VideoSection({ form }: Props) {
                           </Grid>
                         </>
                       )}
+                      {source === 'frigate' && (
+                        <>
+                          <Grid size={{ xs: 12 }}>
+                            <Alert severity="info" sx={{ mb: 1 }}>
+                              {t('settings.frigateMotionIntro')}
+                            </Alert>
+                          </Grid>
+                          <Grid size={{ xs: 12 }}>
+                            <ServiceBlock title={t('settings.frigateRoutingTitle')}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                {t('settings.frigateRoutingDesc')}
+                              </Typography>
+                              <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="motion.frigate_camera_filter">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={(field.state.value || []).join(', ')}
+                                        onChange={(e) =>
+                                          field.handleChange(
+                                            (e.target.value || '')
+                                              .split(',')
+                                              .map((s) => s.trim())
+                                              .filter(Boolean),
+                                          )
+                                        }
+                                        label={t('settings.frigateCameraFilter')}
+                                        placeholder="BirdCam, Patio"
+                                        helperText={t('settings.frigateCameraFilterHint')}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="motion.frigate_label_filter">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={(field.state.value || []).join(', ')}
+                                        onChange={(e) =>
+                                          field.handleChange(
+                                            (e.target.value || '')
+                                              .split(',')
+                                              .map((s) => s.trim())
+                                              .filter(Boolean),
+                                          )
+                                        }
+                                        label={t('settings.frigateLabelFilter')}
+                                        placeholder="bird, squirrel"
+                                        helperText={t('settings.frigateLabelFilterHint')}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="motion.frigate_label_exclude">
+                                    {(field) => (
+                                      <TextField
+                                        fullWidth
+                                        value={(field.state.value || []).join(', ')}
+                                        onChange={(e) =>
+                                          field.handleChange(
+                                            (e.target.value || '')
+                                              .split(',')
+                                              .map((s) => s.trim())
+                                              .filter(Boolean),
+                                          )
+                                        }
+                                        label={t('settings.frigateLabelExclude')}
+                                        placeholder="cat, dog"
+                                        helperText={t('settings.frigateLabelExcludeHint')}
+                                      />
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                  <form.Field name="motion.frigate_trigger_on_tracked_object">
+                                    {(field) => (
+                                      <FormControl fullWidth>
+                                        <FormControlLabel
+                                          control={
+                                            <Switch
+                                              checked={field.state.value !== false}
+                                              onChange={(e) => field.handleChange(e.target.checked)}
+                                            />
+                                          }
+                                          label={t('settings.frigateTriggerOnGeometry')}
+                                        />
+                                        <FormHelperText>
+                                          {t('settings.frigateTriggerOnGeometryHint')}
+                                        </FormHelperText>
+                                      </FormControl>
+                                    )}
+                                  </form.Field>
+                                </Grid>
+                              </Grid>
+                            </ServiceBlock>
+                          </Grid>
+                        </>
+                      )}
                     </>
                   )}
                 </form.Subscribe>
