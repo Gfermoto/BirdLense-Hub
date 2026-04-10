@@ -2,7 +2,6 @@
 import ipaddress
 import json
 import os
-import re
 import secrets
 import socket
 import threading
@@ -17,7 +16,7 @@ from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 from services.http_response_cache import bust_response_caches
 import requests
-from data_paths import full_path_for_video
+from data_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
 
 
 def _run_gallery_upload_thread(flask_app, video_id: int):
@@ -29,12 +28,8 @@ def _run_gallery_upload_thread(flask_app, video_id: int):
             flask_app.logger.warning('Gallery upload thread failed: %s', e)
 
 
-# Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
-VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
-# Spectrogram alongside recording (same directory layout as processor-generated files).
-SPECTROGRAM_PATH_RE = re.compile(
-    r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/spectrogram_\d+\.jpg$'
-)
+# Path traversal protection (patterns live in data_paths with stat helper — CodeQL boundary).
+VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
 
 
 def _log_activity(type_name: str, payload: dict) -> None:
@@ -69,25 +64,6 @@ def _processor_detection_payload(raw: dict) -> dict:
         'classifier_confidence',
     }
     return {k: raw[k] for k in allowed if k in raw}
-
-
-def _validate_recording_file_exists(*, logical_path: str) -> tuple[bool, str | None, str | None]:
-    """Caller must pass only paths that matched VIDEO_PATH_RE; we re-check for defense in depth."""
-    if not VIDEO_PATH_RE.match(logical_path):
-        return False, None, 'video_path_invalid'
-    full = full_path_for_video(logical_path)
-    if not full:
-        return False, None, 'video_path_unresolvable'
-    try:
-        # codeql[py/path-injection]: full from full_path_for_video under DATA_DIR after VIDEO_PATH_RE
-        if not os.path.isfile(full):
-            return False, full, 'video_file_missing'
-        # codeql[py/path-injection]: full from full_path_for_video under DATA_DIR after VIDEO_PATH_RE
-        if os.path.getsize(full) <= 0:
-            return False, full, 'video_file_unreadable'
-    except OSError:
-        return False, full, 'video_file_unreadable'
-    return True, full, None
 
 
 def _is_public_ip(ip: str) -> bool:
@@ -193,10 +169,10 @@ def register_routes(app):
             return {'error': 'All species below min_confidence_to_store threshold'}, 400
 
         video_path = (data.get('video_path') or '').strip()
-        if not VIDEO_PATH_RE.match(video_path):
-            return {'error': 'Invalid video_path format'}, 400
-        ok_file, resolved_full, reason = _validate_recording_file_exists(logical_path=video_path)
+        ok_file, resolved_full, reason = stat_recording_layout_file(video_path, kind='video')
         if not ok_file:
+            if reason == 'video_path_invalid':
+                return {'error': 'Invalid video_path format'}, 400
             _log_activity(
                 'ingest_gate',
                 {
@@ -213,16 +189,9 @@ def register_routes(app):
 
         spec_path = (data.get('spectrogram_path') or '').strip()
         if spec_path:
-            if not SPECTROGRAM_PATH_RE.match(spec_path):
+            ok_spec, _, _ = stat_recording_layout_file(spec_path, kind='spectrogram')
+            if not ok_spec:
                 data['spectrogram_path'] = ''
-            else:
-                spec_full = full_path_for_video(spec_path)
-                try:
-                    # codeql[py/path-injection]: spec_full via full_path_for_video after SPECTROGRAM_PATH_RE
-                    if not spec_full or not os.path.isfile(spec_full):
-                        data['spectrogram_path'] = ''
-                except OSError:
-                    data['spectrogram_path'] = ''
 
         try:
             video = Video(
