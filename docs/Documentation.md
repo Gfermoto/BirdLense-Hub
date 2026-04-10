@@ -74,6 +74,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 - [ ] Cross-links point to the **same language** where a pair exists (or intentionally to EN for API-only pages).
 - [ ] Long how-tos (e.g. Colab): code cells still run; print strings and comments aligned with the doc language.
 - [ ] [docs/README.md](./README.md) + [I18N_STATUS.md](./I18N_STATUS.md) updated when adding a new page.
+- [ ] **[ROADMAP](./ROADMAP.md)** § *Current stack*: React/Vite (and any pinned UI versions) match `app/ui/package.json` / lockfile; DB/migration notes match `app/web` reality.
 - [ ] [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) — both **English nav** and the **Русский** section list new pages (or an explicit decision to keep them repo-only).
 - [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar.
 
