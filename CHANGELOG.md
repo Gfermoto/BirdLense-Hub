@@ -10,12 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **[#283](https://github.com/Gfermoto/BirdLense-Hub/issues/283):** локальные CORS origins (Vite, `birdlense.local`, порт хаба) заданы в **`config.Config`** и переменной окружения **`CORS_LOCAL_DEV_ORIGINS`** (пустая строка — не добавлять встроенный набор); `app/web/app.py` только собирает итоговый список вместе с `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`.
+
 - **Весы / ESPHome MQTT ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) комментарий, [#232](https://github.com/Gfermoto/BirdLense-Hub/issues/232) закрыт):** префикс **`integrations.scales.mqtt_topic_prefix`** (`birdlense/scale` → топики `weight`, `bird_present`, `command`); процессор мержит **`bird_present`** в `feeder_scale_state.json`; **`POST /api/ui/feed/scale-tare`** публикует **`mqtt_tare_payload`** (по умолчанию `TARE`); карточка кормушки — строка присутствия и кнопка тары (админ). Ключи **`mqtt_command_topic`** / **`mqtt_tare_payload`** в YAML. Документация: **CONFIGURATION** (EN/RU).
 
 - **Processor (tech debt [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) / [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238)):** цикл motion → запись и финализация вынесены в **`MotionRecordingSession`** (`app/processor/src/recording_session.py`); **`main.py`** оставляет сбор зависимостей и вызов сессии.
 - **Web (миграции схемы, [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225)):** вместо try/except **`ALTER TABLE`** на старте — **Flask-Migrate / Alembic** (`app/web/migrations/`, ревизия **`001_schema_patches`**, идемпотентные колонки); после **`db.create_all()`** вызывается **`upgrade()`**; зависимость **`Flask-Migrate`** в `web/requirements.txt`.
 
 ### CI
+
+- **[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286):** job `ui-build` — после `npm ci` выполняется **`npm run lint`**, затем build; ESLint: плагин `react-hooks` с правилами **`rules-of-hooks`** и **`exhaustive-deps`** (без полного `recommended` v7 с React Compiler rules).
 
 - **[#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284):** `.github/workflows/npm-audit-scheduled.yml` — еженедельно + `workflow_dispatch`: `npm audit --omit=dev --audit-level=moderate` в `app/ui`; политика в комментариях workflow. Док: [TESTING](docs/TESTING.md) / [RU](docs/TESTING.ru.md).
 

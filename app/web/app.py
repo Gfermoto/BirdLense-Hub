@@ -48,15 +48,11 @@ def create_app():
     )
     app = Flask(__name__)
     app.config.from_object('config.Config')
-    # Базовые origins + CORS_DEFAULT_ORIGINS/CORS_ORIGINS из env (через запятую, для своих IP/доменов)
-    cors_origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://birdlense.local",
-        "http://birdlense.local:80",
-        "http://localhost:8085",
-        "http://127.0.0.1:8085",
-    ]
+    # CORS: локальная разработка из config.CORS_LOCAL_DEV_ORIGINS + CORS_DEFAULT_ORIGINS + CORS_ORIGINS
+    cors_origins: list[str] = []
+    local_dev = (app.config.get('CORS_LOCAL_DEV_ORIGINS') or '').strip()
+    if local_dev:
+        cors_origins.extend(s.strip() for s in local_dev.split(',') if s.strip())
     default_extra = app.config.get("CORS_DEFAULT_ORIGINS", "")
     if default_extra:
         cors_origins.extend(s.strip() for s in default_extra.split(",") if s.strip())

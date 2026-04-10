@@ -19,6 +19,12 @@ if not _SECRET_KEY:
     )
     _SECRET_KEY = 'birdlense-settings-session'
 
+# Локальная разработка (Vite, LAN): не хранить в app.py — один источник для CORS.
+_CORS_LOCAL_DEV_ORIGINS_DEFAULT = (
+    'http://localhost:5173,http://127.0.0.1:5173,http://birdlense.local,'
+    'http://birdlense.local:80,http://localhost:8085,http://127.0.0.1:8085'
+)
+
 
 class Config:
     """Загрузка `SQLALCHEMY_*`, `SECRET_KEY`, каталога БД из DATA_DIR и переменных окружения."""
@@ -43,5 +49,10 @@ class Config:
             'max_overflow': int(os.getenv('SQLALCHEMY_MAX_OVERFLOW', '15')),
         }
     SECRET_KEY = _SECRET_KEY
+    # Built-in local/dev CORS origins (comma-separated). Пустая env — без этого набора (строгий режим).
+    CORS_LOCAL_DEV_ORIGINS = os.getenv(
+        'CORS_LOCAL_DEV_ORIGINS',
+        _CORS_LOCAL_DEV_ORIGINS_DEFAULT,
+    )
     # Optional built-in CORS origins (comma-separated). Keep empty by default for self-hosters.
     CORS_DEFAULT_ORIGINS = os.getenv('CORS_DEFAULT_ORIGINS', '')
