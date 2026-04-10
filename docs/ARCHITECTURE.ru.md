@@ -68,8 +68,10 @@
 
 ## База данных
 
-- **SQLite** — `data/db/birdlense.db`
-- **Модели:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog
+- **SQLite** — `data/db/birdlense.db` (каталог задаётся через `DATA_DIR`; см. [CONFIGURATION.ru](./CONFIGURATION.ru.md)).
+- **ORM:** Flask-SQLAlchemy; **эволюция схемы:** **Flask-Migrate / Alembic** — ревизии в `app/web/migrations/`. При старте `create_app()` выполняет `db.create_all()`, затем `upgrade()` — единый путь для новой установки и обновления (вместо разрозненных `ALTER TABLE` в коде приложения для отслеживаемых колонок).
+- **Политика DDL (аудит, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** изменения таблиц/колонок — только новые ревизии Alembic в `migrations/versions/`, не в роутах и не в «ручном» старте. В `create_app()` по-прежнему допустимы **PRAGMA** SQLite при подключении (производительность I/O; не схема). Прочие `session.execute` в коде приложения — DML (например `DELETE`), не DDL.
+- **Модели:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog и связанные таблицы (`app/web/models`).
 
 ## Внешние зависимости
 

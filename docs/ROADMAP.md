@@ -15,8 +15,9 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
 | **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
 | **US classifier** | `best_US.pt` — NABirds (fallback) |
-| **React** | 19.2.4 |
-| **Vite** | 6.4.1 |
+| **React** | **19.x** (`^19.0.0` in `app/ui/package.json`; resolved lock may pin a patch) |
+| **Vite** | **6.x** (`^6.4.2` in `app/ui/package.json`) |
+| **Web DB schema** | **Flask-Migrate / Alembic** — revisions under `app/web/migrations/`; `create_app()` runs `db.create_all()` then `upgrade()` (see [CHANGELOG on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) *[Unreleased]* / issue [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); local stub: [project/changelog](./project/changelog.md)) |
 
 ---
 
@@ -230,6 +231,8 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 - Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**closed** — split `ui_routes` into domain `ui_*_routes`, see [ARCHITECTURE](./ARCHITECTURE.md)), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**closed** — processor modularization, HA `user_config` migration, PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor **phase 2** **done** — `MotionRecordingSession`, MQTT queue, **ebird_region_core**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) (**closed** — MQTT outbound queue, `frame_processor` no sleep) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**done** on Hub: Alembic `001` + `MotionRecordingSession`; further checklist in issue). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 238 221 222 223 224 225`. RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164); Heimdall/HA backlog [#229](https://github.com/Gfermoto/BirdLense-Hub/issues/229)–[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234).
 
+**Architecture & maintainability (next wave, Apr 2026):** same [Roadmap project board](https://github.com/users/Gfermoto/projects/2) — [#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292) (decompose `app/web/app.py`: extensions, errors, startup), [#293](https://github.com/Gfermoto/BirdLense-Hub/issues/293) (service layer / thin routes), [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281) (Pydantic on mutating APIs), [#294](https://github.com/Gfermoto/BirdLense-Hub/issues/294) (N+1 / DB indexes), [#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295) (processor DI), [#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296) (frontend state / TanStack Query), [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297) (CI: complexity metrics, OpenAPI→TS; npm audit policy → **#284** ✅). **Security / hardening:** [#277](https://github.com/Gfermoto/BirdLense-Hub/issues/277)–[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286) (Docker non-root, secrets, API auth, session timeout, nginx recordings, CORS, ESLint imports). **#284** ✅ **closed** — scheduled **npm audit** for `app/ui`; [TESTING](./TESTING.md). **#287** ✅ **closed** — audit: no `ALTER TABLE` in `create_app` / web runtime; DDL via Alembic only; [ARCHITECTURE](./ARCHITECTURE.md) § Database.
+
 ---
 
 ## Near-term priorities (public)
@@ -237,7 +240,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | Priority | Focus |
 |----------|--------|
 | **Community** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), `good first issue` triage, docs feedback |
-| **Quality** | CI on PRs (UI build + MkDocs `--strict`), Dependabot / dependency hygiene |
+| **Quality** | CI on PRs — see [TESTING](./TESTING.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, UI build, MkDocs, Docker tests + Playwright smoke + catalog audit); Dependabot |
 | **Docs** | `VERSION` aligned with `mkdocs.yml`, `app/ui/package.json`, and `app/web/openapi.yaml` (`scripts/check-docs-version.py`); interactive OpenAPI (Redoc) on the doc site |
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
 

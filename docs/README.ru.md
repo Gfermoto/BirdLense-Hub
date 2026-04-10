@@ -51,6 +51,7 @@
 
 | Тема | Документ |
 |------|----------|
+| **CI на PR** (Bandit, pip-audit, Ruff, pytest, сборка UI, MkDocs, Docker-тесты, Playwright smoke) | [TESTING.ru.md](./TESTING.ru.md) §1 |
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
 | MCP (Model Context Protocol — внешние ИИ-ассистенты) | [MCP_SETUP](./MCP_SETUP.ru.md) |
