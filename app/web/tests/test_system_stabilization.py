@@ -238,7 +238,13 @@ class TestSystemMaintenanceEndpoints:
 
 class TestOverviewDayOverlap:
     def test_overview_counts_visit_that_crosses_midnight(self, app, client):
+        from app_config.app_config import app_config
+        from observer_time import _observer_timezone_name_cached
         from models import Species, SpeciesVisit, db
+
+        app_config.set('secrets.latitude', '55.7558')
+        app_config.set('secrets.longitude', '37.6176')
+        _observer_timezone_name_cached.cache_clear()
 
         with app.app_context():
             species = Species(name='Midnight Species')

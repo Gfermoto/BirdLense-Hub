@@ -90,19 +90,19 @@ class TestMetrics:
 
     def test_system_visitors_counts_browser_days_as_unique_visits(self, app, client):
         from models import SiteVisitor, db
-        from routes.ui_system_routes import _browser_hash
+        from services.visitor_stats_service import browser_hash
 
         with app.app_context():
             db.session.add_all([
                 SiteVisitor(
-                    browser_hash=_browser_hash('same-browser'),
+                    browser_hash=browser_hash('same-browser'),
                     seen_day='2026-04-01',
                     device_class='desktop',
                     first_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
                     last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 ),
                 SiteVisitor(
-                    browser_hash=_browser_hash('same-browser'),
+                    browser_hash=browser_hash('same-browser'),
                     seen_day='2026-04-02',
                     device_class='desktop',
                     first_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
@@ -1247,7 +1247,7 @@ class TestDatabaseBackupRestore:
             assert 'error' in r.json
 
     def test_sqlite_backup_helper_captures_live_database(self, tmp_path):
-        from routes.ui_system_routes import _sqlite_backup_to_file
+        from services.sqlite_admin_service import backup_sqlite_to_file as _sqlite_backup_to_file
 
         live_db = tmp_path / 'live.db'
         snapshot_db = tmp_path / 'snapshot.db'
@@ -1265,7 +1265,7 @@ class TestDatabaseBackupRestore:
         assert row == ('from-live-db',)
 
     def test_sqlite_replace_live_db_swaps_file_and_removes_sidecars(self, tmp_path):
-        from routes.ui_system_routes import _sqlite_replace_live_db
+        from services.sqlite_admin_service import replace_live_sqlite_db as _sqlite_replace_live_db
 
         live_db = tmp_path / 'live.db'
         restored_db = tmp_path / 'restored.db'
