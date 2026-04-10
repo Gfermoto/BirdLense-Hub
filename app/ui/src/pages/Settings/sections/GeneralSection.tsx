@@ -32,10 +32,17 @@ import {
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
-  yamlBackupEnabled?: boolean;
+  /** Маскированный YAML — оператор и админ */
+  yamlSafeExportEnabled?: boolean;
+  /** Полный YAML и импорт — только админ (при двух паролях) */
+  yamlAdminBackupEnabled?: boolean;
 };
 
-export function GeneralSection({ form, yamlBackupEnabled = false }: Props) {
+export function GeneralSection({
+  form,
+  yamlSafeExportEnabled = false,
+  yamlAdminBackupEnabled = false,
+}: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -539,14 +546,16 @@ export function GeneralSection({ form, yamlBackupEnabled = false }: Props) {
         </AccordionDetails>
       </Accordion>
 
-      {yamlBackupEnabled ? (
+      {yamlSafeExportEnabled || yamlAdminBackupEnabled ? (
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {t('settings.yamlBackupTitle')}
           </AccordionSummary>
           <AccordionDetails>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('settings.yamlBackupDesc')}
+              {yamlAdminBackupEnabled
+                ? t('settings.yamlBackupDesc')
+                : t('settings.yamlBackupDescSafeOnly')}
             </Typography>
             {yamlMsg ? (
               <Alert severity={yamlMsg.sev} sx={{ mb: 2 }} onClose={() => setYamlMsg(null)}>
@@ -554,71 +563,77 @@ export function GeneralSection({ form, yamlBackupEnabled = false }: Props) {
               </Alert>
             ) : null}
             <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={async () => {
-                  setYamlMsg(null);
-                  try {
-                    await downloadSettingsYamlSafe();
-                  } catch (e) {
-                    setYamlMsg({
-                      sev: 'error',
-                      text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
-                    });
-                  }
-                }}
-              >
-                {t('settings.yamlDownloadSafe')}
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                color="warning"
-                onClick={async () => {
-                  if (!window.confirm(t('settings.yamlFullConfirm'))) return;
-                  setYamlMsg(null);
-                  try {
-                    await downloadSettingsYamlFull();
-                  } catch (e) {
-                    setYamlMsg({
-                      sev: 'error',
-                      text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
-                    });
-                  }
-                }}
-              >
-                {t('settings.yamlDownloadFull')}
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => fileRef.current?.click()}
-              >
-                {t('settings.yamlImport')}
-              </Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".yaml,.yml,text/yaml"
-                hidden
-                onChange={async (ev) => {
-                  const f = ev.target.files?.[0];
-                  ev.target.value = '';
-                  if (!f) return;
-                  setYamlMsg(null);
-                  const r = await importSettingsYaml(f);
-                  if (r.ok) {
-                    setYamlMsg({ sev: 'success', text: r.message || t('settings.yamlImportOk') });
-                    await queryClient.invalidateQueries({ queryKey: ['settings'] });
-                  } else {
-                    setYamlMsg({
-                      sev: 'error',
-                      text: r.message || t('settings.yamlImportFailed'),
-                    });
-                  }
-                }}
-              />
+              {yamlSafeExportEnabled ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={async () => {
+                    setYamlMsg(null);
+                    try {
+                      await downloadSettingsYamlSafe();
+                    } catch (e) {
+                      setYamlMsg({
+                        sev: 'error',
+                        text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                      });
+                    }
+                  }}
+                >
+                  {t('settings.yamlDownloadSafe')}
+                </Button>
+              ) : null}
+              {yamlAdminBackupEnabled ? (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="warning"
+                    onClick={async () => {
+                      if (!window.confirm(t('settings.yamlFullConfirm'))) return;
+                      setYamlMsg(null);
+                      try {
+                        await downloadSettingsYamlFull();
+                      } catch (e) {
+                        setYamlMsg({
+                          sev: 'error',
+                          text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                        });
+                      }
+                    }}
+                  >
+                    {t('settings.yamlDownloadFull')}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {t('settings.yamlImport')}
+                  </Button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".yaml,.yml,text/yaml"
+                    hidden
+                    onChange={async (ev) => {
+                      const f = ev.target.files?.[0];
+                      ev.target.value = '';
+                      if (!f) return;
+                      setYamlMsg(null);
+                      const r = await importSettingsYaml(f);
+                      if (r.ok) {
+                        setYamlMsg({ sev: 'success', text: r.message || t('settings.yamlImportOk') });
+                        await queryClient.invalidateQueries({ queryKey: ['settings'] });
+                      } else {
+                        setYamlMsg({
+                          sev: 'error',
+                          text: r.message || t('settings.yamlImportFailed'),
+                        });
+                      }
+                    }}
+                  />
+                </>
+              ) : null}
             </Stack>
           </AccordionDetails>
         </Accordion>

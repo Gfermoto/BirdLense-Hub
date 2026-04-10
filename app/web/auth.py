@@ -78,7 +78,7 @@ def admin_track_regen_access():
 
 
 def admin_settings_yaml_access():
-    """Экспорт/импорт user_config YAML: админ при двух паролях; MCP Bearer как в settings_check_access."""
+    """Полный YAML (секреты) и импорт: только админ при двух паролях; MCP Bearer — полный доступ."""
     from flask import request, session
 
     mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
@@ -93,6 +93,20 @@ def admin_settings_yaml_access():
     if not _has_contributor_password():
         return True
     return session.get('access_role') == 'admin'
+
+
+def settings_yaml_safe_export_access():
+    """Маскированный YAML: оператор (contributor) или админ; MCP Bearer — как у settings_check_access."""
+    from flask import request
+
+    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
+    if mcp_token:
+        auth = request.headers.get('Authorization') or ''
+        if auth.startswith('Bearer '):
+            token = auth[7:].strip()
+            if secrets.compare_digest(token, mcp_token):
+                return True
+    return contributor_or_admin_access()
 
 
 def contributor_or_admin_access():

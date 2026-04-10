@@ -15,6 +15,16 @@ def _open_admin_yaml(monkeypatch):
     monkeypatch.setitem(gen, 'contributor_password', '')
 
 
+def _two_tier_passwords(monkeypatch):
+    from app_config.app_config import app_config
+
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    gen = app_config.config.setdefault('general', {})
+    monkeypatch.setitem(gen, 'settings_password', 'admin-secret')
+    monkeypatch.setitem(gen, 'contributor_password', 'contrib-secret')
+
+
 def test_yaml_export_safe_masks_secret(client, monkeypatch, tmp_path):
     from app_config.app_config import app_config
 
@@ -84,3 +94,50 @@ def test_yaml_import_rejects_bad_root(client, monkeypatch):
         content_type='multipart/form-data',
     )
     assert r.status_code == 400
+
+
+def test_contributor_yaml_export_safe_ok(client, monkeypatch, tmp_path):
+    from app_config.app_config import app_config
+
+    _two_tier_passwords(monkeypatch)
+    user_file = tmp_path / 'user_config.yaml'
+    user_file.write_text(
+        yaml.safe_dump({'secrets': {'openweather_api_key': 'X'}, 'general': {'app_name': 'Hub'}}),
+        encoding='utf-8',
+    )
+    monkeypatch.setattr(app_config, 'user_config_file', str(user_file))
+
+    with client.session_transaction() as sess:
+        sess['access_role'] = 'contributor'
+
+    r = client.get('/api/ui/settings/yaml-export?mode=safe')
+    assert r.status_code == 200
+    data = yaml.safe_load(r.get_data(as_text=True))
+    assert data['secrets']['openweather_api_key'] == '***'
+
+
+def test_contributor_yaml_export_full_forbidden(client, monkeypatch, tmp_path):
+    from app_config.app_config import app_config
+
+    _two_tier_passwords(monkeypatch)
+    user_file = tmp_path / 'user_config.yaml'
+    user_file.write_text('k: v\n', encoding='utf-8')
+    monkeypatch.setattr(app_config, 'user_config_file', str(user_file))
+
+    with client.session_transaction() as sess:
+        sess['access_role'] = 'contributor'
+
+    assert client.get('/api/ui/settings/yaml-export?mode=full&ack=full').status_code == 403
+
+
+def test_contributor_yaml_import_forbidden(client, monkeypatch):
+    _two_tier_passwords(monkeypatch)
+    incoming = yaml.safe_dump({'general': {'app_name': 'N'}})
+    with client.session_transaction() as sess:
+        sess['access_role'] = 'contributor'
+    r = client.post(
+        '/api/ui/settings/yaml-import',
+        data={'file': (io.BytesIO(incoming.encode('utf-8')), 'x.yaml')},
+        content_type='multipart/form-data',
+    )
+    assert r.status_code == 403
