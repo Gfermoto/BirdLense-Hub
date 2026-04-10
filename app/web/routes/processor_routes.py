@@ -31,6 +31,10 @@ def _run_gallery_upload_thread(flask_app, video_id: int):
 
 # Path traversal protection: video_path must match data/recordings/YYYY/MM/DD/timestamp/video.mp4
 VIDEO_PATH_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+# Spectrogram alongside recording (same directory layout as processor-generated files).
+SPECTROGRAM_PATH_RE = re.compile(
+    r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/spectrogram_\d+\.jpg$'
+)
 
 
 def _log_activity(type_name: str, payload: dict) -> None:
@@ -68,12 +72,17 @@ def _processor_detection_payload(raw: dict) -> dict:
 
 
 def _validate_recording_file_exists(*, logical_path: str) -> tuple[bool, str | None, str | None]:
+    """Caller must pass only paths that matched VIDEO_PATH_RE; we re-check for defense in depth."""
+    if not VIDEO_PATH_RE.match(logical_path):
+        return False, None, 'video_path_invalid'
     full = full_path_for_video(logical_path)
     if not full:
         return False, None, 'video_path_unresolvable'
     try:
+        # codeql[py/path-injection]: full from full_path_for_video under DATA_DIR after VIDEO_PATH_RE
         if not os.path.isfile(full):
             return False, full, 'video_file_missing'
+        # codeql[py/path-injection]: full from full_path_for_video under DATA_DIR after VIDEO_PATH_RE
         if os.path.getsize(full) <= 0:
             return False, full, 'video_file_unreadable'
     except OSError:
@@ -204,12 +213,16 @@ def register_routes(app):
 
         spec_path = (data.get('spectrogram_path') or '').strip()
         if spec_path:
-            spec_full = full_path_for_video(spec_path)
-            try:
-                if not spec_full or not os.path.isfile(spec_full):
-                    data['spectrogram_path'] = ''
-            except OSError:
+            if not SPECTROGRAM_PATH_RE.match(spec_path):
                 data['spectrogram_path'] = ''
+            else:
+                spec_full = full_path_for_video(spec_path)
+                try:
+                    # codeql[py/path-injection]: spec_full via full_path_for_video after SPECTROGRAM_PATH_RE
+                    if not spec_full or not os.path.isfile(spec_full):
+                        data['spectrogram_path'] = ''
+                except OSError:
+                    data['spectrogram_path'] = ''
 
         try:
             video = Video(
