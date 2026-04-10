@@ -1,7 +1,7 @@
 """Реальные проверки статусов: Video (go2rtc), YOLO (из heartbeat процессора)."""
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 import requests
 

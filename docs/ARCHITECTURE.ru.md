@@ -34,25 +34,27 @@
 1. **Go2RTC** (внешний) → RTSP/HLS поток
 2. **Processor** подключается к Go2RTC, получает кадры
 3. **Триггер** (OpenCV, Frigate, MQTT, ESPHome) → начало записи
-4. **YOLO** — детекция птиц в кадре
-5. **ByteTrack** — трекинг
-6. **Запись** → `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`
-7. **Спектрограмма** → FFmpeg (аудио) + librosa (mel) → `spectrogram_200.jpg`
-8. **API** → processor отправляет POST `/api/processor/videos` с детекциями
+4. **Detector** — подтверждение target первого уровня (`Bird | Squirrel`)
+5. **YOLO classifier** — классификация вида для detector-confirmed треков
+6. **ByteTrack** — трекинг и bbox по кадрам
+7. **Fusion** — общий post-inference слой: detector/classifier outcome, promotion от Frigate, confidence boosters
+8. **Запись** → `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`
+9. **Спектрограмма** → FFmpeg (аудио) + librosa (mel) → `spectrogram_200.jpg`
+10. **API** → processor отправляет POST `/api/processor/videos` с fused-детекциями
 
 ### Видео: Frigate (опционально)
 
 1. **Frigate** → публикует в MQTT `frigate/events` (детекция + Bird Classification)
 2. **Bird Classification** — `classification.bird.enabled: true` в Frigate, добавляет `sub_label` с видом (INat)
-3. **Processor** парсит `sub_label` и использует как species при слиянии
+3. **Processor** использует Frigate как helper source: `sub_label`/`label` могут продвинуть generic detector fallback или поднять confidence, но сами по себе не создают persisted video detection
 
 ### Аудио (BirdNET)
 
 1. **BirdNET-Pi/Go** (внешний) → публикует в MQTT топик `birdnet`
 2. **Processor** (MQTTEventAggregator) подписан на топик
-3. Слияние с детекциями YOLO по времени (merge_window)
+3. BirdNET влияет только на confidence/threshold bias и не создаёт финальный video label
 
-**Европейские птицы:** EU-модель (YOLO11n-cls, ~491 вид) активна в `best.pt`. US (NABirds) — резерв в `best_US.pt`. Frigate + BirdNET — дополнение. Слияние: один результат на вид (max confidence).
+**Европейские птицы:** EU-модель (YOLO11n-cls, ~491 вид) активна в `best.pt`. US (NABirds) — резерв в `best_US.pt`. Frigate и BirdNET теперь вспомогательные источники вокруг общего fusion path, а не равноправные авторы итогового label.
 
 ### UI
 
@@ -62,7 +64,7 @@
 4. **Видео** → `/data/recordings/...` (nginx alias)
 5. **Live** → `/processor/live` (MJPEG от processor) или `/go2rtc/stream.html`
 
-**Модули Flask (`app/web/routes/`):** `ui_routes.register_routes` подключает `ui_status_push_routes`, `ui_birdfood_routes`, `ui_video_routes`, `ui_overview_timeline_routes` (сборка таймлайна — `ui_timeline_helpers`), `ui_corrections_dataset_routes`, `ui_species_catalog_routes`, `ui_settings_routes`, `ui_species_media_routes`; общие константы — `ui_route_constants`. `/api/ui/system/*`, метрики, visitors и species-registry — `ui_system_routes`, `ui_system_metrics_routes`, `ui_system_species_registry_routes`. Ingest от процессора — `processor_routes`.
+**Модули Flask (`app/web/routes/`):** `ui_routes.register_routes` подключает `ui_status_push_routes`, `ui_birdfood_routes`, `ui_video_routes`, `ui_overview_timeline_routes` (сборка таймлайна — `ui_timeline_helpers`), `ui_corrections_dataset_routes`, `ui_species_catalog_routes`, `ui_settings_routes`, `ui_species_media_routes`; общие константы — `ui_route_constants`. `/api/ui/system/*`, метрики, visitors, diagnostics, bulk delete review-queue и species-registry — `ui_system_routes`, `ui_system_metrics_routes`, `ui_system_diagnostics_routes`, `ui_system_review_queue_routes`, `ui_system_species_registry_routes`. Ingest от процессора — `processor_routes`.
 
 ## База данных
 

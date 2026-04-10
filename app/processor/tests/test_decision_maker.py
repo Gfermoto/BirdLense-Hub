@@ -1,135 +1,207 @@
-
-import unittest
-import time
-from unittest.mock import MagicMock
-# Adjust import assuming running from project root
-import sys
 import os
-# Ensure project root is in path to import app modules
+import sys
+import time
+import unittest
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# app/processor/tests -> app/processor/src
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.append(src_path)
+
 from decision_maker import DecisionMaker
+
+
+def _make_track(
+    *,
+    detector_label='Bird',
+    detector_confidences=None,
+    classifier_events=None,
+    start_time=0.0,
+    end_time=2.0,
+    frames=None,
+    best_frame_score=0.0,
+    key_frames=None,
+):
+    detector_confidences = detector_confidences or [0.9, 0.9, 0.9]
+    classifier_events = classifier_events or []
+    track = {
+        'start_time': start_time,
+        'end_time': end_time,
+        'detector_events': [
+            {'label': detector_label, 'confidence': conf, 't': idx * 0.1}
+            for idx, conf in enumerate(detector_confidences)
+        ],
+        'classifier_events': [],
+        'best_frame': None,
+        'best_frame_score': best_frame_score,
+        'key_frames': key_frames or [],
+        'frames': frames or [],
+    }
+    for idx, (name, cls_conf, det_conf) in enumerate(classifier_events):
+        track['classifier_events'].append({
+            'species_name': name,
+            'confidence': cls_conf,
+            'detector_confidence': det_conf,
+            'combined_confidence': det_conf * cls_conf,
+            't': idx * 0.1,
+        })
+    return track
+
 
 class TestDecisionMaker(unittest.TestCase):
     def setUp(self):
         self.decision_maker = DecisionMaker(min_track_duration=0)
 
-    def test_combined_confidence_high_agreement_high_conf(self):
-        """
-        Test case: High voting agreement, high classifier confidence.
-        """
+    def test_accepted_species_uses_classifier_evidence_only(self):
         tracks = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': [('Cardinal', 0.9)] * 10,
-                'best_frame': None
-            }
+            1: _make_track(
+                detector_confidences=[0.9] * 10,
+                classifier_events=[('Cardinal', 0.9, 0.9)] * 2,
+            )
         }
-        
-        results = self.decision_maker.get_results(tracks)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['species_name'], 'Cardinal')
-        self.assertAlmostEqual(results[0]['confidence'], 0.9)
 
-    def test_combined_confidence_high_agreement_low_conf(self):
-        """
-        Test case: High voting agreement, low classifier confidence.
-        """
-        tracks = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': [('Cardinal', 0.4)] * 10,
-                'best_frame': None
-            }
-        }
-        
         results = self.decision_maker.get_results(tracks)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['species_name'], 'Cardinal')
-        self.assertAlmostEqual(results[0]['confidence'], 0.4)
 
-    def test_combined_confidence_mixed_voting(self):
-        """
-        Test case: Mixed voting.
-        """
-        preds = [('Cardinal', 0.9)] * 6 + [('Blue Jay', 0.8)] * 4
-        tracks = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': preds,
-                'best_frame': None
-            }
-        }
-        
-        results = self.decision_maker.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Cardinal')
-        # 0.6 * 0.9 = 0.54
-        self.assertAlmostEqual(results[0]['confidence'], 0.54)
+        self.assertAlmostEqual(results[0]['confidence'], 0.81)
+        self.assertEqual(results[0]['decision_reason'], 'accepted_species')
 
-    def test_combined_confidence_mixed_voting_variable_conf(self):
-        """
-        Test case: Mixed voting with variable confidence.
-        """
-        preds = [('Cardinal', 0.9)] * 3 + [('Cardinal', 0.5)] * 3 + [('Blue Jay', 0.8)] * 4
+    def test_classifier_majority_vote_uses_classifier_subset(self):
         tracks = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': preds,
-                'best_frame': None
-            }
+            1: _make_track(
+                detector_confidences=[0.9] * 10,
+                classifier_events=(
+                    [('Cardinal', 0.9, 0.9)] * 6
+                    + [('Blue Jay', 0.8, 0.9)] * 4
+                ),
+            )
         }
-        
+
         results = self.decision_maker.get_results(tracks)
+
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Cardinal')
-        # Voting: 0.6. Avg Conf: (2.7 + 1.5)/6 = 0.7. Result: 0.42
-        self.assertAlmostEqual(results[0]['confidence'], 0.42)
+        self.assertAlmostEqual(results[0]['confidence'], 0.486)
 
     def test_species_confidence_overrides(self):
-        """
-        Test case: species_confidence_overrides lowers threshold for specific species.
-        """
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_process=0.10,
             species_confidence_overrides={"Rare Bird": 0.03},
         )
-        # Rare Bird with 0.05 confidence: passes (0.05 >= 0.03)
         tracks_rare = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': [('Rare Bird', 0.05)] * 10,
-                'best_frame': None,
-            }
+            1: _make_track(
+                classifier_events=[('Rare Bird', 0.05, 1.0)] * 3,
+            )
         }
         results = dm.get_results(tracks_rare)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Rare Bird')
 
-        # Common Bird with 0.05 confidence: filtered (0.05 < 0.10)
         dm2 = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_process=0.10,
             species_confidence_overrides={"Rare Bird": 0.03},
         )
         tracks_common = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': [('Common Bird', 0.05)] * 10,
-                'best_frame': None,
-            }
+            1: _make_track(
+                classifier_events=[('Common Bird', 0.05, 1.0)] * 3,
+                frames=[
+                    {'t': 0.0, 'bbox': [0.10, 0.10, 0.30, 0.30]},
+                    {'t': 0.1, 'bbox': [0.11, 0.11, 0.31, 0.31]},
+                    {'t': 0.2, 'bbox': [0.12, 0.12, 0.32, 0.32]},
+                ],
+                best_frame_score=7.0,
+            )
         }
         results2 = dm2.get_results(tracks_common)
-        self.assertEqual(len(results2), 0)
+        self.assertEqual(len(results2), 1)
+        self.assertEqual(results2[0]['species_name'], 'Bird')
+        self.assertEqual(results2[0]['decision_reason'], 'fallback_bird')
+
+    def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.25,
+            classifier_fallback_bird=True,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.35] * 5,
+                classifier_events=[('Eurasian Jay', 1.0, 0.35)] * 5,
+                frames=[{'t': 0.0, 'bbox': [0.1, 0.1, 0.2, 0.2]}],
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['species_name'], 'Bird')
+        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
+        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
+        self.assertFalse(results[0].get('visit_eligible', True))
+        self.assertFalse(results[0].get('notification_eligible', True))
+        self.assertEqual(results[0]['detector_label'], 'Bird')
+        self.assertEqual(len(results[0].get('frames') or []), 1)
+
+    def test_detector_only_weak_bird_is_review_only(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.25,
+            classifier_fallback_bird=True,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.35] * 5,
+                classifier_events=[],
+                frames=[{'t': 0.0, 'bbox': [0.1, 0.1, 0.2, 0.2]}],
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
+        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
+
+    def test_classifier_uncertain_respects_fallback_off(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.25,
+            classifier_fallback_bird=False,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.35] * 5,
+                classifier_events=[('Eurasian Jay', 1.0, 0.35)] * 5,
+            )
+        }
+        self.assertEqual(len(dm.get_results(tracks)), 0)
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(len(decisions), 1)
+        self.assertFalse(decisions[0]['accepted'])
+        self.assertEqual(
+            decisions[0]['decision_reason'],
+            'rejected_classifier_fallback_disabled',
+        )
+        self.assertEqual(decisions[0]['reject_reason_code'], 'low_confidence')
+        self.assertEqual(decisions[0]['trust_band'], 'red')
+
+    def test_detector_only_squirrel_fallback(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_store=0.20,
+        )
+        tracks = {
+            1: _make_track(
+                detector_label='Squirrel',
+                detector_confidences=[0.42, 0.45, 0.40],
+                classifier_events=[],
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['species_name'], 'Squirrel')
+        self.assertEqual(results[0]['decision_reason'], 'fallback_squirrel')
 
     def test_species_confidence_overrides_match_scientific_common_labels(self):
         dm = DecisionMaker(
@@ -138,12 +210,9 @@ class TestDecisionMaker(unittest.TestCase):
             species_confidence_overrides={"House Sparrow": 0.03},
         )
         tracks = {
-            1: {
-                'start_time': time.time(),
-                'end_time': time.time() + 1,
-                'preds': [('Passer domesticus (House Sparrow)', 0.05)] * 10,
-                'best_frame': None,
-            }
+            1: _make_track(
+                classifier_events=[('Passer domesticus (House Sparrow)', 0.05, 1.0)] * 3,
+            )
         }
 
         results = dm.get_results(tracks)
@@ -152,7 +221,6 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['species_name'], 'Passer domesticus (House Sparrow)')
 
     def test_post_record_extends_inactive_window(self):
-        """post_record_seconds adds to max_inactive before stop (#157)."""
         dm = DecisionMaker(
             max_record_seconds=3600,
             max_inactive_seconds=1,
@@ -163,32 +231,21 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertFalse(dm.decide_stop_recording())
         time.sleep(1.2)
         self.assertFalse(dm.decide_stop_recording())
-        time.sleep(5.1)
+        # _effective_max_inactive = 1 + 5 = 6s; extra margin for CI / loaded runners
+        time.sleep(6.0)
         self.assertTrue(dm.decide_stop_recording())
 
     def test_get_results_sorts_by_confidence_then_track_id(self):
         tracks = {
-            9: {
-                'start_time': 0.0,
-                'end_time': 2.0,
-                'preds': [('Blue Jay', 0.7)] * 3,
-                'best_frame': None,
-                'frames': [],
-            },
-            3: {
-                'start_time': 0.0,
-                'end_time': 2.0,
-                'preds': [('Great Tit', 0.9)] * 3,
-                'best_frame': None,
-                'frames': [],
-            },
-            1: {
-                'start_time': 0.0,
-                'end_time': 2.0,
-                'preds': [('Robin', 0.9)] * 3,
-                'best_frame': None,
-                'frames': [],
-            },
+            9: _make_track(
+                classifier_events=[('Blue Jay', 0.7, 1.0)] * 3,
+            ),
+            3: _make_track(
+                classifier_events=[('Great Tit', 0.9, 1.0)] * 3,
+            ),
+            1: _make_track(
+                classifier_events=[('Robin', 0.9, 1.0)] * 3,
+            ),
         }
 
         results = self.decision_maker.get_results(tracks)
@@ -197,6 +254,103 @@ class TestDecisionMaker(unittest.TestCase):
             [(item['track_id'], item['species_name']) for item in results],
             [(1, 'Robin'), (3, 'Great Tit'), (9, 'Blue Jay')],
         )
+
+    def test_get_decisions_includes_rejected_short_track(self):
+        dm = DecisionMaker(
+            min_track_duration=5.0,
+            min_confidence_to_store=0.25,
+        )
+        tracks = {
+            7: _make_track(
+                detector_confidences=[0.8] * 3,
+                start_time=0.0,
+                end_time=1.0,
+            )
+        }
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(len(decisions), 1)
+        self.assertFalse(decisions[0]['accepted'])
+        self.assertEqual(decisions[0]['decision_reason'], 'rejected_short_track')
+        self.assertEqual(decisions[0]['trust_band'], 'red')
+
+    def test_accepted_species_has_green_or_yellow_trust_band(self):
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.95] * 3,
+                classifier_events=[('Robin', 0.95, 0.95)] * 3,
+            )
+        }
+        decisions = self.decision_maker.get_decisions(tracks)
+        self.assertEqual(len(decisions), 1)
+        self.assertTrue(decisions[0]['accepted'])
+        self.assertEqual(decisions[0]['decision_reason'], 'accepted_species')
+        self.assertEqual(decisions[0]['trust_band'], 'green')
+
+    def test_decision_trace_includes_keyframe_and_vote_metadata(self):
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.9] * 4,
+                classifier_events=[('Robin', 0.8, 0.9)] * 3,
+                best_frame_score=7.5,
+                key_frames=[{'score': 7.5}, {'score': 6.0}],
+            )
+        }
+        decisions = self.decision_maker.get_decisions(tracks)
+        self.assertEqual(decisions[0]['key_frame_count'], 2)
+        self.assertAlmostEqual(decisions[0]['best_frame_score'], 7.5)
+        self.assertAlmostEqual(decisions[0]['classifier_vote_share'], 1.0)
+
+    def test_rodent_species_uses_relaxed_threshold_vs_passerines(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.5,
+            min_confidence_to_store=0.34,
+        )
+        rodent = {
+            1: _make_track(
+                detector_label='Squirrel',
+                detector_confidences=[0.6] * 4,
+                classifier_events=[('Rodent', 0.9, 0.5)] * 4,
+            )
+        }
+        self.assertEqual(
+            dm.get_decisions(rodent)[0]['decision_reason'],
+            'accepted_species',
+        )
+        bird = {
+            1: _make_track(
+                detector_label='Bird',
+                detector_confidences=[0.6] * 4,
+                classifier_events=[('Great Tit', 0.9, 0.5)] * 4,
+            )
+        }
+        self.assertNotEqual(
+            dm.get_decisions(bird)[0]['decision_reason'],
+            'accepted_species',
+        )
+
+    def test_conflicting_classifier_votes_get_conflict_reject_code(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.8,
+            min_confidence_to_store=0.9,
+            classifier_fallback_bird=False,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.4] * 4,
+                classifier_events=[
+                    ('Robin', 0.7, 0.5),
+                    ('Blue Jay', 0.7, 0.5),
+                    ('Robin', 0.7, 0.5),
+                    ('Blue Jay', 0.7, 0.5),
+                ],
+            )
+        }
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(decisions[0]['reject_reason_code'], 'conflicting_evidence')
+        self.assertEqual(decisions[0]['trust_band'], 'gray')
+        self.assertEqual(decisions[0]['decision_kind'], 'rejected')
 
 if __name__ == '__main__':
     unittest.main()

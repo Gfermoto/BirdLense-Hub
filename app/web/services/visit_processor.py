@@ -69,6 +69,37 @@ class VisitProcessor:
 
         return visit, video_species
 
+    def process_video_detection_review_only(
+        self,
+        species: Species,
+        video: Video,
+        detection_start: float,
+        detection_end: float,
+        confidence: float,
+        *,
+        track_id: Optional[int] = None,
+        frames: Optional[List[Dict]] = None,
+        detection_provider: Optional[str] = None,
+    ) -> VideoSpecies:
+        """Persist a video detection without creating/extending a SpeciesVisit."""
+        video_start = _ensure_utc(video.start_time)
+        detection_time = video_start + timedelta(seconds=detection_start)
+        video_species = VideoSpecies(
+            species_id=species.id,
+            start_time=detection_start,
+            end_time=detection_end,
+            confidence=confidence,
+            source='video',
+            detection_provider=detection_provider,
+            track_id=track_id,
+            created_at=detection_time,
+            species_visit_id=None,
+            video=video,
+            frames=json.dumps(frames) if frames else None,
+        )
+        self.db.session.add(video_species)
+        return video_species
+
     def process_audio_detection(self, species: Species, video: Video,
                                 detection_start: float, detection_end: float,
                                 confidence: float,
@@ -106,33 +137,48 @@ class VisitProcessor:
 
         # First pass: Process all detections
         for det in detections:
+            visit_eligible = bool(det.get('visit_eligible', True))
             species = self._get_or_create_species(det['species_name'])
             if not species:
                 self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue
 
             # Update species info from Wikipedia
-            update_species_info_from_wiki(species)
+            if visit_eligible:
+                update_species_info_from_wiki(species)
 
             if det['source'] == 'video':
-                visit, video_species = self.process_video_detection(
-                    species=species,
-                    video=video,
-                    detection_start=det['start_time'],
-                    detection_end=det['end_time'],
-                    confidence=det['confidence'],
-                    track_id=det.get('track_id'),
-                    frames=det.get('frames'),
-                    detection_provider=det.get('detection_provider')
-                )
-                visit_key = (visit.species_id, visit.start_time)
-                if visit_key not in visits_to_update:
-                    visits_to_update[visit_key] = {
-                        'visit': visit,
-                        'detections': []
-                    }
-                visits_to_update[visit_key]['detections'].append(video_species)
-                video_species_records.append(video_species)
+                if visit_eligible:
+                    visit, video_species = self.process_video_detection(
+                        species=species,
+                        video=video,
+                        detection_start=det['start_time'],
+                        detection_end=det['end_time'],
+                        confidence=det['confidence'],
+                        track_id=det.get('track_id'),
+                        frames=det.get('frames'),
+                        detection_provider=det.get('detection_provider')
+                    )
+                    visit_key = (visit.species_id, visit.start_time)
+                    if visit_key not in visits_to_update:
+                        visits_to_update[visit_key] = {
+                            'visit': visit,
+                            'detections': []
+                        }
+                    visits_to_update[visit_key]['detections'].append(video_species)
+                    video_species_records.append(video_species)
+                else:
+                    video_species = self.process_video_detection_review_only(
+                        species=species,
+                        video=video,
+                        detection_start=det['start_time'],
+                        detection_end=det['end_time'],
+                        confidence=det['confidence'],
+                        track_id=det.get('track_id'),
+                        frames=det.get('frames'),
+                        detection_provider=det.get('detection_provider'),
+                    )
+                    video_species_records.append(video_species)
             else:  # audio
                 video_species = self.process_audio_detection(
                     species=species,

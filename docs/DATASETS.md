@@ -46,9 +46,9 @@ This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yo
 
 | Component | Version | Trained on |
 |-----------|---------|------------|
-| **Detector** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel (binary bird/squirrel) |
+| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (binary bird/squirrel) |
 | **EU classifier** | YOLO11n-cls | birds-525 + iNaturalist (~491 species) — active `best.pt` |
-| **US classifier** | YOLOv8n-cls | NABirds (~400 species) — `best_US.pt` |
+| **US classifier** | YOLO11n-cls | NABirds (~400 species) — `best_US.pt` |
 
 Switch to US: `cp best_US.pt best.pt`.
 
@@ -92,9 +92,12 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 | Path | Role |
 |------|------|
-| `classification/weights/best.pt` | EU classifier (default) |
-| `classification/weights/best_US.pt` | US backup |
-| `detection/weights/best.pt` | Binary detector |
+| `classification/weights/best.pt` | EU classifier (YOLO11n-cls, default) |
+| `classification/weights/best_US.pt` | US backup (optional) |
+| `classification/weights/class_names.txt` | Class allowlist for catalog alignment |
+| `detection/weights/best.pt` | Binary detector (YOLO11n) |
+
+Everything else in `app/processor/models/` is training/export output, not runtime input.
 
 ---
 
@@ -106,6 +109,8 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 |---------|---------|------|
 | **34data/birds-525-species** | 525 | [Hugging Face](https://huggingface.co/datasets/34data/birds-525-species) |
 | **iNaturalist Europe** | many | [API](https://api.inaturalist.org/v1/docs/), e.g. `place_id=96372` |
+
+The shipped detector is trained on **NABirds + COCO birds + OIDv4 squirrel**, and the shipped EU classifier is trained on **birds-525 + iNaturalist Europe (~490/491 species)**.
 
 ### North America (weak signal for EU accuracy)
 

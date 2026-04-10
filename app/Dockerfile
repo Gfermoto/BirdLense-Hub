@@ -14,7 +14,7 @@ RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legac
 FROM ultralytics/ultralytics:8.4.21
 # Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg nginx curl \
+    ffmpeg nginx curl unzip \
     intel-media-va-driver-non-free vainfo intel-gpu-tools \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
@@ -50,6 +50,17 @@ COPY web/ ./web/
 COPY processor/ ./processor/
 COPY app_config/ ./app_config/
 COPY scripts/ ./scripts/
+# two_stage: .pt не в git; бинарный детектор должен быть предоставлен в контексте сборки,
+# EU-классификатор скачивается с Hugging Face. Если свои веса уже лежат в контексте, пропускаем скачивание.
+RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
+    && if [ ! -s processor/models/detection/weights/best.pt ]; then \
+         unzip -j -o processor/models/detection/nabirds_yolo11n_binary.zip weights/best.pt \
+           -d processor/models/detection/weights/; \
+       fi \
+    && if [ ! -s processor/models/classification/weights/best.pt ]; then \
+         curl -fsSL -o processor/models/classification/weights/best.pt \
+           "https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/main/best.pt"; \
+       fi
 RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt
 

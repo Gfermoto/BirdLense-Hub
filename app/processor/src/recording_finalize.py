@@ -4,16 +4,100 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections import Counter
 from datetime import datetime
 from typing import Any, Optional
 
 from api import API
 from app_config.app_config import app_config
 from dataset_saver import save_dataset_crops
-from multi_camera_confidence import apply_multi_camera_confidence_boost
+from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
-from species_normalizer import merge_detections, normalize
+from processor_support import get_data_dir
 from spectrogram import generate_spectrogram
+
+
+_DECISION_TRACE_FIELDS = (
+    'track_id',
+    'accepted',
+    'species_name',
+    'confidence',
+    'decision_reason',
+    'decision_kind',
+    'trust_band',
+    'reject_reason_code',
+    'evidence_state',
+    'detector_label',
+    'detector_confidence',
+    'detector_event_count',
+    'classifier_threshold',
+    'classifier_species_name',
+    'classifier_confidence',
+    'classifier_event_count',
+    'classifier_vote_share',
+    'best_frame_score',
+    'key_frame_count',
+    'audio_evidence',
+    'audio_support_count',
+    'audio_support_species',
+    'audio_conflict_species',
+    'audio_conflict_score',
+    '_birdnet_prior',
+    '_multi_camera_count',
+    '_multi_camera_support',
+    '_fusion_used',
+    '_fusion_score',
+    'frigate_standalone',
+    'frigate_merge_suppressed',
+)
+_DECISION_TRACE_LIMIT = 40
+
+
+def _is_playable_video_file(path: str) -> bool:
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        if os.path.getsize(path) <= 1024:
+            return False
+        import cv2
+
+        cap = cv2.VideoCapture(path)
+        try:
+            if not cap.isOpened():
+                return False
+            ok, _frame = cap.read()
+            return bool(ok)
+        finally:
+            cap.release()
+    except Exception:
+        return False
+
+
+def _decision_trace_row(item: dict) -> dict:
+    row = {}
+    for key in _DECISION_TRACE_FIELDS:
+        if key in item:
+            row[key] = item.get(key)
+    row['accepted'] = bool(item.get('accepted', False))
+    row['confidence'] = float(item.get('confidence') or 0.0)
+    row['best_frame_score'] = float(item.get('best_frame_score') or 0.0)
+    row['key_frame_count'] = int(item.get('key_frame_count') or 0)
+    row['classifier_vote_share'] = float(item.get('classifier_vote_share') or 0.0)
+    row['detector_event_count'] = int(item.get('detector_event_count') or 0)
+    row['classifier_event_count'] = int(item.get('classifier_event_count') or 0)
+    row['_birdnet_prior'] = float(item.get('_birdnet_prior') or 0.0)
+    row['_multi_camera_count'] = int(item.get('_multi_camera_count') or 0)
+    row['_multi_camera_support'] = bool(item.get('_multi_camera_support') or False)
+    if item.get('audio_evidence') is None:
+        row['audio_evidence'] = 'none'
+    return row
+
+
+def _clip_trace_rows(rows: list[dict], limit: int = _DECISION_TRACE_LIMIT) -> tuple[list[dict], int]:
+    rows = list(rows or [])
+    if len(rows) <= limit:
+        return rows, 0
+    return rows[:limit], len(rows) - limit
 
 
 def finalize_motion_recording(
@@ -33,18 +117,16 @@ def finalize_motion_recording(
     data_dir: str,
 ) -> None:
     """Свести YOLO+MQTT, сохранить видео в API, уведомления; без детекций — удалить папку."""
+    merge_window = int(app_config.get('detection.merge_window_seconds') or 5)
     yolo_tracks_count = len(frame_processor.tracks)
-    video_detections = decision_maker.get_results(frame_processor.tracks)
-    yolo_passed_count = len(video_detections)
-    species_mapping = app_config.get('detection.species_mapping') or {}
-    merge_window = app_config.get('detection.merge_window_seconds', 5)
-    dedup_window = app_config.get('detection.dedup_window_seconds', 45)
-    one_per_species = app_config.get('detection.one_per_species', True)
-    source_priority = app_config.get('detection.source_priority') or [
-        'yolo',
-        'frigate',
-        'birdnet',
+    decisions = decision_maker.get_decisions(frame_processor.tracks)
+    video_detections = [
+        item for item in decisions if item.get('accepted', False)
     ]
+    rejected_decisions = [
+        item for item in decisions if not item.get('accepted', False)
+    ]
+    yolo_passed_count = len(video_detections)
     mqtt_events = []
     if mqtt_aggregator:
         lookback = merge_window
@@ -73,25 +155,42 @@ def finalize_motion_recording(
         if yolo_passed_count == 0 and yolo_tracks_count > 0:
             logging.warning(
                 'YOLO: %s ByteTrack row(s) but none passed DecisionMaker '
-                '(duration < processor.min_track_duration and/or confidence below '
-                'processor.min_confidence_to_process / overrides). '
-                'Merged result may be Frigate/BirdNET-only — lower min_track_duration '
+                '(duration < processor.min_track_duration, confidence below '
+                'processor.min_confidence_to_process / overrides, or below '
+                'detection.min_confidence_to_store when falling back to detector label). '
+                'Final result will stay empty unless YOLO detector/classifier produce a valid track — lower min_track_duration '
                 'or thresholds if you expect video tracks.',
                 yolo_tracks_count,
             )
             for tid, t in frame_processor.tracks.items():
                 dur = t.get('end_time', 0) - t.get('start_time', 0)
-                preds = len(t.get('preds', []))
+                detector_events = len(t.get('detector_events', []))
+                classifier_events = len(t.get('classifier_events', []))
                 logging.info(
-                    '  track %s: duration=%.2fs, preds=%s',
+                    '  track %s: duration=%.2fs, detector_events=%s, classifier_events=%s',
                     tid,
                     dur,
-                    preds,
+                    detector_events,
+                    classifier_events,
                 )
+        if rejected_decisions:
+            rejected_summary = Counter(
+                str(
+                    item.get('reject_reason_code')
+                    or item.get('decision_reason')
+                    or 'rejected_unknown'
+                )
+                for item in rejected_decisions
+            )
+            logging.info(
+                'DecisionMaker rejected tracks: %s',
+                dict(sorted(rejected_summary.items())),
+            )
     elif mqtt_events:
         logging.warning(
             'ByteTrack: 0 YOLO tracks but %s MQTT events. '
-            'YOLO не детектирует — треки пустые (только вид из Frigate).',
+            'Without YOLO, Frigate MQTT does not become a final detection unless '
+            'detection.frigate_standalone_when_no_yolo is enabled (see detection_fusion).',
             len(mqtt_events),
         )
 
@@ -115,50 +214,37 @@ def finalize_motion_recording(
                 'Spectrogram generation failed (BirdNET event present)'
             )
 
-    video_list = []
-    for d in video_detections:
-        sn = normalize(
-            d.get('species_name')
-            or d.get('species')
-            or d.get('name', 'unknown'),
-            species_mapping,
-        )
-        video_list.append(
-            {
-                **d,
-                'species_name': sn,
-                'species': sn,
-                'source': 'video',
-                'detection_provider': 'yolo',
-            }
-        )
-    cross_bonus = float(
-        app_config.get('detection.cross_source_confidence_bonus') or 0
-    )
-    video_detections = merge_detections(
-        video_list,
+    accepted_pre_fusion = list(video_detections)
+    video_detections = build_fused_video_detections(
+        video_detections,
         mqtt_events,
-        start_time,
-        end_time,
-        merge_window,
-        dedup_window,
-        one_per_species=one_per_species,
-        source_priority=source_priority,
-        cross_source_confidence_bonus=cross_bonus,
-        species_mapping=species_mapping,
+        start_time=start_time,
+        end_time=end_time,
+        app_config=app_config,
     )
-    video_detections = apply_multi_camera_confidence_boost(
-        video_detections, mqtt_events, app_config
-    )
-
-    min_conf_store = float(
-        app_config.get('detection.min_confidence_to_store') or 0.05
-    )
-    video_detections = [
-        d
-        for d in video_detections
-        if float(d.get('confidence') or 0) >= min_conf_store
-    ]
+    try:
+        min_conf_store = float(app_config.get('detection.min_confidence_to_store') or 0.05)
+    except (TypeError, ValueError):
+        min_conf_store = 0.05
+    fused_ids = {d.get('track_id') for d in video_detections if d.get('track_id') is not None}
+    for item in accepted_pre_fusion:
+        tid = item.get('track_id')
+        if tid is None:
+            continue
+        if tid in fused_ids:
+            continue
+        conf = float(item.get('confidence') or 0.0)
+        if conf >= min_conf_store:
+            # Should not happen often; keep out of persistence path.
+            continue
+        rejected_decisions.append({
+            **item,
+            'accepted': False,
+            'decision_reason': 'rejected_post_fusion_below_store_threshold',
+            'decision_kind': 'rejected',
+            'trust_band': 'red',
+            'reject_reason_code': 'low_confidence',
+        })
 
     for i, d in enumerate(video_detections):
         n_frames = len(d.get('frames') or [])
@@ -186,6 +272,40 @@ def finalize_motion_recording(
         {k: v for k, v in d.items() if k != 'best_frame'}
         for d in video_detections
     ]
+    if video_detections:
+        audio_evidence_summary = Counter(
+            str(item.get('audio_evidence') or 'none')
+            for item in video_detections
+        )
+        logging.info(
+            'Fusion audio evidence summary: %s',
+            dict(sorted(audio_evidence_summary.items())),
+        )
+    decision_trace = {
+        'start_time': start_time.isoformat(),
+        'end_time': end_time.isoformat(),
+        'video_path': video_path_for_api,
+        'merge_window_seconds': merge_window,
+        'accepted_tracks': [],
+        'rejected_tracks': [],
+    }
+    accepted_trace_rows = [_decision_trace_row(item) for item in video_detections]
+    rejected_trace_rows = [_decision_trace_row(item) for item in rejected_decisions]
+    accepted_trace_rows, accepted_trimmed = _clip_trace_rows(accepted_trace_rows)
+    rejected_trace_rows, rejected_trimmed = _clip_trace_rows(rejected_trace_rows)
+    decision_trace['accepted_tracks'] = accepted_trace_rows
+    decision_trace['rejected_tracks'] = rejected_trace_rows
+    decision_trace['accepted_track_count'] = len(video_detections)
+    decision_trace['rejected_track_count'] = len(rejected_decisions)
+    if accepted_trimmed:
+        decision_trace['accepted_tracks_truncated'] = accepted_trimmed
+    if rejected_trimmed:
+        decision_trace['rejected_tracks_truncated'] = rejected_trimmed
+    try:
+        if api and (video_detections or rejected_decisions):
+            api.activity_log('decision_trace', decision_trace)
+    except Exception:
+        logging.exception('Failed to write decision_trace activity log')
     logging.info(
         'Processing stopped. Video Result: %s; Audio Result: %s',
         video_summary,
@@ -199,7 +319,29 @@ def finalize_motion_recording(
             len(mqtt_events),
         )
 
-    if len(video_detections) > 0:
+    video_file_ok = _is_playable_video_file(video_output)
+    if len(video_detections) > 0 and not video_file_ok:
+        logging.error(
+            'Finalize: %s detection(s) but video file missing: %s',
+            len(video_detections),
+            video_output,
+        )
+        try:
+            if api:
+                api.activity_log(
+                    type='ingest_gate',
+                    data={
+                        'reason': 'video_file_missing',
+                        'stage': 'processor_finalize',
+                        'video_path': video_path_for_api,
+                        'video_output': video_output,
+                        'detection_count': len(video_detections),
+                    },
+                )
+        except Exception:
+            logging.exception('ingest_gate activity_log failed')
+
+    if len(video_detections) > 0 and video_file_ok:
         scales_delta_kg = None
         has_non_audio = any(
             d.get('source') != 'audio' for d in video_detections
@@ -241,7 +383,7 @@ def finalize_motion_recording(
         video_id = resp.get('video_id') if isinstance(resp, dict) else None
         save_crops = app_config.get('processor.save_dataset_crops')
         if video_id is not None and save_crops and video_detections:
-            crops_data_dir = os.environ.get('DATA_DIR', 'data')
+            crops_data_dir = get_data_dir()
             raw_mc = app_config.get('processor.dataset_min_confidence', 0.5)
             min_conf = float(raw_mc)
             save_dataset_crops(
@@ -255,9 +397,21 @@ def finalize_motion_recording(
             sn = d.get('species_name') or d.get('species') or ''
             if sn and sn not in seen:
                 seen.add(sn)
+                notify_ok = bool(d.get('notification_eligible', True))
+                _dk = str(d.get('decision_kind') or '').strip().lower()
+                if _dk in ('review_only_generic', 'frigate_standalone_excluded'):
+                    notify_ok = False
                 image_base64, preview_source = encode_notify_preview_base64(
                     d, video_output
                 )
+                if not notify_ok:
+                    logging.info(
+                        'Notify suppressed for %s (eligible=false, kind=%s, reason=%s)',
+                        sn,
+                        d.get('decision_kind'),
+                        d.get('decision_reason'),
+                    )
+                    continue
                 if image_base64 is None:
                     logging.info(
                         'Notify %s without photo: no preview '
@@ -266,6 +420,27 @@ def finalize_motion_recording(
                         d.get('detection_provider', 'unknown'),
                         preview_source,
                     )
+                    continue
+                raw_notify = app_config.get('processor.min_confidence_to_notify')
+                try:
+                    min_notify = (
+                        float(raw_notify)
+                        if raw_notify is not None and str(raw_notify).strip() != ''
+                        else float(app_config.get('processor.min_confidence_to_process') or 0.30)
+                    )
+                except (TypeError, ValueError):
+                    min_notify = float(
+                        app_config.get('processor.min_confidence_to_process') or 0.30
+                    )
+                if float(d.get('confidence') or 0.0) < min_notify:
+                    logging.info(
+                        'Notify suppressed for %s: confidence=%.3f < '
+                        'processor.min_confidence_to_notify=%.3f',
+                        sn,
+                        float(d.get('confidence') or 0.0),
+                        min_notify,
+                    )
+                    continue
                 else:
                     logging.info(
                         'Notify preview source: %s (%s)',
@@ -279,6 +454,7 @@ def finalize_motion_recording(
                         image_base64=image_base64,
                         link=link,
                         preview_source=preview_source,
+                        notification_eligible=True,
                     )
                     try:
                         api.activity_log(
@@ -302,5 +478,28 @@ def finalize_motion_recording(
                             hint = ' (check PROCESSOR_SECRET in app/.env)'
                         hint = f' {resp_err.status_code}{hint}'
                     logging.warning('Notify species failed%s: %s', hint, e)
-    else:
-        shutil.rmtree(output_path_physical)
+    if not video_file_ok:
+        try:
+            shutil.rmtree(output_path_physical)
+        except OSError as e:
+            logging.warning('Finalize: could not remove bad session dir %s: %s', output_path_physical, e)
+    elif len(video_detections) == 0:
+        keep_empty = bool(app_config.get(
+            'processor.keep_recording_when_no_detections',
+        ))
+        file_src = str(app_config.get('video.source') or '').strip().lower() == 'file'
+        if keep_empty and file_src:
+            logging.info(
+                'keep_recording_when_no_detections: retaining session (0 detections, '
+                'file source): %s',
+                output_path_physical,
+            )
+        else:
+            try:
+                shutil.rmtree(output_path_physical)
+            except OSError as e:
+                logging.warning(
+                    'Finalize: could not remove empty session dir %s: %s',
+                    output_path_physical,
+                    e,
+                )

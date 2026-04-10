@@ -16,6 +16,20 @@
 
 ---
 
+## Стартовые профили YAML (`app/configs/`)
+
+Примеры **без секретов**; копируйте в `app/app_config/user_config.yaml`, пароли и токены задавайте только в **env** или локально (не коммитьте).
+
+| Файл | Типичное применение |
+|------|---------------------|
+| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Простой LAN: Go2RTC + OpenCV motion; MQTT broker пустой |
+| [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
+| [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
+
+**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск.
+
+---
+
 ## Как читать ключи
 
 - В таблицах — **точечные пути**, как в YAML: `video.go2rtc_url` → секция `video:`, поле `go2rtc_url:`.
@@ -83,29 +97,33 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.21** |
-| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). По умолчанию **2**. Слишком много — только Frigate в merge; при мельканиях поднимите до 2.5–3. |
-| `min_confidence_to_process` | Порог классификатора (голосование × средняя). По умолчанию **0.32**. Ниже — больше детекций, выше — строже |
-| `species_confidence_overrides` | Пороги по видам: `{"Rare Bird": 0.05}` — для редких видов ниже порог |
+| `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
+| `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
+| `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
+| `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для белок; `{"Rare Bird": 0.05}` — редкие птицы |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
-| `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.05`). |
-| `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.05`). |
-| `birdnet_mqtt_auto_confidence` | Если **true**, для видов из **недавних** сообщений BirdNET по MQTT подмешиваются более низкие пороги классификатора (как у eBird-топа). По умолчанию **false**. Ручные `species_confidence_overrides` важнее. См. [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
-| `birdnet_mqtt_bias_window_seconds` | Окно назад от момента старта записи для учёта видов BirdNET (сек, по умолчанию 120). |
+| `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.03`). |
+| `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.08`). |
+| `birdnet_mqtt_auto_confidence` | Если **true**, для видов из **недавних** сообщений BirdNET по MQTT подмешиваются более низкие пороги классификатора (как у eBird-топа). BirdNET здесь только **confidence-only**: финальный video label он не создаёт. |
 | `birdnet_mqtt_bias_delta` | Вычитается из `min_confidence_to_process` для авто-видов из BirdNET (по умолчанию `0.05`). |
 | `birdnet_mqtt_bias_floor` | Нижняя граница авто-порога для BirdNET (по умолчанию `0.05`). |
 | `multi_camera_groups` | Список групп `id` камер Frigate одной локации, например `[["BirdBox","Forest"]]`. См. [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
-| `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.05`, не выше 1.0). |
+| `multi_camera_confidence_boost` | При событиях Frigate с **одним видом** с **двух и более** камер из одной группы — прибавка к итоговому `confidence` (по умолчанию `0.03`, не выше 1.0). |
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
-| `regional_species` | Локальные виды для BirdNET (пусто — YOLO все классы) |
-| `single_stage_coco_animals_only_auto` | По умолчанию **true**: при **ровно 80** классах COCO (`yolov8n.pt` и т.п.) — только **животные** (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe): без **person** и без предметов. **false** — для своей 80-классовой модели. Устаревший ключ `single_stage_coco_bird_only_auto` читается, если этот не задан. |
-| `included_bird_families` | Список семейств для фильтра (Perching Birds, Squirrel и др.) |
+| `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Squirrel"]`. В EU-классификаторе один не-птица класс **Rodent** (белки в каталоге — ищите «Rodent», отдельной строки «Squirrel» в видах нет). |
+| `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
+| `single_stage_coco_animals_only_auto` | Устаревший compat-ключ. Production runtime использует только `two_stage`. |
+| `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
 | `save_images` | Сохранять кадры детекций |
-| `detection_strategy` | `single_stage` или `two_stage` |
-| `models.single_stage` | Путь к single-stage модели (NCNN) |
+| `detection_strategy` | В production используется только `two_stage`; другие значения игнорируются с warning. |
+| `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
+| `file_max_record_floor_seconds` | Только **`video.source=file`:** минимальный отрезок по «настенным часам» (сек) до возможного split длинного клипа; по умолчанию **86400**. См. *(поведение)* в **Video**. |
+| `keep_recording_when_no_detections` | Только **`video.source=file`** (по умолчанию **false**). Если **true** — оставлять финализированную сессию (валидный mp4) при **нуле** сохранённых детекций (офлайн-пайплайны). Для **`go2rtc` / live** ключ **не действует**; пустые сессии удаляются. |
+| `track_regen_parallel_auto_with_manual` | Продвинутая параллельность перегенерации треков (auto + manual scope); тюнинг для ops, только YAML (см. System → track regen в UI). |
 
 ---
 
@@ -113,7 +131,11 @@
 
 | Ключ | Описание |
 |------|----------|
-| `source` | `go2rtc` (file — только через CLI) |
+| `source` | `go2rtc` или `file` (тест: папка mp4 или один файл в контейнере) |
+| `file_path` | Один mp4, абсолютный путь в контейнере; пусто — плейлист из `file_dir` |
+| `file_dir` | Папка с `*.mp4` / `*.mov` / `*.mkv` (только файлы в каталоге, без рекурсии). В репозитории по умолчанию **`/app/data/file_test`** (Docker: `./data` хоста → `/app/data`). |
+| `file_loop` | Зацикливать плейлист/файл |
+| *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
 | `cameras` | Список: `{id, stream_name, name}` |
 | `pre_record_seconds` | Предзапись перед триггером |
@@ -128,7 +150,7 @@
 |------|----------|
 | `source` | `opencv` \| `frigate` \| `mqtt` \| `esphome` |
 | `frigate_camera_filter` | Камеры Frigate (из cameras) или пусто — все |
-| `frigate_label_filter` | Метки Frigate для фильтра (bird, Bird) |
+| `frigate_label_filter` | Метки Frigate, которые могут запускать запись (`bird`, `Bird`, `squirrel`, `Squirrel` по умолчанию). Сам триггер не назначает итоговый label. |
 | `frigate_label_exclude` | Метки для игнорирования (cat, dog — мышь как кошка) |
 | `mqtt_topic` | Топик MQTT binary sensor (Tasmota PIR) |
 | `esphome_url` | URL ESPHome |
@@ -138,7 +160,7 @@
 
 ## MQTT
 
-Одно подключение — топики frigate и birdnet. Триггеры: Frigate, BirdNET (при MQTT), ESPHome, MQTT binary, OpenCV. YOLO распознаёт после триггера.
+Одно подключение — топики frigate и birdnet. Триггеры: Frigate, ESPHome, MQTT binary, OpenCV и другие event-источники. Итоговые video labels всё равно строятся через общий detector/classifier fusion path.
 
 | Ключ | Описание |
 |------|----------|
@@ -153,7 +175,7 @@
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
 
-**BirdNET:** `CommonName`, `Confidence`, `BeginTime` (для слияния), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label`.
+**BirdNET:** `CommonName`, `Confidence`, `BeginTime`, `ScientificName`, `BirdImage.URL`. BirdNET влияет только на confidence. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
 
 **Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
 
@@ -196,9 +218,14 @@
 
 ---
 
-## Detection (слияние YOLO + Frigate + BirdNET)
+## Detection (общий fusion path)
 
-**Источники:** YOLO (видео, EU ~491 вид), Frigate (`sub_label` из [Bird Classification](https://docs.frigate.video/configuration/bird_classification/)), BirdNET (аудио). В UI — полосы под видео, карточки видов: «Источник: YOLO», «Frigate», «BirdNET». Один результат на вид (max confidence).
+**Production path:** trigger source -> detector (`Bird | Squirrel`) -> YOLO classifier -> fusion -> persistence.
+
+**Семантика источников:**
+- YOLO detector/classifier — основной источник всех persisted video detections.
+- Frigate — helper source: может продвинуть generic detector fallback или добавить confidence boost.
+- BirdNET — confidence-only для видео: bias порогов до решения классификатора, без создания final video label.
 
 **Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 
@@ -206,14 +233,18 @@
 
 **Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt`: `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
 
+**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](./TRAINING.ru.md)).
+
+**UX «Неизвестные»:** при strict ingest подписи вне allowlist попадают в **Unknown** (без новой строки вида). Contributor исправляет в разделе **Неизвестные**; массовая уборка — System → качество каталога / reconcile. Отображаемые имена одного таксона согласуйте с каноном выше (`species_mapping`, `species_canonical_mapping.txt`, объединение дубликатов).
+
 | Ключ | Описание |
 |------|----------|
 | `merge_window_seconds` | Окно слияния MQTT (8 сек) |
 | `dedup_window_seconds` | Разрыв > N сек = разные визиты (60 сек) |
 | `one_per_species` | Один результат на вид (true) |
-| `source_priority` | При конфликте: `["yolo", "frigate", "birdnet"]` |
-| `cross_source_confidence_bonus` | При первом слиянии MQTT (Frigate/BirdNET) в существующую YOLO-детекцию — разово прибавить к confidence (потолок 1.0). По умолчанию **0.02**, без дообучения. `0` — выключить. |
-| `min_confidence_to_store` | Мин. итоговый confidence для записи в БД (по умолчанию **0.30**). Не ниже практического порога классификатора. |
+| `source_priority` | Порядок разрешения конфликтов между fused sources. Production default: `["yolo", "frigate"]`. |
+| `cross_source_confidence_bonus` | При первом подтверждении YOLO track со стороны Frigate — разово прибавить confidence (потолок 1.0). `0` — выключить. |
+| `min_confidence_to_store` | Мин. fused confidence для записи в БД (по умолчанию **0.30**). Это же floor для detector-label fallback. |
 | `species_mapping` | Маппинг названий видов |
 
 **EU-модель:** `best.pt`. US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
@@ -396,7 +427,7 @@ Push-уведомления в браузере (дополнение или а�
 
 | Ключ | Описание | Где настраивать |
 |------|----------|-----------------|
-| `unknown_confidence_threshold` | Порог (0–1) для списка «Неизвестные»: детекции с confidence ниже попадают на страницу для ручной проверки. По умолчанию 0.5 | Настройки → Расширенные |
+| `unknown_confidence_threshold` | Порог (0–1) для «Неизвестные». По умолчанию **0.48** | Настройки → Процессор → блок «Дополнительно» |
 
 ---
 

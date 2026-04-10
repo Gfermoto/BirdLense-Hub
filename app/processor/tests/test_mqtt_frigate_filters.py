@@ -3,69 +3,62 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.append(src_path)
 
-import mqtt_runtime as mqtt_runtime_mod  # noqa: E402
+import frigate_scope as fs  # noqa: E402
 
 
 class TestMqttFrigateFilters(unittest.TestCase):
     def test_frigate_camera_filter_scalar_string_is_single_id(self):
         cameras = [{'id': 'cam1'}, {'id': 'cam2'}]
-
-        def fake_get(key, default=None):
-            if key in ('motion.frigate_camera_filter', 'mqtt.frigate_camera_filter'):
-                return 'front_door'
-            return default
-
-        with patch.object(mqtt_runtime_mod.app_config, 'get', side_effect=fake_get):
-            self.assertEqual(
-                mqtt_runtime_mod._frigate_camera_filter_list(cameras),
-                ['front_door'],
-            )
+        cfg = {'motion.frigate_camera_filter': 'front_door'}
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['front_door'])
 
     def test_frigate_camera_filter_list_passthrough(self):
         cameras = [{'id': 'a'}]
-
-        def fake_get(key, default=None):
-            if key in ('motion.frigate_camera_filter', 'mqtt.frigate_camera_filter'):
-                return ['x', 'y']
-            return default
-
-        with patch.object(mqtt_runtime_mod.app_config, 'get', side_effect=fake_get):
-            self.assertEqual(
-                mqtt_runtime_mod._frigate_camera_filter_list(cameras),
-                ['x', 'y'],
-            )
+        cfg = {'motion.frigate_camera_filter': ['x', 'y']}
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['x', 'y'])
 
     def test_frigate_camera_filter_none_uses_all_camera_ids(self):
         cameras = [{'id': 'c1'}, {'id': 'c2'}]
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, {}), ['c1', 'c2'])
 
-        def fake_get(key, default=None):
-            return default
+    def test_frigate_camera_filter_empty_list_uses_all_camera_ids(self):
+        cameras = [{'id': 'c1'}, {'id': 'c2'}]
+        cfg = {
+            'motion.frigate_camera_filter': [],
+            'mqtt.frigate_camera_filter': ['should_not_use_when_motion_key_present'],
+        }
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['c1', 'c2'])
 
-        with patch.object(mqtt_runtime_mod.app_config, 'get', side_effect=fake_get):
-            self.assertEqual(
-                mqtt_runtime_mod._frigate_camera_filter_list(cameras),
-                ['c1', 'c2'],
-            )
+    def test_frigate_camera_filter_mqtt_fallback_when_motion_absent(self):
+        cameras = [{'id': 'a'}]
+        cfg = {'mqtt.frigate_camera_filter': ['z']}
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['z'])
 
     def test_frigate_label_filter_scalar_string_is_single_label(self):
-        def fake_get(key, default=None):
-            if key == 'motion.frigate_label_filter':
-                return 'Bird'
-            if key == 'mqtt.frigate_label_filter':
-                return None
-            return default
+        cfg = {'motion.frigate_label_filter': 'Bird'}
+        out = fs.frigate_label_resolve_set(
+            'motion.frigate_label_filter',
+            'mqtt.frigate_label_filter',
+            ['bird'],
+            cfg,
+        )
+        self.assertEqual(out, {'Bird'})
 
-        with patch.object(mqtt_runtime_mod.app_config, 'get', side_effect=fake_get):
-            out = mqtt_runtime_mod._frigate_label_set(
-                'motion.frigate_label_filter',
-                'mqtt.frigate_label_filter',
-                ['bird'],
-            )
-            self.assertEqual(out, {'Bird'})
+    def test_empty_motion_label_filter_stays_empty_wildcard(self):
+        cfg = {
+            'motion.frigate_label_filter': [],
+            'mqtt.frigate_label_filter': ['bird', 'Bird'],
+        }
+        out = fs.frigate_label_resolve_set(
+            'motion.frigate_label_filter',
+            'mqtt.frigate_label_filter',
+            ['bird'],
+            cfg,
+        )
+        self.assertEqual(out, set())

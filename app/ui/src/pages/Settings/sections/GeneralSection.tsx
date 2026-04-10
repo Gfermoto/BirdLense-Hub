@@ -1,4 +1,6 @@
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
@@ -15,17 +17,38 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
 import { PasswordField } from '../../../components/PasswordField';
 import { ServiceBlock } from '../shared/ServiceBlock';
 import { CamerasListField } from '../shared/CamerasListField';
 import type { Settings } from '../../../types';
+import {
+  downloadSettingsYamlFull,
+  downloadSettingsYamlSafe,
+  importSettingsYaml,
+} from '../../../api/api';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
+  /** Маскированный YAML — оператор и админ */
+  yamlSafeExportEnabled?: boolean;
+  /** Полный YAML и импорт — только админ (при двух паролях) */
+  yamlAdminBackupEnabled?: boolean;
 };
 
-export function GeneralSection({ form }: Props) {
+export function GeneralSection({
+  form,
+  yamlSafeExportEnabled = false,
+  yamlAdminBackupEnabled = false,
+}: Props) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [yamlMsg, setYamlMsg] = useState<{ sev: 'success' | 'error'; text: string } | null>(
+    null,
+  );
 
   return (
     <>
@@ -234,6 +257,27 @@ export function GeneralSection({ form }: Props) {
             <ServiceBlock title={t('settings.serviceVideo')}>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="video.source">
+                    {(field) => (
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-video-source-label">
+                          {t('settings.videoSourceLabel')}
+                        </InputLabel>
+                        <Select
+                          labelId="settings-video-source-label"
+                          value={(field.state.value ?? 'go2rtc').toLowerCase()}
+                          label={t('settings.videoSourceLabel')}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        >
+                          <MenuItem value="go2rtc">{t('settings.videoSourceGo2rtc')}</MenuItem>
+                          <MenuItem value="file">{t('settings.videoSourceFile')}</MenuItem>
+                        </Select>
+                        <FormHelperText>{t('settings.videoSourceHint')}</FormHelperText>
+                      </FormControl>
+                    )}
+                  </form.Field>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <form.Field name="video.encoding">
                     {(field) => (
                       <FormControl fullWidth>
@@ -252,16 +296,84 @@ export function GeneralSection({ form }: Props) {
                     )}
                   </form.Field>
                 </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <form.Field name="video.cameras">
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <form.Field name="video.record_stream_codec">
                     {(field) => (
-                      <CamerasListField
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                      />
+                      <FormControl fullWidth>
+                        <InputLabel id="settings-record-codec-label">
+                          {t('settings.recordStreamCodecLabel')}
+                        </InputLabel>
+                        <Select
+                          labelId="settings-record-codec-label"
+                          value={(field.state.value ?? 'h264').toLowerCase()}
+                          label={t('settings.recordStreamCodecLabel')}
+                          onChange={(e) =>
+                            field.handleChange(e.target.value as 'h264' | 'copy')
+                          }
+                        >
+                          <MenuItem value="h264">{t('settings.recordStreamCodecH264')}</MenuItem>
+                          <MenuItem value="copy">{t('settings.recordStreamCodecCopy')}</MenuItem>
+                        </Select>
+                        <FormHelperText>{t('settings.recordStreamCodecHint')}</FormHelperText>
+                      </FormControl>
                     )}
                   </form.Field>
                 </Grid>
+                <form.Subscribe selector={(state) => state.values.video?.source}>
+                  {(videoSource) => (
+                    <>
+                      {videoSource === 'file' ? (
+                        <>
+                          <Grid size={{ xs: 12 }}>
+                            <form.Field name="video.file_dir">
+                              {(field) => (
+                                <TextField
+                                  fullWidth
+                                  value={field.state.value ?? ''}
+                                  onChange={(e) => field.handleChange(e.target.value)}
+                                  label={t('settings.videoFileDirLabel')}
+                                  placeholder="/app/data/file_test"
+                                  helperText={t('settings.videoFileDirHint')}
+                                />
+                              )}
+                            </form.Field>
+                          </Grid>
+                          <Grid size={{ xs: 12 }}>
+                            <form.Field name="video.file_loop">
+                              {(field) => (
+                                <>
+                                  <FormControlLabel
+                                    control={
+                                      <Switch
+                                        checked={field.state.value ?? false}
+                                        onChange={(e) => field.handleChange(e.target.checked)}
+                                      />
+                                    }
+                                    label={t('settings.videoFileLoopLabel')}
+                                  />
+                                  <FormHelperText>
+                                    {t('settings.videoFileLoopHint')}
+                                  </FormHelperText>
+                                </>
+                              )}
+                            </form.Field>
+                          </Grid>
+                        </>
+                      ) : (
+                        <Grid size={{ xs: 12 }}>
+                          <form.Field name="video.cameras">
+                            {(field) => (
+                              <CamerasListField
+                                value={field.state.value}
+                                onChange={field.handleChange}
+                              />
+                            )}
+                          </form.Field>
+                        </Grid>
+                      )}
+                    </>
+                  )}
+                </form.Subscribe>
               </Grid>
             </ServiceBlock>
 
@@ -433,6 +545,99 @@ export function GeneralSection({ form }: Props) {
           </Box>
         </AccordionDetails>
       </Accordion>
+
+      {yamlSafeExportEnabled || yamlAdminBackupEnabled ? (
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {t('settings.yamlBackupTitle')}
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {yamlAdminBackupEnabled
+                ? t('settings.yamlBackupDesc')
+                : t('settings.yamlBackupDescSafeOnly')}
+            </Typography>
+            {yamlMsg ? (
+              <Alert severity={yamlMsg.sev} sx={{ mb: 2 }} onClose={() => setYamlMsg(null)}>
+                {yamlMsg.text}
+              </Alert>
+            ) : null}
+            <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
+              {yamlSafeExportEnabled ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={async () => {
+                    setYamlMsg(null);
+                    try {
+                      await downloadSettingsYamlSafe();
+                    } catch (e) {
+                      setYamlMsg({
+                        sev: 'error',
+                        text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                      });
+                    }
+                  }}
+                >
+                  {t('settings.yamlDownloadSafe')}
+                </Button>
+              ) : null}
+              {yamlAdminBackupEnabled ? (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="warning"
+                    onClick={async () => {
+                      if (!window.confirm(t('settings.yamlFullConfirm'))) return;
+                      setYamlMsg(null);
+                      try {
+                        await downloadSettingsYamlFull();
+                      } catch (e) {
+                        setYamlMsg({
+                          sev: 'error',
+                          text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                        });
+                      }
+                    }}
+                  >
+                    {t('settings.yamlDownloadFull')}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {t('settings.yamlImport')}
+                  </Button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".yaml,.yml,text/yaml"
+                    hidden
+                    onChange={async (ev) => {
+                      const f = ev.target.files?.[0];
+                      ev.target.value = '';
+                      if (!f) return;
+                      setYamlMsg(null);
+                      const r = await importSettingsYaml(f);
+                      if (r.ok) {
+                        setYamlMsg({ sev: 'success', text: r.message || t('settings.yamlImportOk') });
+                        await queryClient.invalidateQueries({ queryKey: ['settings'] });
+                      } else {
+                        setYamlMsg({
+                          sev: 'error',
+                          text: r.message || t('settings.yamlImportFailed'),
+                        });
+                      }
+                    }}
+                  />
+                </>
+              ) : null}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
     </>
   );
 }

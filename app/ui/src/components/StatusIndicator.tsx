@@ -63,15 +63,15 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
-  const trigger = data.trigger_display ?? data.motion_source ?? 'opencv';
   const motion = data.motion_source ?? 'opencv';
-  const hintKeys: Record<string, string> = {
-    frigate: 'status.motionHint_frigate',
-    opencv: 'status.motionHint_opencv',
-    mqtt: 'status.motionHint_mqtt',
-    esphome: 'status.motionHint_esphome',
+  const activeByMotion: Record<string, string[]> = {
+    opencv: ['OpenCV'],
+    frigate: ['Frigate', 'OpenCV'],
+    mqtt: ['MQTT'],
+    esphome: ['ESPHome'],
   };
-  const hint = t(hintKeys[motion] ?? hintKeys.opencv);
+  const active = activeByMotion[motion] ?? activeByMotion.opencv;
+  const activeLabel = active.join(', ');
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
       <StatusDot status={data.processor} component="processor" icon={MemoryOutlined} t={t} />
@@ -79,9 +79,9 @@ export const StatusIndicator = () => {
       <StatusDot status={data.mqtt} component="mqtt" icon={CloudOutlined} t={t} />
       <StatusDot status={data.esphome ?? 'not_used'} component="esphome" icon={SmartToyOutlined} t={t} />
       <StatusDot status={data.yolo} component="yolo" icon={PsychologyOutlined} t={t} />
-      <Tooltip title={hint}>
+      <Tooltip title={t('status.motionActive')}>
         <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-          {t('status.motion')}: {trigger}
+          {t('status.motion')}: {activeLabel}
         </Box>
       </Tooltip>
     </Box>

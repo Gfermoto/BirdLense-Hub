@@ -78,6 +78,8 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 
 **Токен из Настроек:** если MCP включён и токен задан в разделе «8. MCP», MCP-сервер передаёт его при вызовах API. Инструменты Get_app_settings, Update_app_settings и др. работают без ввода пароля настроек.
 
+Если вы работаете в Cursor, добавьте всегда активное правило `.cursor/rules/mcp-skill-autopilot.mdc`, чтобы агент сам выбирал нужные MCP-скиллы без повторных напоминаний.
+
 ## Ошибка «Connect Timeout» / `SSE error: fetch failed`
 
 Сообщение вроде `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` означает, что **клиент Cursor не установил TCP/TLS до сервера** за отведённое время. Это **сеть между вашим ПК и VPS**, а не неверный токен (до проверки Bearer запрос часто не доходит).

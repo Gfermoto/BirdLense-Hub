@@ -12,6 +12,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python-security:
+    name: python-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Bandit (web/ + processor/src, bandit.yaml)
+        run: |
+          pip install bandit[toml]==1.8.6
+          bandit -r web/ processor/src -c bandit.yaml -ll
+
+      - name: pip-audit (web + processor requirements)
+        run: |
+          pip install pip-audit==2.9.0
+          # py 1.11.0 (транзитивно от interrogate): нет фикса на PyPI; dev/docs зависимость
+          pip-audit -r web/requirements.txt -r processor/requirements.txt \
+            --ignore-vuln PYSEC-2022-42969
+
   openapi-contract:
     runs-on: ubuntu-latest
     defaults:
@@ -29,8 +54,8 @@ jobs:
       - name: Install web test dependencies
         run: pip install -r web/requirements.txt
 
-      - name: Ruff lint (web/tests only)
-        run: pip install ruff==0.9.2 && ruff check web/tests/
+      - name: Ruff lint (web/ + processor/src)
+        run: pip install ruff==0.9.2 && ruff check web/ processor/src/
 
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
@@ -144,6 +169,10 @@ jobs:
         run: |
           test -f .env || cp .env.example .env
           mkdir -p data/db data/recordings
+
+      - name: Processor .pt weights for integration tests
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/fetch-processor-weights.sh
 
       - name: Build birdlense image
         run: docker compose build birdlense

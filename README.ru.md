@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.3.4-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 ### Краткое описание
 
@@ -22,8 +22,8 @@
 
 | Компонент | Версия | Дообучено на | Примечание |
 |-----------|--------|--------------|------------|
-| **Детектор** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel — **не меняется** при EU-обучении |
-| **Классификатор** | YOLOv8n-cls / YOLO11n-cls | NABirds (≈400) или birds-525 + iNaturalist (≈490) | US или EU |
+| **Детектор** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel — **не меняется** при EU-обучении |
+| **Классификатор** | YOLO11n-cls | birds-525 + iNaturalist (≈490) | EU по умолчанию; US/NABirds — опциональный резерв |
 
 **Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
@@ -31,7 +31,7 @@
 
 **Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
-**Модели:** EU-классификатор (birds-525 + iNaturalist). См. [docs/TRAINING.md](./docs/TRAINING.md).
+**Модели:** активный runtime — two-stage `detection/weights/best.pt` + `classification/weights/best.pt`. В `app/processor/models/` должны оставаться только runtime-артефакты вроде `best.pt` и `class_names.txt`; CSV, `args.yaml`, NCNN-экспорты и notebook-checkpoints — это мусор обучения/экспорта и их можно удалять или пересоздавать. `app/yolo11n.pt` оставлен только как compatibility-only артефакт; при необходимости его можно скачать через `scripts/fetch-processor-weights.sh --legacy-single-stage`.
 
 <details>
 <summary>📷 Скриншоты</summary>
@@ -88,7 +88,7 @@ UI: http://localhost:8085
 
 **Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-При первом запуске `make setup` создаёт `app/.env` с `PROCESSOR_SECRET` и `FLASK_SECRET_KEY` автоматически.
+Для одношагового запуска на Docker используйте `./install.sh` из корня репозитория. Скрипт сам ставит Docker при необходимости, создаёт `app/.env` и поднимает стек.
 
 ## Разработчикам
 

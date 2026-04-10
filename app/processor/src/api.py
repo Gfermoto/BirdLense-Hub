@@ -57,7 +57,14 @@ class API():
         self._send_request('POST', 'notify/motion', {})
 
     def notify_species(
-        self, species, image_path=None, image_base64=None, link=None, preview_source=None
+        self,
+        species,
+        image_path=None,
+        image_base64=None,
+        link=None,
+        preview_source=None,
+        notification_eligible=True,
+        suppress_reason=None,
     ):
         payload = {'detection': species}
         if image_base64:
@@ -68,6 +75,9 @@ class API():
             payload['link'] = link
         if preview_source:
             payload['preview_source'] = preview_source
+        payload['notification_eligible'] = bool(notification_eligible)
+        if suppress_reason:
+            payload['suppress_reason'] = suppress_reason
         self._send_request('POST', 'notify/detections', payload)
 
     def create_video(

@@ -511,6 +511,39 @@ export type ObservabilityPayload = {
   notify_preview_24h: Record<string, number>;
   notify_fallback_24h: Record<string, number>;
   notify_delivery_24h: Record<string, number>;
+  ml_health: {
+    rolling_7d: {
+      window_days: number;
+      video_detections: number;
+      corrections_logged: number;
+      species_change_actions: number;
+      correction_rate: number;
+      manual_annotation_rate: number;
+      unknown_rate: number;
+      generic_rate: number;
+    };
+    rolling_30d: {
+      window_days: number;
+      video_detections: number;
+      corrections_logged: number;
+      species_change_actions: number;
+      correction_rate: number;
+      manual_annotation_rate: number;
+      unknown_rate: number;
+      generic_rate: number;
+    };
+  };
+  model_lineage: {
+    config_fingerprint: string;
+    artifacts: Record<
+      string,
+      {
+        configured_path: string | null;
+        exists: boolean;
+        sha256: string | null;
+      }
+    >;
+  };
   hub_metrics: {
     prometheus_text: string;
     prometheus_text_alt: string;
@@ -575,6 +608,10 @@ export const verifySettingsPassword = async (
       ? { ok: false, error: 'wrong_password' }
       : { ok: false, error: 'server_error' };
   }
+};
+
+export const logoutSettingsSession = async (): Promise<void> => {
+  await axios.post(`${BASE_API_URL}/settings/logout`, {}, { withCredentials: true });
 };
 
 export const fetchSettings = async () => {
@@ -672,6 +709,24 @@ export const sendTestNotification = async (): Promise<{ success: boolean; messag
   }
 };
 
+export const refreshTelegramProxy = async (): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await axios.post(`${BASE_API_URL}/system/telegram-proxy/refresh`, {}, {
+      withCredentials: true,
+    });
+    return {
+      success: true,
+      message: response.data?.message || 'Started',
+    };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      success: false,
+      message: err.response?.data?.error || 'Failed',
+    };
+  }
+};
+
 export const restartProcessor = async (): Promise<{ success: boolean; message?: string }> => {
   try {
     const response = await axios.post(`${BASE_API_URL}/restart-processor`, {}, {
@@ -688,6 +743,57 @@ export const restartProcessor = async (): Promise<{ success: boolean; message?: 
 };
 
 /** Download SQLite DB backup from System page. */
+const _downloadYamlResponse = async (url: string, fallbackName: string) => {
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition');
+  const filename =
+    cd?.match(/filename="?([^";\n]+)"?/)?.[1] || fallbackName;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+export const downloadSettingsYamlSafe = async (): Promise<void> => {
+  await _downloadYamlResponse(
+    `${BASE_API_URL}/settings/yaml-export?mode=safe`,
+    'user_config_safe.yaml',
+  );
+};
+
+export const downloadSettingsYamlFull = async (): Promise<void> => {
+  await _downloadYamlResponse(
+    `${BASE_API_URL}/settings/yaml-export?mode=full&ack=full`,
+    'user_config_full.yaml',
+  );
+};
+
+export const importSettingsYaml = async (
+  file: File,
+): Promise<{ ok: boolean; message?: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_API_URL}/settings/yaml-import`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      ok: false,
+      message: (data as { error?: string }).error || res.statusText,
+    };
+  }
+  return { ok: true, message: (data as { message?: string }).message };
+};
+
 export const downloadDbBackup = async (): Promise<void> => {
   const res = await fetch(`${BASE_API_URL}/system/db/backup`, {
     credentials: 'include',
@@ -724,6 +830,20 @@ export const restoreDbBackup = async (
     throw new Error(err.error || res.statusText);
   }
   return res.json();
+};
+
+export type PurgeStorageBody =
+  | { date: string }
+  | { start_date: string; end_date: string };
+
+/** Delete recordings by cutoff date or inclusive calendar range (admin). */
+export const purgeStorageRecordings = async (
+  body: PurgeStorageBody,
+): Promise<{ message: string; deletedCount: number; deletedSize: number }> => {
+  const { data } = await axios.post(`${BASE_API_URL}/storage/purge`, body, {
+    withCredentials: true,
+  });
+  return data;
 };
 
 export const fetchCoordinatesByZip = async (
@@ -828,6 +948,7 @@ export interface CatalogRepairStatus {
     checked: number;
     metadata_fixed: number;
     images_replaced_from_inat: number;
+    images_realigned_allowlist_science?: number;
     still_missing: number;
     dry_run: boolean;
     auto?: boolean;
@@ -898,6 +1019,63 @@ export const fetchTrackRegenSpeciesOptions = async (): Promise<
   return response.data;
 };
 
+export interface TrackRegenerationJobStatus {
+  status: string;
+  result?: unknown;
+  error?: string | null;
+  progress?: unknown;
+}
+
+export const fetchTrackRegenerationStatus =
+  async (): Promise<TrackRegenerationJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/regenerate-tracks/status`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
+
+/** Перегенерация YOLO-треков для одной записи (только админ при двух паролях). */
+export const regenerateTracksForSingleVideo = async (
+  videoId: number,
+  options?: { force?: boolean },
+): Promise<{ message: string; started: boolean; video_id: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/videos/${videoId}/regenerate-tracks`,
+    { force: options?.force === true },
+    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
+  );
+  return response.data;
+};
+
+export interface SpectrogramRegenerationJobStatus {
+  status: string;
+  result?: unknown;
+  error?: string | null;
+  progress?: unknown;
+}
+
+export const fetchSpectrogramRegenerationStatus =
+  async (): Promise<SpectrogramRegenerationJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/regenerate-spectrograms/status`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
+
+/** Пересборка спектрограммы для одной записи (только админ при двух паролях). */
+export const regenerateSpectrogramForSingleVideo = async (
+  videoId: number,
+): Promise<{ message: string; started: boolean; video_id: number }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/videos/${videoId}/regenerate-spectrogram`,
+    {},
+    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
+  );
+  return response.data;
+};
+
 export interface MigrationCalendarData {
   species: Array<{
     id: number | null;
@@ -939,6 +1117,28 @@ export const fetchSpeciesSummary = async (
 ): Promise<SpeciesSummary> => {
   const response = await axios.get(
     `${BASE_API_URL}/species/${speciesId}/summary`,
+  );
+  return response.data;
+};
+
+export interface RefreshSpeciesMetadataResponse {
+  ok: boolean;
+  species_id: number;
+  name: string;
+  image_url: string | null;
+  description: string | null;
+  metadata_source: string | null;
+  metadata_source_url: string | null;
+}
+
+/** Перезапрос фото/описания для одной карточки вида (нужен пароль настроек, withCredentials). */
+export const refreshSpeciesMetadata = async (
+  speciesId: number,
+): Promise<RefreshSpeciesMetadataResponse> => {
+  const response = await axios.post<RefreshSpeciesMetadataResponse>(
+    `${BASE_API_URL}/species/${speciesId}/refresh-metadata`,
+    {},
+    { withCredentials: true },
   );
   return response.data;
 };
@@ -1021,6 +1221,36 @@ export interface UnknownDetection {
   source: string;
   detection_provider?: string;
   image_url?: string;
+  review_state?: 'pending' | 'reviewed' | 'not_applicable';
+  review_reason?: 'low_confidence' | 'generic_bird' | string;
+  review_source?: string;
+}
+
+export interface ReviewQueueDeletePreviewVideo {
+  video_id: number;
+  video_path: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  has_video_path: boolean;
+  file_exists: boolean;
+  recording_dir: string | null;
+  unknown_count: number;
+  unknown_ids: number[];
+  species_names: string[];
+  review_reasons: string[];
+}
+
+export interface ReviewQueueDeletePreview {
+  confirmation_phrase: string;
+  date: string;
+  time_of_day: string;
+  hour: number | null;
+  unknown_count: number;
+  video_count: number;
+  unknown_ids: number[];
+  video_ids: number[];
+  missing_video_ids: number[];
+  videos: ReviewQueueDeletePreviewVideo[];
 }
 
 export const fetchUnknowns = async (
@@ -1093,6 +1323,46 @@ export const confirmDetection = async (
     { source },
     { withCredentials: true },
   );
+  return response.data;
+};
+
+export const previewReviewQueueDelete = async (params: {
+  date: string;
+  timeOfDay: TimeOfDay;
+  hour?: number | null;
+  unknownIds: number[];
+}): Promise<ReviewQueueDeletePreview> => {
+  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete-preview`, {
+    date: params.date,
+    time_of_day: params.timeOfDay,
+    ...(params.hour != null ? { hour: params.hour } : {}),
+    unknown_ids: params.unknownIds,
+  });
+  return response.data;
+};
+
+export const deleteReviewQueueVideos = async (params: {
+  date: string;
+  timeOfDay: TimeOfDay;
+  hour?: number | null;
+  unknownIds: number[];
+  confirmText: string;
+}): Promise<{
+  message: string;
+  deletedCount: number;
+  deletedVideoIds: number[];
+  deletedDirs: number;
+  deletedFiles: number;
+  deletedSize: number;
+  confirmation_phrase: string;
+}> => {
+  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete`, {
+    date: params.date,
+    time_of_day: params.timeOfDay,
+    ...(params.hour != null ? { hour: params.hour } : {}),
+    unknown_ids: params.unknownIds,
+    confirm_text: params.confirmText,
+  });
   return response.data;
 };
 

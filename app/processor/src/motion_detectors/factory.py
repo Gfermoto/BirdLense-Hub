@@ -22,16 +22,26 @@ def build_motion_detector(
     esphome_sensor='',
     check_every_n_frames=1,
     or_extras=None,
+    opencv_threshold=25,
+    opencv_min_contour_area=500,
 ):
     """Build the effective motion detector chain for the processor."""
     additional = None
     source = (motion_source or 'frigate').strip().lower()
 
-    if source in {'frigate', 'opencv'}:
-        additional = OpenCVMotionDetector(
-            capture_fn=media_source.capture,
-            check_every_n_frames=check_every_n_frames,
-        )
+    opencv_detector = OpenCVMotionDetector(
+        capture_fn=media_source.capture,
+        check_every_n_frames=check_every_n_frames,
+        threshold=int(opencv_threshold),
+        min_contour_area=int(opencv_min_contour_area),
+    )
+    # OpenCV parallel to Frigate only when Frigate MQTT path is actually active.
+    # If broker/topic is missing or Frigate client is None, OpenCV must become the
+    # real trigger — not a second detector OR-ed with a dead primary.
+    if source == 'frigate' and primary:
+        additional = opencv_detector
+    elif source == 'opencv':
+        additional = opencv_detector
     elif source == 'mqtt' and mqtt_broker and (mqtt_topic or '').strip():
         try:
             from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
@@ -80,7 +90,4 @@ def build_motion_detector(
         source,
         check_every_n_frames,
     )
-    return OpenCVMotionDetector(
-        capture_fn=media_source.capture,
-        check_every_n_frames=check_every_n_frames,
-    )
+    return opencv_detector

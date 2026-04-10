@@ -1,6 +1,6 @@
 # BirdLense Hub — Documentation
 
-> **Version 0.3.2** (source of truth: repo root `VERSION`) · OpenAPI: [YAML spec](./project/openapi.md) · **Interactive:** [Redoc](./reference/openapi.md) · **Published docs:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
+> **Version 0.3.4** (source of truth: repo root `VERSION`) · OpenAPI: [YAML spec](./project/openapi.md) · **Interactive:** [Redoc](./reference/openapi.md) · **Published docs:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [Русский](./README.ru.md)
 
@@ -56,6 +56,7 @@ Pick what matches you — you can read the rest as reference.
 | Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | MCP (Model Context Protocol — external AI assistants) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
+| Cursor MCP skill autopilot rule | [repo: `.cursor/rules/mcp-skill-autopilot.mdc`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.cursor/rules/mcp-skill-autopilot.mdc) |
 
 ---
 

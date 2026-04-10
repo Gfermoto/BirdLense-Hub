@@ -164,6 +164,7 @@ class TestDatasetExportOrphans:
         assert 'fingerprint_sha256_16' in meta['manifest']
         assert 'quality' in meta
         assert meta['quality']['duplicate_track_count'] == 0
+        assert meta['manifest']['split_params']['grouped_split_strategy'] == 'recording_day_or_video'
 
     def test_strict_quality_rejects_duplicate_tracks(self, tmp_path, monkeypatch):
         train_a = tmp_path / 'dataset' / 'train' / 'A'
@@ -234,3 +235,48 @@ class TestDatasetExportOrphans:
         assert zip_bad is None
         assert err_bad and 'strict_quality' in err_bad
         assert 'Tiny' in err_bad
+
+    def test_ready_for_train_keeps_same_day_group_together(self, tmp_path, monkeypatch):
+        train_a = tmp_path / 'dataset' / 'train' / 'A'
+        train_a.mkdir(parents=True, exist_ok=True)
+        for idx in range(4):
+            (train_a / f'10_{idx}_{idx}.jpg').write_bytes(b'a')
+        for idx in range(4):
+            (train_a / f'20_{idx}_{idx}.jpg').write_bytes(b'b')
+        monkeypatch.setattr(des, 'data_dir', lambda: str(tmp_path))
+        monkeypatch.setattr(des, '_get_image_dimensions', lambda _p: None)
+        monkeypatch.setattr(
+            des,
+            '_video_metadata_for_ids',
+            lambda _ids: {
+                10: {
+                    'day_key': '2026-04-01',
+                    'month_key': '2026-04',
+                    'season_key': 'spring',
+                    'group_key': '2026-04-01',
+                },
+                20: {
+                    'day_key': '2026-04-01',
+                    'month_key': '2026-04',
+                    'season_key': 'spring',
+                    'group_key': '2026-04-01',
+                },
+            },
+        )
+
+        zip_bytes, err = des.build_dataset_zip(
+            ready_for_train=True,
+            val_ratio=0.5,
+            split_seed=1,
+            min_images_per_class=1,
+            strict_quality=True,
+        )
+        assert err is None
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes), 'r')
+        names = set(zf.namelist())
+        train_files = {n for n in names if n.startswith('train/A/')}
+        val_files = {n for n in names if n.startswith('val/A/')}
+        assert not (train_files and val_files)
+        meta = json.loads(zf.read('dataset_info.json').decode())
+        assert meta['quality']['group_leakage']['train_val_shared'] == 0
+        assert meta['quality']['slices']['seasons']['train']['spring'] == len(train_files)

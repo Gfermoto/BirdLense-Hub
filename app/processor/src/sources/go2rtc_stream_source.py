@@ -60,6 +60,7 @@ class Go2RTCStreamSource:
         pre_record_seconds=0,
         mjpeg_port=8082,
         encoding_mode="cpu",
+        record_stream_codec="h264",
     ):
         self.logger = logging.getLogger(__name__)
         self.stream_url = stream_url
@@ -69,6 +70,8 @@ class Go2RTCStreamSource:
         self._encoding_mode = (encoding_mode or "cpu").strip().lower()
         if self._encoding_mode not in ("cpu", "intel"):
             self._encoding_mode = "cpu"
+        rsc = (record_stream_codec or "h264").strip().lower()
+        self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
 
         self._cap = None
         self._out = None
@@ -209,19 +212,43 @@ class Go2RTCStreamSource:
                 output,
             ]
         else:
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-rtsp_transport", "tcp",
-                "-i", self.stream_url,
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-movflags", "+faststart",
-                output,
-            ]
+            # copy: быстрее, но если RTSP/Go2RTC отдаёт HEVC — Chrome/Firefox часто не играют <video>.
+            if self._record_stream_codec == "h264":
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-rtsp_transport", "tcp",
+                    "-i", self.stream_url,
+                    "-analyzeduration", "10M",
+                    "-probesize", "10M",
+                    "-c:v", "libx264",
+                    "-preset", "veryfast",
+                    "-crf", "23",
+                    "-pix_fmt", "yuv420p",
+                    "-c:a", "aac",
+                    "-b:a", "128k",
+                    "-movflags", "+faststart",
+                    output,
+                ]
+            else:
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-rtsp_transport", "tcp",
+                    "-i", self.stream_url,
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-movflags", "+faststart",
+                    output,
+                ]
         try:
             from encoding_status import set_last_encoding_used
-            set_last_encoding_used("vaapi" if use_vaapi else "cpu")
+            if use_vaapi:
+                set_last_encoding_used("vaapi")
+            elif self._record_stream_codec == "h264" and not use_vaapi:
+                set_last_encoding_used("x264_cpu")
+            else:
+                set_last_encoding_used("cpu")
         except Exception:
             pass
         self.logger.info(

@@ -13,12 +13,19 @@ from sqlalchemy import func
 from app_config.app_config import app_config
 from auth import contributor_or_admin_access
 from models import Species, SpeciesVisit, db
-from services.cache import cache_get, cache_set
+from services.cache import cache_delete, cache_delete_prefix, cache_get, cache_set
 from services.dataset_export_service import _sanitize_dirname
 from services.http_response_cache import bust_response_caches
 from services.species_summary_service import build_species_summary
 from services.xeno_canto_service import fetch_recordings, _search_term_from_species_name
-from util import data_dir, _host_is_inaturalist, _host_is_inaturalist_open_data_asset, _host_is_wikipedia_family
+from species_metadata import refresh_species_metadata_from_sources
+from util import (
+    data_dir,
+    settings_check_access,
+    _host_is_inaturalist,
+    _host_is_inaturalist_open_data_asset,
+    _host_is_wikipedia_family,
+)
 
 
 _SPECIES_PROXY_MAX_REDIRECTS = 5
@@ -195,6 +202,34 @@ def register_ui_species_media_routes(app):
         out = build_species_summary(db.session, species, children, all_species_ids)
         cache_set(sck, out, 30)
         return out
+
+    @app.route('/api/ui/species/<int:species_id>/refresh-metadata', methods=['POST'])
+    def refresh_species_card_metadata(species_id):
+        """Перезапрос фото/описания/источника для одной карточки (Wikipedia → iNaturalist)."""
+        if not settings_check_access():
+            return {'error': 'Password required'}, 403
+        species = db.session.get(Species, species_id)
+        if not species:
+            return {'error': 'Species not found'}, 404
+        try:
+            refresh_species_metadata_from_sources(species)
+            db.session.commit()
+            cache_delete(f'species_summary:{species_id}')
+            cache_delete_prefix('species_list:v3:')
+            bust_response_caches()
+            return {
+                'ok': True,
+                'species_id': species_id,
+                'name': species.name,
+                'image_url': species.image_url,
+                'description': species.description,
+                'metadata_source': species.metadata_source,
+                'metadata_source_url': species.metadata_source_url,
+            }, 200
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('refresh_species_card_metadata failed: %s', e)
+            return {'error': 'Failed to refresh species metadata'}, 500
 
     @app.route('/api/ui/species-image', methods=['GET'])
     def proxy_species_image():

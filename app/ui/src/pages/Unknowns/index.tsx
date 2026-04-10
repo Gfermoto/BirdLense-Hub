@@ -1,5 +1,10 @@
-import { useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import MuiLink from '@mui/material/Link';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
@@ -10,11 +15,23 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Stack from '@mui/material/Stack';
+import Divider from '@mui/material/Divider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -30,7 +47,10 @@ import {
   updateDetectionSpecies,
   confirmDetection,
   fetchRecentCorrections,
+  previewReviewQueueDelete,
+  deleteReviewQueueVideos,
   resolveImageUrl,
+  type ReviewQueueDeletePreview,
   type UnknownDetection,
 } from '../../api/api';
 import { formatLocalDateTime } from '../../util';
@@ -47,6 +67,8 @@ function UnknownCard({
   onConfirm,
   canEdit,
   videoListReturnPath,
+  selected,
+  onToggleSelected,
 }: {
   detection: UnknownDetection;
   speciesList: { id: number; name: string }[];
@@ -54,6 +76,8 @@ function UnknownCard({
   onConfirm: (detectionId: number) => void;
   canEdit: boolean;
   videoListReturnPath: string;
+  selected: boolean;
+  onToggleSelected: (detectionId: number) => void;
 }) {
   const { t } = useTranslation();
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
@@ -124,6 +148,16 @@ function UnknownCard({
               {detection.detection_provider && (
                 <Chip label={detection.detection_provider} size="small" variant="outlined" />
               )}
+            {detection.review_state && (
+              <Chip
+                label={detection.review_state === 'pending'
+                  ? t('unknowns.reviewStatePending')
+                  : detection.review_state}
+                size="small"
+                color="info"
+                variant="outlined"
+              />
+            )}
             </Box>
           </Box>
           <CardActionArea
@@ -146,6 +180,17 @@ function UnknownCard({
             </Box>
           </CardActionArea>
           <Box display="flex" flexDirection="column" gap={1} minWidth={200}>
+            {canEdit && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selected}
+                    onChange={() => onToggleSelected(detection.id)}
+                  />
+                }
+                label={t('unknowns.bulkSelect')}
+              />
+            )}
             <FormControl size="small" fullWidth>
               <InputLabel id={`unknowns-correct-species-${detection.id}`}>{t('unknowns.correctSpecies')}</InputLabel>
               <Select
@@ -208,13 +253,26 @@ export function UnknownsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const videoListReturnPath = `${location.pathname}${location.search}`;
   const queryClient = useQueryClient();
   const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => dayjs().startOf('date'));
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => {
+    const paramDate = searchParams.get('date');
+    if (!paramDate) return dayjs().startOf('date');
+    const parsed = dayjs(paramDate).startOf('date');
+    return parsed.isValid() ? parsed : dayjs().startOf('date');
+  });
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(() => {
+    const value = (searchParams.get('time_of_day') || 'all').trim().toLowerCase();
+    return (
+      ['all', 'night', 'morning', 'day', 'afternoon', 'evening'].includes(value)
+        ? (value as TimeOfDay)
+        : 'all'
+    );
+  });
 
   const { data: unknowns, isLoading, error } = useQuery({
     queryKey: ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
@@ -243,8 +301,24 @@ export function UnknownsPage() {
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
   /** After correct/confirm: optional snackbar action to open this video (#81 phase B). */
   const [successVideoId, setSuccessVideoId] = useState<number | null>(null);
+  const [selectedUnknownIds, setSelectedUnknownIds] = useState<number[]>([]);
+  const [bulkPreview, setBulkPreview] = useState<ReviewQueueDeletePreview | null>(null);
+  const [bulkConfirmText, setBulkConfirmText] = useState('');
+  const [bulkActionError, setBulkActionError] = useState<string | null>(null);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   const unknownsQueryKey = ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay] as const;
+
+  const selectedUnknowns = useMemo(
+    () => (unknowns ?? []).filter((item) => selectedUnknownIds.includes(item.id)),
+    [unknowns, selectedUnknownIds],
+  );
+  const selectedVideoIds = useMemo(
+    () => [...new Set(selectedUnknowns.map((item) => item.video_id))],
+    [selectedUnknowns],
+  );
+  const selectedDetectionCount = selectedUnknownIds.length;
+  const selectedVideoCount = selectedVideoIds.length;
 
   const resolveVideoIdForDetection = (detectionId: number): number | null => {
     const list = queryClient.getQueryData<UnknownDetection[]>(unknownsQueryKey) ?? [];
@@ -256,6 +330,35 @@ export function UnknownsPage() {
     setCorrectSuccess(null);
     setSuccessVideoId(null);
   };
+
+  useEffect(() => {
+    setSelectedUnknownIds([]);
+    setBulkPreview(null);
+    setBulkConfirmText('');
+    setBulkActionError(null);
+    setBulkDialogOpen(false);
+  }, [selectedDate?.format('YYYY-MM-DD'), timeOfDay]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('review', '1');
+    if (selectedDate) {
+      next.set('date', selectedDate.format('YYYY-MM-DD'));
+    }
+    next.set('time_of_day', timeOfDay);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, selectedDate, setSearchParams, timeOfDay]);
+
+  useEffect(() => {
+    if (!unknowns || selectedUnknownIds.length === 0) return;
+    const knownIds = new Set(unknowns.map((item) => item.id));
+    const next = selectedUnknownIds.filter((id) => knownIds.has(id));
+    if (next.length !== selectedUnknownIds.length) {
+      setSelectedUnknownIds(next);
+    }
+  }, [unknowns, selectedUnknownIds]);
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
@@ -300,6 +403,58 @@ export function UnknownsPage() {
     },
   });
 
+  const previewBulkDeleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedDate) {
+        throw new Error(t('unknowns.bulkDeleteNoDate'));
+      }
+      return previewReviewQueueDelete({
+        date: selectedDate.format('YYYY-MM-DD'),
+        timeOfDay,
+        unknownIds: selectedUnknownIds,
+      });
+    },
+    onSuccess: (data) => {
+      setBulkPreview(data);
+      setBulkConfirmText('');
+      setBulkActionError(null);
+      setBulkDialogOpen(true);
+    },
+    onError: (err: Error) => {
+      setBulkActionError(err.message || t('errors.loadSightings'));
+    },
+  });
+
+  const deleteBulkMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedDate) {
+        throw new Error(t('unknowns.bulkDeleteNoDate'));
+      }
+      return deleteReviewQueueVideos({
+        date: selectedDate.format('YYYY-MM-DD'),
+        timeOfDay,
+        unknownIds: selectedUnknownIds,
+        confirmText: bulkConfirmText.trim(),
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['unknowns'] });
+      await queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
+      await queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      await queryClient.invalidateQueries({ queryKey: ['overview'] });
+      await queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      await queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      setSelectedUnknownIds([]);
+      setBulkPreview(null);
+      setBulkDialogOpen(false);
+      setBulkConfirmText('');
+      setBulkActionError(null);
+    },
+    onError: (err: Error) => {
+      setBulkActionError(err.message || t('unknowns.bulkDeleteFailed'));
+    },
+  });
+
   const handleCorrect = async (detectionId: number, speciesId: number) => {
     setCorrectError(null);
     try {
@@ -315,6 +470,48 @@ export function UnknownsPage() {
       await confirmMutation.mutateAsync(detectionId);
     } catch {
       // onError уже устанавливает correctError
+    }
+  };
+
+  const toggleUnknownSelection = (detectionId: number) => {
+    setSelectedUnknownIds((current) => {
+      if (current.includes(detectionId)) {
+        return current.filter((id) => id !== detectionId);
+      }
+      return [...current, detectionId];
+    });
+  };
+
+  const clearBulkSelection = () => {
+    setSelectedUnknownIds([]);
+    setBulkPreview(null);
+    setBulkConfirmText('');
+    setBulkActionError(null);
+  };
+
+  const openBulkPreview = async () => {
+    setBulkActionError(null);
+    if (!selectedUnknownIds.length) {
+      setBulkActionError(t('unknowns.bulkDeleteNoSelection'));
+      return;
+    }
+    try {
+      await previewBulkDeleteMutation.mutateAsync();
+    } catch {
+      // onError handles message
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkActionError(null);
+    if (!bulkPreview) {
+      setBulkActionError(t('unknowns.bulkDeletePreviewRequired'));
+      return;
+    }
+    try {
+      await deleteBulkMutation.mutateAsync();
+    } catch {
+      // onError handles message
     }
   };
 
@@ -361,6 +558,43 @@ export function UnknownsPage() {
           </Select>
         </FormControl>
       </Box>
+
+      {canEdit && unknowns && unknowns.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+            <Box>
+              <Typography variant="body2" fontWeight={600}>
+                {t('unknowns.bulkDeleteSummary', {
+                  detectionCount: selectedDetectionCount,
+                  videoCount: selectedVideoCount,
+                })}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {t('unknowns.bulkDeleteHint', { phrase: bulkPreview?.confirmation_phrase || 'permanent_full' })}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                color="warning"
+                onClick={() => void openBulkPreview()}
+                disabled={previewBulkDeleteMutation.isPending || selectedDetectionCount === 0}
+              >
+                {previewBulkDeleteMutation.isPending
+                  ? t('unknowns.bulkDeletePreviewing')
+                  : t('unknowns.bulkDeletePreview')}
+              </Button>
+              <Button
+                variant="text"
+                onClick={clearBulkSelection}
+                disabled={selectedDetectionCount === 0}
+              >
+                {t('unknowns.bulkDeleteClear')}
+              </Button>
+            </Stack>
+          </Stack>
+        </Alert>
+      )}
 
       {!canEdit && requiresPassword && (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -417,14 +651,48 @@ export function UnknownsPage() {
       {unknowns?.length === 0 ? (
         <Alert severity="info">{t('unknowns.empty')}</Alert>
       ) : (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            {t('unknowns.count', { count: unknowns?.length ?? 0 })}
-          </Typography>
-          {unknowns?.length === 500 && (
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-              {t('unknowns.limitReached')}
+        <Box
+          sx={{
+            mb: 2,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 2,
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              {t('unknowns.count', { count: unknowns?.length ?? 0 })}
             </Typography>
+            {unknowns?.length === 500 && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                {t('unknowns.limitReached')}
+              </Typography>
+            )}
+          </Box>
+          {canEdit && unknowns && unknowns.length > 0 && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={
+                    unknowns.length > 0 && selectedUnknownIds.length === unknowns.length
+                  }
+                  indeterminate={
+                    selectedUnknownIds.length > 0 &&
+                    selectedUnknownIds.length < unknowns.length
+                  }
+                  onChange={(_, checked) => {
+                    if (checked) {
+                      setSelectedUnknownIds(unknowns.map((u) => u.id));
+                    } else {
+                      setSelectedUnknownIds([]);
+                    }
+                  }}
+                />
+              }
+              label={t('unknowns.bulkSelectAll')}
+            />
           )}
         </Box>
       )}
@@ -438,8 +706,101 @@ export function UnknownsPage() {
           onConfirm={handleConfirm}
           canEdit={canEdit}
           videoListReturnPath={videoListReturnPath}
+          selected={selectedUnknownIds.includes(d.id)}
+          onToggleSelected={toggleUnknownSelection}
         />
       ))}
+      <Dialog
+        open={bulkDialogOpen}
+        onClose={() => setBulkDialogOpen(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>{t('unknowns.bulkDeleteDialogTitle')}</DialogTitle>
+        <DialogContent dividers>
+          {bulkActionError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {bulkActionError}
+            </Alert>
+          )}
+          {!bulkPreview ? (
+            <Alert severity="info">{t('unknowns.bulkDeletePreviewRequired')}</Alert>
+          ) : (
+            <Stack spacing={2}>
+              <Alert severity="warning">
+                {t('unknowns.bulkDeleteDialogWarning', {
+                  videoCount: bulkPreview.video_count,
+                  unknownCount: bulkPreview.unknown_count,
+                })}
+              </Alert>
+              {bulkPreview.missing_video_ids.length > 0 && (
+                <Alert severity="info">
+                  {t('unknowns.bulkDeleteMissingVideos', {
+                    count: bulkPreview.missing_video_ids.length,
+                    ids: bulkPreview.missing_video_ids.join(', '),
+                  })}
+                </Alert>
+              )}
+              <TextField
+                label={t('unknowns.bulkDeleteConfirmLabel')}
+                value={bulkConfirmText}
+                onChange={(e) => setBulkConfirmText(e.target.value)}
+                helperText={t('unknowns.bulkDeleteConfirmHelp', {
+                  phrase: bulkPreview.confirmation_phrase,
+                })}
+                fullWidth
+              />
+              <Divider />
+              <List dense disablePadding>
+                {bulkPreview.videos.map((video) => (
+                  <ListItem key={video.video_id} alignItems="flex-start" divider>
+                    <ListItemText
+                      primary={t('unknowns.bulkDeleteVideoItem', {
+                        videoId: video.video_id,
+                        count: video.unknown_count,
+                      })}
+                      secondary={
+                        <>
+                          <Typography component="span" variant="body2" color="text.secondary">
+                            {video.video_path || t('common.na')}
+                          </Typography>
+                          <br />
+                          <Typography component="span" variant="caption" color="text.secondary">
+                            {t('unknowns.bulkDeleteVideoMeta', {
+                              species: video.species_names.join(', ') || t('common.na'),
+                              reasons: video.review_reasons.join(', ') || t('common.na'),
+                              fileExists: video.file_exists ? t('common.yes') : t('common.no'),
+                            })}
+                          </Typography>
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkDialogOpen(false)}>
+            {t('common.close')}
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => void handleBulkDelete()}
+            disabled={
+              deleteBulkMutation.isPending ||
+              !bulkPreview ||
+              bulkConfirmText.trim() !== bulkPreview.confirmation_phrase
+            }
+          >
+            {deleteBulkMutation.isPending
+              ? t('unknowns.bulkDeleteRunning')
+              : t('unknowns.bulkDeleteAction')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={!!correctError}
         autoHideDuration={6000}

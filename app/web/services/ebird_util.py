@@ -3,6 +3,8 @@ import re
 
 from ebird_region_core import REGION_NAME_TO_CODE
 
+__all__ = ('REGION_NAME_TO_CODE', 'common_name_from_species')
+
 
 def common_name_from_species(name: str) -> str:
     """Extract common name from 'Scientific (Common)' or return as-is."""
