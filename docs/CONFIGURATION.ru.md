@@ -352,7 +352,7 @@ Opt-in: при `enabled=true` и `upload_url` Hub загружает лучши�
 | `notifications.paid_media_forward_star_count` | При бесплатном просмотре: 0=разрешить пересылку, >0=запретить. При платном — пересылка включена. |
 | `general.notification_excluded_species` | Виды, исключённые из уведомлений |
 | `processor.save_images` | При true — сохранять кадры детекций на диск для отладки. На отправку фото в Telegram не влияет |
-| `processor.save_dataset_crops` | При true — сохранять best_frame в `data/dataset/train/<Species>/` для экспорта и дообучения |
+| `processor.save_dataset_crops` | По умолчанию **false** (включать явно). При true — сохранять best_frame в `data/dataset/train/<Species>/` для экспорта и дообучения |
 | `processor.dataset_min_confidence` | Мин. confidence (0.0–1.0) для сохранения кадра в датасет. По умолчанию 0.5 |
 
 **Как BirdLense отправляет Telegram-уведомление:** сначала пытается отправить именно **фото** (`sendPhoto` / MTProto media) из `best_frame`; если его нет — из bbox-crop по видео; если и это не удалось — полный кадр. При ошибке Telegram или битом превью делается fallback на текстовое сообщение со ссылкой/кнопкой, а причина fallback пишется в наблюдаемость (System → Observability).

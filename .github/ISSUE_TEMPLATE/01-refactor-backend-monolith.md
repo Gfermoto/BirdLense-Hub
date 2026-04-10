@@ -12,6 +12,12 @@ The file `app/web/routes/ui_system_routes.py` contains ~96,000 lines of code, vi
 - [ ] Split routes into domain-specific files.
 - [ ] Introduce Pydantic schemas for validation.
 
+## Definition of Done
+- [ ] Крупные доменные куски вынесены из `ui_system_routes.py` в отдельные модули в `routes/` (или эквивалент по согласованной схеме).
+- [ ] Повторно используемая логика живёт в `services/` без прямой зависимости от Flask `request` в ядре.
+- [ ] Для mutating API есть явные схемы валидации (`schemas/` или Pydantic) и согласованные ответы об ошибках.
+- [ ] CI зелёный; при изменении контрактов — обновлён OpenAPI/контрактные тесты.
+
 ## Proposed Structure
 app/web/
 ├── routes/ (split by domain)
