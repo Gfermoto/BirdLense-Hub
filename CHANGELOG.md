@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
+- **Processor / Telegram:** в [CONFIGURATION](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md) описан ключ **`processor.min_confidence_to_notify`** (отдельный порог для фото в Telegram); в [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md) — почему после правок `processor.*` / `detection.*` нужен **перезапуск processor**.
+
 - **[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234):** гайд [HEIMDALL](docs/HEIMDALL.md) / [RU](docs/HEIMDALL.ru.md) — шаблон URL для плиток linuxserver/Heimdall v2 (ручное добавление; без импорта в UI); опциональный HTML закладок для браузера в [docs/examples/heimdall/](docs/examples/heimdall/); ссылки из [CONFIGURATION](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md), навигация MkDocs.
 
 - **[#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287):** аудит завершён — в `create_app`/рантайме web нет `ALTER TABLE`; DDL только в Alembic; зафиксировано в [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md) (политика DDL + PRAGMA).

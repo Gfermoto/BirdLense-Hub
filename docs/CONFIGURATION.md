@@ -103,6 +103,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
 | `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
 | `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Default **0.40**. Lower = more accepted species, higher = stricter. |
+| `min_confidence_to_notify` | Minimum combined confidence for **Telegram photo alerts** (after the hub accepts the recording). Default **0.46** in `default_config.yaml`; often set **above** `min_confidence_to_process` to reduce chat noise while still persisting visits. Exposed in **Settings → Processor**. After changing YAML thresholds, **restart the processor** so the running process reloads config. |
 | `species_confidence_overrides` | Per-species thresholds: `{"Rodent": 0.28}` for squirrels; `{"Rare Bird": 0.05}` for rare birds |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.03`). |

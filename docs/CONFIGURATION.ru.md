@@ -103,6 +103,7 @@
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
 | `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
 | `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
+| `min_confidence_to_notify` | Минимум combined confidence для **фото-уведомления в Telegram** (после успешного приёма записи на хабе). По умолчанию **0.46** в `default_config.yaml`; часто задают **выше**, чем `min_confidence_to_process`, чтобы срезать шум в чате при сохранении визитов в БД. Поле есть в **Настройки → Процессор**. После смены порогов в YAML перезапустите **processor**, иначе в контейнере останется старый конфиг в памяти. |
 | `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для белок; `{"Rare Bird": 0.05}` — редкие птицы |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.03`). |
