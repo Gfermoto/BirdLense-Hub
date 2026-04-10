@@ -50,6 +50,8 @@ COPY web/ ./web/
 COPY processor/ ./processor/
 COPY app_config/ ./app_config/
 COPY scripts/ ./scripts/
+# SHA256 классификатора — синхронизировать с CHECKSUMS (app/processor/.../best.pt) и fetch-processor-weights.sh.
+ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
 # two_stage: .pt не в git; бинарный детектор должен быть предоставлен в контексте сборки,
 # EU-классификатор скачивается с Hugging Face. Если свои веса уже лежат в контексте, пропускаем скачивание.
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
@@ -58,8 +60,11 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
            -d processor/models/detection/weights/; \
        fi \
     && if [ ! -s processor/models/classification/weights/best.pt ]; then \
-         curl -fsSL -o processor/models/classification/weights/best.pt \
-           "https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/main/best.pt"; \
+         curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 \
+           -o processor/models/classification/weights/best.pt.tmp \
+           "https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/c6af5aa595cbb1198a61bcf2f3f9c2adc3772dc9/best.pt" \
+         && echo "${CLASSIFIER_SHA256}  processor/models/classification/weights/best.pt.tmp" | sha256sum -c - \
+         && mv processor/models/classification/weights/best.pt.tmp processor/models/classification/weights/best.pt; \
        fi
 RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt

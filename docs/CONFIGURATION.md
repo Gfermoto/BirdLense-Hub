@@ -352,7 +352,7 @@ For a **dedicated topic family** (weight + bird presence + optional command), se
 | `notifications.paid_media_forward_star_count` | Free view: 0=allow forward, >0=block. Paid: forward allowed. |
 | `general.notification_excluded_species` | Excluded species |
 | `processor.save_images` | If true — save detection frames to disk for debugging. It does not control Telegram photo delivery |
-| `processor.save_dataset_crops` | If true — save `best_frame` to `data/dataset/train/<Species>/` |
+| `processor.save_dataset_crops` | Default **false** (opt-in). If true — save `best_frame` to `data/dataset/train/<Species>/` |
 | `processor.dataset_min_confidence` | Min confidence (0.0–1.0) for dataset crop. Default 0.5 |
 
 **How BirdLense sends Telegram notifications:** first it tries to send an actual **photo** (`sendPhoto` / MTProto media) from `best_frame`; if that is unavailable, it falls back to a bbox crop from the video, then to a full frame. If Telegram rejects the media or the preview is broken, BirdLense falls back to a text message with link/button and records the fallback reason in observability (System → Observability).
