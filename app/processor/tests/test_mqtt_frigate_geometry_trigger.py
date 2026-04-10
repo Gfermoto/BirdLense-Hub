@@ -158,8 +158,8 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'BirdBox')
 
-    def test_excluded_cat_still_triggers_recording_not_queued_for_merge(self):
-        """frigate_label_exclude must not return() before motion; event must not enter _events."""
+    def test_excluded_cat_still_triggers_recording_queued_with_merge_suppressed(self):
+        """Excluded labels: motion fires; event is stored for Frigate standalone, not for YOLO merge."""
         calls = []
 
         def cb(cam, species):
@@ -197,7 +197,10 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
             agg._on_message(None, None, msg)
 
         self.assertEqual(len(calls), 1)
-        self.assertEqual(len(agg._events), 0)
+        self.assertEqual(len(agg._events), 1)
+        stored = agg._events[0]
+        self.assertTrue(stored.get('_frigate_merge_suppressed'))
+        self.assertEqual(stored.get('label'), 'cat')
 
 
 if __name__ == '__main__':

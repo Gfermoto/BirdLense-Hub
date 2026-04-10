@@ -795,16 +795,20 @@ class MQTTEventAggregator:
                 )
                 if skip_merge_queue:
                     logger.debug(
-                        "Frigate exclude list (skip merge queue only): label=%s sub=%s",
+                        "Frigate exclude list (suppress YOLO merge only): label=%s sub=%s",
                         label,
                         sub_label,
                     )
-                    ev["_skip_mqtt_merge_queue"] = True
+                    ev["_frigate_merge_suppressed"] = True
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
                     camera = ev.get("camera", "")
-                    cam_lower = {c.lower() for c in cam_f} if cam_f else set()
-                    cam_ok = not cam_f or (camera.lower() in cam_lower)
+                    cam_lower = {
+                        str(c).strip().lower() for c in cam_f if str(c).strip()
+                    }
+                    cam_ok = bool(cam_lower) and (
+                        str(camera or "").strip().lower() in cam_lower
+                    )
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     # Empty label filter means wildcard (accept any label).
@@ -835,7 +839,7 @@ class MQTTEventAggregator:
                     if cam_ok and lbl_ok:
                         logger.info(
                             "Frigate trigger accepted: reason=%s camera=%s label=%s sub_label=%s "
-                            "skip_merge=%s has_geometry=%s filter_empty=%s",
+                            "merge_suppressed=%s has_geometry=%s filter_empty=%s",
                             accepted_by,
                             camera,
                             label,
@@ -864,7 +868,7 @@ class MQTTEventAggregator:
                             camera,
                             label,
                             sub_label,
-                            list(cam_f) if cam_f else "any",
+                            list(cam_f) if cam_f else "none",
                             list(lbl_f) if lbl_f else "any",
                             has_geometry,
                             relaxed,
@@ -895,18 +899,22 @@ class MQTTEventAggregator:
                     )
                 )
                 if skip_merge_queue:
-                    ev["_skip_mqtt_merge_queue"] = True
+                    ev["_frigate_merge_suppressed"] = True
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
-                    cam_lower = {c.lower() for c in cam_f} if cam_f else set()
-                    cam_ok = not cam_f or (camera.lower() in cam_lower)
+                    cam_lower = {
+                        str(c).strip().lower() for c in cam_f if str(c).strip()
+                    }
+                    cam_ok = bool(cam_lower) and (
+                        str(camera or "").strip().lower() in cam_lower
+                    )
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     if cam_ok and lbl_ok:
                         logger.info(
                             "Frigate trigger accepted: reason=snapshot_topic camera=%s "
-                            "label=%s sub_label=%s skip_merge=%s has_geometry=%s filter_empty=%s",
+                            "label=%s sub_label=%s merge_suppressed=%s has_geometry=%s filter_empty=%s",
                             camera,
                             label,
                             '',
@@ -931,7 +939,7 @@ class MQTTEventAggregator:
                             camera,
                             label,
                             '',
-                            list(cam_f) if cam_f else "any",
+                            list(cam_f) if cam_f else "none",
                             list(lbl_f) if lbl_f else "any",
                             False,
                             False,
@@ -1001,11 +1009,9 @@ class MQTTEventAggregator:
                 logger.debug("Scales MQTT: bird_present=%s", bp)
             return
         if ev:
-            skip_merge = bool(ev.pop("_skip_mqtt_merge_queue", False))
             self._validate_normalized_event(ev)
-            if not skip_merge:
-                with self._lock:
-                    self._events.append(ev)
+            with self._lock:
+                self._events.append(ev)
             if ev.get("source") == "birdnet":
                 self._remember_birdnet_event(ev)
 

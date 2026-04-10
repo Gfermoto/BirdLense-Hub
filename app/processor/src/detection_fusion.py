@@ -1,12 +1,15 @@
 """Shared fusion layer for live runtime and track regeneration."""
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 from datetime import datetime, timezone
 
 from multi_camera_confidence import apply_multi_camera_confidence_boost
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
+
+logger = logging.getLogger(__name__)
 
 
 def _species_mapping(app_config) -> dict:
@@ -123,6 +126,134 @@ def _attach_audio_evidence(
     return detections
 
 
+def _frigate_standalone_prepared_rows(
+    frigate_events: Iterable[dict],
+    *,
+    start_time,
+    end_time,
+    app_config,
+) -> list[dict]:
+    """When YOLO/ByteTrack produced no passing tracks, synthesize rows from Frigate MQTT.
+
+    Frigate already triggered recording (and often sees objects YOLO misses at night / distance).
+    Without this path, ``merge_detections`` never inserts Frigate-only rows — the clip is dropped
+    as zero detections despite MQTT events (see ``recording_finalize`` warning).
+    """
+    events = [e for e in (frigate_events or []) if e]
+    if not events:
+        return []
+    def _min_and_fallback(suppressed: bool) -> tuple[float, float]:
+        if suppressed:
+            mn = _safe_float(
+                app_config.get('detection.frigate_standalone_excluded_min_score'),
+                0.0,
+            )
+            fb = _safe_float(
+                app_config.get(
+                    'detection.frigate_standalone_excluded_missing_score_fallback'
+                ),
+                0.58,
+            )
+        else:
+            mn = _safe_float(
+                app_config.get('detection.frigate_standalone_min_score'),
+                0.40,
+            )
+            fb = _safe_float(
+                app_config.get('detection.frigate_standalone_missing_score_fallback'),
+                0.68,
+            )
+        return max(0.0, min(1.0, mn)), max(0.0, min(1.0, fb))
+    species_mapping = _species_mapping(app_config)
+    try:
+        video_duration = (
+            (end_time - start_time).total_seconds()
+            if end_time and start_time
+            else 0.0
+        )
+    except Exception:
+        video_duration = 0.0
+    video_duration = max(0.0, float(video_duration))
+
+    best: dict[str, dict] = {}
+    for ev in events:
+        if str((ev or {}).get('source') or '').strip().lower() != 'frigate':
+            continue
+        raw = (
+            ev.get('species')
+            or ev.get('sub_label')
+            or ev.get('label')
+            or ''
+        )
+        species = normalize(str(raw), species_mapping)
+        if not species or species.lower() == 'unknown':
+            continue
+        suppressed = bool(ev.get('_frigate_merge_suppressed'))
+        min_score, miss_fb = _min_and_fallback(suppressed)
+        conf = max(0.0, min(1.0, _safe_float(ev.get('confidence'), 0.0)))
+        if conf <= 0.0 and miss_fb > 0.0:
+            conf = min(1.0, miss_fb)
+        if conf < min_score:
+            continue
+        prev = best.get(species)
+        if prev is None or conf > float(prev.get('_raw_conf') or 0.0):
+            best[species] = {
+                **ev,
+                '_raw_conf': conf,
+                '_norm_species': species,
+                '_standalone_suppressed': suppressed,
+            }
+
+    if not best:
+        return []
+
+    min_store = _safe_float(
+        app_config.get('detection.min_confidence_to_store'),
+        0.36,
+    )
+    notify_standalone = bool(
+        app_config.get('detection.frigate_standalone_notify', True)
+    )
+    rows: list[dict] = []
+    sorted_items = sorted(
+        best.items(),
+        key=lambda kv: -float(kv[1].get('_raw_conf') or 0.0),
+    )
+    for i, (_species_name, pack) in enumerate(sorted_items):
+        raw_c = float(pack.get('_raw_conf') or 0.0)
+        species = str(pack.get('_norm_species') or '')
+        conf = max(min_store, min(0.92, raw_c))
+        suppressed = bool(pack.get('_standalone_suppressed'))
+        kind = (
+            'frigate_standalone_excluded'
+            if suppressed
+            else 'frigate_standalone'
+        )
+        reason = (
+            'frigate_standalone_excluded_label'
+            if suppressed
+            else 'frigate_standalone'
+        )
+        rows.append({
+            'track_id': -(i + 1),
+            'species_name': species,
+            'species': species,
+            'confidence': conf,
+            'start_time': 0.0,
+            'end_time': video_duration,
+            'detection_provider': 'frigate',
+            'detector_confidence': raw_c,
+            'classifier_confidence': None,
+            'decision_reason': reason,
+            'decision_kind': kind,
+            'notification_eligible': (not suppressed) and notify_standalone,
+            'source': 'video',
+            'frigate_standalone': True,
+            'frigate_merge_suppressed': suppressed,
+        })
+    return rows
+
+
 def prepare_track_results_for_fusion(
     track_results: Iterable[dict],
     app_config,
@@ -155,6 +286,42 @@ def prepare_track_results_for_fusion(
     return rows
 
 
+def _frigate_events_camera_scoped(
+    frigate_events: Iterable[dict],
+    app_config,
+) -> list:
+    """Оставить только события Frigate с камер из scope Hub (video.cameras + фильтр YAML).
+
+    Если в конфиге нет ни одной валидной камеры — фильтр не применяем (как раньше),
+    чтобы юнит-тесты и минимальные конфиги не ломались.
+    """
+    try:
+        from app_config.cameras import cameras_for_processor, get_valid_cameras
+        from frigate_scope import frigate_camera_allow_ids
+    except ImportError:
+        return [e for e in (frigate_events or []) if e]
+    valid = get_valid_cameras(app_config.get('video.cameras') or [])
+    proc_cams = cameras_for_processor(valid)
+    allow = frigate_camera_allow_ids(proc_cams, app_config)
+    allow_l = {str(x).strip().lower() for x in allow if str(x).strip()}
+    if not allow_l:
+        return [e for e in (frigate_events or []) if e]
+    out = []
+    for e in frigate_events or []:
+        if not e:
+            continue
+        cam = str((e or {}).get('camera') or '').strip().lower()
+        if cam in allow_l:
+            out.append(e)
+        else:
+            logger.debug(
+                'Fusion: skip Frigate event camera=%s (allowed=%s)',
+                cam,
+                sorted(allow_l),
+            )
+    return out
+
+
 def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
     """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks."""
     for d in detections:
@@ -183,8 +350,11 @@ def build_fused_video_detections(
     """Apply shared production fusion rules to video detections.
 
     BirdNET is excluded from label creation here; its role is confidence
-    biasing before DecisionMaker runs. Frigate remains an auxiliary source
-    for promotion/boosts only.
+    biasing before DecisionMaker runs. Frigate usually only promotes/boosts
+    existing YOLO rows; ``detection.frigate_standalone_when_no_yolo`` adds Frigate-only
+    rows when video tracks are empty (see ``_frigate_standalone_prepared_rows``).
+    Frigate events with ``_frigate_merge_suppressed`` (excluded labels) still feed
+    standalone but are kept out of ``merge_detections`` so they do not overwrite YOLO species.
     """
     prepared = prepare_track_results_for_fusion(video_detections, app_config)
     merge_window = app_config.get('detection.merge_window_seconds', 5)
@@ -202,9 +372,34 @@ def build_fused_video_detections(
         for ev in (mqtt_events or [])
         if str((ev or {}).get('source') or '').strip().lower() == 'frigate'
     ]
+    frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
+    frigate_events_for_merge = [
+        ev
+        for ev in frigate_events
+        if not ev.get('_frigate_merge_suppressed')
+    ]
+    if (
+        not prepared
+        and frigate_events
+        and bool(app_config.get('detection.frigate_standalone_when_no_yolo', True))
+    ):
+        synthetic = _frigate_standalone_prepared_rows(
+            frigate_events,
+            start_time=start_time,
+            end_time=end_time,
+            app_config=app_config,
+        )
+        if synthetic:
+            prepared = prepare_track_results_for_fusion(synthetic, app_config)
+            logger.info(
+                'Fusion: Frigate standalone — %s synthetic row(s), '
+                'YOLO accepted empty (merge uses %s non-suppressed Frigate events)',
+                len(synthetic),
+                len(frigate_events_for_merge),
+            )
     fused = merge_detections(
         prepared,
-        frigate_events,
+        frigate_events_for_merge,
         start_time,
         end_time,
         merge_window,
@@ -229,7 +424,7 @@ def build_fused_video_detections(
     )
     fused = apply_multi_camera_confidence_boost(
         fused,
-        frigate_events,
+        frigate_events_for_merge,
         app_config,
     )
     fused = _attach_audio_evidence(

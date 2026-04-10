@@ -291,6 +291,12 @@ def merge_detections(
         if provider == "birdnet":
             # BirdNET only biases confidence thresholds before YOLO decision-making.
             continue
+        if str(provider).strip().lower() == "frigate" and (
+            ev.get("_frigate_merge_suppressed")
+            or ev.get("_skip_mqtt_merge_queue")
+        ):
+            # Excluded labels (cat/dog): keep out of species merge / promotion only.
+            continue
         species = normalize(ev.get("species", "unknown"), species_mapping)
         conf = ev.get("confidence", 0)
         key = _canonical_key(species)

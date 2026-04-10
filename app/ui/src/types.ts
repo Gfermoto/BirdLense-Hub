@@ -264,12 +264,28 @@ export interface Settings {
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
     frigate_label_exclude?: string[];
+    /** Если метка не в фильтре, но у объекта в MQTT есть box — всё равно старт записи */
+    frigate_trigger_on_tracked_object?: boolean;
     mqtt_topic?: string;
     esphome_url?: string;
     esphome_sensor_id?: string;
   };
   detection?: {
     min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
+    /** YOLO без треков, но Frigate прислал событие — сохранить визит по Frigate */
+    frigate_standalone_when_no_yolo?: boolean;
+    frigate_standalone_min_score?: number;
+    frigate_standalone_missing_score_fallback?: number;
+    frigate_standalone_excluded_min_score?: number;
+    frigate_standalone_excluded_missing_score_fallback?: number;
+    frigate_standalone_notify?: boolean;
+    merge_window_seconds?: number;
+    dedup_window_seconds?: number;
+    one_per_species?: boolean;
+    cross_source_confidence_bonus?: number;
+    absorb_generic_bird?: boolean;
+    absorb_generic_bird_overlap_min_sec?: number;
+    absorb_generic_bird_min_classifier_confidence?: number;
   };
   mcp?: {
     enabled?: boolean;

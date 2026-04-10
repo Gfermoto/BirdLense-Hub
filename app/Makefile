@@ -53,7 +53,8 @@ deploy:
 # -v ..:/workspace — корень репо (scripts/export_fusion_training_data.py и др. для _repo_root())
 test:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
-		env PYTHONPATH=/app:/app/web python -m unittest discover processor/tests -v
+		bash -c 'export PYTHONPATH=/app:/app/web && python -m unittest discover processor/tests -v \
+		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
 
 test-web:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v
