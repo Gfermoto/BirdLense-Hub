@@ -24,7 +24,6 @@ import Alert from '@mui/material/Alert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 import { downloadDetectionCropForINaturalist } from '../api/api';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';

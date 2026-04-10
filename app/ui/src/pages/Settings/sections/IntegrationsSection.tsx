@@ -3,7 +3,6 @@ import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Switch from '@mui/material/Switch';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
