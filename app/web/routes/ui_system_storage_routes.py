@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from flask import request
 
@@ -267,7 +267,7 @@ def register_ui_system_storage_routes(app):
                 'deletedSize': deleted_size
             }, 200
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             app.logger.exception('Purge storage failed')
             return {'error': 'Failed to purge storage'}, 500

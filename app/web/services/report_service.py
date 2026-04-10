@@ -1,5 +1,5 @@
 """Monthly PDF report generation. Branded, professional layout."""
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from io import BytesIO
 
 from reportlab.lib import colors

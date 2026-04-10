@@ -1,12 +1,10 @@
 """Админские и служебные маршруты ``/api/ui/system/*``: БД, ретеншн, виды, конфиг, отчёты."""
 import os
 import threading
-import json
 import yaml
 from collections import deque
 from datetime import datetime, timezone, timedelta
 from flask import request
-import sys
 from models import (
     ActivityLog, db, Video, Species, VideoSpecies,
     SystemResourceSample,
@@ -22,7 +20,7 @@ from app_config.app_config import app_config
 from auth import admin_track_regen_access
 from util import settings_check_access, recordings_dir
 from services.cache import cache_get, cache_set
-from services.http_response_cache import bust_system_response_caches, bust_response_caches
+from services.http_response_cache import bust_response_caches
 from services.track_regen_service import (
     derive_track_regen_species_scope as _derive_track_regen_species_scope,
     remap_detection_to_local_scope as _remap_detection_to_local_scope,
@@ -30,47 +28,13 @@ from services.track_regen_service import (
     summarize_track_regen_detections as _summarize_track_regen_detections,
 )
 from data_paths import resolve_recording_video_file
-from services.activity_notify_insights_service import (
-    ingest_gate_reason_counts_24h as _ingest_gate_reason_counts_24h,
-    notify_delivery_24h as _notify_delivery_24h,
-    notify_fallback_by_reason_24h as _notify_fallback_by_reason_24h,
-    notify_preview_by_source_24h as _notify_preview_by_source_24h,
-    notify_preview_generated_by_source_24h as _notify_preview_generated_by_source_24h,
-    notify_suppressed_reason_counts_24h as _notify_suppressed_reason_counts_24h,
-)
-from services.legacy_import_cleanup_service import (
-    cleanup_legacy_import_placeholders as _cleanup_legacy_import_placeholders,
-)
-from services.sqlite_admin_service import (
-    backup_sqlite_to_file as _sqlite_backup_to_file,
-    replace_live_sqlite_db as _sqlite_replace_live_db,
-)
-from services.ml_health_stats_service import ml_health_snapshot as _ml_health_snapshot
-from services.ml_lineage_service import (
-    current_model_lineage_snapshot as _current_model_lineage_snapshot,
-)
-from services.prometheus_metrics_service import (
-    prometheus_metrics_body as _prometheus_metrics_body,
-)
 from services.system_live_metrics_service import (
     collect_live_system_metrics as _collect_live_system_metrics,
 )
-from services.visitor_stats_service import (
-    browser_hash as _browser_hash,
-    collect_visitor_stats as _collect_visitor_stats,
-    device_class_from_user_agent as _device_class_from_user_agent,
-    downsample_evenly as _downsample_evenly,
-)
 from services.system_metrics_constants import (
-    SYSTEM_METRICS_HISTORY_DEFAULT_MAX_POINTS,
-    SYSTEM_METRICS_HISTORY_MAX_HOURS,
-    SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP,
     SYSTEM_METRICS_RETENTION_HOURS,
     SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
     _CACHE_SYSTEM_ACTIVITY_SEC,
-    _CACHE_SYSTEM_METRICS_HIST_SEC,
-    _CACHE_SYSTEM_METRICS_SEC,
-    _CACHE_SYSTEM_VISITORS_SEC,
     env_bounded_int,
 )
 
@@ -378,7 +342,7 @@ def register_routes(app):
             with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
                 tail = deque(f, maxlen=lines)
             return {'lines': list(tail), 'path': log_path}
-        except OSError as e:
+        except OSError:
             app.logger.exception('Get processor logs failed')
             return {'error': 'Failed to read logs', 'lines': []}, 500
 
@@ -441,7 +405,7 @@ def register_routes(app):
                     import sys
                     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'))
                     from spectrogram import generate_spectrogram
-                except ImportError as e:
+                except ImportError:
                     app.logger.exception('Spectrogram import failed')
                     _regenerate_status = {'status': 'done', 'result': None, 'error': 'Spectrogram generation failed', 'progress': None}
                     return
@@ -456,7 +420,7 @@ def register_routes(app):
                     query = query.filter(Video.id.in_(ids))
                 elif not force:
                     query = query.filter(
-                        (Video.spectrogram_path == None) | (Video.spectrogram_path == '')
+                        (Video.spectrogram_path.is_(None)) | (Video.spectrogram_path == '')
                     )
                 if start_date:
                     try:

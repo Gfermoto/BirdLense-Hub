@@ -77,7 +77,6 @@ def get_migration_calendar(
     if catalog not in ('observed', 'dataset', 'full_eu'):
         catalog = 'observed'
     # Evidence split (camera vs BirdNET) is intentionally disabled in catalog.
-    evidence = 'all'
 
     suspect_ids = species_ids_to_exclude_from_bird_catalog(session)
 

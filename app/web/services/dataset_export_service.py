@@ -42,7 +42,7 @@ def _get_image_dimensions(path: str) -> tuple[int, int] | None:
             if header[i] != 0xFF:
                 i += 1
                 continue
-            marker = header[i + 1]
+            _ = header[i + 1]
             i += 2
             if i + 2 <= len(header):
                 length = struct.unpack('>H', header[i : i + 2])[0]
@@ -339,7 +339,7 @@ def _manually_corrected_video_tracks() -> set[tuple[int, int]] | None:
     from models import VideoSpecies
     rows = VideoSpecies.query.filter(
         VideoSpecies.source == 'video',
-        VideoSpecies.manually_corrected == True,
+        VideoSpecies.manually_corrected.is_(True),
     ).with_entities(VideoSpecies.video_id, VideoSpecies.track_id).all()
     if not rows:
         return set()
@@ -511,7 +511,6 @@ def build_dataset_zip(
                         va_part = rest[:n_val]
                         tr_part = rest[n_val:]
                         # proceed to writing parts
-                        group_meta = {'group_count': 1}
                         # Final unconditional fallback
                         if val_ratio and not va_part:
                             if tr_part:
@@ -584,7 +583,6 @@ def build_dataset_zip(
                         val_count += len(rows)
                         continue
                     tr_part.extend(rows)
-                group_meta = {'group_count': len(group_items)}
                 # Ensure test split gets at least one example when test_ratio requested
                 if test_ratio and not te_part and (tr_part or va_part):
                     # Prefer moving from train, else from val
@@ -1168,7 +1166,7 @@ def retro_export_all_video_detections(
         .options(joinedload(VideoSpecies.video), joinedload(VideoSpecies.species))
     )
     if only_manually_corrected:
-        q = q.filter(VideoSpecies.manually_corrected == True)
+        q = q.filter(VideoSpecies.manually_corrected.is_(True))
     # Период по дате видео; строки без Video (сироты после retention/удаления) тоже
     # включаем — иначе фильтр по Video.start_time их отсекает и cleanup не срабатывает (#158).
     date_parts = []

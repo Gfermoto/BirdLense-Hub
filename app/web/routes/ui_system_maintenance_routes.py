@@ -1,7 +1,6 @@
 """Scan recordings, visits maintenance, species merge/reconcile (#265)."""
 from __future__ import annotations
 
-import json
 import os
 import re
 import threading
@@ -11,8 +10,7 @@ from flask import request
 
 import routes.ui_system_jobs_state as job_state
 from app_config.app_config import app_config
-from auth import admin_track_regen_access
-from models import ActivityLog, Species, SpeciesVisit, Video, VideoSpecies, db
+from models import Species, Video, db
 from services.http_response_cache import (
     bust_response_caches,
     bust_system_response_caches,
@@ -21,7 +19,6 @@ from services.legacy_import_cleanup_service import (
     cleanup_legacy_import_placeholders as _cleanup_legacy_import_placeholders,
 )
 from services.species_merge_service import merge_species_into
-from services.species_registry_service import resolve_species_name
 from services.species_visit_maintenance_service import (
     apply_clean_orphaned_visits,
     apply_realign_visit_times,
@@ -30,9 +27,7 @@ from services.species_visit_maintenance_service import (
     preview_realign_visit_times,
     preview_split_large_gap_visits,
 )
-from sqlalchemy import exists, func, select
 from util import settings_check_access, recordings_dir
-import util as util_mod
 
 
 def register_ui_system_maintenance_routes(app):
@@ -162,7 +157,7 @@ def register_ui_system_maintenance_routes(app):
                 'message': message,
                 'spectrogramRegenerationStarted': spectrogram_started,
             }, 200
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             app.logger.exception('Scan recordings failed')
             return {'error': 'Failed to scan recordings'}, 500
