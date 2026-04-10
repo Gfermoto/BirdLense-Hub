@@ -331,13 +331,14 @@ export function UnknownsPage() {
     setSuccessVideoId(null);
   };
 
+  const selectedDateKey = selectedDate?.format('YYYY-MM-DD');
   useEffect(() => {
     setSelectedUnknownIds([]);
     setBulkPreview(null);
     setBulkConfirmText('');
     setBulkActionError(null);
     setBulkDialogOpen(false);
-  }, [selectedDate?.format('YYYY-MM-DD'), timeOfDay]);
+  }, [selectedDateKey, timeOfDay]);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);

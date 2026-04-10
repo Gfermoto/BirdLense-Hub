@@ -1,15 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  LinearProgress,
-  Typography,
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
 import { fetchConfigAudit } from '../../api/api';
 
 export function ConfigAuditCard() {

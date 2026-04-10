@@ -17,14 +17,15 @@ import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid2';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
-import { LineChart, ScatterChart } from '@mui/x-charts';
+import { LineChart } from '@mui/x-charts/LineChart';
+import { ScatterChart } from '@mui/x-charts/ScatterChart';
 import InfoIcon from '@mui/icons-material/Info';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CloudIcon from '@mui/icons-material/Cloud';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
-import { CircularProgress } from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
 import { SpeciesSummary } from '../../types';
 import {
   fetchSpeciesSummary,
@@ -174,8 +175,9 @@ const SpeciesSummaryPage = () => {
   });
 
   useEffect(() => {
+    const audio = audioRef.current;
     return () => {
-      audioRef.current?.pause();
+      audio?.pause();
     };
   }, []);
 
