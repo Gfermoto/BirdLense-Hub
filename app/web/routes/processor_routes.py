@@ -16,7 +16,7 @@ from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 from services.http_response_cache import bust_response_caches
 import requests
-from data_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
+from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
 
 
 def _run_gallery_upload_thread(flask_app, video_id: int):
@@ -28,7 +28,7 @@ def _run_gallery_upload_thread(flask_app, video_id: int):
             flask_app.logger.warning('Gallery upload thread failed: %s', e)
 
 
-# Path traversal protection (patterns live in data_paths with stat helper — CodeQL boundary).
+# Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
 
 

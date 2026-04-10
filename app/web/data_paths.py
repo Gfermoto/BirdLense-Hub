@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
-from typing import Literal
 
 
 def _data_dir() -> str:
@@ -126,44 +124,6 @@ def full_path_for_video(video_path: str) -> str | None:
     if full != data_real and not full.startswith(data_real + os.sep):
         return None
     return full
-
-
-# Canonical relative paths under app parent (same layout as :func:`full_path_for_video`).
-RECORDING_VIDEO_PATH_RE = re.compile(
-    r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$'
-)
-RECORDING_SPECTROGRAM_PATH_RE = re.compile(
-    r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/spectrogram_\d+\.jpg$'
-)
-
-
-def stat_recording_layout_file(
-    logical_path: str,
-    *,
-    kind: Literal['video', 'spectrogram'],
-) -> tuple[bool, str | None, str | None]:
-    """Strict regex + resolve under DATA_DIR, then stat (processor ingest / CodeQL boundary).
-
-    Keeps all ``os.path`` access on paths derived only after pattern match +
-    :func:`full_path_for_video` (same invariants as SECURITY docs).
-    """
-    pat = RECORDING_VIDEO_PATH_RE if kind == 'video' else RECORDING_SPECTROGRAM_PATH_RE
-    if not logical_path or not isinstance(logical_path, str):
-        return False, None, 'video_path_invalid' if kind == 'video' else 'path_invalid'
-    lp = logical_path.strip()
-    if not pat.match(lp):
-        return False, None, 'video_path_invalid' if kind == 'video' else 'path_invalid'
-    full = full_path_for_video(lp)
-    if not full:
-        return False, None, 'video_path_unresolvable' if kind == 'video' else 'path_unresolvable'
-    try:
-        if not os.path.isfile(full):  # codeql[py/path-injection]: full from full_path_for_video after strict regex
-            return False, full, 'video_file_missing' if kind == 'video' else 'file_missing'
-        if os.path.getsize(full) <= 0:  # codeql[py/path-injection]: full from full_path_for_video after strict regex
-            return False, full, 'video_file_unreadable' if kind == 'video' else 'file_unreadable'
-    except OSError:
-        return False, full, 'video_file_unreadable' if kind == 'video' else 'file_unreadable'
-    return True, full, None
 
 
 def resolve_recording_video_file(video_path: str) -> str | None:
