@@ -12,13 +12,19 @@
 
 ## Тесты (разработка, CI)
 
-На **GitHub** (PR/push в `main` и `dev`) workflow **CI** запускает:
+На **GitHub** (PR/push в `main` и `dev`) workflow **[`.github/workflows/ci-pr.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/ci-pr.yml)** (**CI**) параллельно запускает:
 
-- **`ui-build`** — `npm ci` + production-сборка SPA  
-- **`docs`** — MkDocs `--strict` + проверка версии в доках  
-- **`docker-tests`** — `docker compose build` + `make test` + `make test-web` (как ниже)
+| Job | Содержание |
+|-----|------------|
+| **`python-security`** | **Bandit** для `web/` + `processor/src`; **pip-audit** по `web/requirements.txt` и `processor/requirements.txt` |
+| **`openapi-contract`** | **Ruff** (`ruff check web/ processor/src/`); **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
+| **`ui-build`** | **Node 22** — `npm ci` + production-сборка SPA (`app/ui`) |
+| **`docs`** | **Python 3.12** — `check-docs-version.py`, отчёт **Settings UI coverage** (артефакт + summary), **MkDocs** `build --strict` |
+| **`docker-tests`** | Docker **Buildx** — загрузка весов процессора, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` на compose, скрипт **аудита карточек каталога** (артефакт) |
 
-Job **`docker-tests`** входит в **required checks** ruleset **Protect** на `main` (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)).
+Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
+
+**Отдельно:** **CodeQL** — [CODEQL.ru](./CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
 ### Unit-тесты (processor)
 
