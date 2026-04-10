@@ -60,7 +60,7 @@ class WeatherFetcher:
         delay = 1
         for attempt in range(retries):
             try:
-                response = requests.get(self.api_url, params=params)
+                response = requests.get(self.api_url, params=params, timeout=15)
                 response.raise_for_status()
                 data = response.json()
                 return {
