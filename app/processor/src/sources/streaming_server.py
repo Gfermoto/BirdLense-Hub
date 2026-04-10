@@ -64,7 +64,8 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 def start_streaming_server(port: int = 8082):
     """Start MJPEG streaming server. Returns (StreamingOutput, thread)."""
     output = StreamingOutput()
-    server = StreamingServer(("0.0.0.0", port), StreamingHandler)
+    # 0.0.0.0: MJPEG для nginx в контейнере, не публичный bind с хоста
+    server = StreamingServer(("0.0.0.0", port), StreamingHandler)  # nosec B104
     server.streaming_output = output
 
     def serve():

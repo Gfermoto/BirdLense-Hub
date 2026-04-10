@@ -58,7 +58,11 @@ class FusionScorer:
             try:
                 self._model = _TorchMLP(len(self._in_order))
                 self._model.to(self.device)
-                state = torch.load(model_path, map_location=self.device)
+                state = torch.load(
+                    model_path,
+                    map_location=self.device,
+                    weights_only=True,
+                )
                 self._model.load_state_dict(state)
                 self.temperature = torch.tensor(1.0, device=self.device)
                 self._use_torch = True

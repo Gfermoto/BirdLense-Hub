@@ -35,7 +35,6 @@ class FPSTracker:
             return
 
         # Calculate FPS stats
-        fps_values = [1 / t for t in self.frame_times]
         avg_fps = 1 / mean(self.frame_times)
         median_fps = 1 / median(self.frame_times)
         min_fps = 1 / max(self.frame_times)  # Slowest frame
