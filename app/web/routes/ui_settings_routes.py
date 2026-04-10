@@ -96,6 +96,13 @@ def register_ui_settings_routes(app):
         _record_verify_password_failure(ip)
         return {'ok': False}, 401
 
+    @app.route('/api/ui/settings/logout', methods=['POST'])
+    def settings_logout():
+        """Сброс сессии входа (оператор/админ) — для смены пользователя за одним ПК."""
+        session.pop('access_role', None)
+        session.pop('settings_unlocked', None)
+        return {'ok': True}, 200
+
     @app.route('/api/ui/settings', methods=['GET'])
     def get_settings():
         if not contributor_or_admin_access():

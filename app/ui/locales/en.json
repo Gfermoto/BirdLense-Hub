@@ -14,7 +14,8 @@
     "settings": "Settings",
     "system": "System",
     "library": "Library",
-    "supportProject": "Support"
+    "supportProject": "Support",
+    "logout": "Log out"
   },
   "library": {
     "activity": "Recording Activity",

@@ -14,7 +14,8 @@
     "settings": "Настройки",
     "system": "Система",
     "library": "Библиотека",
-    "supportProject": "Поддержать"
+    "supportProject": "Поддержать",
+    "logout": "Выйти"
   },
   "library": {
     "activity": "Активность записей",
