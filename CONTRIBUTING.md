@@ -30,7 +30,7 @@ After your PR into `dev` is merged, GitHub **deletes the feature branch** automa
 
 1. **Clone** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (or **fork** it to your account if you prefer) and create a branch from **`dev`**.
 2. **Make changes** — follow existing code style and conventions.
-3. **Test** — in `app/`: `make test` and `make test-web` (Docker), or ensure the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**). **CodeQL** runs separately (see [docs/CODEQL.md](docs/CODEQL.md)); it is not a required check by default.
+3. **Test** — in `app/`: `make test` and `make test-web` (Docker), or ensure the PR is green in CI: **`python-security`**, **`openapi-contract`**, **`ui-build`**, **`docs`**, **`docker-tests`** (see [docs/TESTING.md](docs/TESTING.md) §1). **CodeQL** runs separately ([docs/CODEQL.md](docs/CODEQL.md)); not required by default.
 4. **Open a Pull Request** with base branch **`dev`**.
 
 **Second pair of eyes:** use a human reviewer for merges to protected branches. See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) (how to add an observer on GitHub; only a real GitHub account can accept a collaborator invite—use a bot or GitHub App for automation).
@@ -69,7 +69,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 - Keep PRs focused — one feature or fix per PR.
 - Add tests for new API endpoints or processor logic.
 - Update documentation if behavior changes.
-- Ensure **`make test`** and **`make test-web`** pass in `app/` (Docker), or the PR is green in CI (**`ui-build`**, **`docs`**, **`docker-tests`**).
+- Ensure **`make test`** and **`make test-web`** pass in `app/` (Docker), or the PR is green in CI (all jobs in [docs/TESTING.md](docs/TESTING.md) §1).
 - For PRs that materially change **UI placement** or add a new surface (`area:web`): in the PR description, briefly confirm the **UX-context gate** (after [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114)): which page owns the user intent, whether data/API flow reuses existing patterns, and what would feel wrong to an operator.
 
 ### Maintainer checklist (before release)

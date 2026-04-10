@@ -44,7 +44,7 @@ Verify from the repo root:
 python3 scripts/check-docs-version.py
 ```
 
-This checks `VERSION` against `mkdocs.yml`, `package.json`, and `openapi.yaml` (also run in CI before MkDocs). The site banner comes from **`overrides/main.html`** (`announce` block), not `theme.announcement` in YAML.
+This checks `VERSION` against `mkdocs.yml`, `package.json`, and `openapi.yaml`. In CI the same script runs in the **`openapi-contract`** job and again in the **`docs`** job before MkDocs (see [TESTING](./TESTING.md) §1). The site banner comes from **`overrides/main.html`** (`announce` block), not `theme.announcement` in YAML.
 
 ---
 
