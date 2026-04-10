@@ -17,7 +17,8 @@ general:
   donate_url: ""
 
 # Video/Audio processor settings
-# Важно: значения в user_config.yaml (секция processor / detection) полностью перекрывают дефолты ниже.
+# Важно: user_config.yaml мержится с дефолтами рекурсивно (merge_dicts): заданные ключи
+# переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
@@ -132,8 +133,8 @@ processor:
     - "Pigeons and Doves"
     - "Woodpeckers"
   save_images: false
-  # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
-  save_dataset_crops: true
+  # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения (по умолчанию выкл. — не раздувать диск)
+  save_dataset_crops: false
   dataset_min_confidence: 0.58
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
