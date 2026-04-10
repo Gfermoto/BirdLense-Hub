@@ -86,6 +86,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Metrics endpoints (optional auth):** если задан **`BIRDLENSE_METRICS_TOKEN`**, `GET /metrics`, `GET /api/metrics` и `GET /api/metrics/summary` требуют `Authorization: Bearer <тот же токен>` (`hmac.compare_digest`); без переменной поведение как раньше (удобно для scrape в LAN). См. [CONFIGURATION](docs/CONFIGURATION.ru.md) → Prometheus.
 - **Code scanning (path injection):** чтение и удаление превью для Telegram — **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py`: `realpath` + `commonpath` + **`startswith(DATA_DIR + sep)`**, затем `open`/`os.remove`; логика вынесена из `notifications.py`. Удалён **`_safe_image_path_or_none`**. Для **`py/path-injection`** на sink-строках — **`# lgtm[py/path-injection]`** (путь уже ограничен каталогом данных); иначе анализатор не снимает taint с `realpath(path)` до `open`/`remove`.
 
+## [0.3.4] - 2026-04-09
+
+Патч CI/доков и синхронизация версии перед слиянием ветки настроек/UI.
+
+### Fixed
+
+- **Документация (MkDocs `--strict`):** в **CONFIGURATION** (EN/RU) ссылки на стартовые профили `app/configs/*.yaml` ведут на GitHub (`blob/main/...`), чтобы сборка сайта доков не падала на «файл не найден» относительно дерева `docs/`.
+- **Processor / тесты:** более устойчивые сценарии MQTT (пустой `motion.frigate_label_filter`, `topic_matches_sub` как в paho) и тайминг `post_record` в CI.
+
+### Changed
+
+- Версия проекта **0.3.4** (`VERSION`, OpenAPI, MkDocs `site_version`, UI `package.json`).
+
 ## [0.3.2] - 2026-04-03
 
 Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, CodeRabbit follow-up, синхронизация версий.
@@ -230,7 +243,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Settings / UI:** поля в веб-настройках для прокси и сети Telegram (`notifications.telegram_proxy_url`, API base, таймауты, сжатие фото); post-roll и блок «несколько камер + BirdNET MQTT» (`processor.*`); зарезервированные **весы** `integrations.scales.*` (топик сохраняется, обработка — позже, [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167)). Web: зависимость **`requests[socks]`** для SOCKS5h.
 - **Processor ([#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157)):** `processor.post_record_seconds` — post-roll: увеличивает паузу без детекций перед остановкой записи (сумма с `max_inactive_seconds`).
-- **Processor ([#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129)):** опционально `processor.birdnet_mqtt_auto_confidence` и параметры окна/дельты — более низкий порог классификатора для видов из недавних сообщений BirdNET по MQTT (по умолчанию выкл.).
+- **Processor ([#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129)):** опционально `processor.birdnet_mqtt_auto_confidence` и параметры delta/floor — более низкий порог классификатора для видов из недавних сообщений BirdNET по MQTT (по умолчанию выкл.).
 - **Processor ([#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153)):** `processor.multi_camera_groups` + `multi_camera_confidence_boost` — при Frigate-событиях одного вида с двух камер из группы прибавка к `confidence` после merge.
 - **Roadmap:** пункт консилиума **№17** — стратегия детекции (two_stage vs single_stage+COCO, пороги в `user_config`, дообучение бинарника); блок в [ROADMAP.ru.md](docs/ROADMAP.ru.md) / [EN](docs/ROADMAP.md), связь с [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163). Дополнено: **чеклист «не забыть»** перед/после консилиума; раздел **«Завершение задач → тестирование оператором»** (`#completion-then-operator-testing`).
 - **E2E ([#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118)):** `app/e2e/tests/migration.spec.ts` — фильтр года на Migration и сброс на «все годы»; [TESTING.md](docs/TESTING.md) / [RU](docs/TESTING.ru.md) — отладка отдельного файла (`playwright test` / `--debug`).
@@ -710,6 +723,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[0.3.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.4
 [0.3.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.0

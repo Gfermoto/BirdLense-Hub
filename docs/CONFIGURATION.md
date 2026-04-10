@@ -16,6 +16,20 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 ---
 
+## Starter YAML profiles (`app/configs/`)
+
+Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and add passwords/tokens via **env** or local YAML only.
+
+| File | Typical use |
+|------|-------------|
+| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Simple LAN stack: Go2RTC + OpenCV motion; MQTT broker left empty |
+| [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | MQTT triggers from Frigate only (no BirdNET topic) |
+| [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Reference “production-shaped” layout: several cameras, Frigate + BirdNET MQTT, HA weather, feeder — set `HA_TOKEN`, `MQTT_BROKER`, etc. in `.env` or YAML locally |
+
+**Production vs file-replay test:** Normal operation uses `video.source: go2rtc`. For **offline mp4 replay**, set `video.source: file` with `file_dir` / `file_path` and tune `processor.file_max_record_floor_seconds` (see **Video** behaviour row). Use `processor.keep_recording_when_no_detections: true` only in this **file** mode if you need to keep sessions with **zero** detections (e.g. crops / QA). For **live / Go2RTC**, that flag is **ignored** — empty sessions are still removed to save disk (no change from pre-#264 behaviour).
+
+---
+
 ## How keys are named
 
 - Tables use **dotted paths** that mirror YAML nesting, e.g. `video.go2rtc_url` → `video:` → `go2rtc_url:` in `user_config.yaml`.
@@ -83,29 +97,33 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_record_seconds` | Max recording length (seconds) |
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
-| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.21** |
-| `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Default **2**. Short visits: if too high, only Frigate MQTT may appear in merge. Raise to 2.5–3 if you get flicker. |
-| `min_confidence_to_process` | Classifier threshold: species (voting × avg conf). Default **0.32**. Lower = more detections, higher = stricter |
-| `species_confidence_overrides` | Per-species thresholds: `{"Rare Bird": 0.05}` |
+| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
+| `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
+| `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Default **0.40**. Lower = more accepted species, higher = stricter. |
+| `species_confidence_overrides` | Per-species thresholds: `{"Rodent": 0.28}` for squirrels; `{"Rare Bird": 0.05}` for rare birds |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
-| `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.05`). |
-| `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.05`). |
-| `birdnet_mqtt_auto_confidence` | If **true**, lower classifier thresholds for species seen in **recent** BirdNET MQTT messages (similar to eBird top). Default **false**. Manual `species_confidence_overrides` win. See [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
-| `birdnet_mqtt_bias_window_seconds` | Look-back window from recording start for BirdNET species (seconds, default 120). |
+| `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.03`). |
+| `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.08`). |
+| `birdnet_mqtt_auto_confidence` | If **true**, lower classifier thresholds for species seen in **recent** BirdNET MQTT messages (similar to eBird top). BirdNET is **confidence-only** here: it never creates a final video label. Manual `species_confidence_overrides` win. See [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129). |
 | `birdnet_mqtt_bias_delta` | Subtracted from `min_confidence_to_process` for auto BirdNET species (default `0.05`). |
 | `birdnet_mqtt_bias_floor` | Minimum auto threshold for BirdNET bias (default `0.05`). |
 | `multi_camera_groups` | List of Frigate camera-id groups at one location, e.g. `[["BirdBox","Forest"]]`. See [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153). |
-| `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.05`, capped at 1.0). |
+| `multi_camera_confidence_boost` | When Frigate reports the **same species** from **two or more** cameras in one group, add this to merged `confidence` (default `0.03`, capped at 1.0). |
 | `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
 | `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
-| `regional_species` | Local species for BirdNET (empty = YOLO all classes) |
-| `single_stage_coco_animals_only_auto` | Default **true**: if single_stage loads a model with **exactly 80** classes (typical COCO, e.g. `yolov8n.pt`), detect only **animal** classes (bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe) — excludes **person** and inanimate COCO objects. Set **false** for a custom 80-class detector. Legacy: `single_stage_coco_bird_only_auto` is read if this key is unset. |
-| `included_bird_families` | Family filter list (Perching Birds, Squirrel, …) |
+| `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
+| `detector_scope` | First-stage detector targets. Default: `["Bird", "Squirrel"]`. EU classifier adds one non-bird class **Rodent** (squirrels map here in the species catalog — search «Rodent», not a separate «Squirrel» species row). |
+| `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
+| `single_stage_coco_animals_only_auto` | Deprecated compatibility key. Production runtime uses only `two_stage`. |
+| `included_bird_families` | Bird family filter list (e.g. Perching Birds); not related to Rodent |
 | `save_images` | Save detection frames |
-| `detection_strategy` | `single_stage` or `two_stage` |
-| `models.single_stage` | Single-stage model path (NCNN) |
+| `detection_strategy` | Production runtime uses `two_stage` only. Other values are ignored with a warning. |
+| `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
+| `file_max_record_floor_seconds` | **`video.source=file` only:** minimum wall-clock segment (seconds) before finalize can split a long clip; default **86400**. See **Video** behaviour row. |
+| `keep_recording_when_no_detections` | **`video.source=file` only** (default **false**). If **true**, keep the finalized session (valid mp4) when there were **zero** stored detections — useful for offline pipelines. For **`go2rtc` / live** this key has **no effect**; empty sessions are still deleted. |
+| `track_regen_parallel_auto_with_manual` | Advanced track-regeneration parallelism when mixing auto and manual scope; ops tuning, YAML-only (see System → track regen docs in UI). |
 
 ---
 
@@ -113,7 +131,11 @@ The System page also lists these endpoints under **Notification observability** 
 
 | Key | Description |
 |-----|-------------|
-| `source` | `go2rtc` (`file` — CLI only) |
+| `source` | `go2rtc` or `file` (test: mp4 folder or single path in container) |
+| `file_path` | Single mp4 absolute path in container; empty with `file_dir` for playlist |
+| `file_dir` | Folder with `*.mp4` / `*.mov` / `*.mkv` (flat list, not recursive). Default in repo: **`/app/data/file_test`** (Docker: host `./data` → `/app/data`). |
+| `file_loop` | Replay playlist/file in a loop |
+| *(behaviour)* | For **`video.source=file`** with a **folder playlist**, each **`VideoPlaylistSource`** clip triggers a **session finalize** when the file ends (crops/DB/notifications for that clip), then the next file continues in a new session. **`processor.max_inactive_seconds`** is floored to **120**s. **`processor.file_max_record_floor_seconds`** (default **86400**) is a wall-clock safety minimum for **`max_record_seconds`** so long files are not cut mid-clip by the live-camera default; lower it only if you want time-based splits. |
 | `go2rtc_url` | Go2RTC URL (`http://YOUR_HOST:1984`) |
 | `cameras` | List: `{id, stream_name, name}` |
 | `pre_record_seconds` | Pre-roll before trigger |
@@ -128,7 +150,7 @@ The System page also lists these endpoints under **Notification observability** 
 |-----|-------------|
 | `source` | `opencv` \| `frigate` \| `mqtt` \| `esphome` |
 | `frigate_camera_filter` | Frigate cameras (from `cameras`) or empty = all |
-| `frigate_label_filter` | Frigate labels to allow (bird, Bird) |
+| `frigate_label_filter` | Frigate labels that may trigger recording (`bird`, `Bird`, `squirrel`, `Squirrel` by default). Triggering does **not** assign the final label on its own. |
 | `frigate_label_exclude` | Labels to ignore (cat, dog — mouse as cat) |
 | `mqtt_topic` | MQTT binary sensor topic (Tasmota PIR) |
 | `esphome_url` | ESPHome URL |
@@ -138,7 +160,7 @@ The System page also lists these endpoints under **Notification observability** 
 
 ## MQTT
 
-One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when MQTT), ESPHome, MQTT binary, OpenCV. YOLO runs after trigger.
+One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT binary, OpenCV, and other motion/event sources. Final labels still come from the shared detector/classifier fusion path.
 
 | Key | Description |
 |-----|-------------|
@@ -153,7 +175,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, BirdNET (when 
 
 **Topics:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (publish), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Feeder relay: `homeassistant/switch/bird_feeder/command`.
 
-**BirdNET:** `CommonName`, `Confidence`, `BeginTime` (merge), `ScientificName`, `BirdImage.URL`. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label`.
+**BirdNET:** `CommonName`, `Confidence`, `BeginTime`, `ScientificName`, `BirdImage.URL`. BirdNET affects classifier confidence only. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label` and may promote a generic detector fallback when the video detector already confirmed a target.
 
 **Missed-event note:** during outages, MQTT events can be missed and are usually not replayed later (Frigate events are typically a live stream, not backlog replay). Use Frigate recording/clip retention as the source of historical truth.
 
@@ -196,9 +218,14 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 ---
 
-## Detection (merge YOLO + Frigate + BirdNET)
+## Detection (shared fusion path)
 
-**Sources:** YOLO (video, EU ~491 species), Frigate (`sub_label` from [Bird Classification](https://docs.frigate.video/configuration/bird_classification/)), BirdNET (audio). UI shows source per species. One result per species (max confidence).
+**Production path:** trigger source -> detector (`Bird | Squirrel`) -> YOLO species classifier -> fusion -> persistence.
+
+**Source semantics:**
+- YOLO detector/classifier is the primary source of every persisted video detection.
+- Frigate is a helper source: it can promote a generic detector fallback or add a confidence boost when it agrees with the video track.
+- BirdNET is confidence-only for video. It can bias thresholds before the classifier decision but does not create a final video label.
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 
@@ -206,14 +233,18 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
 
+**Classifier output vs DB / manual names:** Automatic labels are only strings that exist in the trained head inside the `.pt` (the merged class list). Adding a row in the SQLite species table or fixing text in the UI does **not** create a new classifier output — for example there is no “chicken” label unless that exact class name was trained in. Use the allowlist file to stay aligned with the model; to add new auto species, retrain or swap weights ([TRAINING](./TRAINING.md)).
+
+**Unknowns UX:** With strict ingest, out-of-allowlist names are stored against **Unknown** (no new species row). Contributors fix labels in **Unknowns**; operators use System → species data quality / reconcile for bulk cleanup. Display names for the same taxon should follow **canonical** rules above (`species_mapping`, `species_canonical_mapping.txt`, merge duplicates).
+
 | Key | Description |
 |-----|-------------|
 | `merge_window_seconds` | MQTT merge window (8 s) |
 | `dedup_window_seconds` | Gap > N s = new visit (60 s) |
 | `one_per_species` | One result per species (true) |
-| `source_priority` | On conflict: `["yolo", "frigate", "birdnet"]` |
-| `cross_source_confidence_bonus` | When MQTT (Frigate/BirdNET) first merges into an existing YOLO detection, add this to confidence once (cap 1.0). Default **0.02** — small lift without retraining. Set `0` to disable. |
-| `min_confidence_to_store` | Min merged confidence to persist (default **0.30**). Keep at or below effective classifier floor. |
+| `source_priority` | Conflict resolution order for fused sources. Default production order: `["yolo", "frigate"]`. |
+| `cross_source_confidence_bonus` | When Frigate first confirms an existing YOLO detection, add this to confidence once (cap 1.0). Set `0` to disable. |
+| `min_confidence_to_store` | Min fused confidence to persist (default **0.30**). Also used as the floor for detector-label fallbacks. |
 | `species_mapping` | Species name mapping |
 
 **EU model:** `best.pt`. US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
@@ -396,7 +427,7 @@ Browser push (addition or alternative to Telegram). Requires HTTPS (or localhost
 
 | Key | Description | Where |
 |-----|-------------|-------|
-| `unknown_confidence_threshold` | Threshold (0–1) for “Unknowns” list. Default 0.5 | Settings → Advanced |
+| `unknown_confidence_threshold` | Threshold (0–1) for “Unknowns” list. Default **0.48** | Settings → Processor → advanced block |
 
 ---
 

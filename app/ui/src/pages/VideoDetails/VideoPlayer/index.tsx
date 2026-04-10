@@ -18,7 +18,7 @@ import Fade from '@mui/material/Fade';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Video, VideoSpecies } from '../../../types';
-import { BASE_URL, BASE_API_URL } from '../../../api/api';
+import { BASE_URL, BASE_API_URL, resolveImageUrl } from '../../../api/api';
 import { ProgressBar } from './ProgressBar';
 import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
@@ -191,6 +191,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [video.species, view],
   );
 
+  const spectrogramDetections = useMemo(
+    () => [...video.species].sort((a, b) => a.start_time - b.start_time),
+    [video.species],
+  );
+
   // Get video detections that have track frames data
   const trackDetections = useMemo(
     () =>
@@ -199,6 +204,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ),
     [video.species],
   );
+
+  useEffect(() => {
+    if (trackDetections.length > 0) {
+      setShowTracks(true);
+    }
+  }, [trackDetections.length]);
 
   const activeDetections = useMemo(
     () =>
@@ -326,9 +337,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   if (error) {
     return (
-      <Typography color="error" align="center">
-        {error}
-      </Typography>
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography color="error" align="center" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center">
+          {t('errors.loadVideoHint')}
+        </Typography>
+      </Box>
     );
   }
 
@@ -349,14 +365,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <ViewToggle view={view} onChange={setView} />
         )}
 
-        {/* Tracks Toggle - show only when track data exists */}
-        {showControls && view === 'video' && trackDetections.length > 0 && (
+        {/* Tracks toggle: не привязываем к showControls — иначе при воспроизведении
+            переключатель исчезает вместе с остальными контролами */}
+        {view === 'video' && trackDetections.length > 0 && (
           <Box
             sx={{
               position: 'absolute',
               top: 16,
               right: 16,
-              zIndex: 10,
+              zIndex: 11,
               bgcolor: 'rgba(0, 0, 0, 0.6)',
               borderRadius: 1,
               backdropFilter: 'blur(4px)',
@@ -509,7 +526,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             preload="auto"
             onTimeUpdate={(e) => handleProgress(e.currentTarget.currentTime)}
             onEnded={togglePlayPause}
-            onError={() => setError(t('errors.loadVideo'))}
+            onError={(e) => {
+              const el = e.currentTarget;
+              const code = el.error?.code;
+              const msg = el.error?.message;
+              if (code != null || (msg && msg.length > 0)) {
+                setError(
+                  `${t('errors.loadVideo')} (${[code, msg].filter(Boolean).join(': ')})`,
+                );
+              } else {
+                setError(t('errors.loadVideo'));
+              }
+            }}
             style={{ height: '100%', width: '100%', objectFit: 'contain' }}
             playsInline
             controls={false}
@@ -527,9 +555,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <SpectrogramPlayer
               audioRef={videoRef}
               playing={playing}
-              imageUrl={`${BASE_URL}/${video.spectrogram_path}`}
-              detections={filteredDetections}
-              key={view}
+              imageUrl={
+                resolveImageUrl(video.spectrogram_path) ||
+                `${BASE_URL}/${video.spectrogram_path}`.replace(/^\/{2,}/, '/')
+              }
+              detections={spectrogramDetections}
+              visible={view === 'audio'}
             />
           )}
         </Box>

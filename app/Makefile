@@ -1,4 +1,7 @@
-.PHONY: build start stop logs deploy pull setup test test-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: build start stop logs deploy pull setup test test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+
+# Локальный venv для pytest без Docker (тот же requirements, что в CI openapi job).
+VENV ?= .venv
 
 # Настройка секретов (app/.env) — перед первым запуском
 setup:
@@ -45,19 +48,33 @@ logs:
 deploy:
 	@cd .. && ./scripts/deploy.sh
 
-# Тесты (в контейнере — нужны ultralytics, ncnn)
+# Тесты (в контейнере — ultralytics; для two-stage — веса .pt, см. scripts/fetch-processor-weights.sh)
 # -v монтирует локальный код: тесты идут по коду на диске, а не по образу
+# -v ..:/workspace — корень репо (scripts/export_fusion_training_data.py и др. для _repo_root())
 test:
-	docker compose run --rm -v $$(pwd):/app birdlense \
-		env PYTHONPATH=/app:/app/web python -m unittest discover processor/tests -v
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
+		bash -c 'export PYTHONPATH=/app:/app/web && python -m unittest discover processor/tests -v \
+		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
 
 test-web:
-	docker compose run --rm -v $$(pwd):/app birdlense python -m pytest web/tests/ -v
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v
+
+# Один раз: python3 -m venv .venv && pip install -r web/requirements.txt
+venv-web:
+	@if [ ! -x "$(VENV)/bin/python" ]; then python3 -m venv "$(VENV)"; fi
+	@"$(VENV)/bin/python" -m pip install -U pip
+	env PIP_NO_USER=1 "$(VENV)/bin/python" -m pip install -r web/requirements.txt
+	@echo "venv-web: готово $(abspath $(VENV)) (используйте: make test-web-local)"
+
+# Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
+# PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
+test-web-local: venv-web
+	env PYTHONNOUSERSITE=1 "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)
 test-coverage:
-	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
 		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
@@ -65,7 +82,7 @@ test-coverage:
 
 # Покрытие + HTML-отчёт в app/htmlcov/
 test-report:
-	docker compose run --rm -v $$(pwd):/app birdlense bash -c '\
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
 		export PYTHONPATH=/app:/app/web && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \

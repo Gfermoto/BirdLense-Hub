@@ -1,0 +1,11 @@
+# Профиль CI: web/ + processor/src. /tmp и кэш в контейнере — пропуски осознанные.
+# torch.load с weights_only=True в fusion_model; MJPEG — nosec B104 в streaming_server.
+exclude_dirs:
+  - web/tests
+skips:
+  - B108 # hardcoded /tmp — ожидаемо в одноконтейнерном Hub
+  - B101 # assert в тестах (exclude_dirs не всегда ловит все пути)
+  - B301 # pickle в локальном disk cache (доверенные данные)
+  - B310 # urlopen по URL из конфига (Telegram proxy list)
+  - B324 # sha1 для имён файлов кэша, не подпись
+  - B602 # shell=True для intel_gpu_top (ограниченная строка)

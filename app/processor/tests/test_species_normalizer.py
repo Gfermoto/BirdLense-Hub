@@ -1,4 +1,4 @@
-"""Tests for species_normalizer merge_detections (Bird filter)."""
+"""Tests for species_normalizer merge_detections and Frigate promotion."""
 import os
 import sys
 import unittest
@@ -10,68 +10,142 @@ sys.path.insert(0, src_path)
 from species_normalizer import merge_detections
 
 
-class TestMergeBirdFilter(unittest.TestCase):
-    """Bird = unknown when alone; dropped when any other species present."""
-
+class TestMergeDetections(unittest.TestCase):
     def setUp(self):
         self.video_start = datetime.now(timezone.utc)
         self.video_end = self.video_start + timedelta(seconds=60)
 
     def test_bird_alone_kept(self):
-        """Bird alone → keep (unknown species)."""
         yolo = [{'species_name': 'Bird', 'confidence': 0.9, 'start_time': 0, 'end_time': 5}]
-        mqtt = []
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(yolo, [], self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Bird')
 
-    def test_bird_with_other_dropped(self):
-        """Bird + Northern Cardinal → drop Bird, keep Northern Cardinal."""
+    def test_bird_can_coexist_with_other_species(self):
+        """Без поля classifier / accepted_species второй ряд не считается «уверенным видом»."""
         yolo = [
             {'species_name': 'Bird', 'confidence': 0.9, 'start_time': 0, 'end_time': 5},
-            {'species_name': 'Northern Cardinal', 'confidence': 0.5, 'start_time': 2, 'end_time': 7},
+            {
+                'species_name': 'Northern Cardinal',
+                'confidence': 0.5,
+                'start_time': 2,
+                'end_time': 7,
+            },
         ]
-        mqtt = []
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(yolo, [], self.video_start, self.video_end)
         names = [d['species_name'] for d in result]
-        self.assertNotIn('Bird', names)
+        self.assertIn('Bird', names)
         self.assertIn('Northern Cardinal', names)
 
-    def test_bird_from_mqtt_dropped_when_yolo_has_other(self):
-        """MQTT Bird + YOLO Northern Cardinal → drop Bird."""
-        yolo = [{'species_name': 'Northern Cardinal', 'confidence': 0.6, 'start_time': 0, 'end_time': 5}]
-        mqtt = [{'species': 'Bird', 'confidence': 0.95, 'timestamp': self.video_start.isoformat()}]
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
-        names = [d['species_name'] for d in result]
-        self.assertNotIn('Bird', names)
-        self.assertIn('Northern Cardinal', names)
-
-    def test_bird_frames_transferred_to_other(self):
-        """Bird (YOLO, has frames) + Northern Cardinal (MQTT, no frames) → keep NC with frames."""
+    def test_generic_bird_absorbed_when_overlapping_classified_jay(self):
         yolo = [
-            {'species_name': 'Bird', 'confidence': 0.9, 'start_time': 0, 'end_time': 5,
-             'frames': [{'t': 1.0, 'bbox': [0.1, 0.2, 0.3, 0.4]}], 'track_id': 1},
+            {
+                'species_name': 'Bird',
+                'confidence': 0.45,
+                'start_time': 0,
+                'end_time': 40,
+                'detection_provider': 'yolo',
+                'decision_reason': 'fallback_bird',
+            },
+            {
+                'species_name': 'Eurasian Jay',
+                'confidence': 0.62,
+                'start_time': 5,
+                'end_time': 35,
+                'detection_provider': 'yolo',
+                'classifier_confidence': 0.55,
+                'decision_kind': 'accepted_species',
+            },
         ]
-        mqtt = [{'species': 'Northern Cardinal', 'confidence': 0.8, 'timestamp': self.video_start.isoformat()}]
+        result = merge_detections(yolo, [], self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Eurasian Jay')
+        self.assertIn('absorbed_generic_bird', result[0].get('_fusion_used', ''))
+
+    def test_frigate_does_not_create_detection_without_yolo(self):
+        mqtt = [{
+            'species': 'Northern Cardinal',
+            'source': 'frigate',
+            'confidence': 0.95,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections([], mqtt, self.video_start, self.video_end)
+        self.assertEqual(result, [])
+
+    def test_birdnet_does_not_create_detection_without_yolo(self):
+        mqtt = [{
+            'species': 'Northern Cardinal',
+            'source': 'birdnet',
+            'confidence': 0.95,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections([], mqtt, self.video_start, self.video_end)
+        self.assertEqual(result, [])
+
+    def test_frigate_merges_into_same_species_yolo_detection(self):
+        yolo = [{
+            'species_name': 'Northern Cardinal',
+            'confidence': 0.6,
+            'start_time': 0,
+            'end_time': 5,
+            'detection_provider': 'yolo',
+        }]
+        mqtt = [{
+            'species': 'Northern Cardinal',
+            'source': 'frigate',
+            'confidence': 0.95,
+            'timestamp': self.video_start.isoformat(),
+        }]
         result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Northern Cardinal')
-        self.assertIn('frames', result[0])
+        self.assertEqual(result[0]['contributing_providers'], ['frigate', 'yolo'])
+
+    def test_frigate_promotes_generic_bird_track(self):
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.6,
+            'start_time': 0,
+            'end_time': 5,
+            'detection_provider': 'yolo',
+            'decision_reason': 'fallback_bird',
+            'detector_label': 'Bird',
+            'frames': [{'t': 1.0, 'bbox': [0.1, 0.2, 0.3, 0.4]}],
+            'track_id': 1,
+        }]
+        mqtt = [{
+            'species': 'Northern Cardinal',
+            'label': 'bird',
+            'source': 'frigate',
+            'confidence': 0.95,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Northern Cardinal')
+        self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
+        self.assertEqual(result[0]['track_id'], 1)
         self.assertEqual(len(result[0]['frames']), 1)
 
     def test_frigate_event_outside_video_window_is_skipped(self):
-        """Frigate event far before the clip must not create a negative-duration detection."""
-        yolo = []
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.6,
+            'start_time': 10,
+            'end_time': 15,
+            'detection_provider': 'yolo',
+            'decision_reason': 'fallback_bird',
+            'detector_label': 'Bird',
+        }]
         mqtt = [{
             'species': 'Eurasian Jay',
             'source': 'frigate',
             'confidence': 0.82,
             'timestamp': (self.video_start - timedelta(seconds=40)).isoformat(),
         }]
-
         result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
-
-        self.assertEqual(result, [])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Bird')
 
     def test_species_mapping_normalizes_mqtt_before_merge(self):
         yolo = [{
@@ -87,7 +161,6 @@ class TestMergeBirdFilter(unittest.TestCase):
             'confidence': 0.83,
             'timestamp': (self.video_start + timedelta(seconds=12)).isoformat(),
         }]
-
         result = merge_detections(
             yolo,
             mqtt,
@@ -95,10 +168,8 @@ class TestMergeBirdFilter(unittest.TestCase):
             self.video_end,
             species_mapping={'eurasian_jay': 'Garrulus glandarius (Eurasian Jay)'},
         )
-
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Garrulus glandarius (Eurasian Jay)')
-        self.assertEqual(result[0]['detection_provider'], 'yolo')
         self.assertEqual(result[0]['contributing_providers'], ['frigate', 'yolo'])
 
     def test_one_per_species_preserves_all_contributing_providers(self):
@@ -108,7 +179,7 @@ class TestMergeBirdFilter(unittest.TestCase):
             'start_time': 10,
             'end_time': 18,
             'detection_provider': 'yolo',
-            'contributing_providers': ['yolo', 'birdnet_mqtt'],
+            'contributing_providers': ['birdnet_mqtt', 'yolo'],
         }]
         mqtt = [{
             'species': 'Eurasian Jay',
@@ -116,74 +187,30 @@ class TestMergeBirdFilter(unittest.TestCase):
             'confidence': 0.83,
             'timestamp': (self.video_start + timedelta(seconds=12)).isoformat(),
         }]
-
-        result = merge_detections(
-            yolo,
-            mqtt,
-            self.video_start,
-            self.video_end,
-        )
-
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
         self.assertEqual(
             result[0]['contributing_providers'],
             ['birdnet_mqtt', 'frigate', 'yolo'],
         )
 
-    def test_two_mqtt_only_events_merge_when_one_per_species(self):
-        """MQTT-only buckets must not overwrite prior same-species events (#226 review)."""
-        video_end = self.video_start + timedelta(seconds=120)
-        yolo = []
-        mqtt = [
-            {
-                'species': 'Eurasian Jay',
-                'source': 'frigate',
-                'confidence': 0.7,
-                'timestamp': (self.video_start + timedelta(seconds=10)).isoformat(),
-            },
-            {
-                'species': 'Eurasian Jay',
-                'source': 'frigate',
-                'confidence': 0.8,
-                'timestamp': (self.video_start + timedelta(seconds=100)).isoformat(),
-            },
-        ]
-        result = merge_detections(
-            yolo,
-            mqtt,
-            self.video_start,
-            video_end,
-            dedup_window_seconds=45,
-            one_per_species=True,
-        )
+    def test_squirrel_fallback_is_not_promoted_by_bird_frigate_event(self):
+        yolo = [{
+            'species_name': 'Squirrel',
+            'confidence': 0.7,
+            'start_time': 0,
+            'end_time': 5,
+            'detection_provider': 'yolo',
+            'decision_reason': 'fallback_squirrel',
+            'detector_label': 'Squirrel',
+        }]
+        mqtt = [{
+            'species': 'Great Tit',
+            'label': 'bird',
+            'source': 'frigate',
+            'confidence': 0.9,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['species_name'], 'Eurasian Jay')
-        self.assertLessEqual(result[0]['start_time'], 10)
-        self.assertGreaterEqual(result[0]['end_time'], 95)
-
-    def test_two_mqtt_only_separate_when_not_one_per_species(self):
-        video_end = self.video_start + timedelta(seconds=120)
-        yolo = []
-        mqtt = [
-            {
-                'species': 'Eurasian Jay',
-                'source': 'frigate',
-                'confidence': 0.7,
-                'timestamp': (self.video_start + timedelta(seconds=10)).isoformat(),
-            },
-            {
-                'species': 'Eurasian Jay',
-                'source': 'frigate',
-                'confidence': 0.8,
-                'timestamp': (self.video_start + timedelta(seconds=100)).isoformat(),
-            },
-        ]
-        result = merge_detections(
-            yolo,
-            mqtt,
-            self.video_start,
-            video_end,
-            dedup_window_seconds=45,
-            one_per_species=False,
-        )
-        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['species_name'], 'Squirrel')

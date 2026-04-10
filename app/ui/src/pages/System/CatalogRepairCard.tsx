@@ -78,6 +78,7 @@ export function CatalogRepairCard() {
               checked: data.result.checked,
               fixed: data.result.metadata_fixed,
               swapped: data.result.images_replaced_from_inat,
+              science: data.result.images_realigned_allowlist_science ?? 0,
               missing: data.result.still_missing,
             })}
           </Typography>

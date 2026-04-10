@@ -320,6 +320,8 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
         db.session.rollback()
     else:
         db.session.commit()
+        if updated > 0:
+            _invalidate_species_catalog_http_caches()
 
     return {
         "processed": processed,
@@ -359,6 +361,8 @@ def repair_recently_reset_species_metadata(
         db.session.rollback()
     else:
         db.session.commit()
+        if repaired > 0:
+            _invalidate_species_catalog_http_caches()
 
     return {
         "processed": processed,
@@ -463,6 +467,8 @@ def enrich_species_metadata_with_status(
 
     if dry_run:
         db.session.rollback()
+    elif updated > 0:
+        _invalidate_species_catalog_http_caches()
 
     return {
         'processed': processed,
@@ -579,6 +585,60 @@ def ensure_allowlist_species_materialized(
     }
 
 
+def _invalidate_species_catalog_http_caches() -> None:
+    """После массового обновления Species — сброс Redis/in-memory JSON-кэшей API (иначе UI видит старые image_url)."""
+    try:
+        from services.http_response_cache import bust_response_caches
+        from util import bust_feeder_species_filter_cache
+
+        bust_response_caches()
+        bust_feeder_species_filter_cache()
+    except Exception:
+        pass
+
+
+def realign_species_images_from_allowlist_science(
+    targets: list,
+    app_config_get,
+    *,
+    limit: int = 500,
+) -> int:
+    """Перезаписать image_url с Wikipedia по биному из allowlist (без кэша), если URL изменился.
+
+    Ограничение limit на прогон — чтобы не упереться в rate limit Wikipedia при больших каталогах.
+    """
+    from species_metadata import get_wikipedia_image_and_description
+    from services.species_catalog_allowlist_service import (
+        allowlist_scientific_name_for_display_name,
+    )
+
+    cap = max(1, int(limit))
+    n = 0
+    for sp in targets:
+        if n >= cap:
+            break
+        sci = allowlist_scientific_name_for_display_name(sp.name or '', app_config_get)
+        if not sci:
+            continue
+        img, desc = get_wikipedia_image_and_description(sci, use_cache=False)
+        if not img:
+            continue
+        if (sp.image_url or '').strip() == img.strip():
+            continue
+        sp.image_url = img
+        if desc and not (sp.description or '').strip():
+            sp.description = desc
+        inf_src, inf_url = infer_metadata_source_fields(
+            getattr(sp, 'name', None), img, None
+        )
+        if inf_src:
+            sp.metadata_source = inf_src
+        if inf_url:
+            sp.metadata_source_url = inf_url
+        n += 1
+    return n
+
+
 def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6000) -> dict:
     """Auto-heal full catalog cards: missing metadata and blocked Wikimedia images."""
     # Ensure full catalog materialization first, otherwise repair runs only on
@@ -596,6 +656,7 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
             'checked': 0,
             'metadata_fixed': 0,
             'images_replaced_from_inat': 0,
+            'images_realigned_allowlist_science': 0,
             'still_missing': 0,
             'dry_run': dry_run,
         }
@@ -617,9 +678,23 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
             targets.append(match)
     # unique by ID, keep order
     uniq: dict[int, Species] = {}
-    for sp in targets[: max(1, min(limit, 20000))]:
+    for sp in targets:
         uniq.setdefault(int(sp.id), sp)
     targets = list(uniq.values())
+
+    cap = max(1, min(limit, 20000))
+    if len(targets) > cap:
+        # Prioritize clearly problematic rows when limit is low (autorun),
+        # so repairs do not get stuck on an arbitrary prefix of allowlist.
+        def _priority_key(sp: Species):
+            img = (sp.image_url or '').strip()
+            desc = (sp.description or '').strip()
+            host = _url_hostname_lower(img)
+            missing = 0 if (not img or not desc) else 1
+            wiki_host = 0 if (img and _host_is_wikipedia_family(host)) else 1
+            return (missing, wiki_host, int(sp.id or 0))
+
+        targets = sorted(targets, key=_priority_key)[:cap]
 
     metadata_fixed = 0
     images_replaced_from_inat = 0
@@ -669,6 +744,15 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
                         sp.metadata_source_url = src2
                     images_replaced_from_inat += 1
 
+    realigned_sci = 0
+    if not dry_run:
+        realigned_sci = realign_species_images_from_allowlist_science(
+            targets,
+            app_config_get,
+            limit=min(500, max(1, int(limit or 6000))),
+        )
+        metadata_fixed += realigned_sci
+
     still_missing = sum(
         1
         for sp in targets
@@ -678,11 +762,13 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
         db.session.rollback()
     else:
         db.session.commit()
+        _invalidate_species_catalog_http_caches()
 
     return {
         'checked': len(targets),
         'metadata_fixed': metadata_fixed,
         'images_replaced_from_inat': images_replaced_from_inat,
+        'images_realigned_allowlist_science': realigned_sci,
         'still_missing': still_missing,
         'materialized_created': int(materialize.get('created') or 0),
         'materialized_missing_after': int(materialize.get('missing_after') or 0),

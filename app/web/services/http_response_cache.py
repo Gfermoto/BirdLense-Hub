@@ -8,6 +8,7 @@ _RESPONSE_CACHE_PREFIXES = (
     'overview:',
     'detection_frames:',
     'species_list:',
+    'species_summary:',
     'species_observed:',
     'species_track_regen:',
     'migration_cal:',

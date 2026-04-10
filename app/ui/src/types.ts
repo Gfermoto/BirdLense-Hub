@@ -152,11 +152,22 @@ export interface Settings {
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
+    /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
+    min_confidence_to_notify?: number;
+    min_box_size_px?: number; // Minimum bbox width/height in pixels for detector candidates
+    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Squirrel"]
+    /** If false, run YOLO on every frame (ignore brightness/contrast gate). */
+    light_gate_enabled?: boolean;
+    light_gate_min_brightness?: number;
+    light_gate_min_contrast?: number;
     species_confidence_overrides?: Record<string, number>; // Per-species thresholds (rare species — lower)
     /** Lower classifier threshold for eBird regional top species (#128); manual overrides win */
     ebird_regional_top_auto_confidence?: boolean;
     ebird_regional_top_confidence_delta?: number;
     ebird_regional_top_confidence_floor?: number;
+    /** BirdNET affects classifier confidence only; does not create video labels directly. */
+    birdnet_mqtt_auto_confidence?: boolean;
+    classifier_fallback_bird?: boolean; // Keep generic detector label when classifier stays uncertain
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
     generate_spectrogram_always?: boolean;
@@ -171,12 +182,20 @@ export interface Settings {
     zip?: string;
   };
   video?: {
-    source?: string;
+    source?: 'go2rtc' | 'file' | string;
+    file_path?: string;
+    file_dir?: string;
+    file_loop?: boolean;
+    file_realtime_simulation?: boolean;
     go2rtc_url?: string;
     stream_name?: string;
     cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
+    /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
+    encoding?: string;
+    /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
+    record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
     video_height?: number;
   };
@@ -245,12 +264,28 @@ export interface Settings {
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
     frigate_label_exclude?: string[];
+    /** Если метка не в фильтре, но у объекта в MQTT есть box — всё равно старт записи */
+    frigate_trigger_on_tracked_object?: boolean;
     mqtt_topic?: string;
     esphome_url?: string;
     esphome_sensor_id?: string;
   };
   detection?: {
     min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
+    /** YOLO без треков, но Frigate прислал событие — сохранить визит по Frigate */
+    frigate_standalone_when_no_yolo?: boolean;
+    frigate_standalone_min_score?: number;
+    frigate_standalone_missing_score_fallback?: number;
+    frigate_standalone_excluded_min_score?: number;
+    frigate_standalone_excluded_missing_score_fallback?: number;
+    frigate_standalone_notify?: boolean;
+    merge_window_seconds?: number;
+    dedup_window_seconds?: number;
+    one_per_species?: boolean;
+    cross_source_confidence_bonus?: number;
+    absorb_generic_bird?: boolean;
+    absorb_generic_bird_overlap_min_sec?: number;
+    absorb_generic_bird_min_classifier_confidence?: number;
   };
   mcp?: {
     enabled?: boolean;

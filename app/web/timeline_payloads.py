@@ -149,14 +149,6 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             'image_url': None,
             'parent_id': None,
         }
-    if not detections:
-        detections.append({
-            'video_id': video.id,
-            'start_time': v0.astimezone(timezone.utc).isoformat(),
-            'end_time': v1.astimezone(timezone.utc).isoformat(),
-            'confidence': 0.0,
-            'source': 'video',
-        })
     return {
         'id': -(video.id),
         'start_time': v0.isoformat(),

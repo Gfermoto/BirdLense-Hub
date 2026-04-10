@@ -48,9 +48,9 @@ API: `GET /api/ui/dataset/export` — параметры `test_ratio`, `strict_q
 
 | Компонент | Версия | Дообучено на |
 |-----------|--------|--------------|
-| **Детектор** | YOLOv8n | NABirds + COCO birds + OIDv4 squirrel (бинарный bird/squirrel) |
+| **Детектор** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (бинарный bird/squirrel) |
 | **Классификатор EU** | YOLO11n-cls | birds-525 + iNaturalist (~491 вид) — активна в `best.pt` |
-| **Классификатор US** | YOLOv8n-cls | NABirds (~400 видов) — резерв в `best_US.pt` |
+| **Классификатор US** | YOLO11n-cls | NABirds (~400 видов) — резерв в `best_US.pt` |
 
 Вернуть US: `cp best_US.pt best.pt`.
 
@@ -94,9 +94,12 @@ API: `GET /api/ui/dataset/export` — параметры `test_ratio`, `strict_q
 
 | Путь | Роль |
 |------|------|
-| `classification/weights/best.pt` | EU-классификатор (активна) |
-| `classification/weights/best_US.pt` | Резерв US |
-| `detection/weights/best.pt` | Бинарный детектор |
+| `classification/weights/best.pt` | EU-классификатор (YOLO11n-cls, активна) |
+| `classification/weights/best_US.pt` | Резерв US (опционально) |
+| `classification/weights/class_names.txt` | Allowlist классов для привязки каталога |
+| `detection/weights/best.pt` | Бинарный детектор (YOLO11n) |
+
+Всё остальное в `app/processor/models/` — это экспорт/тренировка, а не runtime input.
 
 ---
 
@@ -108,6 +111,8 @@ API: `GET /api/ui/dataset/export` — параметры `test_ratio`, `strict_q
 |---------|-------|--------|
 | **[34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species)** | 525 | Hugging Face |
 | **iNaturalist Europe** | Тысячи | [API](https://api.inaturalist.org/v1/docs/), `place_id=96372` |
+
+Шипнутый детектор обучен на **NABirds + COCO birds + OIDv4 squirrel**, а шипнутый EU-классификатор — на **birds-525 + iNaturalist Europe (~490/491 видов)**.
 
 ### Северная Америка (не дают улучшения по EU)
 

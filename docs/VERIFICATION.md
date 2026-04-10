@@ -2,6 +2,22 @@
 
 Short log of automated checks. Full cycle: [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), [TESTING.md](./TESTING.md).
 
+## Offline fusion calibration
+
+1. Export processor decision traces to CSV:
+
+```bash
+python3 scripts/export_fusion_training_data.py --out /tmp/fusion_traces.csv --source db
+```
+
+2. Evaluate calibration and selective-prediction metrics:
+
+```bash
+python3 scripts/eval_fusion_calibration.py --data /tmp/fusion_traces.csv --label-col valid_track_label --slice-field audio_evidence --slice-field decision_kind
+```
+
+3. If you have a trained fusion state, add `--model-path app/processor/models/fusion/fusion_state.pt`.
+
 ## 2026-04-02 — cleanup, backend tail removal, final polish
 
 | Check | Result |

@@ -1,4 +1,9 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useCallback,
+  useLayoutEffect,
+} from 'react';
 import Box from '@mui/material/Box';
 import { VideoSpecies } from '../../../types';
 import { labelToUniqueHexColor } from '../../../util';
@@ -12,9 +17,11 @@ const extractPxPerSecond = (imageUrl: string): number => {
 
 interface SpectrogramPlayerProps {
   imageUrl: string;
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   playing: boolean;
   detections: VideoSpecies[];
+  /** Вкладка «Спектрограмма» видима (иначе родитель 0×0 и canvas остаётся шириной 0 — чёрный экран). */
+  visible: boolean;
 }
 
 export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
@@ -22,9 +29,10 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
   audioRef,
   playing,
   detections,
+  visible,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const parentRef = useRef<HTMLCanvasElement | null>(null);
+  const parentRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const animationRef = useRef<number | null>(null);
   const pxPerSecond = extractPxPerSecond(imageUrl);
@@ -33,6 +41,7 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
     const canvas = canvasRef.current;
     const image = imageRef.current;
     if (!canvas || !image || !audioRef.current) return;
+    if (canvas.width < 2 || canvas.height < 2) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -41,24 +50,24 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
     const currentPx = currentTime * pxPerSecond;
     const halfWidth = canvas.width / 2;
 
-    // Background
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw spectrogram
+    const sw = Math.min(canvas.width, image.naturalWidth || image.width);
+    const maxSx = Math.max(0, (image.naturalWidth || image.width) - sw);
+    const sx = Math.max(0, Math.min(currentPx - halfWidth, maxSx));
     ctx.drawImage(
       image,
-      currentPx - halfWidth,
+      sx,
       0,
-      canvas.width,
-      image.height,
+      sw,
+      image.naturalHeight || image.height,
       0,
       0,
       canvas.width,
       canvas.height,
     );
 
-    // Draw detections at the bottom
     detections.forEach((detection) => {
       const startPx =
         detection.start_time * pxPerSecond - currentPx + halfWidth;
@@ -68,15 +77,12 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
       const barHeight = 30;
       const barY = canvas.height - barHeight;
 
-      // Detection bar with background
       ctx.fillStyle = `${color}20`;
       ctx.fillRect(startPx, barY, width, barHeight);
 
-      // Top border
       ctx.fillStyle = color;
       ctx.fillRect(startPx, barY, width, 2);
 
-      // Species name
       ctx.fillStyle = '#fff';
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
@@ -87,23 +93,43 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
       );
     });
 
-    // Playhead line
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(halfWidth, 0);
     ctx.lineTo(halfWidth, canvas.height);
     ctx.stroke();
-  }, [pxPerSecond, detections, imageUrl]);
+  }, [pxPerSecond, detections, audioRef]);
+
+  const syncCanvasWidth = useCallback(() => {
+    const parent = parentRef.current;
+    const canvas = canvasRef.current;
+    if (!parent || !canvas) return;
+    const w = Math.max(Math.floor(parent.getBoundingClientRect().width), 2);
+    if (canvas.width !== w) {
+      canvas.width = w;
+    }
+  }, []);
 
   const drawSpectrogramAnimate = useCallback(() => {
     drawSpectrogram();
     animationRef.current = requestAnimationFrame(drawSpectrogramAnimate);
   }, [drawSpectrogram]);
 
+  useLayoutEffect(() => {
+    if (!visible) return;
+    syncCanvasWidth();
+    const id = requestAnimationFrame(() => {
+      syncCanvasWidth();
+      drawSpectrogram();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [visible, syncCanvasWidth, drawSpectrogram]);
+
   useEffect(() => {
     let cancelled = false;
     const image = new Image();
+    image.decoding = 'async';
     image.src = imageUrl;
     image.onload = () => {
       if (cancelled) return;
@@ -111,6 +137,7 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
       if (canvasRef.current) {
         canvasRef.current.height = image.height;
       }
+      syncCanvasWidth();
       drawSpectrogram();
     };
 
@@ -122,10 +149,9 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
         animationRef.current = null;
       }
     };
-  }, [drawSpectrogram, imageUrl]);
+  }, [drawSpectrogram, imageUrl, syncCanvasWidth]);
 
   useEffect(() => {
-    // This effect is needed for seeking when paused since animation is off
     const audio = audioRef.current;
     if (!audio) return;
     const handleSeeked = () => {
@@ -135,7 +161,7 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
     return () => {
       audio.removeEventListener('seeked', handleSeeked);
     };
-  }, [drawSpectrogram]);
+  }, [drawSpectrogram, audioRef]);
 
   useEffect(() => {
     if (playing) {
@@ -149,22 +175,17 @@ export const SpectrogramPlayer: React.FC<SpectrogramPlayerProps> = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     const parent = parentRef.current;
-    // ResizeObserver to watch for changes in the parent's size
+    if (!parent || !canvas) return;
     const resizeObserver = new ResizeObserver(() => {
-      if (parent && canvas) {
-        canvas.width = parent.offsetWidth;
-        drawSpectrogram();
-      }
+      if (!visible) return;
+      syncCanvasWidth();
+      drawSpectrogram();
     });
-    // Observe the parent container for size changes
-    if (parent) {
-      resizeObserver.observe(parent);
-    }
-    // Clean up the observer on component unmount
+    resizeObserver.observe(parent);
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [visible, syncCanvasWidth, drawSpectrogram]);
 
   return (
     <Box

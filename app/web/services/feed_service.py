@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
-import paho.mqtt.client as mqtt
+try:
+    import paho.mqtt.client as mqtt
+except Exception:
+    # In some test environments paho may be stubbed or missing; guard imports
+    mqtt = None
 import requests
 
 from app_config.app_config import app_config
@@ -66,6 +70,10 @@ def _get_mqtt_client():
         _mqtt_client = None
     broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
     if not broker:
+        return None
+    # If mqtt import is present but missing expected attributes (test stubs),
+    # behave as if MQTT is not configured.
+    if not mqtt or not hasattr(mqtt, 'Client'):
         return None
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,

@@ -15,7 +15,7 @@ def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
     name = str(detection.get('species_name') or '').strip().lower()
     if name == 'unknown':
         species_rank = 0
-    elif name == 'bird':
+    elif name in {'bird', 'squirrel', 'rodent'}:
         species_rank = 1
     else:
         species_rank = 2
@@ -153,7 +153,7 @@ def process_video_for_tracks(
         species_name = (
             normalize(raw_name, species_mapping) if raw_name else raw_name
         )
-        detections.append({
+        row = {
             'species_name': species_name,
             'start_time': r['start_time'],
             'end_time': r['end_time'],
@@ -162,7 +162,23 @@ def process_video_for_tracks(
             'frames': r.get('frames', []),
             'source': 'video',
             'detection_provider': 'yolo',
-        })
+        }
+        if r.get('decision_reason'):
+            row['decision_reason'] = r['decision_reason']
+        for copy_key in (
+            'visit_eligible',
+            'notification_eligible',
+            'decision_kind',
+            'detector_label',
+            'detector_confidence',
+            'classifier_confidence',
+            'classifier_species_name',
+            'evidence_state',
+            'reject_reason_code',
+        ):
+            if copy_key in r:
+                row[copy_key] = r[copy_key]
+        detections.append(row)
     detections = _dedupe_track_detections(detections)
     logger.info(
         "Track regen: %s -> %s detections, %s frames, frame_step=%s",

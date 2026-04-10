@@ -7,7 +7,7 @@ from flask import Response, current_app, request
 
 from app_config.app_config import app_config
 from auth import contributor_or_admin_access
-from models import ActivityLog, Species, SpeciesVisit, VideoSpecies, db
+from models import ActivityLog, Species, VideoSpecies, db
 from services.dataset_export_service import (
     build_dataset_zip,
     clean_dataset,
@@ -27,6 +27,13 @@ def normalize_correction_source(value):
     return 'other'
 
 
+def normalize_apply_scope(value, *, default='legacy_fanout'):
+    scope = (value or '').strip().lower()
+    if scope in ('single_track', 'whole_visit'):
+        return scope
+    return default
+
+
 def write_correction_activity(
     action,
     source,
@@ -34,6 +41,14 @@ def write_correction_activity(
     from_species_name=None,
     to_species_name=None,
     updated_count=None,
+    *,
+    apply_scope=None,
+    reason=None,
+    video_id=None,
+    track_id=None,
+    species_visit_id=None,
+    from_species_id=None,
+    to_species_id=None,
 ):
     payload = {
         'action': action,
@@ -42,6 +57,13 @@ def write_correction_activity(
         'from_species_name': from_species_name,
         'to_species_name': to_species_name,
         'updated_count': updated_count,
+        'apply_scope': apply_scope,
+        'reason': reason,
+        'video_id': video_id,
+        'track_id': track_id,
+        'species_visit_id': species_visit_id,
+        'from_species_id': from_species_id,
+        'to_species_id': to_species_id,
     }
     try:
         log = ActivityLog(
@@ -169,13 +191,19 @@ def register_ui_corrections_dataset_routes(app):
     def confirm_detection(detection_id):
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
-        source = normalize_correction_source((request.json or {}).get('source'))
+        payload = request.json or {}
+        source = normalize_correction_source(payload.get('source'))
+        apply_scope = normalize_apply_scope(payload.get('apply_scope'))
+        reason = (payload.get('reason') or '').strip() or None
 
         vs = db.session.get(VideoSpecies, detection_id)
         if not vs:
             return {'error': 'Detection not found'}, 404
 
-        to_confirm = list(vs.species_visit.video_species) if vs.species_visit else [vs]
+        if apply_scope == 'single_track':
+            to_confirm = [vs]
+        else:
+            to_confirm = list(vs.species_visit.video_species) if vs.species_visit else [vs]
         for v in to_confirm:
             v.manually_corrected = True
         db.session.commit()
@@ -187,9 +215,20 @@ def register_ui_corrections_dataset_routes(app):
             from_species_name=vs.species.name,
             to_species_name=vs.species.name,
             updated_count=len(to_confirm),
+            apply_scope=apply_scope,
+            reason=reason,
+            video_id=vs.video_id,
+            track_id=vs.track_id,
+            species_visit_id=vs.species_visit_id,
+            from_species_id=vs.species_id,
+            to_species_id=vs.species_id,
         )
 
-        return {'message': 'Confirmed', 'updated_count': len(to_confirm)}, 200
+        return {
+            'message': 'Confirmed',
+            'updated_count': len(to_confirm),
+            'apply_scope': apply_scope,
+        }, 200
 
     @app.route('/api/ui/corrections/recent', methods=['GET'])
     def recent_corrections():
@@ -221,6 +260,11 @@ def register_ui_corrections_dataset_routes(app):
                 'from_species_name': parsed.get('from_species_name'),
                 'to_species_name': parsed.get('to_species_name'),
                 'updated_count': parsed.get('updated_count'),
+                'apply_scope': parsed.get('apply_scope') or 'legacy_fanout',
+                'reason': parsed.get('reason'),
+                'video_id': parsed.get('video_id'),
+                'track_id': parsed.get('track_id'),
+                'species_visit_id': parsed.get('species_visit_id'),
             })
         return out, 200
 
@@ -231,6 +275,8 @@ def register_ui_corrections_dataset_routes(app):
 
         data = request.json or {}
         source = normalize_correction_source(data.get('source'))
+        apply_scope = normalize_apply_scope(data.get('apply_scope'))
+        reason = (data.get('reason') or '').strip() or None
         species_id = data.get('species_id')
         if species_id is None:
             return {'error': 'species_id is required'}, 400
@@ -254,14 +300,19 @@ def register_ui_corrections_dataset_routes(app):
         if vs.species_id == species_id:
             return {'message': 'Species unchanged'}, 200
 
-        to_update_set = set()
-        for v in vs.video.video_species:
-            if v.species_id == old_species_id:
-                to_update_set.add(v)
-        if old_visit:
-            for v in old_visit.video_species:
-                to_update_set.add(v)
-        to_update = list(to_update_set)
+        if apply_scope == 'single_track':
+            to_update = [vs]
+        elif apply_scope == 'whole_visit' and old_visit:
+            to_update = list(old_visit.video_species)
+        else:
+            to_update_set = set()
+            for v in vs.video.video_species:
+                if v.species_id == old_species_id:
+                    to_update_set.add(v)
+            if old_visit:
+                for v in old_visit.video_species:
+                    to_update_set.add(v)
+            to_update = list(to_update_set)
         old_visits = {v.species_visit for v in to_update if v.species_visit}
 
         visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
@@ -314,9 +365,17 @@ def register_ui_corrections_dataset_routes(app):
             from_species_name=old_species_name,
             to_species_name=species.name,
             updated_count=updated_count,
+            apply_scope=apply_scope,
+            reason=reason,
+            video_id=vs.video_id,
+            track_id=vs.track_id,
+            species_visit_id=vs.species_visit_id,
+            from_species_id=old_species_id,
+            to_species_id=species.id,
         )
         return {
             'message': 'Species updated' + (f' ({updated_count} videos)' if updated_count > 1 else ''),
             'species_id': species_id,
             'updated_count': updated_count,
+            'apply_scope': apply_scope,
         }, 200

@@ -2,6 +2,22 @@
 
 Краткий журнал автоматических проверок перед возвратом к roadmap. Полный цикл — см. [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), [TESTING.ru.md](./TESTING.ru.md).
 
+## Offline-оценка fusion-калибровки
+
+1. Выгрузить decision traces процессора в CSV:
+
+```bash
+python3 scripts/export_fusion_training_data.py --out /tmp/fusion_traces.csv --source db
+```
+
+2. Посчитать calibration-метрики и selective prediction:
+
+```bash
+python3 scripts/eval_fusion_calibration.py --data /tmp/fusion_traces.csv --label-col valid_track_label --slice-field audio_evidence --slice-field decision_kind
+```
+
+3. Если есть обученный fusion state, добавьте `--model-path app/processor/models/fusion/fusion_state.pt`.
+
 ## 2026-04-02 — cleanup, удаление backend-хвостов и финальная полировка
 
 | Проверка | Результат |

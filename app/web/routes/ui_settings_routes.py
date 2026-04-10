@@ -2,17 +2,22 @@
 
 import os
 import secrets
+from datetime import datetime, timezone
 
-from flask import request, session
+import yaml
+from flask import Response, request, session
 
-from app_config.app_config import app_config
+from app_config.app_config import app_config, migrate_legacy_homeassistant_from_weather
 from auth import (
     _check_verify_password_rate_limit,
     _clear_verify_password_attempts,
     _record_verify_password_failure,
+    admin_settings_yaml_access,
     client_ip_for_rate_limit,
     contributor_or_admin_access,
     settings_check_access,
+    settings_read_access,
+    settings_yaml_safe_export_access,
     verify_password_retry_after_seconds,
 )
 from services.cache import cache_delete_prefix
@@ -92,9 +97,16 @@ def register_ui_settings_routes(app):
         _record_verify_password_failure(ip)
         return {'ok': False}, 401
 
+    @app.route('/api/ui/settings/logout', methods=['POST'])
+    def settings_logout():
+        """Сброс сессии входа (оператор/админ) — для смены пользователя за одним ПК."""
+        session.pop('access_role', None)
+        session.pop('settings_unlocked', None)
+        return {'ok': True}, 200
+
     @app.route('/api/ui/settings', methods=['GET'])
     def get_settings():
-        if not settings_check_access():
+        if not settings_read_access():
             return {'error': 'Password required'}, 403
         from services.cache import redis_url_effective_masked_for_api
 
@@ -111,9 +123,94 @@ def register_ui_settings_routes(app):
 
         return build_ebird_mapping_suggestions(), 200
 
+    @app.route('/api/ui/settings/yaml-export', methods=['GET'])
+    def settings_yaml_export():
+        """Скачать user_config: safe — ***, оператор+админ; full — с секретами, только админ (+MCP)."""
+        mode = (request.args.get('mode') or 'safe').strip().lower()
+        stamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        if mode == 'full':
+            if not admin_settings_yaml_access():
+                return {'error': 'Forbidden'}, 403
+            ack = (request.args.get('ack') or '').strip().lower()
+            if ack not in ('full', '1', 'yes', 'true'):
+                return {
+                    'error': 'Full export includes secrets; add query ack=full to confirm.',
+                }, 400
+            path = app_config.user_config_file
+            if not os.path.isfile(path):
+                body = '# birdlense user_config (empty)\n'
+            else:
+                with open(path, 'r', encoding='utf-8') as f:
+                    body = f.read()
+            return Response(
+                body,
+                mimetype='application/x-yaml',
+                headers={
+                    'Content-Disposition': f'attachment; filename="user_config_full_{stamp}.yaml"',
+                },
+            )
+        if mode != 'safe':
+            return {'error': 'mode must be safe or full'}, 400
+        if not settings_yaml_safe_export_access():
+            return {'error': 'Forbidden'}, 403
+        raw = app_config.load_raw_user_config_dict()
+        masked = app_config.mask_sensitive_in_user_tree(raw)
+        body = yaml.safe_dump(
+            masked,
+            allow_unicode=True,
+            default_flow_style=False,
+            sort_keys=False,
+        )
+        return Response(
+            body,
+            mimetype='application/x-yaml',
+            headers={
+                'Content-Disposition': f'attachment; filename="user_config_safe_{stamp}.yaml"',
+            },
+        )
+
+    @app.route('/api/ui/settings/yaml-import', methods=['POST'])
+    def settings_yaml_import():
+        """Импорт YAML в user_config: merge с текущим user, *** не перезаписывают секреты."""
+        if not admin_settings_yaml_access():
+            return {'error': 'Forbidden'}, 403
+        f = request.files.get('file')
+        if not f or not f.filename:
+            return {'error': 'Missing file'}, 400
+        try:
+            raw = f.read().decode('utf-8')
+            incoming = yaml.safe_load(raw)
+        except (UnicodeDecodeError, yaml.YAMLError) as e:
+            return {'error': 'Invalid YAML: %s' % e}, 400
+        if not isinstance(incoming, dict):
+            return {'error': 'YAML root must be a mapping'}, 400
+        incoming = app_config.filter_sensitive_placeholders(incoming)
+        existing = app_config.load_raw_user_config_dict()
+        merged_user = app_config.merge_dicts(existing, incoming)
+        if migrate_legacy_homeassistant_from_weather(merged_user):
+            pass
+        issues = app_config.validate_user_config_tree(merged_user)
+        if issues:
+            return {'error': 'Validation failed', 'issues': issues}, 400
+        try:
+            app_config._persist_raw_user_config(merged_user)
+            app_config.reload()
+        except OSError as e:
+            app.logger.exception('YAML import persist failed')
+            return {'error': str(e)}, 500
+        bust_response_caches()
+        cache_delete_prefix('ebird_region_comparison:')
+        from services.cache import reset_redis_client
+
+        reset_redis_client()
+        return {
+            'ok': True,
+            'message': 'Settings imported. Restart processor if it should pick up changes.',
+        }, 200
+
     @app.route('/api/ui/settings', methods=['PATCH'])
     def update_settings():
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         try:
             updates = request.json
@@ -130,6 +227,8 @@ def register_ui_settings_routes(app):
                     if (c.get('stream_name') or '').strip()
                 ]
 
+            if session.get('access_role') == 'contributor' and _has_contributor_tier():
+                updates = app_config.strip_contributor_admin_only_updates(updates)
             updates = app_config.filter_sensitive_placeholders(updates)
 
             if isinstance(updates.get('secrets'), dict):
@@ -171,7 +270,7 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/restart-processor', methods=['POST'])
     def restart_processor():
-        if not settings_check_access():
+        if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
         base = data_dir()
         flag_path = os.path.join(base, 'restart_processor.flag')

@@ -192,6 +192,7 @@ Pigeon Guillemot|Skuas and Alcids
 Bonaparte's Gull|Gulls, Terns, and Allies
 White-winged Scoter|Ducks, Geese, and Swans
 Ruffed Grouse|Grouse, Quail, and Allies
+Hazel Grouse|Grouse, Quail, and Allies
 Common Loon|Loons
 Pelagic Cormorant|Frigatebirds, Boobies, Cormorants, Darters, and Allies
 Inca Dove|Pigeons and Doves

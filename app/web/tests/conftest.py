@@ -4,6 +4,12 @@ import sys
 
 import pytest
 
+# Не наследовать «прод» и секреты хоста разработчика (иначе 403 и рассинхрон MCP Bearer).
+os.environ.pop('BIRDLENSE_ENV', None)
+os.environ.pop('MCP_TOKEN', None)
+if (os.environ.get('FLASK_ENV') or '').strip().lower() in ('production', 'prod'):
+    os.environ['FLASK_ENV'] = 'development'
+
 # Set test DB before any app imports
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 # Не поднимать фоновый sampler метрик в тестах (поток + psutil sleep).
@@ -44,6 +50,8 @@ def app():
     app_config.set('weather.ha_url', '')
     app_config.set('homeassistant.token', '')
     app_config.set('homeassistant.url', '')
+    app_config.set('notifications.telegram_proxy_type', '')
+    app_config.set('notifications.telegram_proxy_url', '')
     app = create_app()
     app.config['TESTING'] = True
     return app
@@ -53,3 +61,39 @@ def app():
 def client(app):
     """Flask test client."""
     return app.test_client()
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_test_state():
+    """Autouse fixture to reset global in-memory caches and module-level status between tests.
+
+    This avoids test-ordering flakiness caused by shared process-level state
+    (in-memory cache, module-level status dicts, MQTT clients).
+    """
+    # Reset in-memory cache store
+    try:
+        from services import cache as _cache
+        with _cache._lock:
+            _cache._store.clear()
+    except Exception:
+        pass
+    # Reset UI long-job status (shared module, not ui_system_routes)
+    try:
+        import routes.ui_system_jobs_state as _js
+        idle = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
+        _js._regenerate_status = dict(idle)
+        _js._regenerate_tracks_status = dict(idle)
+        _js._species_metadata_status = dict(idle)
+        _js._catalog_cards_status = dict(idle)
+        _js._fusion_export_status = dict(idle)
+        _js._fusion_eval_status = dict(idle)
+        _js._telegram_proxy_refresh_status = dict(idle)
+    except Exception:
+        pass
+    # Reset feed service mqtt client
+    try:
+        import services.feed_service as _fs
+        _fs._mqtt_client = None
+    except Exception:
+        pass
+    yield

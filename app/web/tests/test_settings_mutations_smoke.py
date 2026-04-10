@@ -160,6 +160,23 @@ def test_video_stream_allows_contributor_when_stream_auth_required(
         db.session.commit()
 
 
+def test_settings_logout_clears_session(client, monkeypatch):
+    """POST /api/ui/settings/logout сбрасывает access_role для следующего входа."""
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    _patch_general_key(monkeypatch, 'settings_password', 'x')
+    _patch_general_key(monkeypatch, 'contributor_password', 'y')
+
+    with client.session_transaction() as sess:
+        sess['access_role'] = 'admin'
+        sess['settings_unlocked'] = True
+
+    assert client.post('/api/ui/settings/logout').status_code == 200
+    r = client.get('/api/ui/settings/check-access')
+    assert r.status_code == 200
+    assert r.get_json().get('unlocked') is False
+
+
 def test_settings_patch_general_with_admin_session(app, client, monkeypatch):
     """PATCH /api/ui/settings успешно мержит безопасное поле (admin в сессии)."""
     from app_config.app_config import app_config
@@ -187,3 +204,67 @@ def test_settings_patch_general_with_admin_session(app, client, monkeypatch):
         assert app_config.get('general.donate_url') == token
     finally:
         app_config.set('general.donate_url', old_donate)
+
+
+def test_settings_patch_contributor_merges_safe_field(app, client, monkeypatch):
+    """Оператор может PATCH; админские пароли из payload не применяются."""
+    from app_config.app_config import app_config
+
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    _patch_general_key(monkeypatch, 'settings_password', 'admin-real')
+    _patch_general_key(monkeypatch, 'contributor_password', 'contrib-real')
+    monkeypatch.setattr(app_config, 'save', lambda: None)
+
+    token = f'https://contrib-patch-{id(app)}.example/donate'
+    old_donate = app_config.get('general.donate_url')
+    try:
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'contributor'
+
+        r = client.patch(
+            '/api/ui/settings',
+            json={
+                'general': {
+                    'donate_url': token,
+                    'settings_password': 'should-not-apply',
+                    'contributor_password': 'also-ignored',
+                },
+            },
+            content_type='application/json',
+        )
+        assert r.status_code == 200
+        assert app_config.get('general.donate_url') == token
+        assert app_config.get('general.settings_password') == 'admin-real'
+        assert app_config.get('general.contributor_password') == 'contrib-real'
+    finally:
+        app_config.set('general.donate_url', old_donate)
+
+
+def test_settings_patch_contributor_placeholder_does_not_wipe_telegram_token(
+    app, client, monkeypatch,
+):
+    """*** в PATCH не затирает секрет (как у админа)."""
+    from app_config.app_config import app_config
+
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    _patch_general_key(monkeypatch, 'settings_password', 'a')
+    _patch_general_key(monkeypatch, 'contributor_password', 'c')
+    monkeypatch.setattr(app_config, 'save', lambda: None)
+
+    real = f'tg-token-{id(app)}'
+    app_config.config.setdefault('notifications', {})['telegram_bot_token'] = real
+    try:
+        with client.session_transaction() as sess:
+            sess['access_role'] = 'contributor'
+
+        r = client.patch(
+            '/api/ui/settings',
+            json={'notifications': {'telegram_bot_token': '***'}},
+            content_type='application/json',
+        )
+        assert r.status_code == 200
+        assert app_config.get('notifications.telegram_bot_token') == real
+    finally:
+        (app_config.config.get('notifications') or {}).pop('telegram_bot_token', None)

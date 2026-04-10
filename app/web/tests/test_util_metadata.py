@@ -116,3 +116,107 @@ class TestINaturalistMetadata:
         assert image_url is None
         assert description is None
         assert source_url is None
+
+    def test_rejects_order_level_piciformes_hit(self, monkeypatch):
+        """Не брать Piciformes (taxon 17550) вместо вида — регрессия сорока/тукан."""
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    'results': [
+                        {
+                            'id': 17550,
+                            'name': 'Piciformes',
+                            'rank': 'order',
+                            'rank_level': 40,
+                            'iconic_taxon_name': 'Aves',
+                            'default_photo': {
+                                'medium_url': 'https://inaturalist-open-data.s3.amazonaws.com/photos/2964195/medium.jpg',
+                            },
+                            'wikipedia_summary': 'Woodpeckers order',
+                        },
+                    ],
+                }
+
+        monkeypatch.setattr(species_metadata_mod.requests, 'get', lambda *a, **k: _Resp())
+
+        image_url, description, source_url = (
+            get_inaturalist_image_and_description('Pica pica')
+        )
+        assert image_url is None
+        assert description is None
+        assert source_url is None
+
+    def test_binomial_picks_matching_species_row(self, monkeypatch):
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    'results': [
+                        {
+                            'id': 17550,
+                            'name': 'Piciformes',
+                            'rank': 'order',
+                            'rank_level': 40,
+                            'iconic_taxon_name': 'Aves',
+                            'default_photo': {'medium_url': 'https://example.com/wrong.jpg'},
+                            'wikipedia_summary': 'x',
+                        },
+                        {
+                            'id': 131,
+                            'name': 'Pica pica',
+                            'rank': 'species',
+                            'rank_level': 10,
+                            'iconic_taxon_name': 'Aves',
+                            'default_photo': {'medium_url': 'https://example.com/magpie.jpg'},
+                            'wikipedia_summary': 'Magpie',
+                        },
+                    ],
+                }
+
+        monkeypatch.setattr(species_metadata_mod.requests, 'get', lambda *a, **k: _Resp())
+
+        image_url, description, source_url = (
+            get_inaturalist_image_and_description('Pica pica')
+        )
+        assert image_url == 'https://example.com/magpie.jpg'
+        assert 'Magpie' in (description or '')
+        assert source_url == 'https://www.inaturalist.org/taxa/131'
+
+
+class TestEnWikipediaBirdTitleVariant:
+    def test_eurasian_magpie_matches_wikipedia_url_style(self):
+        from web.species_metadata import _en_wikipedia_bird_title_variant
+
+        assert _en_wikipedia_bird_title_variant('Eurasian Magpie') == 'Eurasian magpie'
+        assert _en_wikipedia_bird_title_variant('Great Tit') == 'Great tit'
+
+
+class TestAllowlistScientificForDisplayName:
+    """Бином из allowlist для общего имени вида в БД (регрессия сороки / Pica pica)."""
+
+    def test_magpie_common_name_maps_to_pica_pica(self, tmp_path, monkeypatch):
+        from services.species_catalog_allowlist_service import (
+            allowlist_scientific_name_for_display_name,
+            _load_allowlist_names_cached,
+        )
+
+        p = tmp_path / 'allow.txt'
+        p.write_text('Pica pica (Eurasian Magpie)\n', encoding='utf-8')
+        abspath = str(p.resolve())
+
+        monkeypatch.setattr(
+            'services.species_catalog_allowlist_service.resolve_allowlist_path',
+            lambda _get: abspath,
+        )
+        _load_allowlist_names_cached.cache_clear()
+        assert (
+            allowlist_scientific_name_for_display_name(
+                'Eurasian Magpie', lambda *_a, **_k: None
+            )
+            == 'Pica pica'
+        )

@@ -51,14 +51,14 @@ export function ProcessorSection({ form }: Props) {
               {t('settings.confidenceThresholdsDesc')}
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.min_confidence_binary">
                   {(field) => (
                     <TextField
                       fullWidth
                       type="number"
                       inputProps={{ min: 0.05, max: 0.9, step: 0.05 }}
-                      value={field.state.value ?? 0.15}
+                      value={field.state.value ?? 0.22}
                       onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
                       label={t('settings.confidenceDetector')}
                       helperText={t('settings.confidenceDetectorHelp')}
@@ -66,7 +66,7 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.min_confidence_to_process">
                   {(field) => (
                     <TextField
@@ -81,7 +81,22 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <form.Field name="processor.min_confidence_to_notify">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 1, step: 0.05 }}
+                      value={field.state.value ?? 0.44}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.confidenceTelegram')}
+                      helperText={t('settings.confidenceTelegramHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <form.Field name="processor.dataset_min_confidence">
                   {(field) => (
                     <TextField
@@ -133,10 +148,25 @@ export function ProcessorSection({ form }: Props) {
                     <TextField
                       fullWidth
                       type="number"
-                      value={field.state.value ?? 3}
+                      value={field.state.value ?? 1}
                       onChange={(e) => field.handleChange(Number(e.target.value))}
                       label={t('settings.minTrackDuration')}
                       helperText={t('settings.minTrackDurationHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.min_box_size_px">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 16, max: 256, step: 1 }}
+                      value={field.state.value ?? 64}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.minBoxSizePx')}
+                      helperText={t('settings.minBoxSizePxHint')}
                     />
                   )}
                 </form.Field>
@@ -243,26 +273,7 @@ export function ProcessorSection({ form }: Props) {
                 {(birdnetBias) =>
                   birdnetBias ? (
                     <>
-                      <Grid size={{ xs: 12, sm: 4 }}>
-                        <form.Field name="processor.birdnet_mqtt_bias_window_seconds">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 10, max: 3600, step: 10 }}
-                              value={field.state.value ?? 120}
-                              onChange={(e) =>
-                                field.handleChange(
-                                  Math.max(10, Math.min(3600, Number(e.target.value) || 120)),
-                                )
-                              }
-                              label={t('settings.birdnetMqttBiasWindow')}
-                              helperText={t('settings.birdnetMqttBiasWindowHint')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <form.Field name="processor.birdnet_mqtt_bias_delta">
                           {(field) => (
                             <TextField
@@ -277,7 +288,7 @@ export function ProcessorSection({ form }: Props) {
                           )}
                         </form.Field>
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <form.Field name="processor.birdnet_mqtt_bias_floor">
                           {(field) => (
                             <TextField
@@ -409,6 +420,144 @@ export function ProcessorSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
+          <ServiceBlock title={t('settings.falsePositiveGuardrailsTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.falsePositiveGuardrailsDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <form.Field name="processor.detector_scope">
+                  {(field) => {
+                    const val = Array.isArray(field.state.value) ? field.state.value : [];
+                    const str = val.map((item) => String(item).trim()).filter(Boolean).join(', ');
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        value={str}
+                        onChange={(e) => {
+                          const items = e.target.value
+                            .split(/[\n,]/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          field.handleChange(items.length ? items : []);
+                        }}
+                        label={t('settings.detectorScope')}
+                        helperText={t('settings.detectorScopeHint')}
+                        placeholder="Bird, Squirrel"
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <form.Field name="processor.classifier_fallback_bird">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.state.value !== false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.classifierFallbackBird')}
+                      />
+                      <FormHelperText>{t('settings.classifierFallbackBirdHint')}</FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.included_bird_families">
+                  {(field) => {
+                    const val = Array.isArray(field.state.value) ? field.state.value : [];
+                    const str = val.map((item) => String(item).trim()).filter(Boolean).join('\n');
+                    return (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        value={str}
+                        onChange={(e) => {
+                          const items = e.target.value
+                            .split(/[\n,]/)
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          field.handleChange(items.length ? items : []);
+                        }}
+                        label={t('settings.birdFamilies')}
+                        helperText={t('settings.includedBirdFamiliesHint')}
+                        placeholder="Perching Birds"
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.lightGateTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.lightGateDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="processor.light_gate_enabled">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={field.state.value !== false}
+                            onChange={(e) => field.handleChange(e.target.checked)}
+                          />
+                        }
+                        label={t('settings.lightGateEnabled')}
+                      />
+                      <FormHelperText>{t('settings.lightGateEnabledHelp')}</FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.light_gate_min_brightness">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 255, step: 1 }}
+                      value={field.state.value ?? 25}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || undefined)
+                      }
+                      label={t('settings.lightGateMinBrightness')}
+                      helperText={t('settings.lightGateMinBrightnessHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="processor.light_gate_min_contrast">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 255, step: 1 }}
+                      value={field.state.value ?? 20}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || undefined)
+                      }
+                      label={t('settings.lightGateMinContrast')}
+                      helperText={t('settings.lightGateMinContrastHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
           <ServiceBlock title={t('settings.serviceProcessor')}>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -476,29 +625,307 @@ export function ProcessorSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
-          <ServiceBlock title={t('settings.serviceFrigate')}>
+          <ServiceBlock title={t('settings.frigateFusionTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.frigateFusionDesc')}
+            </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <form.Field name="motion.frigate_label_exclude">
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="detection.min_confidence_to_store">
                   {(field) => (
                     <TextField
                       fullWidth
-                      value={(field.state.value || []).join(', ')}
-                      onChange={(e) =>
-                        field.handleChange(
-                          (e.target.value || '')
-                            .split(',')
-                            .map((s) => s.trim())
-                            .filter(Boolean),
-                        )
-                      }
-                      label={t('settings.frigateLabelExclude')}
-                      placeholder="cat, dog"
-                      helperText={t('settings.frigateLabelExcludeHint')}
+                      type="number"
+                      inputProps={{ min: 0.05, max: 1, step: 0.02 }}
+                      value={field.state.value ?? 0.36}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || undefined)}
+                      label={t('settings.detectionMinConfidenceToStore')}
+                      helperText={t('settings.detectionMinConfidenceToStoreHint')}
                     />
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="detection.merge_window_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 1, max: 120, step: 1 }}
+                      value={field.state.value ?? 6}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 6)}
+                      label={t('settings.detectionMergeWindow')}
+                      helperText={t('settings.detectionMergeWindowHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="detection.dedup_window_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 5, max: 600, step: 1 }}
+                      value={field.state.value ?? 60}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 60)}
+                      label={t('settings.detectionDedupWindow')}
+                      helperText={t('settings.detectionDedupWindowHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="detection.one_per_species">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value !== false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.detectionOnePerSpecies')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.detectionOnePerSpeciesHint')}
+                </FormHelperText>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="detection.cross_source_confidence_bonus">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 0.3, step: 0.01 }}
+                      value={field.state.value ?? 0.02}
+                      onChange={(e) => field.handleChange(Number(e.target.value) || 0)}
+                      label={t('settings.detectionCrossSourceBonus')}
+                      helperText={t('settings.detectionCrossSourceBonusHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>
+                  {t('settings.frigateStandaloneHeading')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="detection.frigate_standalone_when_no_yolo">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value !== false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.frigateStandaloneWhenNoYolo')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.frigateStandaloneWhenNoYoloHint')}
+                </FormHelperText>
+              </Grid>
+              <form.Subscribe
+                selector={(state) => state.values.detection?.frigate_standalone_when_no_yolo}
+              >
+                {(standaloneOn) =>
+                  standaloneOn !== false ? (
+                    <>
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <form.Field name="detection.frigate_standalone_min_score">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 1, step: 0.05 }}
+                              value={field.state.value ?? 0.4}
+                              onChange={(e) =>
+                                field.handleChange(Number(e.target.value) || undefined)
+                              }
+                              label={t('settings.frigateStandaloneMinScore')}
+                              helperText={t('settings.frigateStandaloneMinScoreHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <form.Field name="detection.frigate_standalone_missing_score_fallback">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 1, step: 0.05 }}
+                              value={
+                                field.state.value === undefined ||
+                                field.state.value === null
+                                  ? 0.68
+                                  : field.state.value
+                              }
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  field.handleChange(undefined);
+                                  return;
+                                }
+                                const n = Number(raw);
+                                field.handleChange(Number.isNaN(n) ? undefined : n);
+                              }}
+                              label={t('settings.frigateStandaloneMissingFallback')}
+                              helperText={t('settings.frigateStandaloneMissingFallbackHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <form.Field name="detection.frigate_standalone_notify">
+                          {(field) => (
+                            <FormControl fullWidth>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={field.state.value !== false}
+                                    onChange={(e) => field.handleChange(e.target.checked)}
+                                  />
+                                }
+                                label={t('settings.frigateStandaloneNotify')}
+                              />
+                              <FormHelperText>
+                                {t('settings.frigateStandaloneNotifyHint')}
+                              </FormHelperText>
+                            </FormControl>
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
+                          {t('settings.frigateStandaloneExcludedHeading')}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {t('settings.frigateStandaloneExcludedIntro')}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <form.Field name="detection.frigate_standalone_excluded_min_score">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 1, step: 0.05 }}
+                              value={field.state.value ?? 0}
+                              onChange={(e) =>
+                                field.handleChange(Number(e.target.value) || 0)
+                              }
+                              label={t('settings.frigateStandaloneExcludedMinScore')}
+                              helperText={t('settings.frigateStandaloneExcludedMinScoreHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <form.Field name="detection.frigate_standalone_excluded_missing_score_fallback">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 1, step: 0.05 }}
+                              value={
+                                field.state.value === undefined ||
+                                field.state.value === null
+                                  ? 0.58
+                                  : field.state.value
+                              }
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  field.handleChange(undefined);
+                                  return;
+                                }
+                                const n = Number(raw);
+                                field.handleChange(Number.isNaN(n) ? undefined : n);
+                              }}
+                              label={t('settings.frigateStandaloneExcludedMissingFallback')}
+                              helperText={t(
+                                'settings.frigateStandaloneExcludedMissingFallbackHint',
+                              )}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                    </>
+                  ) : null
+                }
+              </form.Subscribe>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                  {t('settings.absorbGenericBirdHeading')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="detection.absorb_generic_bird">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value !== false}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.absorbGenericBird')}
+                    />
+                  )}
+                </form.Field>
+                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                  {t('settings.absorbGenericBirdHint')}
+                </FormHelperText>
+              </Grid>
+              <form.Subscribe selector={(state) => state.values.detection?.absorb_generic_bird}>
+                {(absorb) =>
+                  absorb !== false ? (
+                    <>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <form.Field name="detection.absorb_generic_bird_overlap_min_sec">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 10, step: 0.05 }}
+                              value={field.state.value ?? 0.1}
+                              onChange={(e) =>
+                                field.handleChange(Number(e.target.value) || 0.1)
+                              }
+                              label={t('settings.absorbGenericBirdOverlap')}
+                              helperText={t('settings.absorbGenericBirdOverlapHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <form.Field name="detection.absorb_generic_bird_min_classifier_confidence">
+                          {(field) => (
+                            <TextField
+                              fullWidth
+                              type="number"
+                              inputProps={{ min: 0, max: 1, step: 0.02 }}
+                              value={field.state.value ?? 0.24}
+                              onChange={(e) =>
+                                field.handleChange(Number(e.target.value) || undefined)
+                              }
+                              label={t('settings.absorbGenericBirdMinClassifier')}
+                              helperText={t('settings.absorbGenericBirdMinClassifierHint')}
+                            />
+                          )}
+                        </form.Field>
+                      </Grid>
+                    </>
+                  ) : null
+                }
+              </form.Subscribe>
             </Grid>
           </ServiceBlock>
 

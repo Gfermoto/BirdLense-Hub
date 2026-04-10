@@ -21,56 +21,111 @@ general:
 processor:
   tracker: "bytetrack.yaml"
   max_record_seconds: 60
+  # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
+  file_max_record_floor_seconds: 86400
   max_inactive_seconds: 10
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 0
-  # Мин. длительность трека ByteTrack (сек). 4с часто срезает короткие визиты на кормушке → только Frigate в API.
-  # 2с — баланс bbox/треков и шума; при мельканиях поднимите до 2.5–3.
-  min_track_duration: 2
+  # Мин. длительность трека ByteTrack (сек). Короткие визиты (белка) — 0.9–1.0; при шуме поднимите.
+  min_track_duration: 1.0
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
-  # Отдельная стратегия детекции для batch-перегенерации треков.
-  # В production можно ускорить, выставив single_stage только для регенерации.
-  track_regen_detection_strategy: single_stage
+  # Отдельная стратегия детекции для batch-перегенерации треков (только two_stage: binary .pt + classifier .pt).
+  track_regen_detection_strategy: two_stage
   # Размер кадра для batch-перегенерации треков (px). Меньше = быстрее, но грубее bbox.
   track_regen_lores_px: 512
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 300
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
   track_regen_precise_timeout_sec: 420
-  # Более быстрый precise fallback для recovery: local-scoped single-stage вместо тяжёлого global two-stage.
-  track_regen_precise_detection_strategy: single_stage
+  # Точный fallback-проход (другой lores/frame_step/min_center_dist); стратегия та же — two_stage.
+  track_regen_precise_detection_strategy: two_stage
   # Для recovery fallback допускаем птиц ближе к краям кадра, иначе feeder-side perches теряются.
   track_regen_precise_min_center_dist: 0.02
   # При перегенерации не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
-  min_confidence_binary: 0.21  # Детектор «птица/не птица»; выше — меньше пустых записей без птицы
-  min_confidence_to_process: 0.32  # Классификатор (голосование × средняя); чуть ниже — чаще проходят короткие треки
+  # Размер lores для live/file-плейлиста и процессора (640 = прежнее поведение).
+  inference_lores_px: 640
+  # Перегенерация треков: как live-пайплайн — тот же lores (inference_lores_px), каждый кадр,
+  # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
+  track_regen_match_live_pipeline: false
+  # При ручной коррекции на ролике: не отбрасывать авто-детекции, пересекающиеся по времени
+  # с ручными строками (например Bird рядом с исправленной сорокой) — появятся параллельные
+  # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
+  track_regen_parallel_auto_with_manual: false
+  # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
+  min_confidence_binary: 0.30  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  min_confidence_to_process: 0.40  # Классификатор (combined); запись/БД
+  # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
+  min_confidence_to_notify: 0.46
+  # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
+  light_gate_enabled: true
+  light_gate_min_brightness: 25
+  light_gate_min_contrast: 20
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
-  species_confidence_overrides: {}  # напр. {"Pileated Woodpecker": 0.05, "Golden Eagle": 0.03}
+  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
   ebird_regional_top_confidence_delta: 0.03
   # Нижняя граница авто-порога (не ниже)
   ebird_regional_top_confidence_floor: 0.08
-  # BirdNET MQTT: снизить порог классификатора для видов из недавних сообщений (#129). Выкл. по умолчанию — без регрессии без MQTT.
+  # BirdNET MQTT: confidence-only bias для классификатора по недавним аудио-событиям (#129).
+  # BirdNET не создаёт финальный label и не мержится в video detections напрямую.
+  # Legacy-layer: сейчас это ещё threshold bias, но под ним уже может жить rolling audio prior.
   birdnet_mqtt_auto_confidence: false
-  birdnet_mqtt_bias_window_seconds: 120
   birdnet_mqtt_bias_delta: 0.05
   birdnet_mqtt_bias_floor: 0.05
+  # Rolling BirdNET prior: события копятся в окне 24h, не сбрасываются разом,
+  # а вытесняются по TTL 25h с time-decay по свежести.
+  birdnet_mqtt_prior_window_hours: 24
+  # Backward-compat alias (deprecated): old installs may still send this key in user_config;
+  # interpreted as seconds and converted to hours in processor.
+  birdnet_mqtt_bias_window_seconds: 0
+  birdnet_mqtt_prior_ttl_hours: 25
+  birdnet_mqtt_prior_half_life_hours: 6
+  birdnet_mqtt_prior_min_confidence: 0.0
+  # BirdNET observability logs for FIFO/parse reasons: off | info | debug.
+  # - info: only decision/prune reasons
+  # - debug: +accepted ingest and prior-window summaries
+  birdnet_mqtt_observability_level: info
+  # Emergency switch: keep level=info but also print debug-level BirdNET reason logs.
+  birdnet_mqtt_observability_debug: false
+  # Снимок FIFO BirdNET на диск (data/diagnostics/) для UI: процессор и веб — разные процессы.
+  birdnet_fifo_snapshot_enabled: true
+  birdnet_fifo_snapshot_interval_sec: 3
+  birdnet_fifo_snapshot_recent_limit: 80
+  # GET /api/ui/system/diagnostics/birdnet-fifo считает снимок устаревшим, если файл старше (сек).
+  birdnet_fifo_snapshot_stale_sec: 180
   # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
   multi_camera_groups: []  # например: [["BirdBox","Forest"]]
   multi_camera_confidence_boost: 0.03
   spectrogram_px_per_sec: 200
   # true — спектрограмма после каждой записи (FFmpeg+librosa). false — только если в окне записи было событие BirdNET MQTT.
   generate_spectrogram_always: true
-  # regional_species: [] — без локального BirdNET; YOLO использует все классы
+  # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
-  # single_stage + стандартный COCO (ровно 80 классов): только животные (bird, cat, dog, …), не person и не предметы.
-  # Старый ключ single_stage_coco_bird_only_auto всё ещё читается, если animals_only не задан.
+  # Scope детектора первого уровня. Production path: detector(Bird|Squirrel) -> classifier -> fusion.
+  detector_scope: ["Bird", "Squirrel"]
+  # Планировщик классификации species внутри кадра: priority | round_robin.
+  classification_scheduler: priority
+  max_classifications_per_frame: 2
+  max_blur_checks: 3
+  blur_threshold: 100.0
+  # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
+  # Для мелких птиц у кромки кормушки снижайте до 0.03-0.05.
+  min_center_dist: 0.1
+  # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
+  binary_imgsz: 320
+  # Small boxes on feeder scenes are often debris or motion noise.
+  min_box_size_px: 78
+  key_frame_limit: 3
+  # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
+  # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
+  classifier_fallback_bird: true
+  # Устарело: single_stage / NCNN не используются в runtime и track regen (оставлено для совместимости чтения конфига).
   single_stage_coco_animals_only_auto: true
   included_bird_families:
     - "Perching Birds"
@@ -78,24 +133,38 @@ processor:
     - "Woodpeckers"
   save_images: false
   # Сохранять best_frame в data/dataset/train/<Species>/ для экспорта и дообучения
-  save_dataset_crops: false
-  dataset_min_confidence: 0.55
+  save_dataset_crops: true
+  dataset_min_confidence: 0.58
+  # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
+  keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
   models:
-    # Продакшен: x86/amd64 + веса .pt (PyTorch). single_stage (NCNN) — опционально на amd64; ARM не поддерживается.
-    single_stage: "models/detection/nabirds_yolov8n_ncnn_model"
+    # Production: только binary + classifier (.pt). single_stage в коде не подключается.
+    single_stage: "yolo11n.pt"
     binary: "models/detection/weights/best.pt"
     classifier: "models/classification/weights/best.pt"
 
-# Video source: go2rtc | file (file only via CLI arg)
+# Video source: go2rtc | file
 video:
   source: go2rtc
+  # Для тестового режима source=file: абсолютный путь к mp4.
+  file_path: ""
+  # Для тестового режима source=file: если file_path пуст, используется плейлист из всех видео в папке.
+  # В Docker смонтирован только /app/data — путь /workspace/datasets не существует без доп. volume.
+  file_dir: "/app/data/file_test"
+  # Для тестового режима source=file: зациклить файл (true) или остановиться в конце (false).
+  file_loop: false
+  # true — имитировать realtime (пропуск кадров по elapsed), false — кадр за кадром для дебага.
+  file_realtime_simulation: false
   # Хост Go2RTC: http://IP:1984
   go2rtc_url: ""
   go2rtc_username: ""
   go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
+  # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
+  # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
+  record_stream_codec: h264
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
   cameras: []
   # Пример после добавления:
@@ -114,9 +183,17 @@ motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
   check_every_n_frames: 2
+  # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
+  opencv_diff_threshold: 22
+  opencv_min_contour_area: 320
   frigate_camera_filter: []  # from cameras list; frigate/events
-  frigate_label_filter: ["bird", "Bird"]
-  frigate_label_exclude: ["cat", "dog"]  # игнорировать (мышь как кошка/собака)
+  # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
+  # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.
+  frigate_label_filter: ["bird", "Bird", "jay", "Jay", "corvid", "Corvid", "squirrel", "Squirrel", "animal", "Animal"]
+  # Не подмешивать в merge как вид; запись по Frigate всё равно может стартовать по box/region.
+  frigate_label_exclude: ["cat", "dog"]
+  # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).
+  frigate_trigger_on_tracked_object: true
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
   esphome_url: ""
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
@@ -135,18 +212,39 @@ mqtt:
   # Home Assistant MQTT Autodiscovery — публикация config и state для автообнаружения
   ha_discovery: true
 
-# Detection merging (YOLO + Frigate + BirdNET)
+# Detection fusion (detector/classifier + Frigate promotion)
 detection:
   merge_window_seconds: 6
   dedup_window_seconds: 60
   # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
   one_per_species: true
-  # При конфликте (разные виды в одном временном окне): первый в списке = выше приоритет
-  source_priority: ["yolo", "frigate", "birdnet"]
-  # Без дообучения: при первом совпадении вида с MQTT (Frigate/BirdNET) и YOLO — разово +bonus к confidence (потолок 1.0)
+  # Generic «Bird» + тот же ролик с уверенным видом (YOLO classifier / accepted_species) → один результат
+  absorb_generic_bird: true
+  absorb_generic_bird_overlap_min_sec: 0.1
+  absorb_generic_bird_min_classifier_confidence: 0.24
+  # При конфликте разных sources: YOLO track остаётся primary, Frigate помогает promotion/boost.
+  source_priority: ["yolo", "frigate"]
+  # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
-  # Не ниже практического порога классификатора; синхронизировано с processor.min_confidence_to_process
-  min_confidence_to_store: 0.30
+  # Ниже порога детекция отбрасывается после fusion; держите чуть ниже processor.min_confidence_to_process
+  min_confidence_to_store: 0.36
+  # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
+  # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
+  frigate_standalone_when_no_yolo: true
+  # Мин. top_score Frigate для обычных лейблов (птица и т.д.). Ниже — мягче, больше записей в БД.
+  frigate_standalone_min_score: 0.40
+  # Если score в MQTT = 0 (часто snapshot), подставить для standalone; 0 = не подставлять.
+  frigate_standalone_missing_score_fallback: 0.68
+  # Лейблы из motion.frigate_label_exclude (cat/dog): только БД, без merge в YOLO и без Telegram.
+  frigate_standalone_excluded_min_score: 0.0
+  frigate_standalone_excluded_missing_score_fallback: 0.58
+  # false — standalone-визиты в БД без фото в Telegram (min_confidence_to_notify всё равно для остальных).
+  frigate_standalone_notify: true
+  # Learned fusion: optional learned scorer to blend multimodal signals and produce
+  # a calibrated confidence. Disabled by default for safety.
+  use_learned_fusion: false
+  fusion_model_path: ""  # optional path to serialized PyTorch model for fusion scorer
+  fusion_alpha: 0.6      # blend weight for learned score (alpha * learned + (1-alpha) * base)
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
@@ -166,6 +264,9 @@ detection:
     "Streptopelia decaocto (Eurasian Collared-Dove)": "Eurasian Collared-Dove"
     "Pica pica (Eurasian Magpie)": "Eurasian Magpie"
     "Corvus corone (Carrion Crow)": "Carrion Crow"
+    "Tetrastes bonasia (Hazel Grouse)": "Hazel Grouse"
+    "Hazel_Grouse": "Hazel Grouse"
+    "Rodent": "Rodent"
     "Corvus cornix (Hooded Crow)": "Hooded Crow"
     "Corvus_cornix": "Hooded Crow"
     "Hooded_Crow": "Hooded Crow"

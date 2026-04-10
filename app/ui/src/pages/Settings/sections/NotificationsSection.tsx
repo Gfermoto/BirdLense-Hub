@@ -4,6 +4,7 @@ import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
+import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -26,6 +27,7 @@ import type { Settings } from '../../../types';
 import {
   fetchCoordinatesByZip,
   fetchVapidPublicKey,
+  refreshTelegramProxy,
   subscribePush,
   updateSettings,
   sendTestNotification,
@@ -148,6 +150,42 @@ function TestTelegramButton({ notificationsEnabled }: { notificationsEnabled: bo
   );
 }
 
+function RefreshTelegramProxyButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [msg, setMsg] = useState<string>('');
+
+  const handleRefresh = async () => {
+    if (!notificationsEnabled) return;
+    setStatus('loading');
+    setMsg('');
+    const result = await refreshTelegramProxy();
+    setStatus(result.success ? 'success' : 'error');
+    setMsg(result.message || '');
+  };
+
+  return (
+    <Box>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={handleRefresh}
+        disabled={!notificationsEnabled || status === 'loading'}
+      >
+        {status === 'loading' ? '...' : t('settings.refreshTelegramProxy')}
+      </Button>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        {t('settings.refreshTelegramProxyHint')}
+      </Typography>
+      {msg && (
+        <Typography variant="body2" color={status === 'success' ? 'text.secondary' : 'error'} sx={{ mt: 0.5, ml: 1, display: 'inline' }}>
+          {msg}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
   observedSpecies: Array<{ id: number; name: string; count: number }>;
@@ -233,7 +271,10 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                         </form.Field>
                       </Grid>
                       <Grid size={{ xs: 12 }}>
-                        <TestTelegramButton notificationsEnabled={!!notificationsEnabled} />
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="flex-start">
+                    <TestTelegramButton notificationsEnabled={!!notificationsEnabled} />
+                    <RefreshTelegramProxyButton notificationsEnabled={!!notificationsEnabled} />
+                  </Stack>
                       </Grid>
                       <Grid size={{ xs: 12 }}>
                         <form.Field name="notifications.base_url">
