@@ -10,7 +10,8 @@ LEGACY_DEST="${ROOT}/app/yolo11n.pt"
 DETECTOR_ZIP="${DETECTOR_ZIP:-${ROOT}/app/processor/models/detection/nabirds_yolo11n_binary.zip}"
 DETECTOR_DEST="${ROOT}/app/processor/models/detection/weights/best.pt"
 CLASSIFIER_DEST="${ROOT}/app/processor/models/classification/weights/best.pt"
-CLASSIFIER_URL="${CLASSIFIER_URL:-https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/main/best.pt}"
+# Пин ревизии HF (не main): иначе при обновлении ветки ломается CHECKSUMS/CI.
+CLASSIFIER_URL="${CLASSIFIER_URL:-https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/c6af5aa595cbb1198a61bcf2f3f9c2adc3772dc9/best.pt}"
 
 usage() {
   cat <<'EOF'
