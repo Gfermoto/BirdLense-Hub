@@ -16,6 +16,7 @@ from auth import (
     client_ip_for_rate_limit,
     contributor_or_admin_access,
     settings_check_access,
+    settings_read_access,
     settings_yaml_safe_export_access,
     verify_password_retry_after_seconds,
 )
@@ -105,7 +106,7 @@ def register_ui_settings_routes(app):
 
     @app.route('/api/ui/settings', methods=['GET'])
     def get_settings():
-        if not contributor_or_admin_access():
+        if not settings_read_access():
             return {'error': 'Password required'}, 403
         from services.cache import redis_url_effective_masked_for_api
 

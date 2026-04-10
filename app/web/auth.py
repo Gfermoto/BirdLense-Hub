@@ -36,24 +36,32 @@ def _has_contributor_password():
     return bool((app_config.get('general.contributor_password') or '').strip())
 
 
+def mcp_bearer_authorized():
+    """True если заголовок Authorization: Bearer совпадает с MCP_TOKEN / mcp.token."""
+    from flask import request
+
+    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
+    if not mcp_token:
+        return False
+    auth = request.headers.get('Authorization') or ''
+    if not auth.startswith('Bearer '):
+        return False
+    token = auth[7:].strip()
+    return secrets.compare_digest(token, mcp_token)
+
+
 def settings_check_access():
     """Check admin access for settings, feed, and system endpoints.
 
     Backward compat: no password = full access outside production.
     Also accepts MCP token (Authorization: Bearer) for server-to-server calls.
     """
-    from flask import session, request
+    from flask import session
     admin_pw = (app_config.get('general.settings_password') or '').strip()
     contrib_pw = (app_config.get('general.contributor_password') or '').strip()
 
-    # MCP token из настроек — для вызовов MCP-сервера к API (Get_app_settings и т.д.)
-    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
-    if mcp_token:
-        auth = request.headers.get('Authorization') or ''
-        if auth.startswith('Bearer '):
-            token = auth[7:].strip()
-            if secrets.compare_digest(token, mcp_token):
-                return True
+    if mcp_bearer_authorized():
+        return True
 
     if not admin_pw and not contrib_pw:
         if _is_production_runtime():
@@ -65,6 +73,11 @@ def settings_check_access():
     if not contrib_pw and role and session.get('settings_unlocked'):
         return True  # legacy: single password
     return False
+
+
+def settings_read_access():
+    """GET /api/ui/settings: сессия оператор/админ или MCP Bearer (без сессии)."""
+    return contributor_or_admin_access() or mcp_bearer_authorized()
 
 
 def admin_track_regen_access():
@@ -79,15 +92,10 @@ def admin_track_regen_access():
 
 def admin_settings_yaml_access():
     """Полный YAML (секреты) и импорт: только админ при двух паролях; MCP Bearer — полный доступ."""
-    from flask import request, session
+    from flask import session
 
-    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
-    if mcp_token:
-        auth = request.headers.get('Authorization') or ''
-        if auth.startswith('Bearer '):
-            token = auth[7:].strip()
-            if secrets.compare_digest(token, mcp_token):
-                return True
+    if mcp_bearer_authorized():
+        return True
     if not settings_check_access():
         return False
     if not _has_contributor_password():
@@ -97,15 +105,8 @@ def admin_settings_yaml_access():
 
 def settings_yaml_safe_export_access():
     """Маскированный YAML: оператор (contributor) или админ; MCP Bearer — как у settings_check_access."""
-    from flask import request
-
-    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
-    if mcp_token:
-        auth = request.headers.get('Authorization') or ''
-        if auth.startswith('Bearer '):
-            token = auth[7:].strip()
-            if secrets.compare_digest(token, mcp_token):
-                return True
+    if mcp_bearer_authorized():
+        return True
     return contributor_or_admin_access()
 
 
