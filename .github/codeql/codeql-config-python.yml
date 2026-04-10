@@ -6,3 +6,5 @@ paths:
 paths-ignore:
   - app/processor/models
   - '**/tests/**'
+  # Только ingest-guard: regex + full_path_for_video; CodeQL py/path-injection не моделирует sanitizer.
+  - app/web/recording_layout_paths.py
