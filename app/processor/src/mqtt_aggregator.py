@@ -806,7 +806,8 @@ class MQTTEventAggregator:
                     cam_lower = {
                         str(c).strip().lower() for c in cam_f if str(c).strip()
                     }
-                    cam_ok = bool(cam_lower) and (
+                    # Пустой camera_filter = любая камера (как пустой label_filter).
+                    cam_ok = (not cam_lower) or (
                         str(camera or "").strip().lower() in cam_lower
                     )
                     labels_lower = {s.lower() for s in labels}
@@ -905,7 +906,7 @@ class MQTTEventAggregator:
                     cam_lower = {
                         str(c).strip().lower() for c in cam_f if str(c).strip()
                     }
-                    cam_ok = bool(cam_lower) and (
+                    cam_ok = (not cam_lower) or (
                         str(camera or "").strip().lower() in cam_lower
                     )
                     labels_lower = {s.lower() for s in labels}
