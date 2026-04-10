@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchSettingsRequiresPassword,
   checkSettingsAccess,
+  logoutSettingsSession,
 } from '../api/api';
 
 interface ProtectedAreaContextValue {
@@ -17,6 +18,8 @@ interface ProtectedAreaContextValue {
   unlocked: boolean;
   role: 'admin' | 'contributor' | null;
   setUnlocked: (value: boolean, role?: 'admin' | 'contributor') => void;
+  /** Сброс серверной сессии и локального состояния (смена оператор/админ за одним ПК). */
+  logoutAccess: () => Promise<void>;
   isLoading: boolean;
   accessError: 'network' | null;
   canEdit: boolean;
@@ -60,7 +63,16 @@ export function ProtectedAreaProvider({
   const setUnlocked = useCallback((value: boolean, role?: 'admin' | 'contributor') => {
     setUnlockedState(value);
     setRoleState(value && role ? role : null);
-    if (value) {
+    queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+    queryClient.invalidateQueries({ queryKey: ['settings'] });
+  }, [queryClient]);
+
+  const logoutAccess = useCallback(async () => {
+    try {
+      await logoutSettingsSession();
+    } finally {
+      setUnlockedState(false);
+      setRoleState(null);
       queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
       queryClient.invalidateQueries({ queryKey: ['settings'] });
     }
@@ -92,6 +104,7 @@ export function ProtectedAreaProvider({
       unlocked,
       role: unlocked ? (role || 'admin') : null,
       setUnlocked,
+      logoutAccess,
       isLoading,
       accessError,
       canEdit,
@@ -103,6 +116,7 @@ export function ProtectedAreaProvider({
       unlocked,
       role,
       setUnlocked,
+      logoutAccess,
       isLoading,
       accessError,
       canEdit,

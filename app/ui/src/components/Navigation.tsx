@@ -13,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
+import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -100,7 +101,7 @@ export function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.split('?')[0];
-  const { requiresPassword, unlocked, setUnlocked, isLoading } =
+  const { requiresPassword, unlocked, setUnlocked, logoutAccess, isLoading } =
     useProtectedArea();
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -124,8 +125,8 @@ export function Navigation() {
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleSettingsMenuClose = () => setSettingsMenuAnchor(null);
 
-  const handlePasswordSuccess = () => {
-    setUnlocked(true);
+  const handlePasswordSuccess = (role?: 'admin' | 'contributor') => {
+    setUnlocked(true, role || 'admin');
     setShowPasswordDialog(false);
     if (pendingAction) {
       if (pendingAction.type === 'openMenu' && gearButtonRef.current) {
@@ -159,6 +160,15 @@ export function Navigation() {
       setMobileMenuAnchor(null);
     }
   };
+
+  const handleLogout = async () => {
+    handleSettingsMenuClose();
+    handleMobileMenuClose();
+    await logoutAccess();
+    navigate('/');
+  };
+
+  const showLogout = requiresPassword && unlocked;
 
   return (
     <AppBar position="sticky" color="primary" sx={{ mb: 3 }}>
@@ -282,6 +292,15 @@ export function Navigation() {
               >
                 {t('nav.library')}
               </MenuItem>
+              {showLogout ? (
+                <>
+                  <Divider />
+                  <MenuItem onClick={() => void handleLogout()}>
+                    <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
+                    {t('nav.logout')}
+                  </MenuItem>
+                </>
+              ) : null}
 
               {/* Mobile: Status + Language */}
               <Divider />
@@ -502,6 +521,18 @@ export function Navigation() {
             >
               {t('nav.library')}
             </MenuItem>
+            {showLogout ? (
+              <>
+                <Divider />
+                <MenuItem
+                  onClick={() => void handleLogout()}
+                  sx={{ color: 'error.main' }}
+                >
+                  <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
+                  {t('nav.logout')}
+                </MenuItem>
+              </>
+            ) : null}
           </Menu>
         </Toolbar>
       </Container>

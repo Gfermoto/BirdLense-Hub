@@ -160,6 +160,23 @@ def test_video_stream_allows_contributor_when_stream_auth_required(
         db.session.commit()
 
 
+def test_settings_logout_clears_session(client, monkeypatch):
+    """POST /api/ui/settings/logout сбрасывает access_role для следующего входа."""
+    monkeypatch.delenv('BIRDLENSE_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    _patch_general_key(monkeypatch, 'settings_password', 'x')
+    _patch_general_key(monkeypatch, 'contributor_password', 'y')
+
+    with client.session_transaction() as sess:
+        sess['access_role'] = 'admin'
+        sess['settings_unlocked'] = True
+
+    assert client.post('/api/ui/settings/logout').status_code == 200
+    r = client.get('/api/ui/settings/check-access')
+    assert r.status_code == 200
+    assert r.get_json().get('unlocked') is False
+
+
 def test_settings_patch_general_with_admin_session(app, client, monkeypatch):
     """PATCH /api/ui/settings успешно мержит безопасное поле (admin в сессии)."""
     from app_config.app_config import app_config

@@ -610,6 +610,10 @@ export const verifySettingsPassword = async (
   }
 };
 
+export const logoutSettingsSession = async (): Promise<void> => {
+  await axios.post(`${BASE_API_URL}/settings/logout`, {}, { withCredentials: true });
+};
+
 export const fetchSettings = async () => {
   const response = await axios.get(`${BASE_API_URL}/settings`, {
     withCredentials: true,
