@@ -169,7 +169,6 @@ def merge_detections(
     cross_source_confidence_bonus: при первом слиянии MQTT (Frigate/BirdNET) в существующую
         видео-детекцию — разово прибавить к confidence (до 1.0), без дообучения моделей.
     """
-    from datetime import datetime, timezone
 
     source_priority = source_priority or ["yolo", "frigate", "birdnet"]
     species_mapping = species_mapping or {}

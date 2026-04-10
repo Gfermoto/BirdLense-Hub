@@ -2,7 +2,6 @@ import time
 import math
 import logging
 import cv2
-import numpy as np
 from light_level_detector import LightLevelDetector
 from detection_strategy import DetectionStrategy
 from app_config.app_config import app_config

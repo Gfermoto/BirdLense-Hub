@@ -1,5 +1,5 @@
-# Лёгкий профиль CI: без ложняков по /tmp в контейнере, тестам, кэшу на диске.
-# Ужесточать постепенно (см. bandit -r web/ -ll вручную).
+# Профиль CI: web/ + processor/src. /tmp и кэш в контейнере — пропуски осознанные.
+# torch.load с weights_only=True в fusion_model; MJPEG — nosec B104 в streaming_server.
 exclude_dirs:
   - web/tests
 skips:
