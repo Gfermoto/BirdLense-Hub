@@ -12,7 +12,7 @@ from app_startup import (
     bootstrap_species_registry,
 )
 from errors import register_error_handlers
-from extensions import init_extensions, migrate
+from extensions import init_extensions
 from routes import register_all_routes
 from util import notify_app_startup
 
