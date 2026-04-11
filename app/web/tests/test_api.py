@@ -248,7 +248,7 @@ class TestTrackRegenFallback:
 
     def test_manual_conflict_filter_drops_unknown_same_track(self):
         from types import SimpleNamespace
-        from routes.ui_system_routes import _manual_conflict_with_detection
+        from services.system_track_regen_worker import manual_conflict_with_detection
 
         manual_rows = [
             SimpleNamespace(
@@ -259,7 +259,7 @@ class TestTrackRegenFallback:
             )
         ]
 
-        conflict = _manual_conflict_with_detection(
+        conflict = manual_conflict_with_detection(
             manual_rows,
             {
                 'species_name': 'Unknown',
@@ -269,7 +269,7 @@ class TestTrackRegenFallback:
             },
             lambda a, b: a.strip().lower() == b.strip().lower(),
         )
-        same_species = _manual_conflict_with_detection(
+        same_species = manual_conflict_with_detection(
             manual_rows,
             {
                 'species_name': 'Eurasian Jay',
