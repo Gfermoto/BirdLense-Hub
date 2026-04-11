@@ -272,6 +272,14 @@ flowchart TD
   processorTrust --> architecture[WaveEArchitecture]
 ```
 
+## Консилиум 2026-04-10: регрессия «Применить» на странице видео (PATCH детекции)
+
+**Симптом:** после смены дефолта `apply_scope` на `single_track` для PATCH без тела запрос с `source: video` без поля `apply_scope` обновлял только одну строку `VideoSpecies`, тогда как прежняя семантика UI видео — fanout по тому же старому виду на всём ролике (`legacy_fanout`).
+
+**Вердикт:** дефолт должен зависеть от `source`: `video` → `legacy_fanout`, иначе (Unknowns / прочее) → `single_track`. Явная передача `apply_scope` с клиента по-прежнему имеет приоритет.
+
+**Изменения:** [ui_corrections_dataset_routes.py](../app/web/routes/ui_corrections_dataset_routes.py) (`update_detection_species`); тест `test_patch_video_source_defaults_legacy_fanout` в [test_api.py](../app/web/tests/test_api.py). На UI ([DetectedSpecies.tsx](../app/ui/src/pages/VideoDetails/DetectedSpecies.tsx)): числовое значение Select (MUI отдаёт string), явный успех после одной правки, сообщение об ошибке из тела API, защита от «тихого» выхода без `detection id`.
+
 ## Минимальные immediate actions
 
 1. Заморозить все необязательные startup repair/enrich paths.
