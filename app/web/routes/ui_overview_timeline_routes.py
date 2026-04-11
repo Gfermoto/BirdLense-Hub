@@ -3,8 +3,7 @@
 import csv
 import io
 import json
-import re
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from flask import Response, request
 from app_config.app_config import app_config
@@ -15,14 +14,21 @@ from services.ebird_region_service import (
     get_region_comparison,
     list_observed_species_names_for_comparison,
 )
+from services.migration_calendar_request_service import (
+    migration_calendar_cache_key,
+    validate_migration_calendar_params,
+)
 from services.migration_calendar_service import get_migration_calendar
+from services.monthly_report_window_service import (
+    MonthlyReportWindowError,
+    resolve_monthly_report_window,
+)
+from services.overview_request_service import OverviewWindowError, resolve_overview_window
 from services.overview_service import get_overview_data
 from services.report_service import build_monthly_report, get_monthly_report_data
 from services.review_queue_service import fetch_review_queue_items
 from services.timeline_export_service import build_timeline_export_rows
 from services.timeline_window_service import TimelineWindowError, resolve_timeline_utc_window
-from util import observer_local_day_bounds, parse_utc_timestamp
-
 from routes.ui_route_constants import (
     CACHE_MIGRATION_SEC,
     CACHE_TIMELINE_SEC,
@@ -38,17 +44,11 @@ def register_ui_overview_timeline_routes(app):
         start_time_param = request.args.get('start_time', None)
         end_time_param = request.args.get('end_time', None)
         try:
-            if date_param:
-                start_of_day, end_of_day = observer_local_day_bounds(date_param)
-            elif start_time_param and end_time_param:
-                start_of_day = parse_utc_timestamp(start_time_param)
-                end_of_day = parse_utc_timestamp(end_time_param)
-            else:
-                now = datetime.now(timezone.utc).replace(tzinfo=None)
-                start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
-        except (ValueError, TypeError):
-            return {"error": "Invalid timestamp format."}, 400
+            start_of_day, end_of_day = resolve_overview_window(
+                date_param, start_time_param, end_time_param,
+            )
+        except OverviewWindowError as exc:
+            return {'error': str(exc)}, 400
 
         data = get_overview_data(db.session, start_of_day, end_of_day)
         return data, 200
@@ -69,17 +69,13 @@ def register_ui_overview_timeline_routes(app):
         end_date = request.args.get('end_date', type=str)
         catalog = (request.args.get('catalog') or 'observed').strip().lower()
         evidence = 'all'
-        if catalog not in ('observed', 'dataset', 'full_eu', 'active', 'full'):
-            return {'error': 'catalog must be observed, dataset or full_eu'}, 400
-        if start_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', start_date):
-            return {'error': 'start_date must be YYYY-MM-DD'}, 400
-        if end_date and not re.match(r'^\d{4}-\d{2}-\d{2}$', end_date):
-            return {'error': 'end_date must be YYYY-MM-DD'}, 400
-        if start_date and end_date and start_date > end_date:
-            return {'error': 'start_date must be <= end_date'}, 400
-        mck = (
-            f"migration_cal:v3:{start_year}:{end_year}:{start_date}:{end_date}:"
-            f"{catalog}:{evidence}"
+        param_err = validate_migration_calendar_params(
+            catalog, start_date, end_date,
+        )
+        if param_err:
+            return {'error': param_err}, 400
+        mck = migration_calendar_cache_key(
+            start_year, end_year, start_date, end_date, catalog, evidence,
         )
         hit, mcached = cache_get(mck)
         if hit:
@@ -209,34 +205,12 @@ def register_ui_overview_timeline_routes(app):
         start_param = request.args.get('start_time')
         end_param = request.args.get('end_time')
 
-        if month_param:
-            try:
-                year, month = map(int, month_param.split('-'))
-                start_dt = datetime(year, month, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None)
-                if month == 12:
-                    end_dt = (
-                        datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None)
-                        - timedelta(seconds=1)
-                    )
-                else:
-                    end_dt = (
-                        datetime(year, month + 1, 1, 0, 0, 0, tzinfo=timezone.utc).replace(tzinfo=None)
-                        - timedelta(seconds=1)
-                    )
-                month_label = start_dt.strftime('%B %Y')
-            except (ValueError, IndexError):
-                return {'error': 'Invalid month format. Use YYYY-MM'}, 400
-        elif start_param and end_param:
-            try:
-                start_dt = parse_utc_timestamp(start_param)
-                end_dt = parse_utc_timestamp(end_param)
-                if end_dt - start_dt > timedelta(days=93):
-                    return {'error': 'Interval must not exceed 3 months'}, 400
-                month_label = f"{start_dt.strftime('%Y-%m-%d')} — {end_dt.strftime('%Y-%m-%d')}"
-            except ValueError:
-                return {'error': 'Invalid datetime format'}, 400
-        else:
-            return {'error': 'Provide month=YYYY-MM or start_time and end_time'}, 400
+        try:
+            start_dt, end_dt, month_label = resolve_monthly_report_window(
+                month_param, start_param, end_param,
+            )
+        except MonthlyReportWindowError as exc:
+            return {'error': str(exc)}, 400
 
         top_species, stats = get_monthly_report_data(db.session, start_dt, end_dt)
         pdf_bytes = build_monthly_report(start_dt, end_dt, top_species, stats, month_label)
