@@ -1304,10 +1304,15 @@ export const updateDetectionSpecies = async (
   detectionId: number,
   speciesId: number,
   source?: 'unknowns' | 'video',
+  applyScope?: 'single_track' | 'whole_visit' | 'legacy_fanout',
 ): Promise<{ message: string; species_id: number; updated_count?: number }> => {
   const response = await axios.patch(
     `${BASE_API_URL}/detections/${detectionId}`,
-    { species_id: speciesId, source },
+    {
+      species_id: speciesId,
+      source,
+      ...(applyScope ? { apply_scope: applyScope } : {}),
+    },
     { withCredentials: true },
   );
   return response.data;
