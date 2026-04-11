@@ -124,6 +124,37 @@ def test_build_timeline_export_response_json_and_empty_csv():
     assert 'species_name' in body_csv
 
 
+def test_parse_push_subscription_body_ok_and_errors():
+    from services.web_push_service import (
+        PushSubscriptionBodyError,
+        parse_push_subscription_body,
+    )
+
+    ep, p256, au = parse_push_subscription_body({
+        'subscription': {
+            'endpoint': 'https://x.example/push',
+            'keys': {'p256dh': 'pdh', 'auth': 'at'},
+        },
+    })
+    assert ep.startswith('https://')
+    assert p256 == 'pdh' and au == 'at'
+    with pytest.raises(PushSubscriptionBodyError, match='subscription required'):
+        parse_push_subscription_body({'subscription': None})
+    with pytest.raises(PushSubscriptionBodyError, match='p256dh'):
+        parse_push_subscription_body({
+            'subscription': {'endpoint': 'x', 'keys': {}},
+        })
+
+
+def test_component_status_trigger_display_labels():
+    from services.component_status_service import _trigger_display
+
+    assert _trigger_display('opencv', False) == 'OpenCV'
+    assert _trigger_display('opencv', True) == 'OpenCV + Frigate (MQTT)'
+    assert _trigger_display('mqtt', True) == 'MQTT sensor + Frigate (MQTT)'
+    assert _trigger_display('unknown_src', False) == 'unknown_src'
+
+
 def test_build_timeline_export_response_ebird(monkeypatch):
     from services import timeline_export_service as tes
 
