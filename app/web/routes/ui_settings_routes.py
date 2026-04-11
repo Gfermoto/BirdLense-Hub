@@ -1,7 +1,6 @@
 """Настройки, verify-password, eBird suggestions, notify/test, restart-processor (#198)."""
 
 import os
-import secrets
 from datetime import datetime, timezone
 
 import yaml
@@ -22,30 +21,23 @@ from auth import (
 )
 from services.cache import cache_delete_prefix
 from services.http_response_cache import bust_response_caches
+from services.processor_restart_service import write_processor_restart_flag
+from services.settings_access_service import (
+    contributor_tier_configured,
+    empty_passwords_block_verify_in_production,
+    resolve_password_unlock_role,
+    settings_gate_requires_password,
+)
+from services.settings_patch_service import apply_settings_patch_from_request
 from util import data_dir, notify_telegram_test
-
-
-def _settings_requires_password():
-    admin_pw = (app_config.get('general.settings_password') or '').strip()
-    contrib_pw = (app_config.get('general.contributor_password') or '').strip()
-    if not admin_pw and not contrib_pw:
-        return (
-            os.environ.get('FLASK_ENV') == 'production'
-            or os.environ.get('BIRDLENSE_ENV') == 'production'
-        )
-    return bool(admin_pw or contrib_pw)
-
-
-def _has_contributor_tier():
-    return bool((app_config.get('general.contributor_password') or '').strip())
 
 
 def register_ui_settings_routes(app):
     @app.route('/api/ui/settings/requires-password', methods=['GET'])
     def settings_requires_password():
         return {
-            'requires': _settings_requires_password(),
-            'has_contributor_tier': _has_contributor_tier(),
+            'requires': settings_gate_requires_password(),
+            'has_contributor_tier': contributor_tier_configured(),
         }, 200
 
     @app.route('/api/ui/settings/check-access', methods=['GET'])
@@ -71,10 +63,7 @@ def register_ui_settings_routes(app):
         admin_pw = (app_config.get('general.settings_password') or '').strip()
         contrib_pw = (app_config.get('general.contributor_password') or '').strip()
         if not admin_pw and not contrib_pw:
-            if (
-                os.environ.get('FLASK_ENV') == 'production'
-                or os.environ.get('BIRDLENSE_ENV') == 'production'
-            ):
+            if empty_passwords_block_verify_in_production():
                 _record_verify_password_failure(ip)
                 return {'ok': False}, 401
             session['access_role'] = 'admin'
@@ -82,13 +71,14 @@ def register_ui_settings_routes(app):
             session.permanent = True
             _clear_verify_password_attempts(ip)
             return {'ok': True, 'role': 'admin'}, 200
-        if secrets.compare_digest(pw, admin_pw):
+        role = resolve_password_unlock_role(pw)
+        if role == 'admin':
             session['access_role'] = 'admin'
             session['settings_unlocked'] = True
             session.permanent = True
             _clear_verify_password_attempts(ip)
             return {'ok': True, 'role': 'admin'}, 200
-        if contrib_pw and secrets.compare_digest(pw, contrib_pw):
+        if role == 'contributor':
             session['access_role'] = 'contributor'
             session['settings_unlocked'] = False
             session.permanent = True
@@ -217,37 +207,12 @@ def register_ui_settings_routes(app):
             if not updates:
                 return {"error": "No data provided for update"}, 400
 
-            if isinstance(updates.get('performance'), dict):
-                updates['performance'].pop('redis_url_effective_masked', None)
-
-            if 'video' in updates and 'cameras' in updates['video']:
-                cameras = updates['video']['cameras'] or []
-                updates['video']['cameras'] = [
-                    c for c in cameras
-                    if (c.get('stream_name') or '').strip()
-                ]
-
-            if session.get('access_role') == 'contributor' and _has_contributor_tier():
-                updates = app_config.strip_contributor_admin_only_updates(updates)
-            updates = app_config.filter_sensitive_placeholders(updates)
-
-            if isinstance(updates.get('secrets'), dict):
-                updates['secrets'].pop('zip', None)
-            if isinstance(app_config.config.get('secrets'), dict):
-                app_config.config['secrets'].pop('zip', None)
-
-            app_config.config = app_config.merge_dicts(
-                app_config.config, updates)
-
-            app_config.save()
-
-            bust_response_caches()
-            cache_delete_prefix('ebird_region_comparison:')
-            from services.cache import reset_redis_client
-
-            reset_redis_client()
-
-            return app_config.prepare_settings_for_api(app_config.config)
+            payload = apply_settings_patch_from_request(
+                updates,
+                access_role=session.get('access_role'),
+                contributor_tier_configured=contributor_tier_configured(),
+            )
+            return payload, 200
 
         except Exception:
             app.logger.exception('Update settings failed')
@@ -272,15 +237,8 @@ def register_ui_settings_routes(app):
     def restart_processor():
         if not contributor_or_admin_access():
             return {'error': 'Password required'}, 403
-        base = data_dir()
-        flag_path = os.path.join(base, 'restart_processor.flag')
-        notify_skip_path = os.path.join(base, '.startup_notify_skip')
         try:
-            os.makedirs(base, exist_ok=True)
-            with open(flag_path, 'w') as f:
-                f.write('1')
-            with open(notify_skip_path, 'a'):
-                os.utime(notify_skip_path, None)
+            write_processor_restart_flag(data_dir())
             return {"message": "Processor restart requested"}, 200
         except Exception:
             app.logger.exception('Restart processor failed')
