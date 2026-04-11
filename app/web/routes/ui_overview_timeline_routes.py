@@ -1,15 +1,11 @@
 """Overview, region, migration calendar, timeline, export, PDF report, unknowns (#198)."""
 
-import csv
-import io
-import json
 from datetime import timedelta
 
 from flask import Response, request
 from app_config.app_config import app_config
 from models import db
 from services.cache import cache_get, cache_set
-from services.ebird_export_service import build_ebird_csv
 from services.ebird_region_service import (
     get_region_comparison,
     list_observed_species_names_for_comparison,
@@ -27,7 +23,11 @@ from services.overview_request_service import OverviewWindowError, resolve_overv
 from services.overview_service import get_overview_data
 from services.report_service import build_monthly_report, get_monthly_report_data
 from services.review_queue_service import fetch_review_queue_items
-from services.timeline_export_service import build_timeline_export_rows
+from services.timeline_export_service import (
+    build_timeline_export_response_parts,
+    build_timeline_export_rows,
+    validate_timeline_export_format,
+)
 from services.timeline_window_service import TimelineWindowError, resolve_timeline_utc_window
 from routes.ui_route_constants import (
     CACHE_MIGRATION_SEC,
@@ -136,8 +136,9 @@ def register_ui_overview_timeline_routes(app):
         end_time = request.args.get('end_time')
         fmt = request.args.get('format', 'json').lower()
 
-        if fmt not in ('csv', 'json', 'ebird'):
-            return {'error': 'format must be csv, json, or ebird'}, 400
+        fmt_err = validate_timeline_export_format(fmt)
+        if fmt_err:
+            return {'error': fmt_err}, 400
 
         try:
             start_dt, end_dt = resolve_timeline_utc_window(
@@ -155,48 +156,10 @@ def register_ui_overview_timeline_routes(app):
 
         merged = build_merged_timeline_items(db.session, start_dt, end_dt)
         rows = build_timeline_export_rows(merged)
-
-        if fmt == 'ebird':
-            seen = set()
-            ebird_rows = []
-            for r in rows:
-                name = r.get('species_name', '')
-                if name and name not in seen:
-                    seen.add(name)
-                    ebird_rows.append(r)
-            body = build_ebird_csv(ebird_rows, start_dt, end_dt)
-            return Response(
-                body,
-                mimetype='text/csv',
-                headers={'Content-Disposition': 'attachment; filename=birdlense_ebird.csv'},
-            )
-
-        if fmt == 'json':
-            body = json.dumps(rows, ensure_ascii=False, indent=2)
-            return Response(
-                body,
-                mimetype='application/json',
-                headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.json'},
-            )
-
-        if not rows:
-            output = io.StringIO()
-            w = csv.writer(output)
-            w.writerow([
-                'id', 'species_name', 'start_time', 'end_time', 'duration_sec',
-                'max_simultaneous', 'detection_count', 'temp', 'clouds',
-            ])
-        else:
-            output = io.StringIO()
-            w = csv.writer(output)
-            w.writerow(rows[0].keys())
-            for r in rows:
-                w.writerow(r.values())
-        return Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': 'attachment; filename=birdlense_timeline.csv'},
+        body, mimetype, headers = build_timeline_export_response_parts(
+            fmt, rows, start_dt, end_dt,
         )
+        return Response(body, mimetype=mimetype, headers=headers)
 
     @app.route('/api/ui/report/pdf', methods=['GET'])
     def report_pdf():
