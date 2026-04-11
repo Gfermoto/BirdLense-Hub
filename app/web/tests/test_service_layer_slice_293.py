@@ -364,6 +364,29 @@ def test_build_timeline_export_response_ebird(monkeypatch):
     assert 'ebird' in headers['Content-Disposition']
 
 
+def test_compute_system_activity_uptime_bad_month():
+    from unittest.mock import MagicMock
+
+    from services.system_admin_api_service import compute_system_activity_uptime
+
+    body, code = compute_system_activity_uptime(MagicMock(), 'not-a-month')
+    assert code == 400
+    assert 'error' in body
+
+
+def test_start_bulk_spectrogram_requires_birdnet(monkeypatch):
+    from services import system_admin_api_service as saa
+
+    monkeypatch.setattr(saa, '_birdnet_configured', lambda: False)
+
+    class _FakeApp:
+        pass
+
+    body, code = saa.start_bulk_spectrogram_regeneration(_FakeApp(), {})
+    assert code == 400
+    assert 'BirdNET' in body.get('error', '')
+
+
 def test_review_queue_bulk_delete_confirm_mismatch(monkeypatch):
     from unittest.mock import MagicMock
 
