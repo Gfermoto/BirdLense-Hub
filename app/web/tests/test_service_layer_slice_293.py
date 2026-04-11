@@ -216,6 +216,45 @@ def test_component_status_trigger_display_labels():
     assert _trigger_display('unknown_src', False) == 'unknown_src'
 
 
+def test_parse_broken_videos_list_params_clamped():
+    from werkzeug.datastructures import ImmutableMultiDict
+
+    from services.system_diagnostics_service import parse_broken_videos_list_params
+
+    args = ImmutableMultiDict([
+        ('limit', '5'),
+        ('after_id', '10'),
+        ('max_scan', '100'),
+    ])
+    lim, after, mx = parse_broken_videos_list_params(args)
+    assert lim == 5 and after == 10 and mx == 100
+
+    args2 = ImmutableMultiDict([('limit', '9999'), ('max_scan', '999999')])
+    lim2, _, mx2 = parse_broken_videos_list_params(args2)
+    assert lim2 == 200 and mx2 == 20000
+
+
+def test_parse_review_only_noise_limit():
+    from werkzeug.datastructures import ImmutableMultiDict
+
+    from services.system_diagnostics_service import parse_review_only_noise_limit
+
+    assert parse_review_only_noise_limit(ImmutableMultiDict([('limit', '10')])) == 10
+    with pytest.raises(ValueError):
+        parse_review_only_noise_limit(ImmutableMultiDict([('limit', 'nope')]))
+
+
+def test_birdnet_fifo_snapshot_missing_file(monkeypatch, tmp_path):
+    import data_paths
+    from services.system_diagnostics_service import build_birdnet_fifo_snapshot_response
+
+    monkeypatch.setattr(data_paths, 'data_dir', lambda: str(tmp_path))
+    body, code = build_birdnet_fifo_snapshot_response()
+    assert code == 200
+    assert body.get('available') is False
+    assert body.get('reason') == 'snapshot_file_missing'
+
+
 def test_flatten_config_keys_terminal_maps():
     from services.system_config_audit_service import (
         TERMINAL_CONFIG_MAP_KEYS,
