@@ -362,3 +362,26 @@ def test_build_timeline_export_response_ebird(monkeypatch):
     assert mime == 'text/csv'
     assert body == 'stub,2'
     assert 'ebird' in headers['Content-Disposition']
+
+
+def test_parse_visitors_days_and_metrics_history_clamps():
+    from services.system_metrics_api_service import (
+        clamp_metrics_history_hours,
+        clamp_metrics_history_max_points,
+        parse_visitors_days,
+    )
+    from services.system_metrics_constants import (
+        SYSTEM_METRICS_HISTORY_MAX_HOURS,
+        SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP,
+    )
+
+    assert parse_visitors_days(None) == 7
+    assert parse_visitors_days('bad') == 7
+    assert parse_visitors_days('14') == 14
+
+    assert clamp_metrics_history_hours(None) == 24
+    assert clamp_metrics_history_hours('9999') == SYSTEM_METRICS_HISTORY_MAX_HOURS
+    assert clamp_metrics_history_hours('0') == 1
+
+    assert clamp_metrics_history_max_points('99999') == SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP
+    assert clamp_metrics_history_max_points('10') == 50
