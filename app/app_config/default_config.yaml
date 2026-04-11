@@ -58,6 +58,13 @@ processor:
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
   min_confidence_binary: 0.30  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  # Опционально: разные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
+  # Пример: bird 0.48, squirrel 0.22 — резать ложные «птицы» (мышь→синица), не душа грызунов.
+  min_confidence_binary_bird: null
+  min_confidence_binary_squirrel: null
+  # Доля площади кадра (0..1): для Bird с bbox <= порога видовой классификатор не вызывается → остаётся generic Bird.
+  # Типичный шум: мышь с кормом как «Bird» + ложная синица. Попробуйте 0.012–0.025; 0 или null — выкл.
+  bird_skip_classifier_max_area_frac: 0
   min_confidence_to_process: 0.40  # Классификатор (combined); запись/БД
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46

@@ -101,6 +101,9 @@
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
+| `min_confidence_binary_bird` | Опционально: отдельный порог **только для боксов Bird** после `track()` (Ultralytics получает `min` всех порогов; отсев по метке в Python). Пример: **0.48** при `min_confidence_binary_squirrel: 0.22` — меньше ложных «птиц» (мышь→синица), белки/грызуны не душатся тем же числом. |
+| `min_confidence_binary_squirrel` | Опционально: порог для боксов Squirrel (нормализация rodent/chipmunk → Squirrel). |
+| `bird_skip_classifier_max_area_frac` | Если **> 0**: для **Bird** с площадью bbox ≤ доли кадра (0…1) **не вызывается** видовой классификатор — остаётся generic Bird (решает ложные виды на мелком объекте). По умолчанию **0** (выкл.). Попробуйте **0.012–0.025**; слишком высокое значение заденет мелких синиц у кормушки. |
 | `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
 | `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
 | `min_confidence_to_notify` | Минимум combined confidence для **фото-уведомления в Telegram** (после успешного приёма записи на хабе). По умолчанию **0.46** в `default_config.yaml`; часто задают **выше**, чем `min_confidence_to_process`, чтобы срезать шум в чате при сохранении визитов в БД. Поле есть в **Настройки → Процессор**. После смены порогов в YAML перезапустите **processor**, иначе в контейнере останется старый конфиг в памяти. |

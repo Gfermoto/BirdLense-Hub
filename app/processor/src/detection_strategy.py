@@ -1,12 +1,86 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
 from ultralytics import YOLO
 import cv2
 
 logger = logging.getLogger(__name__)
+
+
+def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str, Any]) -> float:
+    """
+    Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
+
+    Если заданы отдельные пороги Bird/Squirrel, берётся min(...) с базовым — иначе жёсткий
+    порог на птицу отбросил бы белок/мышей на этапе движка.
+    """
+    try:
+        base = float(base_min)
+    except (TypeError, ValueError):
+        base = 0.22
+    b_raw = app_config.get('processor.min_confidence_binary_bird')
+    s_raw = app_config.get('processor.min_confidence_binary_squirrel')
+    bird_m = float(b_raw) if b_raw is not None else base
+    squ_m = float(s_raw) if s_raw is not None else base
+    return min(base, bird_m, squ_m)
+
+
+def per_label_binary_conf_threshold(
+    detector_label: str,
+    base_min: float,
+    app_config: Mapping[str, Any],
+) -> float:
+    """Порог confidence бинарника после нормализации метки (Bird / Squirrel)."""
+    try:
+        base = float(base_min)
+    except (TypeError, ValueError):
+        base = 0.22
+    b_raw = app_config.get('processor.min_confidence_binary_bird')
+    s_raw = app_config.get('processor.min_confidence_binary_squirrel')
+    bird_m = float(b_raw) if b_raw is not None else base
+    squ_m = float(s_raw) if s_raw is not None else base
+    if detector_label == 'Bird':
+        return bird_m
+    if detector_label == 'Squirrel':
+        return squ_m
+    return base
+
+
+def bird_skip_classifier_area_limit(app_config: Mapping[str, Any]) -> Optional[float]:
+    """
+    Если > 0: для боксов Bird с площадью <= этого порога (доля кадра) не вызывать классификатор вида.
+
+    Снижает ложные «синицы» на мелком объекте (мышь), ошибочно помеченном бинарником как Bird.
+    """
+    raw = app_config.get('processor.bird_skip_classifier_max_area_frac')
+    if raw is None:
+        return None
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if v <= 0.0:
+        return None
+    return min(v, 1.0)
+
+
+def should_skip_bird_species_classifier(
+    detector_label: str,
+    box_area_norm: float,
+    app_config: Mapping[str, Any],
+) -> bool:
+    lim = bird_skip_classifier_area_limit(app_config)
+    if lim is None:
+        return False
+    if str(detector_label or '').strip() != 'Bird':
+        return False
+    try:
+        area = float(box_area_norm)
+    except (TypeError, ValueError):
+        return False
+    return area > 0.0 and area <= lim
 
 
 def _normalize_species_filter_text(name: str) -> str:
@@ -222,6 +296,8 @@ class TwoStageStrategy(DetectionStrategy):
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
         """Binary detect -> validate -> classify a bounded round-robin slice of tracks."""
+        from app_config.app_config import app_config
+
         if not hasattr(self, '_frame_index'):
             self._frame_index = 0
         if not hasattr(self, '_track_stats'):
@@ -230,11 +306,12 @@ class TwoStageStrategy(DetectionStrategy):
             self.classification_scheduler = 'priority'
         self._frame_index += 1
         imgsz = getattr(self, 'binary_imgsz', 320)
+        track_conf = binary_track_ultralytics_conf_floor(min_confidence, app_config)
         results = _track_maybe_retry(
             self.binary_model,
             frame,
             persist=True,
-            conf=min_confidence,
+            conf=track_conf,
             verbose=False,
             imgsz=imgsz,
             tracker=tracker_config,
@@ -257,10 +334,13 @@ class TwoStageStrategy(DetectionStrategy):
 
         valid_boxes = []
         for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
-            if not self.is_valid_detection(bbox_norm, conf, min_confidence):
-                continue
             detector_name = self.binary_model.names[class_idx]
             detector_label = self._normalize_detector_label(detector_name)
+            eff_min = per_label_binary_conf_threshold(
+                detector_label, min_confidence, app_config,
+            )
+            if not self.is_valid_detection(bbox_norm, conf, eff_min):
+                continue
             if self.detector_scope and detector_label not in self.detector_scope:
                 continue
 
@@ -315,6 +395,12 @@ class TwoStageStrategy(DetectionStrategy):
         classified_by_track = {}
         fallback_box = None
         for box in scheduled_boxes[:scan_limit]:
+            if should_skip_bird_species_classifier(
+                box['detector_label'],
+                box['box_area_norm'],
+                app_config,
+            ):
+                continue
             if fallback_box is None:
                 fallback_box = box
             x1, y1, x2, y2 = box['crop_coords']
@@ -353,6 +439,12 @@ class TwoStageStrategy(DetectionStrategy):
             classifier_conf = None
             
             classified = classified_by_track.get(box['track_id'])
+            if classified and should_skip_bird_species_classifier(
+                box['detector_label'],
+                box['box_area_norm'],
+                app_config,
+            ):
+                classified = None
             if classified:
                 species_name, cls_conf = self._classify_crop(classified['crop'])
                 classifier_conf = cls_conf
