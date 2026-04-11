@@ -29,7 +29,7 @@
 
 | Путь | Назначение |
 |------|------------|
-| **`app/web/`** | Flask, REST API, OpenAPI (`openapi.yaml`). Точка входа: `app.py` → **`create_app()`** (фабрика); обвязка CORS и PRAGMA SQLite — `flask_extensions.py`. Обработчики: `routes/` — `ui_routes.register_routes`, доменные `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md)). **Миграции:** `migrations/` (Alembic, Flask-Migrate). **Сервисы:** `services/` (доменная логика; тонкие роуты — [ROADMAP.ru](./ROADMAP.ru.md), техдолг). |
+| **`app/web/`** | Flask, REST API, OpenAPI (`openapi.yaml`). Точка входа: `app.py` → **`create_app()`** (фабрика); CORS/PRAGMA — `flask_extensions.py`; старт БД/registry/cleanup — `app_startup.py`. Обработчики: `routes/` — `ui_routes.register_routes`, доменные `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md)). **Миграции:** `migrations/` (Alembic, Flask-Migrate). **Сервисы:** `services/` (доменная логика; тонкие роуты — [ROADMAP.ru](./ROADMAP.ru.md), техдолг). |
 | **`app/processor/`** | Конвейер детекции, YOLO/Ultralytics; тяжёлые веса — см. `.gitignore`. |
 | **`app/ui/`** | Фронтенд React 19 + Vite 6; артефакт `npm run build` отдаёт web-слой (см. [LOCAL_DEV.ru](./LOCAL_DEV.ru.md)). |
 | **`app/app_config/`** | **Поставляемые** дефолты и шаблоны. Файл **`user_config.yaml`** создаётся на инсталляции и **не** коммитится — см. [CONFIGURATION.ru](./CONFIGURATION.ru.md). |
