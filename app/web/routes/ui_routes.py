@@ -1,9 +1,7 @@
 """Регистрация ``/api/ui/*`` (домены — ``ui_*_routes.py``, #198)."""
 
-from routes.ui_timeline_helpers import (
-    build_merged_timeline_items,
-    parse_timeline_iso,
-)
+from routes.ui_timeline_helpers import build_merged_timeline_items
+from time_util import parse_timeline_iso
 
 # Обратная совместимость: раньше имя было с подчёркиванием
 _parse_timeline_iso = parse_timeline_iso
