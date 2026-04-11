@@ -2,14 +2,13 @@
 import os
 import threading
 import yaml
-from collections import deque
 from datetime import datetime, timezone, timedelta
 from flask import request
 from models import (
-    ActivityLog, db, Video, Species, VideoSpecies,
+    db, Video, Species, VideoSpecies,
     SystemResourceSample,
 )
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from services.species_registry_service import (
     catalog_cards_coverage_snapshot,
     repair_catalog_cards,
@@ -37,6 +36,16 @@ from services.system_metrics_constants import (
     _CACHE_SYSTEM_ACTIVITY_SEC,
     env_bounded_int,
 )
+from services.processor_logs_service import (
+    LOG_LINES_DEFAULT,
+    clamp_processor_log_line_count,
+    read_processor_log_tail,
+)
+from services.system_activity_service import (
+    SystemActivityMonthError,
+    fetch_system_activity_daily_uptime,
+    parse_system_activity_month,
+)
 
 # Last spectrogram regeneration result (for status polling)
 _regenerate_status = {'status': 'idle', 'result': None, 'error': None, 'progress': None}
@@ -50,8 +59,6 @@ _catalog_cards_lock = threading.Lock()
 _catalog_cards_next_run_ts = 0.0
 
 
-LOG_LINES_DEFAULT = 200
-LOG_LINES_MAX = 500
 DEPRECATED_USER_CONFIG_KEYS = (
     'notifications.enabled',
     'notifications.excluded_species',
@@ -329,19 +336,11 @@ def register_routes(app):
         """Return last N lines of processor.log for remote diagnostics."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
+        lines = clamp_processor_log_line_count(
+            request.args.get('lines', LOG_LINES_DEFAULT),
+        )
         try:
-            raw = request.args.get('lines', LOG_LINES_DEFAULT)
-            lines = max(1, min(int(raw), LOG_LINES_MAX))
-        except (ValueError, TypeError):
-            lines = LOG_LINES_DEFAULT
-        data_dir = os.path.dirname(recordings_dir())
-        log_path = os.path.join(data_dir, 'processor.log')
-        try:
-            if not os.path.isfile(log_path):
-                return {'lines': [], 'path': log_path}
-            with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
-                tail = deque(f, maxlen=lines)
-            return {'lines': list(tail), 'path': log_path}
+            return read_processor_log_tail(lines)
         except OSError:
             app.logger.exception('Get processor logs failed')
             return {'error': 'Failed to read logs', 'lines': []}, 500
@@ -350,37 +349,14 @@ def register_routes(app):
     def get_activity():
         month = request.args.get('month', datetime.now(timezone.utc).strftime('%Y-%m'))
         try:
-            start_date = datetime.strptime(month, '%Y-%m')
-            if not (2020 <= start_date.year <= 2030 and 1 <= start_date.month <= 12):
-                raise ValueError('Year or month out of range')
-        except ValueError:
-            return {'error': 'Invalid month format, use YYYY-MM'}, 400
+            start_date, end_date = parse_system_activity_month(month)
+        except SystemActivityMonthError as exc:
+            return {'error': str(exc)}, 400
         ack = f'system_activity:{month}'
         hit, ac = cache_get(ack)
         if hit:
             return ac
-        end_date = (start_date.replace(day=1) +
-                    timedelta(days=32)).replace(day=1)
-
-        activities = db.session.query(
-            func.strftime('%Y-%m-%d', ActivityLog.created_at).label('date'),
-            func.sum(
-                func.strftime('%s', ActivityLog.updated_at) -
-                func.strftime('%s', ActivityLog.created_at)
-            ).label('total_uptime')  # in seconds
-        ).filter(
-            ActivityLog.type == 'heartbeat',
-            ActivityLog.created_at >= start_date,
-            ActivityLog.created_at < end_date
-        ).group_by(
-            func.strftime('%Y-%m-%d', ActivityLog.created_at)
-        ).all()
-
-        out = [{
-            'date': day,
-            # convert to hours
-            'totalUptime': round(duration / 3600, 1) if duration else 0
-        } for day, duration in activities]
+        out = fetch_system_activity_daily_uptime(db.session, start_date, end_date)
         cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
         return out
 

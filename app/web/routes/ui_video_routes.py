@@ -1,9 +1,8 @@
 """Маршруты видео: детали, соседи, кадры треков, удаление, скачивание, стрим, merge (#198)."""
 
-import json
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from flask import request, send_file
 from sqlalchemy.orm import joinedload
@@ -17,11 +16,19 @@ from services.dataset_export_service import (
     move_crop_on_species_correction,
 )
 from services.detection_crop_service import VIDEO_PATH_SAFE_RE
-from services.feeder_scale import video_scales_estimate_payload
 from services.http_response_cache import bust_response_caches
+from services.video_neighbors_service import (
+    VideoNeighborsParamError,
+    build_video_neighbors_payload,
+    parse_video_neighbors_request_args,
+)
+from services.video_payload_service import (
+    build_video_detail_dict,
+    build_video_detection_frames_dict,
+)
 from services.visit_processor import VisitProcessor
 import util as util_mod
-from util import ensure_utc, get_primary_video_for_visit_in_window
+from util import ensure_utc
 
 from routes.ui_route_constants import CACHE_DETECTION_FRAMES_SEC
 
@@ -41,53 +48,7 @@ def register_ui_video_routes(app):
 
         if not video:
             return {'error': 'Video not found'}, 404
-
-        def build_species_data(vs):
-            data = {
-                'id': vs.id,
-                'species_id': vs.species.id,
-                'species_name': vs.species.name,
-                'start_time': vs.start_time,
-                'end_time': vs.end_time,
-                'confidence': vs.confidence,
-                'source': vs.source,
-                'track_id': vs.track_id,
-                'image_url': vs.species.image_url,
-            }
-            if vs.detection_provider:
-                data['detection_provider'] = vs.detection_provider
-            return data
-
-        video_json = {
-            'id': video.id,
-            'created_at': video.created_at.astimezone(timezone.utc).isoformat(),
-            'processor_version': video.processor_version,
-            'start_time': video.start_time.astimezone(timezone.utc).isoformat(),
-            'end_time': video.end_time.astimezone(timezone.utc).isoformat(),
-            'video_path': video.video_path,
-            'spectrogram_path': video.spectrogram_path,
-            'favorite': video.favorite,
-            'weather': {
-                'main': video.weather_main,
-                'description': video.weather_description,
-                'temp': video.weather_temp,
-                'humidity': video.weather_humidity,
-                'pressure': video.weather_pressure,
-                'clouds': video.weather_clouds,
-                'wind_speed': video.weather_wind_speed,
-            },
-            'species': [build_species_data(vs) for vs in video.video_species],
-            'food': [
-                {
-                    'id': bf.id,
-                    'name': bf.name,
-                    'image_url': bf.image_url,
-                }
-                for bf in video.food
-            ],
-            'scales': video_scales_estimate_payload(video),
-        }
-        return video_json, 200
+        return build_video_detail_dict(video), 200
 
     @app.route('/api/ui/videos/<int:video_id>/neighbors', methods=['GET'])
     def get_video_neighbors(video_id):
@@ -101,139 +62,22 @@ def register_ui_video_routes(app):
         video = db.session.get(Video, video_id)
         if not video:
             return {'error': 'Video not found'}, 404
-
-        scope = (request.args.get('day_scope') or 'utc').strip().lower()
-        if scope not in ('utc', 'local'):
-            return {'error': 'day_scope must be "utc" or "local"'}, 400
-        cross_day = (request.args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
-        neighbor_mode = (request.args.get('neighbor_mode') or 'video').strip().lower()
-        if neighbor_mode not in ('video', 'visit_primary'):
-            return {'error': 'neighbor_mode must be "video" or "visit_primary"'}, 400
-        visit_id = request.args.get('visit_id', type=int)
-        if neighbor_mode == 'visit_primary' and visit_id is None:
-            return {'error': 'visit_id is required when neighbor_mode=visit_primary'}, 400
-
         try:
-            tz_offset_minutes = int(request.args.get('tz_offset_minutes', 0))
-        except (TypeError, ValueError):
-            return {'error': 'tz_offset_minutes must be an integer'}, 400
-        if tz_offset_minutes < -840 or tz_offset_minutes > 840:
-            return {'error': 'tz_offset_minutes out of range [-840, 840]'}, 400
-
-        st_utc = ensure_utc(video.start_time).astimezone(timezone.utc).replace(tzinfo=None)
-        if scope == 'local':
-            local_dt = st_utc - timedelta(minutes=tz_offset_minutes)
-            local_day_start = datetime(local_dt.year, local_dt.month, local_dt.day)
-            local_day_end = local_day_start + timedelta(days=1)
-            day_start = local_day_start + timedelta(minutes=tz_offset_minutes)
-            day_end = local_day_end + timedelta(minutes=tz_offset_minutes)
-            day_label = local_day_start.date().isoformat()
-        else:
-            day_start = datetime(st_utc.year, st_utc.month, st_utc.day)
-            day_end = day_start + timedelta(days=1)
-            day_label = day_start.date().isoformat()
-
-        ids = []
-        idx = None
-        if neighbor_mode == 'visit_primary' and visit_id:
-            visit_rows = (
-                db.session.query(SpeciesVisit)
-                .options(
-                    joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
-                )
-                .filter(
-                    SpeciesVisit.end_time >= day_start,
-                    SpeciesVisit.start_time < day_end,
-                )
-                .order_by(SpeciesVisit.start_time.asc(), SpeciesVisit.id.asc())
-                .all()
-            )
-            ids = [
-                primary.id
-                for visit in visit_rows
-                for primary in [
-                    get_primary_video_for_visit_in_window(visit, day_start, day_end)
-                ]
-                if primary is not None
-            ]
-            visit_ids = [
-                visit.id
-                for visit in visit_rows
-                if get_primary_video_for_visit_in_window(visit, day_start, day_end) is not None
-            ]
-            try:
-                idx = visit_ids.index(visit_id)
-            except ValueError:
-                idx = None
-        if idx is None:
-            day_rows = (
-                Video.query.filter(
-                    Video.end_time > day_start,
-                    Video.start_time < day_end,
-                )
-                .order_by(Video.start_time.asc(), Video.id.asc())
-                .with_entities(Video.id)
-                .all()
-            )
-            ids = [row[0] for row in day_rows]
-
-        try:
-            idx = ids.index(video_id) if idx is None else idx
-        except ValueError:
-            app.logger.warning(
-                'Video %s start_time not in day list (scope=%s day %s–%s); ids=%s',
-                video_id,
-                scope,
-                day_start,
-                day_end,
-                ids,
-            )
-            return {
-                'day_scope': scope,
-                'day_label': day_label,
-                'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
-                'cross_day': cross_day,
-                'previous_id': None,
-                'next_id': None,
-                'index': 0,
-                'total': len(ids),
-            }, 200
-        prev_id = ids[idx - 1] if idx > 0 else None
-        next_id = ids[idx + 1] if idx + 1 < len(ids) else None
-
-        if cross_day and prev_id is None:
-            prev = (
-                Video.query.filter(
-                    (Video.start_time < video.start_time)
-                    | ((Video.start_time == video.start_time) & (Video.id < video.id))
-                )
-                .order_by(Video.start_time.desc(), Video.id.desc())
-                .with_entities(Video.id)
-                .first()
-            )
-            prev_id = prev[0] if prev else None
-        if cross_day and next_id is None:
-            nxt = (
-                Video.query.filter(
-                    (Video.start_time > video.start_time)
-                    | ((Video.start_time == video.start_time) & (Video.id > video.id))
-                )
-                .order_by(Video.start_time.asc(), Video.id.asc())
-                .with_entities(Video.id)
-                .first()
-            )
-            next_id = nxt[0] if nxt else None
-
-        return {
-            'day_scope': scope,
-            'day_label': day_label,
-            'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
-            'cross_day': cross_day,
-            'previous_id': prev_id,
-            'next_id': next_id,
-            'index': idx,
-            'total': len(ids),
-        }, 200
+            nparams = parse_video_neighbors_request_args(request.args)
+        except VideoNeighborsParamError as exc:
+            return {'error': str(exc)}, 400
+        scope, cross_day, neighbor_mode, visit_id, tz_offset_minutes = nparams
+        payload = build_video_neighbors_payload(
+            db.session,
+            video,
+            video_id,
+            scope=scope,
+            cross_day=cross_day,
+            neighbor_mode=neighbor_mode,
+            visit_id=visit_id,
+            tz_offset_minutes=tz_offset_minutes,
+        )
+        return payload, 200
 
     @app.route('/api/ui/videos/<int:video_id>/detection-frames', methods=['GET'])
     def get_video_detection_frames(video_id):
@@ -250,22 +94,7 @@ def register_ui_video_routes(app):
         )
         if not video:
             return {'error': 'Video not found'}, 404
-        tracks = []
-        for vs in video.video_species:
-            if not vs.frames:
-                continue
-            try:
-                frames = json.loads(vs.frames)
-            except (TypeError, ValueError):
-                continue
-            tracks.append({
-                'id': vs.id,
-                'species_id': vs.species_id,
-                'start_time': vs.start_time,
-                'end_time': vs.end_time,
-                'frames': frames,
-            })
-        body = {'tracks': tracks}
+        body = build_video_detection_frames_dict(video)
         cache_set(ck, body, CACHE_DETECTION_FRAMES_SEC)
         return body, 200
 
