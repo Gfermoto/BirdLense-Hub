@@ -4,8 +4,11 @@ from datetime import datetime, timezone
 from flask import current_app, request
 from models import db
 
-from auth import admin_track_regen_access
-from util import settings_check_access
+from routes.http_guards import (
+    require_admin_track_regen,
+    require_ui_settings_password,
+    require_ui_settings_unauthorized,
+)
 from services.cache import cache_get, cache_set
 from services.processor_logs_service import LOG_LINES_DEFAULT
 from services.system_admin_api_service import (
@@ -40,16 +43,14 @@ def register_routes(app):
     register_ui_system_maintenance_routes(app)
 
     @app.route('/api/ui/system/config-audit', methods=['GET'])
+    @require_ui_settings_unauthorized
     def system_config_audit():
-        if not settings_check_access():
-            return {'error': 'Unauthorized'}, 401
         return build_config_audit_payload()
 
     @app.route('/api/ui/system/logs', methods=['GET'])
+    @require_ui_settings_password
     def get_processor_logs():
         """Return last N lines of processor.log for remote diagnostics."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         return processor_logs_tail_http_response(
             request.args.get('lines', LOG_LINES_DEFAULT),
         )
@@ -70,6 +71,7 @@ def register_routes(app):
         return out, code
 
     @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
+    @require_ui_settings_password
     def regenerate_spectrograms():
         """
         Start spectrogram regeneration in background. Returns immediately.
@@ -77,8 +79,6 @@ def register_routes(app):
         Only available when BirdNET is configured (MQTT broker + birdnet_topic).
         Poll GET .../status to get result.
         """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         body = request.get_json(silent=True) or {}
         return start_bulk_spectrogram_regeneration(
             current_app._get_current_object(),
@@ -86,10 +86,9 @@ def register_routes(app):
         )
 
     @app.route('/api/ui/videos/<int:video_id>/regenerate-spectrogram', methods=['POST'])
+    @require_admin_track_regen
     def regenerate_spectrogram_single_video(video_id):
         """Перегенерация спектрограммы для одной записи (админ при двухуровневом доступе)."""
-        if not admin_track_regen_access():
-            return {'error': 'Access denied'}, 403
         return start_single_video_spectrogram_regeneration(
             current_app._get_current_object(),
             video_id,
@@ -106,10 +105,9 @@ def register_routes(app):
         return job_state._regenerate_tracks_status, 200
 
     @app.route('/api/ui/videos/<int:video_id>/regenerate-tracks', methods=['POST'])
+    @require_admin_track_regen
     def regenerate_tracks_single_video(video_id):
         """Перегенерация треков только для одной записи (админ при двухуровневом доступе)."""
-        if not admin_track_regen_access():
-            return {'error': 'Access denied'}, 403
         body = request.get_json(silent=True) or {}
         return start_single_video_track_regeneration(
             current_app._get_current_object(),

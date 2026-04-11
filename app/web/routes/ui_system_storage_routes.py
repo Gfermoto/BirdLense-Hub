@@ -5,6 +5,7 @@ import os
 
 from flask import request
 
+from routes.http_guards import require_ui_settings_password
 from services.cache import cache_get, cache_set
 from services.system_metrics_constants import _CACHE_STORAGE_STATS_SEC
 from services.system_storage_service import (
@@ -12,7 +13,7 @@ from services.system_storage_service import (
     nearest_recording_day_response,
     purge_storage_from_body,
 )
-from util import recordings_dir, settings_check_access
+from util import recordings_dir
 
 
 def register_ui_system_storage_routes(app):
@@ -40,9 +41,8 @@ def register_ui_system_storage_routes(app):
         return body, code
 
     @app.route('/api/ui/storage/purge', methods=['POST'])
+    @require_ui_settings_password
     def purge_storage():
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         data = request.json or {}
         body, code = purge_storage_from_body(data)
         return body, code
