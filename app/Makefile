@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs deploy pull setup test test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -61,6 +61,13 @@ test:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
 		bash -c 'export PYTHONPATH=/app:/app/web && python -m unittest discover processor/tests -v \
 		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
+
+# Тот же образ, но без интеграции TwoStageStrategy с реальными .pt (меньше RAM; #282).
+# Один прогон pytest по processor/tests (включая unittest.TestCase); ``-m "not heavy"`` оставляет немаркированные тесты.
+test-processor-light:
+	docker compose run --rm -e SKIP_HEAVY_PROCESSOR_TESTS=1 -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
+		bash -c 'export PYTHONPATH=/app:/app/web SKIP_HEAVY_PROCESSOR_TESTS=1 && \
+		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
 
 test-web:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v

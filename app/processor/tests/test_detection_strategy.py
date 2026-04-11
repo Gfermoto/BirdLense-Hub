@@ -11,6 +11,8 @@ from unittest.mock import MagicMock, patch
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # app/processor/tests -> app/processor/src
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
+sys.path.insert(0, current_dir)
+import heavy_skip  # noqa: E402
 sys.path.append(src_path)
 
 _ULTRALYTICS_STUB = 'ultralytics' not in sys.modules
@@ -130,6 +132,7 @@ class TestDetectionStrategy(unittest.TestCase):
             self.frame = cv2.imread(self.sample_img_path)
 
     def test_two_stage_strategy_integration(self):
+        heavy_skip.maybe_skip_heavy(self)
         if TwoStageStrategy is None:
             self.skipTest("TwoStageStrategy not available (import failed).")
         if _ULTRALYTICS_STUB:
@@ -178,6 +181,7 @@ class TestDetectionStrategy(unittest.TestCase):
             self.assertGreater(first.confidence, 0.0)
 
     def test_blur_detection_logic(self):
+        heavy_skip.maybe_skip_heavy(self)
         if TwoStageStrategy is None:
             self.skipTest("TwoStageStrategy not available (import failed).")
         if _ULTRALYTICS_STUB:
