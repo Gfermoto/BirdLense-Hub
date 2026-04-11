@@ -25,7 +25,7 @@ from services.species_registry_service import (
 from util import bust_feeder_species_filter_cache, settings_check_access
 
 import routes.ui_system_jobs_state as job_state
-from routes import ui_system_routes as uis
+from services.system_metrics_sampler_service import catalog_cards_schedule_state
 
 
 def register_ui_system_species_registry_routes(app):
@@ -279,7 +279,7 @@ def register_ui_system_species_registry_routes(app):
         with job_state._catalog_cards_lock:
             snap = dict(job_state._catalog_cards_status)
         snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
-        snap['schedule'] = uis._catalog_cards_schedule_state()
+        snap['schedule'] = catalog_cards_schedule_state()
         return snap, 200
 
     @app.route('/api/ui/system/species-registry/data-quality', methods=['GET'])

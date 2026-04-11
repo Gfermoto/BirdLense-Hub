@@ -216,6 +216,52 @@ def test_component_status_trigger_display_labels():
     assert _trigger_display('unknown_src', False) == 'unknown_src'
 
 
+def test_flatten_config_keys_terminal_maps():
+    from services.system_config_audit_service import (
+        TERMINAL_CONFIG_MAP_KEYS,
+        flatten_config_keys,
+    )
+
+    nested = {'a': {'b': 1}}
+    assert flatten_config_keys(nested) == {'a', 'a.b'}
+    terminal = next(iter(TERMINAL_CONFIG_MAP_KEYS))
+    assert flatten_config_keys({}, prefix=terminal) == {terminal}
+
+
+def test_build_system_config_audit_payload(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+
+    user = tmp_path / 'user.yaml'
+    user.write_text('extra_key: 1\n', encoding='utf-8')
+    default_f = tmp_path / 'default.yaml'
+    default_f.write_text('known: 1\n', encoding='utf-8')
+
+    def _get(key, default=None):
+        mapping = {
+            'notifications': {'telegram_proxy_type': 'http', 'send_photo': True},
+            'gallery.enabled': True,
+            'gallery.upload_url': ' https://x.example/upload ',
+            'gallery.min_confidence': 0.5,
+            'detection.species_mapping': {
+                'Gray-headed Woodpecker': 'Grey-headed Woodpecker',
+                'Great Gray Shrike': 'Great Grey Shrike',
+            },
+            'ebird.species_mapping': {},
+            'general.heimdall_url': '',
+        }
+        return mapping.get(key, default)
+
+    monkeypatch.setattr(scas, 'probe_heimdall', lambda _url: {'ok': True, 'stub': True})
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    assert 'extra_key' in payload['unknown_keys']
+    assert payload['mapping']['gray_to_grey_ok'] is True
+    assert payload['heimdall']['probe']['ok'] is True
+
+
 def test_build_timeline_export_response_ebird(monkeypatch):
     from services import timeline_export_service as tes
 

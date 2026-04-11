@@ -8,8 +8,8 @@ import threading
 from flask import Flask
 from flask_migrate import upgrade
 
-import routes.ui_system_routes
 from models import Species, db
+from services.legacy_import_cleanup_service import cleanup_legacy_import_placeholders
 from seed.seed import seed
 from services.species_registry_service import (
     backfill_species_taxa,
@@ -66,9 +66,7 @@ def bootstrap_legacy_import_cleanup() -> None:
     """Optional legacy import placeholder cleanup when env flag is set."""
     try:
         if _env_truthy('BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT'):
-            cleaned_rows, cleaned_visits = (
-                routes.ui_system_routes._cleanup_legacy_import_placeholders()
-            )
+            cleaned_rows, cleaned_visits = cleanup_legacy_import_placeholders()
             if cleaned_rows or cleaned_visits:
                 db.session.commit()
                 _log.info(
