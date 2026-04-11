@@ -1,9 +1,8 @@
-"""Flask entry: app factory, DB bootstrap, route registration."""
+"""Flask entry: фабрика приложения, оркестрация bootstrap и маршрутов (#292)."""
 import logging
 import os
 
 from flask import Flask
-from flask_migrate import Migrate
 
 from app_startup import (
     apply_schema_migrations_and_seed,
@@ -12,14 +11,10 @@ from app_startup import (
     bootstrap_species_metadata_repair,
     bootstrap_species_registry,
 )
-from flask_extensions import apply_cors, register_sqlite_connect_pragmas
-from models import db
-import routes.processor_routes
-import routes.ui_routes
-import routes.ui_system_routes
+from errors import register_error_handlers
+from extensions import init_extensions, migrate
+from routes import register_all_routes
 from util import notify_app_startup
-
-migrate = Migrate()
 
 # Set up logging
 logging.basicConfig(
@@ -41,13 +36,11 @@ def create_app():
     )
     app = Flask(__name__)
     app.config.from_object('config.Config')
-    apply_cors(app)
+    init_extensions(app)
+    register_error_handlers(app)
 
-    db.init_app(app)
     _web_dir = os.path.dirname(os.path.abspath(__file__))
     _migrations_dir = os.path.join(_web_dir, 'migrations')
-    migrate.init_app(app, db, directory=_migrations_dir)
-    register_sqlite_connect_pragmas()
 
     with app.app_context():
         apply_schema_migrations_and_seed(_migrations_dir)
@@ -55,9 +48,7 @@ def create_app():
         bootstrap_legacy_import_cleanup()
         bootstrap_species_metadata_repair(app)
         bootstrap_species_metadata_enrich(app)
-    routes.ui_routes.register_routes(app)
-    routes.ui_system_routes.register_routes(app)
-    routes.processor_routes.register_routes(app)
+    register_all_routes(app)
     notify_app_startup(app)
     return app
 
