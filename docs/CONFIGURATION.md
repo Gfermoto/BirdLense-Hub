@@ -101,6 +101,9 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
+| `min_confidence_binary_bird` | Optional: stricter **Bird-only** threshold after `track()` (Ultralytics uses `min` of all thresholds; per-label filter in Python). Example: **0.48** with `min_confidence_binary_squirrel: 0.22` cuts false “birds” (e.g. mouse→tit) without choking rodents. |
+| `min_confidence_binary_squirrel` | Optional: threshold for Squirrel boxes (rodent/chipmunk names normalize to Squirrel). |
+| `bird_skip_classifier_max_area_frac` | If **> 0**: for **Bird** with bbox area ≤ this fraction of the frame, **skip** species classifier → generic Bird only (reduces bogus species on tiny blobs). Default **0** (off). Try **0.012–0.025**; too high hurts small tits at the feeder. |
 | `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
 | `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Default **0.40**. Lower = more accepted species, higher = stricter. |
 | `min_confidence_to_notify` | Minimum combined confidence for **Telegram photo alerts** (after the hub accepts the recording). Default **0.46** in `default_config.yaml`; often set **above** `min_confidence_to_process` to reduce chat noise while still persisting visits. Exposed in **Settings → Processor**. After changing YAML thresholds, **restart the processor** so the running process reloads config. |

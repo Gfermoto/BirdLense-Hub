@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import logging
 import types
+from unittest.mock import MagicMock, patch
 
 # Ensure project root is in path to import app modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,10 +25,21 @@ if _ULTRALYTICS_STUB:
     sys.modules['ultralytics'] = _ultra
 
 try:
-    from detection_strategy import TwoStageStrategy, _regional_class_ids
+    from detection_strategy import (
+        TwoStageStrategy,
+        _regional_class_ids,
+        binary_track_ultralytics_conf_floor,
+        bird_skip_classifier_area_limit,
+        per_label_binary_conf_threshold,
+        should_skip_bird_species_classifier,
+    )
 except ImportError:
     TwoStageStrategy = None  # type: ignore
     _regional_class_ids = None  # type: ignore
+    binary_track_ultralytics_conf_floor = None  # type: ignore
+    bird_skip_classifier_area_limit = None  # type: ignore
+    per_label_binary_conf_threshold = None  # type: ignore
+    should_skip_bird_species_classifier = None  # type: ignore
 
 
 class _FakeTensor:
@@ -473,6 +485,95 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
 
         results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
         self.assertEqual(results, [])
+
+
+class TestBinaryConfHelpers(unittest.TestCase):
+    def test_conf_floor_min_of_per_label_and_base(self):
+        if binary_track_ultralytics_conf_floor is None:
+            self.skipTest('detection_strategy import failed')
+        cfg = {
+            'processor.min_confidence_binary_bird': 0.55,
+            'processor.min_confidence_binary_squirrel': 0.22,
+        }
+        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg), 0.22)
+
+    def test_per_label_thresholds(self):
+        if per_label_binary_conf_threshold is None:
+            self.skipTest('detection_strategy import failed')
+        cfg = {
+            'processor.min_confidence_binary_bird': 0.5,
+            'processor.min_confidence_binary_squirrel': 0.2,
+        }
+        self.assertAlmostEqual(per_label_binary_conf_threshold('Bird', 0.3, cfg), 0.5)
+        self.assertAlmostEqual(per_label_binary_conf_threshold('Squirrel', 0.3, cfg), 0.2)
+
+    def test_bird_skip_classifier_area(self):
+        if should_skip_bird_species_classifier is None:
+            self.skipTest('detection_strategy import failed')
+        cfg = {'processor.bird_skip_classifier_max_area_frac': 0.02}
+        self.assertTrue(should_skip_bird_species_classifier('Bird', 0.01, cfg))
+        self.assertFalse(should_skip_bird_species_classifier('Bird', 0.05, cfg))
+        self.assertFalse(should_skip_bird_species_classifier('Squirrel', 0.01, cfg))
+        self.assertIsNone(bird_skip_classifier_area_limit({}))
+
+
+class TestTwoStageBirdSkipClassifier(unittest.TestCase):
+    def test_tiny_bird_skips_classifier_when_area_limit_set(self):
+        if TwoStageStrategy is None:
+            self.skipTest('TwoStageStrategy import failed')
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest('app_config not available on PYTHONPATH')
+
+        frame = np.zeros((200, 200, 3), dtype=np.uint8)
+        frame[0:40, 0:40] = 80
+        # bbox ~8% area — ниже порога skip 0.10
+        boxes = _FakeBoxes(
+            track_ids=[1],
+            class_indexes=[0],
+            confidences=[0.95],
+            boxes_norm=[[0.0, 0.0, 0.2, 0.2]],
+            boxes_abs=[[0, 0, 40, 40]],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            'FakeBinaryModel',
+            (),
+            {
+                'track': lambda *args, **kwargs: [_FakeDetectResult(boxes)],
+                'names': {0: 'bird'},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: 'Great_Tit'},
+            {80: [1.0]},
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = logging.getLogger('test')
+        strategy.detector_scope = {'Bird', 'Squirrel'}
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        def _cfg_get(key, default=None):
+            if key == 'processor.bird_skip_classifier_max_area_frac':
+                return 0.10
+            return default
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        with patch.object(ac_mod, 'app_config', mock_cfg):
+            results = strategy.detect(frame, 'bytetrack.yaml', 0.1)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].class_name)
+        self.assertIsNone(results[0].classifier_confidence)
 
 
 if __name__ == '__main__':
