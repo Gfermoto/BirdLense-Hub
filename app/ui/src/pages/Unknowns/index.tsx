@@ -370,10 +370,6 @@ export function UnknownsPage() {
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       const msg = data?.updated_count && data.updated_count > 1
         ? t('video.correctedInVideos', { count: data.updated_count })
@@ -394,7 +390,6 @@ export function UnknownsPage() {
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
       setCorrectSuccess(t('unknowns.corrected'));

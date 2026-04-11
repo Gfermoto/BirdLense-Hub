@@ -1181,6 +1181,78 @@ class TestCorrectionsHistory:
                 assert 'source' in row
                 assert 'apply_scope' in row
 
+
+class TestDetectionSpeciesPatch:
+    def test_patch_default_single_track_only_one_row(self, app, client):
+        """Без apply_scope обновляется одна строка (Unknowns / быстрый путь)."""
+        from datetime import datetime
+
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+        old_admin = app_config.get('general.settings_password')
+        old_contrib = app_config.get('general.contributor_password')
+        app_config.set('general.settings_password', '')
+        app_config.set('general.contributor_password', '')
+        try:
+            with app.app_context():
+                sp_a = Species(name='PatchOldBird')
+                sp_b = Species(name='PatchNewBird')
+                visit = SpeciesVisit(
+                    species=sp_a,
+                    start_time=datetime(2026, 4, 10, 12, 0, 0),
+                    end_time=datetime(2026, 4, 10, 12, 0, 30),
+                    max_simultaneous=2,
+                )
+                video = Video(
+                    processor_version='test',
+                    start_time=datetime(2026, 4, 10, 12, 0, 0),
+                    end_time=datetime(2026, 4, 10, 12, 1, 0),
+                    video_path='data/recordings/2026/04/10/120000/video.mp4',
+                )
+                d1 = VideoSpecies(
+                    video=video,
+                    species=sp_a,
+                    species_visit=visit,
+                    start_time=0.0,
+                    end_time=5.0,
+                    confidence=0.5,
+                    source='video',
+                    track_id=1,
+                )
+                d2 = VideoSpecies(
+                    video=video,
+                    species=sp_a,
+                    species_visit=visit,
+                    start_time=6.0,
+                    end_time=10.0,
+                    confidence=0.6,
+                    source='video',
+                    track_id=2,
+                )
+                db.session.add_all([sp_a, sp_b, visit, video, d1, d2])
+                db.session.commit()
+                d1_id, d2_id = d1.id, d2.id
+                sp_a_id, sp_b_id = sp_a.id, sp_b.id
+
+            r = client.patch(
+                f'/api/ui/detections/{d1_id}',
+                json={'species_id': sp_b_id, 'source': 'unknowns'},
+            )
+            assert r.status_code == 200
+            assert r.json.get('updated_count') == 1
+            assert r.json.get('apply_scope') == 'single_track'
+
+            with app.app_context():
+                row1 = db.session.get(VideoSpecies, d1_id)
+                row2 = db.session.get(VideoSpecies, d2_id)
+                assert row1.species_id == sp_b_id
+                assert row2.species_id == sp_a_id
+        finally:
+            app_config.set('general.settings_password', old_admin)
+            app_config.set('general.contributor_password', old_contrib)
+
+
 class TestBirdFamilies:
     def test_bird_families_returns_list(self, client):
         r = client.get('/api/ui/bird_families')

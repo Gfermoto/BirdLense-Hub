@@ -112,7 +112,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
-      updateDetectionSpecies(detectionId, speciesId, 'video'),
+      // На странице видео ожидаем прежний fanout по тому же виду на ролике (как раньше по умолчанию в API).
+      updateDetectionSpecies(detectionId, speciesId, 'video', 'legacy_fanout'),
     onSuccess: (data) => {
       if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
       // Тот же API, что на странице Unknowns — иначе при staleTime 5m список «Неизвестные» остаётся старым.
@@ -121,10 +122,6 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       if (data?.updated_count && data.updated_count > 1) {
         setCorrectSuccess(t('video.correctedInVideos', { count: data.updated_count }));
       }
@@ -140,10 +137,6 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       setCorrectSuccess(data?.message ?? t('unknowns.corrected'));
     },
   });

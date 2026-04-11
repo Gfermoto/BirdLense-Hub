@@ -1,6 +1,7 @@
 """Dataset export/clean, detection crop/confirm/PATCH, corrections log (#198)."""
 
 import json
+import threading
 from datetime import datetime, timedelta, timezone
 
 from flask import Response, current_app, request
@@ -27,9 +28,9 @@ def normalize_correction_source(value):
     return 'other'
 
 
-def normalize_apply_scope(value, *, default='legacy_fanout'):
+def normalize_apply_scope(value, *, default='single_track'):
     scope = (value or '').strip().lower()
-    if scope in ('single_track', 'whole_visit'):
+    if scope in ('single_track', 'whole_visit', 'legacy_fanout'):
         return scope
     return default
 
@@ -193,7 +194,10 @@ def register_ui_corrections_dataset_routes(app):
             return {'error': 'Password required'}, 403
         payload = request.json or {}
         source = normalize_correction_source(payload.get('source'))
-        apply_scope = normalize_apply_scope(payload.get('apply_scope'))
+        apply_scope = normalize_apply_scope(
+            payload.get('apply_scope'),
+            default='legacy_fanout',
+        )
         reason = (payload.get('reason') or '').strip() or None
 
         vs = db.session.get(VideoSpecies, detection_id)
@@ -346,16 +350,56 @@ def register_ui_corrections_dataset_routes(app):
         db.session.commit()
         bust_response_caches()
 
-        for v in to_update:
-            if v.source == 'video':
-                moved = move_crop_on_species_correction(
-                    video_id=v.video_id,
-                    track_id=v.track_id,
-                    old_species_name=old_species_name,
-                    new_species_name=species.name,
-                )
-                if not moved:
-                    extract_and_save_crop_for_detection(v, species.name)
+        # Датасет-кропы: FFmpeg на каждой строке — при legacy_fanout десятки вызовов
+        # блокируют gunicorn и «вешают» UI. Мало строк — в том же запросе; иначе — фон.
+        _INLINE_DATASET_CROP_LIMIT = 5
+
+        def _run_dataset_crop_followup(
+            jobs,
+            *,
+            app_obj,
+        ):
+            """Повторная загрузка VideoSpecies по id (после commit в другом потоке)."""
+            from models import VideoSpecies as VSModel
+
+            with app_obj.app_context():
+                for det_id, vid, tid, old_name, new_name in jobs:
+                    vrow = db.session.get(VSModel, det_id)
+                    if not vrow or vrow.source != 'video':
+                        continue
+                    moved = move_crop_on_species_correction(
+                        video_id=vid,
+                        track_id=tid,
+                        old_species_name=old_name,
+                        new_species_name=new_name,
+                    )
+                    if not moved:
+                        extract_and_save_crop_for_detection(vrow, new_name)
+
+        video_crop_jobs = [
+            (v.id, v.video_id, v.track_id, old_species_name, species.name)
+            for v in to_update
+            if v.source == 'video'
+        ]
+        if len(video_crop_jobs) <= _INLINE_DATASET_CROP_LIMIT:
+            for v in to_update:
+                if v.source == 'video':
+                    moved = move_crop_on_species_correction(
+                        video_id=v.video_id,
+                        track_id=v.track_id,
+                        old_species_name=old_species_name,
+                        new_species_name=species.name,
+                    )
+                    if not moved:
+                        extract_and_save_crop_for_detection(v, species.name)
+        elif video_crop_jobs:
+            app_obj = current_app._get_current_object()
+            threading.Thread(
+                target=_run_dataset_crop_followup,
+                args=(video_crop_jobs,),
+                kwargs={'app_obj': app_obj},
+                daemon=True,
+            ).start()
 
         updated_count = len(to_update)
         write_correction_activity(
