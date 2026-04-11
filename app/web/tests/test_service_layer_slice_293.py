@@ -364,6 +364,30 @@ def test_build_timeline_export_response_ebird(monkeypatch):
     assert 'ebird' in headers['Content-Disposition']
 
 
+def test_review_queue_bulk_delete_confirm_mismatch(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from services import review_queue_bulk_delete_api_service as rq_svc
+
+    monkeypatch.setattr(
+        rq_svc,
+        'resolve_review_queue_bulk_plan',
+        lambda *_a, **_k: {
+            'confirmation_phrase': 'permanent_full',
+            'video_ids': [1],
+            'videos_by_id': {},
+        },
+    )
+    sess = MagicMock()
+    body, code = rq_svc.execute_review_queue_bulk_delete(
+        sess,
+        {'confirm_text': 'wrong'},
+    )
+    assert code == 400
+    assert 'Confirmation' in body.get('error', '')
+    sess.commit.assert_not_called()
+
+
 def test_parse_visitors_days_and_metrics_history_clamps():
     from services.system_metrics_api_service import (
         clamp_metrics_history_hours,
