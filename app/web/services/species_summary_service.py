@@ -1,6 +1,7 @@
 """Species summary data for /api/ui/species/:id/summary."""
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from models import Video, SpeciesVisit, VideoSpecies, BirdFood, video_bird_food_association
 from util import format_visit_for_timeline, observer_local_hour, get_observer_timezone_name
@@ -93,9 +94,17 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
         func.count(func.distinct(SpeciesVisit.id)).desc()
     ).limit(5).all()
 
-    recent_visits = session.query(SpeciesVisit).filter(
-        SpeciesVisit.species_id.in_(all_species_ids)
-    ).order_by(SpeciesVisit.start_time.desc()).limit(10).all()
+    recent_visits = (
+        session.query(SpeciesVisit)
+        .options(
+            joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+            joinedload(SpeciesVisit.species),
+        )
+        .filter(SpeciesVisit.species_id.in_(all_species_ids))
+        .order_by(SpeciesVisit.start_time.desc())
+        .limit(10)
+        .all()
+    )
 
     return {
         'species': {

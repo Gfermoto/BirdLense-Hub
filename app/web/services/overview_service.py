@@ -1,6 +1,7 @@
 """Overview data aggregation for /api/ui/overview."""
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import func, case, distinct
+from sqlalchemy.orm import contains_eager
 
 from models import Video, Species, SpeciesVisit, VideoSpecies
 from species_constants import GENERIC_BIRD_SPECIES
@@ -37,13 +38,18 @@ def get_overview_data(
     if found:
         return cached_result
 
-    exclude_bird = Species.name != GENERIC_BIRD_SPECIES
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    overview_visits = session.query(SpeciesVisit).join(Species).filter(
-        *_visit_overlaps_window(start_of_day, end_of_day),
-        exclude_bird,
-    ).all()
+    overview_visits = (
+        session.query(SpeciesVisit)
+        .join(SpeciesVisit.species)
+        .options(contains_eager(SpeciesVisit.species))
+        .filter(
+            *_visit_overlaps_window(start_of_day, end_of_day),
+            Species.name != GENERIC_BIRD_SPECIES,
+        )
+        .all()
+    )
 
     species_hourly: dict[int, dict[str, object]] = {}
     busiest_by_hour = [0] * 24
@@ -97,7 +103,7 @@ def get_overview_data(
         ).label('lastHourDetections'),
     ).join(Species, SpeciesVisit.species_id == Species.id).filter(
         *_visit_overlaps_window(start_of_day, end_of_day),
-        exclude_bird,
+        Species.name != GENERIC_BIRD_SPECIES,
     ).first()
 
     # Recording time: сумма длительностей видеофайлов за день (Video.start_time в диапазоне).
@@ -160,7 +166,7 @@ def get_overview_data(
         SpeciesVisit.species_id == Species.id,
     ).filter(
         *_visit_overlaps_window(start_of_day, end_of_day),
-        exclude_bird,
+        Species.name != GENERIC_BIRD_SPECIES,
     ).group_by(VideoSpecies.detection_provider).all()
 
     stats = {
