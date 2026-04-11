@@ -124,6 +124,53 @@ def test_build_timeline_export_response_json_and_empty_csv():
     assert 'species_name' in body_csv
 
 
+def test_parse_system_activity_month():
+    from services.system_activity_service import (
+        SystemActivityMonthError,
+        parse_system_activity_month,
+    )
+
+    start, end = parse_system_activity_month('2026-03')
+    assert start.year == 2026 and start.month == 3
+    assert end > start
+    with pytest.raises(SystemActivityMonthError):
+        parse_system_activity_month('not-a-month')
+
+
+def test_clamp_processor_log_line_count():
+    from services.processor_logs_service import (
+        LOG_LINES_DEFAULT,
+        LOG_LINES_MAX,
+        clamp_processor_log_line_count,
+    )
+
+    assert clamp_processor_log_line_count('50') == 50
+    assert clamp_processor_log_line_count(99999) == LOG_LINES_MAX
+    assert clamp_processor_log_line_count('x') == LOG_LINES_DEFAULT
+
+
+def test_parse_video_neighbors_request_args():
+    from werkzeug.datastructures import ImmutableMultiDict
+
+    from services.video_neighbors_service import (
+        VideoNeighborsParamError,
+        parse_video_neighbors_request_args,
+    )
+
+    args = ImmutableMultiDict([
+        ('day_scope', 'utc'),
+        ('neighbor_mode', 'video'),
+        ('tz_offset_minutes', '0'),
+    ])
+    scope, cross, mode, vid, tz = parse_video_neighbors_request_args(args)
+    assert scope == 'utc' and cross is False and mode == 'video' and vid is None and tz == 0
+
+    with pytest.raises(VideoNeighborsParamError, match='day_scope'):
+        parse_video_neighbors_request_args(
+            ImmutableMultiDict([('day_scope', 'mars')]),
+        )
+
+
 def test_parse_push_subscription_body_ok_and_errors():
     from services.web_push_service import (
         PushSubscriptionBodyError,
