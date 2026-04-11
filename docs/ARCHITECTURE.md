@@ -75,7 +75,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 ## Database
 
 - **SQLite** — `data/db/birdlense.db` (path configurable via `DATA_DIR`; see [CONFIGURATION](./CONFIGURATION.md)).
-- **ORM:** Flask-SQLAlchemy; **schema evolution:** **Flask-Migrate / Alembic** — revision scripts under `app/web/migrations/`. On app startup, `create_app()` runs `db.create_all()` then `upgrade()` so new installs and upgrades apply the same path (replaces ad-hoc `ALTER TABLE` in application code for tracked columns).
+- **ORM:** Flask-SQLAlchemy; **schema evolution:** **Flask-Migrate / Alembic** — revision scripts under `app/web/migrations/`. On startup, `create_app()` calls **`app_startup.apply_schema_migrations_and_seed`**, which runs `db.create_all()` then `upgrade()` so new installs and upgrades share one path (replaces ad-hoc `ALTER TABLE` in application code for tracked columns).
 - **DDL policy (audit, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** table/column changes belong in new Alembic revisions under `migrations/versions/`, not in route or startup code. SQLite **PRAGMA** tuning on connect (I/O performance; not schema) is registered via **`flask_extensions.register_sqlite_connect_pragmas()`** from `create_app()`. Other `session.execute` usages in app code are DML (e.g. deletes), not DDL.
 - **Entities:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog, and related tables (see `app/web/models`).
 

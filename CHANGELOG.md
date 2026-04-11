@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292), шаг 1):** CORS и регистрация SQLite PRAGMA при connect вынесены в **`app/web/flask_extensions.py`**; `app.py` вызывает `apply_cors` и `register_sqlite_connect_pragmas`. Док: [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md), [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md).
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** CORS и SQLite PRAGMA — **`app/web/flask_extensions.py`**; старт схемы, seed, species registry, legacy cleanup и фоновый metadata repair/enrich — **`app/web/app_startup.py`**; `app.py` остаётся тонкой фабрикой. Док: [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md), [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md).
 
 - **[#283](https://github.com/Gfermoto/BirdLense-Hub/issues/283):** локальные CORS origins (Vite, `birdlense.local`, порт хаба) заданы в **`config.Config`** и переменной окружения **`CORS_LOCAL_DEV_ORIGINS`** (пустая строка — не добавлять встроенный набор); `app/web/app.py` только собирает итоговый список вместе с `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`.
 

@@ -54,7 +54,7 @@
 
 ### C2. `create_app()` выполняет опасные data mutations и recovery-операции
 Корневая причина:
-- в [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) старт веба совмещен с `seed`, registry backfill, cleanup, background repair и опциональным enrich.
+- `create_app()` вызывает [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py): `seed`, registry backfill, cleanup, background repair и опциональный enrich (код вынесен из `app.py` для ясности; поведение то же).
 
 Почему это критично:
 - рестарт приложения меняет данные;
@@ -98,7 +98,7 @@
 - несогласованность между processor и web.
 
 ### H3. Startup notifications и startup repair остаются частью критического пути
-В [app/web/notifications.py](/home/gfer/BirdLense/app/web/notifications.py) и [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) старт всё еще содержит внешние или фоновые side-effects.
+В [app/web/notifications.py](/home/gfer/BirdLense/app/web/notifications.py), [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) и конце `create_app` в [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) старт всё ещё содержит внешние или фоновые side-effects.
 
 Риск:
 - непредсказуемый cold start;
@@ -171,13 +171,13 @@
 
 | Операция | Файл | Verdict |
 |---|---|---|
-| `db.create_all()` и schema-safe `ALTER` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `allowed` |
-| `seed()` и базовая иерархия | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `allowed` |
-| `ensure_species_registry_seeded()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
-| `backfill_species_taxa(dry_run=False)` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
-| `_cleanup_legacy_import_placeholders()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
-| `repair_recently_reset_species_metadata()` thread | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
-| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
+| `db.create_all()` и schema-safe `ALTER` | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `allowed` |
+| `seed()` и базовая иерархия | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `allowed` |
+| `ensure_species_registry_seeded()` | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `gated` |
+| `backfill_species_taxa(dry_run=False)` | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `forbidden on startup` |
+| `_cleanup_legacy_import_placeholders()` | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `gated` |
+| `repair_recently_reset_species_metadata()` thread | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `forbidden on startup` |
+| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app_startup.py](/home/gfer/BirdLense/app/web/app_startup.py) | `forbidden on startup` |
 | `notify_app_startup()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
 | system metrics sampler | [app/web/routes/ui_system_routes.py](/home/gfer/BirdLense/app/web/routes/ui_system_routes.py) | `allowed` |
 
