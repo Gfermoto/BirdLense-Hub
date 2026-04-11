@@ -4,6 +4,7 @@ import os
 
 from flask import Flask
 
+from app_logging import configure_process_logging
 from app_startup import (
     apply_schema_migrations_and_seed,
     bootstrap_legacy_import_cleanup,
@@ -16,14 +17,7 @@ from extensions import init_extensions
 from routes import register_all_routes
 from util import notify_app_startup
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Logs to the console
-    ]
-)
+configure_process_logging()
 
 _log = logging.getLogger(__name__)
 
