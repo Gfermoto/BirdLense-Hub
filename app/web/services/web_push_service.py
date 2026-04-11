@@ -1,7 +1,7 @@
 """Web Push notifications — отправка push в браузер при детекциях."""
 import json
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
 from app_config.app_config import app_config
 from models import db, PushSubscription
@@ -152,3 +152,58 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
     if to_remove:
         db.session.commit()
     return sent
+
+
+class PushSubscriptionBodyError(ValueError):
+    """Некорректное тело POST /api/ui/push/subscribe."""
+
+
+def parse_push_subscription_body(data) -> tuple[str, str, str]:
+    """endpoint, p256dh, auth."""
+    if not isinstance(data, dict):
+        data = {}
+    sub = data.get('subscription')
+    if not sub or not isinstance(sub, dict):
+        raise PushSubscriptionBodyError('subscription required')
+    endpoint = (sub.get('endpoint') or '').strip()
+    keys = sub.get('keys') or {}
+    p256dh = (keys.get('p256dh') or '').strip()
+    auth = (keys.get('auth') or '').strip()
+    if not endpoint or not p256dh or not auth:
+        raise PushSubscriptionBodyError(
+            'subscription.endpoint and subscription.keys (p256dh, auth) required',
+        )
+    return endpoint, p256dh, auth
+
+
+def enable_web_push_and_save() -> None:
+    app_config.set('web_push.enabled', True)
+    app_config.save()
+
+
+def upsert_push_subscription(
+    session,
+    *,
+    endpoint: str,
+    p256dh: str,
+    auth: str,
+    user_agent: str,
+) -> Literal['updated', 'created']:
+    existing = (
+        session.query(PushSubscription).filter_by(endpoint=endpoint).first()
+    )
+    if existing:
+        existing.p256dh = p256dh
+        existing.auth = auth
+        existing.user_agent = user_agent[:512]
+        session.commit()
+        return 'updated'
+    ps = PushSubscription(
+        endpoint=endpoint,
+        p256dh=p256dh,
+        auth=auth,
+        user_agent=user_agent[:512],
+    )
+    session.add(ps)
+    session.commit()
+    return 'created'
