@@ -36,6 +36,8 @@ Runs processor `unittest` inside Docker (detection strategy, decision logic). Re
 
 > **Memory / RAM:** Processor tests load YOLO inside the container and can use **several GB of RAM**. On a **small VPS or laptop** with tight limits, `make test` (or the **`docker-tests`** CI job) may exit with **SIGKILL / exit 137** (OOM). Prefer a machine with **≥8 GB** free for Docker, close other heavy apps, or run tests on **GitHub Actions** instead of locally.
 
+**Lighter processor run (#282):** `cd app && make test-processor-light` sets `SKIP_HEAVY_PROCESSOR_TESTS=1` and runs `pytest processor/tests/ -m "not heavy"`. That skips the **TwoStageStrategy** integration tests that load real `.pt` weights (same skip if you export the env var yourself). Pytest tests can be marked with `@pytest.mark.heavy` to opt into the same skip. **CI** still runs the full `make test` by default.
+
 ### Web API tests
 
 ```bash

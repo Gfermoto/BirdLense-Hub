@@ -36,6 +36,8 @@ cd app && make test
 
 > **Память (RAM):** тесты процессора поднимают YOLO в контейнере и могут занять **несколько ГБ ОЗУ**. На **слабом VPS или ноутбуке** с лимитом памяти `make test` (или job **`docker-tests`** в CI) может завершиться **SIGKILL / код 137** (OOM). Лучше **≥8 ГБ** свободно под Docker, закрыть тяжёлые приложения или гонять тесты на **GitHub Actions**, а не только локально.
 
+**Облегчённый прогон (#282):** `cd app && make test-processor-light` выставляет `SKIP_HEAVY_PROCESSOR_TESTS=1` и запускает `pytest processor/tests/ -m "not heavy"`. Пропускаются интеграционные тесты **TwoStageStrategy** с реальными `.pt` (то же при ручном export переменной). Для pytest-тестов можно повесить `@pytest.mark.heavy`. **В CI** по умолчанию по-прежнему полный `make test`.
+
 ### API-тесты (web)
 
 ```bash
