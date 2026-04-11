@@ -151,6 +151,12 @@ export interface Settings {
     max_inactive_seconds: number; // Max inactivity before stopping recording
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
+    /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
+    min_confidence_binary_bird?: number | null;
+    /** Мягче для Squirrel/rodent. null → как min_confidence_binary. */
+    min_confidence_binary_squirrel?: number | null;
+    /** Bird с площадью bbox ≤ доли кадра — без species classifier; null/0 = выкл. */
+    bird_skip_classifier_max_area_frac?: number | null;
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
     /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
     min_confidence_to_notify?: number;
