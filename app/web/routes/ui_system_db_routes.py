@@ -15,6 +15,7 @@ from services.retention_service import run_retention
 from services.sqlite_admin_service import (
     backup_sqlite_to_file as _sqlite_backup_to_file,
     replace_live_sqlite_db as _sqlite_replace_live_db,
+    sqlite_main_file_path,
     validate_sqlite_file as _sqlite_validate_file,
 )
 from util import settings_check_access
@@ -23,18 +24,12 @@ from util import settings_check_access
 def register_ui_system_db_routes(app):
     """DB backup/restore и POST retention."""
 
-    def _sqlite_db_path() -> str | None:
-        uri = str(db.engine.url)
-        if not uri.startswith('sqlite:///'):
-            return None
-        return db.engine.url.database
-
     @app.route('/api/ui/system/db/backup', methods=['GET'])
     def backup_database():
         """Download current SQLite database snapshot."""
         if not settings_check_access():
             return {'error': 'Password required'}, 403
-        db_path = _sqlite_db_path()
+        db_path = sqlite_main_file_path(db.engine)
         if not db_path:
             return {'error': 'DB backup is supported only for SQLite'}, 400
         if not os.path.isfile(db_path):
@@ -71,7 +66,7 @@ def register_ui_system_db_routes(app):
         upload = request.files.get('file')
         if not upload:
             return {'error': 'file is required (multipart/form-data)'}, 400
-        db_path = _sqlite_db_path()
+        db_path = sqlite_main_file_path(db.engine)
         if not db_path:
             return {'error': 'DB restore is supported only for SQLite'}, 400
         if not os.path.isfile(db_path):
