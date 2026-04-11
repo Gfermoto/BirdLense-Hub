@@ -1,4 +1,6 @@
 """eBird API: regional species for comparison with user's feeder (web cache layer)."""
+from __future__ import annotations
+
 import hashlib
 import logging
 
@@ -18,6 +20,21 @@ logger = logging.getLogger(__name__)
 
 # Backward compat: tests clear ebird_region_service._REGION_TOP_CACHE
 # (same dict as ebird_region_core._REGION_TOP_CACHE)
+
+
+def list_observed_species_names_for_comparison(session) -> list[str]:
+    """Имена видов из визитов, кроме generic Bird (для /api/ui/region-comparison)."""
+    from models import Species, SpeciesVisit
+    from species_constants import GENERIC_BIRD_SPECIES
+
+    rows = (
+        session.query(Species.name)
+        .join(SpeciesVisit, SpeciesVisit.species_id == Species.id)
+        .filter(Species.name != GENERIC_BIRD_SPECIES)
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 def get_region_comparison(user_species_names: list[str]) -> dict | None:

@@ -40,15 +40,6 @@ def _timeline_entry_sort_key(item: dict):
     return parsed
 
 
-def parse_timeline_iso(s: str) -> datetime:
-    if s.endswith('Z'):
-        s = s[:-1] + '+00:00'
-    d = datetime.fromisoformat(s)
-    if d.tzinfo is None:
-        d = d.replace(tzinfo=timezone.utc)
-    return d
-
-
 def build_merged_timeline_items(session, start_dt, end_dt) -> list:
     """Визиты за интервал + ролики, которые ни в один визит не попали."""
     visits_raw = (

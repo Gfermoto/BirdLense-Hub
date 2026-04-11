@@ -5,7 +5,7 @@ from compat_reexports import *  # noqa: F401, F403
 from app_config.app_config import app_config  # noqa: F401
 from metrics_auth import metrics_bearer_denied  # noqa: F401
 from species_constants import GENERIC_BIRD_SPECIES  # noqa: F401
-from time_util import ensure_utc, parse_utc_timestamp  # noqa: F401
+from time_util import ensure_utc, parse_timeline_iso, parse_utc_timestamp  # noqa: F401
 
 from data_paths import (  # noqa: E402, F401
     _data_dir,

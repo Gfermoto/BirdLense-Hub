@@ -8,23 +8,27 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Response, request
 from app_config.app_config import app_config
-from models import Species, SpeciesVisit, db
-from species_constants import GENERIC_BIRD_SPECIES
+from models import db
 from services.cache import cache_get, cache_set
 from services.ebird_export_service import build_ebird_csv
-from services.ebird_region_service import get_region_comparison
+from services.ebird_region_service import (
+    get_region_comparison,
+    list_observed_species_names_for_comparison,
+)
 from services.migration_calendar_service import get_migration_calendar
 from services.overview_service import get_overview_data
 from services.report_service import build_monthly_report, get_monthly_report_data
 from services.review_queue_service import fetch_review_queue_items
-from util import observer_local_day_bounds, observer_local_range, parse_utc_timestamp
+from services.timeline_export_service import build_timeline_export_rows
+from services.timeline_window_service import TimelineWindowError, resolve_timeline_utc_window
+from util import observer_local_day_bounds, parse_utc_timestamp
 
 from routes.ui_route_constants import (
     CACHE_MIGRATION_SEC,
     CACHE_TIMELINE_SEC,
     CACHE_UNKNOWNS_SEC,
 )
-from routes.ui_timeline_helpers import build_merged_timeline_items, parse_timeline_iso
+from routes.ui_timeline_helpers import build_merged_timeline_items
 
 
 def register_ui_overview_timeline_routes(app):
@@ -52,14 +56,7 @@ def register_ui_overview_timeline_routes(app):
     @app.route('/api/ui/region-comparison', methods=['GET'])
     def get_region_comparison_route():
         """Compare user's observed species with eBird region top. Requires secrets.ebird_api_key."""
-        observed = (
-            db.session.query(Species.name)
-            .join(SpeciesVisit, SpeciesVisit.species_id == Species.id)
-            .filter(Species.name != GENERIC_BIRD_SPECIES)
-            .distinct()
-            .all()
-        )
-        user_names = [r[0] for r in observed]
+        user_names = list_observed_species_names_for_comparison(db.session)
         result = get_region_comparison(user_names)
         return result if result is not None else {}, 200
 
@@ -108,24 +105,19 @@ def register_ui_overview_timeline_routes(app):
         start_time = request.args.get('start_time')
         end_time = request.args.get('end_time')
 
+        try:
+            start_dt, end_dt = resolve_timeline_utc_window(
+                date_param=date_param,
+                time_of_day=time_of_day,
+                hour_param=hour_param,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except TimelineWindowError as exc:
+            return {'error': str(exc)}, 400
         if date_param:
-            try:
-                start_dt, end_dt = observer_local_range(
-                    date_param,
-                    time_of_day=time_of_day,
-                    hour=hour_param,
-                )
-            except ValueError:
-                return {'error': 'Invalid local date range parameters'}, 400
             tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}"
         else:
-            if not start_time or not end_time:
-                return {'error': 'Both start_time and end_time are required'}, 400
-            try:
-                start_dt = parse_utc_timestamp(start_time)
-                end_dt = parse_utc_timestamp(end_time)
-            except ValueError:
-                return {'error': 'Invalid datetime format'}, 400
             tck = f"timeline:{start_time}:{end_time}"
         hit, tcached = cache_get(tck)
         if hit:
@@ -151,46 +143,22 @@ def register_ui_overview_timeline_routes(app):
         if fmt not in ('csv', 'json', 'ebird'):
             return {'error': 'format must be csv, json, or ebird'}, 400
 
-        if date_param:
-            try:
-                start_dt, end_dt = observer_local_range(
-                    date_param,
-                    time_of_day=time_of_day,
-                    hour=hour_param,
-                )
-            except ValueError:
-                return {'error': 'Invalid local date range parameters'}, 400
-        else:
-            if not start_time or not end_time:
-                return {'error': 'Both start_time and end_time are required'}, 400
-            try:
-                start_dt = parse_utc_timestamp(start_time)
-                end_dt = parse_utc_timestamp(end_time)
-            except ValueError:
-                return {'error': 'Invalid datetime format'}, 400
+        try:
+            start_dt, end_dt = resolve_timeline_utc_window(
+                date_param=date_param,
+                time_of_day=time_of_day,
+                hour_param=hour_param,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except TimelineWindowError as exc:
+            return {'error': str(exc)}, 400
 
         if end_dt - start_dt > timedelta(days=1):
             return {'error': 'Interval must not exceed 1 day'}, 400
 
         merged = build_merged_timeline_items(db.session, start_dt, end_dt)
-
-        rows = []
-        for item in merged:
-            st_p = parse_timeline_iso(item['start_time'])
-            et_p = parse_timeline_iso(item['end_time'])
-            duration = max(0, round((et_p - st_p).total_seconds()))
-            w = item.get('weather') or {}
-            rows.append({
-                'id': item['id'],
-                'species_name': item['species']['name'],
-                'start_time': st_p.astimezone(timezone.utc).isoformat(),
-                'end_time': et_p.astimezone(timezone.utc).isoformat(),
-                'duration_sec': duration,
-                'max_simultaneous': item.get('max_simultaneous', 1),
-                'detection_count': len(item.get('detections') or []),
-                'temp': w.get('temp'),
-                'clouds': w.get('clouds'),
-            })
+        rows = build_timeline_export_rows(merged)
 
         if fmt == 'ebird':
             seen = set()
