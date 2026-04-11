@@ -7,7 +7,7 @@ from datetime import timezone
 import util as util_mod
 from models import Video
 
-from routes.ui_overview_timeline_routes import fetch_review_queue_items
+from services.review_queue_service import fetch_review_queue_items
 
 
 def _parse_unknown_ids(payload) -> list[int]:
