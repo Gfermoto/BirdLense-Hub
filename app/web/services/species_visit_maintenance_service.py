@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import exists
+from sqlalchemy.orm import joinedload
 
 from models import SpeciesVisit, Video, VideoSpecies
 
@@ -42,6 +43,7 @@ def _collect_species_sync_actions(session) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     rows = (
         session.query(VideoSpecies)
+        .options(joinedload(VideoSpecies.species_visit))
         .filter(VideoSpecies.species_visit_id.isnot(None))
         .all()
     )
