@@ -216,6 +216,21 @@ def test_component_status_trigger_display_labels():
     assert _trigger_display('unknown_src', False) == 'unknown_src'
 
 
+def test_parse_unresolved_limit_species_registry():
+    from services.species_registry_admin_service import parse_unresolved_limit
+
+    assert parse_unresolved_limit('25') == 25
+    assert parse_unresolved_limit(None) == 100
+    assert parse_unresolved_limit('x') == 100
+
+
+def test_normalize_export_format():
+    from services.species_registry_admin_service import normalize_export_format
+
+    assert normalize_export_format(' CSV ') == 'csv'
+    assert normalize_export_format(None) == 'json'
+
+
 def test_parse_broken_videos_list_params_clamped():
     from werkzeug.datastructures import ImmutableMultiDict
 
