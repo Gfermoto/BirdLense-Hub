@@ -6,6 +6,14 @@ import shutil
 import sqlite3
 
 
+def sqlite_main_file_path(engine) -> str | None:
+    """Путь к файлу для sqlite:///:memory: остаётся ':memory:' (не файловый)."""
+    if not str(engine.url).startswith('sqlite:///'):
+        return None
+    path = engine.url.database
+    return path or None
+
+
 def validate_sqlite_file(path: str) -> None:
     with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as conn:
         check = conn.execute('PRAGMA integrity_check;').fetchone()
