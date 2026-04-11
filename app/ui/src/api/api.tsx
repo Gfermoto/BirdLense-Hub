@@ -21,6 +21,20 @@ export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
 axios.defaults.timeout = 30000;
 
+/** Текст ошибки из JSON `{ error: string }` или fallback (для мутаций UI). */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    if (data && typeof data === 'object' && data !== null && 'error' in data) {
+      const msg = (data as { error?: unknown }).error;
+      if (typeof msg === 'string' && msg.trim()) return msg;
+    }
+    if (err.message) return err.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 /** Длинный timeout для опроса фоновых job (spectrogram / tracks): дефолт 30s рвёт poll на медленном ответе. */
 export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
 
