@@ -57,14 +57,14 @@ def test_repo_root_falls_back_to_cwd(tmp_path, monkeypatch):
 def test_fusion_export_route_runs_job_and_exposes_status(client, monkeypatch):
     """Fusion export should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_fusion_routes as uisf
+    import services.system_fusion_telegram_jobs_service as sftj
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(sftj.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uisf,
-        '_run_fusion_export_job',
+        sftj,
+        'run_fusion_export_job',
         lambda: {'output_path': '/tmp/fusion.csv', 'rows_written': 12},
     )
 
@@ -81,14 +81,14 @@ def test_fusion_export_route_runs_job_and_exposes_status(client, monkeypatch):
 def test_fusion_eval_route_runs_job_and_exposes_status(client, monkeypatch):
     """Fusion eval should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_fusion_routes as uisf
+    import services.system_fusion_telegram_jobs_service as sftj
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(sftj.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uisf,
-        '_run_fusion_eval_job',
+        sftj,
+        'run_fusion_eval_job',
         lambda **kwargs: {'accuracy': 0.91, 'n': 123},
     )
 
@@ -108,13 +108,13 @@ def test_fusion_eval_route_runs_job_and_exposes_status(client, monkeypatch):
 def test_telegram_proxy_refresh_route_runs_job_and_exposes_status(client, monkeypatch):
     """Telegram proxy refresh should start and expose a finished status."""
     from app_config.app_config import app_config
-    import routes.ui_system_fusion_routes as uisf
+    import services.system_fusion_telegram_jobs_service as sftj
 
     app_config.set('general.settings_password', '')
     app_config.set('general.contributor_password', '')
-    monkeypatch.setattr(uisf.threading, 'Thread', _ImmediateThread)
+    monkeypatch.setattr(sftj.threading, 'Thread', _ImmediateThread)
     monkeypatch.setattr(
-        uisf,
+        sftj,
         'refresh_telegram_proxy_service',
         lambda: {
             'checked': 3,

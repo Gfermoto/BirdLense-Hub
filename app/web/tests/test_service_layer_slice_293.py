@@ -374,6 +374,28 @@ def test_compute_system_activity_uptime_bad_month():
     assert 'error' in body
 
 
+def test_fusion_export_download_file_or_error_missing(monkeypatch):
+    from services import system_fusion_telegram_jobs_service as sft
+
+    monkeypatch.setattr(sft, 'latest_fusion_export_path', lambda: None)
+    path, err, code = sft.fusion_export_download_file_or_error()
+    assert path is None and err and code == 404
+
+
+def test_prepare_sqlite_db_backup_rejects_non_sqlite_engine():
+    from services.system_sqlite_admin_api_service import (
+        prepare_sqlite_db_backup_download,
+    )
+
+    class _Eng:
+        url = 'postgresql://localhost/db'
+
+    err, data, code = prepare_sqlite_db_backup_download(_Eng())
+    assert err and 'SQLite' in err['error']
+    assert data is None
+    assert code == 400
+
+
 def test_start_bulk_spectrogram_requires_birdnet(monkeypatch):
     from services import system_admin_api_service as saa
 
