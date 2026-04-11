@@ -124,6 +124,20 @@ def test_build_timeline_export_response_json_and_empty_csv():
     assert 'species_name' in body_csv
 
 
+def test_parse_dataset_export_query_args_defaults():
+    from services.dataset_export_request_service import parse_dataset_export_query_args
+
+    class _A(dict):
+        def get(self, k, default=None):
+            return super().get(k, default)
+
+    args = _A()
+    p = parse_dataset_export_query_args(args)
+    assert p['val_ratio'] == 0.2
+    assert p['only_manually_corrected'] is False
+    assert p['strict_quality'] is False
+
+
 def test_parse_system_activity_month():
     from services.system_activity_service import (
         SystemActivityMonthError,
