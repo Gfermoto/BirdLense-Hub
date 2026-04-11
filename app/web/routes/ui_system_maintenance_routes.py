@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from flask import request
 
+from routes.http_guards import require_ui_settings_password
 from services.system_maintenance_service import (
     post_clean_orphaned_visits,
     post_merge_duplicate_species,
@@ -11,66 +12,61 @@ from services.system_maintenance_service import (
     post_split_large_gap_visits,
     run_recordings_scan,
 )
-from util import settings_check_access
 
 
 def register_ui_system_maintenance_routes(app):
     """Импорт с диска и обслуживание видов/визитов."""
 
     @app.route('/api/ui/system/recordings/scan', methods=['POST'])
+    @require_ui_settings_password
     def scan_recordings():
         """
         Scan data/recordings/ for video.mp4 not in DB and add them.
         Fixes recordings missing from stats after server restart.
         """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         body, code = run_recordings_scan(app)
         return body, code
 
     @app.route('/api/ui/system/clean-orphaned-visits', methods=['POST'])
+    @require_ui_settings_password
     def clean_orphaned_visits():
         """
         Удалить осиротевшие SpeciesVisit (без VideoSpecies) и синхронизировать
         VideoSpecies.species_id с visit.species_id. Исправляет некорректные счётчики
         в календаре миграций и каталоге после старых коррекций.
         """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         payload = request.get_json(silent=True) or {}
         body, code = post_clean_orphaned_visits(payload)
         return body, code
 
     @app.route('/api/ui/system/realign-visit-times', methods=['POST'])
+    @require_ui_settings_password
     def realign_visit_times():
         """Preview/apply SpeciesVisit time realignment from actual detection timestamps."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         payload = request.get_json(silent=True) or {}
         body, code = post_realign_visit_times(payload)
         return body, code
 
     @app.route('/api/ui/system/split-large-gap-visits', methods=['POST'])
+    @require_ui_settings_password
     def split_large_gap_visits():
         """Preview/apply splitting of visits with large internal detection gaps."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         payload = request.get_json(silent=True) or {}
         body, code = post_split_large_gap_visits(payload)
         return body, code
 
     @app.route('/api/ui/system/merge-duplicate-species', methods=['POST'])
+    @require_ui_settings_password
     def merge_duplicate_species():
         """
         Объединить дубликаты видов (Garrulus glandarius (Eurasian Jay) -> Eurasian Jay).
         Использует species_canonical_mapping.txt. Сопоставление без учёта регистра.
         """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         body, code = post_merge_duplicate_species()
         return body, code
 
     @app.route('/api/ui/system/species-catalog/reconcile', methods=['POST'])
+    @require_ui_settings_password
     def species_catalog_reconcile():
         """
         Привести каталог видов: слияние дубликатов по нормализованному имени;
@@ -85,8 +81,6 @@ def register_ui_system_maintenance_routes(app):
 
         Allowlist: species.catalog_allowlist_file → scripts/datasets/dump_classifier_allowlist.py
         """
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         payload = request.get_json(silent=True) or {}
         body, code = post_species_catalog_reconcile(payload)
         return body, code

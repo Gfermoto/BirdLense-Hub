@@ -6,22 +6,21 @@ import shutil
 from flask import after_this_request, request, send_file
 
 from models import db
+from routes.http_guards import require_ui_settings_password
 from services.system_sqlite_admin_api_service import (
     prepare_sqlite_db_backup_download,
     restore_sqlite_database_from_upload,
     run_retention_and_bust_caches,
 )
-from util import settings_check_access
 
 
 def register_ui_system_db_routes(app):
     """DB backup/restore и POST retention."""
 
     @app.route('/api/ui/system/db/backup', methods=['GET'])
+    @require_ui_settings_password
     def backup_database():
         """Download current SQLite database snapshot."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         err, data, code = prepare_sqlite_db_backup_download(db.engine)
         if err is not None or data is None:
             return err or {'error': 'Backup preparation failed'}, code
@@ -42,18 +41,16 @@ def register_ui_system_db_routes(app):
         )
 
     @app.route('/api/ui/system/db/restore', methods=['POST'])
+    @require_ui_settings_password
     def restore_database():
         """Restore SQLite DB from uploaded .db file; keep pre-restore backup."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         return restore_sqlite_database_from_upload(
             request.files.get('file'),
             db.engine,
         )
 
     @app.route('/api/ui/system/retention', methods=['POST'])
+    @require_ui_settings_password
     def trigger_retention():
         """Run retention policy (delete old recordings)."""
-        if not settings_check_access():
-            return {'error': 'Password required'}, 403
         return run_retention_and_bust_caches()
