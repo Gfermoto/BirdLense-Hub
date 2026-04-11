@@ -224,6 +224,16 @@ def test_parse_unresolved_limit_species_registry():
     assert parse_unresolved_limit('x') == 100
 
 
+def test_coerce_duplicate_group_limit():
+    from services.system_maintenance_service import coerce_duplicate_group_limit
+
+    assert coerce_duplicate_group_limit(500) == (500, None)
+    assert coerce_duplicate_group_limit(5) == (10, None)
+    assert coerce_duplicate_group_limit(100_000) == (5000, None)
+    lim, err = coerce_duplicate_group_limit('bad')
+    assert lim is None and err == 'duplicate_group_limit must be int'
+
+
 def test_normalize_export_format():
     from services.species_registry_admin_service import normalize_export_format
 
