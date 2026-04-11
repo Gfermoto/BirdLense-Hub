@@ -11,6 +11,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sqlalchemy.orm import joinedload
+
 from data_paths import data_dir
 from models import ActivityLog, VideoSpecies, db
 
@@ -238,6 +240,7 @@ def run_fusion_export_job() -> dict:
 
         rows = (
             db.session.query(VideoSpecies)
+            .options(joinedload(VideoSpecies.species))
             .filter(VideoSpecies.source == 'video')
             .all()
         )

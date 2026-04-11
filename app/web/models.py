@@ -214,6 +214,12 @@ class Video(db.Model):
     food: Mapped[List[BirdFood]] = relationship(
         secondary=video_bird_food_association)
 
+    __table_args__ = (
+        # Hot paths: overview/report overlap on [start,end] vs day/window (#294).
+        Index('ix_video_start_time', 'start_time'),
+        Index('ix_video_end_time', 'end_time'),
+    )
+
 
 class ActivityLog(db.Model):
     """Журнал событий UI/системы (тип + JSON payload)."""
@@ -290,6 +296,7 @@ class SpeciesVisit(db.Model):
               desc('start_time'), 'species_id'),
         Index('ix_speciesvisit_species_created_at',
               'species_id', desc('start_time')),
+        Index('ix_speciesvisit_end_time', 'end_time'),
     )
 
 

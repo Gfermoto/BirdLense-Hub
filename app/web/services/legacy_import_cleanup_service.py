@@ -1,6 +1,8 @@
 """Удаление синтетических legacy Unknown из старого disk-import (#265)."""
 from __future__ import annotations
 
+from sqlalchemy.orm import joinedload
+
 from models import Species, SpeciesVisit, VideoSpecies, db
 
 IMPORT_SPECIES_NAME = 'Unknown'
@@ -28,6 +30,7 @@ def cleanup_legacy_import_placeholders() -> tuple[int, int]:
     rows = (
         db.session.query(VideoSpecies)
         .join(Species)
+        .options(joinedload(VideoSpecies.species))
         .filter(
             VideoSpecies.detection_provider == 'legacy',
             Species.name == IMPORT_SPECIES_NAME,
