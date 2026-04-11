@@ -224,6 +224,21 @@ def test_parse_unresolved_limit_species_registry():
     assert parse_unresolved_limit('x') == 100
 
 
+def test_nearest_recording_day_next_prev(monkeypatch):
+    import services.system_storage_service as sss
+
+    monkeypatch.setattr(
+        sss,
+        'recording_days_iso_sorted',
+        lambda: ['2026-01-10', '2026-01-20'],
+    )
+    body, code = sss.nearest_recording_day_response('2026-01-15', 'next')
+    assert code == 200
+    assert body['found'] and body['date'] == '2026-01-20'
+    body2, _ = sss.nearest_recording_day_response('2026-01-15', 'prev')
+    assert body2['date'] == '2026-01-10'
+
+
 def test_coerce_duplicate_group_limit():
     from services.system_maintenance_service import coerce_duplicate_group_limit
 
