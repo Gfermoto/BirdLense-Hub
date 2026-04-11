@@ -279,7 +279,12 @@ def register_ui_corrections_dataset_routes(app):
 
         data = request.json or {}
         source = normalize_correction_source(data.get('source'))
-        apply_scope = normalize_apply_scope(data.get('apply_scope'))
+        raw_scope = data.get('apply_scope')
+        if raw_scope is None or (isinstance(raw_scope, str) and not str(raw_scope).strip()):
+            # Видео-страница исторически fanout по тому же виду на ролике; Unknowns — одна строка (быстрый путь).
+            apply_scope = 'legacy_fanout' if source == 'video' else 'single_track'
+        else:
+            apply_scope = normalize_apply_scope(raw_scope, default='single_track')
         reason = (data.get('reason') or '').strip() or None
         species_id = data.get('species_id')
         if species_id is None:
