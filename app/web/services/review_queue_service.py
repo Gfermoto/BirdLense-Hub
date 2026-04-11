@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import timedelta, timezone
 
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 
 from app_config.app_config import app_config
 from models import Species, Video, VideoSpecies
@@ -53,6 +54,10 @@ def fetch_review_queue_items(
         session.query(VideoSpecies)
         .join(Video)
         .join(Species)
+        .options(
+            joinedload(VideoSpecies.video),
+            joinedload(VideoSpecies.species),
+        )
         .filter(
             Video.end_time >= start_dt,
             Video.start_time <= end_dt,
