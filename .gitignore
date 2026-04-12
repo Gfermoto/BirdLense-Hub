@@ -15,6 +15,8 @@ app.log
 scripts/datasets/.cache/
 .venv-datasets/
 app/.venv/
+app/.ruff_cache/
+app/.pytest_cache/
 
 # Local virtualenv created by developer tooling
 .venv/

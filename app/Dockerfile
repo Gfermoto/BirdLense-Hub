@@ -78,7 +78,8 @@ COPY nginx/docker-nginx-main.conf /app/nginx/docker-nginx-main.conf
 RUN groupadd -r birdlense -g 1000 \
     && useradd -r -u 1000 -g birdlense -d /app -s /bin/bash birdlense \
     && (usermod -aG video,render birdlense 2>/dev/null || true) \
-    && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d
+    && mkdir -p /var/log/nginx \
+    && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d /var/log/nginx
 
 EXPOSE 8080
 
