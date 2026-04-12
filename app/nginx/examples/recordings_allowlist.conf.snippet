@@ -1,0 +1,22 @@
+# Example: restrict direct access to recordings by client IP (nginx).
+# Product default: location /data/ in standalone.conf.template serves all of /app/data/.
+# Threat: predictable paths .../recordings/YYYY/MM/DD/HHMMSS/video.mp4 without HTTP auth.
+#
+# How to use:
+# 1) Merge into server { } in the generated default.conf (after entrypoint), or maintain a fork
+#    of standalone.conf.template for your host.
+# 2) Replace allow lines with your LAN/VPN CIDRs. Test: curl -I from allowed vs denied IP.
+# 3) Longer prefix ^~ /data/recordings/ wins over location /data/ for recording URLs.
+#
+# Optional: keep generic location /data/ for images/db paths — only recordings are allowlisted
+# here; other /data/* still follow the next location /data/ block (tune deny rules if needed).
+
+# location ^~ /data/recordings/ {
+#     alias /app/data/recordings/;
+#     autoindex off;
+#     add_header Accept-Ranges bytes;
+#     allow 127.0.0.1;
+#     allow 192.168.0.0/16;
+#     allow 10.0.0.0/8;
+#     deny all;
+# }

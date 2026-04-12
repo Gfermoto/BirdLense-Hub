@@ -54,6 +54,8 @@
 | ~~**Critical**~~ **Fixed** | `location /data/` with `alias /app/data/` — request `/data/../.env` could read `/app/.env`. | Added check `if ($request_uri ~* "\.\.") { return 403; }` in all nginx configs. |
 | **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. |
 
+**Mitigations (pick one for production exposure):** (1) **IP allowlist** — more specific `location ^~ /data/recordings/` with `allow`/`deny` (see `app/nginx/examples/recordings_allowlist.conf.snippet` and [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md)); (2) **no direct nginx media** — reverse proxy only passes `/api/…` and authenticated stream routes; (3) **`auth_request`** to the Hub session endpoint — advanced, not shipped by default.
+
 **Test:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — if vulnerable, returns 200.
 
 ---
