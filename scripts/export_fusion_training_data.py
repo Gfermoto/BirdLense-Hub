@@ -54,7 +54,17 @@ DEFAULT_COLUMNS = [
     "track_id",
     "video_id",
     "species_name",
+    "persisted_to_clip",
 ]
+
+
+def _persisted_track_list(payload: dict) -> list:
+    """Один список строк клипа: persisted_tracks или legacy accepted_tracks (не оба циклом)."""
+    pt = payload.get("persisted_tracks")
+    if pt is not None:
+        return pt if isinstance(pt, list) else []
+    at = payload.get("accepted_tracks")
+    return at if isinstance(at, list) else []
 
 
 def _normalize_trace_row(row: dict) -> dict:
@@ -86,6 +96,7 @@ def _normalize_trace_row(row: dict) -> dict:
         "track_id": row.get("track_id") or 0,
         "video_id": row.get("video_id") or 0,
         "species_name": row.get("species_name") or row.get("species") or "",
+        "persisted_to_clip": 1 if row.get("persisted_to_clip") else 0,
     }
 
 
@@ -148,10 +159,12 @@ def export_from_db(out: Path) -> None:
                         payload = json.loads(trace.data or "{}")
                     except (TypeError, ValueError):
                         continue
-                    for section_name in ("accepted_tracks", "rejected_tracks"):
-                        for row in payload.get(section_name) or []:
-                            writer.writerow(_normalize_trace_row(row))
-                            written += 1
+                    for row in _persisted_track_list(payload):
+                        writer.writerow(_normalize_trace_row(row))
+                        written += 1
+                    for row in payload.get("rejected_tracks") or []:
+                        writer.writerow(_normalize_trace_row(row))
+                        written += 1
                 print(f"Exported {written} decision-trace rows to {out}")
                 return
 

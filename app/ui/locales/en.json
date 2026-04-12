@@ -927,16 +927,16 @@
   "fusionTrace": {
     "openButton": "Fusion trace",
     "title": "Fusion decision trace",
-    "hint": "Per-track path: detector → classifier → evidence → audio alignment → fusion flags → stored outcome (from processor ActivityLog).",
+    "hint": "Per-track path: detector → classifier → evidence → audio alignment → fusion flags → outcome. “Saved on clip” is what was persisted to the recording; “DecisionMaker accepted” is the DM flag (they can differ, e.g. Frigate standalone).",
     "loadError": "Could not load fusion trace",
     "noTrace": "No decision trace is stored for this recording yet.",
-    "noTraceDetail": "Traces are written when the processor finalizes a clip with at least one accepted or rejected track. Older hubs may only match on file path.",
+    "noTraceDetail": "Traces are written when the processor finalizes a clip with at least one track on the clip or in the reject list. Older hubs may only match on file path.",
     "logAt": "Log time",
     "mergeWindow": "Merge window: {{sec}} s",
-    "acceptedCount": "Accepted tracks: {{n}}",
-    "rejectedCount": "Rejected tracks: {{n}}",
-    "trackAccepted": "{{species}} · track {{id}}",
-    "trackRejected": "{{species}} · track {{id}} (rejected)",
+    "persistedCount": "Saved on clip: {{n}}",
+    "rejectedCount": "Not on clip (reject list): {{n}}",
+    "trackPersisted": "{{species}} · track {{id}} (on clip)",
+    "trackRejected": "{{species}} · track {{id}} (reject list)",
     "showRaw": "Show raw JSON",
     "hideRaw": "Hide raw JSON",
     "stage": {
@@ -977,7 +977,8 @@
       "frigate_merge_suppressed": "Frigate merge suppressed",
       "species_name": "Species (stored)",
       "confidence": "Confidence (stored)",
-      "accepted": "Accepted",
+      "persisted_to_clip": "Saved on clip",
+      "accepted": "DecisionMaker accepted",
       "track_id": "Track id"
     }
   },

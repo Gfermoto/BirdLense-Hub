@@ -74,12 +74,13 @@ def _is_playable_video_file(path: str) -> bool:
         return False
 
 
-def _decision_trace_row(item: dict) -> dict:
+def _decision_trace_row(item: dict, *, persisted_to_clip: bool) -> dict:
     row = {}
     for key in _DECISION_TRACE_FIELDS:
         if key in item:
             row[key] = item.get(key)
     row["accepted"] = bool(item.get("accepted", False))
+    row["persisted_to_clip"] = bool(persisted_to_clip)
     row["confidence"] = float(item.get("confidence") or 0.0)
     row["best_frame_score"] = float(item.get("best_frame_score") or 0.0)
     row["key_frame_count"] = int(item.get("key_frame_count") or 0)
@@ -264,18 +265,22 @@ def finalize_motion_recording(
         "end_time": end_time.isoformat(),
         "video_path": video_path_for_api,
         "merge_window_seconds": merge_window,
-        "accepted_tracks": [],
+        "persisted_tracks": [],
         "rejected_tracks": [],
     }
-    accepted_trace_rows = [_decision_trace_row(item) for item in video_detections]
-    rejected_trace_rows = [_decision_trace_row(item) for item in rejected_decisions]
+    accepted_trace_rows = [_decision_trace_row(item, persisted_to_clip=True) for item in video_detections]
+    rejected_trace_rows = [_decision_trace_row(item, persisted_to_clip=False) for item in rejected_decisions]
     accepted_trace_rows, accepted_trimmed = _clip_trace_rows(accepted_trace_rows)
     rejected_trace_rows, rejected_trimmed = _clip_trace_rows(rejected_trace_rows)
-    decision_trace["accepted_tracks"] = accepted_trace_rows
+    # persisted_* — строки, попавшие в video_detections (клип / БД); accepted_* — тот же список (legacy).
+    decision_trace["persisted_tracks"] = accepted_trace_rows
+    decision_trace["accepted_tracks"] = decision_trace["persisted_tracks"]
     decision_trace["rejected_tracks"] = rejected_trace_rows
+    decision_trace["persisted_track_count"] = len(video_detections)
     decision_trace["accepted_track_count"] = len(video_detections)
     decision_trace["rejected_track_count"] = len(rejected_decisions)
     if accepted_trimmed:
+        decision_trace["persisted_tracks_truncated"] = accepted_trimmed
         decision_trace["accepted_tracks_truncated"] = accepted_trimmed
     if rejected_trimmed:
         decision_trace["rejected_tracks_truncated"] = rejected_trimmed
@@ -440,7 +445,7 @@ def finalize_motion_recording(
                         hint = f" {resp_err.status_code}{hint}"
                     logging.warning("Notify species failed%s: %s", hint, e)
     try:
-        if api and (decision_trace.get("accepted_tracks") or decision_trace.get("rejected_tracks")):
+        if api and (decision_trace.get("persisted_tracks") or decision_trace.get("rejected_tracks")):
             api.activity_log("decision_trace", decision_trace)
     except Exception:
         logging.exception("Failed to write decision_trace activity log")

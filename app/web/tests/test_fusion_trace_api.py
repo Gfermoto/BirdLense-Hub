@@ -78,7 +78,7 @@ def test_fusion_trace_matches_by_video_id(app, client):
     assert body.get("log_created_at")
     tracks = body.get("tracks") or []
     assert len(tracks) == 1
-    assert tracks[0]["bucket"] == "accepted"
+    assert tracks[0]["bucket"] == "persisted"
     assert tracks[0]["track_id"] == 7
     stages = [s["stage"] for s in tracks[0]["steps"]]
     assert "detector" in stages

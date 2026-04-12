@@ -246,7 +246,7 @@ export const fetchVideoNeighbors = async (id: string): Promise<VideoNeighbors> =
 export type FusionTraceLine = { field: string; value: string };
 export type FusionTraceStep = { stage: string; lines: FusionTraceLine[] };
 export type FusionTraceTrack = {
-  bucket: 'accepted' | 'rejected';
+  bucket: 'persisted' | 'rejected' | 'accepted';
   track_id?: number | null;
   species_name?: string | null;
   steps: FusionTraceStep[];
