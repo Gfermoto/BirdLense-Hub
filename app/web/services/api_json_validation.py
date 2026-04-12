@@ -1,9 +1,11 @@
 """Парсинг JSON-тела запроса и единый формат 400 для mutating API (#281).
 
-Эндпоинты с ``parse_request_json_dict`` / ``validation_error`` (расширяем по мере работы):
+Эндпоинты (расширяем по мере работы):
 
-- ``POST /api/ui/birdfood`` — только JSON-object; поля проверяются в ``bird_food_service``.
-- ``POST /api/ui/storage/purge`` — только JSON-object; даты — строки ``YYYY-MM-DD`` в ``purge_storage_from_body``.
+- **Строго объект, тело обязательно:** ``parse_request_json_dict`` — birdfood POST, storage purge,
+  PATCH ``/api/ui/settings``, POST push subscribe, POST ``videos/.../merge-species``.
+- **Объект или пустое тело →** ``{}``: ``parse_request_json_object_allow_empty`` — verify-password,
+  dataset retro/clean, detection confirm/PATCH, species tuning-target POST.
 
 Ответ **400** при ошибке схемы: ``{"error": "<кратко>", "fields": {"<поле>": ["<причина>", ...]}}``.
 """
@@ -33,6 +35,30 @@ def parse_request_json_dict(request: Request) -> tuple[dict[str, Any] | None, di
                 "JSON body required",
                 {"_body": ["body is empty or not JSON"]},
             )
+        return None, validation_error(
+            "Invalid JSON",
+            {"_body": ["could not parse JSON"]},
+        )
+    if not isinstance(raw, dict):
+        return None, validation_error(
+            "JSON body must be an object",
+            {"_body": ["expected a JSON object, not an array or primitive"]},
+        )
+    return raw, None
+
+
+def parse_request_json_object_allow_empty(
+    request: Request,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """
+    Ожидается JSON-**объект**; отсутствующее или пустое тело считается ``{}``.
+    Битый JSON или массив/скаляр → **400** с ``fields``.
+    """
+    raw = request.get_json(silent=True)
+    if raw is None:
+        text = (request.get_data(as_text=True) or "").strip()
+        if not text:
+            return {}, None
         return None, validation_error(
             "Invalid JSON",
             {"_body": ["could not parse JSON"]},

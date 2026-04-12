@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from app_config.app_config import app_config
 from auth import contributor_or_admin_access
 from models import Species, SpeciesVisit, Video, VideoSpecies, db
+from services.api_json_validation import parse_request_json_dict
 from services.cache import cache_get, cache_set
 from services.dataset_export_service import (
     extract_and_save_crop_for_detection,
@@ -197,7 +198,9 @@ def register_ui_video_routes(app):
         if not video:
             return {"error": "Video not found"}, 404
 
-        data = request.json or {}
+        data, v_err = parse_request_json_dict(request)
+        if v_err is not None:
+            return v_err, 400
         species_id = data.get("species_id")
         if species_id is None:
             return {"error": "species_id is required"}, 400

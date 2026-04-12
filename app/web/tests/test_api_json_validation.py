@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 
 def _open_settings_access(monkeypatch):
     from app_config.app_config import app_config
@@ -33,6 +35,91 @@ def test_parse_request_json_dict_unit():
         d, err = parse_request_json_dict(request)
         assert d is None
         assert "JSON body required" in err["error"]
+
+
+def test_parse_request_json_object_allow_empty_unit():
+    from flask import Flask, request
+    from services.api_json_validation import parse_request_json_object_allow_empty
+
+    app = Flask(__name__)
+    with app.test_request_context("/x", method="POST", data="", content_type="application/json"):
+        d, err = parse_request_json_object_allow_empty(request)
+        assert d == {}
+        assert err is None
+
+    with app.test_request_context("/x", method="POST", data="[]", content_type="application/json"):
+        d, err = parse_request_json_object_allow_empty(request)
+        assert d is None
+        assert "_body" in err["fields"]
+
+
+def test_verify_password_rejects_non_object_json(client):
+    r = client.post("/api/ui/settings/verify-password", json=[1, 2])
+    assert r.status_code == 400
+    assert r.get_json()["fields"]
+
+
+def test_settings_patch_rejects_non_object_json(client, monkeypatch):
+    _open_settings_access(monkeypatch)
+    with client.session_transaction() as sess:
+        sess["access_role"] = "admin"
+    r = client.patch("/api/ui/settings", json=[], content_type="application/json")
+    assert r.status_code == 400
+    assert "fields" in r.get_json()
+
+
+def test_push_subscribe_rejects_invalid_json(client, monkeypatch):
+    from app_config.app_config import app_config
+
+    _open_settings_access(monkeypatch)
+    monkeypatch.setitem(
+        app_config.config.setdefault("general", {}),
+        "enable_notifications",
+        True,
+    )
+    monkeypatch.setattr(app_config, "save", lambda: None)
+    r = client.post(
+        "/api/ui/push/subscribe",
+        data="{",
+        content_type="application/json",
+    )
+    assert r.status_code == 400
+    assert r.get_json()["fields"]["_body"]
+
+
+def test_dataset_clean_rejects_non_object_json(client, monkeypatch):
+    _open_settings_access(monkeypatch)
+    r = client.post("/api/ui/dataset/clean", json=[], content_type="application/json")
+    assert r.status_code == 400
+    assert r.get_json()["fields"]
+
+
+def test_merge_species_rejects_non_object_json(app, client, monkeypatch):
+    from models import Video, db
+
+    _open_settings_access(monkeypatch)
+    with app.app_context():
+        v = Video(
+            processor_version="t",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            video_path="data/recordings/merge-json-test/clip.mp4",
+        )
+        db.session.add(v)
+        db.session.commit()
+        vid = v.id
+    try:
+        r = client.post(
+            f"/api/ui/videos/{vid}/merge-species",
+            data="null",
+            content_type="application/json",
+        )
+        assert r.status_code == 400
+        assert r.get_json()["fields"]
+    finally:
+        with app.app_context():
+            db.session.delete(db.session.get(Video, vid))
+            db.session.commit()
 
 
 def test_birdfood_post_invalid_json_400(client, monkeypatch):

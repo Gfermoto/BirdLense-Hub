@@ -10,6 +10,7 @@ from app_config.cameras import cameras_for_api, get_valid_cameras
 from auth import settings_check_access
 from models import ActivityLog, db
 from services.cache import cache_get, cache_set
+from services.api_json_validation import parse_request_json_dict
 from services.component_status_service import build_component_status_payload
 from services.feed_service import dispense_feed, get_last_dispense
 from services.web_push_service import (
@@ -46,8 +47,11 @@ def register_ui_status_push_routes(app):
             return {"error": "Unauthorized"}, 401
         if not app_config.get("general.enable_notifications"):
             return {"error": "Notifications disabled"}, 400
+        body, v_err = parse_request_json_dict(request)
+        if v_err is not None:
+            return v_err, 400
         try:
-            endpoint, p256dh, auth = parse_push_subscription_body(request.json)
+            endpoint, p256dh, auth = parse_push_subscription_body(body)
         except PushSubscriptionBodyError as exc:
             return {"error": str(exc)}, 400
         enable_web_push_and_save()
