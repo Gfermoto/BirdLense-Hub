@@ -30,7 +30,7 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 | Path | Role |
 |------|------|
 | **`app/web/`** | Flask app, REST API, OpenAPI (`openapi.yaml`). Entry: `app.py` → **`create_app()`** (factory); CORS + SQLite PRAGMAs in `flask_extensions.py`; DB seed/registry/cleanup in `app_startup.py`. Handlers: `routes/` — `ui_routes.register_routes`, domain `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE](./ARCHITECTURE.md)). **Migrations:** `migrations/` (Alembic, Flask-Migrate). **Services:** `services/` (domain logic; routes should stay thin — see [ROADMAP](./ROADMAP.md) § tech debt). |
-| **`app/processor/`** | Detection pipeline, YOLO/Ultralytics, model weights path (see repo `.gitignore` for large files). |
+| **`app/processor/`** | Detection pipeline, YOLO/Ultralytics, model weights path (see repo `.gitignore` for large files). **`src/`:** `main.py`, `processor_bootstrap.py`, `detection_stack.py`, `detection_strategy.py` (ABC), **`interfaces.py`** (`DetectionStrategyProtocol` for `FrameProcessor` typing/tests), `frame_processor.py`, MQTT/recording modules; **`tests/`** includes `test_detection_strategy_protocol.py`. |
 | **`app/ui/`** | React 19 + Vite 6 frontend; `npm run build` output is consumed by the web tier (see [LOCAL_DEV](./LOCAL_DEV.md)). |
 | **`app/app_config/`** | **Shipped defaults** (`default_config` / templates). **`user_config.yaml`** is created per installation and is **not** committed (see [CONFIGURATION](./CONFIGURATION.md)). |
 | **`app/data/`** | SQLite, recordings, local state — **not** copied on deploy by default; see [INSTALL](./INSTALL.md). |

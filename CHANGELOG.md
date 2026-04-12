@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** `DetectionStrategyProtocol` в **`app/processor/src/interfaces.py`**; `FrameProcessor` аннотирован протоколом; тест **`test_detection_strategy_protocol.py`**. Док: [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md) § Maintainability baseline; [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md) — состав **`app/processor/`**.
+
 - **[#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279):** опциональный строгий режим UI API — при **production** и **`BIRDLENSE_STRICT_API_AUTH=1`** запросы к **`/api/ui/*`** требуют сессию (после `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**; исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`, preflight **OPTIONS**. **Docker Compose** и **`scripts/deploy.sh`** пробрасывают/сливают `BIRDLENSE_STRICT_API_AUTH` и `BIRDLENSE_UI_API_KEY`; CI — отдельный шаг `test_strict_ui_api_auth.py`. См. **SECURITY** / **ACCESS_CONTROL** / **CONFIGURATION** / **SECRETS_ROTATION** / **INSTALL** (EN/RU), `app/.env.example`, `scripts/deploy.local.sh.example`.
 
 - **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** CORS и SQLite PRAGMA — **`app/web/flask_extensions.py`**; старт схемы, seed, species registry, legacy cleanup и фоновый metadata repair/enrich — **`app/web/app_startup.py`**; `app.py` остаётся тонкой фабрикой. Док: [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md), [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md).

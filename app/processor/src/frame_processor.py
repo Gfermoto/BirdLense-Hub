@@ -3,7 +3,7 @@ import math
 import logging
 import cv2
 from light_level_detector import LightLevelDetector
-from detection_strategy import DetectionStrategy
+from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
 
 
@@ -17,7 +17,12 @@ class _LightGateDisabled:
 
 
 class FrameProcessor:
-    def __init__(self, detection_strategy: DetectionStrategy, save_images=False, tracker="bytetrack.yaml"):
+    def __init__(
+        self,
+        detection_strategy: DetectionStrategyProtocol,
+        save_images=False,
+        tracker="bytetrack.yaml",
+    ):
         self.save_images = save_images
         self.tracker = tracker
         self.logger = logging.getLogger(__name__)

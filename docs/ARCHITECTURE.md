@@ -123,6 +123,16 @@ When `motion.source` is `frigate`, the **MQTT** tile reflects the Frigate/MQTT p
 
 ---
 
+## Maintainability baseline (pre-features gate)
+
+This is the **structural** checkpoint before prioritizing product features (GitHub Roadmap wave, Apr 2026):
+
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** Flask extensions, startup, and a thin `create_app` factory (`app/web/flask_extensions.py`, `app/web/app_startup.py`, `app/web/app.py`).
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** Detection stack is assembled in `processor_bootstrap.py` / `detection_stack.py`; runtime uses `DetectionStrategy` (ABC) with `detect` / `reset`. For typing and tests without loading YOLO, `app/processor/src/interfaces.py` defines **`DetectionStrategyProtocol`**; `FrameProcessor` depends on that protocol. See `app/processor/tests/test_detection_strategy_protocol.py`.
+- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** Server-backed data on main routes uses **TanStack Query** as the standard fetch/cache layer. Further consolidation (context, smaller components, less prop drilling) remains tracked in the same issue.
+
+---
+
 ## See also
 
 [CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [GLOSSARY](./GLOSSARY.md) · [OVERVIEW](./OVERVIEW.md)
