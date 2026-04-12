@@ -43,6 +43,8 @@ services:
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}
+      - BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}
+      - BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}
     restart: unless-stopped
     deploy:
       resources:

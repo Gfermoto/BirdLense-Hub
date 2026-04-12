@@ -10,7 +10,7 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 
 | Location | Used for | Notes |
 |----------|----------|--------|
-| **`app/.env` on the server** | Container env (`env_file` in Docker Compose) | **Not** overwritten by rsync deploy (excluded). Deploy script **merges** `MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET` from your **`scripts/deploy.local.sh`** when those variables are set — see [INSTALL.md](./INSTALL.md). |
+| **`app/.env` on the server** | Container env (`env_file` in Docker Compose) | **Not** overwritten by rsync deploy (excluded). Deploy script **merges** `MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, `BIRDLENSE_STRICT_API_AUTH`, `BIRDLENSE_UI_API_KEY` from your **`scripts/deploy.local.sh`** when those variables are set — see [INSTALL.md](./INSTALL.md). |
 | **`app/app_config/user_config.yaml`** | Settings UI persistence | Plain text on disk. Prefer env for production secrets ([SECURITY.md](./SECURITY.md) §2). |
 | **`scripts/deploy.local.sh`** (gitignored) | Values pushed into server `app/.env` during `make deploy` | Keep canonical copies of deploy-managed keys here so redeploy does not surprise you. |
 
@@ -30,6 +30,8 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | Secret / variable | Role | Rotation impact |
 |-------------------|------|-----------------|
 | **`MCP_TOKEN`** | `/mcp` when MCP enabled | Old clients lose access immediately. |
+| **`BIRDLENSE_UI_API_KEY`** | Optional: `/api/ui/*` when **`BIRDLENSE_STRICT_API_AUTH=1`** (header `X-Birdlense-Api-Key` or Bearer) | Scripts/automation lose access until updated; browser UI still uses session after `verify-password`. |
+| **`BIRDLENSE_STRICT_API_AUTH`** | `1`/`true` — enforce gate (not a secret; production + flag) | If you disable it, anonymous `/api/ui/*` works again per [ACCESS_CONTROL.md](./ACCESS_CONTROL.md). |
 | **`MQTT_PASSWORD`** | MQTT client auth | Update broker ACL if needed; restart container. |
 | **`HA_TOKEN`** | Home Assistant long-lived token | Weather/feeder integrations break until updated. |
 | **`OPENWEATHER_API_KEY`** | Weather widget | Widget errors until key replaced. |

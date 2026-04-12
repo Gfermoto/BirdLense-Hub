@@ -92,6 +92,9 @@ jobs:
       - name: Birdfood / push subscribe smoke (auth gates)
         run: python -m pytest web/tests/test_settings_mutations_smoke.py -q
 
+      - name: Strict UI API auth (production gate #279)
+        run: python -m pytest web/tests/test_strict_ui_api_auth.py -q
+
       - name: Processor POST /videos smoke
         run: python -m pytest web/tests/test_processor_videos_smoke.py -q
 
