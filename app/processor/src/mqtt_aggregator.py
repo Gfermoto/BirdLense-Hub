@@ -11,6 +11,7 @@ broker is configured) so messages flush after reconnect; ``stop()`` clears the q
 Feeder-scale JSON state + JSONL history are written from a **dedicated daemon thread**
 (queued from ``_on_message``) so disk I/O does not block the MQTT client loop (#265).
 """
+
 import json
 import logging
 import os
@@ -116,7 +117,7 @@ def write_feeder_scale_state(
         rec = dict(prev)
         rec["updated_at"] = now
         if weight is not None:
-            u = (unit or rec.get("unit") or "kg")
+            u = unit or rec.get("unit") or "kg"
             u = str(u).strip().lower()[:8] or "kg"
             rec["weight"] = float(weight)
             rec["unit"] = u
@@ -230,10 +231,10 @@ def _parse_frigate_event(payload):
 
 def _parse_frigate_snapshot_topic(topic: str) -> tuple[str, str] | None:
     """Parse topic ``<prefix>/<camera>/<label>/snapshot`` -> (camera, label)."""
-    parts = [p for p in str(topic or '').split('/') if p]
+    parts = [p for p in str(topic or "").split("/") if p]
     if len(parts) < 4:
         return None
-    if parts[-1].lower() != 'snapshot':
+    if parts[-1].lower() != "snapshot":
         return None
     camera = parts[-3].strip()
     label = parts[-2].strip()
@@ -253,17 +254,20 @@ def _parse_birdnet_event_with_reason(payload):
     # BirdNET-Pi: Common_Name, Confidence_Score
     # BirdNET-Go: CommonName, Confidence
     species = (
-        data.get("Common_Name") or data.get("CommonName") or
-        data.get("comname") or data.get("species") or
-        data.get("common_name") or data.get("label") or
-        data.get("Com_Name") or "unknown"
+        data.get("Common_Name")
+        or data.get("CommonName")
+        or data.get("comname")
+        or data.get("species")
+        or data.get("common_name")
+        or data.get("label")
+        or data.get("Com_Name")
+        or "unknown"
     )
     species = str(species).strip() if species is not None else "unknown"
     if not species:
         species = "unknown"
     conf_raw = (
-        data.get("Confidence_Score") or data.get("confidence") or
-        data.get("score") or data.get("Confidence") or 0
+        data.get("Confidence_Score") or data.get("confidence") or data.get("score") or data.get("Confidence") or 0
     )
     try:
         confidence = float(str(conf_raw).replace(",", "."))
@@ -282,11 +286,7 @@ def _parse_birdnet_event_with_reason(payload):
     elif source_obj not in (None, ""):
         audio_source = str(source_obj)
     if not audio_source:
-        audio_source = (
-            data.get("SourceNode")
-            or data.get("source_node")
-            or data.get("audio_source")
-        )
+        audio_source = data.get("SourceNode") or data.get("source_node") or data.get("audio_source")
 
     # BirdNET-Go: BeginTime — точное время детекции для слияния с YOLO/Frigate
     ts_str = data.get("BeginTime") or data.get("Date") or data.get("timestamp")
@@ -313,11 +313,7 @@ def _parse_birdnet_event_with_reason(payload):
     if audio_source:
         ev["audio_source"] = str(audio_source)
     if data.get("camera") or data.get("CameraId") or data.get("camera_id"):
-        ev["camera_id"] = (
-            data.get("camera")
-            or data.get("CameraId")
-            or data.get("camera_id")
-        )
+        ev["camera_id"] = data.get("camera") or data.get("CameraId") or data.get("camera_id")
     if data.get("site_id") or data.get("SiteId"):
         ev["site_id"] = data.get("site_id") or data.get("SiteId")
     bird_img = data.get("BirdImage")
@@ -376,8 +372,8 @@ class MQTTEventAggregator:
         self.broker = broker
         self.port = port
         self.frigate_topic = frigate_topic
-        fp = [x for x in (self.frigate_topic or '').split('/') if x]
-        prefix = fp[0] if fp else 'frigate'
+        fp = [x for x in (self.frigate_topic or "").split("/") if x]
+        prefix = fp[0] if fp else "frigate"
         self._frigate_snapshot_topic = f"{prefix}/+/+/snapshot"
         # Support comma-separated topics and subtree subscriptions.
         # Example: "birdnet/sightings" will also match "birdnet/sightings/#".
@@ -396,15 +392,11 @@ class MQTTEventAggregator:
         self._birdnet_events = deque()
         self._birdnet_event_cap = max(1000, int(max_events or 500) * 20)
         self._birdnet_obs_level = _normalize_obs_level(
-            app_config.get('processor.birdnet_mqtt_observability_level', 'info')
+            app_config.get("processor.birdnet_mqtt_observability_level", "info")
         )
-        self._birdnet_obs_debug = bool(
-            app_config.get('processor.birdnet_mqtt_observability_debug', False)
-        )
+        self._birdnet_obs_debug = bool(app_config.get("processor.birdnet_mqtt_observability_debug", False))
         self._lock = threading.Lock()
-        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
-            maxsize=2000
-        )
+        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(maxsize=2000)
         self._client = None
         self._thread = None
         self._connected = False
@@ -498,14 +490,14 @@ class MQTTEventAggregator:
             )
 
     def _birdnet_log(self, level: str, message: str, *args) -> None:
-        level_norm = str(level or 'info').strip().lower()
-        if self._birdnet_obs_level == 'off':
+        level_norm = str(level or "info").strip().lower()
+        if self._birdnet_obs_level == "off":
             return
-        if level_norm == 'debug':
-            if self._birdnet_obs_level == 'debug' or self._birdnet_obs_debug:
+        if level_norm == "debug":
+            if self._birdnet_obs_level == "debug" or self._birdnet_obs_debug:
                 logger.info(message, *args)
             return
-        if level_norm == 'info' and self._birdnet_obs_level in ('info', 'debug'):
+        if level_norm == "info" and self._birdnet_obs_level in ("info", "debug"):
             logger.info(message, *args)
 
     def _validate_normalized_event(self, ev: dict) -> None:
@@ -562,9 +554,9 @@ class MQTTEventAggregator:
         expired_dropped = max(0, before_count - after_count - overflow)
         if expired_dropped or overflow:
             self._birdnet_log(
-                'info',
-                'BirdNET FIFO prune: reason=ttl_or_fifo cap=%s before=%s after=%s '
-                'expired_dropped=%s fifo_dropped=%s ttl_hours=%.2f',
+                "info",
+                "BirdNET FIFO prune: reason=ttl_or_fifo cap=%s before=%s after=%s "
+                "expired_dropped=%s fifo_dropped=%s ttl_hours=%.2f",
                 self._birdnet_event_cap,
                 before_count,
                 after_count,
@@ -609,24 +601,24 @@ class MQTTEventAggregator:
             ts = _parse_iso8601_utc(ev.get("timestamp"))
             if ts is not None:
                 ev["_ts_epoch"] = ts.timestamp()
-                ts_reason = 'timestamp_parse_ok'
+                ts_reason = "timestamp_parse_ok"
             elif ev.get("_ts_epoch") is None:
                 self._birdnet_log(
-                    'info',
-                    'BirdNET FIFO ingest: reason=drop_no_timestamp species=%s confidence=%s',
-                    ev.get('species', 'unknown'),
-                    ev.get('confidence', 0.0),
+                    "info",
+                    "BirdNET FIFO ingest: reason=drop_no_timestamp species=%s confidence=%s",
+                    ev.get("species", "unknown"),
+                    ev.get("confidence", 0.0),
                 )
                 return
             else:
-                ts_reason = 'timestamp_epoch_fallback'
+                ts_reason = "timestamp_epoch_fallback"
             self._birdnet_events.append(ev)
             self._birdnet_log(
-                'debug',
-                'BirdNET FIFO ingest: reason=accepted_%s species=%s confidence=%.3f queue_len=%s cap=%s',
+                "debug",
+                "BirdNET FIFO ingest: reason=accepted_%s species=%s confidence=%.3f queue_len=%s cap=%s",
                 ts_reason,
-                ev.get('species', 'unknown'),
-                float(ev.get('confidence') or 0.0),
+                ev.get("species", "unknown"),
+                float(ev.get("confidence") or 0.0),
                 len(self._birdnet_events),
                 self._birdnet_event_cap,
             )
@@ -738,9 +730,7 @@ class MQTTEventAggregator:
             except queue.Empty:
                 break
 
-    def _enqueue_publish(
-        self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False
-    ) -> None:
+    def _enqueue_publish(self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False) -> None:
         if self._stopped:
             return
         try:
@@ -788,10 +778,7 @@ class MQTTEventAggregator:
                 # but must NOT block motion/recording: OpenCV may miss night/mice while
                 # Frigate already has a tracked box (e.g. cat mis-ID for mouse).
                 skip_merge_queue = bool(
-                    self._frigate_label_exclude
-                    and _frigate_labels_match_exclude(
-                        labels, self._frigate_label_exclude
-                    )
+                    self._frigate_label_exclude and _frigate_labels_match_exclude(labels, self._frigate_label_exclude)
                 )
                 if skip_merge_queue:
                     logger.debug(
@@ -803,27 +790,19 @@ class MQTTEventAggregator:
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
                     camera = ev.get("camera", "")
-                    cam_lower = {
-                        str(c).strip().lower() for c in cam_f if str(c).strip()
-                    }
+                    cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
                     # Пустой camera_filter = любая камера (как пустой label_filter).
-                    cam_ok = (not cam_lower) or (
-                        str(camera or "").strip().lower() in cam_lower
-                    )
+                    cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
-                    relaxed = bool(
-                        app_config.get('motion.frigate_trigger_on_tracked_object', True)
-                    )
-                    has_geometry = _frigate_after_has_tracked_geometry(
-                        after if isinstance(after, dict) else {}
-                    )
-                    accepted_by = 'label_filter'
+                    relaxed = bool(app_config.get("motion.frigate_trigger_on_tracked_object", True))
+                    has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
+                    accepted_by = "label_filter"
                     if not lbl_ok and relaxed and has_geometry:
                         lbl_ok = True
-                        accepted_by = 'geometry_fallback'
+                        accepted_by = "geometry_fallback"
                         if skip_merge_queue:
                             logger.info(
                                 "Frigate trigger: geometry fallback (excluded label, recording only) "
@@ -835,7 +814,9 @@ class MQTTEventAggregator:
                             logger.info(
                                 "Frigate trigger: geometry fallback (label not in filter) "
                                 "camera=%s label=%s sub_label=%s",
-                                camera, label, sub_label,
+                                camera,
+                                label,
+                                sub_label,
                             )
                     if cam_ok and lbl_ok:
                         logger.info(
@@ -856,16 +837,16 @@ class MQTTEventAggregator:
                     else:
                         reasons = []
                         if not cam_ok:
-                            reasons.append('camera_filter_miss')
+                            reasons.append("camera_filter_miss")
                         if not lbl_ok:
                             if bool(lbl_f_lower):
-                                reasons.append('label_filter_miss')
+                                reasons.append("label_filter_miss")
                             if not has_geometry:
-                                reasons.append('no_tracked_geometry')
+                                reasons.append("no_tracked_geometry")
                         logger.info(
                             "Frigate trigger rejected: reason=%s camera=%s label=%s sub_label=%s "
                             "camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s",
-                            ','.join(reasons) if reasons else 'unknown',
+                            ",".join(reasons) if reasons else "unknown",
                             camera,
                             label,
                             sub_label,
@@ -874,41 +855,34 @@ class MQTTEventAggregator:
                             has_geometry,
                             relaxed,
                         )
-        elif mqtt.topic_matches_sub(getattr(self, '_frigate_snapshot_topic', ''), msg.topic):
+        elif mqtt.topic_matches_sub(getattr(self, "_frigate_snapshot_topic", ""), msg.topic):
             # Fallback when frigate/events is sparse/disabled: topic like
             # frigate/<camera>/<label>/snapshot (ignore retained bootstrap payloads).
-            if getattr(msg, 'retain', False):
+            if getattr(msg, "retain", False):
                 return
             parsed = _parse_frigate_snapshot_topic(msg.topic)
             if parsed:
                 camera, label = parsed
                 ev = {
-                    'source': 'frigate',
-                    'species': label,
-                    'label': label,
-                    'sub_label': '',
-                    'confidence': 0.0,
-                    'camera': camera,
-                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    "source": "frigate",
+                    "species": label,
+                    "label": label,
+                    "sub_label": "",
+                    "confidence": 0.0,
+                    "camera": camera,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 after = {}
                 labels = {label}
                 skip_merge_queue = bool(
-                    self._frigate_label_exclude
-                    and _frigate_labels_match_exclude(
-                        labels, self._frigate_label_exclude
-                    )
+                    self._frigate_label_exclude and _frigate_labels_match_exclude(labels, self._frigate_label_exclude)
                 )
                 if skip_merge_queue:
                     ev["_frigate_merge_suppressed"] = True
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
-                    cam_lower = {
-                        str(c).strip().lower() for c in cam_f if str(c).strip()
-                    }
-                    cam_ok = (not cam_lower) or (
-                        str(camera or "").strip().lower() in cam_lower
-                    )
+                    cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
+                    cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)
                     labels_lower = {s.lower() for s in labels}
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
@@ -918,7 +892,7 @@ class MQTTEventAggregator:
                             "label=%s sub_label=%s merge_suppressed=%s has_geometry=%s filter_empty=%s",
                             camera,
                             label,
-                            '',
+                            "",
                             skip_merge_queue,
                             False,
                             not bool(lbl_f_lower),
@@ -930,44 +904,41 @@ class MQTTEventAggregator:
                     else:
                         reasons = []
                         if not cam_ok:
-                            reasons.append('camera_filter_miss')
+                            reasons.append("camera_filter_miss")
                         if not lbl_ok:
-                            reasons.append('label_filter_miss')
+                            reasons.append("label_filter_miss")
                         logger.info(
                             "Frigate trigger rejected: reason=%s camera=%s label=%s "
                             "sub_label=%s camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s",
-                            ','.join(reasons) if reasons else 'unknown',
+                            ",".join(reasons) if reasons else "unknown",
                             camera,
                             label,
-                            '',
+                            "",
                             list(cam_f) if cam_f else "none",
                             list(lbl_f) if lbl_f else "any",
                             False,
                             False,
                         )
-        elif any(
-            mqtt.topic_matches_sub(sub, msg.topic)
-            for sub in getattr(self, 'birdnet_topics', ())
-        ):
+        elif any(mqtt.topic_matches_sub(sub, msg.topic) for sub in getattr(self, "birdnet_topics", ())):
             ev, reason = _parse_birdnet_event_with_reason(msg.payload)
             if ev is None:
                 plen = len(msg.payload) if msg.payload else 0
                 self._birdnet_log(
-                    'info',
-                    'BirdNET MQTT event: reason=%s topic=%s payload_len=%s',
+                    "info",
+                    "BirdNET MQTT event: reason=%s topic=%s payload_len=%s",
                     reason,
                     msg.topic,
                     plen,
                 )
             else:
                 self._birdnet_log(
-                    'debug',
-                    'BirdNET MQTT event: reason=%s topic=%s species=%s confidence=%.3f audio_source=%s',
+                    "debug",
+                    "BirdNET MQTT event: reason=%s topic=%s species=%s confidence=%.3f audio_source=%s",
                     reason,
                     msg.topic,
-                    ev.get('species', 'unknown'),
-                    float(ev.get('confidence') or 0.0),
-                    ev.get('audio_source', ''),
+                    ev.get("species", "unknown"),
+                    float(ev.get("confidence") or 0.0),
+                    ev.get("audio_source", ""),
                 )
         elif self.scales_topic and msg.topic == self.scales_topic:
             w = _parse_scale_payload(msg.payload)
@@ -978,11 +949,7 @@ class MQTTEventAggregator:
                     bird_present=None,
                 )
                 logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
-            if (
-                w is not None
-                and self._scale_motion_trigger_cb
-                and self._scale_motion_min_delta_kg
-            ):
+            if w is not None and self._scale_motion_trigger_cb and self._scale_motion_min_delta_kg:
                 w_kg = weight_reading_to_kg(w, self.scales_unit)
                 prev = self._prev_scale_kg
                 self._prev_scale_kg = w_kg
@@ -996,10 +963,7 @@ class MQTTEventAggregator:
                             except Exception as e:
                                 logger.debug("scale motion trigger cb: %s", e)
             return
-        elif (
-            self.scales_bird_present_topic
-            and msg.topic == self.scales_bird_present_topic
-        ):
+        elif self.scales_bird_present_topic and msg.topic == self.scales_bird_present_topic:
             bp = _parse_bird_present_payload(msg.payload)
             if bp is not None and self.scales_data_dir:
                 self._enqueue_feeder_scale_write(
@@ -1093,14 +1057,13 @@ class MQTTEventAggregator:
         self._thread.start()
         time.sleep(0.5)
 
-    def get_events_in_window(
-        self, start_time, end_time, window_seconds=5, lookback_seconds=None
-    ):
+    def get_events_in_window(self, start_time, end_time, window_seconds=5, lookback_seconds=None):
         """Return MQTT events within [start - lookback, end + window].
 
         lookback_seconds: if set, overrides window for low bound (для pending trigger).
         """
         from datetime import timedelta
+
         lookback = lookback_seconds if lookback_seconds is not None else window_seconds
         low = start_time - timedelta(seconds=lookback)
         high = end_time + timedelta(seconds=window_seconds)
@@ -1159,11 +1122,7 @@ class MQTTEventAggregator:
         with self._lock:
             self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)
             for ev in self._birdnet_events:
-                species = str(
-                    ev.get("species")
-                    or ev.get("common_name")
-                    or ""
-                ).strip()
+                species = str(ev.get("species") or ev.get("common_name") or "").strip()
                 if not species or species.lower() == "unknown":
                     continue
                 try:
@@ -1210,9 +1169,9 @@ class MQTTEventAggregator:
             meta["score"] = round(float(meta["score"]), 6)
             meta["audio_sources"] = sorted(meta["audio_sources"])
         self._birdnet_log(
-            'debug',
-            'BirdNET FIFO prior: reason=window_ready species_count=%s queue_len=%s '
-            'window_hours=%.2f ttl_hours=%.2f half_life_hours=%.2f min_confidence=%.3f',
+            "debug",
+            "BirdNET FIFO prior: reason=window_ready species_count=%s queue_len=%s "
+            "window_hours=%.2f ttl_hours=%.2f half_life_hours=%.2f min_confidence=%.3f",
             len(out),
             len(self._birdnet_events),
             window_hours,
@@ -1239,9 +1198,7 @@ class MQTTEventAggregator:
         self._enqueue_publish(self.publish_topic, json.dumps(payload), qos=1, retain=False)
         if self.ha_discovery:
             self._enqueue_publish(HA_TOPIC_LAST_SPECIES, str(species), qos=1, retain=True)
-            self._enqueue_publish(
-                HA_TOPIC_LAST_CONFIDENCE, f"{float(confidence):.2f}", qos=1, retain=True
-            )
+            self._enqueue_publish(HA_TOPIC_LAST_CONFIDENCE, f"{float(confidence):.2f}", qos=1, retain=True)
             self._enqueue_publish(HA_TOPIC_LAST_TIME, ts_iso, qos=1, retain=True)
             self._enqueue_publish(HA_TOPIC_BIRD_DETECTED, "ON", qos=1, retain=False)
 
@@ -1263,9 +1220,7 @@ class MQTTEventAggregator:
         """True if live or disconnected within MQTT_DISCONNECT_DISPLAY_GRACE_SEC (UI / API status)."""
         if self._connected:
             return True
-        if self._last_connected_at and (
-            time.time() - self._last_connected_at
-        ) < MQTT_DISCONNECT_DISPLAY_GRACE_SEC:
+        if self._last_connected_at and (time.time() - self._last_connected_at) < MQTT_DISCONNECT_DISPLAY_GRACE_SEC:
             return True
         return False
 

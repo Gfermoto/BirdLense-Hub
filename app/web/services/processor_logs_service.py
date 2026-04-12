@@ -1,4 +1,5 @@
 """Хвост processor.log для GET /api/ui/system/logs (#293)."""
+
 from __future__ import annotations
 
 import os
@@ -20,9 +21,9 @@ def clamp_processor_log_line_count(raw) -> int:
 def read_processor_log_tail(lines: int) -> dict:
     """Возвращает dict с ключами lines и path."""
     data_dir = os.path.dirname(recordings_dir())
-    log_path = os.path.join(data_dir, 'processor.log')
+    log_path = os.path.join(data_dir, "processor.log")
     if not os.path.isfile(log_path):
-        return {'lines': [], 'path': log_path}
-    with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+        return {"lines": [], "path": log_path}
+    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
         tail = deque(f, maxlen=lines)
-    return {'lines': list(tail), 'path': log_path}
+    return {"lines": list(tail), "path": log_path}

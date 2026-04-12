@@ -10,28 +10,28 @@ def test_validate_migration_calendar_params_ok_and_errors():
         validate_migration_calendar_params,
     )
 
-    assert validate_migration_calendar_params('observed', None, None) is None
-    assert validate_migration_calendar_params('active', '2024-01-01', '2024-01-31') is None
-    err = validate_migration_calendar_params('nope', None, None)
-    assert err and 'catalog' in err
-    err = validate_migration_calendar_params('observed', '2024/01/01', None)
-    assert 'start_date' in err
-    err = validate_migration_calendar_params('observed', '2024-02-01', '2024-01-01')
-    assert 'start_date must be <=' in err
+    assert validate_migration_calendar_params("observed", None, None) is None
+    assert validate_migration_calendar_params("active", "2024-01-01", "2024-01-31") is None
+    err = validate_migration_calendar_params("nope", None, None)
+    assert err and "catalog" in err
+    err = validate_migration_calendar_params("observed", "2024/01/01", None)
+    assert "start_date" in err
+    err = validate_migration_calendar_params("observed", "2024-02-01", "2024-01-01")
+    assert "start_date must be <=" in err
 
 
 def test_migration_calendar_cache_key_stable():
     from services.migration_calendar_request_service import migration_calendar_cache_key
 
-    k = migration_calendar_cache_key(2024, 2025, None, None, 'dataset', 'all')
-    assert k == 'migration_cal:v3:2024:2025:None:None:dataset:all'
+    k = migration_calendar_cache_key(2024, 2025, None, None, "dataset", "all")
+    assert k == "migration_cal:v3:2024:2025:None:None:dataset:all"
 
 
 def test_validate_timeline_export_format():
     from services.timeline_export_service import validate_timeline_export_format
 
-    assert validate_timeline_export_format('json') is None
-    assert validate_timeline_export_format('xml') is not None
+    assert validate_timeline_export_format("json") is None
+    assert validate_timeline_export_format("xml") is not None
 
 
 def test_resolve_timeline_utc_window_unix_range():
@@ -41,7 +41,7 @@ def test_resolve_timeline_utc_window_unix_range():
     ts1 = int(datetime(2026, 3, 24, 12, 0, 0, tzinfo=timezone.utc).timestamp())
     start_dt, end_dt = resolve_timeline_utc_window(
         date_param=None,
-        time_of_day='all',
+        time_of_day="all",
         hour_param=None,
         start_time=str(ts0),
         end_time=str(ts1),
@@ -55,12 +55,12 @@ def test_resolve_timeline_utc_window_requires_both_timestamps():
         resolve_timeline_utc_window,
     )
 
-    with pytest.raises(TimelineWindowError, match='Both start_time'):
+    with pytest.raises(TimelineWindowError, match="Both start_time"):
         resolve_timeline_utc_window(
             date_param=None,
-            time_of_day='all',
+            time_of_day="all",
             hour_param=None,
-            start_time='123',
+            start_time="123",
             end_time=None,
         )
 
@@ -68,10 +68,10 @@ def test_resolve_timeline_utc_window_requires_both_timestamps():
 def test_resolve_monthly_report_window_month():
     from services.monthly_report_window_service import resolve_monthly_report_window
 
-    start_dt, end_dt, label = resolve_monthly_report_window('2026-03', None, None)
+    start_dt, end_dt, label = resolve_monthly_report_window("2026-03", None, None)
     assert start_dt.year == 2026 and start_dt.month == 3 and start_dt.day == 1
     assert end_dt.month == 3 and end_dt >= start_dt
-    assert '2026' in label
+    assert "2026" in label
 
 
 def test_resolve_monthly_report_window_rejects_long_range():
@@ -83,12 +83,9 @@ def test_resolve_monthly_report_window_rejects_long_range():
 
     t0 = int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
     t1 = int(
-        (
-            datetime(2026, 1, 1, tzinfo=timezone.utc)
-            + timedelta(days=MAX_REPORT_RANGE_DAYS + 1)
-        ).timestamp(),
+        (datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(days=MAX_REPORT_RANGE_DAYS + 1)).timestamp(),
     )
-    with pytest.raises(MonthlyReportWindowError, match='3 months'):
+    with pytest.raises(MonthlyReportWindowError, match="3 months"):
         resolve_monthly_report_window(None, str(t0), str(t1))
 
 
@@ -99,29 +96,35 @@ def test_build_timeline_export_response_json_and_empty_csv():
     end = datetime(2026, 3, 24, 23, 0, 0)
     rows = [
         {
-            'id': 1,
-            'species_name': 'Test Bird',
-            'start_time': '2026-03-24T10:00:00+00:00',
-            'end_time': '2026-03-24T10:00:05+00:00',
-            'duration_sec': 5,
-            'max_simultaneous': 1,
-            'detection_count': 0,
-            'temp': None,
-            'clouds': None,
+            "id": 1,
+            "species_name": "Test Bird",
+            "start_time": "2026-03-24T10:00:00+00:00",
+            "end_time": "2026-03-24T10:00:05+00:00",
+            "duration_sec": 5,
+            "max_simultaneous": 1,
+            "detection_count": 0,
+            "temp": None,
+            "clouds": None,
         },
     ]
     body, mime, headers = build_timeline_export_response_parts(
-        'json', rows, start, end,
+        "json",
+        rows,
+        start,
+        end,
     )
-    assert mime == 'application/json'
-    assert 'Test Bird' in body
-    assert 'birdlense_timeline.json' in headers['Content-Disposition']
+    assert mime == "application/json"
+    assert "Test Bird" in body
+    assert "birdlense_timeline.json" in headers["Content-Disposition"]
 
     body_csv, mime_csv, _ = build_timeline_export_response_parts(
-        'csv', [], start, end,
+        "csv",
+        [],
+        start,
+        end,
     )
-    assert mime_csv == 'text/csv'
-    assert 'species_name' in body_csv
+    assert mime_csv == "text/csv"
+    assert "species_name" in body_csv
 
 
 def test_parse_dataset_export_query_args_defaults():
@@ -133,9 +136,9 @@ def test_parse_dataset_export_query_args_defaults():
 
     args = _A()
     p = parse_dataset_export_query_args(args)
-    assert p['val_ratio'] == 0.2
-    assert p['only_manually_corrected'] is False
-    assert p['strict_quality'] is False
+    assert p["val_ratio"] == 0.2
+    assert p["only_manually_corrected"] is False
+    assert p["strict_quality"] is False
 
 
 def test_parse_system_activity_month():
@@ -144,11 +147,11 @@ def test_parse_system_activity_month():
         parse_system_activity_month,
     )
 
-    start, end = parse_system_activity_month('2026-03')
+    start, end = parse_system_activity_month("2026-03")
     assert start.year == 2026 and start.month == 3
     assert end > start
     with pytest.raises(SystemActivityMonthError):
-        parse_system_activity_month('not-a-month')
+        parse_system_activity_month("not-a-month")
 
 
 def test_clamp_processor_log_line_count():
@@ -158,9 +161,9 @@ def test_clamp_processor_log_line_count():
         clamp_processor_log_line_count,
     )
 
-    assert clamp_processor_log_line_count('50') == 50
+    assert clamp_processor_log_line_count("50") == 50
     assert clamp_processor_log_line_count(99999) == LOG_LINES_MAX
-    assert clamp_processor_log_line_count('x') == LOG_LINES_DEFAULT
+    assert clamp_processor_log_line_count("x") == LOG_LINES_DEFAULT
 
 
 def test_parse_video_neighbors_request_args():
@@ -171,17 +174,19 @@ def test_parse_video_neighbors_request_args():
         parse_video_neighbors_request_args,
     )
 
-    args = ImmutableMultiDict([
-        ('day_scope', 'utc'),
-        ('neighbor_mode', 'video'),
-        ('tz_offset_minutes', '0'),
-    ])
+    args = ImmutableMultiDict(
+        [
+            ("day_scope", "utc"),
+            ("neighbor_mode", "video"),
+            ("tz_offset_minutes", "0"),
+        ]
+    )
     scope, cross, mode, vid, tz = parse_video_neighbors_request_args(args)
-    assert scope == 'utc' and cross is False and mode == 'video' and vid is None and tz == 0
+    assert scope == "utc" and cross is False and mode == "video" and vid is None and tz == 0
 
-    with pytest.raises(VideoNeighborsParamError, match='day_scope'):
+    with pytest.raises(VideoNeighborsParamError, match="day_scope"):
         parse_video_neighbors_request_args(
-            ImmutableMultiDict([('day_scope', 'mars')]),
+            ImmutableMultiDict([("day_scope", "mars")]),
         )
 
 
@@ -191,37 +196,41 @@ def test_parse_push_subscription_body_ok_and_errors():
         parse_push_subscription_body,
     )
 
-    ep, p256, au = parse_push_subscription_body({
-        'subscription': {
-            'endpoint': 'https://x.example/push',
-            'keys': {'p256dh': 'pdh', 'auth': 'at'},
-        },
-    })
-    assert ep.startswith('https://')
-    assert p256 == 'pdh' and au == 'at'
-    with pytest.raises(PushSubscriptionBodyError, match='subscription required'):
-        parse_push_subscription_body({'subscription': None})
-    with pytest.raises(PushSubscriptionBodyError, match='p256dh'):
-        parse_push_subscription_body({
-            'subscription': {'endpoint': 'x', 'keys': {}},
-        })
+    ep, p256, au = parse_push_subscription_body(
+        {
+            "subscription": {
+                "endpoint": "https://x.example/push",
+                "keys": {"p256dh": "pdh", "auth": "at"},
+            },
+        }
+    )
+    assert ep.startswith("https://")
+    assert p256 == "pdh" and au == "at"
+    with pytest.raises(PushSubscriptionBodyError, match="subscription required"):
+        parse_push_subscription_body({"subscription": None})
+    with pytest.raises(PushSubscriptionBodyError, match="p256dh"):
+        parse_push_subscription_body(
+            {
+                "subscription": {"endpoint": "x", "keys": {}},
+            }
+        )
 
 
 def test_component_status_trigger_display_labels():
     from services.component_status_service import _trigger_display
 
-    assert _trigger_display('opencv', False) == 'OpenCV'
-    assert _trigger_display('opencv', True) == 'OpenCV + Frigate (MQTT)'
-    assert _trigger_display('mqtt', True) == 'MQTT sensor + Frigate (MQTT)'
-    assert _trigger_display('unknown_src', False) == 'unknown_src'
+    assert _trigger_display("opencv", False) == "OpenCV"
+    assert _trigger_display("opencv", True) == "OpenCV + Frigate (MQTT)"
+    assert _trigger_display("mqtt", True) == "MQTT sensor + Frigate (MQTT)"
+    assert _trigger_display("unknown_src", False) == "unknown_src"
 
 
 def test_parse_unresolved_limit_species_registry():
     from services.species_registry_admin_service import parse_unresolved_limit
 
-    assert parse_unresolved_limit('25') == 25
+    assert parse_unresolved_limit("25") == 25
     assert parse_unresolved_limit(None) == 100
-    assert parse_unresolved_limit('x') == 100
+    assert parse_unresolved_limit("x") == 100
 
 
 def test_nearest_recording_day_next_prev(monkeypatch):
@@ -229,14 +238,14 @@ def test_nearest_recording_day_next_prev(monkeypatch):
 
     monkeypatch.setattr(
         sss,
-        'recording_days_iso_sorted',
-        lambda: ['2026-01-10', '2026-01-20'],
+        "recording_days_iso_sorted",
+        lambda: ["2026-01-10", "2026-01-20"],
     )
-    body, code = sss.nearest_recording_day_response('2026-01-15', 'next')
+    body, code = sss.nearest_recording_day_response("2026-01-15", "next")
     assert code == 200
-    assert body['found'] and body['date'] == '2026-01-20'
-    body2, _ = sss.nearest_recording_day_response('2026-01-15', 'prev')
-    assert body2['date'] == '2026-01-10'
+    assert body["found"] and body["date"] == "2026-01-20"
+    body2, _ = sss.nearest_recording_day_response("2026-01-15", "prev")
+    assert body2["date"] == "2026-01-10"
 
 
 def test_coerce_duplicate_group_limit():
@@ -245,15 +254,15 @@ def test_coerce_duplicate_group_limit():
     assert coerce_duplicate_group_limit(500) == (500, None)
     assert coerce_duplicate_group_limit(5) == (10, None)
     assert coerce_duplicate_group_limit(100_000) == (5000, None)
-    lim, err = coerce_duplicate_group_limit('bad')
-    assert lim is None and err == 'duplicate_group_limit must be int'
+    lim, err = coerce_duplicate_group_limit("bad")
+    assert lim is None and err == "duplicate_group_limit must be int"
 
 
 def test_normalize_export_format():
     from services.species_registry_admin_service import normalize_export_format
 
-    assert normalize_export_format(' CSV ') == 'csv'
-    assert normalize_export_format(None) == 'json'
+    assert normalize_export_format(" CSV ") == "csv"
+    assert normalize_export_format(None) == "json"
 
 
 def test_parse_broken_videos_list_params_clamped():
@@ -261,15 +270,17 @@ def test_parse_broken_videos_list_params_clamped():
 
     from services.system_diagnostics_service import parse_broken_videos_list_params
 
-    args = ImmutableMultiDict([
-        ('limit', '5'),
-        ('after_id', '10'),
-        ('max_scan', '100'),
-    ])
+    args = ImmutableMultiDict(
+        [
+            ("limit", "5"),
+            ("after_id", "10"),
+            ("max_scan", "100"),
+        ]
+    )
     lim, after, mx = parse_broken_videos_list_params(args)
     assert lim == 5 and after == 10 and mx == 100
 
-    args2 = ImmutableMultiDict([('limit', '9999'), ('max_scan', '999999')])
+    args2 = ImmutableMultiDict([("limit", "9999"), ("max_scan", "999999")])
     lim2, _, mx2 = parse_broken_videos_list_params(args2)
     assert lim2 == 200 and mx2 == 20000
 
@@ -279,20 +290,20 @@ def test_parse_review_only_noise_limit():
 
     from services.system_diagnostics_service import parse_review_only_noise_limit
 
-    assert parse_review_only_noise_limit(ImmutableMultiDict([('limit', '10')])) == 10
+    assert parse_review_only_noise_limit(ImmutableMultiDict([("limit", "10")])) == 10
     with pytest.raises(ValueError):
-        parse_review_only_noise_limit(ImmutableMultiDict([('limit', 'nope')]))
+        parse_review_only_noise_limit(ImmutableMultiDict([("limit", "nope")]))
 
 
 def test_birdnet_fifo_snapshot_missing_file(monkeypatch, tmp_path):
     import data_paths
     from services.system_diagnostics_service import build_birdnet_fifo_snapshot_response
 
-    monkeypatch.setattr(data_paths, 'data_dir', lambda: str(tmp_path))
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
     body, code = build_birdnet_fifo_snapshot_response()
     assert code == 200
-    assert body.get('available') is False
-    assert body.get('reason') == 'snapshot_file_missing'
+    assert body.get("available") is False
+    assert body.get("reason") == "snapshot_file_missing"
 
 
 def test_flatten_config_keys_terminal_maps():
@@ -301,8 +312,8 @@ def test_flatten_config_keys_terminal_maps():
         flatten_config_keys,
     )
 
-    nested = {'a': {'b': 1}}
-    assert flatten_config_keys(nested) == {'a', 'a.b'}
+    nested = {"a": {"b": 1}}
+    assert flatten_config_keys(nested) == {"a", "a.b"}
     terminal = next(iter(TERMINAL_CONFIG_MAP_KEYS))
     assert flatten_config_keys({}, prefix=terminal) == {terminal}
 
@@ -310,35 +321,35 @@ def test_flatten_config_keys_terminal_maps():
 def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     from services import system_config_audit_service as scas
 
-    user = tmp_path / 'user.yaml'
-    user.write_text('extra_key: 1\n', encoding='utf-8')
-    default_f = tmp_path / 'default.yaml'
-    default_f.write_text('known: 1\n', encoding='utf-8')
+    user = tmp_path / "user.yaml"
+    user.write_text("extra_key: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
 
     def _get(key, default=None):
         mapping = {
-            'notifications': {'telegram_proxy_type': 'http', 'send_photo': True},
-            'gallery.enabled': True,
-            'gallery.upload_url': ' https://x.example/upload ',
-            'gallery.min_confidence': 0.5,
-            'detection.species_mapping': {
-                'Gray-headed Woodpecker': 'Grey-headed Woodpecker',
-                'Great Gray Shrike': 'Great Grey Shrike',
+            "notifications": {"telegram_proxy_type": "http", "send_photo": True},
+            "gallery.enabled": True,
+            "gallery.upload_url": " https://x.example/upload ",
+            "gallery.min_confidence": 0.5,
+            "detection.species_mapping": {
+                "Gray-headed Woodpecker": "Grey-headed Woodpecker",
+                "Great Gray Shrike": "Great Grey Shrike",
             },
-            'ebird.species_mapping': {},
-            'general.heimdall_url': '',
+            "ebird.species_mapping": {},
+            "general.heimdall_url": "",
         }
         return mapping.get(key, default)
 
-    monkeypatch.setattr(scas, 'probe_heimdall', lambda _url: {'ok': True, 'stub': True})
+    monkeypatch.setattr(scas, "probe_heimdall", lambda _url: {"ok": True, "stub": True})
     payload = scas.build_system_config_audit_payload(
         user_config_file=str(user),
         default_config_file=str(default_f),
         app_config_get=_get,
     )
-    assert 'extra_key' in payload['unknown_keys']
-    assert payload['mapping']['gray_to_grey_ok'] is True
-    assert payload['heimdall']['probe']['ok'] is True
+    assert "extra_key" in payload["unknown_keys"]
+    assert payload["mapping"]["gray_to_grey_ok"] is True
+    assert payload["heimdall"]["probe"]["ok"] is True
 
 
 def test_build_timeline_export_response_ebird(monkeypatch):
@@ -346,22 +357,22 @@ def test_build_timeline_export_response_ebird(monkeypatch):
 
     monkeypatch.setattr(
         tes,
-        'build_ebird_csv',
-        lambda rows, _s, _e: 'stub,' + str(len(rows)),
+        "build_ebird_csv",
+        lambda rows, _s, _e: "stub," + str(len(rows)),
     )
     body, mime, headers = tes.build_timeline_export_response_parts(
-        'ebird',
+        "ebird",
         [
-            {'species_name': 'A', 'x': 1},
-            {'species_name': 'A', 'x': 2},
-            {'species_name': 'B', 'x': 3},
+            {"species_name": "A", "x": 1},
+            {"species_name": "A", "x": 2},
+            {"species_name": "B", "x": 3},
         ],
         datetime(2026, 1, 1),
         datetime(2026, 1, 2),
     )
-    assert mime == 'text/csv'
-    assert body == 'stub,2'
-    assert 'ebird' in headers['Content-Disposition']
+    assert mime == "text/csv"
+    assert body == "stub,2"
+    assert "ebird" in headers["Content-Disposition"]
 
 
 def test_compute_system_activity_uptime_bad_month():
@@ -369,15 +380,15 @@ def test_compute_system_activity_uptime_bad_month():
 
     from services.system_admin_api_service import compute_system_activity_uptime
 
-    body, code = compute_system_activity_uptime(MagicMock(), 'not-a-month')
+    body, code = compute_system_activity_uptime(MagicMock(), "not-a-month")
     assert code == 400
-    assert 'error' in body
+    assert "error" in body
 
 
 def test_fusion_export_download_file_or_error_missing(monkeypatch):
     from services import system_fusion_telegram_jobs_service as sft
 
-    monkeypatch.setattr(sft, 'latest_fusion_export_path', lambda: None)
+    monkeypatch.setattr(sft, "latest_fusion_export_path", lambda: None)
     path, err, code = sft.fusion_export_download_file_or_error()
     assert path is None and err and code == 404
 
@@ -388,10 +399,10 @@ def test_prepare_sqlite_db_backup_rejects_non_sqlite_engine():
     )
 
     class _Eng:
-        url = 'postgresql://localhost/db'
+        url = "postgresql://localhost/db"
 
     err, data, code = prepare_sqlite_db_backup_download(_Eng())
-    assert err and 'SQLite' in err['error']
+    assert err and "SQLite" in err["error"]
     assert data is None
     assert code == 400
 
@@ -399,14 +410,14 @@ def test_prepare_sqlite_db_backup_rejects_non_sqlite_engine():
 def test_start_bulk_spectrogram_requires_birdnet(monkeypatch):
     from services import system_admin_api_service as saa
 
-    monkeypatch.setattr(saa, '_birdnet_configured', lambda: False)
+    monkeypatch.setattr(saa, "_birdnet_configured", lambda: False)
 
     class _FakeApp:
         pass
 
     body, code = saa.start_bulk_spectrogram_regeneration(_FakeApp(), {})
     assert code == 400
-    assert 'BirdNET' in body.get('error', '')
+    assert "BirdNET" in body.get("error", "")
 
 
 def test_review_queue_bulk_delete_confirm_mismatch(monkeypatch):
@@ -416,20 +427,20 @@ def test_review_queue_bulk_delete_confirm_mismatch(monkeypatch):
 
     monkeypatch.setattr(
         rq_svc,
-        'resolve_review_queue_bulk_plan',
+        "resolve_review_queue_bulk_plan",
         lambda *_a, **_k: {
-            'confirmation_phrase': 'permanent_full',
-            'video_ids': [1],
-            'videos_by_id': {},
+            "confirmation_phrase": "permanent_full",
+            "video_ids": [1],
+            "videos_by_id": {},
         },
     )
     sess = MagicMock()
     body, code = rq_svc.execute_review_queue_bulk_delete(
         sess,
-        {'confirm_text': 'wrong'},
+        {"confirm_text": "wrong"},
     )
     assert code == 400
-    assert 'Confirmation' in body.get('error', '')
+    assert "Confirmation" in body.get("error", "")
     sess.commit.assert_not_called()
 
 
@@ -445,12 +456,12 @@ def test_parse_visitors_days_and_metrics_history_clamps():
     )
 
     assert parse_visitors_days(None) == 7
-    assert parse_visitors_days('bad') == 7
-    assert parse_visitors_days('14') == 14
+    assert parse_visitors_days("bad") == 7
+    assert parse_visitors_days("14") == 14
 
     assert clamp_metrics_history_hours(None) == 24
-    assert clamp_metrics_history_hours('9999') == SYSTEM_METRICS_HISTORY_MAX_HOURS
-    assert clamp_metrics_history_hours('0') == 1
+    assert clamp_metrics_history_hours("9999") == SYSTEM_METRICS_HISTORY_MAX_HOURS
+    assert clamp_metrics_history_hours("0") == 1
 
-    assert clamp_metrics_history_max_points('99999') == SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP
-    assert clamp_metrics_history_max_points('10') == 50
+    assert clamp_metrics_history_max_points("99999") == SYSTEM_METRICS_HISTORY_MAX_POINTS_CAP
+    assert clamp_metrics_history_max_points("10") == 50

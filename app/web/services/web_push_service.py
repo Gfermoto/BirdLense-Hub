@@ -1,4 +1,5 @@
 """Web Push notifications — отправка push в браузер при детекциях."""
+
 import json
 import logging
 from typing import Literal, Optional
@@ -13,15 +14,15 @@ def _is_unrecoverable_subscription_error(exc: BaseException) -> bool:
     """Ошибки pywebpush/cryptography при битых p256dh/auth — подписку лучше удалить из БД."""
     msg = str(exc).lower()
     markers = (
-        'deserialize',
-        'asn.1',
-        'invalid length',
-        'incorrect format',
-        'unsupported key',
-        'padding',
-        'non-hexadecimal',
-        'invalid base64',
-        'malformed',
+        "deserialize",
+        "asn.1",
+        "invalid length",
+        "incorrect format",
+        "unsupported key",
+        "padding",
+        "non-hexadecimal",
+        "invalid base64",
+        "malformed",
     )
     return any(m in msg for m in markers)
 
@@ -31,8 +32,8 @@ def _ensure_vapid_keys() -> tuple[str, str]:
     pub = base64url для PushManager.subscribe(applicationServerKey)
     priv = PEM строка для pywebpush
     """
-    pub = (app_config.get('web_push.vapid_public_key') or '').strip()
-    priv = (app_config.get('web_push.vapid_private_key') or '').strip()
+    pub = (app_config.get("web_push.vapid_public_key") or "").strip()
+    priv = (app_config.get("web_push.vapid_private_key") or "").strip()
     if pub and priv:
         return pub, priv
     try:
@@ -47,9 +48,9 @@ def _ensure_vapid_keys() -> tuple[str, str]:
             serialization.PublicFormat.UncompressedPoint,
         )
         pub = b64urlencode(raw_pub)
-        priv = vapid.private_pem().decode('utf-8')
-        app_config.set('web_push.vapid_public_key', pub)
-        app_config.set('web_push.vapid_private_key', priv)
+        priv = vapid.private_pem().decode("utf-8")
+        app_config.set("web_push.vapid_public_key", pub)
+        app_config.set("web_push.vapid_private_key", priv)
         app_config.save()
         return pub, priv
     except Exception as e:
@@ -78,9 +79,9 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
     """
     Отправляет push всем подписчикам. Возвращает количество успешно отправленных.
     """
-    if not app_config.get('general.enable_notifications'):
+    if not app_config.get("general.enable_notifications"):
         return 0
-    if not app_config.get('web_push.enabled', False):
+    if not app_config.get("web_push.enabled", False):
         return 0
     subs = PushSubscription.query.all()
     if not subs:
@@ -89,19 +90,20 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
         pub, priv = _ensure_vapid_keys()
     except Exception:
         return 0
-    base_url = (app_config.get('notifications.base_url') or '').strip().rstrip('/')
+    base_url = (app_config.get("notifications.base_url") or "").strip().rstrip("/")
     url = f"{base_url}/{link}" if base_url else None
     payload = {
-        'title': 'BirdLense',
-        'body': message,
-        'tag': tag or 'detection',
-        'url': url or '/',
+        "title": "BirdLense",
+        "body": message,
+        "tag": tag or "detection",
+        "url": url or "/",
     }
     payload_json = json.dumps(payload)
     sent = 0
     to_remove: list[int] = []
     try:
         from pywebpush import webpush, WebPushException
+
         for sub in subs:
             if not (sub.p256dh and sub.auth and sub.endpoint):
                 to_remove.append(sub.id)
@@ -112,14 +114,14 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
                 continue
             try:
                 subscription_info = {
-                    'endpoint': sub.endpoint,
-                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
                 }
                 webpush(
                     subscription_info=subscription_info,
                     data=payload_json,
                     vapid_private_key=priv,
-                    vapid_claims={'sub': 'mailto:birdlense@local'},
+                    vapid_claims={"sub": "mailto:birdlense@local"},
                 )
                 sent += 1
             except WebPushException as e:
@@ -162,22 +164,22 @@ def parse_push_subscription_body(data) -> tuple[str, str, str]:
     """endpoint, p256dh, auth."""
     if not isinstance(data, dict):
         data = {}
-    sub = data.get('subscription')
+    sub = data.get("subscription")
     if not sub or not isinstance(sub, dict):
-        raise PushSubscriptionBodyError('subscription required')
-    endpoint = (sub.get('endpoint') or '').strip()
-    keys = sub.get('keys') or {}
-    p256dh = (keys.get('p256dh') or '').strip()
-    auth = (keys.get('auth') or '').strip()
+        raise PushSubscriptionBodyError("subscription required")
+    endpoint = (sub.get("endpoint") or "").strip()
+    keys = sub.get("keys") or {}
+    p256dh = (keys.get("p256dh") or "").strip()
+    auth = (keys.get("auth") or "").strip()
     if not endpoint or not p256dh or not auth:
         raise PushSubscriptionBodyError(
-            'subscription.endpoint and subscription.keys (p256dh, auth) required',
+            "subscription.endpoint and subscription.keys (p256dh, auth) required",
         )
     return endpoint, p256dh, auth
 
 
 def enable_web_push_and_save() -> None:
-    app_config.set('web_push.enabled', True)
+    app_config.set("web_push.enabled", True)
     app_config.save()
 
 
@@ -188,16 +190,14 @@ def upsert_push_subscription(
     p256dh: str,
     auth: str,
     user_agent: str,
-) -> Literal['updated', 'created']:
-    existing = (
-        session.query(PushSubscription).filter_by(endpoint=endpoint).first()
-    )
+) -> Literal["updated", "created"]:
+    existing = session.query(PushSubscription).filter_by(endpoint=endpoint).first()
     if existing:
         existing.p256dh = p256dh
         existing.auth = auth
         existing.user_agent = user_agent[:512]
         session.commit()
-        return 'updated'
+        return "updated"
     ps = PushSubscription(
         endpoint=endpoint,
         p256dh=p256dh,
@@ -206,4 +206,4 @@ def upsert_push_subscription(
     )
     session.add(ps)
     session.commit()
-    return 'created'
+    return "created"

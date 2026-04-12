@@ -1,27 +1,28 @@
 """Удаление синтетических legacy Unknown из старого disk-import (#265)."""
+
 from __future__ import annotations
 
 from sqlalchemy.orm import joinedload
 
 from models import Species, SpeciesVisit, VideoSpecies, db
 
-IMPORT_SPECIES_NAME = 'Unknown'
+IMPORT_SPECIES_NAME = "Unknown"
 
 
 def is_legacy_import_placeholder(vs: VideoSpecies) -> bool:
-    species = getattr(vs, 'species', None)
-    species_name = getattr(species, 'name', None)
-    frames = (getattr(vs, 'frames', None) or '').strip()
+    species = getattr(vs, "species", None)
+    species_name = getattr(species, "name", None)
+    frames = (getattr(vs, "frames", None) or "").strip()
     return (
-        getattr(vs, 'detection_provider', None) == 'legacy'
+        getattr(vs, "detection_provider", None) == "legacy"
         and species_name == IMPORT_SPECIES_NAME
-        and float(getattr(vs, 'confidence', 0) or 0) <= 0
-        and getattr(vs, 'source', None) == 'video'
-        and not bool(getattr(vs, 'manually_corrected', False))
-        and getattr(vs, 'track_id', None) is None
+        and float(getattr(vs, "confidence", 0) or 0) <= 0
+        and getattr(vs, "source", None) == "video"
+        and not bool(getattr(vs, "manually_corrected", False))
+        and getattr(vs, "track_id", None) is None
         and not frames
-        and float(getattr(vs, 'start_time', 0) or 0) == 0
-        and float(getattr(vs, 'end_time', 0) or 0) == 30
+        and float(getattr(vs, "start_time", 0) or 0) == 0
+        and float(getattr(vs, "end_time", 0) or 0) == 30
     )
 
 
@@ -32,7 +33,7 @@ def cleanup_legacy_import_placeholders() -> tuple[int, int]:
         .join(Species)
         .options(joinedload(VideoSpecies.species))
         .filter(
-            VideoSpecies.detection_provider == 'legacy',
+            VideoSpecies.detection_provider == "legacy",
             Species.name == IMPORT_SPECIES_NAME,
         )
         .all()

@@ -7,6 +7,10 @@ markers = [
 target-version = "py311"
 line-length = 120
 
+[tool.ruff.lint.per-file-ignores]
+# OpenCV/ffmpeg env must run before processor_bootstrap imports cv2 (go2rtc).
+"processor/src/main.py" = ["E402"]
+
 [tool.interrogate]
 fail-under = 80
 exclude = ["tests"]

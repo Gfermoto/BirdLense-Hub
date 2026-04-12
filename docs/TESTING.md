@@ -17,12 +17,14 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 | Job | What it does |
 |-----|----------------|
 | **`python-security`** | **Bandit** on `web/` + `processor/src`; **pip-audit** on `web/requirements.txt` + `processor/requirements.txt` |
-| **`openapi-contract`** | **Ruff** (`ruff check web/ processor/src/`); **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
+| **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` on `web/` + `processor/src/`; **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
 | **`ui-build`** | **Node 22** — `npm ci` + `npm run lint` + production build of the SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, **Settings UI coverage** report (artifact + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **catalog cards audit** script (artifact) |
 
 **`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
+
+**Policy & thresholds:** [CI_AND_QUALITY](./CI_AND_QUALITY.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TS roadmap).
 
 **Related workflows:** **CodeQL** (see [CODEQL](./CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 

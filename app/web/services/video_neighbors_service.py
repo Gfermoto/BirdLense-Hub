@@ -1,4 +1,5 @@
 """Соседи ролика в пределах суток для GET /api/ui/videos/:id/neighbors (#293)."""
+
 from __future__ import annotations
 
 import logging
@@ -18,29 +19,29 @@ class VideoNeighborsParamError(ValueError):
 
 def parse_video_neighbors_request_args(args) -> tuple[str, bool, str, int | None, int]:
     """scope, cross_day, neighbor_mode, visit_id, tz_offset_minutes."""
-    scope = (args.get('day_scope') or 'utc').strip().lower()
-    if scope not in ('utc', 'local'):
+    scope = (args.get("day_scope") or "utc").strip().lower()
+    if scope not in ("utc", "local"):
         raise VideoNeighborsParamError('day_scope must be "utc" or "local"')
-    cross_day = (args.get('cross_day') or '').strip().lower() in ('1', 'true', 'yes')
-    neighbor_mode = (args.get('neighbor_mode') or 'video').strip().lower()
-    if neighbor_mode not in ('video', 'visit_primary'):
+    cross_day = (args.get("cross_day") or "").strip().lower() in ("1", "true", "yes")
+    neighbor_mode = (args.get("neighbor_mode") or "video").strip().lower()
+    if neighbor_mode not in ("video", "visit_primary"):
         raise VideoNeighborsParamError(
             'neighbor_mode must be "video" or "visit_primary"',
         )
-    visit_id = args.get('visit_id', type=int)
-    if neighbor_mode == 'visit_primary' and visit_id is None:
+    visit_id = args.get("visit_id", type=int)
+    if neighbor_mode == "visit_primary" and visit_id is None:
         raise VideoNeighborsParamError(
-            'visit_id is required when neighbor_mode=visit_primary',
+            "visit_id is required when neighbor_mode=visit_primary",
         )
     try:
-        tz_offset_minutes = int(args.get('tz_offset_minutes', 0))
+        tz_offset_minutes = int(args.get("tz_offset_minutes", 0))
     except (TypeError, ValueError) as exc:
         raise VideoNeighborsParamError(
-            'tz_offset_minutes must be an integer',
+            "tz_offset_minutes must be an integer",
         ) from exc
     if tz_offset_minutes < -840 or tz_offset_minutes > 840:
         raise VideoNeighborsParamError(
-            'tz_offset_minutes out of range [-840, 840]',
+            "tz_offset_minutes out of range [-840, 840]",
         )
     return scope, cross_day, neighbor_mode, visit_id, tz_offset_minutes
 
@@ -57,7 +58,7 @@ def build_video_neighbors_payload(
     tz_offset_minutes: int,
 ) -> dict:
     st_utc = ensure_utc(video.start_time).astimezone(timezone.utc).replace(tzinfo=None)
-    if scope == 'local':
+    if scope == "local":
         local_dt = st_utc - timedelta(minutes=tz_offset_minutes)
         local_day_start = datetime(local_dt.year, local_dt.month, local_dt.day)
         local_day_end = local_day_start + timedelta(days=1)
@@ -71,7 +72,7 @@ def build_video_neighbors_payload(
 
     ids: list[int] = []
     idx = None
-    if neighbor_mode == 'visit_primary' and visit_id is not None:
+    if neighbor_mode == "visit_primary" and visit_id is not None:
         visit_rows = (
             session.query(SpeciesVisit)
             .options(
@@ -118,7 +119,7 @@ def build_video_neighbors_payload(
         idx = ids.index(video_id) if idx is None else idx
     except ValueError:
         logger.warning(
-            'Video %s start_time not in day list (scope=%s day %s–%s); ids=%s',
+            "Video %s start_time not in day list (scope=%s day %s–%s); ids=%s",
             video_id,
             scope,
             day_start,
@@ -126,14 +127,14 @@ def build_video_neighbors_payload(
             ids,
         )
         return {
-            'day_scope': scope,
-            'day_label': day_label,
-            'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
-            'cross_day': cross_day,
-            'previous_id': None,
-            'next_id': None,
-            'index': 0,
-            'total': len(ids),
+            "day_scope": scope,
+            "day_label": day_label,
+            "timezone_offset_minutes": tz_offset_minutes if scope == "local" else 0,
+            "cross_day": cross_day,
+            "previous_id": None,
+            "next_id": None,
+            "index": 0,
+            "total": len(ids),
         }
 
     prev_id = ids[idx - 1] if idx > 0 else None
@@ -144,10 +145,7 @@ def build_video_neighbors_payload(
             session.query(Video)
             .filter(
                 (Video.start_time < video.start_time)
-                | (
-                    (Video.start_time == video.start_time)
-                    & (Video.id < video.id)
-                ),
+                | ((Video.start_time == video.start_time) & (Video.id < video.id)),
             )
             .order_by(Video.start_time.desc(), Video.id.desc())
             .with_entities(Video.id)
@@ -159,10 +157,7 @@ def build_video_neighbors_payload(
             session.query(Video)
             .filter(
                 (Video.start_time > video.start_time)
-                | (
-                    (Video.start_time == video.start_time)
-                    & (Video.id > video.id)
-                ),
+                | ((Video.start_time == video.start_time) & (Video.id > video.id)),
             )
             .order_by(Video.start_time.asc(), Video.id.asc())
             .with_entities(Video.id)
@@ -171,12 +166,12 @@ def build_video_neighbors_payload(
         next_id = nxt[0] if nxt else None
 
     return {
-        'day_scope': scope,
-        'day_label': day_label,
-        'timezone_offset_minutes': tz_offset_minutes if scope == 'local' else 0,
-        'cross_day': cross_day,
-        'previous_id': prev_id,
-        'next_id': next_id,
-        'index': idx,
-        'total': len(ids),
+        "day_scope": scope,
+        "day_label": day_label,
+        "timezone_offset_minutes": tz_offset_minutes if scope == "local" else 0,
+        "cross_day": cross_day,
+        "previous_id": prev_id,
+        "next_id": next_id,
+        "index": idx,
+        "total": len(ids),
     }

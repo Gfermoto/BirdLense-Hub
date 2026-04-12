@@ -74,9 +74,7 @@ def build_birdnet_fifo_snapshot_payload(
     species_counter: Counter[str] = Counter()
     epochs: list[float] = []
     for ev in events:
-        label = str(
-            ev.get("species") or ev.get("common_name") or ""
-        ).strip() or "unknown"
+        label = str(ev.get("species") or ev.get("common_name") or "").strip() or "unknown"
         species_counter[label] += 1
         ts = _parse_ts(ev.get("timestamp"))
         if ts is not None:

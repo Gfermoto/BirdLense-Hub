@@ -22,42 +22,48 @@ if TYPE_CHECKING:
 
 def start_fusion_export_background(flask_app: Flask) -> tuple[dict, int]:
     with job_state._fusion_export_lock:
-        if job_state._fusion_export_status['status'] == 'running':
+        if job_state._fusion_export_status["status"] == "running":
             return {
-                'error': 'Fusion export already in progress',
-                'status': job_state._fusion_export_status,
+                "error": "Fusion export already in progress",
+                "status": job_state._fusion_export_status,
             }, 409
-        job_state._fusion_export_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': None,
-        })
+        job_state._fusion_export_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": None,
+            }
+        )
 
     def _run() -> None:
         try:
             with flask_app.app_context():
                 result = run_fusion_export_job()
             with job_state._fusion_export_lock:
-                job_state._fusion_export_status.update({
-                    'status': 'done',
-                    'result': result,
-                    'error': None,
-                    'progress': None,
-                })
+                job_state._fusion_export_status.update(
+                    {
+                        "status": "done",
+                        "result": result,
+                        "error": None,
+                        "progress": None,
+                    }
+                )
         except Exception as e:
             with job_state._fusion_export_lock:
-                job_state._fusion_export_status.update({
-                    'status': 'error',
-                    'result': None,
-                    'error': str(e),
-                    'progress': None,
-                })
+                job_state._fusion_export_status.update(
+                    {
+                        "status": "error",
+                        "result": None,
+                        "error": str(e),
+                        "progress": None,
+                    }
+                )
 
     threading.Thread(target=_run, daemon=True).start()
     return {
-        'message': 'Fusion export started',
-        'status': dict(job_state._fusion_export_status),
+        "message": "Fusion export started",
+        "status": dict(job_state._fusion_export_status),
     }, 202
 
 
@@ -69,7 +75,7 @@ def fusion_export_status_snapshot() -> dict[str, Any]:
 def fusion_export_download_file_or_error() -> tuple[Path | None, dict | None, int]:
     latest = latest_fusion_export_path()
     if not latest or not latest.exists():
-        return None, {'error': 'Fusion export not found'}, 404
+        return None, {"error": "Fusion export not found"}, 404
     return latest, None, 200
 
 
@@ -78,49 +84,55 @@ def start_fusion_eval_background(
     payload: dict | None,
 ) -> tuple[dict, int]:
     with job_state._fusion_eval_lock:
-        if job_state._fusion_eval_status['status'] == 'running':
+        if job_state._fusion_eval_status["status"] == "running":
             return {
-                'error': 'Fusion eval already in progress',
-                'status': job_state._fusion_eval_status,
+                "error": "Fusion eval already in progress",
+                "status": job_state._fusion_eval_status,
             }, 409
-        job_state._fusion_eval_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': None,
-        })
+        job_state._fusion_eval_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": None,
+            }
+        )
     data = payload or {}
 
     def _run() -> None:
         try:
             with flask_app.app_context():
                 result = run_fusion_eval_job(
-                    source_csv=data.get('source_csv'),
-                    model_path=data.get('model_path'),
-                    score_col=data.get('score_col'),
-                    label_col=data.get('label_col', 'valid_track_label'),
-                    slice_fields=list(data.get('slice_fields') or []),
+                    source_csv=data.get("source_csv"),
+                    model_path=data.get("model_path"),
+                    score_col=data.get("score_col"),
+                    label_col=data.get("label_col", "valid_track_label"),
+                    slice_fields=list(data.get("slice_fields") or []),
                 )
             with job_state._fusion_eval_lock:
-                job_state._fusion_eval_status.update({
-                    'status': 'done',
-                    'result': result,
-                    'error': None,
-                    'progress': None,
-                })
+                job_state._fusion_eval_status.update(
+                    {
+                        "status": "done",
+                        "result": result,
+                        "error": None,
+                        "progress": None,
+                    }
+                )
         except Exception as e:
             with job_state._fusion_eval_lock:
-                job_state._fusion_eval_status.update({
-                    'status': 'error',
-                    'result': None,
-                    'error': str(e),
-                    'progress': None,
-                })
+                job_state._fusion_eval_status.update(
+                    {
+                        "status": "error",
+                        "result": None,
+                        "error": str(e),
+                        "progress": None,
+                    }
+                )
 
     threading.Thread(target=_run, daemon=True).start()
     return {
-        'message': 'Fusion eval started',
-        'status': dict(job_state._fusion_eval_status),
+        "message": "Fusion eval started",
+        "status": dict(job_state._fusion_eval_status),
     }, 202
 
 
@@ -131,42 +143,48 @@ def fusion_eval_status_snapshot() -> dict[str, Any]:
 
 def start_telegram_proxy_refresh_background(flask_app: Flask) -> tuple[dict, int]:
     with job_state._telegram_proxy_refresh_lock:
-        if job_state._telegram_proxy_refresh_status['status'] == 'running':
+        if job_state._telegram_proxy_refresh_status["status"] == "running":
             return {
-                'error': 'Telegram proxy refresh already in progress',
-                'status': job_state._telegram_proxy_refresh_status,
+                "error": "Telegram proxy refresh already in progress",
+                "status": job_state._telegram_proxy_refresh_status,
             }, 409
-        job_state._telegram_proxy_refresh_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': None,
-        })
+        job_state._telegram_proxy_refresh_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": None,
+            }
+        )
 
     def _run() -> None:
         try:
             with flask_app.app_context():
                 result = refresh_telegram_proxy_service()
             with job_state._telegram_proxy_refresh_lock:
-                job_state._telegram_proxy_refresh_status.update({
-                    'status': 'done',
-                    'result': result,
-                    'error': None,
-                    'progress': None,
-                })
+                job_state._telegram_proxy_refresh_status.update(
+                    {
+                        "status": "done",
+                        "result": result,
+                        "error": None,
+                        "progress": None,
+                    }
+                )
         except Exception as e:
             with job_state._telegram_proxy_refresh_lock:
-                job_state._telegram_proxy_refresh_status.update({
-                    'status': 'error',
-                    'result': None,
-                    'error': str(e),
-                    'progress': None,
-                })
+                job_state._telegram_proxy_refresh_status.update(
+                    {
+                        "status": "error",
+                        "result": None,
+                        "error": str(e),
+                        "progress": None,
+                    }
+                )
 
     threading.Thread(target=_run, daemon=True).start()
     return {
-        'message': 'Telegram proxy refresh started',
-        'status': dict(job_state._telegram_proxy_refresh_status),
+        "message": "Telegram proxy refresh started",
+        "status": dict(job_state._telegram_proxy_refresh_status),
     }, 202
 
 

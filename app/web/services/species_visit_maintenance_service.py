@@ -54,19 +54,19 @@ def _collect_species_sync_actions(session) -> list[dict[str, Any]]:
         if detection.manually_corrected:
             actions.append(
                 {
-                    'kind': 'visit_species',
-                    'detection_id': detection.id,
-                    'visit_id': visit.id,
-                    'species_id': detection.species_id,
+                    "kind": "visit_species",
+                    "detection_id": detection.id,
+                    "visit_id": visit.id,
+                    "species_id": detection.species_id,
                 },
             )
         else:
             actions.append(
                 {
-                    'kind': 'detection_species',
-                    'detection_id': detection.id,
-                    'visit_id': visit.id,
-                    'species_id': visit.species_id,
+                    "kind": "detection_species",
+                    "detection_id": detection.id,
+                    "visit_id": visit.id,
+                    "species_id": visit.species_id,
                 },
             )
     return actions
@@ -77,13 +77,10 @@ def preview_clean_orphaned_visits(session) -> dict[str, Any]:
     orphaned = _collect_orphaned_visits(session)
     sync_actions = _collect_species_sync_actions(session)
     return {
-        'dry_run': True,
-        'orphaned': len(orphaned),
-        'synced_would_update': len(sync_actions),
-        'message': (
-            f'Would remove {len(orphaned)} orphaned visits and '
-            f'sync {len(sync_actions)} detections'
-        ),
+        "dry_run": True,
+        "orphaned": len(orphaned),
+        "synced_would_update": len(sync_actions),
+        "message": (f"Would remove {len(orphaned)} orphaned visits and sync {len(sync_actions)} detections"),
     }
 
 
@@ -98,25 +95,22 @@ def apply_clean_orphaned_visits(session) -> dict[str, Any]:
 
     synced = 0
     for action in sync_actions:
-        if action['kind'] == 'visit_species':
-            visit = session.get(SpeciesVisit, action['visit_id'])
-            if visit and visit.species_id != action['species_id']:
-                visit.species_id = action['species_id']
+        if action["kind"] == "visit_species":
+            visit = session.get(SpeciesVisit, action["visit_id"])
+            if visit and visit.species_id != action["species_id"]:
+                visit.species_id = action["species_id"]
                 synced += 1
             continue
-        detection = session.get(VideoSpecies, action['detection_id'])
-        if detection and detection.species_id != action['species_id']:
-            detection.species_id = action['species_id']
+        detection = session.get(VideoSpecies, action["detection_id"])
+        if detection and detection.species_id != action["species_id"]:
+            detection.species_id = action["species_id"]
             synced += 1
 
     return {
-        'dry_run': False,
-        'orphaned': len(orphaned),
-        'synced': synced,
-        'message': (
-            f'Removed {len(orphaned)} orphaned visits, '
-            f'synced {synced} detections'
-        ),
+        "dry_run": False,
+        "orphaned": len(orphaned),
+        "synced": synced,
+        "message": (f"Removed {len(orphaned)} orphaned visits, synced {synced} detections"),
     }
 
 
@@ -157,10 +151,7 @@ def _collect_visit_realignments(session) -> list[_VisitTiming]:
 
     changed: list[_VisitTiming] = []
     for timing in timings.values():
-        if (
-            timing.visit.start_time != timing.min_time
-            or timing.visit.end_time != timing.max_time
-        ):
+        if timing.visit.start_time != timing.min_time or timing.visit.end_time != timing.max_time:
             changed.append(timing)
     return changed
 
@@ -219,10 +210,7 @@ def _collect_large_gap_visit_splits(
         current_end: datetime | None = None
 
         for timing in detections:
-            if (
-                current_end is not None
-                and timing.min_time - current_end > timedelta(seconds=gap_seconds)
-            ):
+            if current_end is not None and timing.min_time - current_end > timedelta(seconds=gap_seconds):
                 groups.append(current_group)
                 current_group = []
                 current_end = None
@@ -246,9 +234,9 @@ def preview_realign_visit_times(session) -> dict[str, Any]:
     """Summarize visit timestamp realignment without mutating the DB."""
     pending = _collect_visit_realignments(session)
     return {
-        'dry_run': True,
-        'updated': len(pending),
-        'message': f'Would realign {len(pending)} visits',
+        "dry_run": True,
+        "updated": len(pending),
+        "message": f"Would realign {len(pending)} visits",
     }
 
 
@@ -259,9 +247,9 @@ def apply_realign_visit_times(session) -> dict[str, Any]:
         timing.visit.start_time = timing.min_time
         timing.visit.end_time = timing.max_time
     return {
-        'dry_run': False,
-        'updated': len(pending),
-        'message': f'Realigned {len(pending)} visits',
+        "dry_run": False,
+        "updated": len(pending),
+        "message": f"Realigned {len(pending)} visits",
     }
 
 
@@ -272,20 +260,16 @@ def preview_split_large_gap_visits(
     """Summarize visit splits for detections separated by large gaps."""
     plans = _collect_large_gap_visit_splits(session, gap_seconds)
     created_visits = sum(len(plan.groups) - 1 for plan in plans)
-    reassigned_detections = sum(
-        len(group)
-        for plan in plans
-        for group in plan.groups[1:]
-    )
+    reassigned_detections = sum(len(group) for plan in plans for group in plan.groups[1:])
     return {
-        'dry_run': True,
-        'affected_visits': len(plans),
-        'created_visits': created_visits,
-        'reassigned_detections': reassigned_detections,
-        'message': (
-            f'Would split {len(plans)} visits, '
-            f'create {created_visits} visits, '
-            f'reassign {reassigned_detections} detections'
+        "dry_run": True,
+        "affected_visits": len(plans),
+        "created_visits": created_visits,
+        "reassigned_detections": reassigned_detections,
+        "message": (
+            f"Would split {len(plans)} visits, "
+            f"create {created_visits} visits, "
+            f"reassign {reassigned_detections} detections"
         ),
     }
 
@@ -323,13 +307,11 @@ def apply_split_large_gap_visits(
                 reassigned_detections += 1
 
     return {
-        'dry_run': False,
-        'affected_visits': len(plans),
-        'created_visits': created_visits,
-        'reassigned_detections': reassigned_detections,
-        'message': (
-            f'Split {len(plans)} visits, '
-            f'created {created_visits} visits, '
-            f'reassigned {reassigned_detections} detections'
+        "dry_run": False,
+        "affected_visits": len(plans),
+        "created_visits": created_visits,
+        "reassigned_detections": reassigned_detections,
+        "message": (
+            f"Split {len(plans)} visits, created {created_visits} visits, reassigned {reassigned_detections} detections"
         ),
     }

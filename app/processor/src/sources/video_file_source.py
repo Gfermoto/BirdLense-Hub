@@ -19,7 +19,7 @@ class VideoFileSource:
         lores_size=(640, 640),
         loop=False,
         realtime_simulation=False,
-        record_stream_codec='h264',
+        record_stream_codec="h264",
     ):
         """Open video source and initialize timing/recording state."""
         self.logger = logging.getLogger(__name__)
@@ -29,32 +29,32 @@ class VideoFileSource:
         self.lores_size = lores_size
         self.loop = bool(loop)
         self.realtime_simulation = bool(realtime_simulation)
-        rcodec = str(record_stream_codec or 'h264').strip().lower()
-        self.record_stream_codec = rcodec if rcodec in ('h264', 'copy') else 'h264'
+        rcodec = str(record_stream_codec or "h264").strip().lower()
+        self.record_stream_codec = rcodec if rcodec in ("h264", "copy") else "h264"
         self.out = None
         self._record_output = None
         self._recorded_frames = 0
-        self._fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         self.source_fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
         self.frame_interval = 1.0 / self.source_fps
         self.last_capture_time = None
         self.frame_count = 0
 
-        self.logger.info(f'VideoFileSource: {self.source_fps} FPS')
+        self.logger.info(f"VideoFileSource: {self.source_fps} FPS")
 
     def start_recording(self, output):
         """Start writing recorded output video to disk."""
-        self.logger.info(f'Start video recording to {output}')
+        self.logger.info(f"Start video recording to {output}")
         self._record_output = output
         self._recorded_frames = 0
         candidates = (
-            ('avc1', cv2.VideoWriter_fourcc(*'avc1')),
-            ('H264', cv2.VideoWriter_fourcc(*'H264')),
-            ('X264', cv2.VideoWriter_fourcc(*'X264')),
-            ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),
+            ("avc1", cv2.VideoWriter_fourcc(*"avc1")),
+            ("H264", cv2.VideoWriter_fourcc(*"H264")),
+            ("X264", cv2.VideoWriter_fourcc(*"X264")),
+            ("mp4v", cv2.VideoWriter_fourcc(*"mp4v")),
         )
-        order = candidates if self.record_stream_codec == 'h264' else (candidates[-1],)
+        order = candidates if self.record_stream_codec == "h264" else (candidates[-1],)
         self.out = None
         for tag, fourcc in order:
             writer = cv2.VideoWriter(
@@ -66,22 +66,22 @@ class VideoFileSource:
             if writer is not None and writer.isOpened():
                 self.out = writer
                 self._fourcc = fourcc
-                self.logger.info('Video writer opened with codec=%s', tag)
+                self.logger.info("Video writer opened with codec=%s", tag)
                 break
             if writer is not None:
                 writer.release()
         if self.out is None:
-            self.logger.error('Failed to open VideoWriter for %s', output)
+            self.logger.error("Failed to open VideoWriter for %s", output)
         self.frame_count = 0
         self.last_capture_time = None
 
     def stop_recording(self):
         """Stop output recording if active."""
-        self.logger.info('Stop video recording')
+        self.logger.info("Stop video recording")
         if self.out is not None:
             self.out.release()
             self.out = None
-        if self._record_output and self.record_stream_codec == 'h264':
+        if self._record_output and self.record_stream_codec == "h264":
             self._ensure_h264(self._record_output)
         if self._record_output and self._recorded_frames == 0:
             try:
@@ -94,40 +94,40 @@ class VideoFileSource:
         try:
             probe = subprocess.run(
                 [
-                    'ffprobe',
-                    '-v',
-                    'error',
-                    '-select_streams',
-                    'v:0',
-                    '-show_entries',
-                    'stream=codec_name',
-                    '-of',
-                    'default=noprint_wrappers=1:nokey=1',
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=codec_name",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
                     output_path,
                 ],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            codec = (probe.stdout or '').strip().lower()
-            if codec == 'h264':
+            codec = (probe.stdout or "").strip().lower()
+            if codec == "h264":
                 return
-            tmp_path = f'{output_path}.h264.tmp.mp4'
+            tmp_path = f"{output_path}.h264.tmp.mp4"
             run = subprocess.run(
                 [
-                    'ffmpeg',
-                    '-y',
-                    '-i',
+                    "ffmpeg",
+                    "-y",
+                    "-i",
                     output_path,
-                    '-c:v',
-                    'libx264',
-                    '-preset',
-                    'veryfast',
-                    '-pix_fmt',
-                    'yuv420p',
-                    '-movflags',
-                    '+faststart',
-                    '-an',
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-an",
                     tmp_path,
                 ],
                 capture_output=True,
@@ -136,18 +136,18 @@ class VideoFileSource:
             )
             if run.returncode == 0 and os.path.isfile(tmp_path) and os.path.getsize(tmp_path) > 1024:
                 os.replace(tmp_path, output_path)
-                self.logger.info('Transcoded recording to H.264: %s', output_path)
+                self.logger.info("Transcoded recording to H.264: %s", output_path)
             else:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
                 self.logger.warning(
-                    'H.264 transcode failed for %s (codec=%s, code=%s)',
+                    "H.264 transcode failed for %s (codec=%s, code=%s)",
                     output_path,
-                    codec or 'unknown',
+                    codec or "unknown",
                     run.returncode,
                 )
         except Exception as e:
-            self.logger.warning('Failed H.264 normalization for %s: %s', output_path, e)
+            self.logger.warning("Failed H.264 normalization for %s: %s", output_path, e)
 
     def capture(self):
         """Read next frame(s) based on elapsed time and return lores frame."""
@@ -171,7 +171,7 @@ class VideoFileSource:
             if not ret:
                 if self.loop:
                     self.logger.info(
-                        'Video loop: restarting source %s after %s frames',
+                        "Video loop: restarting source %s after %s frames",
                         self.video_path,
                         self.frame_count,
                     )
@@ -179,19 +179,19 @@ class VideoFileSource:
                     self.cap = cv2.VideoCapture(self.video_path)
                     if not self.cap.isOpened():
                         self.logger.warning(
-                            'Video loop failed to reopen source: %s',
+                            "Video loop failed to reopen source: %s",
                             self.video_path,
                         )
                         return None
                     ret, frame = self.cap.read()
                     if not ret:
                         self.logger.warning(
-                            'Video loop failed to read first frame: %s',
+                            "Video loop failed to read first frame: %s",
                             self.video_path,
                         )
                         return None
                 else:
-                    self.logger.info(f'Video ended after {self.frame_count} frames')
+                    self.logger.info(f"Video ended after {self.frame_count} frames")
                     return None
 
             self.frame_count += 1
@@ -203,11 +203,7 @@ class VideoFileSource:
 
             result_frame = frame
 
-        res = (
-            cv2.resize(result_frame, self.lores_size)
-            if result_frame is not None
-            else None
-        )
+        res = cv2.resize(result_frame, self.lores_size) if result_frame is not None else None
         return res
 
     def get_frame_time(self):
@@ -236,12 +232,12 @@ class VideoPlaylistSource:
         *,
         split_session_per_file=False,
         realtime_simulation=False,
-        record_stream_codec='h264',
+        record_stream_codec="h264",
     ):
         self.logger = logging.getLogger(__name__)
         self.video_paths = [str(p) for p in (video_paths or []) if str(p).strip()]
         if not self.video_paths:
-            raise ValueError('Video playlist is empty')
+            raise ValueError("Video playlist is empty")
         self.main_size = main_size
         self.lores_size = lores_size
         self.loop = bool(loop)
@@ -249,14 +245,14 @@ class VideoPlaylistSource:
         self.split_session_per_file = bool(split_session_per_file)
         self._pending_first_frame_bgr = None
         self.realtime_simulation = bool(realtime_simulation)
-        rcodec = str(record_stream_codec or 'h264').strip().lower()
-        self.record_stream_codec = rcodec if rcodec in ('h264', 'copy') else 'h264'
+        rcodec = str(record_stream_codec or "h264").strip().lower()
+        self.record_stream_codec = rcodec if rcodec in ("h264", "copy") else "h264"
         self._started_once = False
         self.video_index = 0
         self.video_path = self.video_paths[0]
         self.cap = None
         self.out = None
-        self._fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         self._record_output = None
         self._recorded_frames = 0
         self.source_fps = 30.0
@@ -265,7 +261,7 @@ class VideoPlaylistSource:
         self.frame_count = 0
         self._open_current_video()
         self.logger.info(
-            'VideoPlaylistSource: %s files, first=%s',
+            "VideoPlaylistSource: %s files, first=%s",
             len(self.video_paths),
             Path(self.video_path).name,
         )
@@ -281,7 +277,7 @@ class VideoPlaylistSource:
         self.frame_count = 0
         self.last_capture_time = None
         self.logger.info(
-            'Playlist now playing: %s (fps=%.2f)',
+            "Playlist now playing: %s (fps=%.2f)",
             self.video_path,
             self.source_fps,
         )
@@ -303,16 +299,16 @@ class VideoPlaylistSource:
             advanced = True
         first_session = not self._started_once
         self._started_once = True
-        self.logger.info(f'Start video recording to {output}')
+        self.logger.info(f"Start video recording to {output}")
         self._record_output = output
         self._recorded_frames = 0
         candidates = (
-            ('avc1', cv2.VideoWriter_fourcc(*'avc1')),
-            ('H264', cv2.VideoWriter_fourcc(*'H264')),
-            ('X264', cv2.VideoWriter_fourcc(*'X264')),
-            ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),
+            ("avc1", cv2.VideoWriter_fourcc(*"avc1")),
+            ("H264", cv2.VideoWriter_fourcc(*"H264")),
+            ("X264", cv2.VideoWriter_fourcc(*"X264")),
+            ("mp4v", cv2.VideoWriter_fourcc(*"mp4v")),
         )
-        order = candidates if self.record_stream_codec == 'h264' else (candidates[-1],)
+        order = candidates if self.record_stream_codec == "h264" else (candidates[-1],)
         self.out = None
         for tag, fourcc in order:
             writer = cv2.VideoWriter(
@@ -324,22 +320,22 @@ class VideoPlaylistSource:
             if writer is not None and writer.isOpened():
                 self.out = writer
                 self._fourcc = fourcc
-                self.logger.info('Video writer opened with codec=%s', tag)
+                self.logger.info("Video writer opened with codec=%s", tag)
                 break
             if writer is not None:
                 writer.release()
         if self.out is None:
-            self.logger.error('Failed to open VideoWriter for %s', output)
+            self.logger.error("Failed to open VideoWriter for %s", output)
         if advanced or first_session:
             self.frame_count = 0
             self.last_capture_time = None
 
     def stop_recording(self):
-        self.logger.info('Stop video recording')
+        self.logger.info("Stop video recording")
         if self.out is not None:
             self.out.release()
             self.out = None
-        if self._record_output and self.record_stream_codec == 'h264':
+        if self._record_output and self.record_stream_codec == "h264":
             self._ensure_h264(self._record_output)
         if self._record_output and self._recorded_frames == 0:
             try:
@@ -352,40 +348,40 @@ class VideoPlaylistSource:
         try:
             probe = subprocess.run(
                 [
-                    'ffprobe',
-                    '-v',
-                    'error',
-                    '-select_streams',
-                    'v:0',
-                    '-show_entries',
-                    'stream=codec_name',
-                    '-of',
-                    'default=noprint_wrappers=1:nokey=1',
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=codec_name",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
                     output_path,
                 ],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            codec = (probe.stdout or '').strip().lower()
-            if codec == 'h264':
+            codec = (probe.stdout or "").strip().lower()
+            if codec == "h264":
                 return
-            tmp_path = f'{output_path}.h264.tmp.mp4'
+            tmp_path = f"{output_path}.h264.tmp.mp4"
             run = subprocess.run(
                 [
-                    'ffmpeg',
-                    '-y',
-                    '-i',
+                    "ffmpeg",
+                    "-y",
+                    "-i",
                     output_path,
-                    '-c:v',
-                    'libx264',
-                    '-preset',
-                    'veryfast',
-                    '-pix_fmt',
-                    'yuv420p',
-                    '-movflags',
-                    '+faststart',
-                    '-an',
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-an",
                     tmp_path,
                 ],
                 capture_output=True,
@@ -394,18 +390,18 @@ class VideoPlaylistSource:
             )
             if run.returncode == 0 and os.path.isfile(tmp_path) and os.path.getsize(tmp_path) > 1024:
                 os.replace(tmp_path, output_path)
-                self.logger.info('Transcoded recording to H.264: %s', output_path)
+                self.logger.info("Transcoded recording to H.264: %s", output_path)
             else:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
                 self.logger.warning(
-                    'H.264 transcode failed for %s (codec=%s, code=%s)',
+                    "H.264 transcode failed for %s (codec=%s, code=%s)",
                     output_path,
-                    codec or 'unknown',
+                    codec or "unknown",
                     run.returncode,
                 )
         except Exception as e:
-            self.logger.warning('Failed H.264 normalization for %s: %s', output_path, e)
+            self.logger.warning("Failed H.264 normalization for %s: %s", output_path, e)
 
     def capture(self):
         if self.cap is None or not self.cap.isOpened():
@@ -445,8 +441,7 @@ class VideoPlaylistSource:
                         if self.split_session_per_file:
                             self._pending_first_frame_bgr = frame.copy()
                             self.logger.info(
-                                'Playlist: end of clip — finalize session; '
-                                'next clip=%s',
+                                "Playlist: end of clip — finalize session; next clip=%s",
                                 Path(self.video_path).name,
                             )
                             return None

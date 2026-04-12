@@ -8,9 +8,7 @@ import os
 
 def _data_dir() -> str:
     """Return base data directory (recordings, saved images, etc.)."""
-    return os.environ.get('DATA_DIR') or os.path.join(
-        os.path.dirname(__file__), '..', 'data'
-    )
+    return os.environ.get("DATA_DIR") or os.path.join(os.path.dirname(__file__), "..", "data")
 
 
 def data_dir() -> str:
@@ -65,18 +63,18 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     """
     full = _resolved_path_under_data_dir(path) if path else None
     if not full:
-        return None, 'unsafe_path'
+        return None, "unsafe_path"
     try:
         if not os.path.isfile(full):  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
-            return None, 'unsafe_path'
+            return None, "unsafe_path"
     except OSError:
-        return None, 'unsafe_path'
+        return None, "unsafe_path"
     try:
-        with open(full, 'rb') as f:  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
+        with open(full, "rb") as f:  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
             return f.read(), None
     except OSError as e:
-        logging.warning('Cannot read safe image: %s', e)
-        return None, 'read_failed'
+        logging.warning("Cannot read safe image: %s", e)
+        return None, "read_failed"
 
 
 def remove_safe_image_file(path: str | None) -> None:
@@ -97,7 +95,7 @@ def remove_safe_image_file(path: str | None) -> None:
 
 def recordings_dir():
     """Path to data/recordings directory."""
-    return os.path.join(_data_dir(), 'recordings')
+    return os.path.join(_data_dir(), "recordings")
 
 
 def full_path_for_video(video_path: str) -> str | None:
@@ -111,7 +109,7 @@ def full_path_for_video(video_path: str) -> str | None:
     norm_vp = os.path.normpath(video_path)
     if os.path.isabs(norm_vp):
         return None
-    if norm_vp.startswith('..' + os.sep) or norm_vp == '..':
+    if norm_vp.startswith(".." + os.sep) or norm_vp == "..":
         return None
     try:
         data_real = os.path.realpath(_data_dir())
@@ -137,7 +135,7 @@ def resolve_recording_video_file(video_path: str) -> str | None:
     if not video_path or not isinstance(video_path, str):
         return None
     norm_vp = os.path.normpath(video_path.strip())
-    if norm_vp.startswith('..' + os.sep) or norm_vp == '..':
+    if norm_vp.startswith(".." + os.sep) or norm_vp == "..":
         return None
     if os.path.isabs(norm_vp):
         return None
@@ -149,7 +147,7 @@ def resolve_recording_video_file(video_path: str) -> str | None:
     except OSError:
         pass
 
-    data_prefix = 'data' + os.sep + 'recordings' + os.sep
+    data_prefix = "data" + os.sep + "recordings" + os.sep
     if norm_vp.startswith(data_prefix):
         return None
 

@@ -1,4 +1,5 @@
 """Shared fusion layer for live runtime and track regeneration."""
+
 from __future__ import annotations
 
 import logging
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _species_mapping(app_config) -> dict:
-    return app_config.get('detection.species_mapping') or {}
+    return app_config.get("detection.species_mapping") or {}
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -32,27 +33,22 @@ def _aggregate_birdnet_scores(
 ) -> dict[str, dict]:
     scores: dict[str, dict] = {}
     end_dt = end_time
-    if getattr(end_dt, 'tzinfo', None) is None:
+    if getattr(end_dt, "tzinfo", None) is None:
         end_dt = end_dt.replace(tzinfo=timezone.utc)
     half_life_hours = max(0.1, float(half_life_hours or 6.0))
     for ev in mqtt_events or []:
-        if str((ev or {}).get('source') or '').strip().lower() != 'birdnet':
+        if str((ev or {}).get("source") or "").strip().lower() != "birdnet":
             continue
-        raw_species = (
-            ev.get('species')
-            or ev.get('common_name')
-            or ev.get('label')
-            or ''
-        )
+        raw_species = ev.get("species") or ev.get("common_name") or ev.get("label") or ""
         species = normalize(str(raw_species), species_mapping)
-        if not species or species.lower() == 'unknown':
+        if not species or species.lower() == "unknown":
             continue
-        conf = max(0.0, min(1.0, _safe_float(ev.get('confidence'), 0.0)))
-        ts = ev.get('timestamp')
+        conf = max(0.0, min(1.0, _safe_float(ev.get("confidence"), 0.0)))
+        ts = ev.get("timestamp")
         age_hours = 0.0
         if ts:
             try:
-                parsed = datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
+                parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
                 if parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=timezone.utc)
                 age_hours = max(0.0, (end_dt - parsed).total_seconds() / 3600.0)
@@ -62,14 +58,14 @@ def _aggregate_birdnet_scores(
         bucket = scores.setdefault(
             species,
             {
-                'score': 0.0,
-                'support_count': 0,
-                'max_confidence': 0.0,
+                "score": 0.0,
+                "support_count": 0,
+                "max_confidence": 0.0,
             },
         )
-        bucket['score'] += weighted
-        bucket['support_count'] += 1
-        bucket['max_confidence'] = max(bucket['max_confidence'], conf)
+        bucket["score"] += weighted
+        bucket["support_count"] += 1
+        bucket["max_confidence"] = max(bucket["max_confidence"], conf)
     return scores
 
 
@@ -86,43 +82,43 @@ def _attach_audio_evidence(
         end_time=end_time,
         species_mapping=species_mapping,
         half_life_hours=_safe_float(
-            app_config.get('processor.birdnet_mqtt_half_life_hours') or 6.0,
+            app_config.get("processor.birdnet_mqtt_half_life_hours") or 6.0,
             6.0,
         ),
     )
     if not birdnet_scores:
         for d in detections:
-            d['_birdnet_prior'] = 0.0
-            d['audio_evidence'] = 'none'
+            d["_birdnet_prior"] = 0.0
+            d["audio_evidence"] = "none"
         return detections
 
     top_species, top_bucket = max(
         birdnet_scores.items(),
         key=lambda item: (
-            _safe_float(item[1].get('score'), 0.0),
-            int(item[1].get('support_count') or 0),
+            _safe_float(item[1].get("score"), 0.0),
+            int(item[1].get("support_count") or 0),
         ),
     )
-    top_score = _safe_float(top_bucket.get('score'), 0.0)
+    top_score = _safe_float(top_bucket.get("score"), 0.0)
     for d in detections:
         species_name = normalize(
-            str(d.get('species_name') or d.get('species') or ''),
+            str(d.get("species_name") or d.get("species") or ""),
             species_mapping,
         )
         support = birdnet_scores.get(species_name)
-        prior = _safe_float((support or {}).get('score'), 0.0)
-        d['_birdnet_prior'] = prior
+        prior = _safe_float((support or {}).get("score"), 0.0)
+        d["_birdnet_prior"] = prior
         if support:
-            d['audio_evidence'] = 'support'
-            d['audio_support_count'] = int(support.get('support_count') or 0)
-            d['audio_support_species'] = species_name
+            d["audio_evidence"] = "support"
+            d["audio_support_count"] = int(support.get("support_count") or 0)
+            d["audio_support_species"] = species_name
             continue
         if top_score >= 0.35 and top_species != species_name:
-            d['audio_evidence'] = 'conflict'
-            d['audio_conflict_species'] = top_species
-            d['audio_conflict_score'] = top_score
+            d["audio_evidence"] = "conflict"
+            d["audio_conflict_species"] = top_species
+            d["audio_conflict_score"] = top_score
         else:
-            d['audio_evidence'] = 'none'
+            d["audio_evidence"] = "none"
     return detections
 
 
@@ -142,115 +138,98 @@ def _frigate_standalone_prepared_rows(
     events = [e for e in (frigate_events or []) if e]
     if not events:
         return []
+
     def _min_and_fallback(suppressed: bool) -> tuple[float, float]:
         if suppressed:
             mn = _safe_float(
-                app_config.get('detection.frigate_standalone_excluded_min_score'),
+                app_config.get("detection.frigate_standalone_excluded_min_score"),
                 0.0,
             )
             fb = _safe_float(
-                app_config.get(
-                    'detection.frigate_standalone_excluded_missing_score_fallback'
-                ),
+                app_config.get("detection.frigate_standalone_excluded_missing_score_fallback"),
                 0.58,
             )
         else:
             mn = _safe_float(
-                app_config.get('detection.frigate_standalone_min_score'),
+                app_config.get("detection.frigate_standalone_min_score"),
                 0.40,
             )
             fb = _safe_float(
-                app_config.get('detection.frigate_standalone_missing_score_fallback'),
+                app_config.get("detection.frigate_standalone_missing_score_fallback"),
                 0.68,
             )
         return max(0.0, min(1.0, mn)), max(0.0, min(1.0, fb))
+
     species_mapping = _species_mapping(app_config)
     try:
-        video_duration = (
-            (end_time - start_time).total_seconds()
-            if end_time and start_time
-            else 0.0
-        )
+        video_duration = (end_time - start_time).total_seconds() if end_time and start_time else 0.0
     except Exception:
         video_duration = 0.0
     video_duration = max(0.0, float(video_duration))
 
     best: dict[str, dict] = {}
     for ev in events:
-        if str((ev or {}).get('source') or '').strip().lower() != 'frigate':
+        if str((ev or {}).get("source") or "").strip().lower() != "frigate":
             continue
-        raw = (
-            ev.get('species')
-            or ev.get('sub_label')
-            or ev.get('label')
-            or ''
-        )
+        raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)
-        if not species or species.lower() == 'unknown':
+        if not species or species.lower() == "unknown":
             continue
-        suppressed = bool(ev.get('_frigate_merge_suppressed'))
+        suppressed = bool(ev.get("_frigate_merge_suppressed"))
         min_score, miss_fb = _min_and_fallback(suppressed)
-        conf = max(0.0, min(1.0, _safe_float(ev.get('confidence'), 0.0)))
+        conf = max(0.0, min(1.0, _safe_float(ev.get("confidence"), 0.0)))
         if conf <= 0.0 and miss_fb > 0.0:
             conf = min(1.0, miss_fb)
         if conf < min_score:
             continue
         prev = best.get(species)
-        if prev is None or conf > float(prev.get('_raw_conf') or 0.0):
+        if prev is None or conf > float(prev.get("_raw_conf") or 0.0):
             best[species] = {
                 **ev,
-                '_raw_conf': conf,
-                '_norm_species': species,
-                '_standalone_suppressed': suppressed,
+                "_raw_conf": conf,
+                "_norm_species": species,
+                "_standalone_suppressed": suppressed,
             }
 
     if not best:
         return []
 
     min_store = _safe_float(
-        app_config.get('detection.min_confidence_to_store'),
+        app_config.get("detection.min_confidence_to_store"),
         0.36,
     )
-    notify_standalone = bool(
-        app_config.get('detection.frigate_standalone_notify', True)
-    )
+    notify_standalone = bool(app_config.get("detection.frigate_standalone_notify", True))
     rows: list[dict] = []
     sorted_items = sorted(
         best.items(),
-        key=lambda kv: -float(kv[1].get('_raw_conf') or 0.0),
+        key=lambda kv: -float(kv[1].get("_raw_conf") or 0.0),
     )
     for i, (_species_name, pack) in enumerate(sorted_items):
-        raw_c = float(pack.get('_raw_conf') or 0.0)
-        species = str(pack.get('_norm_species') or '')
+        raw_c = float(pack.get("_raw_conf") or 0.0)
+        species = str(pack.get("_norm_species") or "")
         conf = max(min_store, min(0.92, raw_c))
-        suppressed = bool(pack.get('_standalone_suppressed'))
-        kind = (
-            'frigate_standalone_excluded'
-            if suppressed
-            else 'frigate_standalone'
+        suppressed = bool(pack.get("_standalone_suppressed"))
+        kind = "frigate_standalone_excluded" if suppressed else "frigate_standalone"
+        reason = "frigate_standalone_excluded_label" if suppressed else "frigate_standalone"
+        rows.append(
+            {
+                "track_id": -(i + 1),
+                "species_name": species,
+                "species": species,
+                "confidence": conf,
+                "start_time": 0.0,
+                "end_time": video_duration,
+                "detection_provider": "frigate",
+                "detector_confidence": raw_c,
+                "classifier_confidence": None,
+                "decision_reason": reason,
+                "decision_kind": kind,
+                "notification_eligible": (not suppressed) and notify_standalone,
+                "source": "video",
+                "frigate_standalone": True,
+                "frigate_merge_suppressed": suppressed,
+            }
         )
-        reason = (
-            'frigate_standalone_excluded_label'
-            if suppressed
-            else 'frigate_standalone'
-        )
-        rows.append({
-            'track_id': -(i + 1),
-            'species_name': species,
-            'species': species,
-            'confidence': conf,
-            'start_time': 0.0,
-            'end_time': video_duration,
-            'detection_provider': 'frigate',
-            'detector_confidence': raw_c,
-            'classifier_confidence': None,
-            'decision_reason': reason,
-            'decision_kind': kind,
-            'notification_eligible': (not suppressed) and notify_standalone,
-            'source': 'video',
-            'frigate_standalone': True,
-            'frigate_merge_suppressed': suppressed,
-        })
     return rows
 
 
@@ -262,26 +241,19 @@ def prepare_track_results_for_fusion(
     species_mapping = _species_mapping(app_config)
     rows: list[dict] = []
     for detection in track_results or []:
-        raw_name = (
-            detection.get('species_name')
-            or detection.get('species')
-            or detection.get('name')
-            or 'unknown'
-        )
+        raw_name = detection.get("species_name") or detection.get("species") or detection.get("name") or "unknown"
         normalized_name = normalize(raw_name, species_mapping)
         row = {
             **detection,
-            'species_name': normalized_name,
-            'species': normalized_name,
-            'source': 'video',
-            'detection_provider': (
-                detection.get('detection_provider') or 'yolo'
-            ),
+            "species_name": normalized_name,
+            "species": normalized_name,
+            "source": "video",
+            "detection_provider": (detection.get("detection_provider") or "yolo"),
         }
         try:
-            row['_pre_fusion_confidence'] = float(row.get('confidence') or 0.0)
+            row["_pre_fusion_confidence"] = float(row.get("confidence") or 0.0)
         except (TypeError, ValueError):
-            row['_pre_fusion_confidence'] = 0.0
+            row["_pre_fusion_confidence"] = 0.0
         rows.append(row)
     return rows
 
@@ -300,7 +272,7 @@ def _frigate_events_camera_scoped(
         from frigate_scope import frigate_camera_allow_ids
     except ImportError:
         return [e for e in (frigate_events or []) if e]
-    valid = get_valid_cameras(app_config.get('video.cameras') or [])
+    valid = get_valid_cameras(app_config.get("video.cameras") or [])
     proc_cams = cameras_for_processor(valid)
     allow = frigate_camera_allow_ids(proc_cams, app_config)
     allow_l = {str(x).strip().lower() for x in allow if str(x).strip()}
@@ -310,12 +282,12 @@ def _frigate_events_camera_scoped(
     for e in frigate_events or []:
         if not e:
             continue
-        cam = str((e or {}).get('camera') or '').strip().lower()
+        cam = str((e or {}).get("camera") or "").strip().lower()
         if cam in allow_l:
             out.append(e)
         else:
             logger.debug(
-                'Fusion: skip Frigate event camera=%s (allowed=%s)',
+                "Fusion: skip Frigate event camera=%s (allowed=%s)",
                 cam,
                 sorted(allow_l),
             )
@@ -325,17 +297,17 @@ def _frigate_events_camera_scoped(
 def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
     """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks."""
     for d in detections:
-        kind = str(d.get('decision_kind') or '').strip().lower()
-        if kind == 'accepted_species':
+        kind = str(d.get("decision_kind") or "").strip().lower()
+        if kind == "accepted_species":
             continue
         try:
-            base = float(d.get('_pre_fusion_confidence') or 0.0)
-            cur = float(d.get('confidence') or 0.0)
+            base = float(d.get("_pre_fusion_confidence") or 0.0)
+            cur = float(d.get("confidence") or 0.0)
         except (TypeError, ValueError):
             continue
         if cur > base:
-            d['confidence'] = float(base)
-            d['_fusion_clamped'] = True
+            d["confidence"] = float(base)
+            d["_fusion_clamped"] = True
     return detections
 
 
@@ -357,32 +329,20 @@ def build_fused_video_detections(
     standalone but are kept out of ``merge_detections`` so they do not overwrite YOLO species.
     """
     prepared = prepare_track_results_for_fusion(video_detections, app_config)
-    merge_window = app_config.get('detection.merge_window_seconds', 5)
-    dedup_window = app_config.get('detection.dedup_window_seconds', 45)
-    one_per_species = app_config.get('detection.one_per_species', True)
-    source_priority = app_config.get('detection.source_priority') or [
-        'yolo',
-        'frigate',
+    merge_window = app_config.get("detection.merge_window_seconds", 5)
+    dedup_window = app_config.get("detection.dedup_window_seconds", 45)
+    one_per_species = app_config.get("detection.one_per_species", True)
+    source_priority = app_config.get("detection.source_priority") or [
+        "yolo",
+        "frigate",
     ]
-    cross_bonus = float(
-        app_config.get('detection.cross_source_confidence_bonus') or 0
-    )
+    cross_bonus = float(app_config.get("detection.cross_source_confidence_bonus") or 0)
     frigate_events = [
-        ev
-        for ev in (mqtt_events or [])
-        if str((ev or {}).get('source') or '').strip().lower() == 'frigate'
+        ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
     ]
     frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
-    frigate_events_for_merge = [
-        ev
-        for ev in frigate_events
-        if not ev.get('_frigate_merge_suppressed')
-    ]
-    if (
-        not prepared
-        and frigate_events
-        and bool(app_config.get('detection.frigate_standalone_when_no_yolo', True))
-    ):
+    frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
+    if not prepared and frigate_events and bool(app_config.get("detection.frigate_standalone_when_no_yolo", True)):
         synthetic = _frigate_standalone_prepared_rows(
             frigate_events,
             start_time=start_time,
@@ -392,8 +352,8 @@ def build_fused_video_detections(
         if synthetic:
             prepared = prepare_track_results_for_fusion(synthetic, app_config)
             logger.info(
-                'Fusion: Frigate standalone — %s synthetic row(s), '
-                'YOLO accepted empty (merge uses %s non-suppressed Frigate events)',
+                "Fusion: Frigate standalone — %s synthetic row(s), "
+                "YOLO accepted empty (merge uses %s non-suppressed Frigate events)",
                 len(synthetic),
                 len(frigate_events_for_merge),
             )
@@ -408,18 +368,12 @@ def build_fused_video_detections(
         source_priority=source_priority,
         cross_source_confidence_bonus=cross_bonus,
         species_mapping=_species_mapping(app_config),
-        absorb_generic_bird=bool(
-            app_config.get('detection.absorb_generic_bird', True)
-        ),
+        absorb_generic_bird=bool(app_config.get("detection.absorb_generic_bird", True)),
         absorb_generic_bird_overlap_min_sec=float(
-            app_config.get('detection.absorb_generic_bird_overlap_min_sec')
-            or 0.1
+            app_config.get("detection.absorb_generic_bird_overlap_min_sec") or 0.1
         ),
         absorb_generic_bird_min_classifier_confidence=float(
-            app_config.get(
-                'detection.absorb_generic_bird_min_classifier_confidence'
-            )
-            or 0.22
+            app_config.get("detection.absorb_generic_bird_min_classifier_confidence") or 0.22
         ),
     )
     fused = apply_multi_camera_confidence_boost(
@@ -437,49 +391,35 @@ def build_fused_video_detections(
     # produces a calibrated probability from multimodal features and is blended
     # with the existing rule-based confidence.
     try:
-        use_learned = bool(app_config.get('detection.use_learned_fusion') or False)
+        use_learned = bool(app_config.get("detection.use_learned_fusion") or False)
     except Exception:
         use_learned = False
     if use_learned:
-        alpha = float(app_config.get('detection.fusion_alpha') or 0.6)
-        model_path = app_config.get('detection.fusion_model_path') or None
+        alpha = float(app_config.get("detection.fusion_alpha") or 0.6)
+        model_path = app_config.get("detection.fusion_model_path") or None
         scorer = FusionScorer(model_path=model_path)
         for d in fused:
             # Build a small feature vector from available fields.
             features = {
-                'detector_conf': (
-                    d.get('detector_confidence')
-                    or d.get('detector_conf')
-                    or d.get('confidence')
-                    or 0.0
+                "detector_conf": (d.get("detector_confidence") or d.get("detector_conf") or d.get("confidence") or 0.0),
+                "classifier_conf": (
+                    d.get("classifier_confidence") or d.get("classifier_conf") or d.get("confidence") or 0.0
                 ),
-                'classifier_conf': (
-                    d.get('classifier_confidence')
-                    or d.get('classifier_conf')
-                    or d.get('confidence')
-                    or 0.0
-                ),
-                'birdnet_prior': float(d.get('_birdnet_prior') or 0.0),
-                'key_frame_score': float(d.get('best_frame_score') or 0.0),
-                'key_frame_count': int(d.get('key_frame_count') or 0),
-                'multi_camera_count': int(d.get('_multi_camera_count') or 0),
+                "birdnet_prior": float(d.get("_birdnet_prior") or 0.0),
+                "key_frame_score": float(d.get("best_frame_score") or 0.0),
+                "key_frame_count": int(d.get("key_frame_count") or 0),
+                "multi_camera_count": int(d.get("_multi_camera_count") or 0),
             }
             try:
                 fused_score = float(scorer.score(features) or 0.0)
             except Exception:
                 fused_score = 0.0
             # blend learned score with existing confidence to be conservative by default
-            base_conf = float(d.get('confidence') or 0.0)
+            base_conf = float(d.get("confidence") or 0.0)
             final_conf = alpha * fused_score + (1 - alpha) * base_conf
-            d['confidence'] = float(final_conf)
-            d['_fusion_used'] = 'learned'
-            d['_fusion_score'] = fused_score
+            d["confidence"] = float(final_conf)
+            d["_fusion_used"] = "learned"
+            d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
-    min_conf_store = float(
-        app_config.get('detection.min_confidence_to_store') or 0.05
-    )
-    return [
-        d
-        for d in fused
-        if float(d.get('confidence') or 0.0) >= min_conf_store
-    ]
+    min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
+    return [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]

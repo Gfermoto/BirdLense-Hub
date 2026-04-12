@@ -1,4 +1,5 @@
 """Публичная галерея: opt-in загрузка лучших кадров на общий сайт сообщества."""
+
 import logging
 from datetime import timezone
 
@@ -23,8 +24,8 @@ def _normalize_jpeg_for_gallery(jpeg_bytes: bytes) -> bytes:
         import io
 
         img = Image.open(io.BytesIO(jpeg_bytes))
-        if img.mode in ('RGBA', 'P'):
-            img = img.convert('RGB')
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
         w, h = img.size
         if min(w, h) < 64:
             ratio = 64 / float(min(w, h))
@@ -40,7 +41,7 @@ def _normalize_jpeg_for_gallery(jpeg_bytes: bytes) -> bytes:
                 Image.Resampling.LANCZOS,
             )
         buf = io.BytesIO()
-        img.save(buf, 'JPEG', quality=88, optimize=True)
+        img.save(buf, "JPEG", quality=88, optimize=True)
         return buf.getvalue()
     except Exception as e:
         logger.debug("Gallery JPEG normalize (PIL) failed: %s", e)
@@ -68,7 +69,7 @@ def _normalize_jpeg_for_gallery(jpeg_bytes: bytes) -> bytes:
                 (max(1, int(w * ratio)), max(1, int(h * ratio))),
                 interpolation=cv2.INTER_AREA,
             )
-        ok, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+        ok, enc = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
         return enc.tobytes() if ok else jpeg_bytes
     except Exception as e:
         logger.debug("Gallery JPEG normalize (cv2) failed: %s", e)
@@ -77,9 +78,9 @@ def _normalize_jpeg_for_gallery(jpeg_bytes: bytes) -> bytes:
 
 def _get_location_metadata():
     """Координаты из настроек для метаданных."""
-    lat = app_config.get('secrets.latitude') or '39.8283'
-    lon = app_config.get('secrets.longitude') or '-98.5795'
-    return {'latitude': lat, 'longitude': lon}
+    lat = app_config.get("secrets.latitude") or "39.8283"
+    lon = app_config.get("secrets.longitude") or "-98.5795"
+    return {"latitude": lat, "longitude": lon}
 
 
 def _upload_video_species_to_gallery(vs, video, species_name: str) -> bool:
@@ -87,10 +88,10 @@ def _upload_video_species_to_gallery(vs, video, species_name: str) -> bool:
     Извлечь crop детекции и загрузить на gallery.upload_url.
     Returns True if upload succeeded.
     """
-    if vs.source != 'video' or not vs.frames:
+    if vs.source != "video" or not vs.frames:
         return False
     offset = vs.start_time + (vs.end_time - vs.start_time) / 2
-    bbox = _bbox_for_offset(getattr(vs, 'frames', None), offset)
+    bbox = _bbox_for_offset(getattr(vs, "frames", None), offset)
     if not bbox:
         return False
     jpeg_bytes = extract_detection_frame_cropped_or_full(video.video_path, offset, bbox)
@@ -100,25 +101,25 @@ def _upload_video_species_to_gallery(vs, video, species_name: str) -> bool:
     if not jpeg_bytes:
         return False
 
-    upload_url = (app_config.get('gallery.upload_url') or '').strip()
+    upload_url = (app_config.get("gallery.upload_url") or "").strip()
     if not upload_url:
         return False
 
     detection_time = video.start_time
-    if hasattr(detection_time, 'replace'):
+    if hasattr(detection_time, "replace"):
         if detection_time.tzinfo is None:
             detection_time = detection_time.replace(tzinfo=timezone.utc)
         time_iso = detection_time.isoformat()
     else:
         time_iso = str(detection_time)
 
-    files = {'image': ('crop.jpg', jpeg_bytes, 'image/jpeg')}
+    files = {"image": ("crop.jpg", jpeg_bytes, "image/jpeg")}
     data = {
-        'species': species_name,
-        'confidence': str(vs.confidence),
-        'timestamp': time_iso,
-        'detection_id': str(vs.id),
-        'video_id': str(video.id),
+        "species": species_name,
+        "confidence": str(vs.confidence),
+        "timestamp": time_iso,
+        "detection_id": str(vs.id),
+        "video_id": str(video.id),
         **_get_location_metadata(),
     }
 
@@ -143,14 +144,14 @@ def upload_video_detections_to_gallery(video_id: int):
     Загрузить все подходящие детекции видео в галерею.
     Вызывается в отдельном потоке после create_video.
     """
-    if not app_config.get('gallery.enabled'):
+    if not app_config.get("gallery.enabled"):
         return
-    upload_url = (app_config.get('gallery.upload_url') or '').strip()
+    upload_url = (app_config.get("gallery.upload_url") or "").strip()
     if not upload_url:
         return
 
-    min_conf = float(app_config.get('gallery.min_confidence') or 0.5)
-    only_corrected = app_config.get('gallery.only_manually_corrected') or False
+    min_conf = float(app_config.get("gallery.min_confidence") or 0.5)
+    only_corrected = app_config.get("gallery.only_manually_corrected") or False
 
     from models import Video, VideoSpecies, db
 
@@ -160,7 +161,7 @@ def upload_video_detections_to_gallery(video_id: int):
 
     q = VideoSpecies.query.filter(
         VideoSpecies.video_id == video_id,
-        VideoSpecies.source == 'video',
+        VideoSpecies.source == "video",
         VideoSpecies.confidence >= min_conf,
         VideoSpecies.frames.isnot(None),
     )
@@ -179,5 +180,5 @@ def upload_video_detections_to_gallery(video_id: int):
         return
 
     for vs in rows:
-        species_name = vs.species.name if vs.species else 'Unknown'
+        species_name = vs.species.name if vs.species else "Unknown"
         _upload_video_species_to_gallery(vs, video, species_name)

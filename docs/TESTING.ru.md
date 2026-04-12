@@ -17,12 +17,14 @@
 | Job | Содержание |
 |-----|------------|
 | **`python-security`** | **Bandit** для `web/` + `processor/src`; **pip-audit** по `web/requirements.txt` и `processor/requirements.txt` |
-| **`openapi-contract`** | **Ruff** (`ruff check web/ processor/src/`); **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
+| **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` для `web/` + `processor/src/`; **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
 | **`ui-build`** | **Node 22** — `npm ci` + `npm run lint` + production-сборка SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, отчёт **Settings UI coverage** (артефакт + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — загрузка весов процессора, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` на compose, скрипт **аудита карточек каталога** (артефакт) |
 
 Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
+
+**Пороги и политика:** [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) (игноры pip-audit, Ruff format, npm audit, OpenAPI→TS).
 
 **Отдельно:** **CodeQL** — [CODEQL.ru](./CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 

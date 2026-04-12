@@ -7,6 +7,7 @@
 15 Duration, 16 All observations reported?, 17 Effort Distance Miles,
 18 Effort area acres, 19 Submission Comments
 """
+
 import csv
 import io
 from datetime import datetime
@@ -49,26 +50,28 @@ def build_ebird_csv(
         common_name = common_name_from_species(r.get("species_name", ""))
         if not common_name:
             continue
-        w.writerow([
-            common_name,       # 1 Common Name
-            "",               # 2 Genus
-            "",               # 3 Species
-            "X",              # 4 Number (present)
-            "",               # 5 Species Comments
-            location,         # 6 Location Name
-            _lat_lon(lat),     # 7 Latitude
-            _lat_lon(lon),     # 8 Longitude
-            first_date,        # 9 Date (MM/DD/YYYY)
-            first_time,        # 10 Start Time (8:00 AM or 14:50)
-            state,             # 11 State/Province
-            country[:2],       # 12 Country Code
-            protocol,          # 13 Protocol
-            1,                 # 14 Number of Observers
-            duration_min,      # 15 Duration (minutes)
-            "Y",               # 16 All observations reported?
-            "",               # 17 Effort Distance Miles (stationary = empty)
-            "",               # 18 Effort area acres
-            "",               # 19 Submission Comments
-        ])
+        w.writerow(
+            [
+                common_name,  # 1 Common Name
+                "",  # 2 Genus
+                "",  # 3 Species
+                "X",  # 4 Number (present)
+                "",  # 5 Species Comments
+                location,  # 6 Location Name
+                _lat_lon(lat),  # 7 Latitude
+                _lat_lon(lon),  # 8 Longitude
+                first_date,  # 9 Date (MM/DD/YYYY)
+                first_time,  # 10 Start Time (8:00 AM or 14:50)
+                state,  # 11 State/Province
+                country[:2],  # 12 Country Code
+                protocol,  # 13 Protocol
+                1,  # 14 Number of Observers
+                duration_min,  # 15 Duration (minutes)
+                "Y",  # 16 All observations reported?
+                "",  # 17 Effort Distance Miles (stationary = empty)
+                "",  # 18 Effort area acres
+                "",  # 19 Submission Comments
+            ]
+        )
 
     return output.getvalue()

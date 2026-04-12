@@ -1,4 +1,5 @@
 """DB bootstrap inside app.app_context: schema, seed, registry, maintenance."""
+
 from __future__ import annotations
 
 import logging
@@ -21,9 +22,11 @@ from services.species_registry_service import (
 _log = logging.getLogger(__name__)
 
 
-def _env_truthy(name: str, default: str = '0') -> bool:
+def _env_truthy(name: str, default: str = "0") -> bool:
     return (os.environ.get(name, default) or default).strip().lower() in (
-        '1', 'true', 'yes',
+        "1",
+        "true",
+        "yes",
     )
 
 
@@ -39,50 +42,50 @@ def bootstrap_species_registry() -> None:
     try:
         seed_stats = ensure_species_registry_seeded()
         _log.info(
-            'species_registry seed: taxa_created=%s aliases_created=%s',
-            seed_stats.get('taxa_created', 0),
-            seed_stats.get('aliases_created', 0),
+            "species_registry seed: taxa_created=%s aliases_created=%s",
+            seed_stats.get("taxa_created", 0),
+            seed_stats.get("aliases_created", 0),
         )
-        if _env_truthy('BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA'):
+        if _env_truthy("BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA"):
             bf_stats = backfill_species_taxa(dry_run=False)
             _log.info(
-                'species_registry backfill: processed=%s matched=%s unresolved=%s',
-                bf_stats.get('processed', 0),
-                bf_stats.get('matched', 0),
-                bf_stats.get('unresolved', 0),
+                "species_registry backfill: processed=%s matched=%s unresolved=%s",
+                bf_stats.get("processed", 0),
+                bf_stats.get("matched", 0),
+                bf_stats.get("unresolved", 0),
             )
         else:
             _log.info(
-                'species_registry backfill skipped '
-                '(set BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA=1 or POST '
-                '/api/ui/system/species-registry/backfill)',
+                "species_registry backfill skipped "
+                "(set BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA=1 or POST "
+                "/api/ui/system/species-registry/backfill)",
             )
     except Exception as e:
         db.session.rollback()
-        _log.warning('species_registry init skipped: %s', e)
+        _log.warning("species_registry init skipped: %s", e)
 
 
 def bootstrap_legacy_import_cleanup() -> None:
     """Optional legacy import placeholder cleanup when env flag is set."""
     try:
-        if _env_truthy('BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT'):
+        if _env_truthy("BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT"):
             cleaned_rows, cleaned_visits = cleanup_legacy_import_placeholders()
             if cleaned_rows or cleaned_visits:
                 db.session.commit()
                 _log.info(
-                    'legacy import cleanup: detections_removed=%s visits_removed=%s',
+                    "legacy import cleanup: detections_removed=%s visits_removed=%s",
                     cleaned_rows,
                     cleaned_visits,
                 )
         else:
             _log.info(
-                'legacy import cleanup on startup skipped '
-                '(set BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1; scan import '
-                'still cleans)',
+                "legacy import cleanup on startup skipped "
+                "(set BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1; scan import "
+                "still cleans)",
             )
     except Exception as e:
         db.session.rollback()
-        _log.warning('legacy import cleanup skipped: %s', e)
+        _log.warning("legacy import cleanup skipped: %s", e)
 
 
 def bootstrap_species_metadata_repair(app: Flask) -> None:
@@ -92,12 +95,9 @@ def bootstrap_species_metadata_repair(app: Flask) -> None:
             Species.image_url.is_(None),
             Species.description.isnot(None),
         ).count()
-        repair_on_start = _env_truthy('BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA')
-        if (
-            reset_victims
-            and not app.config.get('TESTING')
-            and repair_on_start
-        ):
+        repair_on_start = _env_truthy("BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA")
+        if reset_victims and not app.config.get("TESTING") and repair_on_start:
+
             def _repair_reset_victims():
                 with app.app_context():
                     try:
@@ -106,46 +106,41 @@ def bootstrap_species_metadata_repair(app: Flask) -> None:
                             dry_run=False,
                         )
                         _log.info(
-                            'species_metadata_repair: processed=%s '
-                            'repaired=%s failed=%s',
-                            stats.get('processed', 0),
-                            stats.get('repaired', 0),
-                            stats.get('failed', 0),
+                            "species_metadata_repair: processed=%s repaired=%s failed=%s",
+                            stats.get("processed", 0),
+                            stats.get("repaired", 0),
+                            stats.get("failed", 0),
                         )
                     except Exception as repair_err:
                         db.session.rollback()
                         _log.warning(
-                            'species_metadata_repair skipped: %s',
+                            "species_metadata_repair skipped: %s",
                             repair_err,
                         )
 
             threading.Thread(target=_repair_reset_victims, daemon=True).start()
-        elif (
-            reset_victims
-            and not app.config.get('TESTING')
-            and not repair_on_start
-        ):
+        elif reset_victims and not app.config.get("TESTING") and not repair_on_start:
             _log.info(
-                'species metadata repair on startup skipped '
-                '(%s rows eligible; set '
-                'BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA=1)',
+                "species metadata repair on startup skipped "
+                "(%s rows eligible; set "
+                "BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA=1)",
                 reset_victims,
             )
     except Exception as e:
         db.session.rollback()
-        _log.warning('species metadata repair setup skipped: %s', e)
+        _log.warning("species metadata repair setup skipped: %s", e)
 
 
 def bootstrap_species_metadata_enrich(app: Flask) -> None:
     """Опциональный фоновый enrich (SPECIES_METADATA_ENRICH_ON_START)."""
     try:
-        raw = os.environ.get('SPECIES_METADATA_ENRICH_ON_START', '0').strip()
-        enrich_on_start = raw.lower() in ('1', 'true', 'yes')
-        if not app.config.get('TESTING') and enrich_on_start:
-            marker = '/tmp/.birdlense_species_metadata_enrich_started'
+        raw = os.environ.get("SPECIES_METADATA_ENRICH_ON_START", "0").strip()
+        enrich_on_start = raw.lower() in ("1", "true", "yes")
+        if not app.config.get("TESTING") and enrich_on_start:
+            marker = "/tmp/.birdlense_species_metadata_enrich_started"
             if not os.path.exists(marker):
                 try:
-                    open(marker, 'a').close()
+                    open(marker, "a").close()
                 except OSError:
                     pass
 
@@ -159,11 +154,10 @@ def bootstrap_species_metadata_enrich(app: Flask) -> None:
                                 retry_failed_only=False,
                             )
                             log.info(
-                                'species_metadata_enrich pass1: processed=%s '
-                                'updated=%s failed=%s',
-                                stats.get('processed', 0),
-                                stats.get('updated', 0),
-                                stats.get('failed', 0),
+                                "species_metadata_enrich pass1: processed=%s updated=%s failed=%s",
+                                stats.get("processed", 0),
+                                stats.get("updated", 0),
+                                stats.get("failed", 0),
                             )
                             retry_stats = enrich_species_metadata_with_status(
                                 limit=300,
@@ -171,15 +165,14 @@ def bootstrap_species_metadata_enrich(app: Flask) -> None:
                                 retry_failed_only=True,
                             )
                             log.info(
-                                'species_metadata_enrich retry: processed=%s '
-                                'updated=%s failed=%s',
-                                retry_stats.get('processed', 0),
-                                retry_stats.get('updated', 0),
-                                retry_stats.get('failed', 0),
+                                "species_metadata_enrich retry: processed=%s updated=%s failed=%s",
+                                retry_stats.get("processed", 0),
+                                retry_stats.get("updated", 0),
+                                retry_stats.get("failed", 0),
                             )
                         except Exception as enrich_err:
                             log.warning(
-                                'species_metadata_enrich skipped: %s',
+                                "species_metadata_enrich skipped: %s",
                                 enrich_err,
                             )
 
@@ -188,4 +181,4 @@ def bootstrap_species_metadata_enrich(app: Flask) -> None:
                     daemon=True,
                 ).start()
     except Exception as e:
-        _log.warning('species_metadata_enrich setup failed: %s', e)
+        _log.warning("species_metadata_enrich setup failed: %s", e)

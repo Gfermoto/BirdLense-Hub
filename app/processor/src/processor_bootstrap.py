@@ -31,23 +31,23 @@ class ProcessorRunContext:
 
 
 def parse_processor_args(argv: list[str] | None = None) -> Namespace:
-    parser = ArgumentParser(description='Smart bird feeder program')
+    parser = ArgumentParser(description="Smart bird feeder program")
     parser.add_argument(
-        'input',
+        "input",
         type=str,
-        nargs='?',
-        help='Input source, camera/video file',
+        nargs="?",
+        help="Input source, camera/video file",
     )
     parser.add_argument(
-        '--fake-motion',
+        "--fake-motion",
         type=str,
-        choices=['true', 'false'],
-        help='Use fake motion detector with motion or not',
+        choices=["true", "false"],
+        help="Use fake motion detector with motion or not",
     )
     parser.add_argument(
-        '--mock-mqtt',
-        action='store_true',
-        help='Development: fake motion instead of MQTT (no broker needed)',
+        "--mock-mqtt",
+        action="store_true",
+        help="Development: fake motion instead of MQTT (no broker needed)",
     )
     return parser.parse_args(argv)
 
@@ -55,11 +55,11 @@ def parse_processor_args(argv: list[str] | None = None) -> Namespace:
 def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     api = API()
     main_size = (
-        app_config.get('video.video_width', 1280),
-        app_config.get('video.video_height', 720),
+        app_config.get("video.video_width", 1280),
+        app_config.get("video.video_height", 720),
     )
     try:
-        lpx = int(app_config.get('processor.inference_lores_px') or 640)
+        lpx = int(app_config.get("processor.inference_lores_px") or 640)
     except (TypeError, ValueError):
         lpx = 640
     lpx = max(320, min(lpx, 960))
@@ -67,27 +67,25 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
 
     media_setup = setup_processor_media(args, main_size, lores_size, api)
 
-    mqtt_broker = os.environ.get('MQTT_BROKER') or app_config.get('mqtt.broker')
+    mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
     mqtt_aggregator = None
     scale_weight_motion_pending = None
     frigate_detector = None
     _data_dir, scales_topic_arg, scales_unit_arg = load_scales_mqtt_topic_config()
-    frigate_camera_filter, frigate_label_filter, frigate_label_exclude = (
-        frigate_filters_for_cameras(media_setup.cameras)
+    frigate_camera_filter, frigate_label_filter, frigate_label_exclude = frigate_filters_for_cameras(
+        media_setup.cameras
     )
     use_frigate_from_aggregator = bool(mqtt_broker)
     if mqtt_broker:
-        mqtt_aggregator, scale_weight_motion_pending, frigate_detector = (
-            start_mqtt_aggregator_session(
-                args,
-                mqtt_broker=mqtt_broker,
-                frigate_camera_filter=frigate_camera_filter,
-                frigate_label_filter=frigate_label_filter,
-                frigate_label_exclude=frigate_label_exclude,
-                scales_topic_arg=scales_topic_arg,
-                scales_unit_arg=scales_unit_arg,
-                data_dir=_data_dir,
-            )
+        mqtt_aggregator, scale_weight_motion_pending, frigate_detector = start_mqtt_aggregator_session(
+            args,
+            mqtt_broker=mqtt_broker,
+            frigate_camera_filter=frigate_camera_filter,
+            frigate_label_filter=frigate_label_filter,
+            frigate_label_exclude=frigate_label_exclude,
+            scales_topic_arg=scales_topic_arg,
+            scales_unit_arg=scales_unit_arg,
+            data_dir=_data_dir,
         )
 
     motion_detector = build_processor_motion_detector(
@@ -104,15 +102,15 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
 
     frame_processor, decision_maker, merged_overrides = build_detection_stack(
         app_config,
-        save_images=bool(app_config.get('processor.save_images')),
+        save_images=bool(app_config.get("processor.save_images")),
         warn_two_stage_fallback=False,
     )
-    regional_species = app_config.get('processor.regional_species') or []
+    regional_species = app_config.get("processor.regional_species") or []
     if regional_species:
         api.set_active_species(regional_species)
 
-    tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
-    logging.info('Using tracker: %s', tracker)
+    tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
+    logging.info("Using tracker: %s", tracker)
     fps_tracker = FPSTracker()
 
     media_source_ref = [media_setup.media_source]
@@ -146,7 +144,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
 
 
 def close_processor_media(ctx: ProcessorRunContext) -> None:
-    if app_config.get('video.source') == 'go2rtc':
+    if app_config.get("video.source") == "go2rtc":
         for src in ctx.media_setup.media_sources_cache.values():
             src.close()
     else:

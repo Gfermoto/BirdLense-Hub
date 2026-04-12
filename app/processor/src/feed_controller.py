@@ -1,6 +1,7 @@
 """
 Feed controller: MQTT or ESPHome for feeder control.
 """
+
 import logging
 import os
 from urllib.parse import quote
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 class FeedController:
     """Control bird feeder via MQTT or ESPHome."""
 
-    def __init__(self, source: str, mqtt_client=None, mqtt_topic: str = "", esphome_url: str = "", esphome_switch_id: str = ""):
+    def __init__(
+        self, source: str, mqtt_client=None, mqtt_topic: str = "", esphome_url: str = "", esphome_switch_id: str = ""
+    ):
         self.source = source or "mqtt"
         self.mqtt_client = mqtt_client
         self.mqtt_topic = mqtt_topic or "homeassistant/switch/bird_feeder/command"
@@ -56,7 +59,7 @@ class FeedController:
         return self.feed_on()
 
     def _esphome_call(self, action: str):
-        entity_path = quote(str(self.esphome_switch_id).strip(), safe='')
+        entity_path = quote(str(self.esphome_switch_id).strip(), safe="")
         url = f"{self.esphome_url.rstrip('/')}/switch/{entity_path}/{action}"
         try:
             r = requests.post(url, timeout=5)

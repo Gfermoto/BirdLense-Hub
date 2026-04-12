@@ -1,4 +1,5 @@
 """Данные для GET /api/ui/species*, bird_families (#293)."""
+
 from __future__ import annotations
 
 import logging
@@ -16,7 +17,7 @@ def fetch_species_catalog_list(session, *, exclude_suspects: bool) -> list[dict]
     query = (
         session.query(
             Species,
-            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label('count'),
+            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label("count"),
         )
         .outerjoin(SpeciesVisit)
         .group_by(Species.id)
@@ -29,17 +30,17 @@ def fetch_species_catalog_list(session, *, exclude_suspects: bool) -> list[dict]
     regional_scope_ids = compute_regional_scope_species_ids()
     return [
         {
-            'id': row.Species.id,
-            'name': row.Species.name,
-            'parent_id': row.Species.parent_id,
-            'created_at': row.Species.created_at.isoformat(),
-            'image_url': row.Species.image_url,
-            'description': row.Species.description,
-            'metadata_source': row.Species.metadata_source,
-            'metadata_source_url': row.Species.metadata_source_url,
-            'active': row.Species.active,
-            'regional_scope': row.Species.id in regional_scope_ids,
-            'count': row.count,
+            "id": row.Species.id,
+            "name": row.Species.name,
+            "parent_id": row.Species.parent_id,
+            "created_at": row.Species.created_at.isoformat(),
+            "image_url": row.Species.image_url,
+            "description": row.Species.description,
+            "metadata_source": row.Species.metadata_source,
+            "metadata_source_url": row.Species.metadata_source_url,
+            "active": row.Species.active,
+            "regional_scope": row.Species.id in regional_scope_ids,
+            "count": row.count,
         }
         for row in species_list
     ]
@@ -49,7 +50,7 @@ def fetch_observed_species_list(session) -> list[dict]:
     subq = (
         session.query(
             SpeciesVisit.species_id,
-            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label('count'),
+            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label("count"),
         )
         .group_by(SpeciesVisit.species_id)
         .having(func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0) > 0)
@@ -61,14 +62,14 @@ def fetch_observed_species_list(session) -> list[dict]:
         .order_by(Species.name.asc())
         .all()
     )
-    return [{'id': s.id, 'name': s.name, 'count': int(cnt)} for s, cnt in rows]
+    return [{"id": s.id, "name": s.name, "count": int(cnt)} for s, cnt in rows]
 
 
 def fetch_track_regen_species_options(session) -> list[dict]:
     subq = (
         session.query(
             VideoSpecies.species_id,
-            func.count(distinct(VideoSpecies.video_id)).label('video_count'),
+            func.count(distinct(VideoSpecies.video_id)).label("video_count"),
         )
         .group_by(VideoSpecies.species_id)
         .subquery()
@@ -79,16 +80,16 @@ def fetch_track_regen_species_options(session) -> list[dict]:
         .order_by(Species.name.asc())
         .all()
     )
-    return [{'id': s.id, 'name': s.name, 'count': int(vc)} for s, vc in rows]
+    return [{"id": s.id, "name": s.name, "count": int(vc)} for s, vc in rows]
 
 
 def fetch_bird_families_list(session) -> list[dict] | None:
     """Список семейств под «Birds» или None, если категория не найдена."""
-    birds_category = session.query(Species).filter_by(name='Birds').first()
+    birds_category = session.query(Species).filter_by(name="Birds").first()
     if not birds_category:
         return None
     families = session.query(Species).filter_by(parent_id=birds_category.id).all()
-    return [{'id': family.id, 'name': family.name} for family in families]
+    return [{"id": family.id, "name": family.name} for family in families]
 
 
 def fetch_bird_families_list_safe(session) -> tuple[list[dict] | None, str | None]:
@@ -96,5 +97,5 @@ def fetch_bird_families_list_safe(session) -> tuple[list[dict] | None, str | Non
     try:
         return fetch_bird_families_list(session), None
     except Exception:
-        logger.exception('Error fetching bird families')
-        return None, 'Failed to fetch bird families'
+        logger.exception("Error fetching bird families")
+        return None, "Failed to fetch bird families"

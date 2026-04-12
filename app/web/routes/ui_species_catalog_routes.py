@@ -20,11 +20,10 @@ from routes.ui_route_constants import (
 
 
 def register_ui_species_catalog_routes(app):
-    @app.route('/api/ui/species', methods=['GET'])
+    @app.route("/api/ui/species", methods=["GET"])
     def get_all_species():
-        exclude_suspects = request.args.get(
-            'exclude_suspects', '').strip().lower() in ('1', 'true', 'yes')
-        cache_key = f'species_list:v3:ex{1 if exclude_suspects else 0}'
+        exclude_suspects = request.args.get("exclude_suspects", "").strip().lower() in ("1", "true", "yes")
+        cache_key = f"species_list:v3:ex{1 if exclude_suspects else 0}"
         hit, scached = cache_get(cache_key)
         if hit:
             return scached
@@ -35,33 +34,33 @@ def register_ui_species_catalog_routes(app):
         cache_set(cache_key, result, CACHE_SPECIES_LIST_SEC)
         return result
 
-    @app.route('/api/ui/species/observed', methods=['GET'])
+    @app.route("/api/ui/species/observed", methods=["GET"])
     def get_observed_species():
-        hit, oc = cache_get('species_observed:v1')
+        hit, oc = cache_get("species_observed:v1")
         if hit:
             return oc
         out = fetch_observed_species_list(db.session)
-        cache_set('species_observed:v1', out, CACHE_SPECIES_OBSERVED_SEC)
+        cache_set("species_observed:v1", out, CACHE_SPECIES_OBSERVED_SEC)
         return out
 
-    @app.route('/api/ui/species/track-regen-options', methods=['GET'])
+    @app.route("/api/ui/species/track-regen-options", methods=["GET"])
     def get_species_track_regen_options():
-        hit, oc = cache_get('species_track_regen:v1')
+        hit, oc = cache_get("species_track_regen:v1")
         if hit:
             return oc
         out = fetch_track_regen_species_options(db.session)
-        cache_set('species_track_regen:v1', out, CACHE_SPECIES_TRACK_REGEN_SEC)
+        cache_set("species_track_regen:v1", out, CACHE_SPECIES_TRACK_REGEN_SEC)
         return out
 
-    @app.route('/api/ui/bird_families', methods=['GET'])
+    @app.route("/api/ui/bird_families", methods=["GET"])
     def get_bird_families():
-        hit, fc = cache_get('bird_families:v1')
+        hit, fc = cache_get("bird_families:v1")
         if hit:
             return fc
         payload, err = fetch_bird_families_list_safe(db.session)
         if err:
-            return {'error': err}, 500
+            return {"error": err}, 500
         if payload is None:
-            return {'error': 'Birds category not found'}, 404
-        cache_set('bird_families:v1', payload, CACHE_BIRD_FAMILIES_SEC)
+            return {"error": "Birds category not found"}, 404
+        cache_set("bird_families:v1", payload, CACHE_BIRD_FAMILIES_SEC)
         return payload

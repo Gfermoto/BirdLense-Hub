@@ -3,6 +3,7 @@
 Bot API по HTTPS через requests с SOCKS/HTTP не использует MTProto — здесь нативный MTProto-туннель.
 Требуются api_id и api_hash с https://my.telegram.org (или env TELEGRAM_API_ID / TELEGRAM_API_HASH).
 """
+
 from __future__ import annotations
 
 import asyncio

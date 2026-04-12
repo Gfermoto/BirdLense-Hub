@@ -22,14 +22,20 @@ from services.system_metrics_constants import (
 from sqlalchemy import delete
 
 CATALOG_REPAIR_AUTORUN_ENABLED = os.environ.get(
-    'BIRDLENSE_CATALOG_REPAIR_AUTORUN',
-    '1',
-).strip().lower() in ('1', 'true', 'yes')
+    "BIRDLENSE_CATALOG_REPAIR_AUTORUN",
+    "1",
+).strip().lower() in ("1", "true", "yes")
 CATALOG_REPAIR_INTERVAL_MIN = env_bounded_int(
-    'BIRDLENSE_CATALOG_REPAIR_INTERVAL_MIN', 180, min_v=15, max_v=1440,
+    "BIRDLENSE_CATALOG_REPAIR_INTERVAL_MIN",
+    180,
+    min_v=15,
+    max_v=1440,
 )
 CATALOG_REPAIR_LIMIT = env_bounded_int(
-    'BIRDLENSE_CATALOG_REPAIR_LIMIT', 150, min_v=20, max_v=6000,
+    "BIRDLENSE_CATALOG_REPAIR_LIMIT",
+    150,
+    min_v=20,
+    max_v=6000,
 )
 
 
@@ -37,12 +43,12 @@ def record_system_resource_sample(flask_app) -> None:
     """Persist one SystemResourceSample row and prune old samples."""
     m = collect_live_system_metrics(flask_app)
     now = datetime.now(timezone.utc)
-    gpu = m['gpu_percent']
+    gpu = m["gpu_percent"]
     row = SystemResourceSample(
         recorded_at=now,
-        cpu_percent=float(m['cpu']['percent']),
-        memory_percent=float(m['memory']['percent']),
-        disk_percent=float(m['disk']['percent']),
+        cpu_percent=float(m["cpu"]["percent"]),
+        memory_percent=float(m["memory"]["percent"]),
+        disk_percent=float(m["disk"]["percent"]),
         gpu_percent=float(gpu) if gpu is not None else None,
     )
     db.session.add(row)
@@ -64,20 +70,22 @@ def maybe_run_catalog_cards_repair(flask_app) -> None:
     if next_ts and now_ts < next_ts:
         return
     with job_state._catalog_cards_lock:
-        if job_state._catalog_cards_status.get('status') == 'running':
+        if job_state._catalog_cards_status.get("status") == "running":
             return
-        job_state._catalog_cards_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': {
-                'auto': True,
-                'limit': CATALOG_REPAIR_LIMIT,
-                'coverage_before': catalog_cards_coverage_snapshot(
-                    app_config.get,
-                ),
-            },
-        })
+        job_state._catalog_cards_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": {
+                    "auto": True,
+                    "limit": CATALOG_REPAIR_LIMIT,
+                    "coverage_before": catalog_cards_coverage_snapshot(
+                        app_config.get,
+                    ),
+                },
+            }
+        )
     try:
         result = repair_catalog_cards(
             app_config.get,
@@ -86,23 +94,27 @@ def maybe_run_catalog_cards_repair(flask_app) -> None:
         )
         coverage_after = catalog_cards_coverage_snapshot(app_config.get)
         with job_state._catalog_cards_lock:
-            job_state._catalog_cards_status.update({
-                'status': 'done',
-                'result': {
-                    **result,
-                    'auto': True,
-                    'coverage_after': coverage_after,
-                },
-                'error': None,
-            })
+            job_state._catalog_cards_status.update(
+                {
+                    "status": "done",
+                    "result": {
+                        **result,
+                        "auto": True,
+                        "coverage_after": coverage_after,
+                    },
+                    "error": None,
+                }
+            )
     except Exception as e:
         db.session.rollback()
         with job_state._catalog_cards_lock:
-            job_state._catalog_cards_status.update({
-                'status': 'error',
-                'result': None,
-                'error': str(e),
-            })
+            job_state._catalog_cards_status.update(
+                {
+                    "status": "error",
+                    "result": None,
+                    "error": str(e),
+                }
+            )
     finally:
         job_state._catalog_cards_next_run_ts = now_ts + (CATALOG_REPAIR_INTERVAL_MIN * 60)
 
@@ -114,23 +126,24 @@ def catalog_cards_schedule_state() -> dict:
     if job_state._catalog_cards_next_run_ts > now_ts:
         next_in = int(job_state._catalog_cards_next_run_ts - now_ts)
     return {
-        'autorun_enabled': CATALOG_REPAIR_AUTORUN_ENABLED,
-        'interval_min': CATALOG_REPAIR_INTERVAL_MIN,
-        'limit': CATALOG_REPAIR_LIMIT,
-        'next_run_in_sec': next_in,
+        "autorun_enabled": CATALOG_REPAIR_AUTORUN_ENABLED,
+        "interval_min": CATALOG_REPAIR_INTERVAL_MIN,
+        "limit": CATALOG_REPAIR_LIMIT,
+        "next_run_in_sec": next_in,
     }
 
 
 def _system_metrics_sampler_worker(flask_app):
     """Daemon loop: sample metrics and maybe repair catalog cards."""
     import time
+
     while True:
         try:
             with flask_app.app_context():
                 record_system_resource_sample(flask_app)
                 maybe_run_catalog_cards_repair(flask_app)
         except Exception as e:
-            flask_app.logger.warning('system metrics sampler: %s', e)
+            flask_app.logger.warning("system metrics sampler: %s", e)
             try:
                 db.session.rollback()
             except Exception:
@@ -140,10 +153,15 @@ def _system_metrics_sampler_worker(flask_app):
 
 def start_system_metrics_sampler(flask_app) -> None:
     """Start background sampler thread once per process (unless disabled)."""
-    disable = os.environ.get(
-        'DISABLE_SYSTEM_METRICS_SAMPLER', '',
-    ).strip().lower()
-    if disable in ('1', 'true', 'yes'):
+    disable = (
+        os.environ.get(
+            "DISABLE_SYSTEM_METRICS_SAMPLER",
+            "",
+        )
+        .strip()
+        .lower()
+    )
+    if disable in ("1", "true", "yes"):
         return
     with job_state._sampler_lock:
         if job_state._sampler_started:
@@ -152,6 +170,6 @@ def start_system_metrics_sampler(flask_app) -> None:
     threading.Thread(
         target=_system_metrics_sampler_worker,
         args=(flask_app,),
-        name='system-metrics-sampler',
+        name="system-metrics-sampler",
         daemon=True,
     ).start()

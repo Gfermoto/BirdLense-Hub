@@ -1,4 +1,5 @@
 """Scan recordings, visits maintenance, species merge/reconcile (#265)."""
+
 from __future__ import annotations
 
 from flask import request
@@ -17,7 +18,7 @@ from services.system_maintenance_service import (
 def register_ui_system_maintenance_routes(app):
     """Импорт с диска и обслуживание видов/визитов."""
 
-    @app.route('/api/ui/system/recordings/scan', methods=['POST'])
+    @app.route("/api/ui/system/recordings/scan", methods=["POST"])
     @require_ui_settings_password
     def scan_recordings():
         """
@@ -27,7 +28,7 @@ def register_ui_system_maintenance_routes(app):
         body, code = run_recordings_scan(app)
         return body, code
 
-    @app.route('/api/ui/system/clean-orphaned-visits', methods=['POST'])
+    @app.route("/api/ui/system/clean-orphaned-visits", methods=["POST"])
     @require_ui_settings_password
     def clean_orphaned_visits():
         """
@@ -39,7 +40,7 @@ def register_ui_system_maintenance_routes(app):
         body, code = post_clean_orphaned_visits(payload)
         return body, code
 
-    @app.route('/api/ui/system/realign-visit-times', methods=['POST'])
+    @app.route("/api/ui/system/realign-visit-times", methods=["POST"])
     @require_ui_settings_password
     def realign_visit_times():
         """Preview/apply SpeciesVisit time realignment from actual detection timestamps."""
@@ -47,7 +48,7 @@ def register_ui_system_maintenance_routes(app):
         body, code = post_realign_visit_times(payload)
         return body, code
 
-    @app.route('/api/ui/system/split-large-gap-visits', methods=['POST'])
+    @app.route("/api/ui/system/split-large-gap-visits", methods=["POST"])
     @require_ui_settings_password
     def split_large_gap_visits():
         """Preview/apply splitting of visits with large internal detection gaps."""
@@ -55,7 +56,7 @@ def register_ui_system_maintenance_routes(app):
         body, code = post_split_large_gap_visits(payload)
         return body, code
 
-    @app.route('/api/ui/system/merge-duplicate-species', methods=['POST'])
+    @app.route("/api/ui/system/merge-duplicate-species", methods=["POST"])
     @require_ui_settings_password
     def merge_duplicate_species():
         """
@@ -65,7 +66,7 @@ def register_ui_system_maintenance_routes(app):
         body, code = post_merge_duplicate_species()
         return body, code
 
-    @app.route('/api/ui/system/species-catalog/reconcile', methods=['POST'])
+    @app.route("/api/ui/system/species-catalog/reconcile", methods=["POST"])
     @require_ui_settings_password
     def species_catalog_reconcile():
         """

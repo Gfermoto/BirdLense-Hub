@@ -1,4 +1,5 @@
 """Операции приведения каталога видов: дубликаты по имени, мусор, вне allowlist."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,7 +15,7 @@ from util import load_species_canonical_mapping
 
 
 def _unknown_species() -> Species | None:
-    return Species.query.filter_by(name='Unknown').first()
+    return Species.query.filter_by(name="Unknown").first()
 
 
 def _species_has_activity(species_id: int) -> bool:
@@ -37,11 +38,11 @@ def _pick_merge_target(
     """Выбрать строку, в которую сливаем остальные (предпочтение: имя из allowlist, затем короче, затем меньший id)."""
 
     def sort_key(p: dict[str, Any]) -> tuple:
-        name = p.get('name') or ''
+        name = p.get("name") or ""
         in_allow = 0
         if allow_keys:
             in_allow = 0 if species_matches_allowlist(name, allow_keys, mapping) else 1
-        return (in_allow, len(name), int(p['id']))
+        return (in_allow, len(name), int(p["id"]))
 
     return min(pairs, key=sort_key)
 
@@ -73,28 +74,28 @@ def reconcile_species_catalog(
         app_config_get = app_config.get
 
     report: dict[str, Any] = {
-        'dry_run': dry_run,
-        'merged_duplicate_groups': 0,
-        'merged_species_rows': 0,
-        'suspects_reassigned': 0,
-        'suspects_deleted_empty': 0,
-        'off_allowlist_reassigned': 0,
-        'off_allowlist_deleted_empty': 0,
-        'errors': [],
-        'details': [],
+        "dry_run": dry_run,
+        "merged_duplicate_groups": 0,
+        "merged_species_rows": 0,
+        "suspects_reassigned": 0,
+        "suspects_deleted_empty": 0,
+        "off_allowlist_reassigned": 0,
+        "off_allowlist_deleted_empty": 0,
+        "errors": [],
+        "details": [],
     }
     mapping = load_species_canonical_mapping()
     allow_keys = load_catalog_allowlist_norm_keys(app_config_get)
     unknown = _unknown_species()
     if (reassign_suspects_to_unknown or reassign_off_allowlist_to_unknown) and not unknown:
-        report['errors'].append(
-            'Species «Unknown» отсутствует — создайте вручную или через сид перед переносом.',
+        report["errors"].append(
+            "Species «Unknown» отсутствует — создайте вручную или через сид перед переносом.",
         )
         reassign_suspects_to_unknown = False
         reassign_off_allowlist_to_unknown = False
 
     protected_ids = {unknown.id} if unknown else set()
-    for pname in ('Bird', 'Birds'):
+    for pname in ("Bird", "Birds"):
         row = Species.query.filter_by(name=pname).first()
         if row:
             protected_ids.add(row.id)
@@ -107,22 +108,22 @@ def reconcile_species_catalog(
             skip_inactive_empty_groups=False,
         )
         for g in groups:
-            pairs = g.get('species') or []
+            pairs = g.get("species") or []
             if len(pairs) < 2:
                 continue
-            report['merged_duplicate_groups'] += 1
+            report["merged_duplicate_groups"] += 1
             target = _pick_merge_target(pairs, allow_keys, mapping)
-            tid = int(target['id'])
+            tid = int(target["id"])
             for other in pairs:
-                oid = int(other['id'])
+                oid = int(other["id"])
                 if oid == tid:
                     continue
                 if oid in protected_ids:
-                    report['details'].append(f'skip merge source protected id={oid}')
+                    report["details"].append(f"skip merge source protected id={oid}")
                     continue
                 detail = f"merge duplicate name '{g.get('normalized_name')}': {oid} → {tid}"
-                report['details'].append(detail)
-                report['merged_species_rows'] += 1
+                report["details"].append(detail)
+                report["merged_species_rows"] += 1
                 if not dry_run:
                     merge_species_into(oid, tid)
 
@@ -136,8 +137,8 @@ def reconcile_species_catalog(
     # 3) Вне allowlist
     if reassign_off_allowlist_to_unknown or delete_empty_off_allowlist:
         if not allow_keys:
-            report['errors'].append(
-                'allowlist пуст или файл не найден (species.catalog_allowlist_file) — шаг off_allowlist пропущен.',
+            report["errors"].append(
+                "allowlist пуст или файл не найден (species.catalog_allowlist_file) — шаг off_allowlist пропущен.",
             )
         else:
             rows = Species.query.order_by(Species.id.asc()).all()
@@ -147,17 +148,17 @@ def reconcile_species_catalog(
                     continue
                 if _has_child_species(sp.id):
                     continue
-                if species_matches_allowlist(sp.name or '', allow_keys, mapping):
+                if species_matches_allowlist(sp.name or "", allow_keys, mapping):
                     continue
                 active = _species_has_activity(sp.id)
                 if active and reassign_off_allowlist_to_unknown and unknown:
-                    report['off_allowlist_reassigned'] += 1
-                    report['details'].append(f'off-allowlist → Unknown: {sp.id} {sp.name!r}')
+                    report["off_allowlist_reassigned"] += 1
+                    report["details"].append(f"off-allowlist → Unknown: {sp.id} {sp.name!r}")
                     if not dry_run:
                         merge_species_into(sp.id, uid)
                 elif not active and delete_empty_off_allowlist:
-                    report['off_allowlist_deleted_empty'] += 1
-                    report['details'].append(f'delete empty off-allowlist: {sp.id} {sp.name!r}')
+                    report["off_allowlist_deleted_empty"] += 1
+                    report["details"].append(f"delete empty off-allowlist: {sp.id} {sp.name!r}")
                     if not dry_run:
                         db.session.delete(sp)
 
@@ -166,6 +167,6 @@ def reconcile_species_catalog(
     else:
         db.session.commit()
 
-    report['allowlist_loaded'] = bool(allow_keys)
-    report['allowlist_class_count'] = len(allow_keys) if allow_keys else 0
+    report["allowlist_loaded"] = bool(allow_keys)
+    report["allowlist_class_count"] = len(allow_keys) if allow_keys else 0
     return report

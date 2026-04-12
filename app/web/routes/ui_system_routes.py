@@ -1,4 +1,5 @@
 """Админские и служебные маршруты ``/api/ui/system/*``: БД, ретеншн, виды, конфиг, отчёты."""
+
 from datetime import datetime, timezone
 
 from flask import current_app, request
@@ -28,40 +29,47 @@ import routes.ui_system_jobs_state as job_state
 def register_routes(app):
     """Зарегистрировать расширенный набор system API (кроме metrics — отдельный модуль)."""
     from routes.ui_system_metrics_routes import register_ui_system_metrics_routes
+
     register_ui_system_metrics_routes(app)
     from routes.ui_system_diagnostics_routes import register_ui_system_diagnostics_routes
+
     register_ui_system_diagnostics_routes(app)
     from routes.ui_system_review_queue_routes import register_ui_system_review_queue_routes
+
     register_ui_system_review_queue_routes(app)
     from routes.ui_system_storage_routes import register_ui_system_storage_routes
+
     register_ui_system_storage_routes(app)
     from routes.ui_system_db_routes import register_ui_system_db_routes
+
     register_ui_system_db_routes(app)
     from routes.ui_system_fusion_routes import register_ui_system_fusion_routes
+
     register_ui_system_fusion_routes(app)
     from routes.ui_system_maintenance_routes import register_ui_system_maintenance_routes
+
     register_ui_system_maintenance_routes(app)
 
-    @app.route('/api/ui/system/config-audit', methods=['GET'])
+    @app.route("/api/ui/system/config-audit", methods=["GET"])
     @require_ui_settings_unauthorized
     def system_config_audit():
         return build_config_audit_payload()
 
-    @app.route('/api/ui/system/logs', methods=['GET'])
+    @app.route("/api/ui/system/logs", methods=["GET"])
     @require_ui_settings_password
     def get_processor_logs():
         """Return last N lines of processor.log for remote diagnostics."""
         return processor_logs_tail_http_response(
-            request.args.get('lines', LOG_LINES_DEFAULT),
+            request.args.get("lines", LOG_LINES_DEFAULT),
         )
 
-    @app.route('/api/ui/system/activity', methods=['GET'])
+    @app.route("/api/ui/system/activity", methods=["GET"])
     def get_activity():
         month = request.args.get(
-            'month',
-            datetime.now(timezone.utc).strftime('%Y-%m'),
+            "month",
+            datetime.now(timezone.utc).strftime("%Y-%m"),
         )
-        ack = f'system_activity:{month}'
+        ack = f"system_activity:{month}"
         hit, ac = cache_get(ack)
         if hit:
             return ac
@@ -70,7 +78,7 @@ def register_routes(app):
             cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
         return out, code
 
-    @app.route('/api/ui/system/regenerate-spectrograms', methods=['POST'])
+    @app.route("/api/ui/system/regenerate-spectrograms", methods=["POST"])
     @require_ui_settings_password
     def regenerate_spectrograms():
         """
@@ -85,7 +93,7 @@ def register_routes(app):
             body,
         )
 
-    @app.route('/api/ui/videos/<int:video_id>/regenerate-spectrogram', methods=['POST'])
+    @app.route("/api/ui/videos/<int:video_id>/regenerate-spectrogram", methods=["POST"])
     @require_admin_track_regen
     def regenerate_spectrogram_single_video(video_id):
         """Перегенерация спектрограммы для одной записи (админ при двухуровневом доступе)."""
@@ -94,17 +102,17 @@ def register_routes(app):
             video_id,
         )
 
-    @app.route('/api/ui/system/regenerate-spectrograms/status', methods=['GET'])
+    @app.route("/api/ui/system/regenerate-spectrograms/status", methods=["GET"])
     def regenerate_spectrograms_status():
         """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
         return job_state._regenerate_status, 200
 
-    @app.route('/api/ui/system/regenerate-tracks/status', methods=['GET'])
+    @app.route("/api/ui/system/regenerate-tracks/status", methods=["GET"])
     def regenerate_tracks_status():
         """Return last track regeneration result."""
         return job_state._regenerate_tracks_status, 200
 
-    @app.route('/api/ui/videos/<int:video_id>/regenerate-tracks', methods=['POST'])
+    @app.route("/api/ui/videos/<int:video_id>/regenerate-tracks", methods=["POST"])
     @require_admin_track_regen
     def regenerate_tracks_single_video(video_id):
         """Перегенерация треков только для одной записи (админ при двухуровневом доступе)."""
@@ -116,6 +124,7 @@ def register_routes(app):
         )
 
     from routes.ui_system_species_registry_routes import register_ui_system_species_registry_routes
+
     register_ui_system_species_registry_routes(app)
 
     start_system_metrics_sampler(app)

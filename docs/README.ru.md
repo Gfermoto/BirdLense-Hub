@@ -14,7 +14,7 @@
 |------|--------|-----------|
 | **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
 | **Интеграции** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.ru.md) → [CONFIGURATION](./CONFIGURATION.ru.md) |
-| **Разработка** | Код, тесты, релизы | [Структура репозитория](./REPOSITORY_LAYOUT.ru.md) → [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [Contributing](./project/contributing.md) |
+| **Разработка** | Код, тесты, релизы | [Структура репозитория](./REPOSITORY_LAYOUT.ru.md) → [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [CI и качество](./CI_AND_QUALITY.ru.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -53,6 +53,7 @@
 | Тема | Документ |
 |------|----------|
 | **CI на PR** (Bandit, pip-audit, Ruff, pytest, сборка UI, MkDocs, Docker-тесты, Playwright smoke) | [TESTING.ru.md](./TESTING.ru.md) §1 |
+| **Политика CI** (Ruff format, игноры pip-audit, npm audit, OpenAPI→TS) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) |
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
 | MCP (Model Context Protocol — внешние ИИ-ассистенты) | [MCP_SETUP](./MCP_SETUP.ru.md) |

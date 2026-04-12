@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 _TS_DIR_PATTERN = re.compile(
-    r'^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$',
+    r"^(\d{4})/(\d{2})/(\d{2})/(\d{2})[-:]?(\d{2})[-:]?(\d{2})$",
 )
 
 
@@ -47,7 +47,7 @@ def coerce_duplicate_group_limit(raw: object, default: int = 500) -> tuple[int |
     try:
         v = int(raw)
     except (TypeError, ValueError):
-        return None, 'duplicate_group_limit must be int'
+        return None, "duplicate_group_limit must be int"
     return max(10, min(v, 5000)), None
 
 
@@ -57,19 +57,15 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
     On success may start spectrogram regen thread via app.extensions (if registered).
     """
     if not os.path.exists(recordings_dir()):
-        return {'imported': 0, 'message': 'No recordings directory'}, 200
+        return {"imported": 0, "message": "No recordings directory"}, 200
 
-    existing_paths = {
-        v.video_path for v in db.session.query(Video.video_path).all()
-    }
+    existing_paths = {v.video_path for v in db.session.query(Video.video_path).all()}
     imported = 0
     cleaned_legacy_placeholders = 0
     cleaned_legacy_visits = 0
 
     try:
-        cleaned_legacy_placeholders, cleaned_legacy_visits = (
-            _cleanup_legacy_import_placeholders()
-        )
+        cleaned_legacy_placeholders, cleaned_legacy_visits = _cleanup_legacy_import_placeholders()
         rec_dir = recordings_dir()
         for year in os.listdir(rec_dir):
             year_path = os.path.join(rec_dir, year)
@@ -87,10 +83,10 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                         ts_path = os.path.join(day_path, ts)
                         if not os.path.isdir(ts_path):
                             continue
-                        m = _TS_DIR_PATTERN.match(f'{year}/{month}/{day}/{ts}')
+                        m = _TS_DIR_PATTERN.match(f"{year}/{month}/{day}/{ts}")
                         if not m:
                             continue
-                        video_mp4 = os.path.join(ts_path, 'video.mp4')
+                        video_mp4 = os.path.join(ts_path, "video.mp4")
                         if not os.path.isfile(video_mp4):
                             continue
                         try:
@@ -98,7 +94,7 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                                 continue
                         except OSError:
                             continue
-                        rel_path = f'data/recordings/{year}/{month}/{day}/{ts}/video.mp4'
+                        rel_path = f"data/recordings/{year}/{month}/{day}/{ts}/video.mp4"
                         if rel_path in existing_paths:
                             continue
 
@@ -106,20 +102,23 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                             with db.session.begin_nested():
                                 y, mo, d, h, mi, s = map(int, m.groups())
                                 start_time = datetime(
-                                    y, mo, d, h, mi, s,
+                                    y,
+                                    mo,
+                                    d,
+                                    h,
+                                    mi,
+                                    s,
                                     tzinfo=timezone.utc,
                                 )
                                 end_time = start_time + timedelta(seconds=30)
                                 spectrogram = None
                                 for f in os.listdir(ts_path):
-                                    if f.startswith('spectrogram') and f.endswith('.jpg'):
-                                        spectrogram = (
-                                            f'data/recordings/{year}/{month}/{day}/{ts}/{f}'
-                                        )
+                                    if f.startswith("spectrogram") and f.endswith(".jpg"):
+                                        spectrogram = f"data/recordings/{year}/{month}/{day}/{ts}/{f}"
                                         break
 
                                 video = Video(
-                                    processor_version='1',
+                                    processor_version="1",
                                     start_time=start_time,
                                     end_time=end_time,
                                     video_path=rel_path,
@@ -129,7 +128,7 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                             existing_paths.add(rel_path)
                             imported += 1
                         except Exception as e:
-                            _log.warning('Import failed %s: %s', rel_path, e)
+                            _log.warning("Import failed %s: %s", rel_path, e)
                             continue
 
         db.session.commit()
@@ -138,12 +137,12 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
 
         spectrogram_started = False
         if imported > 0:
-            run_sg = flask_app.extensions.get('birdlense', {}).get(
-                'run_regenerate_spectrograms',
+            run_sg = flask_app.extensions.get("birdlense", {}).get(
+                "run_regenerate_spectrograms",
             )
             if run_sg is not None:
                 with job_state._regenerate_lock:
-                    if job_state._regenerate_status['status'] != 'running':
+                    if job_state._regenerate_status["status"] != "running":
                         threading.Thread(
                             target=run_sg,
                             args=(False, None, None, None),
@@ -151,27 +150,25 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                         ).start()
                         spectrogram_started = True
 
-        message = f'Imported {imported} recordings'
+        message = f"Imported {imported} recordings"
         if cleaned_legacy_placeholders:
-            message += (
-                f'; cleaned {cleaned_legacy_placeholders} legacy placeholders'
-            )
+            message += f"; cleaned {cleaned_legacy_placeholders} legacy placeholders"
         return {
-            'imported': imported,
-            'cleaned_legacy_placeholders': cleaned_legacy_placeholders,
-            'cleaned_legacy_visits': cleaned_legacy_visits,
-            'message': message,
-            'spectrogramRegenerationStarted': spectrogram_started,
+            "imported": imported,
+            "cleaned_legacy_placeholders": cleaned_legacy_placeholders,
+            "cleaned_legacy_visits": cleaned_legacy_visits,
+            "message": message,
+            "spectrogramRegenerationStarted": spectrogram_started,
         }, 200
     except Exception:
         db.session.rollback()
-        _log.exception('Scan recordings failed')
-        return {'error': 'Failed to scan recordings'}, 500
+        _log.exception("Scan recordings failed")
+        return {"error": "Failed to scan recordings"}, 500
 
 
 def post_clean_orphaned_visits(payload: dict) -> tuple[dict, int]:
     try:
-        dry_run = bool(payload.get('dry_run', True))
+        dry_run = bool(payload.get("dry_run", True))
         if dry_run:
             return preview_clean_orphaned_visits(db.session), 200
 
@@ -181,13 +178,13 @@ def post_clean_orphaned_visits(payload: dict) -> tuple[dict, int]:
         return body, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Clean orphaned visits failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Clean orphaned visits failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def post_realign_visit_times(payload: dict) -> tuple[dict, int]:
     try:
-        dry_run = bool(payload.get('dry_run', True))
+        dry_run = bool(payload.get("dry_run", True))
         if dry_run:
             return preview_realign_visit_times(db.session), 200
 
@@ -197,14 +194,14 @@ def post_realign_visit_times(payload: dict) -> tuple[dict, int]:
         return body, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Realign visit times failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Realign visit times failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def post_split_large_gap_visits(payload: dict) -> tuple[dict, int]:
     try:
-        dry_run = bool(payload.get('dry_run', True))
-        gap_seconds = int(app_config.get('detection.dedup_window_seconds') or 60)
+        dry_run = bool(payload.get("dry_run", True))
+        gap_seconds = int(app_config.get("detection.dedup_window_seconds") or 60)
         if dry_run:
             return preview_split_large_gap_visits(db.session, gap_seconds), 200
 
@@ -214,8 +211,8 @@ def post_split_large_gap_visits(payload: dict) -> tuple[dict, int]:
         return body, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Split large-gap visits failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Split large-gap visits failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def post_merge_duplicate_species() -> tuple[dict, int]:
@@ -224,7 +221,7 @@ def post_merge_duplicate_species() -> tuple[dict, int]:
 
         mapping = load_species_canonical_mapping()
         if not mapping:
-            return {'merged': 0, 'message': 'No species_canonical_mapping.txt'}, 200
+            return {"merged": 0, "message": "No species_canonical_mapping.txt"}, 200
         variant_to_canonical: dict[str, str] = {}
         for variant, canonical in mapping.items():
             variant_to_canonical[variant] = canonical
@@ -246,19 +243,19 @@ def post_merge_duplicate_species() -> tuple[dict, int]:
                 if target.name != canonical:
                     target.name = canonical
                 merge_species_into(other.id, target.id)
-                details.append(f'{other.name} -> {canonical}')
+                details.append(f"{other.name} -> {canonical}")
                 merged += 1
         db.session.commit()
         bust_response_caches()
         return {
-            'merged': merged,
-            'details': details,
-            'message': f'Merged {merged} duplicate species',
+            "merged": merged,
+            "details": details,
+            "message": f"Merged {merged} duplicate species",
         }, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Merge duplicate species failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Merge duplicate species failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def post_species_catalog_reconcile(payload: dict) -> tuple[dict, int]:
@@ -266,27 +263,27 @@ def post_species_catalog_reconcile(payload: dict) -> tuple[dict, int]:
     from services.species_catalog_reconcile_service import reconcile_species_catalog
 
     try:
-        dry_run = bool(payload.get('dry_run', True))
+        dry_run = bool(payload.get("dry_run", True))
         dup_limit, err = coerce_duplicate_group_limit(
-            payload.get('duplicate_group_limit', 500),
+            payload.get("duplicate_group_limit", 500),
         )
         if err:
-            return {'error': err}, 400
+            return {"error": err}, 400
 
         body = reconcile_species_catalog(
             dry_run=dry_run,
             merge_normalized_duplicate_names=bool(
-                payload.get('merge_normalized_duplicate_names', True),
+                payload.get("merge_normalized_duplicate_names", True),
             ),
             reassign_suspects_to_unknown=bool(
-                payload.get('reassign_suspects_to_unknown', False),
+                payload.get("reassign_suspects_to_unknown", False),
             ),
             reassign_off_allowlist_to_unknown=bool(
-                payload.get('reassign_off_allowlist_to_unknown', False),
+                payload.get("reassign_off_allowlist_to_unknown", False),
             ),
-            delete_empty_suspects=bool(payload.get('delete_empty_suspects', False)),
+            delete_empty_suspects=bool(payload.get("delete_empty_suspects", False)),
             delete_empty_off_allowlist=bool(
-                payload.get('delete_empty_off_allowlist', False),
+                payload.get("delete_empty_off_allowlist", False),
             ),
             duplicate_group_limit=dup_limit,
             app_config_get=app_config.get,
@@ -297,5 +294,5 @@ def post_species_catalog_reconcile(payload: dict) -> tuple[dict, int]:
         return body, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Species catalog reconcile failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Species catalog reconcile failed: %s", e)
+        return {"error": str(e)}, 500
