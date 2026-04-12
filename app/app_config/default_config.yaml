@@ -108,6 +108,9 @@ processor:
   birdnet_fifo_snapshot_recent_limit: 80
   # GET /api/ui/system/diagnostics/birdnet-fifo считает снимок устаревшим, если файл старше (сек).
   birdnet_fifo_snapshot_stale_sec: 180
+  # Очередь BirdNET в hub SQLite (data/db/birdlense.db): переживает рестарт процессора (#269).
+  birdnet_fifo_persist_enabled: true
+  birdnet_fifo_sqlite_busy_ms: 30000
   # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
   multi_camera_groups: []  # например: [["BirdBox","Forest"]]
   multi_camera_confidence_boost: 0.03

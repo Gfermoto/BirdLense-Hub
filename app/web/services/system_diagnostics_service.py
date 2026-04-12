@@ -394,6 +394,23 @@ def purge_no_species_video_rows(payload) -> tuple[dict, int]:
 
 
 def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
+    from services.birdnet_fifo_view_service import try_build_birdnet_fifo_snapshot_from_db
+
+    db_snapshot = try_build_birdnet_fifo_snapshot_from_db()
+    if db_snapshot is not None:
+        rel = os.path.join("diagnostics", "birdnet_fifo_snapshot.json").replace("\\", "/")
+        try:
+            stale_sec = int(app_config.get("processor.birdnet_fifo_snapshot_stale_sec") or 180)
+        except (TypeError, ValueError):
+            stale_sec = 180
+        stale_sec = max(30, min(stale_sec, 86_400))
+        return {
+            "snapshot_relative_path": rel,
+            "snapshot_stale": False,
+            "stale_threshold_sec": stale_sec,
+            **db_snapshot,
+        }, 200
+
     rel = os.path.join("diagnostics", "birdnet_fifo_snapshot.json").replace("\\", "/")
     path = os.path.join(data_paths.data_dir(), "diagnostics", "birdnet_fifo_snapshot.json")
     try:
