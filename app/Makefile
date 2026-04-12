@@ -57,16 +57,17 @@ deploy:
 # Тесты (в контейнере — ultralytics; для two-stage — веса .pt, см. scripts/fetch-processor-weights.sh)
 # -v монтирует локальный код: тесты идут по коду на диске, а не по образу
 # -v ..:/workspace — корень репо (scripts/export_fusion_training_data.py и др. для _repo_root())
+# processor/src в PYTHONPATH — импорты вроде birdnet_fifo_persist без sys.path в каждом тесте.
 test:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
-		bash -c 'export PYTHONPATH=/app:/app/web && python -m unittest discover processor/tests -v \
+		bash -c 'export PYTHONPATH=/app:/app/web:/app/processor/src && python -m unittest discover processor/tests -v \
 		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
 
 # Тот же образ, но без интеграции TwoStageStrategy с реальными .pt (меньше RAM; #282).
 # Один прогон pytest по processor/tests (включая unittest.TestCase); ``-m "not heavy"`` оставляет немаркированные тесты.
 test-processor-light:
 	docker compose run --rm -e SKIP_HEAVY_PROCESSOR_TESTS=1 -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
-		bash -c 'export PYTHONPATH=/app:/app/web SKIP_HEAVY_PROCESSOR_TESTS=1 && \
+		bash -c 'export PYTHONPATH=/app:/app/web:/app/processor/src SKIP_HEAVY_PROCESSOR_TESTS=1 && \
 		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
 
 test-web:
@@ -90,7 +91,7 @@ test-web-local: venv-web
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)
 test-coverage:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
-		export PYTHONPATH=/app:/app/web && \
+		export PYTHONPATH=/app:/app/web:/app/processor/src && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
 		python -m coverage report -m'
@@ -98,7 +99,7 @@ test-coverage:
 # Покрытие + HTML-отчёт в app/htmlcov/
 test-report:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
-		export PYTHONPATH=/app:/app/web && \
+		export PYTHONPATH=/app:/app/web:/app/processor/src && \
 		python -m coverage run -m unittest discover -s processor/tests -v && \
 		python -m coverage run -a -m pytest web/tests/ -v && \
 		python -m coverage report -m && \
