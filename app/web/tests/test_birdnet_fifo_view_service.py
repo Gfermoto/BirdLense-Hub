@@ -30,3 +30,27 @@ def test_build_birdnet_fifo_snapshot_prefers_db(app):
         assert snap.get("persist_source") == "sqlite"
         recent = snap.get("recent") or []
         assert any(r.get("species") == "DB Finch" for r in recent)
+
+
+def test_birdnet_fifo_table_accumulates_via_orm(app):
+    """Строки в birdnet_fifo_event накапливаются при последовательных INSERT."""
+    with app.app_context():
+        from models import BirdnetFifoEvent, db
+
+        before = db.session.query(BirdnetFifoEvent).count()
+        now = datetime.now(timezone.utc)
+        for i in range(5):
+            db.session.add(
+                BirdnetFifoEvent(
+                    ts_epoch=now.timestamp() + i * 0.01,
+                    payload={
+                        "species": f"Stack Test {i}",
+                        "timestamp": now.isoformat(),
+                        "source": "birdnet",
+                        "confidence": 0.7,
+                    },
+                )
+            )
+        db.session.commit()
+        after = db.session.query(BirdnetFifoEvent).count()
+        assert after == before + 5

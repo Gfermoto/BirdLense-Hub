@@ -95,6 +95,45 @@ class BirdnetFifoPersistTests(unittest.TestCase):
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["species"], "X")
 
+    def test_table_accumulates_multiple_rows(self):
+        """Проверка накопления: несколько INSERT подряд увеличивают COUNT(*) в SQLite."""
+        import sqlite3
+
+        p = BirdnetFifoPersist(self.db_path, busy_timeout_ms=5000)
+        p.start()
+        base = datetime.now(timezone.utc)
+        low = base.timestamp() - 3600 * 26
+        n = 7
+        for i in range(n):
+            ts = base.timestamp() + i * 0.05
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            p.enqueue_insert(
+                {
+                    "species": f"Accum Finch {i}",
+                    "confidence": 0.5 + i * 0.01,
+                    "timestamp": dt.isoformat(),
+                    "source": "birdnet",
+                    "_ts_epoch": ts,
+                }
+            )
+        p.enqueue_prune(low, 50_000)
+        p.wait_queue_drained()
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM birdnet_fifo_event").fetchone()[0]
+            species = set()
+            for (blob,) in conn.execute("SELECT payload FROM birdnet_fifo_event"):
+                pl = json.loads(blob) if isinstance(blob, str) else json.loads(blob.decode("utf-8"))
+                species.add(pl.get("species"))
+        finally:
+            conn.close()
+
+        self.assertEqual(count, n, "ожидали по строке на каждое событие")
+        self.assertEqual(len(species), n)
+        for i in range(n):
+            self.assertIn(f"Accum Finch {i}", species)
+
 
 if __name__ == "__main__":
     unittest.main()
