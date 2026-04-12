@@ -3,6 +3,7 @@
 Блоклист объектов удалён: при включённом catalog_strict_ingest любые имена
 вне allowlist автоматически идут в Unknown без отдельного списка.
 """
+
 from __future__ import annotations
 
 import re
@@ -23,10 +24,10 @@ from util import load_species_canonical_mapping
 
 def _norm_key(name: str) -> str:
     if not name:
-        return ''
+        return ""
     s = name.strip().lower()
-    s = s.replace('_', ' ').replace('-', ' ')
-    s = re.sub(r'\s+', ' ', s)
+    s = s.replace("_", " ").replace("-", " ")
+    s = re.sub(r"\s+", " ", s)
     return s
 
 
@@ -46,7 +47,7 @@ def find_duplicate_name_groups(
             Species.id,
             Species.name,
             Species.active,
-            func.count(SpeciesVisit.id).label('visit_count'),
+            func.count(SpeciesVisit.id).label("visit_count"),
         )
         .outerjoin(SpeciesVisit, SpeciesVisit.species_id == Species.id)
         .group_by(Species.id)
@@ -55,29 +56,25 @@ def find_duplicate_name_groups(
     )
     by_norm: dict[str, list[tuple[int, str, bool, int]]] = defaultdict(list)
     for sid, name, active, visit_count in rows:
-        nk = _norm_key(name or '') or (name or '').strip().lower()
-        by_norm[nk].append((int(sid), name or '', bool(active), int(visit_count or 0)))
+        nk = _norm_key(name or "") or (name or "").strip().lower()
+        by_norm[nk].append((int(sid), name or "", bool(active), int(visit_count or 0)))
+
     def _group_relevant(pairs: list[tuple[int, str, bool, int]]) -> bool:
         if skip_inactive_empty_groups:
-            return any(
-                active or visit_count > 0
-                for _sid, _name, active, visit_count in pairs
-            )
+            return any(active or visit_count > 0 for _sid, _name, active, visit_count in pairs)
         return True
 
-    multi = [
-        (nk, pairs)
-        for nk, pairs in by_norm.items()
-        if len(pairs) > 1 and _group_relevant(pairs)
-    ]
+    multi = [(nk, pairs) for nk, pairs in by_norm.items() if len(pairs) > 1 and _group_relevant(pairs)]
     multi.sort(key=lambda x: len(x[1]), reverse=True)
     out: list[dict[str, Any]] = []
     for nk, pairs in multi[:limit_groups]:
-        out.append({
-            'normalized_name': nk,
-            'count': len(pairs),
-            'species': [{'id': i, 'name': n} for i, n, _active, _visit_count in pairs],
-        })
+        out.append(
+            {
+                "normalized_name": nk,
+                "count": len(pairs),
+                "species": [{"id": i, "name": n} for i, n, _active, _visit_count in pairs],
+            }
+        )
     return out
 
 
@@ -90,17 +87,17 @@ def build_data_quality_report(
     dupes = find_duplicate_name_groups(session, limit_groups=duplicate_group_limit)
     total = session.query(func.count(Species.id)).scalar() or 0
     return {
-        'species_total': total,
-        'duplicate_name_group_count': len(dupes),
-        'duplicate_name_groups': dupes,
-        'hints': {
-            'merge_duplicates_endpoint': 'POST /api/ui/system/merge-duplicate-species',
-            'per_video_merge': 'POST /api/ui/videos/<id>/merge-species',
-            'registry_health': 'GET /api/ui/system/species-registry/health',
-            'classifier_catalog_dataset_alignment': (
-                'GET /api/ui/system/species-registry/classifier-dataset-alignment'
+        "species_total": total,
+        "duplicate_name_group_count": len(dupes),
+        "duplicate_name_groups": dupes,
+        "hints": {
+            "merge_duplicates_endpoint": "POST /api/ui/system/merge-duplicate-species",
+            "per_video_merge": "POST /api/ui/videos/<id>/merge-species",
+            "registry_health": "GET /api/ui/system/species-registry/health",
+            "classifier_catalog_dataset_alignment": (
+                "GET /api/ui/system/species-registry/classifier-dataset-alignment"
             ),
-            'catalog_reconcile': 'POST /api/ui/system/species-catalog/reconcile',
+            "catalog_reconcile": "POST /api/ui/system/species-catalog/reconcile",
         },
     }
 
@@ -114,13 +111,13 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
     mapping = load_species_canonical_mapping()
     service_names = {
         GENERIC_BIRD_SPECIES.strip().lower(),
-        'unknown',
+        "unknown",
     }
     rows = (
         session.query(
             Species.id,
             Species.name,
-            func.count(SpeciesVisit.id).label('visit_count'),
+            func.count(SpeciesVisit.id).label("visit_count"),
         )
         .outerjoin(SpeciesVisit, SpeciesVisit.species_id == Species.id)
         .group_by(Species.id)
@@ -128,7 +125,7 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
     )
     excluded: set[int] = set()
     for sid, name, visit_count in rows:
-        clean_name = str(name or '').strip()
+        clean_name = str(name or "").strip()
         if not clean_name:
             continue
         if clean_name.lower() in service_names:

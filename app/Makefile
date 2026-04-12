@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs deploy pull setup test test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -62,6 +62,13 @@ test:
 		bash -c 'export PYTHONPATH=/app:/app/web && python -m unittest discover processor/tests -v \
 		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
 
+# Тот же образ, но без интеграции TwoStageStrategy с реальными .pt (меньше RAM; #282).
+# Один прогон pytest по processor/tests (включая unittest.TestCase); ``-m "not heavy"`` оставляет немаркированные тесты.
+test-processor-light:
+	docker compose run --rm -e SKIP_HEAVY_PROCESSOR_TESTS=1 -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
+		bash -c 'export PYTHONPATH=/app:/app/web SKIP_HEAVY_PROCESSOR_TESTS=1 && \
+		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
+
 test-web:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v
 
@@ -71,13 +78,13 @@ venv-web:
 		python3 -m venv "$(VENV)" && \
 		"$(VENV)/bin/python" -m pip install -U pip; \
 	fi
-	env PIP_NO_USER=1 "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
+	env -u PIP_USER "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
 	@echo "venv-web: готово $(abspath $(VENV)) (используйте: make test-web-local)"
 
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
 # PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
 test-web-local: venv-web
-	env PYTHONNOUSERSITE=1 "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
+	env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)

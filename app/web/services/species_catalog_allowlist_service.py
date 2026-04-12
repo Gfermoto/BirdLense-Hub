@@ -9,6 +9,7 @@
 Ключ конфигурации: ``species.catalog_allowlist_file`` (путь относительно корня
 ``app/processor`` или абсолютный). Пусто — allowlist выключен.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,9 +22,9 @@ from util import load_species_canonical_mapping, normalize_species_to_canonical
 def _split_scientific_common_display(s: str) -> tuple[str, str] | None:
     """Разбор ``Scientific (Common)`` без regex с вложенными квантификаторами (ReDoS)."""
     stripped = str(s).strip()
-    if not stripped.endswith(')'):
+    if not stripped.endswith(")"):
         return None
-    open_idx = stripped.rfind('(')
+    open_idx = stripped.rfind("(")
     if open_idx <= 0:
         return None
     sci = stripped[:open_idx].rstrip()
@@ -35,21 +36,21 @@ def _split_scientific_common_display(s: str) -> tuple[str, str] | None:
 
 def _processor_root() -> str:
     web_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.abspath(os.path.join(web_dir, '..', 'processor'))
+    return os.path.abspath(os.path.join(web_dir, "..", "processor"))
 
 
 def _norm_key(name: str) -> str:
     if not name:
-        return ''
+        return ""
     s = name.strip().lower()
-    s = s.replace('_', ' ').replace('-', ' ')
-    s = re.sub(r'\s+', ' ', s)
+    s = s.replace("_", " ").replace("-", " ")
+    s = re.sub(r"\s+", " ", s)
     return s
 
 
 def resolve_allowlist_path(app_config_get) -> str | None:
     """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
-    rel = (app_config_get('species.catalog_allowlist_file') or '').strip()
+    rel = (app_config_get("species.catalog_allowlist_file") or "").strip()
     if not rel:
         return None
     if os.path.isabs(rel):
@@ -66,9 +67,9 @@ def _load_allowlist_norm_keys_cached(abspath: str) -> frozenset[str]:
     match against allowlist entries like "Cyanistes caeruleus (Eurasian Blue Tit)".
     """
     keys: set[str] = set()
-    with open(abspath, 'r', encoding='utf-8') as f:
+    with open(abspath, "r", encoding="utf-8") as f:
         for raw in f:
-            line = raw.split('#', 1)[0].strip()
+            line = raw.split("#", 1)[0].strip()
             if not line:
                 continue
             keys.add(_norm_key(line))
@@ -135,9 +136,9 @@ def ingest_name_matches_allowlist(
 def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
     """Raw display names from allowlist file (preserved case, stripped)."""
     names: list[str] = []
-    with open(abspath, 'r', encoding='utf-8') as f:
+    with open(abspath, "r", encoding="utf-8") as f:
         for raw in f:
-            line = raw.split('#', 1)[0].strip()
+            line = raw.split("#", 1)[0].strip()
             if line:
                 names.append(line)
     return tuple(names)
@@ -161,7 +162,7 @@ def allowlist_scientific_name_for_display_name(
     «Eurasian Magpie» — для Wikipedia/iNaturalist надёжнее искать по **Pica pica**,
     иначе попадаем на нерелевантную страницу общего имени.
     """
-    if not (display_name or '').strip():
+    if not (display_name or "").strip():
         return None
     target_keys = species_name_match_norm_keys(display_name)
     if not target_keys:

@@ -120,6 +120,8 @@ export interface Settings {
     notification_excluded_species: string[];
     settings_password?: string;
     contributor_password?: string;
+    /** Minutes without /api/* before login session clears; 0 = off. Default 30. */
+    session_idle_minutes?: number;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
     heimdall_url?: string; // URL to Heimdall dashboard; empty = no link in UI
     /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
@@ -151,6 +153,12 @@ export interface Settings {
     max_inactive_seconds: number; // Max inactivity before stopping recording
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
+    /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
+    min_confidence_binary_bird?: number | null;
+    /** Мягче для Squirrel/rodent. null → как min_confidence_binary. */
+    min_confidence_binary_squirrel?: number | null;
+    /** Bird с площадью bbox ≤ доли кадра — без species classifier; null/0 = выкл. */
+    bird_skip_classifier_max_area_frac?: number | null;
     min_confidence_to_process?: number; // Min combined confidence (voting × classifier); 0.15 = stricter
     /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
     min_confidence_to_notify?: number;

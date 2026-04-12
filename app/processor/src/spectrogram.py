@@ -2,6 +2,7 @@
 Generate spectrogram image from video file.
 Extracts audio with ffmpeg, creates mel spectrogram with librosa, saves as JPEG.
 """
+
 import logging
 import os
 import subprocess
@@ -23,7 +24,8 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
         import librosa
         import librosa.display
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
     except ImportError as e:
@@ -34,14 +36,24 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
     wav_fd = None
     try:
         # Extract audio with ffmpeg (mkstemp — атомарное создание, без гонок как у mktemp)
-        wav_fd, wav_path = tempfile.mkstemp(suffix='.wav')
+        wav_fd, wav_path = tempfile.mkstemp(suffix=".wav")
         os.close(wav_fd)
         wav_fd = None
         cmd = [
-            'ffmpeg', '-y', '-loglevel', 'error',
-            '-i', video_path,
-            '-vn', '-acodec', 'pcm_s16le', '-ar', '22050', '-ac', '1',
-            wav_path
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            video_path,
+            "-vn",
+            "-acodec",
+            "pcm_s16le",
+            "-ar",
+            "22050",
+            "-ac",
+            "1",
+            wav_path,
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
@@ -63,11 +75,11 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
 
         # Save as image
         fig, ax = plt.subplots(figsize=(12, 4))
-        librosa.display.specshow(S_db, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel', ax=ax)
+        librosa.display.specshow(S_db, sr=sr, hop_length=hop_length, x_axis="time", y_axis="mel", ax=ax)
         ax.set_ylim(0, 8000)  # Focus on bird vocal range
-        plt.axis('off')
+        plt.axis("off")
         plt.tight_layout(pad=0)
-        plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0)
+        plt.savefig(output_path, dpi=150, bbox_inches="tight", pad_inches=0)
         plt.close()
 
         return os.path.isfile(output_path)

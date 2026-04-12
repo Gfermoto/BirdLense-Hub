@@ -1,4 +1,5 @@
 """Триггер записи по скачку веса на MQTT (доп. вход к Frigate в OrMotionDetector)."""
+
 from __future__ import annotations
 
 import logging

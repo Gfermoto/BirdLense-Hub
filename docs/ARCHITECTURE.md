@@ -75,8 +75,8 @@ High-level layout of the single-container app, data paths, and integrations. For
 ## Database
 
 - **SQLite** — `data/db/birdlense.db` (path configurable via `DATA_DIR`; see [CONFIGURATION](./CONFIGURATION.md)).
-- **ORM:** Flask-SQLAlchemy; **schema evolution:** **Flask-Migrate / Alembic** — revision scripts under `app/web/migrations/`. On app startup, `create_app()` runs `db.create_all()` then `upgrade()` so new installs and upgrades apply the same path (replaces ad-hoc `ALTER TABLE` in application code for tracked columns).
-- **DDL policy (audit, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** table/column changes belong in new Alembic revisions under `migrations/versions/`, not in route or startup code. `create_app()` may still run SQLite **PRAGMA** tuning on connect (I/O performance; not schema). Other `session.execute` usages in app code are DML (e.g. deletes), not DDL.
+- **ORM:** Flask-SQLAlchemy; **schema evolution:** **Flask-Migrate / Alembic** — revision scripts under `app/web/migrations/`. On startup, `create_app()` calls **`app_startup.apply_schema_migrations_and_seed`**, which runs `db.create_all()` then `upgrade()` so new installs and upgrades share one path (replaces ad-hoc `ALTER TABLE` in application code for tracked columns).
+- **DDL policy (audit, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** table/column changes belong in new Alembic revisions under `migrations/versions/`, not in route or startup code. SQLite **PRAGMA** tuning on connect (I/O performance; not schema) is registered via **`flask_extensions.register_sqlite_connect_pragmas()`** from `create_app()`. Other `session.execute` usages in app code are DML (e.g. deletes), not DDL.
 - **Entities:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog, and related tables (see `app/web/models`).
 
 ---
@@ -120,6 +120,16 @@ High-level layout of the single-container app, data paths, and integrations. For
 | **Processor** | Heartbeat rows in ActivityLog (~60 s) |
 
 When `motion.source` is `frigate`, the **MQTT** tile reflects the Frigate/MQTT path.
+
+---
+
+## Maintainability baseline (pre-features gate)
+
+This is the **structural** checkpoint before prioritizing product features (GitHub Roadmap wave, Apr 2026):
+
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** Flask extensions, startup, and a thin `create_app` factory (`app/web/flask_extensions.py`, `app/web/app_startup.py`, `app/web/app.py`).
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** Detection stack is assembled in `processor_bootstrap.py` / `detection_stack.py`; runtime uses `DetectionStrategy` (ABC) with `detect` / `reset`. For typing and tests without loading YOLO, `app/processor/src/interfaces.py` defines **`DetectionStrategyProtocol`**; `FrameProcessor` depends on that protocol. See `app/processor/tests/test_detection_strategy_protocol.py`.
+- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** **TanStack Query** on primary routes; stable cache keys and HTTP helpers live under `app/ui/src/api/` (`queryKeys.ts`, `api.tsx` fetchers). Settings gate queries use the same `queryKeys.settings.*` contract. Further consolidation (more screens, context) stays in the issue.
 
 ---
 

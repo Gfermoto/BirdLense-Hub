@@ -1,4 +1,5 @@
 """Bird Directory «regional» scope: eBird region top + BirdNET-heard species."""
+
 from __future__ import annotations
 
 from app_config.app_config import app_config
@@ -21,7 +22,7 @@ def compute_regional_scope_species_ids() -> set[int]:
 
     birdnet_rows = (
         db.session.query(VideoSpecies.species_id)
-        .filter(VideoSpecies.detection_provider == 'birdnet_mqtt')
+        .filter(VideoSpecies.detection_provider == "birdnet_mqtt")
         .distinct()
         .all()
     )
@@ -29,12 +30,12 @@ def compute_regional_scope_species_ids() -> set[int]:
         if sid is not None:
             ids.add(int(sid))
 
-    api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
+    api_key = (app_config.get("secrets.ebird_api_key") or "").strip()
     if api_key:
         region_code = _build_region_code()
         top = get_region_top_species_cached(api_key, region_code)
         for com in top:
-            mapped = ebird_common_to_birdlense_name((com or '').strip())
+            mapped = ebird_common_to_birdlense_name((com or "").strip())
             if not mapped:
                 continue
             row = db.session.query(Species.id).filter_by(name=mapped).first()

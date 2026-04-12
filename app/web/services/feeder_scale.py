@@ -1,4 +1,5 @@
 """Последний вес с весов (MQTT → файл в DATA_DIR или сущность Home Assistant)."""
+
 from __future__ import annotations
 
 import json
@@ -17,13 +18,13 @@ from services.homeassistant_config import (
 
 logger = logging.getLogger(__name__)
 
-FEEDER_SCALE_STATE_FILE = 'feeder_scale_state.json'
+FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
 def _data_dir() -> str:
-    return os.environ.get('DATA_DIR') or os.path.join(
-        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')),
-        'data',
+    return os.environ.get("DATA_DIR") or os.path.join(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
+        "data",
     )
 
 
@@ -32,10 +33,10 @@ def _read_scale_file() -> dict | None:
     if not os.path.isfile(path):
         return None
     try:
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError) as e:
-        logger.debug('feeder scale file: %s', e)
+        logger.debug("feeder scale file: %s", e)
         return None
 
 
@@ -44,42 +45,39 @@ def _fetch_ha_scale(entity_id: str) -> dict | None:
     token = get_homeassistant_token()
     if not ha_url or not token or not entity_id:
         return None
-    url = f'{ha_url}/api/states/{entity_id}'
+    url = f"{ha_url}/api/states/{entity_id}"
     try:
         r = requests.get(
             url,
             headers={
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json',
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
             },
             timeout=5,
         )
         r.raise_for_status()
         body = r.json()
-        state = body.get('state')
-        if state in (None, 'unknown', 'unavailable'):
+        state = body.get("state")
+        if state in (None, "unknown", "unavailable"):
             return None
-        val = float(str(state).replace(',', '.'))
-        attrs = body.get('attributes') or {}
-        unit = attrs.get('unit_of_measurement') or app_config.get(
-            'integrations.scales.unit'
-        ) or 'kg'
-        unit = str(unit).strip().lower()[:8] or 'kg'
+        val = float(str(state).replace(",", "."))
+        attrs = body.get("attributes") or {}
+        unit = attrs.get("unit_of_measurement") or app_config.get("integrations.scales.unit") or "kg"
+        unit = str(unit).strip().lower()[:8] or "kg"
         return {
-            'weight': val,
-            'unit': unit,
-            'updated_at': body.get('last_changed')
-            or datetime.now(timezone.utc).isoformat(),
-            'source': 'homeassistant',
+            "weight": val,
+            "unit": unit,
+            "updated_at": body.get("last_changed") or datetime.now(timezone.utc).isoformat(),
+            "source": "homeassistant",
         }
     except (requests.RequestException, ValueError, TypeError) as e:
-        logger.debug('HA scale fetch: %s', e)
+        logger.debug("HA scale fetch: %s", e)
         return None
 
 
 def video_scales_estimate_payload(video) -> dict | None:
     """Блок для карточки записи: дельта массы в единицах из настроек (#167)."""
-    val = getattr(video, 'scales_weight_delta_kg', None)
+    val = getattr(video, "scales_weight_delta_kg", None)
     if val is None:
         return None
     try:
@@ -88,34 +86,34 @@ def video_scales_estimate_payload(video) -> dict | None:
         return None
     if kg < 0 or kg > 50:
         return None
-    unit = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
-    if unit == 'g':
+    unit = (app_config.get("integrations.scales.unit") or "kg").strip().lower() or "kg"
+    if unit == "g":
         return {
-            'delta_kg': kg,
-            'display_value': round(kg * 1000.0, 1),
-            'display_unit': 'g',
+            "delta_kg": kg,
+            "display_value": round(kg * 1000.0, 1),
+            "display_unit": "g",
         }
     return {
-        'delta_kg': kg,
-        'display_value': round(kg, 4),
-        'display_unit': 'kg',
+        "delta_kg": kg,
+        "display_value": round(kg, 4),
+        "display_unit": "kg",
     }
 
 
 def scale_mqtt_command_topic() -> str | None:
     """Топик команд (тара): явный или ``{mqtt_topic_prefix}/command``."""
-    explicit = (app_config.get('integrations.scales.mqtt_command_topic') or '').strip()
+    explicit = (app_config.get("integrations.scales.mqtt_command_topic") or "").strip()
     if explicit:
         return explicit
-    prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
-    return f'{prefix}/command' if prefix else None
+    prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
+    return f"{prefix}/command" if prefix else None
 
 
 def scale_tare_mqtt_available() -> bool:
     """Можно ли отправить тару через MQTT (префикс или явный command topic)."""
-    if not app_config.get('integrations.scales.enabled'):
+    if not app_config.get("integrations.scales.enabled"):
         return False
-    if (app_config.get('integrations.scales.source') or 'mqtt').strip().lower() != 'mqtt':
+    if (app_config.get("integrations.scales.source") or "mqtt").strip().lower() != "mqtt":
         return False
     return scale_mqtt_command_topic() is not None
 
@@ -124,48 +122,48 @@ def publish_scale_tare_via_mqtt() -> tuple[bool, str]:
     """Опубликовать payload тары (по умолчанию ``TARE``) в command topic."""
     topic = scale_mqtt_command_topic()
     if not topic:
-        return False, 'no_command_topic'
-    payload = (app_config.get('integrations.scales.mqtt_tare_payload') or 'TARE').strip() or 'TARE'
+        return False, "no_command_topic"
+    payload = (app_config.get("integrations.scales.mqtt_tare_payload") or "TARE").strip() or "TARE"
     return mqtt_publish_once(topic, payload, qos=1)
 
 
 def get_feeder_scale_snapshot() -> dict | None:
     """{ weight?, unit, updated_at, bird_present?, source? } или None."""
-    if not app_config.get('integrations.scales.enabled'):
+    if not app_config.get("integrations.scales.enabled"):
         return None
-    src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
-    if src == 'homeassistant':
-        eid = (app_config.get('integrations.scales.homeassistant_entity_id') or '').strip()
+    src = (app_config.get("integrations.scales.source") or "mqtt").strip().lower()
+    if src == "homeassistant":
+        eid = (app_config.get("integrations.scales.homeassistant_entity_id") or "").strip()
         return _fetch_ha_scale(eid)
     raw = _read_scale_file()
     if not raw:
         return None
     weight_f = None
     try:
-        w = raw.get('weight')
-        if w is not None and str(w).strip() != '':
+        w = raw.get("weight")
+        if w is not None and str(w).strip() != "":
             weight_f = float(w)
     except (TypeError, ValueError):
         weight_f = None
-    bp_raw = raw.get('bird_present')
+    bp_raw = raw.get("bird_present")
     bp_out = None
     if isinstance(bp_raw, bool):
         bp_out = bp_raw
     elif bp_raw is not None:
         s = str(bp_raw).strip().lower()
-        if s in ('true', '1', 'on', 'yes'):
+        if s in ("true", "1", "on", "yes"):
             bp_out = True
-        elif s in ('false', '0', 'off', 'no'):
+        elif s in ("false", "0", "off", "no"):
             bp_out = False
     if weight_f is None and bp_out is None:
         return None
     out: dict = {
-        'unit': str(raw.get('unit') or 'kg').lower()[:8],
-        'updated_at': raw.get('updated_at'),
-        'source': 'mqtt',
+        "unit": str(raw.get("unit") or "kg").lower()[:8],
+        "updated_at": raw.get("updated_at"),
+        "source": "mqtt",
     }
     if weight_f is not None:
-        out['weight'] = weight_f
+        out["weight"] = weight_f
     if bp_out is not None:
-        out['bird_present'] = bp_out
+        out["bird_present"] = bp_out
     return out

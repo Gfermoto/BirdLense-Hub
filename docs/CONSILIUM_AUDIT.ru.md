@@ -38,13 +38,13 @@
 
 Корневая причина:
 - `Species` может создаваться из сырого имени, которое не прошло строгий canonical resolve;
-- затем enrichment в [app/web/util.py](/home/gfer/BirdLense/app/web/util.py) подбирает внешние данные по строковому поиску в Wikipedia/iNaturalist;
+- затем enrichment в [app/web/util.py](../app/web/util.py) подбирает внешние данные по строковому поиску в Wikipedia/iNaturalist;
 - при отсутствии жесткой taxon-level валидации система принимает «похожий» внешний результат как истину.
 
 Основные точки риска:
-- [app/web/services/visit_processor.py](/home/gfer/BirdLense/app/web/services/visit_processor.py)
-- [app/web/services/species_registry_service.py](/home/gfer/BirdLense/app/web/services/species_registry_service.py)
-- [app/web/util.py](/home/gfer/BirdLense/app/web/util.py)
+- [app/web/services/visit_processor.py](../app/web/services/visit_processor.py)
+- [app/web/services/species_registry_service.py](../app/web/services/species_registry_service.py)
+- [app/web/util.py](../app/web/util.py)
 - [ui_species_media_routes.py](../app/web/routes/ui_species_media_routes.py) (карточка вида / summary / медиа); оркестратор [ui_routes.py](../app/web/routes/ui_routes.py)
 
 Почему это критично:
@@ -54,7 +54,7 @@
 
 ### C2. `create_app()` выполняет опасные data mutations и recovery-операции
 Корневая причина:
-- в [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) старт веба совмещен с `seed`, registry backfill, cleanup, background repair и опциональным enrich.
+- `create_app()` вызывает [app/web/app_startup.py](../app/web/app_startup.py): `seed`, registry backfill, cleanup, background repair и опциональный enrich (код вынесен из `app.py` для ясности; поведение то же).
 
 Почему это критично:
 - рестарт приложения меняет данные;
@@ -63,7 +63,7 @@
 
 ### C3. Processor pipeline не доказывает корректность видов до записи в БД
 Корневая причина:
-- в [app/processor/src/detection_strategy.py](/home/gfer/BirdLense/app/processor/src/detection_strategy.py), [app/processor/src/species_normalizer.py](/home/gfer/BirdLense/app/processor/src/species_normalizer.py), [app/processor/src/decision_maker.py](/home/gfer/BirdLense/app/processor/src/decision_maker.py) используются эвристики, которые делают результат правдоподобным, но не обязательно истинным.
+- в [app/processor/src/detection_strategy.py](../app/processor/src/detection_strategy.py), [app/processor/src/species_normalizer.py](../app/processor/src/species_normalizer.py), [app/processor/src/decision_maker.py](../app/processor/src/decision_maker.py) используются эвристики, которые делают результат правдоподобным, но не обязательно истинным.
 
 Ключевые риски:
 - single-stage COCO может пропускать не только птиц;
@@ -98,7 +98,7 @@
 - несогласованность между processor и web.
 
 ### H3. Startup notifications и startup repair остаются частью критического пути
-В [app/web/notifications.py](/home/gfer/BirdLense/app/web/notifications.py) и [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) старт всё еще содержит внешние или фоновые side-effects.
+В [app/web/notifications.py](../app/web/notifications.py), [app/web/app_startup.py](../app/web/app_startup.py) и конце `create_app` в [app/web/app.py](../app/web/app.py) старт всё ещё содержит внешние или фоновые side-effects.
 
 Риск:
 - непредсказуемый cold start;
@@ -107,9 +107,9 @@
 
 ### H4. E2E не является обязательным gate перед поставкой
 См.:
-- [.github/workflows/e2e-scheduled.yml](/home/gfer/BirdLense/.github/workflows/e2e-scheduled.yml)
-- [.github/workflows/ci-pr.yml](/home/gfer/BirdLense/.github/workflows/ci-pr.yml)
-- [.github/workflows/deploy.yml](/home/gfer/BirdLense/.github/workflows/deploy.yml)
+- [.github/workflows/e2e-scheduled.yml](../.github/workflows/e2e-scheduled.yml)
+- [.github/workflows/ci-pr.yml](../.github/workflows/ci-pr.yml)
+- [.github/workflows/deploy.yml](../.github/workflows/deploy.yml)
 
 Риск:
 - браузерные регрессии могут проходить PR и проявляться только после деплоя;
@@ -171,15 +171,15 @@
 
 | Операция | Файл | Verdict |
 |---|---|---|
-| `db.create_all()` и schema-safe `ALTER` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `allowed` |
-| `seed()` и базовая иерархия | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `allowed` |
-| `ensure_species_registry_seeded()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
-| `backfill_species_taxa(dry_run=False)` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
-| `_cleanup_legacy_import_placeholders()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
-| `repair_recently_reset_species_metadata()` thread | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
-| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `forbidden on startup` |
-| `notify_app_startup()` | [app/web/app.py](/home/gfer/BirdLense/app/web/app.py) | `gated` |
-| system metrics sampler | [app/web/routes/ui_system_routes.py](/home/gfer/BirdLense/app/web/routes/ui_system_routes.py) | `allowed` |
+| `db.create_all()` и schema-safe `ALTER` | [app/web/app_startup.py](../app/web/app_startup.py) | `allowed` |
+| `seed()` и базовая иерархия | [app/web/app_startup.py](../app/web/app_startup.py) | `allowed` |
+| `ensure_species_registry_seeded()` | [app/web/app_startup.py](../app/web/app_startup.py) | `gated` |
+| `backfill_species_taxa(dry_run=False)` | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `cleanup_legacy_import_placeholders()` | [app/web/app_startup.py](../app/web/app_startup.py) | `gated` |
+| `repair_recently_reset_species_metadata()` thread | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `notify_app_startup()` | [app/web/app.py](../app/web/app.py) | `gated` |
+| system metrics sampler | [app/web/routes/ui_system_routes.py](../app/web/routes/ui_system_routes.py) | `allowed` |
 
 Правило:
 - старт приложения должен поднимать веб;
@@ -271,6 +271,76 @@ flowchart TD
   ciHardening --> processorTrust
   processorTrust --> architecture[WaveEArchitecture]
 ```
+
+## Консилиум 2026-04-10: регрессия «Применить» на странице видео (PATCH детекции)
+
+**Симптом:** после смены дефолта `apply_scope` на `single_track` для PATCH без тела запрос с `source: video` без поля `apply_scope` обновлял только одну строку `VideoSpecies`, тогда как прежняя семантика UI видео — fanout по тому же старому виду на всём ролике (`legacy_fanout`).
+
+**Вердикт:** дефолт должен зависеть от `source`: `video` → `legacy_fanout`, иначе (Unknowns / прочее) → `single_track`. Явная передача `apply_scope` с клиента по-прежнему имеет приоритет.
+
+**Изменения:** [ui_corrections_dataset_routes.py](../app/web/routes/ui_corrections_dataset_routes.py) (`update_detection_species`); тест `test_patch_video_source_defaults_legacy_fanout` в [test_api.py](../app/web/tests/test_api.py). На UI ([DetectedSpecies.tsx](../app/ui/src/pages/VideoDetails/DetectedSpecies.tsx)): числовое значение Select (MUI отдаёт string), явный успех после одной правки, сообщение об ошибке из тела API, защита от «тихого» выхода без `detection id`.
+
+## Консилиум 2026-04-10: сумерки / ИК — ложные виды YOLO без «зажима мыши»
+
+**Вводные оператора:** включён **light gate** (требование яркости/контраста в UI); глобально поднимать `min_confidence_*` не хочется — пропадут чувствительные срабатывания на **мышь/грызунов** (мелкий объект, слабый сигнал).
+
+### Участники (роли)
+
+| Роль | Фокус |
+|------|--------|
+| **CV/ML** | калибровка, домен ИК/ночи, разделение ошибок детектора и классификатора |
+| **Системная архитектура** | где в pipeline разрешать компромисс «чувствительность vs точность вида» |
+| **Продукт / доверие данных** | что показывать пользователю и в уведомлениях при неуверенности |
+| **Полевой наблюдатель** | мышь и «птичий» шум на кормушке — разные сценарии, одна камера |
+
+### Диагноз по текущему коду (факты)
+
+1. **Light gate** ([`light_level_detector.py`](../app/processor/src/light_level_detector.py), [`frame_processor.py`](../app/processor/src/frame_processor.py)): даунсэмпл кадра → средняя яркость + **std как контраст**; при провале кадр **не идёт в YOLO** (cooldown 1 с). Это фильтр *до* бинарного детектора, одинаковый для всех классов.
+2. **Один порог на бинарный проход:** `min_confidence_binary` применяется ко **всем** боксам ([`frame_processor.py`](../app/processor/src/frame_processor.py) L83–84); в [`detection_strategy.py`](../app/processor/src/detection_strategy.py) `is_valid_detection` не различает Bird vs Squirrel.
+3. **После детектора** [`decision_maker.py`](../app/processor/src/decision_maker.py) уже **асимметричен**: для видов с `rodent|squirrel|chipmunk|sciurus` в имени — **более мягкий** порог классификатора (`_get_threshold_for_species`); для голого **Bird** — жёстче (`_promotable_generic_bird`: площадь bbox, число кадров, `best_frame_score`). То есть «не резать мышь глобальным порогом» частично уже заложено на **уровне решения по виду**, но не на **уровне появления ложной рамки «птица»** и не на **тонкой таксономии** (ложный «дрозд» при шуме).
+4. **Классификатор (EU/US)** на ИК-кадрах объективно смещён: мало данных ночного домена → рост ложных fine-grained меток при том же detector conf.
+
+**Вывод:** проблема — не только «порог», а **несовпадение домена** (день/ИК) и **одна скалярная политика** на весь two-stage путь. Глобальный tighten действительно бьёт по грызунам; нужна **раздельная политика по типу объекта и по качеству сцены**.
+
+### Ресерч (сжато, industry + академия)
+
+- **Per-class / per-task thresholds** в детекции и двухстадийных системах — стандартный приём, когда классы имеют разный prior и cost of miss (FROC по классам).
+- **Confidence calibration** (temperature scaling, Platt) на валидационном сете с **ночными** кадрами — снижает «уверенные» ложные виды без изменения архитектуры модели.
+- **Temporal consistency / hysteresis:** требование согласованности метки на **K из N** кадров трека резко режет случайные перескоки вида при шуме (video domain).
+- **Reject option / «unknown» head** (см. open-set recognition): явный выход «не уверен» лучше, чем выдуманный вид; для продукта — связка с `review_only` / отложенным уточнением.
+- **Domain adaptation / ночной fine-tune** на собственных кропах с метками оператора — единственный путь к устойчивому качеству без вечного подкручивания эвристик.
+
+### Вердикт консилиума: изящные направления (по убыванию «системность / эффект»)
+
+1. **Сцена + класс детектора в decision layer (рекомендовано как ядро)**  
+   Пробрасывать в трек/решение **скаляры качества сцены** (хотя бы `mean_brightness`, `contrast_std` с того же пути, что light gate, или флаг «прошёл порог с запасом / на грани»). При **низком контрасте**:
+   - для итоговой **тонкой таксономии птиц** — повышать требуемый `combined` или переводить в **`review_only` / Unknown** с сохранением визита для датасета;
+   - для **Squirrel/Rodent**, подтверждённых бинарником, — **не ужесточать** тот же множитель (уже отделены пороги в `_get_threshold_for_species` и fallback-ветки).  
+   Это **не костыль «один слайдер»**, а явная модель: *достоверность вида зависит от условий съёмки*.
+
+2. **Раздельные пороги бинарного детектора Bird vs Squirrel/Rodent**  
+   Расширение конфига и [`detection_strategy.py`](../app/processor/src/detection_strategy.py): разные `min_conf` в зависимости от `detector_label` после первого прохода (или два порога на фильтрацию до трекера). Позволяет **резать ночной шум именно в классе Bird**, оставляя чувствительность на грызунов. Требует аккуратной валидации на ваших весах.
+
+3. **Стабилизация вида по треку (temporal voting)**  
+   Не фиксировать финальный `species_name` с первого сильного кадра; требовать **устойчивого большинства** по классификатору на окне трека (или экспоненциальное сглаживание по logits). Уменьшает «мигание» редких видов в сумерках.
+
+4. **Отложенная таксономия (deferred refinement)**  
+   Визит сохранять с низкой доверия меткой уровня **Bird / Unknown**, лучший кроп — в очередь на **повторную классификацию** при дневном эталоне или второй лёгкой модели. Уведомления — по более строгому каналу. Прозрачно для оператора, не ломает охват.
+
+5. **Данные и дообучение (среднесрок)**  
+   Выгрузка ночных false/true в [dataset pipeline](../docs/CONFIGURATION.ru.md) + калибровка / partial fine-tune классификатора на ИК. Это **единственное** решение без потолка по качеству на дистанции.
+
+### Явные анти-паттерны (костыли)
+
+- Один глобальный рост `min_confidence_binary` / `min_confidence_to_process` «на ночь» без разделения классов — **противоречит** цели не терять мышь.
+- Полное отключение классификатора без замены политики хранения/уведомлений — загрязнение каталога и датасета generic-метками.
+- Игнорирование Frigate/BirdNET в сумерках: если они подмешивают вид, править нужно **fusion** и их пороги отдельно ([`detection` в user_config](../app/app_config/user_config.yaml): `cross_source_confidence_bonus`, standalone-пороги).
+
+### Следующие шаги (инженерные, приоритет)
+
+1. Спецификация: JSON-поля **scene_quality** на треке + правила в `DecisionMaker` только для **птиц** и fine-grained accept.  
+2. POC: два значения `min_confidence_binary` (bird vs non-bird) + регрессионные тесты на [`test_decision_maker.py`](../app/processor/tests/test_decision_maker.py) / интеграция.  
+3. Сбор ночного набора для калибровки и измерения **ECE** по классификатору на ИК.
 
 ## Минимальные immediate actions
 

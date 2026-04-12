@@ -1,6 +1,7 @@
 """
 OpenCV-based motion detector. Fallback when MQTT (Frigate) is unavailable.
 """
+
 import logging
 import time
 
@@ -52,9 +53,7 @@ class OpenCVMotionDetector:
             diff = cv2.absdiff(self._prev_gray, gray)
             thresh = cv2.threshold(diff, self.threshold, 255, cv2.THRESH_BINARY)[1]
             thresh = cv2.dilate(thresh, None, iterations=2)
-            contours, _ = cv2.findContours(
-                thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             motion = any(cv2.contourArea(c) >= self.min_contour_area for c in contours)
             self._prev_gray = gray
             if motion:
@@ -78,9 +77,7 @@ class OpenCVMotionDetector:
         diff = cv2.absdiff(self._prev_gray, gray)
         thresh = cv2.threshold(diff, self.threshold, 255, cv2.THRESH_BINARY)[1]
         thresh = cv2.dilate(thresh, None, iterations=2)
-        contours, _ = cv2.findContours(
-            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-        )
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         motion = any(cv2.contourArea(c) >= self.min_contour_area for c in contours)
         self._prev_gray = gray
         if motion:

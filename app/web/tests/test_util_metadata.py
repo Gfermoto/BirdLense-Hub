@@ -14,38 +14,38 @@ class TestInferMetadataSourceFields:
     def test_wikipedia_by_hostname(self):
         """Detect Wikipedia by trusted hostname."""
         src, url = infer_metadata_source_fields(
-            'Turdus merula',
-            'https://upload.wikimedia.org/wikipedia/commons/x.jpg',
+            "Turdus merula",
+            "https://upload.wikimedia.org/wikipedia/commons/x.jpg",
             None,
         )
-        assert src == 'wikipedia'
-        assert 'wikipedia.org' in (url or '')
+        assert src == "wikipedia"
+        assert "wikipedia.org" in (url or "")
 
     def test_inaturalist_host(self):
         """Detect iNaturalist by canonical hostname."""
         src, url = infer_metadata_source_fields(
             None,
-            'https://www.inaturalist.org/observations/1',
+            "https://www.inaturalist.org/observations/1",
             None,
         )
-        assert src == 'inaturalist'
-        assert 'inaturalist.org' in (url or '')
+        assert src == "inaturalist"
+        assert "inaturalist.org" in (url or "")
 
     def test_inaturalist_open_data_bucket(self):
         """Treat open-data asset as iNaturalist, but without fake taxon page."""
         src, url = infer_metadata_source_fields(
             None,
-            'https://inaturalist-open-data.s3.amazonaws.com/photo.jpg',
+            "https://inaturalist-open-data.s3.amazonaws.com/photo.jpg",
             None,
         )
-        assert src == 'inaturalist'
+        assert src == "inaturalist"
         assert url is None
 
     def test_unknown_host_no_substring_bypass(self):
         """Do not trust attacker-controlled lookalike URLs."""
         src, orig = infer_metadata_source_fields(
             None,
-            'https://evil-example.net/inaturalist.org',
+            "https://evil-example.net/inaturalist.org",
             None,
         )
         assert src is None
@@ -55,7 +55,7 @@ class TestInferMetadataSourceFields:
         """Подстрока inaturalist-open-data в query не должна включать чужой host (регрессия SSRF-эвристики)."""
         src, orig = infer_metadata_source_fields(
             None,
-            'https://evil.example/photo?ref=inaturalist-open-data',
+            "https://evil.example/photo?ref=inaturalist-open-data",
             None,
         )
         assert src is None
@@ -67,13 +67,14 @@ class TestExtractCommonForHierarchy:
 
     def test_parentheses(self):
         """Extract display name from parenthetical hierarchy labels."""
-        assert _extract_common_for_hierarchy('X (Northern Cardinal)') == (
-            'Northern Cardinal'
+        assert _extract_common_for_hierarchy("X (Northern Cardinal)") == ("Northern Cardinal")
+        assert _extract_common_for_hierarchy("Plain") == "Plain"
+        assert (
+            _extract_common_for_hierarchy(
+                "Bald Eagle (Adult, subadult)",
+            )
+            == "Adult, subadult"
         )
-        assert _extract_common_for_hierarchy('Plain') == 'Plain'
-        assert _extract_common_for_hierarchy(
-            'Bald Eagle (Adult, subadult)',
-        ) == 'Adult, subadult'
 
 
 class TestINaturalistMetadata:
@@ -89,62 +90,59 @@ class TestINaturalistMetadata:
 
             def json(self):
                 return {
-                    'results': [
+                    "results": [
                         {
-                            'id': 1,
-                            'name': 'Kitchen Knife',
-                            'iconic_taxon_name': 'Mollusca',
-                            'default_photo': {
-                                'medium_url': 'https://example.com/knife.jpg',
+                            "id": 1,
+                            "name": "Kitchen Knife",
+                            "iconic_taxon_name": "Mollusca",
+                            "default_photo": {
+                                "medium_url": "https://example.com/knife.jpg",
                             },
-                            'wikipedia_summary': 'Not a bird',
+                            "wikipedia_summary": "Not a bird",
                         },
                     ],
                 }
 
         def fake_get(url, params=None, timeout=None, headers=None):
-            seen['params'] = params
+            seen["params"] = params
             return _Resp()
 
-        monkeypatch.setattr(species_metadata_mod.requests, 'get', fake_get)
+        monkeypatch.setattr(species_metadata_mod.requests, "get", fake_get)
 
-        image_url, description, source_url = (
-            get_inaturalist_image_and_description("Abert's Towhee")
-        )
+        image_url, description, source_url = get_inaturalist_image_and_description("Abert's Towhee")
 
-        assert seen['params']['iconic_taxa'] == 'Aves'
+        assert seen["params"]["iconic_taxa"] == "Aves"
         assert image_url is None
         assert description is None
         assert source_url is None
 
     def test_rejects_order_level_piciformes_hit(self, monkeypatch):
         """Не брать Piciformes (taxon 17550) вместо вида — регрессия сорока/тукан."""
+
         class _Resp:
             def raise_for_status(self):
                 return None
 
             def json(self):
                 return {
-                    'results': [
+                    "results": [
                         {
-                            'id': 17550,
-                            'name': 'Piciformes',
-                            'rank': 'order',
-                            'rank_level': 40,
-                            'iconic_taxon_name': 'Aves',
-                            'default_photo': {
-                                'medium_url': 'https://inaturalist-open-data.s3.amazonaws.com/photos/2964195/medium.jpg',
+                            "id": 17550,
+                            "name": "Piciformes",
+                            "rank": "order",
+                            "rank_level": 40,
+                            "iconic_taxon_name": "Aves",
+                            "default_photo": {
+                                "medium_url": "https://inaturalist-open-data.s3.amazonaws.com/photos/2964195/medium.jpg",
                             },
-                            'wikipedia_summary': 'Woodpeckers order',
+                            "wikipedia_summary": "Woodpeckers order",
                         },
                     ],
                 }
 
-        monkeypatch.setattr(species_metadata_mod.requests, 'get', lambda *a, **k: _Resp())
+        monkeypatch.setattr(species_metadata_mod.requests, "get", lambda *a, **k: _Resp())
 
-        image_url, description, source_url = (
-            get_inaturalist_image_and_description('Pica pica')
-        )
+        image_url, description, source_url = get_inaturalist_image_and_description("Pica pica")
         assert image_url is None
         assert description is None
         assert source_url is None
@@ -156,44 +154,42 @@ class TestINaturalistMetadata:
 
             def json(self):
                 return {
-                    'results': [
+                    "results": [
                         {
-                            'id': 17550,
-                            'name': 'Piciformes',
-                            'rank': 'order',
-                            'rank_level': 40,
-                            'iconic_taxon_name': 'Aves',
-                            'default_photo': {'medium_url': 'https://example.com/wrong.jpg'},
-                            'wikipedia_summary': 'x',
+                            "id": 17550,
+                            "name": "Piciformes",
+                            "rank": "order",
+                            "rank_level": 40,
+                            "iconic_taxon_name": "Aves",
+                            "default_photo": {"medium_url": "https://example.com/wrong.jpg"},
+                            "wikipedia_summary": "x",
                         },
                         {
-                            'id': 131,
-                            'name': 'Pica pica',
-                            'rank': 'species',
-                            'rank_level': 10,
-                            'iconic_taxon_name': 'Aves',
-                            'default_photo': {'medium_url': 'https://example.com/magpie.jpg'},
-                            'wikipedia_summary': 'Magpie',
+                            "id": 131,
+                            "name": "Pica pica",
+                            "rank": "species",
+                            "rank_level": 10,
+                            "iconic_taxon_name": "Aves",
+                            "default_photo": {"medium_url": "https://example.com/magpie.jpg"},
+                            "wikipedia_summary": "Magpie",
                         },
                     ],
                 }
 
-        monkeypatch.setattr(species_metadata_mod.requests, 'get', lambda *a, **k: _Resp())
+        monkeypatch.setattr(species_metadata_mod.requests, "get", lambda *a, **k: _Resp())
 
-        image_url, description, source_url = (
-            get_inaturalist_image_and_description('Pica pica')
-        )
-        assert image_url == 'https://example.com/magpie.jpg'
-        assert 'Magpie' in (description or '')
-        assert source_url == 'https://www.inaturalist.org/taxa/131'
+        image_url, description, source_url = get_inaturalist_image_and_description("Pica pica")
+        assert image_url == "https://example.com/magpie.jpg"
+        assert "Magpie" in (description or "")
+        assert source_url == "https://www.inaturalist.org/taxa/131"
 
 
 class TestEnWikipediaBirdTitleVariant:
     def test_eurasian_magpie_matches_wikipedia_url_style(self):
         from web.species_metadata import _en_wikipedia_bird_title_variant
 
-        assert _en_wikipedia_bird_title_variant('Eurasian Magpie') == 'Eurasian magpie'
-        assert _en_wikipedia_bird_title_variant('Great Tit') == 'Great tit'
+        assert _en_wikipedia_bird_title_variant("Eurasian Magpie") == "Eurasian magpie"
+        assert _en_wikipedia_bird_title_variant("Great Tit") == "Great tit"
 
 
 class TestAllowlistScientificForDisplayName:
@@ -205,18 +201,13 @@ class TestAllowlistScientificForDisplayName:
             _load_allowlist_names_cached,
         )
 
-        p = tmp_path / 'allow.txt'
-        p.write_text('Pica pica (Eurasian Magpie)\n', encoding='utf-8')
+        p = tmp_path / "allow.txt"
+        p.write_text("Pica pica (Eurasian Magpie)\n", encoding="utf-8")
         abspath = str(p.resolve())
 
         monkeypatch.setattr(
-            'services.species_catalog_allowlist_service.resolve_allowlist_path',
+            "services.species_catalog_allowlist_service.resolve_allowlist_path",
             lambda _get: abspath,
         )
         _load_allowlist_names_cached.cache_clear()
-        assert (
-            allowlist_scientific_name_for_display_name(
-                'Eurasian Magpie', lambda *_a, **_k: None
-            )
-            == 'Pica pica'
-        )
+        assert allowlist_scientific_name_for_display_name("Eurasian Magpie", lambda *_a, **_k: None) == "Pica pica"

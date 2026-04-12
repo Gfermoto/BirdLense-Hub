@@ -6,7 +6,7 @@
 
 > **Security:** If your settings password was exposed in logs or chat, change it under **Settings → General**.
 >
-> **Placeholders:** `YOUR_HOST` — hostname or IP; `YOUR_SSH_HOST` — host alias from `~/.ssh/config`; `YOUR_REMOTE_DIR` — app root on the server (e.g. `/opt/birdlense`).
+> **Placeholders:** `YOUR_HOST` — hostname or IP; `YOUR_SSH_HOST` — host alias from `~/.ssh/config`; `YOUR_REMOTE_DIR` — app root on the server (**default deploy:** `/root/BirdLense`, see `DEPLOY_REMOTE_DIR`); `/opt/birdlense` in older docs is a legacy example.
 
 ---
 
@@ -17,12 +17,14 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 | Job | What it does |
 |-----|----------------|
 | **`python-security`** | **Bandit** on `web/` + `processor/src`; **pip-audit** on `web/requirements.txt` + `processor/requirements.txt` |
-| **`openapi-contract`** | **Ruff** (`ruff check web/ processor/src/`); **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci` + `npm run lint` + production build of the SPA (`app/ui`) |
+| **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` on `web/` + `processor/src/`; **radon cc** summary; **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + drift check on `src/generated/openapi-types.ts`; `npm run lint`; production build of the SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, **Settings UI coverage** report (artifact + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **catalog cards audit** script (artifact) |
 
 **`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
+
+**Policy & thresholds:** [CI_AND_QUALITY](./CI_AND_QUALITY.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TypeScript codegen).
 
 **Related workflows:** **CodeQL** (see [CODEQL](./CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
@@ -35,6 +37,8 @@ cd app && make test
 Runs processor `unittest` inside Docker (detection strategy, decision logic). Requires ultralytics; **production path is two_stage** (binary `.pt` + classifier `.pt`; CI runs `scripts/fetch-processor-weights.sh` for the active pair, and `--legacy-single-stage` is only for the compatibility `app/yolo11n.pt`; locally run the same before `make test` if paths are empty).
 
 > **Memory / RAM:** Processor tests load YOLO inside the container and can use **several GB of RAM**. On a **small VPS or laptop** with tight limits, `make test` (or the **`docker-tests`** CI job) may exit with **SIGKILL / exit 137** (OOM). Prefer a machine with **≥8 GB** free for Docker, close other heavy apps, or run tests on **GitHub Actions** instead of locally.
+
+**Lighter processor run (#282):** `cd app && make test-processor-light` sets `SKIP_HEAVY_PROCESSOR_TESTS=1` and runs `pytest processor/tests/ -m "not heavy"`. That skips the **TwoStageStrategy** integration tests that load real `.pt` weights (same skip if you export the env var yourself). Pytest tests can be marked with `@pytest.mark.heavy` to opt into the same skip. **CI** still runs the full `make test` by default.
 
 ### Web API tests
 

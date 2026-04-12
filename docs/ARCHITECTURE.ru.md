@@ -69,8 +69,8 @@
 ## База данных
 
 - **SQLite** — `data/db/birdlense.db` (каталог задаётся через `DATA_DIR`; см. [CONFIGURATION.ru](./CONFIGURATION.ru.md)).
-- **ORM:** Flask-SQLAlchemy; **эволюция схемы:** **Flask-Migrate / Alembic** — ревизии в `app/web/migrations/`. При старте `create_app()` выполняет `db.create_all()`, затем `upgrade()` — единый путь для новой установки и обновления (вместо разрозненных `ALTER TABLE` в коде приложения для отслеживаемых колонок).
-- **Политика DDL (аудит, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** изменения таблиц/колонок — только новые ревизии Alembic в `migrations/versions/`, не в роутах и не в «ручном» старте. В `create_app()` по-прежнему допустимы **PRAGMA** SQLite при подключении (производительность I/O; не схема). Прочие `session.execute` в коде приложения — DML (например `DELETE`), не DDL.
+- **ORM:** Flask-SQLAlchemy; **эволюция схемы:** **Flask-Migrate / Alembic** — ревизии в `app/web/migrations/`. При старте `create_app()` через **`app_startup.apply_schema_migrations_and_seed`** выполняет `db.create_all()`, затем `upgrade()` — единый путь для новой установки и обновления (вместо разрозненных `ALTER TABLE` в коде приложения для отслеживаемых колонок).
+- **Политика DDL (аудит, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** изменения таблиц/колонок — только новые ревизии Alembic в `migrations/versions/`, не в роутах и не в «ручном» старте. **PRAGMA** SQLite при подключении (I/O; не схема) регистрируются в **`flask_extensions.register_sqlite_connect_pragmas()`** из `create_app()`. Прочие `session.execute` в коде приложения — DML (например `DELETE`), не DDL.
 - **Модели:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog и связанные таблицы (`app/web/models`).
 
 ## Внешние зависимости
@@ -108,6 +108,16 @@
 | **Processor** | Последний heartbeat в ActivityLog (каждые 60 сек) |
 
 При `motion.source=frigate` показывается `mqtt` (триггер идёт через MQTT).
+
+---
+
+## Базовая линия maintainability (перед фичами)
+
+Структурная отметка перед приоритетом продуктовых задач (волна Roadmap, апр. 2026):
+
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** расширения Flask, старт приложения и тонкая фабрика `create_app` (`app/web/flask_extensions.py`, `app/web/app_startup.py`, `app/web/app.py`).
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** сборка стека детекции в `processor_bootstrap.py` / `detection_stack.py`; в рантайме — `DetectionStrategy` (ABC) с `detect` / `reset`. Для типизации и тестов без YOLO — **`DetectionStrategyProtocol`** в `app/processor/src/interfaces.py`; `FrameProcessor` зависит от протокола. Тест-заглушка: `app/processor/tests/test_detection_strategy_protocol.py`.
+- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** **TanStack Query** на ключевых экранах; общие ключи кэша и HTTP — `app/ui/src/api/queryKeys.ts`, фетчеры в `api.tsx`. Запросы «ворот» настроек используют те же `queryKeys.settings.*`. Остальное (ещё экраны, контекст) — в issue.
 
 ---
 

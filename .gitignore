@@ -15,6 +15,8 @@ app.log
 scripts/datasets/.cache/
 .venv-datasets/
 app/.venv/
+app/.ruff_cache/
+app/.pytest_cache/
 
 # Local virtualenv created by developer tooling
 .venv/
@@ -39,6 +41,11 @@ scripts/deploy.local.sh
 **/*secret*
 # ESPHome: пример секретов — в репозитории (см. esphome/README.md)
 !esphome/secrets.yaml.example
+# Код без секретов: имена файлов совпадают с шаблонами **/*secret* / **/*password*
+!app/app_config/secret_env.py
+!app/web/services/ui_password_service.py
+!app/web/tests/test_secret_env.py
+!app/web/tests/test_ui_password_service.py
 
 # Hugging Face — токены (hf_...) не должны попадать в репо
 **/.cache/huggingface/

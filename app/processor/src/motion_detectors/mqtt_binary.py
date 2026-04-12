@@ -2,6 +2,7 @@
 MQTT binary sensor motion detector. Subscribes to a topic (e.g. Tasmota PIR, Shelly),
 triggers when payload is ON/1/true.
 """
+
 import logging
 import os
 import threading
@@ -11,7 +12,7 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
-ON_VALUES = {'ON', '1', 'true', 'True', 'yes'}
+ON_VALUES = {"ON", "1", "true", "True", "yes"}
 
 
 class MQTTBinaryMotionDetector:
@@ -52,7 +53,7 @@ class MQTTBinaryMotionDetector:
             payload = msg.payload.decode().strip().upper()
         except (UnicodeDecodeError, AttributeError):
             return
-        if payload in ('ON', '1', 'TRUE', 'YES'):
+        if payload in ("ON", "1", "TRUE", "YES"):
             logger.info("MQTT binary sensor: motion ON")
             self._event.set()
 

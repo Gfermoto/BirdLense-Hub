@@ -54,8 +54,19 @@ jobs:
       - name: Install web test dependencies
         run: pip install -r web/requirements.txt
 
-      - name: Ruff lint (web/ + processor/src)
-        run: pip install ruff==0.9.2 && ruff check web/ processor/src/
+      - name: Ruff lint + format check (web/ + processor/src)
+        run: |
+          pip install ruff==0.9.2
+          ruff check web/ processor/src/
+          ruff format web/ processor/src/ --check
+
+      - name: Radon cyclomatic complexity (summary only)
+        run: |
+          pip install radon==6.0.1
+          {
+            echo '### Radon cc (web/ + processor/src/)'
+            radon cc -a -s web/ processor/src/ || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
@@ -81,6 +92,9 @@ jobs:
       - name: Birdfood / push subscribe smoke (auth gates)
         run: python -m pytest web/tests/test_settings_mutations_smoke.py -q
 
+      - name: Strict UI API auth (production gate #279)
+        run: python -m pytest web/tests/test_strict_ui_api_auth.py -q
+
       - name: Processor POST /videos smoke
         run: python -m pytest web/tests/test_processor_videos_smoke.py -q
 
@@ -101,9 +115,18 @@ jobs:
           cache: npm
           cache-dependency-path: app/ui/package-lock.json
 
-      - name: Install, lint & build UI
+      - name: Install UI dependencies
+        run: npm ci
+
+      - name: OpenAPI → TypeScript (drift check vs committed file)
+        working-directory: ${{ github.workspace }}
         run: |
-          npm ci
+          (cd app/ui && npm run codegen:openapi)
+          git diff --exit-code -- app/ui/src/generated/openapi-types.ts
+
+      - name: Lint & build UI
+        working-directory: app/ui
+        run: |
           npm run lint
           npm run build
 

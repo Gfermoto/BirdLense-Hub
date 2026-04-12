@@ -5,25 +5,13 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import { useQuery } from '@tanstack/react-query';
-import { BASE_API_URL } from '../../api/api';
+import { useProcessorLogsQuery } from '../../hooks/useSystemQueries';
 
 export const ProcessorLogs = () => {
   const { t } = useTranslation();
   const [lines, setLines] = useState(100);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['processorLogs', lines],
-    refetchInterval: 10000,
-    queryFn: async () => {
-      const res = await fetch(
-        `${BASE_API_URL}/system/logs?lines=${lines}`,
-        { credentials: 'include' }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  });
+  const { data, isLoading, error, refetch } = useProcessorLogsQuery(lines);
 
   return (
     <Box>

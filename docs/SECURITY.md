@@ -23,11 +23,11 @@
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| **Critical** | API has no authentication by default. Endpoints `/api/ui/*` are accessible without checks. | Add mandatory auth for production (API key, JWT, or reverse proxy with auth). |
+| ~~**Critical**~~ **Mitigated (opt-in)** | `/api/ui/*` open by default for home LAN. | Set **`BIRDLENSE_STRICT_API_AUTH=1`** with production runtime: require session (after `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` or Bearer), or **MCP Bearer**. Bootstrap: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. See [CONFIGURATION](./CONFIGURATION.md). |
 | ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy writes to `.env`. |
 | **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
 | **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |
-| **High** | Settings session: `session.permanent = True`, no timeout. | Add session timeout (15–30 min). |
+| ~~**High**~~ **Fixed** | Settings session had no idle timeout. | `general.session_idle_minutes` (default 30; `0` disables). See [CONFIGURATION](./CONFIGURATION.md). |
 | **Medium** | Endpoints `/api/ui/system/*` (logs, metrics, purge, scan) protected only by `settings_check_access()`. | Ensure mandatory `settings_password`. |
 
 ---
@@ -38,9 +38,9 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy writes to `.env`. |
 | ~~**Critical**~~ **Fixed** | `GET /api/ui/settings` returned full config with secrets. | Secrets are masked (`***`), placeholder on save does not overwrite real value. |
-| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Store in env or secret manager; do not write to YAML. |
+| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Prefer **`BIRDLENSE_*` env overlays** (see [CONFIGURATION](./CONFIGURATION.md)) or a secret manager; avoid persisting secrets in YAML in production. |
 | **High** | OpenAPI describes `telegram_bot_token`, `secrets.openweather_api_key` in Settings schema. | Add `x-sensitive: true`, do not expose in examples. |
-| **Medium** | `settings_password` in plain text. In default_config: *"Consider hashing for production"*. | Store hash (bcrypt/argon2). |
+| ~~**Medium**~~ **Mitigated** | `settings_password` / `contributor_password` historically plain text. | New saves from UI use **bcrypt**; legacy plaintext still verifies; optional **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** override at runtime. |
 | **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |
 
 **Operator runbook:** [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) — full inventory, rotation steps, verification, rollback, emergency note template ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
@@ -53,6 +53,8 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | `location /data/` with `alias /app/data/` — request `/data/../.env` could read `/app/.env`. | Added check `if ($request_uri ~* "\.\.") { return 403; }` in all nginx configs. |
 | **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. |
+
+**Mitigations (pick one for production exposure):** (1) **IP allowlist** — more specific `location ^~ /data/recordings/` with `allow`/`deny` (see `app/nginx/examples/recordings_allowlist.conf.snippet` and [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md)); (2) **no direct nginx media** — reverse proxy only passes `/api/…` and authenticated stream routes; (3) **`auth_request`** to the Hub session endpoint — advanced, not shipped by default.
 
 **Test:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — if vulnerable, returns 200.
 
@@ -122,7 +124,7 @@ Current baseline (Mar 2026): scan of full git history completed with **no leaks 
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| **High** | Container runs as root (no `USER` in Dockerfile). | Add non-privileged user and `USER`. |
+| ~~**High**~~ **Fixed** | Container processes ran as root. | Nginx/Gunicorn/processor run as `birdlense` (**uid 1000**); entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. See [INSTALL](./INSTALL.md). |
 | **Medium** | Base image `ultralytics/ultralytics` — heavy. | Consider multi-stage with minimal runtime. |
 | **Low** | No `--privileged`, `--cap-add`. | Do not add. |
 
@@ -144,7 +146,7 @@ Current baseline (Mar 2026): scan of full git history completed with **no leaks 
 3. ~~**Path traversal**~~ ✅ Nginx: block `\.\.`, `%2e%2e`. `image_path` in notify: `_is_safe_image_path`.
 4. **Restrict access** to `/data/recordings/` (auth or IP).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
-6. **Docker:** run container as non-privileged user.
+6. ~~**Docker:** run as non-privileged user.~~ ✅ Processes use uid 1000 (`birdlense`).
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
 8. **Secret rotation:** follow [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (prod ops).
 

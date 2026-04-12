@@ -3,6 +3,7 @@ Go2RTC stream source for x86/Docker deployment.
 Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg.
 Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Celeron).
 """
+
 import logging
 import os
 import subprocess
@@ -21,8 +22,9 @@ MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
 
 
-def _build_stream_url(go2rtc_url: str, stream_name: str, direct_url: str = None,
-                      username: str = None, password: str = None) -> str:
+def _build_stream_url(
+    go2rtc_url: str, stream_name: str, direct_url: str = None, username: str = None, password: str = None
+) -> str:
     """Build RTSP URL for stream. Frigate/Go2RTC: HTTP API=1984, RTSP=8554."""
     if direct_url:
         return direct_url
@@ -90,9 +92,7 @@ class Go2RTCStreamSource:
         self._connect()
 
         # Start MJPEG streaming server for live view
-        self._streaming_output, self._streaming_thread = start_streaming_server(
-            port=mjpeg_port
-        )
+        self._streaming_output, self._streaming_thread = start_streaming_server(port=mjpeg_port)
 
     def _connect(self) -> bool:
         """Open RTSP connection. Returns True if successful."""
@@ -129,9 +129,7 @@ class Go2RTCStreamSource:
             time.sleep(self._reconnect_delay)
             if self._connect():
                 return True
-            self._reconnect_delay = min(
-                self._reconnect_delay * 2, MAX_RECONNECT_DELAY
-            )
+            self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
     def _read_frame(self):
         """Read one frame. Returns (frame_bgr, success)."""
@@ -154,10 +152,25 @@ class Go2RTCStreamSource:
         try:
             r = subprocess.run(
                 [
-                    "ffmpeg", "-y", "-loglevel", "error",
-                    "-hwaccel", "vaapi", "-hwaccel_device", VAAPI_DEVICE,
-                    "-hwaccel_output_format", "vaapi",
-                    "-f", "lavfi", "-i", "nullsrc=d=1", "-t", "0.01", "-f", "null", "-",
+                    "ffmpeg",
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-hwaccel",
+                    "vaapi",
+                    "-hwaccel_device",
+                    VAAPI_DEVICE,
+                    "-hwaccel_output_format",
+                    "vaapi",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "nullsrc=d=1",
+                    "-t",
+                    "0.01",
+                    "-f",
+                    "null",
+                    "-",
                 ],
                 capture_output=True,
                 timeout=10,
@@ -200,15 +213,24 @@ class Go2RTCStreamSource:
             cmd = [
                 "ffmpeg",
                 "-y",
-                "-hwaccel", "vaapi",
-                "-hwaccel_device", VAAPI_DEVICE,
-                "-hwaccel_output_format", "vaapi",
-                "-rtsp_transport", "tcp",
-                "-i", self.stream_url,
-                "-c:v", "h264_vaapi",
-                "-b:v", "2M",
-                "-c:a", "aac",
-                "-movflags", "+faststart",
+                "-hwaccel",
+                "vaapi",
+                "-hwaccel_device",
+                VAAPI_DEVICE,
+                "-hwaccel_output_format",
+                "vaapi",
+                "-rtsp_transport",
+                "tcp",
+                "-i",
+                self.stream_url,
+                "-c:v",
+                "h264_vaapi",
+                "-b:v",
+                "2M",
+                "-c:a",
+                "aac",
+                "-movflags",
+                "+faststart",
                 output,
             ]
         else:
@@ -217,32 +239,49 @@ class Go2RTCStreamSource:
                 cmd = [
                     "ffmpeg",
                     "-y",
-                    "-rtsp_transport", "tcp",
-                    "-i", self.stream_url,
-                    "-analyzeduration", "10M",
-                    "-probesize", "10M",
-                    "-c:v", "libx264",
-                    "-preset", "veryfast",
-                    "-crf", "23",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac",
-                    "-b:a", "128k",
-                    "-movflags", "+faststart",
+                    "-rtsp_transport",
+                    "tcp",
+                    "-i",
+                    self.stream_url,
+                    "-analyzeduration",
+                    "10M",
+                    "-probesize",
+                    "10M",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-crf",
+                    "23",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    "-movflags",
+                    "+faststart",
                     output,
                 ]
             else:
                 cmd = [
                     "ffmpeg",
                     "-y",
-                    "-rtsp_transport", "tcp",
-                    "-i", self.stream_url,
-                    "-c:v", "copy",
-                    "-c:a", "aac",
-                    "-movflags", "+faststart",
+                    "-rtsp_transport",
+                    "tcp",
+                    "-i",
+                    self.stream_url,
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    "aac",
+                    "-movflags",
+                    "+faststart",
                     output,
                 ]
         try:
             from encoding_status import set_last_encoding_used
+
             if use_vaapi:
                 set_last_encoding_used("vaapi")
             elif self._record_stream_codec == "h264" and not use_vaapi:

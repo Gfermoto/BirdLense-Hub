@@ -2,6 +2,7 @@
 
 Extracted from util.py. util.py re-exports everything here for backward compatibility.
 """
+
 import ipaddress
 import os
 import secrets
@@ -19,32 +20,33 @@ VERIFY_PASSWORD_WINDOW = 60
 
 def _is_production_runtime() -> bool:
     values = {
-        (os.environ.get('FLASK_ENV') or '').strip().lower(),
-        (os.environ.get('BIRDLENSE_ENV') or '').strip().lower(),
+        (os.environ.get("FLASK_ENV") or "").strip().lower(),
+        (os.environ.get("BIRDLENSE_ENV") or "").strip().lower(),
     }
-    return any(value in {'production', 'prod'} for value in values)
+    return any(value in {"production", "prod"} for value in values)
 
 
 def _get_session_role():
     """Return 'admin' | 'contributor' | None from session."""
     from flask import session
-    return session.get('access_role')
+
+    return session.get("access_role")
 
 
 def _has_contributor_password():
     """True if contributor tier is configured (two-password mode)."""
-    return bool((app_config.get('general.contributor_password') or '').strip())
+    return bool((app_config.get("general.contributor_password") or "").strip())
 
 
 def mcp_bearer_authorized():
     """True если заголовок Authorization: Bearer совпадает с MCP_TOKEN / mcp.token."""
     from flask import request
 
-    mcp_token = (os.environ.get('MCP_TOKEN') or app_config.get('mcp.token') or '').strip()
+    mcp_token = (os.environ.get("MCP_TOKEN") or app_config.get("mcp.token") or "").strip()
     if not mcp_token:
         return False
-    auth = request.headers.get('Authorization') or ''
-    if not auth.startswith('Bearer '):
+    auth = request.headers.get("Authorization") or ""
+    if not auth.startswith("Bearer "):
         return False
     token = auth[7:].strip()
     return secrets.compare_digest(token, mcp_token)
@@ -57,8 +59,9 @@ def settings_check_access():
     Also accepts MCP token (Authorization: Bearer) for server-to-server calls.
     """
     from flask import session
-    admin_pw = (app_config.get('general.settings_password') or '').strip()
-    contrib_pw = (app_config.get('general.contributor_password') or '').strip()
+
+    admin_pw = (app_config.get("general.settings_password") or "").strip()
+    contrib_pw = (app_config.get("general.contributor_password") or "").strip()
 
     if mcp_bearer_authorized():
         return True
@@ -67,10 +70,10 @@ def settings_check_access():
         if _is_production_runtime():
             return False
         return True
-    role = session.get('access_role')
-    if role == 'admin':
+    role = session.get("access_role")
+    if role == "admin":
         return True
-    if not contrib_pw and role and session.get('settings_unlocked'):
+    if not contrib_pw and role and session.get("settings_unlocked"):
         return True  # legacy: single password
     return False
 
@@ -83,11 +86,12 @@ def settings_read_access():
 def admin_track_regen_access():
     """Тяжёлая перегенерация треков (одна запись): только админ, если включён пароль помощника."""
     from flask import session
+
     if not settings_check_access():
         return False
     if not _has_contributor_password():
         return True
-    return session.get('access_role') == 'admin'
+    return session.get("access_role") == "admin"
 
 
 def admin_settings_yaml_access():
@@ -100,7 +104,7 @@ def admin_settings_yaml_access():
         return False
     if not _has_contributor_password():
         return True
-    return session.get('access_role') == 'admin'
+    return session.get("access_role") == "admin"
 
 
 def settings_yaml_safe_export_access():
@@ -113,16 +117,17 @@ def settings_yaml_safe_export_access():
 def contributor_or_admin_access():
     """Check if contributor or admin can access a route."""
     from flask import session
-    admin_pw = (app_config.get('general.settings_password') or '').strip()
-    contrib_pw = (app_config.get('general.contributor_password') or '').strip()
+
+    admin_pw = (app_config.get("general.settings_password") or "").strip()
+    contrib_pw = (app_config.get("general.contributor_password") or "").strip()
     if not admin_pw and not contrib_pw:
         if _is_production_runtime():
             return False
         return True
-    role = session.get('access_role')
-    if role in ('admin', 'contributor'):
+    role = session.get("access_role")
+    if role in ("admin", "contributor"):
         return True
-    if not contrib_pw and session.get('settings_unlocked'):
+    if not contrib_pw and session.get("settings_unlocked"):
         return True  # legacy
     return False
 
@@ -136,27 +141,29 @@ def client_ip_for_rate_limit(request) -> str:
     """
 
     def _parse_ip_fragment(raw: str):
-        s = (raw or '').strip()
+        s = (raw or "").strip()
         if not s:
             return None
-        if ',' in s:
-            s = s.split(',')[0].strip()
+        if "," in s:
+            s = s.split(",")[0].strip()
         try:
             ipaddress.ip_address(s)
             return s
         except ValueError:
             return None
 
-    trusted_proxy = (os.environ.get('TRUSTED_PROXY') or '').strip().lower() in (
-        '1', 'true', 'yes',
+    trusted_proxy = (os.environ.get("TRUSTED_PROXY") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
     )
     if trusted_proxy:
-        for hdr in ('X-Real-IP', 'X-Forwarded-For'):
-            parsed = _parse_ip_fragment(request.headers.get(hdr, ''))
+        for hdr in ("X-Real-IP", "X-Forwarded-For"):
+            parsed = _parse_ip_fragment(request.headers.get(hdr, ""))
             if parsed:
                 return parsed
-    ra = (getattr(request, 'remote_addr', None) or '').strip()
-    return ra or 'unknown'
+    ra = (getattr(request, "remote_addr", None) or "").strip()
+    return ra or "unknown"
 
 
 def _clear_verify_password_attempts(ip: str) -> None:

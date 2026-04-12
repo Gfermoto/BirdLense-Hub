@@ -52,7 +52,9 @@ import {
   resolveImageUrl,
   type ReviewQueueDeletePreview,
   type UnknownDetection,
+  getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -84,11 +86,16 @@ function UnknownCard({
   const [correcting, setCorrecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  const pendingSpeciesChange =
+    selectedSpeciesId !== '' && Number(selectedSpeciesId) !== Number(detection.species_id);
+
   const handleCorrect = async () => {
     if (selectedSpeciesId === '' || correcting) return;
+    const sid = Number(selectedSpeciesId);
+    if (!Number.isFinite(sid)) return;
     setCorrecting(true);
     try {
-      await onCorrect(detection.id, selectedSpeciesId as number);
+      await onCorrect(detection.id, sid);
       setSelectedSpeciesId('');
     } finally {
       setCorrecting(false);
@@ -195,11 +202,31 @@ function UnknownCard({
               <InputLabel id={`unknowns-correct-species-${detection.id}`}>{t('unknowns.correctSpecies')}</InputLabel>
               <Select
                 labelId={`unknowns-correct-species-${detection.id}`}
-                value={selectedSpeciesId}
+                displayEmpty
+                value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
                 label={t('unknowns.correctSpecies')}
-                onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
+                renderValue={(v) => {
+                  if (v === '' || v === undefined) {
+                    return (
+                      <Typography component="span" variant="body2" color="text.secondary">
+                        {t('unknowns.speciesSelectPlaceholder')}
+                      </Typography>
+                    );
+                  }
+                  const id = Number(v);
+                  const row = speciesList.find((s) => Number(s.id) === id);
+                  return row?.name ?? String(v);
+                }}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedSpeciesId(v === '' ? '' : Number(v));
+                }}
                 disabled={!canEdit}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
               >
+                <MenuItem value="">
+                  <em>{t('unknowns.speciesSelectPlaceholder')}</em>
+                </MenuItem>
                 {speciesList.map((s) => (
                   <MenuItem key={s.id} value={s.id}>
                     {s.name}
@@ -212,7 +239,13 @@ function UnknownCard({
                 <Button
                   variant="contained"
                   size="small"
-                  disabled={selectedSpeciesId === '' || correcting || !canEdit}
+                  disabled={
+                    selectedSpeciesId === '' ||
+                    !Number.isFinite(Number(selectedSpeciesId)) ||
+                    Number(selectedSpeciesId) === Number(detection.species_id) ||
+                    correcting ||
+                    !canEdit
+                  }
                   onClick={handleCorrect}
                 >
                   {correcting ? '...' : t('unknowns.apply')}
@@ -223,14 +256,16 @@ function UnknownCard({
               title={
                 !canEdit
                   ? t('unknowns.passwordRequired')
-                  : t('unknowns.confirmCorrectHelp')
+                  : pendingSpeciesChange
+                    ? t('unknowns.confirmBlockedPendingApply')
+                    : t('unknowns.confirmCorrectHelp')
               }
             >
               <span>
                 <Button
                   variant="outlined"
                   size="small"
-                  disabled={confirming || !canEdit}
+                  disabled={confirming || !canEdit || pendingSpeciesChange}
                   onClick={handleConfirm}
                 >
                   {confirming ? '...' : t('unknowns.confirmCorrect')}
@@ -370,10 +405,6 @@ export function UnknownsPage() {
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       const msg = data?.updated_count && data.updated_count > 1
         ? t('video.correctedInVideos', { count: data.updated_count })
@@ -381,8 +412,8 @@ export function UnknownsPage() {
       setSuccessVideoId(resolveVideoIdForDetection(variables.detectionId));
       setCorrectSuccess(msg);
     },
-    onError: (err: Error) => {
-      setCorrectError(err.message || t('errors.loadSightings'));
+    onError: (err: unknown) => {
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
 
@@ -394,13 +425,12 @@ export function UnknownsPage() {
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
       setCorrectSuccess(t('unknowns.corrected'));
     },
-    onError: (err: Error) => {
-      setCorrectError(err.message || t('errors.loadSightings'));
+    onError: (err: unknown) => {
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
 
@@ -623,7 +653,7 @@ export function UnknownsPage() {
         onSuccess={(role) => {
           setUnlocked(true, role || 'admin');
           setShowUnlockDialog(false);
-          queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
         }}
         onClose={() => setShowUnlockDialog(false)}
       />
@@ -700,7 +730,7 @@ export function UnknownsPage() {
 
       {unknowns?.map((d) => (
         <UnknownCard
-          key={d.id}
+          key={`${d.id}-${d.species_id}`}
           detection={d}
           speciesList={speciesList}
           onCorrect={handleCorrect}

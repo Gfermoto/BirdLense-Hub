@@ -3,51 +3,34 @@
 from flask import request
 
 from auth import settings_check_access
-from models import BirdFood, db
+from services.api_json_validation import parse_request_json_dict
+from services.bird_food_service import (
+    create_bird_food_from_payload,
+    list_bird_food_for_api,
+    toggle_bird_food_active,
+)
 
 
 def register_ui_birdfood_routes(app):
-    @app.route('/api/ui/birdfood', methods=['POST'])
+    """Зарегистрировать маршруты /api/ui/birdfood."""
+
+    @app.route("/api/ui/birdfood", methods=["POST"])
     def add_birdfood():
         if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        data = request.json
-        name = data.get('name')
-        if not name:
-            return {'error': 'Name is required'}, 400
+            return {"error": "Password required"}, 403
+        data, err = parse_request_json_dict(request)
+        if err is not None:
+            return err, 400
+        body, status = create_bird_food_from_payload(data)
+        return body, status
 
-        bird_food = BirdFood.query.filter_by(name=name).first()
-        if bird_food:
-            return {'error': 'Bird food with this name already exists'}, 400
-
-        bird_food = BirdFood(name=name, active=data.get('active', True))
-        db.session.add(bird_food)
-        db.session.commit()
-
-        return {'message': 'Bird food added successfully'}, 201
-
-    @app.route('/api/ui/birdfood/<int:birdfood_id>/toggle', methods=['PATCH'])
+    @app.route("/api/ui/birdfood/<int:birdfood_id>/toggle", methods=["PATCH"])
     def toggle_birdfood(birdfood_id):
         if not settings_check_access():
-            return {'error': 'Password required'}, 403
-        bird_food = db.session.get(BirdFood, birdfood_id)
-        if not bird_food:
-            return {'error': 'Bird food not found'}, 404
+            return {"error": "Password required"}, 403
+        body, status = toggle_bird_food_active(birdfood_id)
+        return body, status
 
-        bird_food.active = not bird_food.active
-        db.session.commit()
-
-        return {'message': 'Bird food active status toggled successfully'}, 200
-
-    @app.route('/api/ui/birdfood', methods=['GET'])
+    @app.route("/api/ui/birdfood", methods=["GET"])
     def get_birdfood():
-        bird_food = BirdFood.query.order_by(BirdFood.name.asc()).all()
-        bird_food_list = [{
-            'id': food.id,
-            'name': food.name,
-            'active': food.active,
-            'description': food.description,
-            'image_url': food.image_url,
-        } for food in bird_food]
-
-        return bird_food_list, 200
+        return list_bird_food_for_api(), 200

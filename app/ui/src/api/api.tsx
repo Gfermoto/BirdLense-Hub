@@ -21,6 +21,20 @@ export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
 axios.defaults.timeout = 30000;
 
+/** Текст ошибки из JSON `{ error: string }` или fallback (для мутаций UI). */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    if (data && typeof data === 'object' && data !== null && 'error' in data) {
+      const msg = (data as { error?: unknown }).error;
+      if (typeof msg === 'string' && msg.trim()) return msg;
+    }
+    if (err.message) return err.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 /** Длинный timeout для опроса фоновых job (spectrogram / tracks): дефолт 30s рвёт poll на медленном ответе. */
 export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
 
@@ -651,6 +665,74 @@ export const updateSettings = async (settings: Settings) => {
     delete perf.redis_url_effective_masked;
   }
   const response = await axios.patch(`${BASE_API_URL}/settings`, payload, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+// --- System monitor / processor logs (#296)
+export type SystemMetricsLive = {
+  cpu: { percent: number };
+  memory: { total: number; used: number; percent: number };
+  disk: { total: number; used: number; percent: number };
+  encoding: string;
+  gpu_percent: number | null;
+};
+
+export type SystemMetricsHistorySample = {
+  t: string;
+  cpu: number;
+  memory: number;
+  disk: number;
+  gpu: number | null;
+};
+
+export type SystemMetricsHistoryResponse = {
+  samples: SystemMetricsHistorySample[];
+  sample_interval_seconds?: number;
+  retention_hours?: number;
+  hours_requested?: number;
+};
+
+export type SystemVisitorStats = {
+  period_days: number;
+  unique_visits: number;
+  browser_count?: number;
+  active_days: number;
+  device_breakdown?: Record<string, number>;
+  method: string;
+};
+
+export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> => {
+  const response = await axios.get(`${BASE_API_URL}/system/metrics`);
+  return response.data;
+};
+
+export const fetchSystemMetricsHistory = async (
+  hours: number,
+  maxPoints = 500,
+): Promise<SystemMetricsHistoryResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/metrics/history`, {
+    params: { hours, max_points: maxPoints },
+  });
+  return response.data;
+};
+
+export const fetchSystemVisitors = async (days: number): Promise<SystemVisitorStats> => {
+  const response = await axios.get(`${BASE_API_URL}/system/visitors`, {
+    params: { days },
+  });
+  return response.data;
+};
+
+export type ProcessorLogsResponse = {
+  lines?: string[];
+  path?: string;
+};
+
+export const fetchProcessorLogs = async (lines: number): Promise<ProcessorLogsResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/logs`, {
+    params: { lines },
     withCredentials: true,
   });
   return response.data;
@@ -1304,10 +1386,15 @@ export const updateDetectionSpecies = async (
   detectionId: number,
   speciesId: number,
   source?: 'unknowns' | 'video',
+  applyScope?: 'single_track' | 'whole_visit' | 'legacy_fanout',
 ): Promise<{ message: string; species_id: number; updated_count?: number }> => {
   const response = await axios.patch(
     `${BASE_API_URL}/detections/${detectionId}`,
-    { species_id: speciesId, source },
+    {
+      species_id: speciesId,
+      source,
+      ...(applyScope ? { apply_scope: applyScope } : {}),
+    },
     { withCredentials: true },
   );
   return response.data;

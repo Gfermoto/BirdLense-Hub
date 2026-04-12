@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
 from ultralytics import YOLO
@@ -9,15 +9,82 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
+def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str, Any]) -> float:
+    """
+    Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
+
+    Если заданы отдельные пороги Bird/Squirrel, берётся min(...) с базовым — иначе жёсткий
+    порог на птицу отбросил бы белок/мышей на этапе движка.
+    """
+    try:
+        base = float(base_min)
+    except (TypeError, ValueError):
+        base = 0.22
+    b_raw = app_config.get("processor.min_confidence_binary_bird")
+    s_raw = app_config.get("processor.min_confidence_binary_squirrel")
+    bird_m = float(b_raw) if b_raw is not None else base
+    squ_m = float(s_raw) if s_raw is not None else base
+    return min(base, bird_m, squ_m)
+
+
+def per_label_binary_conf_threshold(
+    detector_label: str,
+    base_min: float,
+    app_config: Mapping[str, Any],
+) -> float:
+    """Порог confidence бинарника после нормализации метки (Bird / Squirrel)."""
+    try:
+        base = float(base_min)
+    except (TypeError, ValueError):
+        base = 0.22
+    b_raw = app_config.get("processor.min_confidence_binary_bird")
+    s_raw = app_config.get("processor.min_confidence_binary_squirrel")
+    bird_m = float(b_raw) if b_raw is not None else base
+    squ_m = float(s_raw) if s_raw is not None else base
+    if detector_label == "Bird":
+        return bird_m
+    if detector_label == "Squirrel":
+        return squ_m
+    return base
+
+
+def bird_skip_classifier_area_limit(app_config: Mapping[str, Any]) -> Optional[float]:
+    """
+    Если > 0: для боксов Bird с площадью <= этого порога (доля кадра) не вызывать классификатор вида.
+
+    Снижает ложные «синицы» на мелком объекте (мышь), ошибочно помеченном бинарником как Bird.
+    """
+    raw = app_config.get("processor.bird_skip_classifier_max_area_frac")
+    if raw is None:
+        return None
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if v <= 0.0:
+        return None
+    return min(v, 1.0)
+
+
+def should_skip_bird_species_classifier(
+    detector_label: str,
+    box_area_norm: float,
+    app_config: Mapping[str, Any],
+) -> bool:
+    lim = bird_skip_classifier_area_limit(app_config)
+    if lim is None:
+        return False
+    if str(detector_label or "").strip() != "Bird":
+        return False
+    try:
+        area = float(box_area_norm)
+    except (TypeError, ValueError):
+        return False
+    return area > 0.0 and area <= lim
+
+
 def _normalize_species_filter_text(name: str) -> str:
-    return (
-        str(name or '')
-        .replace('_OR_', '/')
-        .replace('_', ' ')
-        .replace('-', ' ')
-        .strip()
-        .lower()
-    )
+    return str(name or "").replace("_OR_", "/").replace("_", " ").replace("-", " ").strip().lower()
 
 
 def _regional_class_ids(
@@ -29,10 +96,7 @@ def _regional_class_ids(
     return [
         cid
         for cid, label in names.items()
-        if any(
-            key and key in _normalize_species_filter_text(label)
-            for key in regional_keys
-        )
+        if any(key and key in _normalize_species_filter_text(label) for key in regional_keys)
     ]
 
 
@@ -49,6 +113,7 @@ def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
 @dataclass
 class DetectionResult:
     """Одна детекция: track_id, вид, confidence, bbox, crop (опционально)."""
+
     track_id: int
     detector_label: str
     class_name: Optional[str]
@@ -59,8 +124,15 @@ class DetectionResult:
     blur_variance: Optional[float] = None
     crop: Optional[np.ndarray] = None
 
+
 class DetectionStrategy(ABC):
-    def __init__(self, min_center_dist: float = 0.1, min_box_size_px: int = 64, blur_threshold: float = 100.0, max_blur_checks: int = 3):
+    def __init__(
+        self,
+        min_center_dist: float = 0.1,
+        min_box_size_px: int = 64,
+        blur_threshold: float = 100.0,
+        max_blur_checks: int = 3,
+    ):
         self.min_center_dist = min_center_dist
         self.min_box_size_px = min_box_size_px
         self.blur_threshold = blur_threshold
@@ -70,10 +142,10 @@ class DetectionStrategy(ABC):
         """Лапласиан: выше variance — резче. (is_blur, variance)."""
         if image is None or image.size == 0:
             return True, 0.0
-        
+
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         variance = cv2.Laplacian(gray, cv2.CV_64F).var()
-        
+
         is_blur = variance < self.blur_threshold
         if is_blur:
             logger.info(f"Blur detected: variance={variance:.1f} < threshold={self.blur_threshold}")
@@ -82,19 +154,22 @@ class DetectionStrategy(ABC):
     @abstractmethod
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
         pass
-    
+
     @abstractmethod
     def reset(self):
         pass
-
 
     def is_valid_detection(self, bbox: List[float], conf: float, min_confidence: float) -> bool:
         """Центр не у краёв, confidence >= min."""
         x1, y1, x2, y2 = bbox
         center_x = (x1 + x2) / 2
         center_y = (y1 + y2) / 2
-        if (center_x < self.min_center_dist or center_x > (1 - self.min_center_dist) or
-                center_y < self.min_center_dist or center_y > (1 - self.min_center_dist)):
+        if (
+            center_x < self.min_center_dist
+            or center_x > (1 - self.min_center_dist)
+            or center_y < self.min_center_dist
+            or center_y > (1 - self.min_center_dist)
+        ):
             return False
         if conf < min_confidence:
             return False
@@ -114,100 +189,90 @@ class TwoStageStrategy(DetectionStrategy):
         blur_threshold: float = 100.0,
         max_blur_checks: int = 3,
         max_classifications_per_frame: int = 2,
-        classification_scheduler: str = 'priority',
+        classification_scheduler: str = "priority",
         binary_imgsz: int = 320,
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
-        self.classification_scheduler = (
-            str(classification_scheduler or 'priority').strip().lower()
-        )
+        self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
-        raw_scope = detector_scope or ['Bird', 'Squirrel']
-        self.detector_scope = {
-            self._normalize_detector_label(name)
-            for name in raw_scope
-            if str(name or '').strip()
-        }
-        
+        raw_scope = detector_scope or ["Bird", "Squirrel"]
+        self.detector_scope = {self._normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
+
         self.binary_model = YOLO(binary_model_path, task="detect")
         self.classifier_model = YOLO(classifier_model_path, task="classify")
-        
+
         # Round-robin index for classification scheduling
         self._classification_index = 0
         self._frame_index = 0
         self._track_stats = {}
-        
+
         # Pre-calculate allowed class IDs for regional species
         self.classes = None
         if self.regional_species:
             self.logger.info(
-                'Initializing with regional species filters: %s',
+                "Initializing with regional species filters: %s",
                 self.regional_species,
             )
-            self.classes = _regional_class_ids(
-                self.classifier_model.names, self.regional_species)
-            enabled_classes = [
-                self._normalize_class_name(self.classifier_model.names[i])
-                for i in self.classes
-            ]
+            self.classes = _regional_class_ids(self.classifier_model.names, self.regional_species)
+            enabled_classes = [self._normalize_class_name(self.classifier_model.names[i]) for i in self.classes]
             self.logger.info(
-                'Regional species filters active: %s classes enabled.',
+                "Regional species filters active: %s classes enabled.",
                 len(self.classes),
             )
-            self.logger.info('Enabled classes: %s', enabled_classes)
+            self.logger.info("Enabled classes: %s", enabled_classes)
 
         # Warmup
-        self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), tracker="bytetrack.yaml", persist=True, verbose=False)
+        self.binary_model.track(
+            np.zeros((320, 320, 3), dtype=np.uint8), tracker="bytetrack.yaml", persist=True, verbose=False
+        )
         self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), verbose=False)
 
     def _normalize_class_name(self, name: str) -> str:
         """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
-        return name.replace('_OR_', '/').replace('_', ' ')
+        return name.replace("_OR_", "/").replace("_", " ")
 
     def _normalize_detector_label(self, name: str) -> str:
-        raw = self._normalize_class_name(str(name or '')).replace('-', ' ').strip()
-        key = ' '.join(raw.lower().split())
+        raw = self._normalize_class_name(str(name or "")).replace("-", " ").strip()
+        key = " ".join(raw.lower().split())
         if not key:
-            return 'Unknown'
-        if any(token in key for token in ('squirrel', 'chipmunk', 'rodent')):
-            return 'Squirrel'
-        if any(token in key for token in ('bird', 'avian')):
-            return 'Bird'
-        return ' '.join(part.capitalize() for part in raw.split())
+            return "Unknown"
+        if any(token in key for token in ("squirrel", "chipmunk", "rodent")):
+            return "Squirrel"
+        if any(token in key for token in ("bird", "avian")):
+            return "Bird"
+        return " ".join(part.capitalize() for part in raw.split())
 
     def _classify_crop(self, crop: np.ndarray) -> Tuple[Optional[str], float]:
         """Классификация кропа. (species_name, confidence)."""
         result_cls = self.classifier_model(crop, verbose=False)
-        
+
         if not result_cls or not result_cls[0].probs:
             return None, 0.0
-            
+
         probs = result_cls[0].probs
-        
+
         if self.classes:
             # Filter for best regional species
             all_probs = probs.data
             valid_probs = {cid: all_probs[cid].item() for cid in self.classes if cid < len(all_probs)}
-            
+
             if valid_probs:
                 best_id, best_conf = max(valid_probs.items(), key=lambda x: x[1])
                 return self._normalize_class_name(result_cls[0].names[best_id]), best_conf
             return "Unknown", 0.0
-            
+
         top1_idx = probs.top1
         return self._normalize_class_name(result_cls[0].names[top1_idx]), probs.top1conf.item()
 
     def _priority_score(self, box: dict) -> tuple:
-        stats = self._track_stats.get(box['track_id']) or {}
-        classified_count = int(stats.get('classified_count') or 0)
-        last_classified_frame = int(stats.get('last_classified_frame') or -1)
+        stats = self._track_stats.get(box["track_id"]) or {}
+        classified_count = int(stats.get("classified_count") or 0)
+        last_classified_frame = int(stats.get("last_classified_frame") or -1)
         frames_since_classified = (
-            self._frame_index - last_classified_frame
-            if last_classified_frame >= 0
-            else self._frame_index + 1
+            self._frame_index - last_classified_frame if last_classified_frame >= 0 else self._frame_index + 1
         )
         novelty_boost = 2 if classified_count == 0 else 0
         scarcity_boost = max(0, 3 - classified_count)
@@ -215,31 +280,34 @@ class TwoStageStrategy(DetectionStrategy):
             novelty_boost,
             scarcity_boost,
             frames_since_classified,
-            float(box.get('box_area_norm') or 0.0),
-            float(box.get('conf') or 0.0),
-            -int(box.get('track_id') or 0),
+            float(box.get("box_area_norm") or 0.0),
+            float(box.get("conf") or 0.0),
+            -int(box.get("track_id") or 0),
         )
 
     def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
         """Binary detect -> validate -> classify a bounded round-robin slice of tracks."""
-        if not hasattr(self, '_frame_index'):
+        from app_config.app_config import app_config
+
+        if not hasattr(self, "_frame_index"):
             self._frame_index = 0
-        if not hasattr(self, '_track_stats'):
+        if not hasattr(self, "_track_stats"):
             self._track_stats = {}
-        if not hasattr(self, 'classification_scheduler'):
-            self.classification_scheduler = 'priority'
+        if not hasattr(self, "classification_scheduler"):
+            self.classification_scheduler = "priority"
         self._frame_index += 1
-        imgsz = getattr(self, 'binary_imgsz', 320)
+        imgsz = getattr(self, "binary_imgsz", 320)
+        track_conf = binary_track_ultralytics_conf_floor(min_confidence, app_config)
         results = _track_maybe_retry(
             self.binary_model,
             frame,
             persist=True,
-            conf=min_confidence,
+            conf=track_conf,
             verbose=False,
             imgsz=imgsz,
             tracker=tracker_config,
         )
-            
+
         if not results or len(results[0].boxes) == 0:
             return []
 
@@ -250,58 +318,59 @@ class TwoStageStrategy(DetectionStrategy):
         track_ids = boxes.id.int().cpu().tolist()
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
-        xyxyn = boxes.xyxyn.cpu().numpy() # normalized for output
-        xyxy = boxes.xyxy.cpu().numpy()   # absolute for cropping
+        xyxyn = boxes.xyxyn.cpu().numpy()  # normalized for output
+        xyxy = boxes.xyxy.cpu().numpy()  # absolute for cropping
 
         h, w, _ = frame.shape
 
         valid_boxes = []
         for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
-            if not self.is_valid_detection(bbox_norm, conf, min_confidence):
-                continue
             detector_name = self.binary_model.names[class_idx]
             detector_label = self._normalize_detector_label(detector_name)
+            eff_min = per_label_binary_conf_threshold(
+                detector_label,
+                min_confidence,
+                app_config,
+            )
+            if not self.is_valid_detection(bbox_norm, conf, eff_min):
+                continue
             if self.detector_scope and detector_label not in self.detector_scope:
                 continue
 
             x1, y1, x2, y2 = map(int, bbox_abs)
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(w, x2), min(h, y2)
-             
+
             if x2 <= x1 or y2 <= y1:
                 continue
             box_w = x2 - x1
             box_h = y2 - y1
             if box_w < self.min_box_size_px or box_h < self.min_box_size_px:
                 continue
-            
-            valid_boxes.append({
-                'track_id': track_id,
-                'detector_label': detector_label,
-                'conf': conf,
-                'bbox_norm': bbox_norm,
-                'crop_coords': (x1, y1, x2, y2),
-                'box_area_norm': max(0.0, float(bbox_norm[2] - bbox_norm[0])) * max(
-                    0.0, float(bbox_norm[3] - bbox_norm[1])
-                ),
-            })
-        
+
+            valid_boxes.append(
+                {
+                    "track_id": track_id,
+                    "detector_label": detector_label,
+                    "conf": conf,
+                    "bbox_norm": bbox_norm,
+                    "crop_coords": (x1, y1, x2, y2),
+                    "box_area_norm": max(0.0, float(bbox_norm[2] - bbox_norm[0]))
+                    * max(0.0, float(bbox_norm[3] - bbox_norm[1])),
+                }
+            )
+
         if not valid_boxes:
             return []
         classification_budget = min(
             len(valid_boxes),
-            max(1, int(getattr(self, 'max_classifications_per_frame', 1))),
+            max(1, int(getattr(self, "max_classifications_per_frame", 1))),
         )
-        if self.classification_scheduler == 'round_robin':
-            valid_boxes.sort(key=lambda b: b['track_id'])
+        if self.classification_scheduler == "round_robin":
+            valid_boxes.sort(key=lambda b: b["track_id"])
             start_idx = self._classification_index % len(valid_boxes)
-            self._classification_index = (
-                self._classification_index + classification_budget
-            ) % len(valid_boxes)
-            scheduled_boxes = [
-                valid_boxes[(start_idx + i) % len(valid_boxes)]
-                for i in range(len(valid_boxes))
-            ]
+            self._classification_index = (self._classification_index + classification_budget) % len(valid_boxes)
+            scheduled_boxes = [valid_boxes[(start_idx + i) % len(valid_boxes)] for i in range(len(valid_boxes))]
         else:
             scheduled_boxes = sorted(
                 valid_boxes,
@@ -310,74 +379,88 @@ class TwoStageStrategy(DetectionStrategy):
             )
         scan_limit = min(
             len(scheduled_boxes),
-            max(1, int(getattr(self, 'max_blur_checks', 1) or 1)),
+            max(1, int(getattr(self, "max_blur_checks", 1) or 1)),
         )
         classified_by_track = {}
         fallback_box = None
         for box in scheduled_boxes[:scan_limit]:
+            if should_skip_bird_species_classifier(
+                box["detector_label"],
+                box["box_area_norm"],
+                app_config,
+            ):
+                continue
             if fallback_box is None:
                 fallback_box = box
-            x1, y1, x2, y2 = box['crop_coords']
+            x1, y1, x2, y2 = box["crop_coords"]
             crop = frame[y1:y2, x1:x2]
             is_blur, variance = self.is_blurry(crop)
             if is_blur:
                 continue
-            classified_by_track[box['track_id']] = {
-                'crop': crop.copy(),
-                'blur_variance': variance,
+            classified_by_track[box["track_id"]] = {
+                "crop": crop.copy(),
+                "blur_variance": variance,
             }
             if len(classified_by_track) >= classification_budget:
                 break
         if not classified_by_track and fallback_box is not None:
-            x1, y1, x2, y2 = fallback_box['crop_coords']
+            x1, y1, x2, y2 = fallback_box["crop_coords"]
             crop = frame[y1:y2, x1:x2]
             _, variance = self.is_blurry(crop)
-            classified_by_track[fallback_box['track_id']] = {
-                'crop': crop.copy(),
-                'blur_variance': variance,
+            classified_by_track[fallback_box["track_id"]] = {
+                "crop": crop.copy(),
+                "blur_variance": variance,
             }
         for box in valid_boxes:
             stats = self._track_stats.setdefault(
-                box['track_id'],
-                {'classified_count': 0, 'last_classified_frame': -1},
+                box["track_id"],
+                {"classified_count": 0, "last_classified_frame": -1},
             )
-            if box['track_id'] in classified_by_track:
-                stats['classified_count'] = int(stats.get('classified_count') or 0) + 1
-                stats['last_classified_frame'] = self._frame_index
+            if box["track_id"] in classified_by_track:
+                stats["classified_count"] = int(stats.get("classified_count") or 0) + 1
+                stats["last_classified_frame"] = self._frame_index
         detection_results = []
         for box in valid_boxes:
             species_name = None
             crop = None
             blur_variance = None
-            combined_conf = box['conf']  # Default to detector confidence
+            combined_conf = box["conf"]  # Default to detector confidence
             classifier_conf = None
-            
-            classified = classified_by_track.get(box['track_id'])
-            if classified:
-                species_name, cls_conf = self._classify_crop(classified['crop'])
-                classifier_conf = cls_conf
-                combined_conf = box['conf'] * cls_conf
 
-                crop = classified['crop']
-                blur_variance = classified['blur_variance']
-            
-            detection_results.append(DetectionResult(
-                track_id=box['track_id'],
-                detector_label=box['detector_label'],
-                class_name=species_name,
-                confidence=combined_conf,
-                detector_confidence=box['conf'],
-                classifier_confidence=classifier_conf,
-                bbox=box['bbox_norm'],
-                blur_variance=blur_variance,
-                crop=crop
-            ))
-             
+            classified = classified_by_track.get(box["track_id"])
+            if classified and should_skip_bird_species_classifier(
+                box["detector_label"],
+                box["box_area_norm"],
+                app_config,
+            ):
+                classified = None
+            if classified:
+                species_name, cls_conf = self._classify_crop(classified["crop"])
+                classifier_conf = cls_conf
+                combined_conf = box["conf"] * cls_conf
+
+                crop = classified["crop"]
+                blur_variance = classified["blur_variance"]
+
+            detection_results.append(
+                DetectionResult(
+                    track_id=box["track_id"],
+                    detector_label=box["detector_label"],
+                    class_name=species_name,
+                    confidence=combined_conf,
+                    detector_confidence=box["conf"],
+                    classifier_confidence=classifier_conf,
+                    bbox=box["bbox_norm"],
+                    blur_variance=blur_variance,
+                    crop=crop,
+                )
+            )
+
         return detection_results
 
     def reset(self):
         self._classification_index = 0
         self._frame_index = 0
         self._track_stats = {}
-        if hasattr(self.binary_model.predictor, 'trackers'):
+        if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()

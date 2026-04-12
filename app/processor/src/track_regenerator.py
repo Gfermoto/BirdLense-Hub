@@ -2,6 +2,7 @@
 Regenerate ByteTrack tracks for an existing video file.
 Runs YOLO+ByteTrack on each frame and returns detections with frames.
 """
+
 import logging
 import os
 import time
@@ -12,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
     """Prefer specific species over Bird/Unknown for the same track."""
-    name = str(detection.get('species_name') or '').strip().lower()
-    if name == 'unknown':
+    name = str(detection.get("species_name") or "").strip().lower()
+    if name == "unknown":
         species_rank = 0
-    elif name in {'bird', 'squirrel', 'rodent'}:
+    elif name in {"bird", "squirrel", "rodent"}:
         species_rank = 1
     else:
         species_rank = 2
-    has_frames = 1 if detection.get('frames') else 0
-    confidence = float(detection.get('confidence') or 0.0)
+    has_frames = 1 if detection.get("frames") else 0
+    confidence = float(detection.get("confidence") or 0.0)
     return (species_rank, has_frames, confidence)
 
 
@@ -28,13 +29,13 @@ def _dedupe_track_detections(detections: list[dict]) -> list[dict]:
     """Collapse accidental duplicate outputs for the same track window."""
     deduped: dict[tuple, dict] = {}
     for detection in detections:
-        track_id = detection.get('track_id')
+        track_id = detection.get("track_id")
         if track_id is None:
             key = None
         else:
             key = (
                 track_id,
-                str(detection.get('detection_provider') or ''),
+                str(detection.get("detection_provider") or ""),
             )
         if key is None:
             deduped[(id(detection),)] = detection
@@ -46,16 +47,15 @@ def _dedupe_track_detections(detections: list[dict]) -> list[dict]:
         keep, drop = existing, detection
         if _track_detection_preference(detection) > _track_detection_preference(existing):
             keep, drop = detection, existing
-        if not keep.get('frames') and drop.get('frames'):
-            keep = {**keep, 'frames': drop.get('frames')}
+        if not keep.get("frames") and drop.get("frames"):
+            keep = {**keep, "frames": drop.get("frames")}
         deduped[key] = keep
         logger.warning(
-            'Track regen: collapsed duplicate track_id=%s provider=%s -> '
-            'kept %s, dropped %s',
+            "Track regen: collapsed duplicate track_id=%s provider=%s -> kept %s, dropped %s",
             track_id,
             key[1],
-            keep.get('species_name'),
-            drop.get('species_name'),
+            keep.get("species_name"),
+            drop.get("species_name"),
         )
     return list(deduped.values())
 
@@ -121,9 +121,7 @@ def process_video_for_tracks(
     try:
         while True:
             if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
-                raise TimeoutError(
-                    f'Track regeneration timeout ({max_runtime_sec}s) for {video_path}'
-                )
+                raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
             # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
             # без полного декодирования (иначе frame_step почти не ускоряет батч).
             if frame_count % frame_step == 0:
@@ -132,9 +130,7 @@ def process_video_for_tracks(
                     break
                 frame_time_sec = frame_count / fps
                 frame_resized = cv2.resize(frame, lores_size)
-                has_detections = frame_processor.run(
-                    frame_resized, frame_time=frame_time_sec
-                )
+                has_detections = frame_processor.run(frame_resized, frame_time=frame_time_sec)
                 decision_maker.update_has_detections(has_detections)
             else:
                 ret = cap.grab()
@@ -145,36 +141,34 @@ def process_video_for_tracks(
         cap.release()
 
     results = decision_maker.get_results(frame_processor.tracks)
-    species_mapping = app_config.get('detection.species_mapping') or {}
+    species_mapping = app_config.get("detection.species_mapping") or {}
 
     detections = []
     for r in results:
-        raw_name = r.get('species_name') or ''
-        species_name = (
-            normalize(raw_name, species_mapping) if raw_name else raw_name
-        )
+        raw_name = r.get("species_name") or ""
+        species_name = normalize(raw_name, species_mapping) if raw_name else raw_name
         row = {
-            'species_name': species_name,
-            'start_time': r['start_time'],
-            'end_time': r['end_time'],
-            'confidence': r['confidence'],
-            'track_id': r['track_id'],
-            'frames': r.get('frames', []),
-            'source': 'video',
-            'detection_provider': 'yolo',
+            "species_name": species_name,
+            "start_time": r["start_time"],
+            "end_time": r["end_time"],
+            "confidence": r["confidence"],
+            "track_id": r["track_id"],
+            "frames": r.get("frames", []),
+            "source": "video",
+            "detection_provider": "yolo",
         }
-        if r.get('decision_reason'):
-            row['decision_reason'] = r['decision_reason']
+        if r.get("decision_reason"):
+            row["decision_reason"] = r["decision_reason"]
         for copy_key in (
-            'visit_eligible',
-            'notification_eligible',
-            'decision_kind',
-            'detector_label',
-            'detector_confidence',
-            'classifier_confidence',
-            'classifier_species_name',
-            'evidence_state',
-            'reject_reason_code',
+            "visit_eligible",
+            "notification_eligible",
+            "decision_kind",
+            "detector_label",
+            "detector_confidence",
+            "classifier_confidence",
+            "classifier_species_name",
+            "evidence_state",
+            "reject_reason_code",
         ):
             if copy_key in r:
                 row[copy_key] = r[copy_key]

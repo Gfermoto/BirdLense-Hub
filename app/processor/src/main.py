@@ -2,6 +2,10 @@
 
 import logging
 
+from processor_cv2_init import configure_opencv_ffmpeg_logging
+
+configure_opencv_ffmpeg_logging()
+
 from processor_bootstrap import (
     build_processor_run_context,
     close_processor_media,
@@ -22,8 +26,8 @@ def main() -> None:
         try:
             close_processor_media(ctx)
         except Exception as e:
-            logging.warning('Media close failed: %s', e)
+            logging.warning("Media close failed: %s", e)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

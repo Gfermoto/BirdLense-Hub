@@ -8,7 +8,7 @@
 
 Значения по умолчанию в `app/app_config/default_config.yaml`. Пользовательский конфиг переопределяет их (merge).
 
-**Приоритет настроек:** переменные окружения > `user_config.yaml` > `default_config.yaml`. Например, `GO2RTC_URL` в env переопределяет `video.go2rtc_url` в YAML.
+**Приоритет:** `user_config.yaml` накладывается на `default_config.yaml`, затем в рантайме применяются **оверлеи секретов**: если ниже задана непустая переменная `BIRDLENSE_*`, она подставляется в объединённый конфиг (как правка YAML, но без записи на диск). Отдельные ключи вроде `GO2RTC_URL` по-прежнему переопределяют соответствующие поля там, где это описано.
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
@@ -47,6 +47,8 @@
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
+| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./SECURITY.ru.md) |
+| `BIRDLENSE_UI_API_KEY` | Секрет для UI API в strict-режиме: **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
 | `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
@@ -59,6 +61,22 @@
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
+| `BIRDLENSE_TELEGRAM_BOT_TOKEN` | Переопределяет `notifications.telegram_bot_token` |
+| `BIRDLENSE_TELEGRAM_MTPROTO_SECRET` | Переопределяет `notifications.telegram_mtproto_secret` |
+| `BIRDLENSE_TELEGRAM_API_HASH` | Переопределяет `notifications.telegram_api_hash` |
+| `BIRDLENSE_HA_TOKEN` | Переопределяет `homeassistant.token` |
+| `BIRDLENSE_SETTINGS_PASSWORD` | Переопределяет `general.settings_password` (plaintext или bcrypt) |
+| `BIRDLENSE_CONTRIBUTOR_PASSWORD` | Переопределяет `general.contributor_password` (plaintext или bcrypt) |
+| `BIRDLENSE_MQTT_PASSWORD` | Переопределяет `mqtt.password` |
+| `BIRDLENSE_GO2RTC_PASSWORD` | Переопределяет `video.go2rtc_password` |
+| `BIRDLENSE_OPENWEATHER_API_KEY` | Переопределяет `secrets.openweather_api_key` |
+| `BIRDLENSE_EBIRD_API_KEY` | Переопределяет `secrets.ebird_api_key` |
+| `BIRDLENSE_XENO_CANTO_API_KEY` | Переопределяет `secrets.xeno_canto_api_key` |
+| `BIRDLENSE_MCP_TOKEN` | Переопределяет `mcp.token` |
+| `BIRDLENSE_VAPID_PRIVATE_KEY` | Переопределяет `web_push.vapid_private_key` |
+| `BIRDLENSE_REDIS_URL` | Переопределяет `performance.redis_url` |
+
+**Пароли UI:** при сохранении из веб-интерфейса новые значения в виде plaintext **хешируются (bcrypt)** в `user_config.yaml`; старые записи в plaintext продолжают работать, пока не смените пароль. В env можно передать и plaintext, и уже готовый bcrypt-строковый хеш.
 
 См. `app/.env.example`. Секреты генерируются при `make setup` (вызывается из `make start`/`make pull`).
 
@@ -71,6 +89,7 @@
 | `settings_password` | Пароль **Admin**: настройки, кормушка, система, перезапуск processor. Пусто — без блокировки (типично для дома) |
 | `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). |
 | `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)) |
+| `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
@@ -88,6 +107,8 @@
 
 На странице «Система» эти URL также показаны в блоке **Наблюдаемость уведомлений** (после входа в настройки).
 
+**Плитки Heimdall:** пошаговый список URL и ограничения импорта в v2 — [HEIMDALL.ru](./HEIMDALL.ru.md).
+
 ---
 
 ## Processor
@@ -99,8 +120,12 @@
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
+| `min_confidence_binary_bird` | Опционально: отдельный порог **только для боксов Bird** после `track()` (Ultralytics получает `min` всех порогов; отсев по метке в Python). Пример: **0.48** при `min_confidence_binary_squirrel: 0.22` — меньше ложных «птиц» (мышь→синица), белки/грызуны не душатся тем же числом. |
+| `min_confidence_binary_squirrel` | Опционально: порог для боксов Squirrel (нормализация rodent/chipmunk → Squirrel). |
+| `bird_skip_classifier_max_area_frac` | Если **> 0**: для **Bird** с площадью bbox ≤ доли кадра (0…1) **не вызывается** видовой классификатор — остаётся generic Bird (решает ложные виды на мелком объекте). По умолчанию **0** (выкл.). Попробуйте **0.012–0.025**; слишком высокое значение заденет мелких синиц у кормушки. |
 | `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
 | `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
+| `min_confidence_to_notify` | Минимум combined confidence для **фото-уведомления в Telegram** (после успешного приёма записи на хабе). В поставке **0.46** в `default_config.yaml`; при загрузке конфига `app_config.CONFIDENCE_FLOORS` задаёт **нижний предел 0.30** (меньшие значения поднимаются). Часто задают **выше**, чем `min_confidence_to_process`, чтобы срезать шум в чате при сохранении визитов в БД. Поле есть в **Настройки → Процессор**. После смены порогов в YAML перезапустите **processor**, иначе в контейнере останется старый конфиг в памяти. |
 | `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для белок; `{"Rare Bird": 0.05}` — редкие птицы |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.03`). |

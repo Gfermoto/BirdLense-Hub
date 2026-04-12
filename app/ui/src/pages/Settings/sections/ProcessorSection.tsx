@@ -111,6 +111,101 @@ export function ProcessorSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
+                  {t('settings.yoloSplitThresholdsTitle')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('settings.yoloSplitThresholdsDesc')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="processor.min_confidence_binary_bird">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0.05, max: 0.95, step: 0.01 }}
+                      value={
+                        field.state.value === undefined || field.state.value === null
+                          ? ''
+                          : field.state.value
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (raw === '') {
+                          field.handleChange(null);
+                          return;
+                        }
+                        const n = Number(raw);
+                        if (Number.isFinite(n)) {
+                          field.handleChange(n);
+                        }
+                      }}
+                      label={t('settings.confidenceBinaryBird')}
+                      helperText={t('settings.confidenceBinaryBirdHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="processor.min_confidence_binary_squirrel">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0.05, max: 0.95, step: 0.01 }}
+                      value={
+                        field.state.value === undefined || field.state.value === null
+                          ? ''
+                          : field.state.value
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (raw === '') {
+                          field.handleChange(null);
+                          return;
+                        }
+                        const n = Number(raw);
+                        if (Number.isFinite(n)) {
+                          field.handleChange(n);
+                        }
+                      }}
+                      label={t('settings.confidenceBinarySquirrel')}
+                      helperText={t('settings.confidenceBinarySquirrelHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <form.Field name="processor.bird_skip_classifier_max_area_frac">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 0.5, step: 0.001 }}
+                      value={
+                        field.state.value === undefined || field.state.value === null
+                          ? ''
+                          : field.state.value
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (raw === '') {
+                          field.handleChange(null);
+                          return;
+                        }
+                        const n = Number(raw);
+                        if (Number.isFinite(n)) {
+                          field.handleChange(n);
+                        }
+                      }}
+                      label={t('settings.birdSkipClassifierArea')}
+                      helperText={t('settings.birdSkipClassifierAreaHelp')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
             </Grid>
           </ServiceBlock>
 

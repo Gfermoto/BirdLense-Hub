@@ -51,6 +51,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
+# Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
 # Не удалять на сервере .pt при деплое с машины без весов (модификатор P в rsync, не слово protect).
@@ -77,7 +79,7 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
   PROCESSOR_SECRET=$(openssl rand -hex 16)
   echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
 fi
-if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ]; then
+if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере..."
   ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
     SIZE=\$(stat -c%s ${REMOTE_DIR}/app/.env 2>/dev/null || echo 0); \
@@ -85,10 +87,12 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
       cp ${REMOTE_DIR}/app/.env.example ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
     fi"
   ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
-    (grep -v -E '^(MCP_TOKEN|PROCESSOR_SECRET|FLASK_SECRET_KEY|BIRDLENSE_ENV)=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
+    (grep -v -E '^(MCP_TOKEN|PROCESSOR_SECRET|FLASK_SECRET_KEY|BIRDLENSE_ENV|BIRDLENSE_STRICT_API_AUTH|BIRDLENSE_UI_API_KEY)=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
      [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN}\"; \
      [ -n \"${FLASK_SECRET_KEY:-}\" ] && printf 'FLASK_SECRET_KEY=%s\n' \"${FLASK_SECRET_KEY}\"; \
      [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV}\"; \
+     [ -n \"${BIRDLENSE_STRICT_API_AUTH:-}\" ] && printf 'BIRDLENSE_STRICT_API_AUTH=%s\n' \"${BIRDLENSE_STRICT_API_AUTH}\"; \
+     [ -n \"${BIRDLENSE_UI_API_KEY:-}\" ] && printf 'BIRDLENSE_UI_API_KEY=%s\n' \"${BIRDLENSE_UI_API_KEY}\"; \
      printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi

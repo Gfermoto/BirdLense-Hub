@@ -4,6 +4,7 @@ BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты
 В контейнере: entrypoint запускает при mcp.enabled=true с transport=http.
 Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
 """
+
 import argparse
 import asyncio
 import os

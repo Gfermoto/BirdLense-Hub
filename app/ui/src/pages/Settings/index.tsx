@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -8,12 +8,9 @@ import Container from '@mui/material/Container';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import { SettingsForm } from './SettingsForm';
-import {
-  fetchSettings,
-  fetchObservedSpecies,
-  updateSettings,
-  restartProcessor,
-} from '../../api/api';
+import { updateSettings, restartProcessor } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
+import { useObservedSpeciesQuery, useSettingsQuery } from '../../hooks/useSettingsQueries';
 import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -25,23 +22,16 @@ export const Settings: React.FC = () => {
   const [restartMessage, setRestartMessage] = useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
   const { requiresPassword, isAdmin, canEdit } = useProtectedArea();
 
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: fetchSettings,
-    enabled: !requiresPassword || canEdit,
-    retry: false,
-  });
+  const { data: settings, isLoading: isLoadingSettings } = useSettingsQuery(
+    !requiresPassword || canEdit,
+  );
 
-  const { data: observedSpecies, isLoading: isLoadingObserved } = useQuery({
-    queryKey: ['species', 'observed'],
-    queryFn: fetchObservedSpecies,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: observedSpecies, isLoading: isLoadingObserved } = useObservedSpeciesQuery();
 
   const updateMutation = useMutation({
     mutationFn: updateSettings,
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       setShowSuccessAlert(true);
       const result = await restartProcessor();
       setRestartMessage(

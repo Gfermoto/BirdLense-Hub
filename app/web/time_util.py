@@ -18,8 +18,18 @@ def parse_utc_timestamp(param) -> datetime:
     Для SQLite и сравнений с naive полями БД. Нужен aware UTC — см. ``ensure_utc``.
     """
     if param is None:
-        raise ValueError('Timestamp is required')
+        raise ValueError("Timestamp is required")
     ts = int(param)
     if not (0 <= ts <= 2147483647):
-        raise ValueError('Timestamp out of range')
+        raise ValueError("Timestamp out of range")
     return datetime.fromtimestamp(ts, timezone.utc).replace(tzinfo=None)
+
+
+def parse_timeline_iso(s: str) -> datetime:
+    """ISO string from timeline payloads (Z suffix → UTC)."""
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    d = datetime.fromisoformat(s)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d

@@ -1,4 +1,5 @@
 """Пути к артефактам относительно корня репозитория (#265)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +14,7 @@ def repo_root_path() -> str:
 
 
 def resolve_artifact_path(raw_path: str | None) -> str | None:
-    path = str(raw_path or '').strip()
+    path = str(raw_path or "").strip()
     if not path:
         return None
     if os.path.isabs(path):
@@ -21,9 +22,9 @@ def resolve_artifact_path(raw_path: str | None) -> str | None:
     root = repo_root_path()
     candidates = [
         os.path.join(root, path),
-        os.path.join(root, 'app', path),
-        os.path.join(root, 'app', 'processor', path),
-        os.path.join(root, 'app', 'web', path),
+        os.path.join(root, "app", path),
+        os.path.join(root, "app", "processor", path),
+        os.path.join(root, "app", "web", path),
     ]
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -36,8 +37,8 @@ def sha256_file(path: str | None) -> str | None:
         return None
     h = hashlib.sha256()
     try:
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
                 h.update(chunk)
         return h.hexdigest()
     except OSError:
@@ -45,5 +46,5 @@ def sha256_file(path: str | None) -> str | None:
 
 
 def config_fingerprint(payload: dict) -> str:
-    body = json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
-    return hashlib.sha256(body.encode('utf-8')).hexdigest()
+    body = json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()

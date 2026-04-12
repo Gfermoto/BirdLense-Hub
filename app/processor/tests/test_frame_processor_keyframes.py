@@ -14,6 +14,9 @@ from frame_processor import FrameProcessor
 
 
 class _DummyStrategy:
+    def detect(self, frame, tracker_config, *, min_confidence):
+        return []
+
     def reset(self):
         return None
 

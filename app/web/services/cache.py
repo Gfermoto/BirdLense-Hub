@@ -1,4 +1,5 @@
 """TTL-кэш ответов: in-memory или Redis (настройки UI / REDIS_URL)."""
+
 from __future__ import annotations
 
 import json
@@ -76,7 +77,7 @@ def _redis():
     """Lazy Redis client; False = отключён; None = ещё не пробовали."""
     global _redis_client, _redis_warned
     # In testing environments prefer in-memory/no-redis to avoid cross-test interference.
-    if (os.environ.get('FLASK_TESTING') or '').strip().lower() in ('1', 'true', 'yes'):
+    if (os.environ.get("FLASK_TESTING") or "").strip().lower() in ("1", "true", "yes"):
         _redis_client = False
         return None
     if _redis_client is not None:
@@ -166,7 +167,7 @@ def cache_set(key: str, value: Any, ttl_seconds: float) -> None:
             pass
     # In testing environments we avoid populating the in-memory cache to reduce
     # cross-test interference (tests set FLASK_TESTING=1 in conftest).
-    if (os.environ.get('FLASK_TESTING') or '').strip().lower() in ('1', 'true', 'yes'):
+    if (os.environ.get("FLASK_TESTING") or "").strip().lower() in ("1", "true", "yes"):
         return
     with _lock:
         _store[key] = (value, time.monotonic() + ttl_seconds)

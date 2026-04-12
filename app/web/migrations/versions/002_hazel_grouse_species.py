@@ -9,27 +9,22 @@ Revises: 001_schema_patches
 Create Date: 2026-04-08
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
-revision = '002_hazel_grouse_species'
-down_revision = '001_schema_patches'
+revision = "002_hazel_grouse_species"
+down_revision = "001_schema_patches"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
     conn = op.get_bind()
-    exists = conn.execute(
-        sa.text("SELECT 1 FROM species WHERE name = 'Hazel Grouse' LIMIT 1")
-    ).scalar()
+    exists = conn.execute(sa.text("SELECT 1 FROM species WHERE name = 'Hazel Grouse' LIMIT 1")).scalar()
     if exists:
         return
-    row = conn.execute(
-        sa.text(
-            "SELECT id FROM species WHERE name = 'Grouse, Quail, and Allies' LIMIT 1"
-        )
-    ).fetchone()
+    row = conn.execute(sa.text("SELECT id FROM species WHERE name = 'Grouse, Quail, and Allies' LIMIT 1")).fetchone()
     parent_id = int(row[0]) if row else None
     conn.execute(
         sa.text(
