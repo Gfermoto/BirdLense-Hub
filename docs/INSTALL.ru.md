@@ -81,17 +81,13 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Два пути на VPS:** рабочий код и данные деплоя — под **`/root/BirdLense`** (или ваш `DEPLOY_REMOTE_DIR`). Каталог **`/opt/birdlense`** в старых заметках и скриптах — только исторический пример; отдельная копия БД там может остаться от прошлых установок — ориентируйтесь на каталог из `deploy.local.sh` и mount контейнера (`docker inspect birdlense` → `/app/data`).
-
-**Логи контейнера:** сообщения **h264/rtsp** от декодера потока часто не критичны; уровень шума снижен через `OPENCV_*` в образе. Стартовое уведомление в Telegram отправляется с короткой задержкой после подъёма API, чтобы прокси успел подняться.
-
 **Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
-**Пошаговый чеклист** (подготовка, проверка, типичные проблемы): [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
+**Пошаговый чеклист**, пути на VPS, логи и типичные сбои: [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
 
 ### Telegram proxy autorotate (одной кнопкой)
 
@@ -134,12 +130,6 @@ make refresh-telegram-proxy  # разовый запуск подбора пря
 | `app/data/recordings/` | Видеозаписи (YYYY/MM/DD/HHMMSS/video.mp4) |
 | `app/data/db/birdlense.db` | SQLite |
 | `app/app_config/user_config.yaml` | Пользовательский конфиг |
-
----
-
-## Что дальше в бэклоге
-
-Рекомендуемый следующий фокус (на выбор): [**#285**](https://github.com/Gfermoto/BirdLense-Hub/issues/285) — nginx / раздача записей (auth или allowlist); [**#297**](https://github.com/Gfermoto/BirdLense-Hub/issues/297) — CI, OpenAPI→TS, политика аудитов. Для жёсткой безопасности API смотрите открытые **P0/P1** в репозитории ([#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279), [#278](https://github.com/Gfermoto/BirdLense-Hub/issues/278)).
 
 ---
 
