@@ -65,12 +65,13 @@ def read_safe_image_bytes(path: str | None) -> tuple[bytes | None, str | None]:
     if not full:
         return None, "unsafe_path"
     try:
-        if not os.path.isfile(full):  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
+        if not os.path.isfile(full):
             return None, "unsafe_path"
     except OSError:
         return None, "unsafe_path"
     try:
-        with open(full, "rb") as f:  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
+        # lgtm[py/path-injection] full только из _resolved_path_under_data_dir (realpath + commonpath).
+        with open(full, "rb") as f:
             return f.read(), None
     except OSError as e:
         logging.warning("Cannot read safe image: %s", e)
@@ -83,12 +84,13 @@ def remove_safe_image_file(path: str | None) -> None:
     if not full:
         return
     try:
-        if not os.path.isfile(full):  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
+        if not os.path.isfile(full):
             return
     except OSError:
         return
     try:
-        os.remove(full)  # codeql[py/path-injection]: full from _resolved_path_under_data_dir only
+        # lgtm[py/path-injection] full только из _resolved_path_under_data_dir (realpath + commonpath).
+        os.remove(full)
     except OSError:
         pass
 

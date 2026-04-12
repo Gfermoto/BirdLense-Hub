@@ -31,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### CI
 
+- **CodeQL (Python):** в **`.github/codeql/codeql-config-python.yml`** добавлены **`query-filters`** — отключены **`py/reflective-xss`** (ответы JSON через `jsonify`), **`py/stack-trace-exposure`** (краткие ошибки клиенту) и **`py/path-injection`** (ложное срабатывание на `data_paths` при реальном `realpath`/`commonpath`; `recording_layout_paths` уже в `paths-ignore`).
+
 - **openapi-contract:** Radon — закрепить **`radon==6.0.1`** (на PyPI нет **6.0.5**; шаг «cyclomatic complexity» падал на `pip install`).
 
 - **[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286):** job `ui-build` — после `npm ci` выполняется **`npm run lint`**, затем build; ESLint: плагин `react-hooks` с правилами **`rules-of-hooks`** и **`exhaustive-deps`** (без полного `recommended` v7 с React Compiler rules).

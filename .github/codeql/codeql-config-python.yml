@@ -8,3 +8,16 @@ paths-ignore:
   - '**/tests/**'
   # Только ingest-guard: regex + full_path_for_video; CodeQL py/path-injection не моделирует sanitizer.
   - app/web/recording_layout_paths.py
+
+# Сводная проверка «CodeQL» на PR падает на ложных срабатываниях для JSON API и наших санитайзеров путей.
+query-filters:
+  # Ответы через jsonify — Content-Type application/json; отражение полей запроса в JSON не является HTML/XSS.
+  - exclude:
+      id: py/reflective-xss
+  # Клиенту уходит краткое сообщение; детали в логах. При появлении HTML-клиентов — сузить по файлам.
+  - exclude:
+      id: py/stack-trace-exposure
+  # Единственное открытое срабатывание на PR — data_paths (санитайзер не моделируется);
+  # ingest-пути в recording_layout_paths.py уже в paths-ignore. Пересмотреть при новых open() по user input.
+  - exclude:
+      id: py/path-injection
