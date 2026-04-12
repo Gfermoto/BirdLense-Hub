@@ -23,7 +23,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Критический** | По умолчанию API без входа. `/api/ui/*` доступны без проверки. | Для production: API key, JWT или reverse proxy с auth. |
+| ~~**Критический**~~ **Смягчено (opt-in)** | По умолчанию `/api/ui/*` открыты для домашней LAN. | **`BIRDLENSE_STRICT_API_AUTH=1`** при production-рантайме: нужны сессия после `verify-password`, **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**. Исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. См. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md). |
 | ~~**Критический**~~ **Исправлено** | Пустой `PROCESSOR_SECRET` — открытый Processor API. | В production блокируется; деплой пишет в `.env`. |
 | **Критический** | MCP без токена, если пусты `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
 | **Высокий** | Пароль настроек опционален — при пустом значении настройки и система не защищены. | Обязательный пароль в production. |

@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **[#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279):** опциональный строгий режим UI API — при **production** и **`BIRDLENSE_STRICT_API_AUTH=1`** запросы к **`/api/ui/*`** требуют сессию (после `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**; исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`, preflight **OPTIONS**. См. **SECURITY** / **ACCESS_CONTROL** / **CONFIGURATION** (EN/RU), `app/.env.example`.
+
 - **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** CORS и SQLite PRAGMA — **`app/web/flask_extensions.py`**; старт схемы, seed, species registry, legacy cleanup и фоновый metadata repair/enrich — **`app/web/app_startup.py`**; `app.py` остаётся тонкой фабрикой. Док: [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md), [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md).
 
 - **[#283](https://github.com/Gfermoto/BirdLense-Hub/issues/283):** локальные CORS origins (Vite, `birdlense.local`, порт хаба) заданы в **`config.Config`** и переменной окружения **`CORS_LOCAL_DEV_ORIGINS`** (пустая строка — не добавлять встроенный набор); `app/web/app.py` только собирает итоговый список вместе с `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`.

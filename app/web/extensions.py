@@ -10,6 +10,9 @@ from flask_migrate import Migrate
 from flask_extensions import apply_cors, register_sqlite_connect_pragmas
 from models import db
 from services.session_idle_service import register_session_idle_middleware
+from services.strict_ui_api_auth_service import (
+    register_strict_ui_api_auth_middleware,
+)
 
 migrate = Migrate()
 
@@ -22,4 +25,5 @@ def init_extensions(app: Flask) -> None:
     migrations_dir = os.path.join(web_dir, "migrations")
     migrate.init_app(app, db, directory=migrations_dir)
     register_sqlite_connect_pragmas()
+    register_strict_ui_api_auth_middleware(app)
     register_session_idle_middleware(app)
