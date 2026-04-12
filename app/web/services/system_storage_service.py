@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from models import Video, db
 from services.http_response_cache import bust_system_response_caches
+from services.api_json_validation import validation_error
 from services.retention_service import _delete_video_row_cascade
 from services.storage_tree_utils import get_tree_storage_info
 import util as _util
@@ -126,6 +127,18 @@ def nearest_recording_day_response(raw_date: str, direction: str) -> tuple[dict,
 
 def purge_storage_from_body(data: dict) -> tuple[dict, int]:
     try:
+        field_types: dict[str, list[str]] = {}
+        for key in ("date", "start_date", "end_date"):
+            if key not in data:
+                continue
+            val = data[key]
+            if val is None:
+                continue
+            if not isinstance(val, str):
+                field_types.setdefault(key, []).append("must be a string")
+        if field_types:
+            return validation_error("Validation failed", field_types), 400
+
         date_str = (data.get("date") or "").strip()
         start_date_str = (data.get("start_date") or "").strip()
         end_date_str = (data.get("end_date") or "").strip()
@@ -137,26 +150,55 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
 
         if range_mode:
             if not start_date_str or not end_date_str:
-                return {"error": "start_date and end_date are required together"}, 400
+                return validation_error(
+                    "start_date and end_date are required together",
+                    {
+                        "start_date": ["required with end_date"],
+                        "end_date": ["required with start_date"],
+                    },
+                ), 400
             try:
                 range_start = datetime.strptime(start_date_str, "%Y-%m-%d")
+            except ValueError:
+                return validation_error(
+                    "Invalid date format, use YYYY-MM-DD",
+                    {"start_date": ["use YYYY-MM-DD"]},
+                ), 400
+            try:
                 range_end = datetime.strptime(end_date_str, "%Y-%m-%d")
             except ValueError:
-                return {"error": "Invalid date format, use YYYY-MM-DD"}, 400
+                return validation_error(
+                    "Invalid date format, use YYYY-MM-DD",
+                    {"end_date": ["use YYYY-MM-DD"]},
+                ), 400
             if range_start > range_end:
-                return {"error": "start_date must be on or before end_date"}, 400
+                return validation_error(
+                    "start_date must be on or before end_date",
+                    {"start_date": ["must be on or before end_date"], "end_date": ["must be on or after start_date"]},
+                ), 400
             max_span_days = 366 * 5
             if (range_end - range_start).days > max_span_days:
-                return {
-                    "error": f"Date range too large (max {max_span_days} days)",
-                }, 400
+                return validation_error(
+                    f"Date range too large (max {max_span_days} days)",
+                    {"start_date": ["range too large"], "end_date": ["range too large"]},
+                ), 400
         elif date_str:
             try:
                 purge_date = datetime.strptime(date_str, "%Y-%m-%d")
             except ValueError:
-                return {"error": "Invalid date format, use YYYY-MM-DD"}, 400
+                return validation_error(
+                    "Invalid date format, use YYYY-MM-DD",
+                    {"date": ["use YYYY-MM-DD"]},
+                ), 400
         else:
-            return {"error": "Provide date or both start_date and end_date"}, 400
+            return validation_error(
+                "Provide date or both start_date and end_date",
+                {
+                    "date": ["required unless start_date and end_date are set"],
+                    "start_date": ["required with end_date if date is omitted"],
+                    "end_date": ["required with start_date if date is omitted"],
+                },
+            ), 400
 
         deleted_count = 0
         deleted_size = 0

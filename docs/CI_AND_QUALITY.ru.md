@@ -36,6 +36,12 @@
 
 - Раз в неделю / вручную: `.github/workflows/npm-audit-scheduled.yml` (политика в комментариях workflow; [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)). Не входит в обязательные проверки PR.
 
+## Валидация JSON у mutating API
+
+- Утилиты: `app/web/services/api_json_validation.py` (`parse_request_json_dict`, `validation_error`).
+- Эндпоинты с единым телом **400** `{ "error", "fields" }` перечислены в docstring модуля; регрессия: `web/tests/test_api_json_validation.py`.
+- Объём и бэклог: [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281).
+
 ## OpenAPI → TypeScript
 
 - Спека: `app/web/openapi.yaml`. Контрактные тесты: `web/tests/test_openapi_contract.py`.

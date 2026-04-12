@@ -8,6 +8,7 @@ from flask import request
 
 from routes.http_guards import require_ui_settings_password
 from services.cache import cache_get, cache_set
+from services.api_json_validation import parse_request_json_dict
 from services.system_metrics_constants import _CACHE_STORAGE_STATS_SEC
 from services.system_storage_service import (
     build_storage_stats_list,
@@ -44,6 +45,8 @@ def register_ui_system_storage_routes(app):
     @app.route("/api/ui/storage/purge", methods=["POST"])
     @require_ui_settings_password
     def purge_storage():
-        data = request.json or {}
+        data, err = parse_request_json_dict(request)
+        if err is not None:
+            return err, 400
         body, code = purge_storage_from_body(data)
         return body, code
