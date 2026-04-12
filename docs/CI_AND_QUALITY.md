@@ -38,7 +38,7 @@ Source: `.github/workflows/ci-pr.yml`.
 
 ## Mutating API JSON validation
 
-- Helpers: `app/web/services/api_json_validation.py` — `parse_request_json_dict` (strict object body), `parse_request_json_object_allow_empty` (object or empty → `{}`), `validation_error`.
+- Helpers: `app/web/services/api_json_validation.py` — `parse_request_json_dict` (strict object body), `parse_request_json_object_allow_empty` (object or empty → `{}`), `parse_request_json_array_allow_empty` (array or empty → `[]`), `validation_error`.
 - Endpoints are listed in that module’s docstring; regression tests: `web/tests/test_api_json_validation.py`.
 - Introduced in [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281); extend the same pattern for remaining mutating routes as needed.
 

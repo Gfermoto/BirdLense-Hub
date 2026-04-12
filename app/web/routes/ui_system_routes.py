@@ -10,6 +10,7 @@ from routes.http_guards import (
     require_ui_settings_password,
     require_ui_settings_unauthorized,
 )
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.cache import cache_get, cache_set
 from services.processor_logs_service import LOG_LINES_DEFAULT
 from services.system_admin_api_service import (
@@ -87,7 +88,9 @@ def register_routes(app):
         Only available when BirdNET is configured (MQTT broker + birdnet_topic).
         Poll GET .../status to get result.
         """
-        body = request.get_json(silent=True) or {}
+        body, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         return start_bulk_spectrogram_regeneration(
             current_app._get_current_object(),
             body,
@@ -116,7 +119,9 @@ def register_routes(app):
     @require_admin_track_regen
     def regenerate_tracks_single_video(video_id):
         """Перегенерация треков только для одной записи (админ при двухуровневом доступе)."""
-        body = request.get_json(silent=True) or {}
+        body, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         return start_single_video_track_regeneration(
             current_app._get_current_object(),
             video_id,

@@ -8,6 +8,7 @@ from flask import Response, current_app, jsonify, request
 
 from auth import client_ip_for_rate_limit
 from metrics_auth import metrics_bearer_denied
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.cache import cache_get, cache_set
 from services.system_metrics_api_service import (
     clamp_metrics_history_hours,
@@ -105,7 +106,9 @@ def register_ui_system_metrics_routes(app: Flask) -> None:
 
     @app.route("/api/ui/system/visitors/track", methods=["POST"])
     def api_system_visitors_track():
-        data = request.get_json(silent=True) or {}
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return jsonify(v_err), 400
         browser_id = data.get("browser_id", "")
         user_agent = request.headers.get("User-Agent", "") or ""
         client_ip = client_ip_for_rate_limit(request)

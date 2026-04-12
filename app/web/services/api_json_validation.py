@@ -3,9 +3,14 @@
 Эндпоинты (расширяем по мере работы):
 
 - **Строго объект, тело обязательно:** ``parse_request_json_dict`` — birdfood POST, storage purge,
-  PATCH ``/api/ui/settings``, POST push subscribe, POST ``videos/.../merge-species``.
+  PATCH ``/api/ui/settings``, POST push subscribe, POST ``videos/.../merge-species``,
+  ``POST /api/processor/videos``.
 - **Объект или пустое тело →** ``{}``: ``parse_request_json_object_allow_empty`` — verify-password,
-  dataset retro/clean, detection confirm/PATCH, species tuning-target POST.
+  dataset retro/clean, detection confirm/PATCH, species tuning-target POST,
+  processor notify/activity, system maintenance/diagnostics/registry/fusion eval, review-queue,
+  visitors/track, bulk spectrogram/track regen bodies.
+- **Массив или пустое тело →** ``[]``: ``parse_request_json_array_allow_empty`` —
+  ``PUT /api/processor/species/active``.
 
 Ответ **400** при ошибке схемы: ``{"error": "<кратко>", "fields": {"<поле>": ["<причина>", ...]}}``.
 """
@@ -67,5 +72,29 @@ def parse_request_json_object_allow_empty(
         return None, validation_error(
             "JSON body must be an object",
             {"_body": ["expected a JSON object, not an array or primitive"]},
+        )
+    return raw, None
+
+
+def parse_request_json_array_allow_empty(
+    request: Request,
+) -> tuple[list[Any] | None, dict[str, Any] | None]:
+    """
+    Ожидается JSON-**массив**; отсутствующее или пустое тело считается ``[]``.
+    Битый JSON или не-массив → **400** с ``fields``.
+    """
+    raw = request.get_json(silent=True)
+    if raw is None:
+        text = (request.get_data(as_text=True) or "").strip()
+        if not text:
+            return [], None
+        return None, validation_error(
+            "Invalid JSON",
+            {"_body": ["could not parse JSON"]},
+        )
+    if not isinstance(raw, list):
+        return None, validation_error(
+            "JSON body must be an array",
+            {"_body": ["expected a JSON array, not an object or primitive"]},
         )
     return raw, None
