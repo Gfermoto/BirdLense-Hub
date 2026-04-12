@@ -9,8 +9,8 @@ This document describes what runs in GitHub Actions, how to reproduce checks loc
 | Workflow / job | Purpose |
 |----------------|---------|
 | **CI → python-security** | `bandit` on `web/` + `processor/src/`; `pip-audit` on both `requirements.txt` files. |
-| **CI → openapi-contract** | `ruff check` + **`ruff format --check`** on `web/` + `processor/src/`; docs version script; focused pytest slices. |
-| **CI → ui-build** | `npm ci`, `npm run lint`, `npm run build` in `app/ui`. |
+| **CI → openapi-contract** | `ruff check` + **`ruff format --check`** on `web/` + `processor/src/`; **radon cc** summary (non-blocking); docs version script; focused pytest slices. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` on `src/generated/openapi-types.ts`; `npm run lint`; `npm run build` in `app/ui`. |
 | **CI → docs** | MkDocs strict, settings UI coverage script, version check. |
 | **CI → docker-tests** | Full image build; processor + web tests; Playwright smoke; catalog audit script. |
 
@@ -36,11 +36,15 @@ Source: `.github/workflows/ci-pr.yml`.
 
 - Weekly / manual workflow: `.github/workflows/npm-audit-scheduled.yml` (policy in workflow comments; see [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)). Not a required PR check.
 
-## OpenAPI → TypeScript (future)
+## OpenAPI → TypeScript
 
 - Spec: `app/web/openapi.yaml`. Contract tests: `web/tests/test_openapi_contract.py`.
-- **Not automated yet:** codegen for the UI (e.g. `openapi-typescript`) — add a `package.json` script and optional CI step once the team agrees on generator and output path; until then this doc is the placeholder promised in [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297).
+- **Codegen:** `app/ui` — `npm run codegen:openapi` ([openapi-typescript](https://github.com/openapi-ts/openapi-typescript)) writes `src/generated/openapi-types.ts`. The **ui-build** job regenerates from the spec and fails if the committed file drifts. Regenerate after OpenAPI changes:
+  ```bash
+  cd app/ui && npm ci && npm run codegen:openapi
+  ```
 
-## Complexity / radon (optional)
+## Complexity / radon
 
-- No required CC threshold in CI yet. To inspect locally: `pip install radon && radon cc app/web app/processor/src -a -s`.
+- **CI:** `openapi-contract` appends a **radon cc** summary to the job log (informational; no failure threshold).
+- Locally: `pip install radon && radon cc app/web app/processor/src -a -s` (from repo root; paths match the tree on disk).
