@@ -43,7 +43,7 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 | Term | Meaning |
 |------|---------|
 | **Frigate** | NVR with object detection; Hub can subscribe to MQTT events and use **Bird Classification** `sub_label` as a species hint. |
-| **BirdNET** | Audio bird ID (e.g. BirdNET-Pi/Go). Publishes MQTT messages merged with video detections. |
+| **BirdNET** | Audio bird ID — typically BirdNET-Go or BirdNET-Pi over MQTT; the Hub has no “pick your build” switch, only the JSON topic. Merge is not tied to the MQTT display language when a scientific name is present or aliases exist in the catalog. |
 | **MQTT** | Single broker connection for Frigate topics, BirdNET, feeder relay, optional HA discovery. |
 | **Home Assistant (HA)** | Smarthome platform; Hub can publish discovery topics and read weather entities. |
 

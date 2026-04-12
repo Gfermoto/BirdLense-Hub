@@ -12,7 +12,7 @@ BirdLense Hub — bird feeder monitoring: video and audio detection, recordings,
 |-----------|-------------|
 | **Docker** | **x86_64 / amd64** (Intel or AMD), Compose v2 — ARM/aarch64 not supported |
 | **Go2RTC** | Video streams from IP cameras (standalone or Frigate) |
-| **MQTT** (optional) | Frigate events, BirdNET sightings |
+| **MQTT** (optional) | Frigate events; BirdNET (any compatible JSON publisher, often BirdNET-Go or BirdNET-Pi) |
 
 ---
 
