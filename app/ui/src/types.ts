@@ -120,6 +120,8 @@ export interface Settings {
     notification_excluded_species: string[];
     settings_password?: string;
     contributor_password?: string;
+    /** Minutes without /api/* before login session clears; 0 = off. Default 30. */
+    session_idle_minutes?: number;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
     heimdall_url?: string; // URL to Heimdall dashboard; empty = no link in UI
     /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
