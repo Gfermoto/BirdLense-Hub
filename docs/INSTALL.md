@@ -81,6 +81,10 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
+**Two paths on a VPS:** live deploy uses **`/root/BirdLense`** (or your `DEPLOY_REMOTE_DIR`). **`/opt/birdlense`** in older notes/scripts is a legacy placeholder; a second `birdlense.db` there may be from an old install — trust the path in `deploy.local.sh` and the container mount (`docker inspect birdlense` → `/app/data`).
+
+**Container logs:** **h264/rtsp** lines from the stream decoder are often benign; noise is reduced via `OPENCV_*` env in the image. Startup Telegram notify waits briefly after API is up so SOCKS/proxy can become ready.
+
 **What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server, Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
@@ -130,6 +134,12 @@ Recordings not visible? System → «Scan and import».
 | `app/data/recordings/` | Video files (YYYY/MM/DD/HHMMSS/video.mp4) |
 | `app/data/db/birdlense.db` | SQLite |
 | `app/app_config/user_config.yaml` | User config |
+
+---
+
+## Backlog — suggested next focus
+
+Pick one: [**#285**](https://github.com/Gfermoto/BirdLense-Hub/issues/285) (nginx / recording delivery — auth or allowlist); [**#297**](https://github.com/Gfermoto/BirdLense-Hub/issues/297) (CI, OpenAPI→TS, audit policy). For API hardening see open **P0/P1** issues ([#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279), [#278](https://github.com/Gfermoto/BirdLense-Hub/issues/278)).
 
 ---
 

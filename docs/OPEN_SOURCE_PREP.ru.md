@@ -90,7 +90,7 @@
 | Тип | Placeholder | Пример |
 |-----|-------------|--------|
 | Хост/IP | `YOUR_HOST` или `localhost` | `http://YOUR_HOST:8085` |
-| Путь на сервере | `YOUR_REMOTE_DIR` | `/opt/birdlense` |
+| Путь на сервере | `YOUR_REMOTE_DIR` | `/root/BirdLense` (как `DEPLOY_REMOTE_DIR`; `/opt/birdlense` — старый пример) |
 | SSH host | `YOUR_SSH_HOST` | из `~/.ssh/config` |
 | Токен/пароль | `your-secret-token`, `xxx` | `MCP_TOKEN=your-secret-token` |
 | API key | `your-api-key` | `OPENWEATHER_API_KEY=your-api-key` |

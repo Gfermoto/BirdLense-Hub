@@ -360,6 +360,8 @@ def notify_app_startup(app=None):
         except OSError:
             pass
         logging.info("notify_app_startup: sending (pid=%s)", os.getpid())
+        # Прокси/SOCKS и сеть часто готовы через пару секунд после старта контейнера
+        time.sleep(2.0)
         # Web Push / DB (PushSubscription) need Flask application context
         if app is not None:
             with app.app_context():

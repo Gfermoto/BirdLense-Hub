@@ -77,6 +77,9 @@ EXPOSE 8080
 
 ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
 ENV DATA_DIR=/app/data
+# Меньше шума libav/h264 от OpenCV VideoCapture (RTSP) в docker logs
+ENV OPENCV_LOG_LEVEL=ERROR
+ENV OPENCV_FFMPEG_LOGLEVEL=quiet
 
 CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
 

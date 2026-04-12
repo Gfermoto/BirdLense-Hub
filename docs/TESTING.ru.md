@@ -6,7 +6,7 @@
 
 > **Безопасность:** если пароль настроек попал в лог или чат — смените его в Settings → General.
 >
-> **Placeholders:** `YOUR_HOST` — hostname или IP; `YOUR_SSH_HOST` — host из `~/.ssh/config`; `YOUR_REMOTE_DIR` — путь на сервере (например `/opt/birdlense`).
+> **Placeholders:** `YOUR_HOST` — hostname или IP; `YOUR_SSH_HOST` — host из `~/.ssh/config`; `YOUR_REMOTE_DIR` — корень приложения на сервере (**по умолчанию деплой:** `/root/BirdLense`, см. `DEPLOY_REMOTE_DIR`); `/opt/birdlense` в старых текстах — устаревший пример.
 
 ---
 

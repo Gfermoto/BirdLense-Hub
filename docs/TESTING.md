@@ -6,7 +6,7 @@
 
 > **Security:** If your settings password was exposed in logs or chat, change it under **Settings → General**.
 >
-> **Placeholders:** `YOUR_HOST` — hostname or IP; `YOUR_SSH_HOST` — host alias from `~/.ssh/config`; `YOUR_REMOTE_DIR` — app root on the server (e.g. `/opt/birdlense`).
+> **Placeholders:** `YOUR_HOST` — hostname or IP; `YOUR_SSH_HOST` — host alias from `~/.ssh/config`; `YOUR_REMOTE_DIR` — app root on the server (**default deploy:** `/root/BirdLense`, see `DEPLOY_REMOTE_DIR`); `/opt/birdlense` in older docs is a legacy example.
 
 ---
 
