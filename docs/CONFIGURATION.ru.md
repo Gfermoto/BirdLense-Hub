@@ -71,6 +71,7 @@
 | `settings_password` | Пароль **Admin**: настройки, кормушка, система, перезапуск processor. Пусто — без блокировки (типично для дома) |
 | `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). |
 | `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)) |
+| `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |

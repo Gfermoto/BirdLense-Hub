@@ -1,5 +1,11 @@
 #!/bin/bash
 set -e
+# Сброс прав на примонтированные тома, затем весь стек под birdlense (uid 1000), не root (#277).
+if [ "$(id -u)" = "0" ]; then
+  chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
+  exec gosu birdlense:birdlense /bin/bash "$0" "$@"
+fi
+
 # Go2RTC upstream: из GO2RTC_URL или video.go2rtc_url в конфиге
 GO2RTC_UPSTREAM=$(python3 /app/scripts/get_go2rtc_upstream.py)
 GO2RTC_UPSTREAM="${GO2RTC_UPSTREAM//[$'\r\n']/}"
@@ -27,7 +33,8 @@ fi
 # Тестовый режим video.source=file: папка по умолчанию в volume ./data (см. video.file_dir)
 mkdir -p /app/data/file_test
 
-nginx &
+mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
+nginx -c /app/nginx/docker-nginx-main.conf &
 sleep 1
 # gthread: несколько одновременных запросов к SQLite (WAL + check_same_thread=False в config)
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"

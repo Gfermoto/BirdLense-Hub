@@ -27,7 +27,7 @@
 | ~~**Критический**~~ **Исправлено** | Пустой `PROCESSOR_SECRET` — открытый Processor API. | В production блокируется; деплой пишет в `.env`. |
 | **Критический** | MCP без токена, если пусты `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
 | **Высокий** | Пароль настроек опционален — при пустом значении настройки и система не защищены. | Обязательный пароль в production. |
-| **Высокий** | Сессия `session.permanent = True`, нет таймаута. | Добавить таймаут сессии (15–30 мин). |
+| ~~**Высокий**~~ **Исправлено** | Сессия `session.permanent = True`, нет idle-таймаута. | `general.session_idle_minutes` (по умолчанию 30; 0 — выкл.), см. [CONFIGURATION](./CONFIGURATION.ru.md). |
 | **Средний** | `/api/ui/system/*` защищены только `settings_check_access()`. | Обеспечить обязательный `settings_password`. |
 
 ---
@@ -124,7 +124,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Высокий** | Контейнер под root (нет `USER`). | Непривилегированный пользователь. |
+| ~~**Высокий**~~ **Исправлено** | Процессы в контейнере под root. | Nginx/Gunicorn/processor под `birdlense` (uid **1000**); entrypoint при старте от root делает `chown` на примонтированные `./data` и `./app_config`. См. [INSTALL](./INSTALL.ru.md). |
 | **Средний** | Тяжёлый базовый образ. | Multi-stage при необходимости. |
 | **Низкий** | Без `--privileged`. | Не добавлять. |
 
@@ -146,7 +146,7 @@
 3. ~~Path traversal~~ ✅ Nginx блокирует `..`, `%2e%2e`; пути изображений проверяются.
 4. **Ограничить** доступ к `/data/recordings/` (auth или IP).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
-6. **Docker:** не root в контейнере.
+6. ~~**Docker:** не root в контейнере.~~ ✅ Процессы под uid 1000 (`birdlense`).
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.
 8. **Ротация секретов:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) (операции в проде).
 

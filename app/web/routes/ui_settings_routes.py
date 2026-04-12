@@ -32,6 +32,10 @@ from services.api_json_validation import (
     parse_request_json_dict,
     parse_request_json_object_allow_empty,
 )
+from services.session_idle_service import (
+    clear_session_activity_timestamp,
+    stamp_session_activity_now,
+)
 from services.settings_patch_service import apply_settings_patch_from_request
 from util import data_dir, notify_telegram_test
 
@@ -75,6 +79,7 @@ def register_ui_settings_routes(app):
             session["access_role"] = "admin"
             session["settings_unlocked"] = True
             session.permanent = True
+            stamp_session_activity_now()
             _clear_verify_password_attempts(ip)
             return {"ok": True, "role": "admin"}, 200
         role = resolve_password_unlock_role(pw)
@@ -82,12 +87,14 @@ def register_ui_settings_routes(app):
             session["access_role"] = "admin"
             session["settings_unlocked"] = True
             session.permanent = True
+            stamp_session_activity_now()
             _clear_verify_password_attempts(ip)
             return {"ok": True, "role": "admin"}, 200
         if role == "contributor":
             session["access_role"] = "contributor"
             session["settings_unlocked"] = False
             session.permanent = True
+            stamp_session_activity_now()
             _clear_verify_password_attempts(ip)
             return {"ok": True, "role": "contributor"}, 200
         _record_verify_password_failure(ip)
@@ -98,6 +105,7 @@ def register_ui_settings_routes(app):
         """Сброс сессии входа (оператор/админ) — для смены пользователя за одним ПК."""
         session.pop("access_role", None)
         session.pop("settings_unlocked", None)
+        clear_session_activity_timestamp()
         return {"ok": True}, 200
 
     @app.route("/api/ui/settings", methods=["GET"])
