@@ -250,6 +250,7 @@ def test_notify_app_startup_uses_text_only_notification(monkeypatch):
     calls = []
     monkeypatch.setattr(notifications_mod, 'notify', lambda *args, **kwargs: calls.append(kwargs))
     monkeypatch.setattr(notifications_mod.os.path, 'exists', lambda path: False)
+    monkeypatch.setattr(notifications_mod.time, 'sleep', lambda _s: None)
 
     notifications_mod.notify_app_startup()
 

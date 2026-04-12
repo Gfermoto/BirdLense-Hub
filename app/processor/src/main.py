@@ -2,6 +2,10 @@
 
 import logging
 
+from processor_cv2_init import configure_opencv_ffmpeg_logging
+
+configure_opencv_ffmpeg_logging()
+
 from processor_bootstrap import (
     build_processor_run_context,
     close_processor_media,
