@@ -684,12 +684,15 @@ class TestSettings:
         """MCP token в Authorization даёт доступ к settings без сессии."""
         from app_config.app_config import app_config
 
-        token = (app_config.get("mcp.token") or "").strip()
-        if not token:
-            pytest.skip("mcp.token not configured")
-        r = client.get("/api/ui/settings", headers={"Authorization": f"Bearer {token}"})
-        assert r.status_code == 200
-        assert isinstance(r.json, dict)
+        old = app_config.get("mcp.token")
+        token = "test-mcp-token-ci"
+        app_config.set("mcp.token", token)
+        try:
+            r = client.get("/api/ui/settings", headers={"Authorization": f"Bearer {token}"})
+            assert r.status_code == 200
+            assert isinstance(r.json, dict)
+        finally:
+            app_config.set("mcp.token", old)
 
 
 class TestFeed:
@@ -1583,12 +1586,16 @@ class TestSpeciesRegionalScope:
         from datetime import datetime, timezone
         from models import Species, Video, VideoSpecies, db
 
+        vid = sid = pid = None
         with app.app_context():
-            sp = Species.query.filter(Species.parent_id.isnot(None)).first()
-            if sp is None:
-                import pytest
-
-                pytest.skip("no leaf species in test DB")
+            parent = Species(name="Test Parent Finch Regional", parent_id=None, active=True)
+            db.session.add(parent)
+            db.session.flush()
+            pid = parent.id
+            sp = Species(name="Test Leaf Finch Regional", parent_id=parent.id, active=True)
+            db.session.add(sp)
+            db.session.flush()
+            sid = sp.id
             v = Video(
                 processor_version="test",
                 start_time=datetime.now(timezone.utc),
@@ -1597,6 +1604,7 @@ class TestSpeciesRegionalScope:
             )
             db.session.add(v)
             db.session.flush()
+            vid = v.id
             db.session.add(
                 VideoSpecies(
                     video_id=v.id,
@@ -1609,18 +1617,28 @@ class TestSpeciesRegionalScope:
                 )
             )
             db.session.commit()
-            sid = sp.id
 
-        # Прямой commit в БД минует processor — сбросить TTL-кэш списка видов
-        from services.http_response_cache import bust_response_caches
+        try:
+            # Прямой commit в БД минует processor — сбросить TTL-кэш списка видов
+            from services.http_response_cache import bust_response_caches
 
-        bust_response_caches()
+            bust_response_caches()
 
-        r = client.get("/api/ui/species")
-        assert r.status_code == 200
-        row = next((x for x in r.json if x["id"] == sid), None)
-        assert row is not None
-        assert row["regional_scope"] is True
+            r = client.get("/api/ui/species")
+            assert r.status_code == 200
+            row = next((x for x in r.json if x["id"] == sid), None)
+            assert row is not None
+            assert row["regional_scope"] is True
+        finally:
+            with app.app_context():
+                if vid is not None:
+                    VideoSpecies.query.filter_by(video_id=vid).delete()
+                    Video.query.filter_by(id=vid).delete()
+                if sid is not None:
+                    Species.query.filter_by(id=sid).delete()
+                if pid is not None:
+                    Species.query.filter_by(id=pid).delete()
+                db.session.commit()
 
 
 class TestSpeciesXenoCanto:

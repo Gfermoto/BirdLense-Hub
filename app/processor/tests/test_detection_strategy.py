@@ -15,8 +15,13 @@ sys.path.insert(0, current_dir)
 import heavy_skip  # noqa: E402
 sys.path.append(src_path)
 
-_ULTRALYTICS_STUB = 'ultralytics' not in sys.modules
-if _ULTRALYTICS_STUB:
+# Реальный ultralytics в Docker/CI — не подменять до импорта, иначе интеграционные тесты YOLO скипаются.
+try:
+    import ultralytics as _ultralytics_real  # noqa: F401
+
+    _ULTRALYTICS_STUB = False
+except ImportError:
+    _ULTRALYTICS_STUB = True
     _ultra = types.ModuleType('ultralytics')
 
     class _StubYOLO:
