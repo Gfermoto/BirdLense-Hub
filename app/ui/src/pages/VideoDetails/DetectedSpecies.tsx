@@ -123,6 +123,10 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['species'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       if (data?.message === 'Species unchanged') {
         setCorrectSuccess(t('video.speciesUnchanged'));
       } else if (data?.updated_count && data.updated_count > 1) {
@@ -142,6 +146,10 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['species'] });
+      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       setCorrectSuccess(data?.message ?? t('unknowns.corrected'));
     },
   });

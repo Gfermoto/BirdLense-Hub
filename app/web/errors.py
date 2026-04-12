@@ -11,12 +11,13 @@ _log = logging.getLogger(__name__)
 
 
 def register_error_handlers(app: Flask) -> None:
-    """404/500 для путей API — JSON; остальное — стандартное поведение Werkzeug."""
+    """HTTP-исключения и 500 для /api/* — JSON; остальное — стандартное поведение Werkzeug."""
 
-    @app.errorhandler(404)
-    def handle_not_found(exc: HTTPException):
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(exc: HTTPException):
         if request.path.startswith("/api/"):
-            return jsonify({"error": "Not found"}), 404
+            msg = (exc.description or "").strip() or exc.name
+            return jsonify({"error": msg}), exc.code
         return exc.get_response()
 
     @app.errorhandler(500)

@@ -9,6 +9,8 @@ from flask_cors import CORS
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
+_sqlite_pragmas_registered = False
+
 
 def apply_cors(app: Flask) -> None:
     """Включить CORS: dev origins из config, default и переменная CORS_ORIGINS."""
@@ -31,7 +33,11 @@ def apply_cors(app: Flask) -> None:
 
 
 def register_sqlite_connect_pragmas() -> None:
-    """PRAGMA на каждое подключение к SQLite (WAL, кэш, temp)."""
+    """PRAGMA на каждое подключение к SQLite (WAL, кэш, temp). Идемпотентно."""
+    global _sqlite_pragmas_registered
+    if _sqlite_pragmas_registered:
+        return
+    _sqlite_pragmas_registered = True
 
     @event.listens_for(Engine, "connect")
     def _sqlite_optimize(dbapi_connection, _connection_record):

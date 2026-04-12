@@ -75,7 +75,7 @@ Heimdall этот файл **не импортирует**. Для импорт�
 
 - [examples/heimdall/birdlense-bookmarks.html](./examples/heimdall/birdlense-bookmarks.html)
 
-Замените в файле `YOUR_HUB_HOST` и `YOUR_HUB_PORT` (`8085` по умолчанию).
+Замените в файле `YOUR_HUB_BASE` на origin хаба (например `http://192.168.1.11:8085` или `https://…` за прокси).
 
 ---
 

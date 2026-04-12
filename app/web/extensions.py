@@ -20,10 +20,10 @@ migrate = Migrate()
 def init_extensions(app: Flask) -> None:
     """Подключить CORS, db, Alembic/Flask-Migrate, PRAGMA на connect."""
     apply_cors(app)
+    register_sqlite_connect_pragmas()
     db.init_app(app)
     web_dir = os.path.dirname(os.path.abspath(__file__))
     migrations_dir = os.path.join(web_dir, "migrations")
     migrate.init_app(app, db, directory=migrations_dir)
-    register_sqlite_connect_pragmas()
     register_strict_ui_api_auth_middleware(app)
     register_session_idle_middleware(app)
