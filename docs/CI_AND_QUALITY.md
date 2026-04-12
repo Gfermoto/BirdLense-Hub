@@ -36,6 +36,12 @@ Source: `.github/workflows/ci-pr.yml`.
 
 - Weekly / manual workflow: `.github/workflows/npm-audit-scheduled.yml` (policy in workflow comments; see [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)). Not a required PR check.
 
+## Mutating API JSON validation
+
+- Helpers: `app/web/services/api_json_validation.py` (`parse_request_json_dict`, `validation_error`).
+- Endpoints using the unified **400** body `{ "error", "fields" }` are listed in that module’s docstring; regression tests: `web/tests/test_api_json_validation.py`.
+- Scope / backlog: [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281).
+
 ## OpenAPI → TypeScript
 
 - Spec: `app/web/openapi.yaml`. Contract tests: `web/tests/test_openapi_contract.py`.

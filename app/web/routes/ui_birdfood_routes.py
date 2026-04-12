@@ -3,6 +3,7 @@
 from flask import request
 
 from auth import settings_check_access
+from services.api_json_validation import parse_request_json_dict
 from services.bird_food_service import (
     create_bird_food_from_payload,
     list_bird_food_for_api,
@@ -17,7 +18,10 @@ def register_ui_birdfood_routes(app):
     def add_birdfood():
         if not settings_check_access():
             return {"error": "Password required"}, 403
-        body, status = create_bird_food_from_payload(request.json)
+        data, err = parse_request_json_dict(request)
+        if err is not None:
+            return err, 400
+        body, status = create_bird_food_from_payload(data)
         return body, status
 
     @app.route("/api/ui/birdfood/<int:birdfood_id>/toggle", methods=["PATCH"])
