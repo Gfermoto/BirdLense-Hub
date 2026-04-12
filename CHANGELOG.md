@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **BirdNET MQTT FIFO ([#269](https://github.com/Gfermoto/BirdLense-Hub/issues/269)):** таблица **`birdnet_fifo_event`** в hub БД (Alembic **`004_birdnet_fifo_event`**); процессор пишет в SQLite **`data/db/birdlense.db`** через фоновый поток (**WAL**, **`busy_timeout`**), гидратирует RAM при старте MQTT; **`GET .../diagnostics/birdnet-fifo`** отдаёт снимок из БД при наличии строк (иначе JSON-файл как раньше). Ключи **`processor.birdnet_fifo_persist_enabled`**, **`processor.birdnet_fifo_sqlite_busy_ms`**. При **`DATABASE_URL`** PostgreSQL запись из процессора отключена (нет общего sqlite-файла).
+
 ### Fixed
 
 - **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.

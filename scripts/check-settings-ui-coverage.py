@@ -93,6 +93,16 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Web UI stale threshold when reading snapshot from disk.",
         "next_step": "Same as birdnet_fifo_snapshot_enabled.",
     },
+    "processor.birdnet_fifo_persist_enabled": {
+        "category": "ops-only",
+        "reason": "Processor writes BirdNET FIFO rows to hub SQLite (#269); not Settings UI.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_fifo_sqlite_busy_ms": {
+        "category": "ops-only",
+        "reason": "SQLite busy_timeout for BirdNET FIFO writer thread.",
+        "next_step": "Same as birdnet_fifo_persist_enabled.",
+    },
     "processor.birdnet_mqtt_observability_level": {
         "category": "ops-only",
         "reason": "Log verbosity for BirdNET MQTT path; operator tuning.",

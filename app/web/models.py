@@ -2,7 +2,7 @@
 
 import datetime
 from typing import List
-from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc
+from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from flask_sqlalchemy import SQLAlchemy
@@ -270,6 +270,18 @@ class PushSubscription(db.Model):
     )
 
     __table_args__ = (Index("ix_pushsubscription_endpoint", "endpoint"),)
+
+
+class BirdnetFifoEvent(db.Model):
+    """Очередь нормализованных событий BirdNET MQTT: prior + UI; персистентность в SQLite (#269)."""
+
+    __tablename__ = "birdnet_fifo_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    ts_epoch: Mapped[float] = mapped_column(Float, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+    __table_args__ = (Index("ix_birdnet_fifo_event_ts_epoch", "ts_epoch"),)
 
 
 class SpeciesVisit(db.Model):

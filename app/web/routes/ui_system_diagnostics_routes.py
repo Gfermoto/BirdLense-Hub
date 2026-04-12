@@ -84,7 +84,7 @@ def register_ui_system_diagnostics_routes(app):
     @app.route("/api/ui/system/diagnostics/birdnet-fifo", methods=["GET"])
     @require_ui_settings_password
     def diagnostics_birdnet_fifo_snapshot():
-        """Снимок FIFO BirdNET с диска (пишет процессор; см. processor.birdnet_fifo_snapshot_*)."""
+        """FIFO BirdNET: приоритетно hub БД (#269), иначе JSON-снимок с диска (processor.birdnet_fifo_*)."""
         body, code = build_birdnet_fifo_snapshot_response()
         return body, code
 
