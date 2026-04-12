@@ -62,7 +62,7 @@ jobs:
 
       - name: Radon cyclomatic complexity (summary only)
         run: |
-          pip install radon==6.0.5
+          pip install radon==6.0.1
           {
             echo '### Radon cc (web/ + processor/src/)'
             radon cc -a -s web/ processor/src/ || true
