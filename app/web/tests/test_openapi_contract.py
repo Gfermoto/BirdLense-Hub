@@ -151,3 +151,23 @@ class TestOpenApiContractSmoke:
         assert response.status_code == 200
         schema = _schema_for(spec, path="/videos/{video_id}/neighbors")
         _assert_matches_schema(spec, response.json, schema)
+
+    def test_video_fusion_trace_matches_openapi_schema(self, app, client):
+        spec = _load_spec()
+        from models import Video, db
+
+        with app.app_context():
+            v = Video(
+                processor_version="openapi",
+                start_time=datetime(2026, 4, 10, 14, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 10, 14, 5, 0, tzinfo=timezone.utc),
+                video_path="data/recordings/2026/04/10/fusion-openapi.mp4",
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+
+        response = client.get(f"/api/ui/videos/{vid}/fusion-trace")
+        assert response.status_code == 200
+        schema = _schema_for(spec, path="/videos/{video_id}/fusion-trace")
+        _assert_matches_schema(spec, response.json, schema)

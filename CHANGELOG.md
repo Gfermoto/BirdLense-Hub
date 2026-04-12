@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Fusion decision trace ([#272](https://github.com/Gfermoto/BirdLense-Hub/issues/272)):** `GET /api/ui/videos/{id}/fusion-trace` и диалог на странице ролика (**Fusion trace** / **Трассировка fusion**) — шаги по трекам (детектор → классификатор → evidence → аудио → fusion → итог) плюс сырой JSON; документация в **CONFIGURATION** (EN/RU).
+
 - **BirdNET MQTT FIFO ([#269](https://github.com/Gfermoto/BirdLense-Hub/issues/269)):** таблица **`birdnet_fifo_event`** в hub БД (Alembic **`004_birdnet_fifo_event`**); процессор пишет в SQLite **`data/db/birdlense.db`** через фоновый поток (**WAL**, **`busy_timeout`**), гидратирует RAM при старте MQTT; **`GET .../diagnostics/birdnet-fifo`** отдаёт снимок из БД при наличии строк (иначе JSON-файл как раньше). Ключи **`processor.birdnet_fifo_persist_enabled`**, **`processor.birdnet_fifo_sqlite_busy_ms`**. При **`DATABASE_URL`** PostgreSQL запись из процессора отключена (нет общего sqlite-файла).
 
 - **BirdNET FIFO — диагностика в UI ([#303](https://github.com/Gfermoto/BirdLense-Hub/issues/303)):** диалог **Система → Автоматизация → BirdNET FIFO** — таблица видов (`species_fifo_table`: MQTT-имя, ключ слияния с видео, счётчик событий, латинское имя, «как давно»), зелёная полоса слева для «услышан в окне»; сырой JSON в свёрнутом блоке; общий merge-key (**`app_config/birdnet_merge_key`**) для web и processor; тесты web/processor; локали EN/RU. Закрывает UX по сравнению с «стеной JSON».

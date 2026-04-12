@@ -151,9 +151,7 @@ def build_birdnet_fifo_snapshot_payload(
     now_utc = now or datetime.now(timezone.utc)
     if hearing_active_hours is None:
         try:
-            hearing_active_hours = float(
-                app_config.get("processor.birdnet_fifo_hearing_active_hours", 24)
-            )
+            hearing_active_hours = float(app_config.get("processor.birdnet_fifo_hearing_active_hours", 24))
         except (TypeError, ValueError):
             hearing_active_hours = 24.0
     species_hearing = build_species_hearing_state(

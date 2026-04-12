@@ -279,11 +279,6 @@ def finalize_motion_recording(
         decision_trace["accepted_tracks_truncated"] = accepted_trimmed
     if rejected_trimmed:
         decision_trace["rejected_tracks_truncated"] = rejected_trimmed
-    try:
-        if api and (video_detections or rejected_decisions):
-            api.activity_log("decision_trace", decision_trace)
-    except Exception:
-        logging.exception("Failed to write decision_trace activity log")
     logging.info(
         "Processing stopped. Video Result: %s; Audio Result: %s",
         video_summary,
@@ -350,6 +345,11 @@ def finalize_motion_recording(
             scales_weight_delta_kg=scales_delta_kg,
         )
         video_id = resp.get("video_id") if isinstance(resp, dict) else None
+        if video_id is not None:
+            try:
+                decision_trace["video_id"] = int(video_id)
+            except (TypeError, ValueError):
+                decision_trace["video_id"] = video_id
         save_crops = app_config.get("processor.save_dataset_crops")
         if video_id is not None and save_crops and video_detections:
             crops_data_dir = get_data_dir()
@@ -439,6 +439,11 @@ def finalize_motion_recording(
                             hint = " (check PROCESSOR_SECRET in app/.env)"
                         hint = f" {resp_err.status_code}{hint}"
                     logging.warning("Notify species failed%s: %s", hint, e)
+    try:
+        if api and (decision_trace.get("accepted_tracks") or decision_trace.get("rejected_tracks")):
+            api.activity_log("decision_trace", decision_trace)
+    except Exception:
+        logging.exception("Failed to write decision_trace activity log")
     if not video_file_ok:
         try:
             shutil.rmtree(output_path_physical)

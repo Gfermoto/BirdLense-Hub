@@ -243,6 +243,32 @@ export const fetchVideoNeighbors = async (id: string): Promise<VideoNeighbors> =
   return response.data;
 };
 
+export type FusionTraceLine = { field: string; value: string };
+export type FusionTraceStep = { stage: string; lines: FusionTraceLine[] };
+export type FusionTraceTrack = {
+  bucket: 'accepted' | 'rejected';
+  track_id?: number | null;
+  species_name?: string | null;
+  steps: FusionTraceStep[];
+};
+
+export type FusionTracePayload = {
+  available: boolean;
+  video_id?: number;
+  video_path?: string;
+  message?: string;
+  log_created_at?: string | null;
+  trace?: Record<string, unknown> | null;
+  tracks?: FusionTraceTrack[];
+};
+
+export const fetchVideoFusionTrace = async (id: number): Promise<FusionTracePayload> => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/fusion-trace`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const fetchNearestRecordingDay = async (
   date: string,
   direction: 'prev' | 'next',
