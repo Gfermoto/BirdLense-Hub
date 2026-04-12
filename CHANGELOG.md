@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **CI processor tests:** `test_two_stage_strategy_integration` больше не требует jay/bird в top-1 на `1.jpg` — реальные веса дают другие виды (напр. GYRFALCON в Docker); проверяется конвейер binary + species head и валидные `class_name`.
+
 - **Docker / fusion export:** контекст сборки `birdlense` — **корень репозитория** (`docker-compose`: `context: ..`, `dockerfile: app/Dockerfile`); в образ копируется **`scripts/export_fusion_training_data.py`**, `repo_root()` и E2E/тесты без монтирования `..:/workspace` не ломаются.
 
 - **Тесты без пропусков:** `test_settings_with_mcp_token` задаёт временный `mcp.token`; `test_regional_scope_true_for_birdnet_detection` создаёт и удаляет вид в БД; `test_detection_strategy` не подменяет `ultralytics`, если пакет установлен (интеграции YOLO в Docker); Playwright smoke — пустой Overview без `test.skip`.
