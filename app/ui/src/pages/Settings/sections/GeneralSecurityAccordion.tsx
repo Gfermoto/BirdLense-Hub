@@ -5,7 +5,6 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import FormHelperText from '@mui/material/FormHelperText';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
