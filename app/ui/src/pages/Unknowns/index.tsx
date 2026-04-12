@@ -54,6 +54,7 @@ import {
   type UnknownDetection,
   getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -652,7 +653,7 @@ export function UnknownsPage() {
         onSuccess={(role) => {
           setUnlocked(true, role || 'admin');
           setShowUnlockDialog(false);
-          queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
         }}
         onClose={() => setShowUnlockDialog(false)}
       />

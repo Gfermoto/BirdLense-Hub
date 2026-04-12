@@ -8,7 +8,7 @@
 
 Значения по умолчанию в `app/app_config/default_config.yaml`. Пользовательский конфиг переопределяет их (merge).
 
-**Приоритет настроек:** переменные окружения > `user_config.yaml` > `default_config.yaml`. Например, `GO2RTC_URL` в env переопределяет `video.go2rtc_url` в YAML.
+**Приоритет:** `user_config.yaml` накладывается на `default_config.yaml`, затем в рантайме применяются **оверлеи секретов**: если ниже задана непустая переменная `BIRDLENSE_*`, она подставляется в объединённый конфиг (как правка YAML, но без записи на диск). Отдельные ключи вроде `GO2RTC_URL` по-прежнему переопределяют соответствующие поля там, где это описано.
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
@@ -61,6 +61,22 @@
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
+| `BIRDLENSE_TELEGRAM_BOT_TOKEN` | Переопределяет `notifications.telegram_bot_token` |
+| `BIRDLENSE_TELEGRAM_MTPROTO_SECRET` | Переопределяет `notifications.telegram_mtproto_secret` |
+| `BIRDLENSE_TELEGRAM_API_HASH` | Переопределяет `notifications.telegram_api_hash` |
+| `BIRDLENSE_HA_TOKEN` | Переопределяет `homeassistant.token` |
+| `BIRDLENSE_SETTINGS_PASSWORD` | Переопределяет `general.settings_password` (plaintext или bcrypt) |
+| `BIRDLENSE_CONTRIBUTOR_PASSWORD` | Переопределяет `general.contributor_password` (plaintext или bcrypt) |
+| `BIRDLENSE_MQTT_PASSWORD` | Переопределяет `mqtt.password` |
+| `BIRDLENSE_GO2RTC_PASSWORD` | Переопределяет `video.go2rtc_password` |
+| `BIRDLENSE_OPENWEATHER_API_KEY` | Переопределяет `secrets.openweather_api_key` |
+| `BIRDLENSE_EBIRD_API_KEY` | Переопределяет `secrets.ebird_api_key` |
+| `BIRDLENSE_XENO_CANTO_API_KEY` | Переопределяет `secrets.xeno_canto_api_key` |
+| `BIRDLENSE_MCP_TOKEN` | Переопределяет `mcp.token` |
+| `BIRDLENSE_VAPID_PRIVATE_KEY` | Переопределяет `web_push.vapid_private_key` |
+| `BIRDLENSE_REDIS_URL` | Переопределяет `performance.redis_url` |
+
+**Пароли UI:** при сохранении из веб-интерфейса новые значения в виде plaintext **хешируются (bcrypt)** в `user_config.yaml`; старые записи в plaintext продолжают работать, пока не смените пароль. В env можно передать и plaintext, и уже готовый bcrypt-строковый хеш.
 
 См. `app/.env.example`. Секреты генерируются при `make setup` (вызывается из `make start`/`make pull`).
 

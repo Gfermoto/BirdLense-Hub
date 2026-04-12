@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { formatLocalTime } from '../../util';
 import { useState, useEffect, useMemo } from 'react';
 import Card from '@mui/material/Card';
@@ -18,7 +17,11 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { LineChart } from '@mui/x-charts/LineChart';
-import { BASE_API_URL } from '../../api/api';
+import {
+  useSystemMetricsHistoryQuery,
+  useSystemMetricsLiveQuery,
+  useSystemVisitorsQuery,
+} from '../../hooks/useSystemQueries';
 
 const LIVE_TAIL_MAX = 48;
 const CARD_MIN_HEIGHT = 280;
@@ -30,38 +33,6 @@ type ChartPoint = {
   disk: number;
   gpu: number | null;
 };
-
-interface LiveMetrics {
-  cpu: { percent: number };
-  memory: { total: number; used: number; percent: number };
-  disk: { total: number; used: number; percent: number };
-  encoding: string;
-  gpu_percent: number | null;
-}
-
-interface VisitorStats {
-  period_days: number;
-  unique_visits: number;
-  browser_count?: number;
-  active_days: number;
-  device_breakdown?: Record<string, number>;
-  method: string;
-}
-
-interface HistorySample {
-  t: string;
-  cpu: number;
-  memory: number;
-  disk: number;
-  gpu: number | null;
-}
-
-interface MetricsHistoryResponse {
-  samples: HistorySample[];
-  sample_interval_seconds?: number;
-  retention_hours?: number;
-  hours_requested?: number;
-}
 
 type MetricKey = 'cpu' | 'memory' | 'disk' | 'gpu';
 
@@ -157,39 +128,9 @@ export const SystemMonitor = () => {
   const [historyHours, setHistoryHours] = useState<number>(24);
   const [liveTail, setLiveTail] = useState<ChartPoint[]>([]);
 
-  const liveQuery = useQuery({
-    queryKey: ['systemMetricsLive'],
-    queryFn: async (): Promise<LiveMetrics> => {
-      const response = await fetch(`${BASE_API_URL}/system/metrics`);
-      if (!response.ok) throw new Error('Failed to fetch system metrics');
-      return response.json();
-    },
-    refetchInterval: 5000,
-  });
-
-  const historyQuery = useQuery({
-    queryKey: ['systemMetricsHistory', historyHours],
-    queryFn: async (): Promise<MetricsHistoryResponse> => {
-      const response = await fetch(
-        `${BASE_API_URL}/system/metrics/history?hours=${historyHours}&max_points=500`,
-      );
-      if (!response.ok) throw new Error('Failed to fetch metrics history');
-      return response.json();
-    },
-    staleTime: 60_000,
-  });
-
-  const visitorsQuery = useQuery({
-    queryKey: ['systemVisitors', visitorsDays],
-    queryFn: async (): Promise<VisitorStats> => {
-      const response = await fetch(
-        `${BASE_API_URL}/system/visitors?days=${visitorsDays}`,
-      );
-      if (!response.ok) throw new Error('Failed to fetch visitor stats');
-      return response.json();
-    },
-    staleTime: 60_000,
-  });
+  const liveQuery = useSystemMetricsLiveQuery();
+  const historyQuery = useSystemMetricsHistoryQuery(historyHours);
+  const visitorsQuery = useSystemVisitorsQuery(visitorsDays);
 
   useEffect(() => {
     setLiveTail([]);

@@ -2,10 +2,13 @@ astral>=3.2
 timezonefinder
 typing_extensions>=4.0.0
 pyyaml==6.0.3
+bcrypt>=4.0.0
 pytest==8.3.3
 pytest-cov==6.0.0
 coverage[toml]>=7.0.0
 paho-mqtt==2.1.0
+Flask>=3.0.0,<4
+Werkzeug>=3.0.0,<4
 Flask_SQLAlchemy==3.1.1
 Flask-Migrate>=4.0.0
 Flask-Cors>=6.0.0

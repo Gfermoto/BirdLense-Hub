@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-import secrets
 
 from app_config.app_config import app_config
+from services.ui_password_service import verify_ui_password
 
 
 def settings_gate_requires_password() -> bool:
@@ -41,8 +41,8 @@ def resolve_password_unlock_role(submitted_password: str) -> str | None:
     pw = (submitted_password or "").strip()
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
-    if secrets.compare_digest(pw, admin_pw):
+    if verify_ui_password(pw, admin_pw):
         return "admin"
-    if contrib_pw and secrets.compare_digest(pw, contrib_pw):
+    if contrib_pw and verify_ui_password(pw, contrib_pw):
         return "contributor"
     return None

@@ -14,6 +14,8 @@
 | **`app/app_config/user_config.yaml`** | Сохранение настроек из UI | Файл на диске в открытом виде. В проде предпочтительнее env ([SECURITY.ru.md](./SECURITY.ru.md) §2). |
 | **`scripts/deploy.local.sh`** (не в git) | Значения, которые при `make deploy` попадают в серверный `app/.env` | Держите здесь эталон для ключей, которыми управляет деплой, чтобы следующий деплой не подменил секрет неожиданно. |
 
+**Оверлеи в рантайме (`BIRDLENSE_*`):** после merge YAML непустые переменные (`BIRDLENSE_SETTINGS_PASSWORD`, `BIRDLENSE_MQTT_PASSWORD`, `BIRDLENSE_REDIS_URL`, ключи API, токены Telegram и т.д.) подменяют соответствующие ключи **только в памяти** (в `user_config.yaml` ничего не пишется). Удобно в проде при плейсхолдерах в файле. Полный список — [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (переменные окружения). Пароли UI из env — plaintext или bcrypt; при сохранении через Настройки новый plaintext на PATCH уходит в bcrypt.
+
 ---
 
 ## Перечень (runtime)

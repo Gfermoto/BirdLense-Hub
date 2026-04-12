@@ -38,9 +38,9 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy writes to `.env`. |
 | ~~**Critical**~~ **Fixed** | `GET /api/ui/settings` returned full config with secrets. | Secrets are masked (`***`), placeholder on save does not overwrite real value. |
-| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Store in env or secret manager; do not write to YAML. |
+| **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Prefer **`BIRDLENSE_*` env overlays** (see [CONFIGURATION](./CONFIGURATION.md)) or a secret manager; avoid persisting secrets in YAML in production. |
 | **High** | OpenAPI describes `telegram_bot_token`, `secrets.openweather_api_key` in Settings schema. | Add `x-sensitive: true`, do not expose in examples. |
-| **Medium** | `settings_password` in plain text. In default_config: *"Consider hashing for production"*. | Store hash (bcrypt/argon2). |
+| ~~**Medium**~~ **Mitigated** | `settings_password` / `contributor_password` historically plain text. | New saves from UI use **bcrypt**; legacy plaintext still verifies; optional **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** override at runtime. |
 | **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |
 
 **Operator runbook:** [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) — full inventory, rotation steps, verification, rollback, emergency note template ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).

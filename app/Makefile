@@ -78,13 +78,13 @@ venv-web:
 		python3 -m venv "$(VENV)" && \
 		"$(VENV)/bin/python" -m pip install -U pip; \
 	fi
-	env PIP_NO_USER=1 "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
+	env -u PIP_USER "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
 	@echo "venv-web: готово $(abspath $(VENV)) (используйте: make test-web-local)"
 
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
 # PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
 test-web-local: venv-web
-	env PYTHONNOUSERSITE=1 "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
+	env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)

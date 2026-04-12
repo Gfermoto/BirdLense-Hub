@@ -277,3 +277,45 @@ def test_settings_patch_contributor_placeholder_does_not_wipe_telegram_token(
         assert app_config.get("notifications.telegram_bot_token") == real
     finally:
         (app_config.config.get("notifications") or {}).pop("telegram_bot_token", None)
+
+
+def test_settings_patch_admin_password_stored_as_bcrypt_and_verify_ok(app, client, monkeypatch):
+    """PATCH нового plaintext → bcrypt в конфиге; verify-password принимает тот же пароль (#278)."""
+    from app_config.app_config import app_config
+    from services.ui_password_service import stored_ui_password_is_bcrypt, verify_ui_password
+
+    monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
+    monkeypatch.delenv("FLASK_ENV", raising=False)
+    old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
+    monkeypatch.setattr(app_config, "save", lambda: None)
+    _patch_general_key(monkeypatch, "settings_password", "before-patch-plain")
+    _patch_general_key(monkeypatch, "contributor_password", "")
+
+    new_pw = f"new-sec-{id(app)}"
+    try:
+        with client.session_transaction() as sess:
+            sess["access_role"] = "admin"
+
+        r = client.patch(
+            "/api/ui/settings",
+            json={"general": {"settings_password": new_pw}},
+            content_type="application/json",
+        )
+        assert r.status_code == 200
+        stored = app_config.get("general.settings_password")
+        assert stored_ui_password_is_bcrypt(stored)
+        assert verify_ui_password(new_pw, stored)
+
+        vr = client.post(
+            "/api/ui/settings/verify-password",
+            json={"password": new_pw},
+            content_type="application/json",
+        )
+        assert vr.status_code == 200
+        body = vr.get_json() or {}
+        assert body.get("ok") is True
+        assert body.get("role") == "admin"
+    finally:
+        app_config.set("general.settings_password", old_admin or "")
+        app_config.set("general.contributor_password", old_contrib or "")

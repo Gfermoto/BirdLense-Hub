@@ -670,6 +670,74 @@ export const updateSettings = async (settings: Settings) => {
   return response.data;
 };
 
+// --- System monitor / processor logs (#296)
+export type SystemMetricsLive = {
+  cpu: { percent: number };
+  memory: { total: number; used: number; percent: number };
+  disk: { total: number; used: number; percent: number };
+  encoding: string;
+  gpu_percent: number | null;
+};
+
+export type SystemMetricsHistorySample = {
+  t: string;
+  cpu: number;
+  memory: number;
+  disk: number;
+  gpu: number | null;
+};
+
+export type SystemMetricsHistoryResponse = {
+  samples: SystemMetricsHistorySample[];
+  sample_interval_seconds?: number;
+  retention_hours?: number;
+  hours_requested?: number;
+};
+
+export type SystemVisitorStats = {
+  period_days: number;
+  unique_visits: number;
+  browser_count?: number;
+  active_days: number;
+  device_breakdown?: Record<string, number>;
+  method: string;
+};
+
+export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> => {
+  const response = await axios.get(`${BASE_API_URL}/system/metrics`);
+  return response.data;
+};
+
+export const fetchSystemMetricsHistory = async (
+  hours: number,
+  maxPoints = 500,
+): Promise<SystemMetricsHistoryResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/metrics/history`, {
+    params: { hours, max_points: maxPoints },
+  });
+  return response.data;
+};
+
+export const fetchSystemVisitors = async (days: number): Promise<SystemVisitorStats> => {
+  const response = await axios.get(`${BASE_API_URL}/system/visitors`, {
+    params: { days },
+  });
+  return response.data;
+};
+
+export type ProcessorLogsResponse = {
+  lines?: string[];
+  path?: string;
+};
+
+export const fetchProcessorLogs = async (lines: number): Promise<ProcessorLogsResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/logs`, {
+    params: { lines },
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 /** Web Push: get VAPID public key for subscription. */
 export const fetchVapidPublicKey = async (): Promise<string> => {
   const res = await fetch(`${BASE_API_URL}/push/vapid-public`, {

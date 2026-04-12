@@ -38,9 +38,9 @@
 |------|----------|--------------|
 | ~~**Критический**~~ **Исправлено** | Дефолтный `FLASK_SECRET_KEY`. | В `BIRDLENSE_ENV=production` без ключа — RuntimeError; деплой пишет в `.env`. |
 | ~~**Критический**~~ **Исправлено** | `GET /api/ui/settings` отдавал полный конфиг с секретами. | Маскирование `***`, placeholder при сохранении не затирает реальное значение. |
-| **Высокий** | `user_config.yaml` в открытом виде: токены Telegram, MQTT, ключи API, пароли. | Хранить в env / secret manager, не в YAML. |
+| **Высокий** | `user_config.yaml` в открытом виде: токены Telegram, MQTT, ключи API, пароли. | В проде предпочтительно **оверлеи `BIRDLENSE_*`** ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)) или secret manager; не хранить секреты в YAML. |
 | **Высокий** | OpenAPI описывает чувствительные поля в схеме Settings. | `x-sensitive: true`, не светить в примерах. |
-| **Средний** | `settings_password` в plain text. | Рассмотреть хеш (bcrypt/argon2). |
+| ~~**Средний**~~ **Смягчено** | `settings_password` / `contributor_password` раньше только plain text. | Новые сохранения из UI — **bcrypt**; старый plaintext всё ещё принимается; опционально **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** в env. |
 | **Низкий** | `.env` в `.gitignore`. | Оставить как есть. |
 
 **Runbook для оператора:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) — перечень секретов, шаги ротации, проверка, откат, шаблон экстренной заметки ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
