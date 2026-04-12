@@ -31,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### CI
 
+- **openapi-contract:** Radon — закрепить **`radon==6.0.1`** (на PyPI нет **6.0.5**; шаг «cyclomatic complexity» падал на `pip install`).
+
 - **[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286):** job `ui-build` — после `npm ci` выполняется **`npm run lint`**, затем build; ESLint: плагин `react-hooks` с правилами **`rules-of-hooks`** и **`exhaustive-deps`** (без полного `recommended` v7 с React Compiler rules).
 
 - **[#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284):** `.github/workflows/npm-audit-scheduled.yml` — еженедельно + `workflow_dispatch`: `npm audit --omit=dev --audit-level=moderate` в `app/ui`; политика в комментариях workflow. Док: [TESTING](docs/TESTING.md) / [RU](docs/TESTING.ru.md).
