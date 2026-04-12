@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import timedelta
 
@@ -19,6 +20,8 @@ from services.dataset_export_service import (
 from services.http_response_cache import bust_response_caches
 from services.visit_processor import VisitProcessor
 from util import ensure_utc
+
+_log = logging.getLogger(__name__)
 
 _INLINE_DATASET_CROP_LIMIT = 5
 
@@ -75,17 +78,24 @@ def run_confirm_detection(
 def _run_dataset_crop_followup(jobs, *, app_obj):
     with app_obj.app_context():
         for det_id, vid, tid, old_name, new_name in jobs:
-            vrow = db.session.get(VideoSpecies, det_id)
-            if not vrow or vrow.source != "video":
-                continue
-            moved = move_crop_on_species_correction(
-                video_id=vid,
-                track_id=tid,
-                old_species_name=old_name,
-                new_species_name=new_name,
-            )
-            if not moved:
-                extract_and_save_crop_for_detection(vrow, new_name)
+            try:
+                vrow = db.session.get(VideoSpecies, det_id)
+                if not vrow or vrow.source != "video":
+                    continue
+                moved = move_crop_on_species_correction(
+                    video_id=vid,
+                    track_id=tid,
+                    old_species_name=old_name,
+                    new_species_name=new_name,
+                )
+                if not moved:
+                    extract_and_save_crop_for_detection(vrow, new_name)
+            except Exception:
+                _log.exception(
+                    "dataset crop follow-up failed (detection_id=%s video_id=%s)",
+                    det_id,
+                    vid,
+                )
 
 
 def apply_detection_species_patch(

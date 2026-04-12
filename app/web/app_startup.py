@@ -138,11 +138,18 @@ def bootstrap_species_metadata_enrich(app: Flask) -> None:
         enrich_on_start = raw.lower() in ("1", "true", "yes")
         if not app.config.get("TESTING") and enrich_on_start:
             marker = "/tmp/.birdlense_species_metadata_enrich_started"
-            if not os.path.exists(marker):
-                try:
-                    open(marker, "a").close()
-                except OSError:
-                    pass
+            try:
+                fd = os.open(
+                    marker,
+                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                    0o644,
+                )
+                os.close(fd)
+            except FileExistsError:
+                pass
+            except OSError as marker_err:
+                _log.warning("species_metadata_enrich marker: %s", marker_err)
+            else:
 
                 def _background_enrich():
                     with app.app_context():
