@@ -32,16 +32,20 @@
 
 ---
 
-## Scenario 3: Audio (BirdNET-Pi / BirdNET-Go)
+## Scenario 3: Audio (BirdNET over MQTT)
 
 **Goal:** Voice-based recognition alongside video.
 
-1. BirdNET-Pi or BirdNET-Go publishes to MQTT topic `birdnet`.
+**Which BirdNET build:** there is **no** Hub toggle for “Pi vs Go”. Any stack that publishes **JSON** to your MQTT topic in a shape the processor understands will work — commonly **BirdNET-Go** or **BirdNET-Pi** (field names are listed in [CONFIGURATION.md](./CONFIGURATION.md) § MQTT). Set broker and topic in Settings.
+
+**Display locale (EN/RU, etc.):** you do **not** need to switch BirdNET’s UI language for video merge to work. The Hub maps each event to the **canonical species name** in your database using the **scientific name** from MQTT (BirdNET-Go usually includes it) and, when needed, **species aliases** in the registry. Details: same doc, § MQTT.
+
+1. Your audio stack (e.g. BirdNET-Go or BirdNET-Pi) publishes recognitions to MQTT — often topic `birdnet` or a custom one (`mqtt.birdnet_topic`).
 2. BirdLense: Settings → MQTT — broker, BirdNET topic.
 3. Merge: YOLO + Frigate + BirdNET by time (`merge_window`).
-4. **Spectrogram** is generated **only** when a BirdNET recognition message arrives in the recording window. Automatic in that case. Audio tab in the player shows the spectrogram.
+4. **Spectrogram:** by default built after every clip (`processor.generate_spectrogram_always`); set **false** to build **only** when a BirdNET message falls in the recording window (less CPU). The player’s Audio tab shows it when the file exists.
 
-**Result:** Audio-derived species add to or boost video detections.
+**Result:** Audio-derived species add to or boost video detections; with a proper payload, merge does not depend on which language BirdNET uses for bird names.
 
 ---
 

@@ -12,7 +12,7 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 |-----------|----------|
 | **Docker** | **x86_64 / amd64** (Intel или AMD), Compose v2 — ARM/aarch64 не поддерживаются |
 | **Go2RTC** | Видеопотоки с IP-камер (standalone или Frigate) |
-| **MQTT** (опционально) | Frigate events, BirdNET sightings |
+| **MQTT** (опционально) | Frigate events; BirdNET (любой совместимый источник JSON, чаще BirdNET-Go или BirdNET-Pi) |
 
 ---
 

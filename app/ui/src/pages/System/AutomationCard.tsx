@@ -6,14 +6,28 @@ import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import type { TFunction } from 'i18next';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { BASE_API_URL } from '../../api/api';
 
@@ -32,12 +46,50 @@ function statusLabel(status?: JobStatus | null): string {
   return status.status || 'idle';
 }
 
+type BirdnetSpeciesFifoRow = {
+  display_label: string;
+  canonical_for_video: string;
+  scientific_name?: string | null;
+  active: number;
+  last_heard_at?: string;
+  seconds_since_heard?: number;
+  event_count: number;
+};
+
+type BirdnetFifoDialogSnapshot = {
+  queue_len?: number;
+  fifo_cap?: number;
+  fifo_fill_ratio?: number;
+  mqtt_connected?: boolean;
+  processor_pid?: number;
+  species_hearing?: {
+    active_within_hours?: number;
+    by_species?: Record<string, { active?: number }>;
+  };
+  species_fifo_table?: BirdnetSpeciesFifoRow[];
+  species_counts?: Record<string, number>;
+};
+
+function formatAgoCompact(seconds: number, t: TFunction): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 60) return t('system.automationBirdnetFifoAgoSeconds', { n: s });
+  if (s < 3600) return t('system.automationBirdnetFifoAgoMinutes', { n: Math.floor(s / 60) });
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (m <= 0) return t('system.automationBirdnetFifoAgoHoursOnly', { n: h });
+  return t('system.automationBirdnetFifoAgoHoursMinutes', { h, m });
+}
+
 export function AutomationCard() {
   const { t } = useTranslation();
   const [fusionExportPolling, setFusionExportPolling] = useState(false);
   const [fusionEvalPolling, setFusionEvalPolling] = useState(false);
   const [maintenanceAction, setMaintenanceAction] = useState<string | null>(null);
   const [lastInfo, setLastInfo] = useState<string | null>(null);
+  const [birdnetFifoOpen, setBirdnetFifoOpen] = useState(false);
+  const [birdnetFifoLoading, setBirdnetFifoLoading] = useState(false);
+  const [birdnetFifoError, setBirdnetFifoError] = useState<string | null>(null);
+  const [birdnetFifoRaw, setBirdnetFifoRaw] = useState<Record<string, unknown> | null>(null);
 
   const fusionExportQuery = useQuery({
     queryKey: ['fusion-export-status'],
@@ -205,6 +257,35 @@ export function AutomationCard() {
     window.open(`${BASE_API_URL}/system/fusion/export/download`, '_blank', 'noopener,noreferrer');
   };
 
+  const birdnetFifoSnap = (birdnetFifoRaw?.snapshot || null) as BirdnetFifoDialogSnapshot | null;
+
+  const openBirdnetFifoDialog = async () => {
+    setBirdnetFifoOpen(true);
+    setBirdnetFifoLoading(true);
+    setBirdnetFifoError(null);
+    setBirdnetFifoRaw(null);
+    try {
+      const { data } = await axios.get<Record<string, unknown>>(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
+        withCredentials: true,
+      });
+      setBirdnetFifoRaw(data);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBirdnetFifoError(msg || t('system.automationBirdnetFifoLoadError'));
+    } finally {
+      setBirdnetFifoLoading(false);
+    }
+  };
+
+  const copyBirdnetFifoJson = async () => {
+    if (!birdnetFifoRaw) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(birdnetFifoRaw, null, 2));
+    } catch {
+      /* ignore */
+    }
+  };
+
   const runMaintenanceAction = async (
     label: string,
     fn: () => Promise<Record<string, unknown>>,
@@ -266,17 +347,9 @@ export function AutomationCard() {
             <span>
               <Button
                 variant="outlined"
-                disabled={maintenanceAction !== null}
+                disabled={maintenanceAction !== null || birdnetFifoLoading}
                 onClick={() => {
-                  void runMaintenanceAction(
-                    t('system.automationBirdnetFifoSnapshot'),
-                    async () =>
-                      (
-                        await axios.get(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
-                          withCredentials: true,
-                        })
-                      ).data as Record<string, unknown>,
-                  ).catch(() => undefined);
+                  void openBirdnetFifoDialog();
                 }}
               >
                 {t('system.automationBirdnetFifoSnapshot')}
@@ -284,6 +357,207 @@ export function AutomationCard() {
             </span>
           </Tooltip>
         </Stack>
+
+        <Dialog
+          open={birdnetFifoOpen}
+          onClose={() => setBirdnetFifoOpen(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle sx={{ pb: 0.5 }}>
+            {t('system.automationBirdnetFifoDialogTitle')}
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, fontWeight: 400 }}>
+              {t('system.automationBirdnetFifoUiReviewHint')}
+            </Typography>
+          </DialogTitle>
+          <DialogContent dividers>
+            {birdnetFifoLoading && (
+              <Stack alignItems="center" py={3}>
+                <CircularProgress size={32} />
+              </Stack>
+            )}
+            {!birdnetFifoLoading && birdnetFifoError && (
+              <Alert severity="error">{t('system.automationBirdnetFifoLoadError')}</Alert>
+            )}
+            {!birdnetFifoLoading && !birdnetFifoError && birdnetFifoRaw && !birdnetFifoRaw.available && (
+              <Alert severity="warning">{t('system.automationBirdnetFifoUnavailable')}</Alert>
+            )}
+            {!birdnetFifoLoading && !birdnetFifoError && birdnetFifoSnap && (
+              <Stack spacing={2.5}>
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    {t('system.automationBirdnetFifoBufferTitle')}
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(
+                      100,
+                      Math.round(
+                        (typeof birdnetFifoSnap.fifo_fill_ratio === 'number'
+                          ? birdnetFifoSnap.fifo_fill_ratio
+                          : birdnetFifoSnap.fifo_cap
+                            ? Number(birdnetFifoSnap.queue_len || 0) / Number(birdnetFifoSnap.fifo_cap)
+                            : 0) * 100,
+                      ),
+                    )}
+                    sx={{ height: 8, borderRadius: 1, mb: 1 }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    {t('system.automationBirdnetFifoBufferHint', {
+                      pct: Math.min(
+                        100,
+                        Math.round(
+                          (typeof birdnetFifoSnap.fifo_fill_ratio === 'number'
+                            ? birdnetFifoSnap.fifo_fill_ratio
+                            : birdnetFifoSnap.fifo_cap
+                              ? Number(birdnetFifoSnap.queue_len || 0) / Number(birdnetFifoSnap.fifo_cap)
+                              : 0) * 100,
+                        ),
+                      ),
+                      cur: birdnetFifoSnap.queue_len ?? 0,
+                      cap: birdnetFifoSnap.fifo_cap ?? 0,
+                    })}
+                  </Typography>
+                </Paper>
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                    {t('system.automationBirdnetFifoTableSectionTitle', {
+                      hours:
+                        birdnetFifoSnap.species_hearing?.active_within_hours != null
+                          ? Math.round(Number(birdnetFifoSnap.species_hearing.active_within_hours))
+                          : 24,
+                    })}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    {t('system.automationBirdnetFifoTableSectionHint')}
+                  </Typography>
+                  {(birdnetFifoSnap.species_fifo_table || []).length > 0 ? (
+                    <TableContainer
+                      component={Paper}
+                      variant="outlined"
+                      sx={{ maxHeight: 420, bgcolor: 'background.paper' }}
+                    >
+                      <Table size="small" stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell
+                              sx={(theme) => ({
+                                fontWeight: 600,
+                                backgroundColor: theme.palette.background.paper,
+                                zIndex: 3,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                              })}
+                            >
+                              {t('system.automationBirdnetFifoTableColMqtt')}
+                            </TableCell>
+                            <TableCell
+                              sx={(theme) => ({
+                                fontWeight: 600,
+                                backgroundColor: theme.palette.background.paper,
+                                zIndex: 3,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                              })}
+                            >
+                              {t('system.automationBirdnetFifoTableColVideo')}
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={(theme) => ({
+                                fontWeight: 600,
+                                backgroundColor: theme.palette.background.paper,
+                                zIndex: 3,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                              })}
+                            >
+                              {t('system.automationBirdnetFifoTableColCount')}
+                            </TableCell>
+                            <TableCell
+                              sx={(theme) => ({
+                                fontWeight: 600,
+                                backgroundColor: theme.palette.background.paper,
+                                zIndex: 3,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                              })}
+                            >
+                              {t('system.automationBirdnetFifoTableColSci')}
+                            </TableCell>
+                            <TableCell
+                              sx={(theme) => ({
+                                fontWeight: 600,
+                                backgroundColor: theme.palette.background.paper,
+                                zIndex: 3,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                              })}
+                            >
+                              {t('system.automationBirdnetFifoTableColLast')}
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(birdnetFifoSnap.species_fifo_table || []).map((row) => {
+                            const on = row.active === 1;
+                            return (
+                              <TableRow
+                                key={row.display_label}
+                                hover
+                                sx={{
+                                  bgcolor: 'background.paper',
+                                  '&:nth-of-type(even)': { bgcolor: 'action.hover' },
+                                  ...(on ? { boxShadow: (theme) => `inset 3px 0 0 ${theme.palette.success.main}` } : {}),
+                                }}
+                              >
+                                <TableCell sx={{ maxWidth: 200 }}>{row.display_label}</TableCell>
+                                <TableCell sx={{ maxWidth: 200 }}>{row.canonical_for_video}</TableCell>
+                                <TableCell align="right">{row.event_count}</TableCell>
+                                <TableCell
+                                  sx={{
+                                    maxWidth: 160,
+                                    fontFamily: 'ui-monospace, monospace',
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {row.scientific_name || '—'}
+                                </TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
+                                  {formatAgoCompact(row.seconds_since_heard ?? 0, t)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      —
+                    </Typography>
+                  )}
+                </Box>
+                <Accordion disableGutters elevation={0} variant="outlined">
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2">{t('system.automationBirdnetFifoTechnicalAccordion')}</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Button size="small" variant="outlined" onClick={copyBirdnetFifoJson} disabled={!birdnetFifoRaw} sx={{ mb: 1 }}>
+                      {t('system.automationBirdnetFifoCopyJson')}
+                    </Button>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                      {t('system.automationBirdnetFifoHearingExplain', {
+                        hours:
+                          birdnetFifoSnap.species_hearing?.active_within_hours != null
+                            ? Math.round(Number(birdnetFifoSnap.species_hearing.active_within_hours))
+                            : 24,
+                      })}
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBirdnetFifoOpen(false)}>{t('system.automationBirdnetFifoDialogClose')}</Button>
+          </DialogActions>
+        </Dialog>
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
           <Tooltip title={t('system.automationFusionExportHint')} describeChild>

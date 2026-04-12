@@ -92,7 +92,7 @@
 | `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
-| `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
+| `birdnet_url` | Ссылка на веб-интерфейс вашего аудио-стека (BirdNET-Go, BirdNET-Pi и т.д.). Пусто — ссылка/иконка в UI скрыта. От выбора сборки настройки слияния не зависят — важен MQTT. |
 | `heimdall_url` | Базовый URL Heimdall только для **проверки с Hub** (раздел System). Можно указать `http://heimdall.local`, если имя резолвится **с хоста/контейнера Hub** (Docker: общая сеть, `extra_hosts`, DNS в LAN). Это **не** настройка «Heimdall читает Hub» — см. ниже. |
 | `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
@@ -201,7 +201,7 @@
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
 
-**BirdNET:** `CommonName`, `Confidence`, `BeginTime`, `ScientificName`, `BirdImage.URL`. BirdNET влияет только на confidence. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
+**BirdNET (универсально):** процессор принимает несколько схем имён полей — в частности **BirdNET-Go** (`CommonName`, `ScientificName`, `SpeciesCode`, `Confidence`, `BeginTime`, опционально `BirdImage.URL`) и **BirdNET-Pi** (`Common_Name`, `Confidence_Score`, `Date`, и др.). Отдельно в конфиге не выбирается «Go или Pi»: достаточно, чтобы JSON приходил на `mqtt.birdnet_topic`. **Слияние с видео и приоритеты по FIFO** опираются на **каноническое имя вида** в Hub: при типичном payload с **научным именем** язык подписи в MQTT (русский/английский) не мешает; если научного имени нет, помогают **алиасы** в реестре видов (`species_alias`) и при необходимости `detection.species_mapping`. При Hub только на PostgreSQL без общего файла `birdlense.db` автоматическое сопоставление по каталогу из SQLite недоступно — используйте маппинг в YAML. BirdNET по-прежнему **confidence-only** для финального video label. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
 
 **Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
 

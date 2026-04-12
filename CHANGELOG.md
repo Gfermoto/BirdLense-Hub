@@ -12,6 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **BirdNET MQTT FIFO ([#269](https://github.com/Gfermoto/BirdLense-Hub/issues/269)):** таблица **`birdnet_fifo_event`** в hub БД (Alembic **`004_birdnet_fifo_event`**); процессор пишет в SQLite **`data/db/birdlense.db`** через фоновый поток (**WAL**, **`busy_timeout`**), гидратирует RAM при старте MQTT; **`GET .../diagnostics/birdnet-fifo`** отдаёт снимок из БД при наличии строк (иначе JSON-файл как раньше). Ключи **`processor.birdnet_fifo_persist_enabled`**, **`processor.birdnet_fifo_sqlite_busy_ms`**. При **`DATABASE_URL`** PostgreSQL запись из процессора отключена (нет общего sqlite-файла).
 
+- **BirdNET FIFO — диагностика в UI ([#303](https://github.com/Gfermoto/BirdLense-Hub/issues/303)):** диалог **Система → Автоматизация → BirdNET FIFO** — таблица видов (`species_fifo_table`: MQTT-имя, ключ слияния с видео, счётчик событий, латинское имя, «как давно»), зелёная полоса слева для «услышан в окне»; сырой JSON в свёрнутом блоке; общий merge-key (**`app_config/birdnet_merge_key`**) для web и processor; тесты web/processor; локали EN/RU. Закрывает UX по сравнению с «стеной JSON».
+
+### Changed
+
+- **BirdNET ↔ видео, ключ слияния:** в **`birdnet_merge_key`** сначала матчится **`detection.species_mapping`** по научному имени (ключи вида **`Parus major (Great Tit)`**), затем уже **`species_taxon.common_name`** из SQLite — колонка «ключ для видео» и слияние с YOLO не прыгают между русским и английским из‑за локали в каталоге. В **`default_config.yaml`** добавлены типовые европейские виды (в т.ч. из RU BirdNET).
+
+- **`species_normalizer._to_title_case`:** дефисы в составе названия не превращаются в пробелы (корректнее вывод для **`Red-breasted Flycatcher`**, **`Eurasian Eagle-Owl`** и т.п. после **`normalize()`**).
+
+- **`birdnet_merge_key`:** значение из **`detection.species_mapping`** по научному имени возвращается **как в YAML** (без повторного **`normalize()`**), чтобы не портить написание вроде **Red-breasted** / **Eagle-Owl**.
+
 ### Fixed
 
 - **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.

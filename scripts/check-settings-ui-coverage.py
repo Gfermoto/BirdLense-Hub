@@ -103,6 +103,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "SQLite busy_timeout for BirdNET FIFO writer thread.",
         "next_step": "Same as birdnet_fifo_persist_enabled.",
     },
+    "processor.birdnet_fifo_hearing_active_hours": {
+        "category": "ops-only",
+        "reason": "Hearing active window for BirdNET FIFO diagnostics UI (species active 1/0); not Settings.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
     "processor.birdnet_mqtt_observability_level": {
         "category": "ops-only",
         "reason": "Log verbosity for BirdNET MQTT path; operator tuning.",

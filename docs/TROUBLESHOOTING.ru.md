@@ -94,6 +94,19 @@ docker logs birdlense --tail 200 2>&1
 
 **Порядок проверки:** motion.source → video.cameras (id камеры) → логи `Frigate trigger` / `Frigate event skipped` → `GET /api/ui/status` (mqtt: ok).
 
+### BirdNET: звук есть, FIFO заполняется, но видео «не слышит» / нет audio evidence
+
+Симптом: в **Система → Автоматизация → BirdNET FIFO** события видны, а слияние с YOLO не даёт `support` или авто-пороги по BirdNET не срабатывают.
+
+| # | Причина | Что сделать |
+|---|---------|-------------|
+| 1 | В MQTT **нет научного имени** (`ScientificName` / аналог), только локализованное имя | Предпочтительно **BirdNET-Go** (обычно шлёт латинское имя). Иначе добавьте **алиас** в реестре видов Hub на эту строку из MQTT → таксон, либо пару в `detection.species_mapping`. |
+| 2 | Вид в каталоге Hub **не совпадает** с `species_taxon.scientific_name` | Проверьте строку таксона и латинское имя (опечатки, лишние пробелы). |
+| 3 | Hub на **PostgreSQL** без общего `birdlense.db` у процессора | Авто-сопоставление по SQLite-каталогу недоступно — используйте **`detection.species_mapping`** для строк из MQTT. |
+| 4 | MQTT-имя вида не совпадает с **именем вида у классификатора** | После сопоставления с каталогом ключ слияния должен совпасть с тем, что даёт `normalize()` для видео-детекций (см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) § MQTT). |
+
+**Проверка на сервере:** `GET /api/ui/health` — `mqtt: ok`; логи процессора — `MQTT aggregator connected`, при отладке BirdNET — уровень `processor.birdnet_mqtt_observability_level: debug`. Снимок FIFO: **Система → Автоматизация → BirdNET FIFO: снимок** (нужен пароль администратора).
+
 ---
 
 ## Восстановление SQLite не сработало

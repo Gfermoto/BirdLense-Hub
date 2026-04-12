@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 from app_config.app_config import app_config
+from birdnet_merge_key import birdnet_merge_key
 from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -417,6 +418,21 @@ class MQTTEventAggregator:
         self._fifo_snapshot_dir = fs_dir or None
         self._fifo_snapshot_last_monotonic = 0.0
         self._birdnet_fifo_persist = None
+        self._birdnet_merge_db_path = None
+        _merge_data_root = fs_dir or None
+        if not _merge_data_root:
+            from processor_support import get_data_dir
+
+            _merge_data_root = get_data_dir()
+        try:
+            from birdnet_fifo_persist import processor_birdnet_persist_db_path
+
+            _pdb = processor_birdnet_persist_db_path(_merge_data_root)
+            if _pdb and os.path.isfile(_pdb):
+                self._birdnet_merge_db_path = _pdb
+        except Exception:
+            logger.debug("BirdNET merge-key db path failed", exc_info=True)
+            self._birdnet_merge_db_path = None
         if bool(app_config.get("processor.birdnet_fifo_persist_enabled", True)):
             data_root = fs_dir or None
             if not data_root:
@@ -1178,12 +1194,13 @@ class MQTTEventAggregator:
         low_epoch = now.timestamp() - (window_hours * 3600.0)
         decay_base = 0.5
         out: dict[str, dict] = {}
+        species_mapping = app_config.get("detection.species_mapping") or {}
 
         with self._lock:
             self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)
             for ev in self._birdnet_events:
-                species = str(ev.get("species") or ev.get("common_name") or "").strip()
-                if not species or species.lower() == "unknown":
+                merge_species = birdnet_merge_key(ev, species_mapping, self._birdnet_merge_db_path)
+                if not merge_species or merge_species.lower() == "unknown":
                     continue
                 try:
                     conf = float(ev.get("confidence") or 0.0)
@@ -1203,7 +1220,7 @@ class MQTTEventAggregator:
                 decay = decay_base ** (age_hours / half_life_hours)
                 weighted = conf * decay
                 bucket = out.setdefault(
-                    species,
+                    merge_species,
                     {
                         "score": 0.0,
                         "support_count": 0,

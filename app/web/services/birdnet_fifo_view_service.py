@@ -8,6 +8,11 @@ from collections import Counter
 from datetime import datetime, timezone
 
 from app_config.app_config import app_config
+from app_config.birdnet_merge_key import sqlite_path_for_birdnet_merge
+from app_config.birdnet_fifo_hearing_state import (
+    build_species_fifo_table_rows,
+    build_species_hearing_state,
+)
 from sqlalchemy import inspect as sa_inspect
 
 from models import BirdnetFifoEvent, db
@@ -117,6 +122,8 @@ def build_birdnet_fifo_snapshot_payload(
     mqtt_connected: bool,
     processor_pid: int,
     recent_limit: int,
+    now: datetime | None = None,
+    hearing_active_hours: float | None = None,
 ) -> dict:
     recent_limit = max(0, min(int(recent_limit or 80), 500))
     sanitized_all = [sanitize_birdnet_event_for_export(ev) for ev in events]
@@ -141,13 +148,42 @@ def build_birdnet_fifo_snapshot_payload(
 
     recent = sanitized_all[-recent_limit:] if recent_limit else []
 
+    now_utc = now or datetime.now(timezone.utc)
+    if hearing_active_hours is None:
+        try:
+            hearing_active_hours = float(
+                app_config.get("processor.birdnet_fifo_hearing_active_hours", 24)
+            )
+        except (TypeError, ValueError):
+            hearing_active_hours = 24.0
+    species_hearing = build_species_hearing_state(
+        events,
+        now=now_utc,
+        active_within_hours=hearing_active_hours,
+    )
+    counts_dict = dict(species_counter.most_common())
+    species_mapping = app_config.get("detection.species_mapping") or {}
+    species_fifo_table = build_species_fifo_table_rows(
+        events,
+        now=now_utc,
+        active_within_hours=hearing_active_hours,
+        species_mapping=species_mapping,
+        merge_db_path=sqlite_path_for_birdnet_merge(),
+        species_counts=counts_dict,
+    )
+    cap = int(fifo_cap) if fifo_cap else 0
+    fill_ratio = min(1.0, float(len(events)) / float(cap)) if cap > 0 else 0.0
+
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "processor_pid": int(processor_pid),
         "mqtt_connected": bool(mqtt_connected),
         "queue_len": len(events),
         "fifo_cap": int(fifo_cap),
-        "species_counts": dict(species_counter.most_common()),
+        "fifo_fill_ratio": round(fill_ratio, 4),
+        "species_counts": counts_dict,
+        "species_hearing": species_hearing,
+        "species_fifo_table": species_fifo_table,
         "oldest_timestamp": oldest,
         "newest_timestamp": newest,
         "recent": recent,

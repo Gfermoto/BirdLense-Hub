@@ -2,7 +2,9 @@
 
 import json
 import os
+import sqlite3
 import sys
+import tempfile
 import types
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -26,6 +28,7 @@ sys.modules.setdefault('paho', fake_paho)
 sys.modules.setdefault('paho.mqtt', fake_paho_mqtt)
 sys.modules.setdefault('paho.mqtt.client', fake_paho_mqtt_client)
 
+from birdnet_merge_key import reset_birdnet_merge_key_cache_for_tests  # noqa: E402
 from mqtt_aggregator import (
     MQTTEventAggregator,
     _parse_birdnet_event,
@@ -144,6 +147,53 @@ class TestBirdnetRollingPrior(unittest.TestCase):
         self.assertIn("Robin", scores)
         self.assertEqual(scores["Robin"]["support_count"], 1)
         self.assertGreater(scores["Robin"]["score"], 0.79)
+
+    def test_prior_buckets_by_canonical_name_from_scientific(self):
+        reset_birdnet_merge_key_cache_for_tests()
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.addCleanup(lambda: (os.unlink(path) if os.path.isfile(path) else None))
+        conn = sqlite3.connect(path)
+        conn.execute(
+            "CREATE TABLE species_taxon ("
+            "id INTEGER PRIMARY KEY, taxon_key TEXT UNIQUE NOT NULL, "
+            "scientific_name TEXT, common_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active')"
+        )
+        conn.execute(
+            "CREATE TABLE species_alias ("
+            "id INTEGER PRIMARY KEY, alias TEXT NOT NULL UNIQUE, "
+            "alias_key TEXT NOT NULL, taxon_id INTEGER NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO species_taxon (id, taxon_key, scientific_name, common_name) "
+            "VALUES (1, 'pm', 'Parus major', 'Great Tit')"
+        )
+        conn.commit()
+        conn.close()
+        reset_birdnet_merge_key_cache_for_tests()
+
+        now = datetime(2026, 4, 7, 12, 0, 0, tzinfo=timezone.utc)
+        self.agg._birdnet_merge_db_path = path
+        self.agg._remember_birdnet_event(
+            {
+                "source": "birdnet",
+                "species": "Большая синица",
+                "common_name": "Большая синица",
+                "scientific_name": "Parus major",
+                "confidence": 0.9,
+                "timestamp": (now - timedelta(hours=1)).isoformat(),
+                "_ts_epoch": (now - timedelta(hours=1)).timestamp(),
+            }
+        )
+        scores = self.agg.get_birdnet_prior_scores(
+            now=now,
+            window_hours=24,
+            ttl_hours=25,
+            half_life_hours=6,
+        )
+        self.assertIn("Great Tit", scores)
+        self.assertNotIn("Большая синица", scores)
+        reset_birdnet_merge_key_cache_for_tests()
 
 
 if __name__ == "__main__":

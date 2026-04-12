@@ -30,6 +30,22 @@ def test_build_birdnet_fifo_snapshot_prefers_db(app):
         assert snap.get("persist_source") == "sqlite"
         recent = snap.get("recent") or []
         assert any(r.get("species") == "DB Finch" for r in recent)
+        assert "species_hearing" in snap
+        assert "fifo_fill_ratio" in snap
+        hearing = (snap.get("species_hearing") or {}).get("by_species") or {}
+        assert hearing.get("DB Finch", {}).get("active") == 1
+
+        table = snap.get("species_fifo_table") or []
+        assert isinstance(table, list)
+        finch = [r for r in table if r.get("display_label") == "DB Finch"]
+        assert len(finch) == 1
+        row = finch[0]
+        assert row.get("active") == 1
+        assert row.get("event_count", 0) >= 1
+        assert "canonical_for_video" in row
+        assert isinstance(row.get("canonical_for_video"), str)
+        assert row.get("last_heard_at")
+        assert isinstance(row.get("seconds_since_heard"), int)
 
 
 def test_birdnet_fifo_table_accumulates_via_orm(app):
