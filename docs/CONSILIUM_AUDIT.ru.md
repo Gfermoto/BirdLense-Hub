@@ -38,13 +38,13 @@
 
 Корневая причина:
 - `Species` может создаваться из сырого имени, которое не прошло строгий canonical resolve;
-- затем enrichment в [app/web/util.py](app/web/util.py) подбирает внешние данные по строковому поиску в Wikipedia/iNaturalist;
+- затем enrichment в [app/web/util.py](../app/web/util.py) подбирает внешние данные по строковому поиску в Wikipedia/iNaturalist;
 - при отсутствии жесткой taxon-level валидации система принимает «похожий» внешний результат как истину.
 
 Основные точки риска:
-- [app/web/services/visit_processor.py](app/web/services/visit_processor.py)
-- [app/web/services/species_registry_service.py](app/web/services/species_registry_service.py)
-- [app/web/util.py](app/web/util.py)
+- [app/web/services/visit_processor.py](../app/web/services/visit_processor.py)
+- [app/web/services/species_registry_service.py](../app/web/services/species_registry_service.py)
+- [app/web/util.py](../app/web/util.py)
 - [ui_species_media_routes.py](../app/web/routes/ui_species_media_routes.py) (карточка вида / summary / медиа); оркестратор [ui_routes.py](../app/web/routes/ui_routes.py)
 
 Почему это критично:
@@ -54,7 +54,7 @@
 
 ### C2. `create_app()` выполняет опасные data mutations и recovery-операции
 Корневая причина:
-- `create_app()` вызывает [app/web/app_startup.py](app/web/app_startup.py): `seed`, registry backfill, cleanup, background repair и опциональный enrich (код вынесен из `app.py` для ясности; поведение то же).
+- `create_app()` вызывает [app/web/app_startup.py](../app/web/app_startup.py): `seed`, registry backfill, cleanup, background repair и опциональный enrich (код вынесен из `app.py` для ясности; поведение то же).
 
 Почему это критично:
 - рестарт приложения меняет данные;
@@ -63,7 +63,7 @@
 
 ### C3. Processor pipeline не доказывает корректность видов до записи в БД
 Корневая причина:
-- в [app/processor/src/detection_strategy.py](app/processor/src/detection_strategy.py), [app/processor/src/species_normalizer.py](app/processor/src/species_normalizer.py), [app/processor/src/decision_maker.py](app/processor/src/decision_maker.py) используются эвристики, которые делают результат правдоподобным, но не обязательно истинным.
+- в [app/processor/src/detection_strategy.py](../app/processor/src/detection_strategy.py), [app/processor/src/species_normalizer.py](../app/processor/src/species_normalizer.py), [app/processor/src/decision_maker.py](../app/processor/src/decision_maker.py) используются эвристики, которые делают результат правдоподобным, но не обязательно истинным.
 
 Ключевые риски:
 - single-stage COCO может пропускать не только птиц;
@@ -98,7 +98,7 @@
 - несогласованность между processor и web.
 
 ### H3. Startup notifications и startup repair остаются частью критического пути
-В [app/web/notifications.py](app/web/notifications.py), [app/web/app_startup.py](app/web/app_startup.py) и конце `create_app` в [app/web/app.py](app/web/app.py) старт всё ещё содержит внешние или фоновые side-effects.
+В [app/web/notifications.py](../app/web/notifications.py), [app/web/app_startup.py](../app/web/app_startup.py) и конце `create_app` в [app/web/app.py](../app/web/app.py) старт всё ещё содержит внешние или фоновые side-effects.
 
 Риск:
 - непредсказуемый cold start;
@@ -107,9 +107,9 @@
 
 ### H4. E2E не является обязательным gate перед поставкой
 См.:
-- [.github/workflows/e2e-scheduled.yml](.github/workflows/e2e-scheduled.yml)
-- [.github/workflows/ci-pr.yml](.github/workflows/ci-pr.yml)
-- [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+- [.github/workflows/e2e-scheduled.yml](../.github/workflows/e2e-scheduled.yml)
+- [.github/workflows/ci-pr.yml](../.github/workflows/ci-pr.yml)
+- [.github/workflows/deploy.yml](../.github/workflows/deploy.yml)
 
 Риск:
 - браузерные регрессии могут проходить PR и проявляться только после деплоя;
@@ -171,15 +171,15 @@
 
 | Операция | Файл | Verdict |
 |---|---|---|
-| `db.create_all()` и schema-safe `ALTER` | [app/web/app_startup.py](app/web/app_startup.py) | `allowed` |
-| `seed()` и базовая иерархия | [app/web/app_startup.py](app/web/app_startup.py) | `allowed` |
-| `ensure_species_registry_seeded()` | [app/web/app_startup.py](app/web/app_startup.py) | `gated` |
-| `backfill_species_taxa(dry_run=False)` | [app/web/app_startup.py](app/web/app_startup.py) | `forbidden on startup` |
-| `_cleanup_legacy_import_placeholders()` | [app/web/app_startup.py](app/web/app_startup.py) | `gated` |
-| `repair_recently_reset_species_metadata()` thread | [app/web/app_startup.py](app/web/app_startup.py) | `forbidden on startup` |
-| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app_startup.py](app/web/app_startup.py) | `forbidden on startup` |
-| `notify_app_startup()` | [app/web/app.py](app/web/app.py) | `gated` |
-| system metrics sampler | [app/web/routes/ui_system_routes.py](app/web/routes/ui_system_routes.py) | `allowed` |
+| `db.create_all()` и schema-safe `ALTER` | [app/web/app_startup.py](../app/web/app_startup.py) | `allowed` |
+| `seed()` и базовая иерархия | [app/web/app_startup.py](../app/web/app_startup.py) | `allowed` |
+| `ensure_species_registry_seeded()` | [app/web/app_startup.py](../app/web/app_startup.py) | `gated` |
+| `backfill_species_taxa(dry_run=False)` | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `cleanup_legacy_import_placeholders()` | [app/web/app_startup.py](../app/web/app_startup.py) | `gated` |
+| `repair_recently_reset_species_metadata()` thread | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `SPECIES_METADATA_ENRICH_ON_START` thread | [app/web/app_startup.py](../app/web/app_startup.py) | `forbidden on startup` |
+| `notify_app_startup()` | [app/web/app.py](../app/web/app.py) | `gated` |
+| system metrics sampler | [app/web/routes/ui_system_routes.py](../app/web/routes/ui_system_routes.py) | `allowed` |
 
 Правило:
 - старт приложения должен поднимать веб;

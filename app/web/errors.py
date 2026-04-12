@@ -25,6 +25,4 @@ def register_error_handlers(app: Flask) -> None:
         _log.exception("Unhandled server error (path=%s)", request.path)
         if request.path.startswith("/api/"):
             return jsonify({"error": "Internal server error"}), 500
-        if isinstance(exc, HTTPException):
-            return exc.get_response()
         return InternalServerError().get_response()

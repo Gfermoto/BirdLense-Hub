@@ -16,3 +16,11 @@ def test_non_api_404_not_forced_to_json(client):
     assert r.status_code == 404
     # Werkzeug HTML по умолчанию, не наш JSON-обёртка
     assert not r.is_json
+
+
+def test_api_method_not_allowed_returns_json(client):
+    r = client.post("/api/ui/health")
+    assert r.status_code == 405
+    data = r.get_json()
+    assert isinstance(data, dict)
+    assert "error" in data
