@@ -9,6 +9,7 @@ from flask_cors import CORS
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
+# Один listener на класс Engine на процесс: повторная регистрация давала бы двойные PRAGMA.
 _sqlite_pragmas_registered = False
 
 

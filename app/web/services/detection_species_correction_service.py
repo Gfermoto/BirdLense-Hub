@@ -91,6 +91,7 @@ def _run_dataset_crop_followup(jobs, *, app_obj):
                 if not moved:
                     extract_and_save_crop_for_detection(vrow, new_name)
             except Exception:
+                # Фоновый best-effort: одна задача не должна рвать весь список.
                 _log.exception(
                     "dataset crop follow-up failed (detection_id=%s video_id=%s)",
                     det_id,

@@ -36,6 +36,7 @@ import {
   getApiErrorMessage,
 } from '../../api/api';
 import { queryKeys } from '../../api/queryKeys';
+import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
 interface GroupedSpecies {
   species_id: number;
@@ -117,16 +118,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       // Сервер при source=video без apply_scope снова даёт legacy_fanout; явно передаём для ясности.
       updateDetectionSpecies(detectionId, speciesId, 'video', 'legacy_fanout'),
     onSuccess: (data) => {
-      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
       if (data?.message === 'Species unchanged') {
         setCorrectSuccess(t('video.speciesUnchanged'));
       } else if (data?.updated_count && data.updated_count > 1) {
@@ -140,16 +132,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const mergeMutation = useMutation({
     mutationFn: (speciesId: number) => mergeVideoSpecies(videoId!, speciesId),
     onSuccess: (data) => {
-      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
       setCorrectSuccess(data?.message ?? t('unknowns.corrected'));
     },
   });
