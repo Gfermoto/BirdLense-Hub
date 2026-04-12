@@ -78,4 +78,3 @@ def test_session_unlock_allows_timeline(client, monkeypatch, _strict_prod_env):
     monkeypatch.setitem(app_config.config, "general", general)
     assert client.post("/api/ui/settings/verify-password", json={"password": "hub-secret-279"}).status_code == 200
     assert client.get("/api/ui/species").status_code == 200
-

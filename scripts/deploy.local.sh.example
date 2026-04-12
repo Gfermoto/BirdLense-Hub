@@ -33,4 +33,11 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
 
-# MCP_TOKEN, PROCESSOR_SECRET — см. комментарии в прежних версиях файла / docs
+# Секреты (make deploy сольёт в app/.env на сервере, если заданы):
+# export FLASK_SECRET_KEY="..."
+# export PROCESSOR_SECRET="..."
+# export MCP_TOKEN="..."
+# export BIRDLENSE_ENV="production"
+# Публичный хаб: опционально strict UI API (#279) — см. CONFIGURATION / SECURITY
+# export BIRDLENSE_STRICT_API_AUTH=1
+# export BIRDLENSE_UI_API_KEY="..."   # для curl/интеграций без браузерной сессии
