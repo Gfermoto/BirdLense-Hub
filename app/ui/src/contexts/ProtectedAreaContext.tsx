@@ -11,6 +11,7 @@ import {
   checkSettingsAccess,
   logoutSettingsSession,
 } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 
 interface ProtectedAreaContextValue {
   requiresPassword: boolean;
@@ -40,7 +41,7 @@ export function ProtectedAreaProvider({
   const queryClient = useQueryClient();
 
   const { data: requiresResult, isLoading: isLoadingRequires, isError: requiresError } = useQuery({
-    queryKey: ['settings-requires-password'],
+    queryKey: queryKeys.settings.requiresPassword,
     queryFn: fetchSettingsRequiresPassword,
     retry: 1,
   });
@@ -52,7 +53,7 @@ export function ProtectedAreaProvider({
   const hasContributorTier = requiresResult?.has_contributor_tier === true;
 
   const { data: checkResult, isLoading: isLoadingAccess } = useQuery({
-    queryKey: ['settings-check-access'],
+    queryKey: queryKeys.settings.checkAccess,
     queryFn: checkSettingsAccess,
     enabled: !!requiresPassword,
     retry: false,
@@ -63,8 +64,8 @@ export function ProtectedAreaProvider({
   const setUnlocked = useCallback((value: boolean, role?: 'admin' | 'contributor') => {
     setUnlockedState(value);
     setRoleState(value && role ? role : null);
-    queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
-    queryClient.invalidateQueries({ queryKey: ['settings'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
+    queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
   }, [queryClient]);
 
   const logoutAccess = useCallback(async () => {
@@ -73,8 +74,8 @@ export function ProtectedAreaProvider({
     } finally {
       setUnlockedState(false);
       setRoleState(null);
-      queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
-      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
     }
   }, [queryClient]);
 

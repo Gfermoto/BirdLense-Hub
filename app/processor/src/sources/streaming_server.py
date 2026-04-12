@@ -2,6 +2,7 @@
 MJPEG streaming server for live video view.
 Used by Go2RTCStreamSource when running in processor.
 """
+
 import io
 import logging
 import socketserver

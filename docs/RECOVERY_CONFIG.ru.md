@@ -4,7 +4,7 @@
 
 ---
 
-> **Placeholders:** `YOUR_SSH_HOST` — host из `~/.ssh/config` или `DEPLOY_HOST`; `YOUR_REMOTE_DIR` — путь к приложению на сервере (например `/opt/birdlense` или `DEPLOY_REMOTE_DIR`).
+> **Placeholders:** `YOUR_SSH_HOST` — host из `~/.ssh/config` или `DEPLOY_HOST`; `YOUR_REMOTE_DIR` — путь к приложению на сервере (**деплой по умолчанию:** `/root/BirdLense` = `DEPLOY_REMOTE_DIR`; `/opt/birdlense` — устаревший пример).
 
 ## Если настройки сбросились
 

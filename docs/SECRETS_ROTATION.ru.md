@@ -10,9 +10,11 @@
 
 | Место | Назначение | Заметки |
 |-------|------------|---------|
-| **`app/.env` на сервере** | Переменные окружения контейнера (`env_file` в Docker Compose) | При деплое **не** перезаписывается rsync (исключён). Скрипт деплоя **дописывает** в `app/.env` значения `MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET` из локального **`scripts/deploy.local.sh`**, если они заданы — см. [INSTALL.ru.md](./INSTALL.ru.md). |
+| **`app/.env` на сервере** | Переменные окружения контейнера (`env_file` в Docker Compose) | При деплое **не** перезаписывается rsync (исключён). Скрипт деплоя **дописывает** в `app/.env` значения `MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, `BIRDLENSE_STRICT_API_AUTH`, `BIRDLENSE_UI_API_KEY` из локального **`scripts/deploy.local.sh`**, если они заданы — см. [INSTALL.ru.md](./INSTALL.ru.md). |
 | **`app/app_config/user_config.yaml`** | Сохранение настроек из UI | Файл на диске в открытом виде. В проде предпочтительнее env ([SECURITY.ru.md](./SECURITY.ru.md) §2). |
 | **`scripts/deploy.local.sh`** (не в git) | Значения, которые при `make deploy` попадают в серверный `app/.env` | Держите здесь эталон для ключей, которыми управляет деплой, чтобы следующий деплой не подменил секрет неожиданно. |
+
+**Оверлеи в рантайме (`BIRDLENSE_*`):** после merge YAML непустые переменные (`BIRDLENSE_SETTINGS_PASSWORD`, `BIRDLENSE_MQTT_PASSWORD`, `BIRDLENSE_REDIS_URL`, ключи API, токены Telegram и т.д.) подменяют соответствующие ключи **только в памяти** (в `user_config.yaml` ничего не пишется). Удобно в проде при плейсхолдерах в файле. Полный список — [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (переменные окружения). Пароли UI из env — plaintext или bcrypt; при сохранении через Настройки новый plaintext на PATCH уходит в bcrypt.
 
 ---
 
@@ -30,6 +32,8 @@
 | Секрет / переменная | Роль | Эффект ротации |
 |---------------------|------|----------------|
 | **`MCP_TOKEN`** | Доступ к `/mcp` при включённом MCP | Старые клиенты теряют доступ. |
+| **`BIRDLENSE_UI_API_KEY`** | Опционально: `/api/ui/*` при **`BIRDLENSE_STRICT_API_AUTH=1`** (заголовок `X-Birdlense-Api-Key` или Bearer) | Скрипты/автоматизация без обновления ключа теряют доступ; браузер — сессия после `verify-password`. |
+| **`BIRDLENSE_STRICT_API_AUTH`** | `1`/`true` — включить шлюз (не секрет; нужен production) | При снятии флага снова возможен анонимный доступ к `/api/ui/*`, см. [ACCESS_CONTROL.ru.md](./ACCESS_CONTROL.ru.md). |
 | **`MQTT_PASSWORD`** | Авторизация на MQTT | При необходимости обновить ACL на брокере; перезапуск контейнера. |
 | **`HA_TOKEN`** | Long-lived token Home Assistant | Погода/кормушки до обновления не работают. |
 | **`OPENWEATHER_API_KEY`** | Виджет погоды | Ошибки виджета до замены ключа. |

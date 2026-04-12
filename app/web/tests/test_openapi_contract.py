@@ -35,9 +35,7 @@ def _schema_for(
     method: str = "get",
     status: str = "200",
 ) -> dict[str, Any]:
-    raw = (
-        spec["paths"][path][method]["responses"][status]["content"]["application/json"]["schema"]
-    )
+    raw = spec["paths"][path][method]["responses"][status]["content"]["application/json"]["schema"]
     return _resolve_ref(spec, raw)
 
 
@@ -140,10 +138,10 @@ class TestOpenApiContractSmoke:
 
         with app.app_context():
             v = Video(
-                processor_version='openapi',
+                processor_version="openapi",
                 start_time=datetime(2026, 4, 6, 14, 0, 0, tzinfo=timezone.utc),
                 end_time=datetime(2026, 4, 6, 14, 5, 0, tzinfo=timezone.utc),
-                video_path='data/recordings/2026/04/06/140000/video.mp4',
+                video_path="data/recordings/2026/04/06/140000/video.mp4",
             )
             db.session.add(v)
             db.session.commit()

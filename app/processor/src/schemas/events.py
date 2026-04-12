@@ -4,6 +4,7 @@ Normalized MQTT detection payloads after JSON parse (Frigate / BirdNET).
 Use for strict validation at subsystem boundaries; parsers in ``mqtt_aggregator``
 may stay lenient and optionally call ``validate_mqtt_detection_dict`` when debugging.
 """
+
 from __future__ import annotations
 
 from typing import Literal

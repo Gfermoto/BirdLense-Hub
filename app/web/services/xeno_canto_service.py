@@ -1,4 +1,5 @@
 """Xeno-canto API v3 integration for bird song playback."""
+
 import os
 import re
 import logging
@@ -69,12 +70,14 @@ def fetch_recordings(species_name: str, limit: int = 5) -> list[dict]:
         file_url = rec.get("file")
         if not file_url or not file_url.startswith("http"):
             continue
-        result.append({
-            "id": rec.get("id"),
-            "file": file_url,
-            "en": rec.get("en", ""),
-            "type": rec.get("type", ""),
-            "rec": rec.get("rec", ""),
-            "cnt": rec.get("cnt", ""),
-        })
+        result.append(
+            {
+                "id": rec.get("id"),
+                "file": file_url,
+                "en": rec.get("en", ""),
+                "type": rec.get("type", ""),
+                "rec": rec.get("rec", ""),
+                "cnt": rec.get("cnt", ""),
+            }
+        )
     return result

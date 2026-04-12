@@ -33,7 +33,10 @@ import {
   updateDetectionSpecies,
   mergeVideoSpecies,
   fetchBirdDirectory,
+  getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
 interface GroupedSpecies {
   species_id: number;
@@ -112,21 +115,16 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 
   const correctMutation = useMutation({
     mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
-      updateDetectionSpecies(detectionId, speciesId, 'video'),
+      // Сервер при source=video без apply_scope снова даёт legacy_fanout; явно передаём для ясности.
+      updateDetectionSpecies(detectionId, speciesId, 'video', 'legacy_fanout'),
     onSuccess: (data) => {
-      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
-      // Тот же API, что на странице Unknowns — иначе при staleTime 5m список «Неизвестные» остаётся старым.
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
-      if (data?.updated_count && data.updated_count > 1) {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      if (data?.message === 'Species unchanged') {
+        setCorrectSuccess(t('video.speciesUnchanged'));
+      } else if (data?.updated_count && data.updated_count > 1) {
         setCorrectSuccess(t('video.correctedInVideos', { count: data.updated_count }));
+      } else {
+        setCorrectSuccess(t('unknowns.corrected'));
       }
     },
   });
@@ -134,16 +132,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const mergeMutation = useMutation({
     mutationFn: (speciesId: number) => mergeVideoSpecies(videoId!, speciesId),
     onSuccess: (data) => {
-      if (videoId != null) queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
-      queryClient.invalidateQueries({ queryKey: ['bird-directory'] });
-      queryClient.invalidateQueries({ queryKey: ['species'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
       setCorrectSuccess(data?.message ?? t('unknowns.corrected'));
     },
   });
@@ -155,32 +144,39 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
-    if (selectedSpeciesId === '' || selectedSpeciesId === group.species_id) return;
+    if (selectedSpeciesId === '') return;
+    const nextId = Number(selectedSpeciesId);
+    if (!Number.isFinite(nextId) || nextId === Number(group.species_id)) return;
     setCorrectError(null);
     const bestDet = group.detections
       .filter((d) => d.source === 'video' && d.id)
       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-    if (!bestDet?.id) return;
+    if (!bestDet?.id) {
+      setCorrectError(t('video.correctNoDetectionId'));
+      return;
+    }
     try {
       await correctMutation.mutateAsync({
         detectionId: bestDet.id,
-        speciesId: selectedSpeciesId as number,
+        speciesId: nextId,
       });
       setEditingGroupKey(null);
       setSelectedSpeciesId('');
     } catch (err) {
-      setCorrectError(err instanceof Error ? err.message : String(err));
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
     }
   };
 
   const handleMergeAll = async () => {
     if (mergeSpeciesId === '' || !videoId) return;
+    const mid = Number(mergeSpeciesId);
+    if (!Number.isFinite(mid)) return;
     setCorrectError(null);
     try {
-      await mergeMutation.mutateAsync(mergeSpeciesId as number);
+      await mergeMutation.mutateAsync(mid);
       setMergeSpeciesId('');
     } catch (err) {
-      setCorrectError(err instanceof Error ? err.message : String(err));
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
     }
   };
 
@@ -253,7 +249,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         onSuccess={(role) => {
           setUnlocked(true, role || 'admin');
           setShowUnlockDialog(false);
-          queryClient.invalidateQueries({ queryKey: ['settings-check-access'] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
         }}
         onClose={() => setShowUnlockDialog(false)}
       />
@@ -278,7 +274,10 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                 labelId="video-merge-species-label"
                 value={mergeSpeciesId}
                 label={t('video.mergeAllToSpecies')}
-                onChange={(e) => setMergeSpeciesId(e.target.value as number | '')}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setMergeSpeciesId(v === '' ? '' : Number(v));
+                }}
               >
                 {speciesList.map((s) => (
                   <MenuItem key={s.id} value={s.id}>
@@ -419,7 +418,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                         labelId={`video-correct-species-${group.species_id}`}
                         value={selectedSpeciesId}
                         label={t('unknowns.correctSpecies')}
-                        onChange={(e) => setSelectedSpeciesId(e.target.value as number | '')}
+                        renderValue={(v) => {
+                          if (v === '' || v === undefined) return '';
+                          const id = Number(v);
+                          const row = speciesList.find((s) => Number(s.id) === id);
+                          return row?.name ?? `#${id}`;
+                        }}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelectedSpeciesId(v === '' ? '' : Number(v));
+                        }}
+                        MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
                       >
                         {speciesList.map((s) => (
                           <MenuItem key={s.id} value={s.id}>
@@ -432,7 +441,13 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       <Button
                         size="small"
                         variant="contained"
-                        disabled={selectedSpeciesId === '' || selectedSpeciesId === group.species_id || correctMutation.isPending || !canEdit}
+                        disabled={
+                          selectedSpeciesId === '' ||
+                          !Number.isFinite(Number(selectedSpeciesId)) ||
+                          Number(selectedSpeciesId) === Number(group.species_id) ||
+                          correctMutation.isPending ||
+                          !canEdit
+                        }
                         onClick={() => handleCorrectGroup(group)}
                       >
                         {correctMutation.isPending ? '...' : t('unknowns.apply')}

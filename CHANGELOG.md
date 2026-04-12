@@ -8,7 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.
+
+- **Docker / nginx (non-root):** каталог **`/var/log/nginx`** в образе принадлежит **`birdlense`**; **`error_log`** / **`access_log`** указывают туда же — без alert «could not open … /var/log/nginx/error.log» при старте. Кэши **`app/.ruff_cache`** и **`app/.pytest_cache`** в **`.gitignore`**. См. [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md).
+
 ### Changed
+
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** `DetectionStrategyProtocol` в **`app/processor/src/interfaces.py`**; `FrameProcessor` аннотирован протоколом; тест **`test_detection_strategy_protocol.py`**. Док: [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md) § Maintainability baseline; [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md) — состав **`app/processor/`**.
+
+- **[#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279):** опциональный строгий режим UI API — при **production** и **`BIRDLENSE_STRICT_API_AUTH=1`** запросы к **`/api/ui/*`** требуют сессию (после `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**; исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`, preflight **OPTIONS**. **Docker Compose** и **`scripts/deploy.sh`** пробрасывают/сливают `BIRDLENSE_STRICT_API_AUTH` и `BIRDLENSE_UI_API_KEY`; CI — отдельный шаг `test_strict_ui_api_auth.py`. См. **SECURITY** / **ACCESS_CONTROL** / **CONFIGURATION** / **SECRETS_ROTATION** / **INSTALL** (EN/RU), `app/.env.example`, `scripts/deploy.local.sh.example`.
+
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** CORS и SQLite PRAGMA — **`app/web/flask_extensions.py`**; старт схемы, seed, species registry, legacy cleanup и фоновый metadata repair/enrich — **`app/web/app_startup.py`**; `app.py` остаётся тонкой фабрикой. Док: [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) / [RU](docs/REPOSITORY_LAYOUT.ru.md), [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md).
 
 - **[#283](https://github.com/Gfermoto/BirdLense-Hub/issues/283):** локальные CORS origins (Vite, `birdlense.local`, порт хаба) заданы в **`config.Config`** и переменной окружения **`CORS_LOCAL_DEV_ORIGINS`** (пустая строка — не добавлять встроенный набор); `app/web/app.py` только собирает итоговый список вместе с `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`.
 
@@ -19,11 +31,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### CI
 
+- **CodeQL (Python):** в **`.github/codeql/codeql-config-python.yml`** добавлены **`query-filters`** — отключены **`py/reflective-xss`** (ответы JSON через `jsonify`), **`py/stack-trace-exposure`** (краткие ошибки клиенту) и **`py/path-injection`** (ложное срабатывание на `data_paths` при реальном `realpath`/`commonpath`; `recording_layout_paths` уже в `paths-ignore`).
+
+- **openapi-contract:** Radon — закрепить **`radon==6.0.1`** (на PyPI нет **6.0.5**; шаг «cyclomatic complexity» падал на `pip install`).
+
 - **[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286):** job `ui-build` — после `npm ci` выполняется **`npm run lint`**, затем build; ESLint: плагин `react-hooks` с правилами **`rules-of-hooks`** и **`exhaustive-deps`** (без полного `recommended` v7 с React Compiler rules).
 
 - **[#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284):** `.github/workflows/npm-audit-scheduled.yml` — еженедельно + `workflow_dispatch`: `npm audit --omit=dev --audit-level=moderate` в `app/ui`; политика в комментариях workflow. Док: [TESTING](docs/TESTING.md) / [RU](docs/TESTING.ru.md).
 
 ### Docs
+
+- **Processor / Telegram:** в [CONFIGURATION](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md) описан ключ **`processor.min_confidence_to_notify`** (отдельный порог для фото в Telegram); в [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md) — почему после правок `processor.*` / `detection.*` нужен **перезапуск processor**.
+
+- **[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234):** гайд [HEIMDALL](docs/HEIMDALL.md) / [RU](docs/HEIMDALL.ru.md) — шаблон URL для плиток linuxserver/Heimdall v2 (ручное добавление; без импорта в UI); опциональный HTML закладок для браузера в [docs/examples/heimdall/](docs/examples/heimdall/); ссылки из [CONFIGURATION](docs/CONFIGURATION.md) / [RU](docs/CONFIGURATION.ru.md), навигация MkDocs.
 
 - **[#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287):** аудит завершён — в `create_app`/рантайме web нет `ALTER TABLE`; DDL только в Alembic; зафиксировано в [ARCHITECTURE](docs/ARCHITECTURE.md) / [RU](docs/ARCHITECTURE.ru.md) (политика DDL + PRAGMA).
 
@@ -37,6 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Processor / eBird (#238):** вынесен общий модуль **`app/ebird_region_core.py`** (регион, HTTP top-N, кэш, маппинг имён через `app_config`). Процессор **`ebird_regional_confidence`** больше не импортирует `services.*`; `ebird_region_service` и **`ebird_util.REGION_NAME_TO_CODE`** используют core. Docker: `COPY ebird_region_core.py`.
 
 ### Fixed
+
+- **Ручная коррекция вида (UI):** по умолчанию `PATCH /api/ui/detections/:id` больше не использует **`legacy_fanout`** (обновление всех строк того же вида на ролике + синхронный FFmpeg для датасет-кропов на каждой строке), из‑за чего запрос мог занимать минуты и «вешать» вкладку. Теперь по умолчанию **`single_track`** (как сценарий Unknowns / одна строка); страница видео явно передаёт **`apply_scope: legacy_fanout`**. При большом числе затронутых строк перенос/извлечение кропов датасета уходит в **фоновый поток** после `commit`.
 
 - **Processor / MQTT (#238):** при обрыве брокера исходящая **очередь не сбрасывается**; `publish_detection` ставит сообщения в очередь и при кратковременном offline (если брокер настроен); слив только при живом сокете. `stop()` по-прежнему очищает очередь.
 - **Деплой:** rsync больше не синхронизирует корневой каталог **`datasets/`** (локальные данные для обучения), чтобы не заливать гигабайты на VPS.

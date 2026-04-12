@@ -1,4 +1,5 @@
 """Одна сессия записи по движению: выбор камеры, цикл кадров, финализация (#225 / #238)."""
+
 from __future__ import annotations
 
 import logging
@@ -67,19 +68,13 @@ class MotionRecordingSession:
         )
         self.decision_maker.species_confidence_overrides = session_overrides
 
-        camera_id = (
-            getattr(self.motion_detector, 'get_triggered_camera', lambda: None)()
-            or self.default_camera_id
-        )
-        if (
-            not self.args.input
-            and app_config.get('video.source') == 'go2rtc'
-        ):
+        camera_id = getattr(self.motion_detector, "get_triggered_camera", lambda: None)() or self.default_camera_id
+        if not self.args.input and app_config.get("video.source") == "go2rtc":
             self.media_source = self.get_media_source(camera_id)
 
         output_path_physical, output_path_logical = get_output_path()
-        video_output = os.path.join(output_path_physical, 'video.mp4')
-        video_path_for_api = f'{output_path_logical}/video.mp4'
+        video_output = os.path.join(output_path_physical, "video.mp4")
+        video_path_for_api = f"{output_path_logical}/video.mp4"
 
         self.media_source.start_recording(video_output)
 
@@ -93,9 +88,7 @@ class MotionRecordingSession:
             self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
-            file_mode = (
-                (app_config.get('video.source') or '').strip().lower() == 'file'
-            )
+            file_mode = (app_config.get("video.source") or "").strip().lower() == "file"
             frame_n = 0
             while True:
                 frame = self.media_source.capture()
@@ -103,26 +96,18 @@ class MotionRecordingSession:
                     break
                 frame_n += 1
                 if file_mode and frame_n % 500 == 0:
-                    clip = getattr(self.media_source, 'video_path', '') or ''
-                    clip_name = Path(str(clip)).name if clip else '?'
+                    clip = getattr(self.media_source, "video_path", "") or ""
+                    clip_name = Path(str(clip)).name if clip else "?"
                     logger.info(
-                        'video.source=file: processing clip=%s frames_in_session=%s',
+                        "video.source=file: processing clip=%s frames_in_session=%s",
                         clip_name,
                         frame_n,
                     )
-                processor_status['last_video_ok_at'] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
-                frame_time = getattr(
-                    self.media_source, 'get_frame_time', lambda: None
-                )()
+                processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
+                frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
                 with self.fps_tracker:
-                    has_detections = self.frame_processor.run(
-                        frame, frame_time=frame_time
-                    )
-                processor_status['last_yolo_ok_at'] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
+                    has_detections = self.frame_processor.run(frame, frame_time=frame_time)
+                processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(

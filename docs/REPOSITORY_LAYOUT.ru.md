@@ -29,8 +29,8 @@
 
 | Путь | Назначение |
 |------|------------|
-| **`app/web/`** | Flask, REST API, OpenAPI (`openapi.yaml`). Точка входа: `app.py` → **`create_app()`** (фабрика). Обработчики: `routes/` — `ui_routes.register_routes`, доменные `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md)). **Миграции:** `migrations/` (Alembic, Flask-Migrate). **Сервисы:** `services/` (доменная логика; тонкие роуты — [ROADMAP.ru](./ROADMAP.ru.md), техдолг). |
-| **`app/processor/`** | Конвейер детекции, YOLO/Ultralytics; тяжёлые веса — см. `.gitignore`. |
+| **`app/web/`** | Flask, REST API, OpenAPI (`openapi.yaml`). Точка входа: `app.py` → **`create_app()`** (фабрика); CORS/PRAGMA — `flask_extensions.py`; старт БД/registry/cleanup — `app_startup.py`. Обработчики: `routes/` — `ui_routes.register_routes`, доменные `ui_*_routes`, `ui_system_*`, `processor_routes` ([ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md)). **Миграции:** `migrations/` (Alembic, Flask-Migrate). **Сервисы:** `services/` (доменная логика; тонкие роуты — [ROADMAP.ru](./ROADMAP.ru.md), техдолг). |
+| **`app/processor/`** | Конвейер детекции, YOLO/Ultralytics; тяжёлые веса — см. `.gitignore`. **`src/`:** `main.py`, `processor_bootstrap.py`, `detection_stack.py`, `detection_strategy.py` (ABC), **`interfaces.py`** (`DetectionStrategyProtocol` для типизации `FrameProcessor` и тестов без YOLO), `frame_processor.py`, MQTT/запись; **`tests/`** — в т.ч. `test_detection_strategy_protocol.py`. |
 | **`app/ui/`** | Фронтенд React 19 + Vite 6; артефакт `npm run build` отдаёт web-слой (см. [LOCAL_DEV.ru](./LOCAL_DEV.ru.md)). |
 | **`app/app_config/`** | **Поставляемые** дефолты и шаблоны. Файл **`user_config.yaml`** создаётся на инсталляции и **не** коммитится — см. [CONFIGURATION.ru](./CONFIGURATION.ru.md). |
 | **`app/data/`** | SQLite, записи, локальное состояние — при деплое по умолчанию не затирается; см. [INSTALL.ru](./INSTALL.ru.md). |

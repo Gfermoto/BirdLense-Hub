@@ -14,24 +14,24 @@ from models import Species, db
 
 _wiki_meta_cache = {}
 _wiki_title_overrides = {
-    'cardinals, grosbeaks, and allies': 'Cardinalidae',
-    'frigatebirds, boobies, cormorants, darters, and allies': 'Suliformes',
-    'grouse, quail, and allies': 'Galliformes',
-    'gulls, terns, and allies': 'Laridae',
-    'mockingbirds, thrashers, and allies': 'Mimidae',
-    'new world sparrows and allies': 'Passerellidae',
-    'old world warblers': 'Sylviidae',
-    'pelicans, herons, ibises, and allies': 'Pelecaniformes',
-    'skuas and alcids': 'Alcidae',
-    'swifts and hummingbirds': 'Apodiformes',
-    'jacobin pigeon': 'Jacobin (pigeon)',
-    'jacobin pigeon ': 'Jacobin (pigeon)',
-    'grey headed fish eagle': 'Grey-headed fish eagle',
+    "cardinals, grosbeaks, and allies": "Cardinalidae",
+    "frigatebirds, boobies, cormorants, darters, and allies": "Suliformes",
+    "grouse, quail, and allies": "Galliformes",
+    "gulls, terns, and allies": "Laridae",
+    "mockingbirds, thrashers, and allies": "Mimidae",
+    "new world sparrows and allies": "Passerellidae",
+    "old world warblers": "Sylviidae",
+    "pelicans, herons, ibises, and allies": "Pelecaniformes",
+    "skuas and alcids": "Alcidae",
+    "swifts and hummingbirds": "Apodiformes",
+    "jacobin pigeon": "Jacobin (pigeon)",
+    "jacobin pigeon ": "Jacobin (pigeon)",
+    "grey headed fish eagle": "Grey-headed fish eagle",
 }
 
 # Редкие случаи, когда Wikipedia-заголовок не даёт стабильное превью (не раздувать список).
 _manual_image_overrides = {
-    'jacobin pigeon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG',
+    "jacobin pigeon": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG",
 }
 
 
@@ -48,12 +48,12 @@ def _allowlist_scientific_for_species_name(name: str) -> str | None:
 
 def _url_hostname_lower(url: str) -> str | None:
     """Разбор hostname без небезопасной подстроковой проверки URL (CodeQL py/incomplete-url-substring-sanitization)."""
-    u = (url or '').strip()
+    u = (url or "").strip()
     if not u:
         return None
     try:
-        parsed = urlparse(u if '://' in u else f'//{u}', allow_fragments=True)
-        h = (parsed.hostname or '').lower()
+        parsed = urlparse(u if "://" in u else f"//{u}", allow_fragments=True)
+        h = (parsed.hostname or "").lower()
         return h or None
     except ValueError:
         return None
@@ -63,32 +63,35 @@ def _host_is_wikipedia_family(hostname: str | None) -> bool:
     """True if hostname is wikipedia.org / wikimedia.org (incl. subdomains)."""
     if not hostname:
         return False
-    return hostname == 'wikipedia.org' or hostname.endswith(
-        '.wikipedia.org'
-    ) or hostname == 'wikimedia.org' or hostname.endswith('.wikimedia.org')
+    return (
+        hostname == "wikipedia.org"
+        or hostname.endswith(".wikipedia.org")
+        or hostname == "wikimedia.org"
+        or hostname.endswith(".wikimedia.org")
+    )
 
 
 def _host_is_inaturalist(hostname: str | None) -> bool:
     """True if hostname is inaturalist.org (incl. subdomains)."""
     if not hostname:
         return False
-    return hostname == 'inaturalist.org' or hostname.endswith('.inaturalist.org')
+    return hostname == "inaturalist.org" or hostname.endswith(".inaturalist.org")
 
 
 def _host_is_inaturalist_open_data_asset(hostname: str | None) -> bool:
     """Публичный S3-бакет iNaturalist open data (только hostname, без эвристик по query/path — SSRF)."""
     if not hostname:
         return False
-    hn = hostname.lower().rstrip('.')
-    if hn == 'inaturalist-open-data.s3.amazonaws.com':
+    hn = hostname.lower().rstrip(".")
+    if hn == "inaturalist-open-data.s3.amazonaws.com":
         return True
-    parts = hn.split('.')
+    parts = hn.split(".")
     if (
         len(parts) >= 5
-        and parts[0] == 'inaturalist-open-data'
-        and parts[1] == 's3'
-        and parts[-2] == 'amazonaws'
-        and parts[-1] == 'com'
+        and parts[0] == "inaturalist-open-data"
+        and parts[1] == "s3"
+        and parts[-2] == "amazonaws"
+        and parts[-1] == "com"
     ):
         return True
     return False
@@ -110,19 +113,19 @@ def infer_metadata_source_fields(
     """
     Infer canonical metadata source and source URL from known URL patterns.
     """
-    img = (image_url or '').strip()
-    src = (source_url or '').strip()
-    title = ((species_name or '').strip() or 'bird').replace(' ', '_')
+    img = (image_url or "").strip()
+    src = (source_url or "").strip()
+    title = ((species_name or "").strip() or "bird").replace(" ", "_")
 
     img_host = _url_hostname_lower(img)
     src_host = _url_hostname_lower(src)
 
     if _host_is_wikipedia_family(img_host) or _host_is_wikipedia_family(src_host):
-        return 'wikipedia', (src or f'https://en.wikipedia.org/wiki/{title}')
+        return "wikipedia", (src or f"https://en.wikipedia.org/wiki/{title}")
     if _host_is_inaturalist(src_host) or _host_is_inaturalist(img_host):
-        return 'inaturalist', (src or img)
+        return "inaturalist", (src or img)
     if _url_suggests_inaturalist_asset(img) or _url_suggests_inaturalist_asset(src):
-        return 'inaturalist', None
+        return "inaturalist", None
     return None, source_url
 
 
@@ -137,9 +140,9 @@ def _extract_common_for_hierarchy(species_name: str) -> str:
     s = species_name.strip()
     if len(s) > 512:
         s = s[:512]
-    if not s.endswith(')'):
+    if not s.endswith(")"):
         return s
-    open_idx = s.rfind('(')
+    open_idx = s.rfind("(")
     if open_idx <= 0:
         return s
     inner = s[open_idx + 1 : -1].strip()
@@ -176,7 +179,7 @@ def _load_hierarchy_parent_map():
     path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
     result = {}
     if not os.path.isfile(path):
-        logging.warning('Hierarchy file not found: %s', path)
+        logging.warning("Hierarchy file not found: %s", path)
         return result
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -252,10 +255,11 @@ def _get_feeder_taxonomy_context():
     name_to_species: dict = {}
     for species in Species.query.all():
         children_by_parent.setdefault(
-            species.parent_id, set(),
+            species.parent_id,
+            set(),
         ).add(species.name)
         name_to_species[species.name] = species
-    birds_category = name_to_species.get('Birds')
+    birds_category = name_to_species.get("Birds")
     data = (children_by_parent, name_to_species, birds_category)
     _feeder_taxonomy_cache = (sig, data)
     _feeder_included_names_cache.clear()
@@ -305,12 +309,15 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
             "redirects": 1,
             "exintro": 1,
         }
-        headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
+        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
         response = requests.get(url, params=params, timeout=10, headers=headers)
         response.raise_for_status()
-        if 'json' not in (response.headers.get('Content-Type') or '').lower():
-            logging.warning("Wikipedia API non-JSON response for '%s' (content-type=%s)",
-                            title, response.headers.get('Content-Type'))
+        if "json" not in (response.headers.get("Content-Type") or "").lower():
+            logging.warning(
+                "Wikipedia API non-JSON response for '%s' (content-type=%s)",
+                title,
+                response.headers.get("Content-Type"),
+            )
             result = (None, None)
             if use_cache:
                 _wiki_meta_cache[cache_key] = result
@@ -325,7 +332,7 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
             return result
         page = pages[0]
         image_url = page.get("thumbnail", {}).get("source")
-        description = re.sub(r'<[^>]*>', '', page.get("extract", "")).strip() or None
+        description = re.sub(r"<[^>]*>", "", page.get("extract", "")).strip() or None
         result = (image_url, description)
         if use_cache:
             _wiki_meta_cache[cache_key] = result
@@ -352,13 +359,13 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
 
 # iNaturalist rank_level: subspecies≈5, species=10; genus=20, order=40 — не брать выше вида.
 _INAT_MAX_RANK_LEVEL_FOR_SPECIES_CARD = 10
-_INAT_BINOMIAL_RE = re.compile(r'^[A-Z][a-z]+\s+[a-z][a-z0-9-]+$')
+_INAT_BINOMIAL_RE = re.compile(r"^[A-Z][a-z]+\s+[a-z][a-z0-9-]+$")
 
 
 def _inat_row_is_fine_avian_taxon(row: dict) -> bool:
-    if (row.get('iconic_taxon_name') or '') != 'Aves':
+    if (row.get("iconic_taxon_name") or "") != "Aves":
         return False
-    rl = row.get('rank_level')
+    rl = row.get("rank_level")
     if rl is None:
         return False
     try:
@@ -372,18 +379,18 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
     fine = [r for r in results if _inat_row_is_fine_avian_taxon(r)]
     if not fine:
         return None
-    q = (query or '').strip()
+    q = (query or "").strip()
     if not q:
         return None
     q_lower = q.lower()
 
     if _INAT_BINOMIAL_RE.match(q):
-        qnorm = ' '.join(q.split())
+        qnorm = " ".join(q.split())
         for row in fine:
-            if (row.get('name') or '').strip() == qnorm:
+            if (row.get("name") or "").strip() == qnorm:
                 return row
         for row in fine:
-            if (row.get('name') or '').strip().lower() == qnorm.lower():
+            if (row.get("name") or "").strip().lower() == qnorm.lower():
                 return row
         logging.warning(
             "iNaturalist: no species-rank match for binomial %r among %s hits",
@@ -393,11 +400,11 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
         return None
 
     for row in fine:
-        pcn = (row.get('preferred_common_name') or '').strip().lower()
+        pcn = (row.get("preferred_common_name") or "").strip().lower()
         if pcn and pcn == q_lower:
             return row
     for row in fine:
-        if (row.get('name') or '').strip().lower() == q_lower:
+        if (row.get("name") or "").strip().lower() == q_lower:
             return row
 
     logging.warning(
@@ -427,7 +434,7 @@ def get_inaturalist_image_and_description(title):
             "is_active": "true",
             "iconic_taxa": "Aves",
         }
-        headers = {'User-Agent': 'BirdLense-Hub/1.0 (Bird feeder monitoring app)'}
+        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
         response = requests.get(url, params=params, timeout=10, headers=headers)
         response.raise_for_status()
         data = response.json() or {}
@@ -437,11 +444,10 @@ def get_inaturalist_image_and_description(title):
         top = _pick_inaturalist_taxon_row(query, results)
         if not top:
             return None, None, None
-        image_url = ((top.get("default_photo") or {}).get("medium_url")
-                     or (top.get("default_photo") or {}).get("square_url"))
-        description = (top.get("wikipedia_summary")
-                       or (top.get("taxon_schemes_count") and top.get("name"))
-                       or None)
+        image_url = (top.get("default_photo") or {}).get("medium_url") or (top.get("default_photo") or {}).get(
+            "square_url"
+        )
+        description = top.get("wikipedia_summary") or (top.get("taxon_schemes_count") and top.get("name")) or None
         if description and isinstance(description, str):
             description = description.strip() or None
         taxon_id = top.get("id")
@@ -454,8 +460,8 @@ def get_inaturalist_image_and_description(title):
 
 def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
     """Стиль заголовка en.wikipedia: «Eurasian Magpie» → «Eurasian magpie» (как в URL / pageimages)."""
-    raw = (display_name or '').strip()
-    if not raw or '(' in raw:
+    raw = (display_name or "").strip()
+    if not raw or "(" in raw:
         return None
     parts = raw.split()
     if len(parts) < 2:
@@ -466,46 +472,46 @@ def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
     """Порядок заголовков для Wikipedia/iNaturalist: таксон → allowlist binomial → enwiki common → имя в БД."""
     titles: list[str] = []
-    taxon = getattr(sp, 'taxon', None)
-    wt = (getattr(taxon, 'wiki_title', None) or '').strip()
+    taxon = getattr(sp, "taxon", None)
+    wt = (getattr(taxon, "wiki_title", None) or "").strip()
     if wt:
         t = _extract_wiki_search_title(wt) or wt
         if t:
             titles.append(t)
 
-    sci_allow = _allowlist_scientific_for_species_name(sp.name or '')
+    sci_allow = _allowlist_scientific_for_species_name(sp.name or "")
     if sci_allow:
         titles.append(sci_allow)
 
-    wiki_common = _en_wikipedia_bird_title_variant(sp.name or '')
+    wiki_common = _en_wikipedia_bird_title_variant(sp.name or "")
     if wiki_common:
         titles.append(wiki_common)
 
-    extracted = _extract_wiki_search_title(sp.name) or ''
+    extracted = _extract_wiki_search_title(sp.name) or ""
     if extracted:
         titles.append(extracted)
-    raw = (sp.name or '').strip()
+    raw = (sp.name or "").strip()
     if raw and raw not in titles:
         titles.append(raw)
 
-    scientific = re.sub(r'\(.*\)', '', sp.name or '').strip()
+    scientific = re.sub(r"\(.*\)", "", sp.name or "").strip()
     if scientific and scientific not in titles:
         titles.append(scientific)
 
-    probe = ((extracted or raw or '').strip().lower())
-    if probe == 'hooded crow' and 'Corvus cornix' not in titles:
-        titles.append('Corvus cornix')
-    if probe == 'corvus cornix' and 'Hooded Crow' not in titles:
-        titles.append('Hooded Crow')
-    if 'jacobin pigeon' in ' '.join(titles).lower():
-        for extra in ('Columba livia domestica', 'Rock Dove'):
+    probe = (extracted or raw or "").strip().lower()
+    if probe == "hooded crow" and "Corvus cornix" not in titles:
+        titles.append("Corvus cornix")
+    if probe == "corvus cornix" and "Hooded Crow" not in titles:
+        titles.append("Hooded Crow")
+    if "jacobin pigeon" in " ".join(titles).lower():
+        for extra in ("Columba livia domestica", "Rock Dove"):
             if extra not in titles:
                 titles.append(extra)
 
     seen: set[str] = set()
     out: list[str] = []
     for t in titles:
-        tl = (t or '').strip()
+        tl = (t or "").strip()
         if not tl:
             continue
         k = tl.lower()
@@ -523,16 +529,14 @@ def update_species_info_from_wiki(sp):
     чтобы не привязать карточку к чужой статье общего имени.
     """
     updated = False
-    key = (sp.name or '').strip().lower()
+    key = (sp.name or "").strip().lower()
     forced_url = _manual_image_overrides.get(key)
-    if forced_url and (sp.image_url or '').strip() != forced_url:
+    if forced_url and (sp.image_url or "").strip() != forced_url:
         sp.image_url = forced_url
-        inf_src, inf_url = infer_metadata_source_fields(
-            getattr(sp, 'name', None), forced_url, None
-        )
-        if inf_src and not getattr(sp, 'metadata_source', None):
+        inf_src, inf_url = infer_metadata_source_fields(getattr(sp, "name", None), forced_url, None)
+        if inf_src and not getattr(sp, "metadata_source", None):
             sp.metadata_source = inf_src
-        if inf_url and not getattr(sp, 'metadata_source_url', None):
+        if inf_url and not getattr(sp, "metadata_source_url", None):
             sp.metadata_source_url = inf_url
         updated = True
 
@@ -551,18 +555,12 @@ def update_species_info_from_wiki(sp):
         img2, desc2 = get_wikipedia_image_and_description(alt)
         if img2 and not image_url:
             image_url = img2
-            metadata_source = metadata_source or 'wikipedia'
-            metadata_source_url = (
-                metadata_source_url
-                or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
-            )
+            metadata_source = metadata_source or "wikipedia"
+            metadata_source_url = metadata_source_url or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
         if desc2 and not description:
             description = desc2
-            metadata_source = metadata_source or 'wikipedia'
-            metadata_source_url = (
-                metadata_source_url
-                or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
-            )
+            metadata_source = metadata_source or "wikipedia"
+            metadata_source_url = metadata_source_url or f"https://en.wikipedia.org/wiki/{alt.replace(' ', '_')}"
 
     if not image_url or not description:
         for alt in wiki_titles:
@@ -571,28 +569,27 @@ def update_species_info_from_wiki(sp):
             img3, desc3, src3 = get_inaturalist_image_and_description(alt)
             if img3 and not image_url:
                 image_url = img3
-                metadata_source = metadata_source or 'inaturalist'
+                metadata_source = metadata_source or "inaturalist"
                 metadata_source_url = metadata_source_url or src3
             if desc3 and not description:
                 description = desc3
-                metadata_source = metadata_source or 'inaturalist'
+                metadata_source = metadata_source or "inaturalist"
                 metadata_source_url = metadata_source_url or src3
 
     if not description:
         title = _extract_wiki_search_title(sp.name) or sp.name
-        if 'and allies' in (sp.name or '').lower():
+        if "and allies" in (sp.name or "").lower():
             description = (
                 f"{title} is a higher-level taxonomic bird group used in the BirdLense "
-                'hierarchy for organizing related species.'
+                "hierarchy for organizing related species."
             )
-        elif '(' in (sp.name or '') and ')' in (sp.name or ''):
-            base = (sp.name or '').split('(', 1)[0].strip() or title
+        elif "(" in (sp.name or "") and ")" in (sp.name or ""):
+            base = (sp.name or "").split("(", 1)[0].strip() or title
             description = (
-                f"{sp.name} is a morphology/age/sex variant entry for {base} in the "
-                'BirdLense species taxonomy.'
+                f"{sp.name} is a morphology/age/sex variant entry for {base} in the BirdLense species taxonomy."
             )
         else:
-            description = f'{title} is a bird taxon represented in the BirdLense registry.'
+            description = f"{title} is a bird taxon represented in the BirdLense registry."
 
     if not image_url:
         image_url = _manual_image_overrides.get(key) or image_url
@@ -601,15 +598,13 @@ def update_species_info_from_wiki(sp):
     if description and not sp.description:
         sp.description = description
     inferred_source, inferred_url = infer_metadata_source_fields(
-        getattr(sp, 'name', None),
-        image_url or getattr(sp, 'image_url', None),
-        metadata_source_url or getattr(sp, 'metadata_source_url', None),
+        getattr(sp, "name", None),
+        image_url or getattr(sp, "image_url", None),
+        metadata_source_url or getattr(sp, "metadata_source_url", None),
     )
-    if (metadata_source or inferred_source) and not getattr(sp, 'metadata_source', None):
+    if (metadata_source or inferred_source) and not getattr(sp, "metadata_source", None):
         sp.metadata_source = metadata_source or inferred_source
-    if (metadata_source_url or inferred_url) and not getattr(
-        sp, 'metadata_source_url', None
-    ):
+    if (metadata_source_url or inferred_url) and not getattr(sp, "metadata_source_url", None):
         sp.metadata_source_url = metadata_source_url or inferred_url
     return updated or bool(image_url or description)
 
@@ -628,7 +623,7 @@ def refresh_species_metadata_from_sources(sp) -> bool:
 
 def filter_feeder_species(species_names):
     """Фильтр по семействам из processor.included_bird_families."""
-    included_families = app_config.get('processor.included_bird_families', [])
+    included_families = app_config.get("processor.included_bird_families", [])
     if not included_families:
         return species_names
 

@@ -6,7 +6,7 @@
 
 > **Безопасность:** если пароль настроек попал в лог или чат — смените его в Settings → General.
 >
-> **Placeholders:** `YOUR_HOST` — hostname или IP; `YOUR_SSH_HOST` — host из `~/.ssh/config`; `YOUR_REMOTE_DIR` — путь на сервере (например `/opt/birdlense`).
+> **Placeholders:** `YOUR_HOST` — hostname или IP; `YOUR_SSH_HOST` — host из `~/.ssh/config`; `YOUR_REMOTE_DIR` — корень приложения на сервере (**по умолчанию деплой:** `/root/BirdLense`, см. `DEPLOY_REMOTE_DIR`); `/opt/birdlense` в старых текстах — устаревший пример.
 
 ---
 
@@ -17,12 +17,14 @@
 | Job | Содержание |
 |-----|------------|
 | **`python-security`** | **Bandit** для `web/` + `processor/src`; **pip-audit** по `web/requirements.txt` и `processor/requirements.txt` |
-| **`openapi-contract`** | **Ruff** (`ruff check web/ processor/src/`); **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci` + `npm run lint` + production-сборка SPA (`app/ui`) |
+| **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` для `web/` + `processor/src/`; сводка **radon cc**; **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + проверка расхождения `src/generated/openapi-types.ts`; `npm run lint`; production-сборка SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, отчёт **Settings UI coverage** (артефакт + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — загрузка весов процессора, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` на compose, скрипт **аудита карточек каталога** (артефакт) |
 
 Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
+
+**Пороги и политика:** [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) (игноры pip-audit, Ruff format, npm audit, OpenAPI→TypeScript).
 
 **Отдельно:** **CodeQL** — [CODEQL.ru](./CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
@@ -35,6 +37,8 @@ cd app && make test
 Запускает `unittest` для processor в Docker (detection strategy, decision maker). Нужен ultralytics; **в продакшене только two_stage** — бинарный детектор `.pt` + классификатор `.pt` (в CI: `scripts/fetch-processor-weights.sh` для активной пары, а `--legacy-single-stage` — только для compatibility `app/yolo11n.pt`; локально — тот же скрипт перед `make test`, если весов нет).
 
 > **Память (RAM):** тесты процессора поднимают YOLO в контейнере и могут занять **несколько ГБ ОЗУ**. На **слабом VPS или ноутбуке** с лимитом памяти `make test` (или job **`docker-tests`** в CI) может завершиться **SIGKILL / код 137** (OOM). Лучше **≥8 ГБ** свободно под Docker, закрыть тяжёлые приложения или гонять тесты на **GitHub Actions**, а не только локально.
+
+**Облегчённый прогон (#282):** `cd app && make test-processor-light` выставляет `SKIP_HEAVY_PROCESSOR_TESTS=1` и запускает `pytest processor/tests/ -m "not heavy"`. Пропускаются интеграционные тесты **TwoStageStrategy** с реальными `.pt` (то же при ручном export переменной). Для pytest-тестов можно повесить `@pytest.mark.heavy`. **В CI** по умолчанию по-прежнему полный `make test`.
 
 ### API-тесты (web)
 

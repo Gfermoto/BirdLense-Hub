@@ -61,6 +61,8 @@ docker compose -f docker-compose.image.yml up -d
 
 ## Первый запуск
 
+**Тома Docker и uid:** процессы в контейнере `birdlense` идут от пользователя **birdlense (uid 1000)**. При старте entrypoint от root делает `chown` на примонтированные `./data` и `./app_config`. Если `chown` на вашей ФС недоступен, с хоста из каталога `app/`: `chown -R 1000:1000 data app_config`.
+
 1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`, а также из `./install.sh`.
 2. **Конфиг** — `app/app_config/user_config.yaml`. Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
@@ -81,13 +83,13 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере, при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
+**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
-**Пошаговый чеклист** (подготовка, проверка, типичные проблемы): [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
+**Пошаговый чеклист**, пути на VPS, логи и типичные сбои: [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
 
 ### Telegram proxy autorotate (одной кнопкой)
 

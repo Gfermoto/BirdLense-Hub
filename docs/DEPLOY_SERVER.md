@@ -64,3 +64,17 @@ Standard deploy keeps:
   Clear browser PWA/Service Worker cache and reload.
 - **Port conflict**  
   Verify `BIRDLENSE_PORT` and occupied ports on server.
+
+## 6) Server directory layout
+
+- After `make deploy`, the app root is **`/root/BirdLense`** (or `DEPLOY_REMOTE_DIR` in `deploy.local.sh`). Check `docker inspect birdlense` — the **`/app/data`** mount should point at `…/app/data` under that tree.
+- Older docs sometimes used **`/opt/birdlense`**; that is **not** the repo default. A stray `birdlense.db` there may be from an old install—trust `deploy.local.sh`, not an arbitrary path.
+
+## 7) Container logs
+
+- **h264 / rtsp** lines often come from the stream decoder and do not imply the API is broken; the image sets **`OPENCV_*`** to reduce noise.
+- **Telegram** startup notify waits briefly after the API is up so SOCKS/proxy can become ready (`notify_app_startup`).
+
+## 8) Direct recording URLs (`/data/recordings/`)
+
+By default nginx serves files under `/data/` without extra HTTP auth. To reduce risk of predictable `video.mp4` URLs, see [SECURITY.md §3](./SECURITY.md) and the network-restriction example: `app/nginx/examples/recordings_allowlist.conf.snippet`.

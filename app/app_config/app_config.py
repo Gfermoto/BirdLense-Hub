@@ -5,6 +5,8 @@ import shutil
 
 import yaml
 
+from app_config.secret_env import apply_secret_env_overrides
+
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_FLOORS = {
@@ -39,6 +41,7 @@ SENSITIVE_KEYS = frozenset({
 CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS = frozenset({
     'general.settings_password',
     'general.contributor_password',
+    'general.session_idle_minutes',
     'mcp.token',
 })
 MASK_PLACEHOLDER = '***'
@@ -170,6 +173,7 @@ class AppConfig:
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
         self._enforce_confidence_floors(merged)
+        apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
         for msg in config_issues:
             logger.error('Config structure validation: %s', msg)

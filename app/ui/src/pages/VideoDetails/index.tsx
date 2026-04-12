@@ -231,7 +231,10 @@ export const VideoDetails = () => {
   useEffect(() => {
     trackRegenMutation.reset();
     specRegenMutation.reset();
-  }, [params.id, trackRegenMutation, specRegenMutation]);
+    // Только смена ролика. Объекты useMutation() нестабильны по ссылке — если перечислить их
+    // в deps, эффект крутится на каждом кадре (reset → ререндер → новый объект → снова effect).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- намеренно только params.id
+  }, [params.id]);
 
   const trackJobSummary = useMemo(
     () => summarizeTrackRegenJob(trackRegenMutation.data, videoIdNum, t),

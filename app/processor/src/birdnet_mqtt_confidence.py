@@ -1,4 +1,5 @@
 """Lower classifier thresholds for species recently reported by BirdNET MQTT (#129)."""
+
 from __future__ import annotations
 
 import logging
@@ -21,15 +22,15 @@ def merge_birdnet_mqtt_bias_into_overrides(
     """
     out = dict(base_overrides)
     try:
-        enabled = bool(app_config.get('processor.birdnet_mqtt_auto_confidence', False))
+        enabled = bool(app_config.get("processor.birdnet_mqtt_auto_confidence", False))
     except Exception:
         enabled = False
     if not enabled or mqtt_aggregator is None:
         return out
 
-    raw_window = app_config.get('processor.birdnet_mqtt_prior_window_hours', None)
+    raw_window = app_config.get("processor.birdnet_mqtt_prior_window_hours", None)
     if raw_window is None:
-        raw_window_seconds = app_config.get('processor.birdnet_mqtt_bias_window_seconds', 0)
+        raw_window_seconds = app_config.get("processor.birdnet_mqtt_bias_window_seconds", 0)
         try:
             raw_window_seconds = float(raw_window_seconds or 0)
         except (TypeError, ValueError):
@@ -37,8 +38,8 @@ def merge_birdnet_mqtt_bias_into_overrides(
         if raw_window_seconds > 0:
             prior_window_hours = raw_window_seconds / 3600.0
             logger.info(
-                'BirdNET MQTT: using deprecated processor.birdnet_mqtt_bias_window_seconds=%ss '
-                '-> prior_window_hours=%.3f',
+                "BirdNET MQTT: using deprecated processor.birdnet_mqtt_bias_window_seconds=%ss "
+                "-> prior_window_hours=%.3f",
                 raw_window_seconds,
                 prior_window_hours,
             )
@@ -50,34 +51,28 @@ def merge_birdnet_mqtt_bias_into_overrides(
         except (TypeError, ValueError):
             prior_window_hours = 24.0
     try:
-        prior_ttl_hours = float(
-            app_config.get('processor.birdnet_mqtt_prior_ttl_hours', 25)
-        )
+        prior_ttl_hours = float(app_config.get("processor.birdnet_mqtt_prior_ttl_hours", 25))
     except (TypeError, ValueError):
         prior_ttl_hours = 25.0
     try:
-        half_life_hours = float(
-            app_config.get('processor.birdnet_mqtt_prior_half_life_hours', 6)
-        )
+        half_life_hours = float(app_config.get("processor.birdnet_mqtt_prior_half_life_hours", 6))
     except (TypeError, ValueError):
         half_life_hours = 6.0
     try:
-        min_prior_confidence = float(
-            app_config.get('processor.birdnet_mqtt_prior_min_confidence', 0.0)
-        )
+        min_prior_confidence = float(app_config.get("processor.birdnet_mqtt_prior_min_confidence", 0.0))
     except (TypeError, ValueError):
         min_prior_confidence = 0.0
 
     try:
-        base = float(app_config.get('processor.min_confidence_to_process', 0.3))
+        base = float(app_config.get("processor.min_confidence_to_process", 0.3))
     except (TypeError, ValueError):
         base = 0.3
     try:
-        delta = float(app_config.get('processor.birdnet_mqtt_bias_delta', 0.05))
+        delta = float(app_config.get("processor.birdnet_mqtt_bias_delta", 0.05))
     except (TypeError, ValueError):
         delta = 0.05
     try:
-        floor_v = float(app_config.get('processor.birdnet_mqtt_bias_floor', 0.05))
+        floor_v = float(app_config.get("processor.birdnet_mqtt_bias_floor", 0.05))
     except (TypeError, ValueError):
         floor_v = 0.05
 
@@ -90,7 +85,7 @@ def merge_birdnet_mqtt_bias_into_overrides(
     now = datetime.now(timezone.utc)
     from species_normalizer import normalize
 
-    species_mapping = app_config.get('detection.species_mapping') or {}
+    species_mapping = app_config.get("detection.species_mapping") or {}
     adjusted = 0
     try:
         prior_scores = mqtt_aggregator.get_birdnet_prior_scores(
@@ -101,17 +96,17 @@ def merge_birdnet_mqtt_bias_into_overrides(
             min_confidence=min_prior_confidence,
         )
     except Exception as e:
-        logger.warning('BirdNET MQTT bias: get_birdnet_prior_scores failed: %s', e)
+        logger.warning("BirdNET MQTT bias: get_birdnet_prior_scores failed: %s", e)
         prior_scores = {}
 
     for raw_name, meta in prior_scores.items():
         bl = normalize(raw_name, species_mapping)
-        if not bl or bl.lower() == 'unknown':
+        if not bl or bl.lower() == "unknown":
             continue
         if bl in out:
             continue
         try:
-            raw_score = float((meta or {}).get('score') or 0.0)
+            raw_score = float((meta or {}).get("score") or 0.0)
         except (TypeError, ValueError):
             raw_score = 0.0
         strength = max(0.0, min(raw_score, 1.0))
@@ -122,8 +117,8 @@ def merge_birdnet_mqtt_bias_into_overrides(
 
     if adjusted:
         logger.info(
-            'BirdNET MQTT auto-confidence: +%d species (prior_window=%.1fh '
-            'ttl=%.1fh half_life=%.1fh base=%.3f delta=%.3f)',
+            "BirdNET MQTT auto-confidence: +%d species (prior_window=%.1fh "
+            "ttl=%.1fh half_life=%.1fh base=%.3f delta=%.3f)",
             adjusted,
             prior_window_hours,
             prior_ttl_hours,

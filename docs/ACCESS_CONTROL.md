@@ -23,6 +23,12 @@ general:
 - Only `settings_password` → one tier; unlock behaves as **admin** for all gated actions.
 - Both set → `verify-password` returns `role`: **`admin`** (matches `settings_password` first) or **`contributor`**.
 
+### Production strict UI API (optional)
+
+When **`BIRDLENSE_ENV=production`** (or `FLASK_ENV=production`) **and** **`BIRDLENSE_STRICT_API_AUTH=1`**, every `/api/ui/*` request must include **one of**: unlocked session (after `verify-password`), **`Authorization: Bearer <MCP_TOKEN>`**, or **`BIRDLENSE_UI_API_KEY`** via **`X-Birdlense-Api-Key`** or **`Authorization: Bearer`** with the same value.
+
+Still public without session: **`GET /api/ui/health`**, **`GET /api/ui/settings/requires-password`**, **`GET /api/ui/settings/check-access`**, **`POST /api/ui/settings/verify-password`**, **`GET /api/ui/push/vapid-public`**, **`POST /api/ui/settings/logout`**. `OPTIONS` preflight is allowed.
+
 ---
 
 ## Roles

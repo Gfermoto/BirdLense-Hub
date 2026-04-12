@@ -1,4 +1,5 @@
 """Подсчёт файлов и размера дерева каталогов (диагностика / purge)."""
+
 from __future__ import annotations
 
 import logging
@@ -18,5 +19,5 @@ def get_tree_storage_info(dir_path: str) -> tuple[int, int]:
                 total_size += os.path.getsize(file_path)
                 total_files += 1
             except OSError as e:
-                _log.error('Error getting size for %s: %s', file_path, e)
+                _log.error("Error getting size for %s: %s", file_path, e)
     return total_files, total_size

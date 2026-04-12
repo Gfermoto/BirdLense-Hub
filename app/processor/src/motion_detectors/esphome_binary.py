@@ -1,6 +1,7 @@
 """
 ESPHome binary sensor motion detector. Polls binary sensor state via HTTP.
 """
+
 import logging
 import time
 

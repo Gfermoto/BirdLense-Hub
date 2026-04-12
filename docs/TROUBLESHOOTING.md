@@ -46,7 +46,17 @@ docker logs birdlense --tail 200 2>&1
 | `139` | Segfault |
 | `[h264] error while decoding MB` | Unstable RTSP / network |
 
+**nginx** (reverse proxy to gunicorn): **`/var/log/nginx/error.log`** and **`access.log`** inside the container (owned by **`birdlense`**). Example: `docker exec birdlense tail -100 /var/log/nginx/error.log`
+
 **Mitigations:** set `mem_limit` in compose, log to file, watch Prometheus/Grafana.
+
+---
+
+## Processor thresholds: saved in UI, behavior unchanged
+
+**Cause:** the web stack (gunicorn/Flask) and the **processor** are separate processes. Saving settings writes `user_config.yaml` and refreshes the in-memory config for the web app; the **recording/detection loop** does not re-read the file every frame, so it keeps the values from processor startup.
+
+**Fix:** after changing `processor.*`, `detection.*`, or related keys, **restart the processor** (Settings UI button, `POST /api/ui/restart-processor`, or restart the `birdlense` container). To reduce Telegram noise without tightening DB acceptance, tune **`processor.min_confidence_to_notify`** — see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
 
 ---
 

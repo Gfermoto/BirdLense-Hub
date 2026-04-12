@@ -4,6 +4,7 @@
 Единая точка для main.py и track_regenerator (раньше дублировалась логика).
 Production: только two_stage (binary .pt + classifier .pt).
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,67 +41,71 @@ def build_detection_stack(
     _ = warn_two_stage_fallback  # legacy param, no longer used
 
     processor_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    strategy_type = (strategy_override or app_config.get(
-        'processor.detection_strategy',
-        'two_stage',
-    )).strip()
-    if strategy_type != 'two_stage':
+    strategy_type = (
+        strategy_override
+        or app_config.get(
+            "processor.detection_strategy",
+            "two_stage",
+        )
+    ).strip()
+    if strategy_type != "two_stage":
         logger.warning(
-            'processor.detection_strategy=%s is ignored; only two_stage is supported. '
-            'Remove single_stage from user_config.',
+            "processor.detection_strategy=%s is ignored; only two_stage is supported. "
+            "Remove single_stage from user_config.",
             strategy_type,
         )
     min_center_dist = (
         float(min_center_dist_override)
         if min_center_dist_override is not None
-        else float(app_config.get('processor.min_center_dist', 0.1))
+        else float(app_config.get("processor.min_center_dist", 0.1))
     )
     binary_path = _resolve_model_path(
-        app_config.get(
-            'processor.models.binary', 'models/detection/weights/best.pt'),
+        app_config.get("processor.models.binary", "models/detection/weights/best.pt"),
         processor_root,
     )
     classifier_path = _resolve_model_path(
         app_config.get(
-            'processor.models.classifier',
-            'models/classification/weights/best.pt',
+            "processor.models.classifier",
+            "models/classification/weights/best.pt",
         ),
         processor_root,
     )
 
     if not os.path.isfile(binary_path):
         raise FileNotFoundError(
-            f'YOLO binary detector weights missing: {binary_path}. '
-            'Set processor.models.binary or run scripts/fetch-processor-weights.sh',
+            f"YOLO binary detector weights missing: {binary_path}. "
+            "Set processor.models.binary or run scripts/fetch-processor-weights.sh",
         )
     if not os.path.isfile(classifier_path):
         raise FileNotFoundError(
-            f'YOLO classifier weights missing: {classifier_path}. '
-            'Set processor.models.classifier or run scripts/fetch-processor-weights.sh',
+            f"YOLO classifier weights missing: {classifier_path}. "
+            "Set processor.models.classifier or run scripts/fetch-processor-weights.sh",
         )
 
     regional_species = regional_species_override
     if regional_species is None:
-        regional_species = app_config.get('processor.regional_species') or []
+        regional_species = app_config.get("processor.regional_species") or []
     match_live_regen = bool(
-        app_config.get('processor.track_regen_match_live_pipeline', False),
+        app_config.get("processor.track_regen_match_live_pipeline", False),
     )
     if (
         for_track_regen
-        and app_config.get('processor.track_regen_ignore_regional_species', True)
+        and app_config.get("processor.track_regen_ignore_regional_species", True)
         and regional_species_override is None
         and not match_live_regen
     ):
         regional_species = []
-    detector_scope = app_config.get('processor.detector_scope') or ['Bird', 'Squirrel']
+    detector_scope = app_config.get("processor.detector_scope") or ["Bird", "Squirrel"]
     max_classifications_per_frame = app_config.get(
-        'processor.max_classifications_per_frame', 2,
+        "processor.max_classifications_per_frame",
+        2,
     )
-    max_blur_checks = app_config.get('processor.max_blur_checks', 3)
-    blur_threshold = app_config.get('processor.blur_threshold', 100.0)
-    min_box_size_px = app_config.get('processor.min_box_size_px', 64)
+    max_blur_checks = app_config.get("processor.max_blur_checks", 3)
+    blur_threshold = app_config.get("processor.blur_threshold", 100.0)
+    min_box_size_px = app_config.get("processor.min_box_size_px", 64)
     classification_scheduler = app_config.get(
-        'processor.classification_scheduler', 'priority',
+        "processor.classification_scheduler",
+        "priority",
     )
 
     detection_strategy = TwoStageStrategy(
@@ -114,39 +119,38 @@ def build_detection_stack(
         max_blur_checks=max_blur_checks,
         max_classifications_per_frame=max_classifications_per_frame,
         classification_scheduler=classification_scheduler,
-        binary_imgsz=app_config.get('processor.binary_imgsz', 320),
+        binary_imgsz=app_config.get("processor.binary_imgsz", 320),
     )
 
-    tracker = app_config.get('processor.tracker') or 'bytetrack.yaml'
+    tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
     frame_processor = FrameProcessor(
         detection_strategy=detection_strategy,
         tracker=tracker,
         save_images=save_images,
     )
-    merged_overrides = merge_species_confidence_overrides_with_ebird_top(
-        app_config)
-    min_store = app_config.get('detection.min_confidence_to_store')
+    merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
+    min_store = app_config.get("detection.min_confidence_to_store")
     try:
         min_confidence_to_store = float(min_store) if min_store is not None else 0.30
     except (TypeError, ValueError):
         min_confidence_to_store = 0.30
     fallback_bird = bool(
-        app_config.get('processor.classifier_fallback_bird', True),
+        app_config.get("processor.classifier_fallback_bird", True),
     )
     # Live camera: short max_record_seconds saves disk. File/playlist: merge uses camera defaults (60s)
     # if we don't raise the floor, but a 7200s floor meant no finalize for hours while YOLO stays active —
     # empty UI. Floor is configurable (processor.file_max_record_floor_seconds); playlist position is kept
     # when segments end (media_runtime advance_on_start=False + VideoPlaylistSource.start_recording).
-    max_record_seconds = app_config.get('processor.max_record_seconds')
-    max_inactive_seconds = app_config.get('processor.max_inactive_seconds')
-    if (app_config.get('video.source') or '').strip().lower() == 'file':
+    max_record_seconds = app_config.get("processor.max_record_seconds")
+    max_inactive_seconds = app_config.get("processor.max_inactive_seconds")
+    if (app_config.get("video.source") or "").strip().lower() == "file":
         try:
             mrs = float(max_record_seconds) if max_record_seconds is not None else 60.0
         except (TypeError, ValueError):
             mrs = 60.0
         try:
             floor = float(
-                app_config.get('processor.file_max_record_floor_seconds', 86400.0),
+                app_config.get("processor.file_max_record_floor_seconds", 86400.0),
             )
         except (TypeError, ValueError):
             floor = 86400.0
@@ -157,19 +161,17 @@ def build_detection_stack(
             mis = 10.0
         max_inactive_seconds = max(mis, 120.0)
         logger.info(
-            'video.source=file: session limits (wall clock) — '
-            'max_record_seconds=%s, max_inactive_seconds=%s',
+            "video.source=file: session limits (wall clock) — max_record_seconds=%s, max_inactive_seconds=%s",
             max_record_seconds,
             max_inactive_seconds,
         )
     decision_maker = DecisionMaker(
         max_record_seconds=max_record_seconds,
         max_inactive_seconds=max_inactive_seconds,
-        min_track_duration=app_config.get('processor.min_track_duration', 1.0),
-        min_confidence_to_process=app_config.get(
-            'processor.min_confidence_to_process'),
+        min_track_duration=app_config.get("processor.min_track_duration", 1.0),
+        min_confidence_to_process=app_config.get("processor.min_confidence_to_process"),
         species_confidence_overrides=merged_overrides,
-        post_record_seconds=app_config.get('processor.post_record_seconds', 0),
+        post_record_seconds=app_config.get("processor.post_record_seconds", 0),
         min_confidence_to_store=min_confidence_to_store,
         classifier_fallback_bird=fallback_bird,
     )

@@ -1,7 +1,7 @@
 from gpiozero import MotionSensor
 
 
-class PIRMotionDetector():
+class PIRMotionDetector:
     def __init__(self, pin=4):
         self.pir = MotionSensor(pin)
 

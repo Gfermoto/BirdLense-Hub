@@ -15,8 +15,7 @@ class LightLevelDetector:
 
     def has_sufficient_light(self, frame):
         try:
-            gray = cv2.cvtColor(
-                frame[::self.sample_rate, ::self.sample_rate], cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(frame[:: self.sample_rate, :: self.sample_rate], cv2.COLOR_BGR2GRAY)
             mean_brightness = gray.mean()
             if mean_brightness < self.min_brightness:
                 self._log_conditions(mean_brightness)
@@ -30,7 +29,7 @@ class LightLevelDetector:
             return is_sufficient
 
         except Exception as e:
-            self.logger.error(f'Error checking light levels: {e}')
+            self.logger.error(f"Error checking light levels: {e}")
             return True
 
     def _log_conditions(self, brightness, contrast=None):
@@ -38,10 +37,7 @@ class LightLevelDetector:
         current_time = time.time()
         if not self.last_log_time or current_time - self.last_log_time > 60:
             if contrast is None:
-                self.logger.info(f'Insufficient brightness: {brightness:.1f}')
+                self.logger.info(f"Insufficient brightness: {brightness:.1f}")
             else:
-                self.logger.info(
-                    f'Poor lighting conditions: brightness={brightness:.1f}, '
-                    f'contrast={contrast:.1f}'
-                )
+                self.logger.info(f"Poor lighting conditions: brightness={brightness:.1f}, contrast={contrast:.1f}")
             self.last_log_time = current_time

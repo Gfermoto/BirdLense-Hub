@@ -11,7 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -f "${SCRIPT_DIR}/deploy.local.sh" ] && . "${SCRIPT_DIR}/deploy.local.sh"
 
 HOST="${DEPLOY_HOST:?Set DEPLOY_HOST in deploy.local.sh}"
-REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/opt/birdlense}"
+# Как в scripts/deploy.sh по умолчанию; /opt/birdlense — устаревший пример из старых инструкций
+REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 
 echo "=== Проверка EU-модели на ${HOST} ==="
 echo ""

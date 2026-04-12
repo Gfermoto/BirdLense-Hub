@@ -14,7 +14,7 @@ RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legac
 FROM ultralytics/ultralytics:8.4.21
 # Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg nginx curl unzip \
+    ffmpeg nginx curl unzip gosu \
     intel-media-va-driver-non-free vainfo intel-gpu-tools \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
@@ -72,11 +72,22 @@ RUN pip install --no-cache-dir -r web/requirements.txt \
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html
 COPY nginx/standalone.conf.template /etc/nginx/conf.d/default.conf.template
+COPY nginx/docker-nginx-main.conf /app/nginx/docker-nginx-main.conf
+
+# Процессы nginx / gunicorn / processor — от birdlense (uid 1000); entrypoint при старте от root делает chown volume (#277).
+RUN groupadd -r birdlense -g 1000 \
+    && useradd -r -u 1000 -g birdlense -d /app -s /bin/bash birdlense \
+    && (usermod -aG video,render birdlense 2>/dev/null || true) \
+    && mkdir -p /var/log/nginx \
+    && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d /var/log/nginx
 
 EXPOSE 8080
 
 ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
 ENV DATA_DIR=/app/data
+# Меньше шума libav/h264 от OpenCV VideoCapture (RTSP) в docker logs
+ENV OPENCV_LOG_LEVEL=ERROR
+ENV OPENCV_FFMPEG_LOGLEVEL=quiet
 
 CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
 

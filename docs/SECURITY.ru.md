@@ -23,11 +23,11 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Критический** | По умолчанию API без входа. `/api/ui/*` доступны без проверки. | Для production: API key, JWT или reverse proxy с auth. |
+| ~~**Критический**~~ **Смягчено (opt-in)** | По умолчанию `/api/ui/*` открыты для домашней LAN. | **`BIRDLENSE_STRICT_API_AUTH=1`** при production-рантайме: нужны сессия после `verify-password`, **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**. Исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. См. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md). |
 | ~~**Критический**~~ **Исправлено** | Пустой `PROCESSOR_SECRET` — открытый Processor API. | В production блокируется; деплой пишет в `.env`. |
 | **Критический** | MCP без токена, если пусты `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
 | **Высокий** | Пароль настроек опционален — при пустом значении настройки и система не защищены. | Обязательный пароль в production. |
-| **Высокий** | Сессия `session.permanent = True`, нет таймаута. | Добавить таймаут сессии (15–30 мин). |
+| ~~**Высокий**~~ **Исправлено** | Сессия `session.permanent = True`, нет idle-таймаута. | `general.session_idle_minutes` (по умолчанию 30; 0 — выкл.), см. [CONFIGURATION](./CONFIGURATION.ru.md). |
 | **Средний** | `/api/ui/system/*` защищены только `settings_check_access()`. | Обеспечить обязательный `settings_password`. |
 
 ---
@@ -38,9 +38,9 @@
 |------|----------|--------------|
 | ~~**Критический**~~ **Исправлено** | Дефолтный `FLASK_SECRET_KEY`. | В `BIRDLENSE_ENV=production` без ключа — RuntimeError; деплой пишет в `.env`. |
 | ~~**Критический**~~ **Исправлено** | `GET /api/ui/settings` отдавал полный конфиг с секретами. | Маскирование `***`, placeholder при сохранении не затирает реальное значение. |
-| **Высокий** | `user_config.yaml` в открытом виде: токены Telegram, MQTT, ключи API, пароли. | Хранить в env / secret manager, не в YAML. |
+| **Высокий** | `user_config.yaml` в открытом виде: токены Telegram, MQTT, ключи API, пароли. | В проде предпочтительно **оверлеи `BIRDLENSE_*`** ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)) или secret manager; не хранить секреты в YAML. |
 | **Высокий** | OpenAPI описывает чувствительные поля в схеме Settings. | `x-sensitive: true`, не светить в примерах. |
-| **Средний** | `settings_password` в plain text. | Рассмотреть хеш (bcrypt/argon2). |
+| ~~**Средний**~~ **Смягчено** | `settings_password` / `contributor_password` раньше только plain text. | Новые сохранения из UI — **bcrypt**; старый plaintext всё ещё принимается; опционально **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** в env. |
 | **Низкий** | `.env` в `.gitignore`. | Оставить как есть. |
 
 **Runbook для оператора:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) — перечень секретов, шаги ротации, проверка, откат, шаблон экстренной заметки ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
@@ -53,6 +53,8 @@
 |------|----------|--------------|
 | ~~**Критический**~~ **Исправлено** | `location /data/` + `alias` — запрос `/data/../.env`. | Проверка `..` в URI → 403 во всех конфигах nginx. |
 | **Высокий** | `/data/recordings/` без аутентификации; предсказуемые пути к `video.mp4`. | Выдача через API с auth или ограничение по IP. |
+
+**Смягчение (на выбор при публичном доступе):** (1) **allowlist по IP** — отдельный `location ^~ /data/recordings/` с `allow`/`deny` (пример `app/nginx/examples/recordings_allowlist.conf.snippet`, [DEPLOY_SERVER.ru.md §8](./DEPLOY_SERVER.ru.md)); (2) **без прямой раздачи медиа** — снаружи только reverse proxy на `/api/…` и авторизованные stream-роуты; (3) **`auth_request`** к сессии Hub — сложнее, в образ по умолчанию не входит.
 
 **Проверка:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — при уязвимости будет 200.
 
@@ -122,7 +124,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Высокий** | Контейнер под root (нет `USER`). | Непривилегированный пользователь. |
+| ~~**Высокий**~~ **Исправлено** | Процессы в контейнере под root. | Nginx/Gunicorn/processor под `birdlense` (uid **1000**); entrypoint при старте от root делает `chown` на примонтированные `./data` и `./app_config`. См. [INSTALL](./INSTALL.ru.md). |
 | **Средний** | Тяжёлый базовый образ. | Multi-stage при необходимости. |
 | **Низкий** | Без `--privileged`. | Не добавлять. |
 
@@ -144,7 +146,7 @@
 3. ~~Path traversal~~ ✅ Nginx блокирует `..`, `%2e%2e`; пути изображений проверяются.
 4. **Ограничить** доступ к `/data/recordings/` (auth или IP).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
-6. **Docker:** не root в контейнере.
+6. ~~**Docker:** не root в контейнере.~~ ✅ Процессы под uid 1000 (`birdlense`).
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.
 8. **Ротация секретов:** [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) (операции в проде).
 

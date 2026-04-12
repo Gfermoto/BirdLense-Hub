@@ -39,6 +39,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | Documentation (meta guide) | ✅ | ✅ |
 | SCENARIOS | ✅ | ✅ |
 | CONFIGURATION | ✅ | ✅ |
+| HEIMDALL (tiles guide) | ✅ | ✅ |
 | GLOSSARY | ✅ | ✅ |
 | FEATURES | ✅ | ✅ |
 | TESTING | ✅ | ✅ |

@@ -58,6 +58,7 @@ nav:
       - Troubleshooting: TROUBLESHOOTING.md
       - Recover config: RECOVERY_CONFIG.md
       - Glossary: GLOSSARY.md
+      - "Heimdall (tiles)": HEIMDALL.md
   - "Develop & integrate":
       - Architecture: ARCHITECTURE.md
       - HTTP API: API.md
@@ -67,6 +68,7 @@ nav:
       - Local development: LOCAL_DEV.md
       - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
+      - "CI & quality policy": CI_AND_QUALITY.md
       - Accessibility: A11Y.md
       - "UX: Tooltips & hints": UX_TOOLTIPS.md
       - "UX: Unknowns vs video correction": UX_UNKNOWN_VIDEO_CORRECTION.md
@@ -106,6 +108,7 @@ nav:
       - Решение проблем: TROUBLESHOOTING.ru.md
       - Восстановление конфига: RECOVERY_CONFIG.ru.md
       - Глоссарий: GLOSSARY.ru.md
+      - "Heimdall (плитки)": HEIMDALL.ru.md
       - Архитектура: ARCHITECTURE.ru.md
       - API: API.ru.md
       - OpenAPI (Redoc): reference/openapi.ru.md
@@ -114,6 +117,7 @@ nav:
       - Локальная разработка: LOCAL_DEV.ru.md
       - CodeQL (CI): CODEQL.ru.md
       - Тестирование: TESTING.ru.md
+      - "CI и качество": CI_AND_QUALITY.ru.md
       - Доступность: A11Y.ru.md
       - "UX: подсказки и тултипы": UX_TOOLTIPS.md
       - "UX: Неизвестные и видео": UX_UNKNOWN_VIDEO_CORRECTION.md

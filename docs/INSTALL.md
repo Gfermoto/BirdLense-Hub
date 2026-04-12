@@ -61,6 +61,8 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 
 ## First run
 
+**Docker volumes and uid:** container processes run as **`birdlense` (uid 1000)**. The entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. If `chown` is not allowed on your filesystem, from the host under `app/`: `chown -R 1000:1000 data app_config`.
+
 1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`, and from `./install.sh`.
 2. **Config** — `app/app_config/user_config.yaml`. Examples: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
@@ -81,13 +83,13 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server, Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
+**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
-**Linear checklist** (prepare, verify, common pitfalls): [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+**Linear checklist**, VPS paths, logs, common pitfalls: [DEPLOY_SERVER](./DEPLOY_SERVER.md).
 
 ### Telegram proxy autorotate (one command)
 

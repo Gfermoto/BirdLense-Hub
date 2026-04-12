@@ -6,7 +6,7 @@ If the UI shows wrong defaults or empty cameras after an edit, restore from back
 
 ---
 
-> **Placeholders:** `YOUR_SSH_HOST` — SSH host alias (`~/.ssh/config` or `DEPLOY_HOST`); `YOUR_REMOTE_DIR` — app root on the server (e.g. `/opt/birdlense` or `DEPLOY_REMOTE_DIR`).
+> **Placeholders:** `YOUR_SSH_HOST` — SSH host alias (`~/.ssh/config` or `DEPLOY_HOST`); `YOUR_REMOTE_DIR` — app root on the server (**default deploy:** `/root/BirdLense` = `DEPLOY_REMOTE_DIR`; `/opt/birdlense` is a legacy example).
 
 ---
 

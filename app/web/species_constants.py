@@ -1,4 +1,4 @@
 """Общие константы каталога видов (#222)."""
 
 # Вид «Bird» / «bird» — птица без определённого вида
-GENERIC_BIRD_SPECIES = 'Bird'
+GENERIC_BIRD_SPECIES = "Bird"

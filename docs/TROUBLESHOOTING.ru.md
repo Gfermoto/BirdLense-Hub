@@ -41,8 +41,17 @@ docker logs birdlense --tail 200 2>&1
 - `137` — OOM Kill
 - `139` — segfault
 - `[h264] error while decoding MB` — нестабильный RTSP, сеть
+- **nginx** (прокси до gunicorn): файлы **`/var/log/nginx/error.log`** и **`access.log`** в контейнере, владелец **`birdlense`**. Пример: `docker exec birdlense tail -100 /var/log/nginx/error.log`
 
 **Рекомендации:** `mem_limit: 4g` в compose; логи в файл; Prometheus/Grafana.
+
+---
+
+## Пороги processor: сохранили в UI, поведение не меняется
+
+**Причина:** веб (gunicorn/Flask) и **processor** — разные процессы. Сохранение настроек пишет `user_config.yaml` и обновляет конфиг в памяти веба; **цикл записи и детекции** в processor не опрашивает файл на каждом кадре — действуют значения на момент старта процесса.
+
+**Что сделать:** после правок `processor.*`, `detection.*` и связанных ключей выполните **перезапуск processor** (Настройки → соответствующая кнопка, `POST /api/ui/restart-processor` или перезапуск контейнера `birdlense`). Чтобы отделить шум в Telegram от записи в БД, используйте **`processor.min_confidence_to_notify`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → Processor.
 
 ---
 

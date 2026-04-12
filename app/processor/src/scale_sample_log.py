@@ -1,4 +1,5 @@
 """История показаний весов (JSONL) для оценки дельты за интервал записи — issue #167."""
+
 from __future__ import annotations
 
 import json

@@ -28,6 +28,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
 | Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
 | Glossary | [GLOSSARY.md](./GLOSSARY.md) |
+| Heimdall tiles | [HEIMDALL.md](./HEIMDALL.md) · [RU](./HEIMDALL.ru.md) |
 
 ---
 
