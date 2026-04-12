@@ -111,4 +111,14 @@
 
 ---
 
+## Базовая линия maintainability (перед фичами)
+
+Структурная отметка перед приоритетом продуктовых задач (волна Roadmap, апр. 2026):
+
+- **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** расширения Flask, старт приложения и тонкая фабрика `create_app` (`app/web/flask_extensions.py`, `app/web/app_startup.py`, `app/web/app.py`).
+- **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** сборка стека детекции в `processor_bootstrap.py` / `detection_stack.py`; в рантайме — `DetectionStrategy` (ABC) с `detect` / `reset`. Для типизации и тестов без YOLO — **`DetectionStrategyProtocol`** в `app/processor/src/interfaces.py`; `FrameProcessor` зависит от протокола. Тест-заглушка: `app/processor/tests/test_detection_strategy_protocol.py`.
+- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** на основных экранах данные с сервера — через **TanStack Query**. Дальнейшее упрощение состояния (контекст, дробление компонентов, меньше prop drilling) — в том же issue.
+
+---
+
 См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [GLOSSARY](./GLOSSARY.ru.md).
