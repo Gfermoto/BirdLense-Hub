@@ -14,7 +14,7 @@ from util import recordings_dir
 
 def _processor_src_dir() -> str:
     return os.path.normpath(
-        os.path.join(os.path.dirname(__file__), '..', '..', 'processor', 'src'),
+        os.path.join(os.path.dirname(__file__), "..", "..", "processor", "src"),
     )
 
 
@@ -27,8 +27,10 @@ def run_regenerate_spectrograms_worker(
 ) -> None:
     """Background task: regenerate spectrograms (mutates job_state._regenerate_status)."""
     job_state._regenerate_status = {
-        'status': 'running', 'result': None, 'error': None,
-        'progress': {'processed': 0, 'total': 0, 'generated': 0, 'failed': 0, 'skipped': 0},
+        "status": "running",
+        "result": None,
+        "error": None,
+        "progress": {"processed": 0, "total": 0, "generated": 0, "failed": 0, "skipped": 0},
     }
     try:
         with flask_app.app_context():
@@ -36,28 +38,28 @@ def run_regenerate_spectrograms_worker(
                 sys.path.insert(0, _processor_src_dir())
                 from spectrogram import generate_spectrogram
             except ImportError:
-                flask_app.logger.exception('Spectrogram import failed')
+                flask_app.logger.exception("Spectrogram import failed")
                 job_state._regenerate_status = {
-                    'status': 'done', 'result': None,
-                    'error': 'Spectrogram generation failed', 'progress': None,
+                    "status": "done",
+                    "result": None,
+                    "error": "Spectrogram generation failed",
+                    "progress": None,
                 }
                 return
 
             base = os.path.dirname(os.path.dirname(recordings_dir()))
-            px_per_sec = app_config.get('processor.spectrogram_px_per_sec') or 200
-            spectrogram_filename = f'spectrogram_{px_per_sec}.jpg'
+            px_per_sec = app_config.get("processor.spectrogram_px_per_sec") or 200
+            spectrogram_filename = f"spectrogram_{px_per_sec}.jpg"
 
             query = Video.query
             if video_ids:
                 ids = sorted({int(x) for x in video_ids if x is not None})
                 query = query.filter(Video.id.in_(ids))
             elif not force:
-                query = query.filter(
-                    (Video.spectrogram_path.is_(None)) | (Video.spectrogram_path == '')
-                )
+                query = query.filter((Video.spectrogram_path.is_(None)) | (Video.spectrogram_path == ""))
             if start_date:
                 try:
-                    dt_start = datetime.strptime(start_date, '%Y-%m-%d').replace(
+                    dt_start = datetime.strptime(start_date, "%Y-%m-%d").replace(
                         tzinfo=timezone.utc,
                     )
                     query = query.filter(Video.start_time >= dt_start)
@@ -65,7 +67,7 @@ def run_regenerate_spectrograms_worker(
                     pass
             if end_date:
                 try:
-                    dt_end = datetime.strptime(end_date, '%Y-%m-%d').replace(
+                    dt_end = datetime.strptime(end_date, "%Y-%m-%d").replace(
                         tzinfo=timezone.utc,
                     ) + timedelta(days=1)
                     query = query.filter(Video.start_time < dt_end)
@@ -74,7 +76,7 @@ def run_regenerate_spectrograms_worker(
             videos = query.order_by(Video.start_time.asc()).all()
 
             total = len(videos)
-            job_state._regenerate_status['progress']['total'] = total
+            job_state._regenerate_status["progress"]["total"] = total
 
             generated = 0
             failed = 0
@@ -83,58 +85,70 @@ def run_regenerate_spectrograms_worker(
             for video in videos:
                 if not video.video_path:
                     skipped += 1
-                    job_state._regenerate_status['progress'].update(
+                    job_state._regenerate_status["progress"].update(
                         processed=generated + failed + skipped,
-                        generated=generated, failed=failed, skipped=skipped,
+                        generated=generated,
+                        failed=failed,
+                        skipped=skipped,
                     )
                     continue
                 full_video = os.path.join(base, video.video_path)
                 if not os.path.isfile(full_video):
                     skipped += 1
-                    job_state._regenerate_status['progress'].update(
+                    job_state._regenerate_status["progress"].update(
                         processed=generated + failed + skipped,
-                        generated=generated, failed=failed, skipped=skipped,
+                        generated=generated,
+                        failed=failed,
+                        skipped=skipped,
                     )
                     continue
                 out_dir = os.path.dirname(full_video)
                 out_path = os.path.join(out_dir, spectrogram_filename)
 
                 if generate_spectrogram(full_video, out_path, px_per_sec):
-                    rel_spectrogram = os.path.join(
-                        os.path.dirname(video.video_path), spectrogram_filename
-                    ).replace('\\', '/')
+                    rel_spectrogram = os.path.join(os.path.dirname(video.video_path), spectrogram_filename).replace(
+                        "\\", "/"
+                    )
                     video.spectrogram_path = rel_spectrogram
                     generated += 1
                 else:
                     failed += 1
 
-                job_state._regenerate_status['progress'].update(
+                job_state._regenerate_status["progress"].update(
                     processed=generated + failed + skipped,
-                    generated=generated, failed=failed, skipped=skipped,
+                    generated=generated,
+                    failed=failed,
+                    skipped=skipped,
                 )
 
             try:
                 db.session.commit()
                 flask_app.logger.info(
-                    'Spectrograms: generated=%s, failed=%s, skipped=%s',
-                    generated, failed, skipped,
+                    "Spectrograms: generated=%s, failed=%s, skipped=%s",
+                    generated,
+                    failed,
+                    skipped,
                 )
                 job_state._regenerate_status = {
-                    'status': 'done',
-                    'result': {'generated': generated, 'failed': failed, 'skipped': skipped},
-                    'error': None,
-                    'progress': None,
+                    "status": "done",
+                    "result": {"generated": generated, "failed": failed, "skipped": skipped},
+                    "error": None,
+                    "progress": None,
                 }
             except Exception as e:
                 db.session.rollback()
-                flask_app.logger.exception('Spectrogram commit failed: %s', e)
+                flask_app.logger.exception("Spectrogram commit failed: %s", e)
                 job_state._regenerate_status = {
-                    'status': 'done', 'result': None,
-                    'error': 'Spectrogram generation failed', 'progress': None,
+                    "status": "done",
+                    "result": None,
+                    "error": "Spectrogram generation failed",
+                    "progress": None,
                 }
     except Exception:
-        flask_app.logger.exception('Regenerate spectrograms failed')
+        flask_app.logger.exception("Regenerate spectrograms failed")
         job_state._regenerate_status = {
-            'status': 'done', 'result': None,
-            'error': 'Spectrogram generation failed', 'progress': None,
+            "status": "done",
+            "result": None,
+            "error": "Spectrogram generation failed",
+            "progress": None,
         }

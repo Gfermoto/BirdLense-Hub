@@ -1,4 +1,5 @@
 """Старт MQTT-агрегатора, Frigate-from-aggregator и опций весов (вынесено из main.py, tech debt #201)."""
+
 from __future__ import annotations
 
 import logging
@@ -22,30 +23,30 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     """
     data_dir = get_data_dir()
     scales_topic_arg: Optional[str] = None
-    scales_unit_arg = 'kg'
-    if app_config.get('integrations.scales.enabled'):
-        scales_unit_arg = (app_config.get('integrations.scales.unit') or 'kg').strip().lower() or 'kg'
-        src = (app_config.get('integrations.scales.source') or 'mqtt').strip().lower()
-        if src == 'mqtt':
-            mq_st = (app_config.get('integrations.scales.mqtt_topic') or '').strip()
-            prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
+    scales_unit_arg = "kg"
+    if app_config.get("integrations.scales.enabled"):
+        scales_unit_arg = (app_config.get("integrations.scales.unit") or "kg").strip().lower() or "kg"
+        src = (app_config.get("integrations.scales.source") or "mqtt").strip().lower()
+        if src == "mqtt":
+            mq_st = (app_config.get("integrations.scales.mqtt_topic") or "").strip()
+            prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
             if mq_st:
                 scales_topic_arg = mq_st
             elif prefix:
-                scales_topic_arg = f'{prefix}/weight'
+                scales_topic_arg = f"{prefix}/weight"
     return data_dir, scales_topic_arg, scales_unit_arg
 
 
 def scales_mqtt_bird_present_topic() -> Optional[str]:
     """``{prefix}/bird_present`` при включённых весах и source=mqtt."""
-    if not app_config.get('integrations.scales.enabled'):
+    if not app_config.get("integrations.scales.enabled"):
         return None
-    if (app_config.get('integrations.scales.source') or 'mqtt').strip().lower() != 'mqtt':
+    if (app_config.get("integrations.scales.source") or "mqtt").strip().lower() != "mqtt":
         return None
-    prefix = (app_config.get('integrations.scales.mqtt_topic_prefix') or '').strip().strip('/')
+    prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
     if not prefix:
         return None
-    return f'{prefix}/bird_present'
+    return f"{prefix}/bird_present"
 
 
 def _frigate_camera_filter_list(
@@ -74,14 +75,14 @@ def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
 def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
     camera_filter = _frigate_camera_filter_list(cameras)
     label_filter = _frigate_label_set(
-        'motion.frigate_label_filter',
-        'mqtt.frigate_label_filter',
-        ['bird', 'Bird'],
+        "motion.frigate_label_filter",
+        "mqtt.frigate_label_filter",
+        ["bird", "Bird"],
     )
     label_exclude = _frigate_label_set(
-        'motion.frigate_label_exclude',
-        'mqtt.frigate_label_exclude',
-        ['cat', 'dog'],
+        "motion.frigate_label_exclude",
+        "mqtt.frigate_label_exclude",
+        ["cat", "dog"],
     )
     return camera_filter, label_filter, label_exclude
 
@@ -101,18 +102,16 @@ def start_mqtt_aggregator_session(
     from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator
     from motion_detectors.scale_weight_motion import ScaleWeightMotionPending
 
-    frigate_detector = FrigateMotionFromAggregator(
-        None, frigate_camera_filter, frigate_label_filter
-    )
+    frigate_detector = FrigateMotionFromAggregator(None, frigate_camera_filter, frigate_label_filter)
     on_frigate_motion = frigate_detector.get_on_frigate_motion_tuple()
 
     mqtt_client_id = None
     if args.input:
-        mqtt_client_id = os.environ.get('MQTT_CLIENT_ID') or 'birdlense_aggregator_test'
+        mqtt_client_id = os.environ.get("MQTT_CLIENT_ID") or "birdlense_aggregator_test"
 
-    _raw_hist = app_config.get('integrations.scales.history_max_lines')
+    _raw_hist = app_config.get("integrations.scales.history_max_lines")
     try:
-        scales_hist_lines = int(_raw_hist) if _raw_hist not in (None, '') else 10000
+        scales_hist_lines = int(_raw_hist) if _raw_hist not in (None, "") else 10000
     except (TypeError, ValueError):
         scales_hist_lines = 10000
     if scales_hist_lines < 100:
@@ -122,13 +121,11 @@ def start_mqtt_aggregator_session(
     scale_motion_cb = None
     scale_motion_min = None
     scale_motion_debounce = 1.5
-    if scales_topic_arg and app_config.get('integrations.scales.motion_trigger_enabled', False):
+    if scales_topic_arg and app_config.get("integrations.scales.motion_trigger_enabled", False):
         scale_weight_motion_pending = ScaleWeightMotionPending()
         scale_motion_cb = scale_weight_motion_pending.fire
         try:
-            scale_motion_min = float(
-                app_config.get('integrations.scales.motion_trigger_min_delta_kg') or 0.02
-            )
+            scale_motion_min = float(app_config.get("integrations.scales.motion_trigger_min_delta_kg") or 0.02)
         except (TypeError, ValueError):
             scale_motion_min = 0.02
         if scale_motion_min <= 0:
@@ -136,14 +133,12 @@ def start_mqtt_aggregator_session(
             scale_motion_cb = None
             scale_weight_motion_pending = None
         try:
-            scale_motion_debounce = float(
-                app_config.get('integrations.scales.motion_trigger_debounce_seconds') or 1.5
-            )
+            scale_motion_debounce = float(app_config.get("integrations.scales.motion_trigger_debounce_seconds") or 1.5)
         except (TypeError, ValueError):
             scale_motion_debounce = 1.5
         if scale_weight_motion_pending:
             logging.info(
-                'Scales: motion trigger on weight delta >= %s kg (debounce %ss)',
+                "Scales: motion trigger on weight delta >= %s kg (debounce %ss)",
                 scale_motion_min,
                 scale_motion_debounce,
             )
@@ -153,19 +148,19 @@ def start_mqtt_aggregator_session(
 
     mqtt_aggregator = MQTTEventAggregator(
         broker=mqtt_broker,
-        port=app_config.get('mqtt.port', 1883),
-        frigate_topic=app_config.get('mqtt.frigate_topic', 'frigate/events'),
-        birdnet_topic=app_config.get('mqtt.birdnet_topic', 'birdnet'),
-        publish_topic=app_config.get('mqtt.publish_topic', 'birdlense/detections'),
-        username=os.environ.get('MQTT_USERNAME') or app_config.get('mqtt.username'),
-        password=os.environ.get('MQTT_PASSWORD') or app_config.get('mqtt.password'),
+        port=app_config.get("mqtt.port", 1883),
+        frigate_topic=app_config.get("mqtt.frigate_topic", "frigate/events"),
+        birdnet_topic=app_config.get("mqtt.birdnet_topic", "birdnet"),
+        publish_topic=app_config.get("mqtt.publish_topic", "birdlense/detections"),
+        username=os.environ.get("MQTT_USERNAME") or app_config.get("mqtt.username"),
+        password=os.environ.get("MQTT_PASSWORD") or app_config.get("mqtt.password"),
         on_frigate_motion=on_frigate_motion,
         frigate_label_exclude=list(frigate_label_exclude),
         client_id=mqtt_client_id,
-        ha_discovery=app_config.get('mqtt.ha_discovery', True),
-        base_url=app_config.get('notifications.base_url', ''),
-        reconnect_min_delay=app_config.get('mqtt.reconnect_min_delay', 5),
-        reconnect_max_delay=app_config.get('mqtt.reconnect_max_delay', 300),
+        ha_discovery=app_config.get("mqtt.ha_discovery", True),
+        base_url=app_config.get("notifications.base_url", ""),
+        reconnect_min_delay=app_config.get("mqtt.reconnect_min_delay", 5),
+        reconnect_max_delay=app_config.get("mqtt.reconnect_max_delay", 300),
         scales_topic=scales_topic_arg,
         scales_bird_present_topic=bird_present_topic,
         scales_data_dir=scales_data_for_file,

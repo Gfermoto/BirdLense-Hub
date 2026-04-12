@@ -13,10 +13,10 @@ def test_build_report_has_structure(app):
             db.session,
             duplicate_group_limit=5,
         )
-    assert 'species_total' in rep
-    assert 'duplicate_name_group_count' in rep
-    assert 'duplicate_name_groups' in rep
-    assert 'hints' in rep
+    assert "species_total" in rep
+    assert "duplicate_name_group_count" in rep
+    assert "duplicate_name_groups" in rep
+    assert "hints" in rep
 
 
 def test_species_ids_to_exclude_from_bird_catalog_filters_off_allowlist_active_species(
@@ -29,29 +29,31 @@ def test_species_ids_to_exclude_from_bird_catalog_filters_off_allowlist_active_s
 
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_norm_keys',
-        lambda _get: frozenset({'parus major (great tit)', 'great tit'}),
+        "load_catalog_allowlist_norm_keys",
+        lambda _get: frozenset({"parus major (great tit)", "great tit"}),
     )
 
     with app.app_context():
-        allowed = Species(name='Parus major (Great Tit)')
-        exotic = Species(name='Knob Billed Duck')
+        allowed = Species(name="Parus major (Great Tit)")
+        exotic = Species(name="Knob Billed Duck")
         db.session.add_all([allowed, exotic])
         db.session.flush()
-        db.session.add_all([
-            SpeciesVisit(
-                species_id=allowed.id,
-                start_time=datetime.now(timezone.utc),
-                end_time=datetime.now(timezone.utc),
-                max_simultaneous=1,
-            ),
-            SpeciesVisit(
-                species_id=exotic.id,
-                start_time=datetime.now(timezone.utc),
-                end_time=datetime.now(timezone.utc),
-                max_simultaneous=1,
-            ),
-        ])
+        db.session.add_all(
+            [
+                SpeciesVisit(
+                    species_id=allowed.id,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    max_simultaneous=1,
+                ),
+                SpeciesVisit(
+                    species_id=exotic.id,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    max_simultaneous=1,
+                ),
+            ]
+        )
         db.session.commit()
         allowed_id = allowed.id
         exotic_id = exotic.id
@@ -66,10 +68,10 @@ def test_build_report_ignores_duplicate_names_without_activity(app):
     from models import Species, SpeciesVisit, db
 
     with app.app_context():
-        stale_a = Species(name='Ghost Bird', active=False)
-        stale_b = Species(name='Ghost_Bird', active=False)
-        live_a = Species(name='Live Bird', active=True)
-        live_b = Species(name='Live_Bird', active=False)
+        stale_a = Species(name="Ghost Bird", active=False)
+        stale_b = Species(name="Ghost_Bird", active=False)
+        live_a = Species(name="Live Bird", active=True)
+        live_b = Species(name="Live_Bird", active=False)
         db.session.add_all([stale_a, stale_b, live_a, live_b])
         db.session.flush()
         db.session.add(
@@ -92,9 +94,6 @@ def test_build_report_ignores_duplicate_names_without_activity(app):
 
         rep = build_data_quality_report(db.session, duplicate_group_limit=10)
 
-    normalized_names = {
-        item['normalized_name']
-        for item in rep['duplicate_name_groups']
-    }
-    assert 'ghost bird' not in normalized_names
-    assert 'live bird' in normalized_names
+    normalized_names = {item["normalized_name"] for item in rep["duplicate_name_groups"]}
+    assert "ghost bird" not in normalized_names
+    assert "live bird" in normalized_names

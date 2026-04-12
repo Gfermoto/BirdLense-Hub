@@ -34,7 +34,7 @@ from routes.ui_route_constants import CACHE_DETECTION_FRAMES_SEC
 
 
 def register_ui_video_routes(app):
-    @app.route('/api/ui/videos/<int:video_id>', methods=['GET'])
+    @app.route("/api/ui/videos/<int:video_id>", methods=["GET"])
     def get_video_details(video_id):
         video = (
             db.session.query(Video)
@@ -47,10 +47,10 @@ def register_ui_video_routes(app):
         )
 
         if not video:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         return build_video_detail_dict(video), 200
 
-    @app.route('/api/ui/videos/<int:video_id>/neighbors', methods=['GET'])
+    @app.route("/api/ui/videos/<int:video_id>/neighbors", methods=["GET"])
     def get_video_neighbors(video_id):
         """Соседние ролики для страницы видео.
 
@@ -61,11 +61,11 @@ def register_ui_video_routes(app):
         """
         video = db.session.get(Video, video_id)
         if not video:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         try:
             nparams = parse_video_neighbors_request_args(request.args)
         except VideoNeighborsParamError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
         scope, cross_day, neighbor_mode, visit_id, tz_offset_minutes = nparams
         payload = build_video_neighbors_payload(
             db.session,
@@ -79,33 +79,28 @@ def register_ui_video_routes(app):
         )
         return payload, 200
 
-    @app.route('/api/ui/videos/<int:video_id>/detection-frames', methods=['GET'])
+    @app.route("/api/ui/videos/<int:video_id>/detection-frames", methods=["GET"])
     def get_video_detection_frames(video_id):
         """Покадровые bbox для оверлея треков. Тяжёлый JSON — не смешиваем с GET /videos/:id."""
         ck = f"detection_frames:{video_id}"
         hit, cached = cache_get(ck)
         if hit:
             return cached, 200
-        video = (
-            db.session.query(Video)
-            .options(joinedload(Video.video_species))
-            .filter(Video.id == video_id)
-            .first()
-        )
+        video = db.session.query(Video).options(joinedload(Video.video_species)).filter(Video.id == video_id).first()
         if not video:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         body = build_video_detection_frames_dict(video)
         cache_set(ck, body, CACHE_DETECTION_FRAMES_SEC)
         return body, 200
 
-    @app.route('/api/ui/videos/<int:video_id>', methods=['DELETE'])
+    @app.route("/api/ui/videos/<int:video_id>", methods=["DELETE"])
     def delete_video(video_id):
         """Удалить запись (видео, файл, связанные данные). Только для админа и помощника."""
         if not contributor_or_admin_access():
-            return {'error': 'Access denied'}, 403
+            return {"error": "Access denied"}, 403
         video = db.session.get(Video, video_id)
         if not video:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         try:
             recording_dir = None
             if video.video_path and VIDEO_PATH_SAFE_RE.match(video.video_path):
@@ -140,90 +135,90 @@ def register_ui_video_routes(app):
                 except OSError as e:
                     app.logger.warning(f"Could not delete dir {recording_dir}: {e}")
 
-            return {'message': 'Video deleted'}, 200
+            return {"message": "Video deleted"}, 200
         except Exception as e:
             db.session.rollback()
-            app.logger.exception(f'Delete video {video_id} failed: {e}')
-            return {'error': str(e)}, 500
+            app.logger.exception(f"Delete video {video_id} failed: {e}")
+            return {"error": str(e)}, 500
 
-    @app.route('/api/ui/videos/<int:video_id>/download', methods=['GET'])
+    @app.route("/api/ui/videos/<int:video_id>/download", methods=["GET"])
     def download_video(video_id):
         """Скачать видео. Только для админа и помощника (contributor_or_admin_access)."""
         if not contributor_or_admin_access():
-            return {'error': 'Access denied'}, 403
+            return {"error": "Access denied"}, 403
         video = db.session.get(Video, video_id)
         if not video or not video.video_path:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         if not VIDEO_PATH_SAFE_RE.match(video.video_path):
-            return {'error': 'Invalid video path'}, 400
+            return {"error": "Invalid video path"}, 400
         full_path = util_mod.full_path_for_video(video.video_path)
         if not full_path or not os.path.isfile(full_path):
-            return {'error': 'Video file not found'}, 404
-        ts = video.start_time.strftime('%Y-%m-%d_%H%M%S') if video.start_time else 'video'
-        filename = f'birdlense_{ts}.mp4'
+            return {"error": "Video file not found"}, 404
+        ts = video.start_time.strftime("%Y-%m-%d_%H%M%S") if video.start_time else "video"
+        filename = f"birdlense_{ts}.mp4"
         return send_file(
             full_path,
             as_attachment=True,
             download_name=filename,
-            mimetype='video/mp4',
+            mimetype="video/mp4",
         )
 
-    @app.route('/api/ui/videos/<int:video_id>/stream', methods=['GET'])
+    @app.route("/api/ui/videos/<int:video_id>/stream", methods=["GET"])
     def stream_video(video_id):
         """Стриминг видео для плеера (Range, video/mp4).
 
         По умолчанию доступен гостям (Viewer), как GET /videos/:id — см. ACCESS_CONTROL.
         Опционально: general.require_auth_for_video_stream=true — только Contributor/Admin.
         """
-        if bool(app_config.get('general.require_auth_for_video_stream')):
+        if bool(app_config.get("general.require_auth_for_video_stream")):
             if not contributor_or_admin_access():
-                return {'error': 'Password required'}, 403
+                return {"error": "Password required"}, 403
         video = db.session.get(Video, video_id)
         if not video or not video.video_path:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
         if not VIDEO_PATH_SAFE_RE.match(video.video_path):
-            return {'error': 'Invalid video path'}, 400
+            return {"error": "Invalid video path"}, 400
         full_path = util_mod.full_path_for_video(video.video_path)
         if not full_path or not os.path.isfile(full_path):
-            return {'error': 'Video file not found'}, 404
+            return {"error": "Video file not found"}, 404
         return send_file(
             full_path,
-            mimetype='video/mp4',
+            mimetype="video/mp4",
             conditional=True,
         )
 
-    @app.route('/api/ui/videos/<int:video_id>/merge-species', methods=['POST'])
+    @app.route("/api/ui/videos/<int:video_id>/merge-species", methods=["POST"])
     def merge_video_species(video_id):
         """Объединить все детекции в видео в один вид."""
         if not contributor_or_admin_access():
-            return {'error': 'Password required'}, 403
+            return {"error": "Password required"}, 403
 
         video = db.session.get(Video, video_id)
         if not video:
-            return {'error': 'Video not found'}, 404
+            return {"error": "Video not found"}, 404
 
         data = request.json or {}
-        species_id = data.get('species_id')
+        species_id = data.get("species_id")
         if species_id is None:
-            return {'error': 'species_id is required'}, 400
+            return {"error": "species_id is required"}, 400
         try:
             species_id = int(species_id)
         except (TypeError, ValueError):
-            return {'error': 'species_id must be an integer'}, 400
+            return {"error": "species_id must be an integer"}, 400
 
         species = db.session.get(Species, species_id)
         if not species:
-            return {'error': 'Species not found'}, 404
+            return {"error": "Species not found"}, 404
 
         to_update = [vs for vs in video.video_species]
         if not to_update:
-            return {'message': 'No detections to merge', 'updated_count': 0}, 200
+            return {"message": "No detections to merge", "updated_count": 0}, 200
 
         if all(vs.species_id == species_id for vs in to_update):
-            return {'message': 'All detections already this species', 'updated_count': 0}, 200
+            return {"message": "All detections already this species", "updated_count": 0}, 200
 
         old_visits = {vs.species_visit for vs in to_update if vs.species_visit}
-        visit_timeout = int(app_config.get('detection.dedup_window_seconds') or 60)
+        visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
         vp = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
         video_start = ensure_utc(video.start_time)
 
@@ -241,7 +236,7 @@ def register_ui_video_routes(app):
             v_end = video_start + timedelta(seconds=vs.end_time)
             new_visit.end_time = max(new_visit.end_time, v_end)
             new_visit.start_time = min(new_visit.start_time, v_start)
-            if vs.source == 'video':
+            if vs.source == "video":
                 moved = move_crop_on_species_correction(
                     video_id=vs.video_id,
                     track_id=vs.track_id,
@@ -258,7 +253,7 @@ def register_ui_video_routes(app):
                 if not remaining:
                     db.session.delete(ov)
 
-        new_video_detections = [v for v in new_visit.video_species if v.source == 'video']
+        new_video_detections = [v for v in new_visit.video_species if v.source == "video"]
         if new_video_detections:
             vp._update_simultaneous_count(new_visit, new_video_detections)
 
@@ -266,7 +261,7 @@ def register_ui_video_routes(app):
         bust_response_caches()
         updated_count = len(to_update)
         return {
-            'message': f'All {updated_count} detections merged to {species.name}',
-            'species_id': species_id,
-            'updated_count': updated_count,
+            "message": f"All {updated_count} detections merged to {species.name}",
+            "species_id": species_id,
+            "updated_count": updated_count,
         }, 200

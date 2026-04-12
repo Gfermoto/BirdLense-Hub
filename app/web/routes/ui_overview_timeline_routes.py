@@ -38,44 +38,53 @@ from routes.ui_timeline_helpers import build_merged_timeline_items
 
 
 def register_ui_overview_timeline_routes(app):
-    @app.route('/api/ui/overview', methods=['GET'])
+    @app.route("/api/ui/overview", methods=["GET"])
     def get_overview():
-        date_param = request.args.get('date', None)
-        start_time_param = request.args.get('start_time', None)
-        end_time_param = request.args.get('end_time', None)
+        date_param = request.args.get("date", None)
+        start_time_param = request.args.get("start_time", None)
+        end_time_param = request.args.get("end_time", None)
         try:
             start_of_day, end_of_day = resolve_overview_window(
-                date_param, start_time_param, end_time_param,
+                date_param,
+                start_time_param,
+                end_time_param,
             )
         except OverviewWindowError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
 
         data = get_overview_data(db.session, start_of_day, end_of_day)
         return data, 200
 
-    @app.route('/api/ui/region-comparison', methods=['GET'])
+    @app.route("/api/ui/region-comparison", methods=["GET"])
     def get_region_comparison_route():
         """Compare user's observed species with eBird region top. Requires secrets.ebird_api_key."""
         user_names = list_observed_species_names_for_comparison(db.session)
         result = get_region_comparison(user_names)
         return result if result is not None else {}, 200
 
-    @app.route('/api/ui/migration-calendar', methods=['GET'])
+    @app.route("/api/ui/migration-calendar", methods=["GET"])
     def get_migration_calendar_route():
         """Species activity by month — historical pattern for migration calendar."""
-        start_year = request.args.get('start_year', type=int)
-        end_year = request.args.get('end_year', type=int)
-        start_date = request.args.get('start_date', type=str)
-        end_date = request.args.get('end_date', type=str)
-        catalog = (request.args.get('catalog') or 'observed').strip().lower()
-        evidence = 'all'
+        start_year = request.args.get("start_year", type=int)
+        end_year = request.args.get("end_year", type=int)
+        start_date = request.args.get("start_date", type=str)
+        end_date = request.args.get("end_date", type=str)
+        catalog = (request.args.get("catalog") or "observed").strip().lower()
+        evidence = "all"
         param_err = validate_migration_calendar_params(
-            catalog, start_date, end_date,
+            catalog,
+            start_date,
+            end_date,
         )
         if param_err:
-            return {'error': param_err}, 400
+            return {"error": param_err}, 400
         mck = migration_calendar_cache_key(
-            start_year, end_year, start_date, end_date, catalog, evidence,
+            start_year,
+            end_year,
+            start_date,
+            end_date,
+            catalog,
+            evidence,
         )
         hit, mcached = cache_get(mck)
         if hit:
@@ -93,13 +102,13 @@ def register_ui_overview_timeline_routes(app):
         cache_set(mck, data, CACHE_MIGRATION_SEC)
         return data, 200
 
-    @app.route('/api/ui/timeline', methods=['GET'])
+    @app.route("/api/ui/timeline", methods=["GET"])
     def get_video_species():
-        date_param = request.args.get('date')
-        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
-        hour_param = request.args.get('hour', type=int)
-        start_time = request.args.get('start_time')
-        end_time = request.args.get('end_time')
+        date_param = request.args.get("date")
+        time_of_day = (request.args.get("time_of_day") or "all").strip().lower()
+        hour_param = request.args.get("hour", type=int)
+        start_time = request.args.get("start_time")
+        end_time = request.args.get("end_time")
 
         try:
             start_dt, end_dt = resolve_timeline_utc_window(
@@ -110,7 +119,7 @@ def register_ui_overview_timeline_routes(app):
                 end_time=end_time,
             )
         except TimelineWindowError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
         if date_param:
             tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}"
         else:
@@ -120,25 +129,25 @@ def register_ui_overview_timeline_routes(app):
             return tcached
 
         if end_dt - start_dt > timedelta(days=1):
-            return {'error': 'The interval between start_time and end_time must not exceed 1 day'}, 400
+            return {"error": "The interval between start_time and end_time must not exceed 1 day"}, 400
 
         response = build_merged_timeline_items(db.session, start_dt, end_dt)
         cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 
-    @app.route('/api/ui/timeline/export', methods=['GET'])
+    @app.route("/api/ui/timeline/export", methods=["GET"])
     def export_timeline():
         """Export timeline data as CSV or JSON. Same params as /api/ui/timeline."""
-        date_param = request.args.get('date')
-        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
-        hour_param = request.args.get('hour', type=int)
-        start_time = request.args.get('start_time')
-        end_time = request.args.get('end_time')
-        fmt = request.args.get('format', 'json').lower()
+        date_param = request.args.get("date")
+        time_of_day = (request.args.get("time_of_day") or "all").strip().lower()
+        hour_param = request.args.get("hour", type=int)
+        start_time = request.args.get("start_time")
+        end_time = request.args.get("end_time")
+        fmt = request.args.get("format", "json").lower()
 
         fmt_err = validate_timeline_export_format(fmt)
         if fmt_err:
-            return {'error': fmt_err}, 400
+            return {"error": fmt_err}, 400
 
         try:
             start_dt, end_dt = resolve_timeline_utc_window(
@@ -149,31 +158,36 @@ def register_ui_overview_timeline_routes(app):
                 end_time=end_time,
             )
         except TimelineWindowError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
 
         if end_dt - start_dt > timedelta(days=1):
-            return {'error': 'Interval must not exceed 1 day'}, 400
+            return {"error": "Interval must not exceed 1 day"}, 400
 
         merged = build_merged_timeline_items(db.session, start_dt, end_dt)
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(
-            fmt, rows, start_dt, end_dt,
+            fmt,
+            rows,
+            start_dt,
+            end_dt,
         )
         return Response(body, mimetype=mimetype, headers=headers)
 
-    @app.route('/api/ui/report/pdf', methods=['GET'])
+    @app.route("/api/ui/report/pdf", methods=["GET"])
     def report_pdf():
         """Monthly PDF report: N species, top 5, stats, chart."""
-        month_param = request.args.get('month')
-        start_param = request.args.get('start_time')
-        end_param = request.args.get('end_time')
+        month_param = request.args.get("month")
+        start_param = request.args.get("start_time")
+        end_param = request.args.get("end_time")
 
         try:
             start_dt, end_dt, month_label = resolve_monthly_report_window(
-                month_param, start_param, end_param,
+                month_param,
+                start_param,
+                end_param,
             )
         except MonthlyReportWindowError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
 
         top_species, stats = get_monthly_report_data(db.session, start_dt, end_dt)
         pdf_bytes = build_monthly_report(start_dt, end_dt, top_species, stats, month_label)
@@ -181,19 +195,19 @@ def register_ui_overview_timeline_routes(app):
         filename = f"birdlense_report_{start_dt.strftime('%Y%m')}.pdf"
         return Response(
             pdf_bytes,
-            mimetype='application/pdf',
-            headers={'Content-Disposition': f'attachment; filename={filename}'},
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
-    @app.route('/api/ui/unknowns', methods=['GET'])
+    @app.route("/api/ui/unknowns", methods=["GET"])
     def get_unknowns():
         """List of low-confidence detections for manual review."""
-        date_param = request.args.get('date')
-        time_of_day = (request.args.get('time_of_day') or 'all').strip().lower()
-        hour_param = request.args.get('hour', type=int)
-        start_time = request.args.get('start_time')
-        end_time = request.args.get('end_time')
-        limit = request.args.get('limit', 100, type=int)
+        date_param = request.args.get("date")
+        time_of_day = (request.args.get("time_of_day") or "all").strip().lower()
+        hour_param = request.args.get("hour", type=int)
+        start_time = request.args.get("start_time")
+        end_time = request.args.get("end_time")
+        limit = request.args.get("limit", 100, type=int)
 
         uck = (
             f"unknowns:{date_param or start_time}:{time_of_day}:{hour_param}:"
@@ -213,7 +227,7 @@ def register_ui_overview_timeline_routes(app):
                 limit=limit,
             )
         except ValueError as exc:
-            return {'error': str(exc)}, 400
+            return {"error": str(exc)}, 400
 
         cache_set(uck, result, CACHE_UNKNOWNS_SEC)
         return result

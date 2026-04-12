@@ -1,4 +1,5 @@
 """Парсинг окна для GET /api/ui/report/pdf (#293)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -20,28 +21,40 @@ def resolve_monthly_report_window(
     """(start_dt, end_dt, month_label). Naive UTC для границ месяца/интервала."""
     if month_param:
         try:
-            year, month = map(int, month_param.split('-'))
+            year, month = map(int, month_param.split("-"))
             start_dt = datetime(
-                year, month, 1, 0, 0, 0, tzinfo=timezone.utc,
+                year,
+                month,
+                1,
+                0,
+                0,
+                0,
+                tzinfo=timezone.utc,
             ).replace(tzinfo=None)
             if month == 12:
-                end_dt = (
-                    datetime(
-                        year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc,
-                    ).replace(tzinfo=None)
-                    - timedelta(seconds=1)
-                )
+                end_dt = datetime(
+                    year + 1,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    tzinfo=timezone.utc,
+                ).replace(tzinfo=None) - timedelta(seconds=1)
             else:
-                end_dt = (
-                    datetime(
-                        year, month + 1, 1, 0, 0, 0, tzinfo=timezone.utc,
-                    ).replace(tzinfo=None)
-                    - timedelta(seconds=1)
-                )
-            month_label = start_dt.strftime('%B %Y')
+                end_dt = datetime(
+                    year,
+                    month + 1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    tzinfo=timezone.utc,
+                ).replace(tzinfo=None) - timedelta(seconds=1)
+            month_label = start_dt.strftime("%B %Y")
         except (ValueError, IndexError) as exc:
             raise MonthlyReportWindowError(
-                'Invalid month format. Use YYYY-MM',
+                "Invalid month format. Use YYYY-MM",
             ) from exc
         return start_dt, end_dt, month_label
 
@@ -50,14 +63,12 @@ def resolve_monthly_report_window(
             start_dt = parse_utc_timestamp(start_param)
             end_dt = parse_utc_timestamp(end_param)
         except ValueError as exc:
-            raise MonthlyReportWindowError('Invalid datetime format') from exc
+            raise MonthlyReportWindowError("Invalid datetime format") from exc
         if end_dt - start_dt > timedelta(days=MAX_REPORT_RANGE_DAYS):
-            raise MonthlyReportWindowError('Interval must not exceed 3 months')
-        month_label = (
-            f"{start_dt.strftime('%Y-%m-%d')} — {end_dt.strftime('%Y-%m-%d')}"
-        )
+            raise MonthlyReportWindowError("Interval must not exceed 3 months")
+        month_label = f"{start_dt.strftime('%Y-%m-%d')} — {end_dt.strftime('%Y-%m-%d')}"
         return start_dt, end_dt, month_label
 
     raise MonthlyReportWindowError(
-        'Provide month=YYYY-MM or start_time and end_time',
+        "Provide month=YYYY-MM or start_time and end_time",
     )

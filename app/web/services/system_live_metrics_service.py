@@ -1,4 +1,5 @@
 """Снимок CPU/RAM/диск/GPU без обращения к БД посетителей (#265)."""
+
 from __future__ import annotations
 
 import os
@@ -15,14 +16,13 @@ def collect_live_system_metrics(app):
     memory_total_gb = round(memory.total / (1024**3), 1)
     memory_used_gb = round(memory.used / (1024**3), 1)
     memory_percent = memory.percent
-    disk = psutil.disk_usage('/')
+    disk = psutil.disk_usage("/")
     disk_total_gb = round(disk.total / (1024**3), 1)
     disk_used_gb = round(disk.used / (1024**3), 1)
     disk_percent = disk.percent
 
     gpu_percent = None
-    for path in ('/sys/class/drm/card0/device/gpu_busy_percent',
-                 '/sys/class/drm/card0/device/utilization'):
+    for path in ("/sys/class/drm/card0/device/gpu_busy_percent", "/sys/class/drm/card0/device/utilization"):
         try:
             with open(path) as f:
                 raw = f.read().strip()
@@ -35,24 +35,28 @@ def collect_live_system_metrics(app):
                 break
         except (OSError, ValueError):
             continue
-    encoding_setting = (app_config.get('video.encoding') or 'cpu').strip().lower()
-    if encoding_setting not in ('cpu', 'intel'):
-        encoding_setting = 'cpu'
-    intel_gpu = encoding_setting == 'intel' or os.path.exists('/dev/dri/renderD128')
+    encoding_setting = (app_config.get("video.encoding") or "cpu").strip().lower()
+    if encoding_setting not in ("cpu", "intel"):
+        encoding_setting = "cpu"
+    intel_gpu = encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
     if gpu_percent is None and intel_gpu:
         try:
             from gpu_stats import get_intel_gpu_percent
+
             gpu_percent = get_intel_gpu_percent()
         except Exception as e:
             app.logger.warning("gpu_stats: %s", e)
 
     return {
-        'cpu': {'percent': cpu_percent},
-        'memory': {
-            'total': memory_total_gb, 'used': memory_used_gb, 'percent': memory_percent,
-            'total_bytes': memory.total, 'used_bytes': memory.used,
+        "cpu": {"percent": cpu_percent},
+        "memory": {
+            "total": memory_total_gb,
+            "used": memory_used_gb,
+            "percent": memory_percent,
+            "total_bytes": memory.total,
+            "used_bytes": memory.used,
         },
-        'disk': {'total': disk_total_gb, 'used': disk_used_gb, 'percent': disk_percent},
-        'encoding': encoding_setting,
-        'gpu_percent': gpu_percent,
+        "disk": {"total": disk_total_gb, "used": disk_used_gb, "percent": disk_percent},
+        "encoding": encoding_setting,
+        "gpu_percent": gpu_percent,
     }

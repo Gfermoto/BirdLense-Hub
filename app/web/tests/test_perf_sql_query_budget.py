@@ -15,11 +15,11 @@ def _sql_statement_count(engine, fn) -> int:
     def _recv(conn, cursor, statement, parameters, context, executemany):
         statements.append(statement)
 
-    event.listen(engine, 'before_cursor_execute', _recv)
+    event.listen(engine, "before_cursor_execute", _recv)
     try:
         fn()
     finally:
-        event.remove(engine, 'before_cursor_execute', _recv)
+        event.remove(engine, "before_cursor_execute", _recv)
     return len(statements)
 
 
@@ -33,11 +33,14 @@ class TestOverviewSqlBudget:
         day = datetime(2026, 4, 10, 12, 0, 0)
         start_of_day = day.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = day.replace(
-            hour=23, minute=59, second=59, microsecond=999999,
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=999999,
         )
 
         with app.app_context():
-            species = Species(name='Budget Finch')
+            species = Species(name="Budget Finch")
             db.session.add(species)
             db.session.flush()
             for i in range(12):
@@ -51,10 +54,10 @@ class TestOverviewSqlBudget:
                     ),
                 )
             video = Video(
-                processor_version='test',
+                processor_version="test",
                 start_time=start_of_day,
                 end_time=start_of_day + timedelta(hours=1),
-                video_path='data/recordings/2026/04/10/120000/budget.mp4',
+                video_path="data/recordings/2026/04/10/120000/budget.mp4",
                 weather_temp=10.0,
             )
             db.session.add(video)
@@ -67,7 +70,7 @@ class TestOverviewSqlBudget:
 
             n = _sql_statement_count(engine, run)
             # Без contains_eager — десятки SELECT; с eager — порядка одного десятка.
-            assert n <= 22, f'expected <= 22 SQL statements, got {n}'
+            assert n <= 22, f"expected <= 22 SQL statements, got {n}"
 
 
 class TestTimelineSqlBudget:
@@ -84,7 +87,7 @@ class TestTimelineSqlBudget:
         end_naive = end_dt.replace(tzinfo=None)
 
         with app.app_context():
-            sp = Species(name='Timeline Budget Bird')
+            sp = Species(name="Timeline Budget Bird")
             db.session.add(sp)
             db.session.flush()
             for vix in range(4):
@@ -98,14 +101,13 @@ class TestTimelineSqlBudget:
                 db.session.flush()
                 for j in range(2):
                     vid = Video(
-                        processor_version='test',
+                        processor_version="test",
                         start_time=start_naive + timedelta(minutes=vix * 30 + j),
-                        end_time=start_naive + timedelta(
+                        end_time=start_naive
+                        + timedelta(
                             minutes=vix * 30 + j + 5,
                         ),
-                        video_path=(
-                            f'data/recordings/2026/04/11/tb{vix}_{j}.mp4'
-                        ),
+                        video_path=(f"data/recordings/2026/04/11/tb{vix}_{j}.mp4"),
                     )
                     db.session.add(vid)
                     db.session.flush()
@@ -117,7 +119,7 @@ class TestTimelineSqlBudget:
                             start_time=0.0,
                             end_time=4.0,
                             confidence=0.9,
-                            source='video',
+                            source="video",
                         ),
                     )
             db.session.commit()
@@ -128,4 +130,4 @@ class TestTimelineSqlBudget:
                 build_merged_timeline_items(db.session, start_naive, end_naive)
 
             n = _sql_statement_count(engine, run)
-            assert n <= 28, f'expected <= 28 SQL statements, got {n}'
+            assert n <= 28, f"expected <= 28 SQL statements, got {n}"

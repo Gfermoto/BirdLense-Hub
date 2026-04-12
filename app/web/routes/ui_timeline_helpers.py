@@ -26,11 +26,11 @@ def _timeline_visits_deduped_ordered(visits_raw):
 
 
 def _timeline_entry_sort_key(item: dict):
-    s = item.get('start_time')
+    s = item.get("start_time")
     if not isinstance(s, str):
         return datetime.min.replace(tzinfo=timezone.utc)
-    if s.endswith('Z'):
-        s = s[:-1] + '+00:00'
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
     try:
         parsed = datetime.fromisoformat(s)
     except ValueError:
@@ -62,13 +62,11 @@ def build_merged_timeline_items(session, start_dt, end_dt) -> list:
     visit_payloads = [format_visit_for_timeline(v) for v in visits]
     video_ids_in_visits: set[int] = set()
     for p in visit_payloads:
-        for d in p.get('detections') or []:
-            vid = d.get('video_id')
+        for d in p.get("detections") or []:
+            vid = d.get("video_id")
             if vid is not None:
                 video_ids_in_visits.add(int(vid))
-    fallback_species = (
-        session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
-    )
+    fallback_species = session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
     unlinked_videos = (
         session.query(Video)
         .options(

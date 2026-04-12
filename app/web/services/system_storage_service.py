@@ -32,9 +32,9 @@ def summarize_recording_day_directory(day_path: str) -> tuple[int, int]:
                         total_size += os.path.getsize(file_path)
                         total_files += 1
                     except OSError as e:
-                        _log.error('Error getting size for %s: %s', file_path, e)
+                        _log.error("Error getting size for %s: %s", file_path, e)
     except Exception as e:
-        _log.error('Error processing day directory %s: %s', day_path, e)
+        _log.error("Error processing day directory %s: %s", day_path, e)
     return total_files, total_size
 
 
@@ -59,9 +59,9 @@ def recording_days_iso_sorted() -> list[str]:
                         continue
                     file_count, _ = summarize_recording_day_directory(day_path)
                     if file_count > 0:
-                        days.add(f'{year}-{month}-{day}')
+                        days.add(f"{year}-{month}-{day}")
     except Exception as e:
-        _log.error('Error scanning recording days: %s', e)
+        _log.error("Error scanning recording days: %s", e)
     return sorted(days)
 
 
@@ -86,29 +86,31 @@ def build_storage_stats_list() -> list[dict]:
                         continue
                     file_count, total_size = summarize_recording_day_directory(day_path)
                     if file_count > 0:
-                        stats.append({
-                            'date': f'{year}-{month}-{day}',
-                            'fileCount': file_count,
-                            'totalSize': total_size,
-                        })
+                        stats.append(
+                            {
+                                "date": f"{year}-{month}-{day}",
+                                "fileCount": file_count,
+                                "totalSize": total_size,
+                            }
+                        )
     except Exception as e:
-        _log.error('Error scanning recordings directory: %s', e)
+        _log.error("Error scanning recordings directory: %s", e)
     return stats
 
 
 def nearest_recording_day_response(raw_date: str, direction: str) -> tuple[dict, int]:
     if not raw_date:
-        return {'error': 'date is required'}, 400
-    if direction not in ('prev', 'next'):
-        return {'error': 'direction must be "prev" or "next"'}, 400
+        return {"error": "date is required"}, 400
+    if direction not in ("prev", "next"):
+        return {"error": 'direction must be "prev" or "next"'}, 400
     try:
-        pivot = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        pivot = datetime.strptime(raw_date, "%Y-%m-%d").date()
     except ValueError:
-        return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+        return {"error": "Invalid date format, use YYYY-MM-DD"}, 400
 
     day_values = recording_days_iso_sorted()
     pivot_s = pivot.isoformat()
-    if direction == 'prev':
+    if direction == "prev":
         match = next(
             (day for day in reversed(day_values) if day < pivot_s),
             None,
@@ -116,17 +118,17 @@ def nearest_recording_day_response(raw_date: str, direction: str) -> tuple[dict,
     else:
         match = next((day for day in day_values if day > pivot_s), None)
     return {
-        'date': match,
-        'direction': direction,
-        'found': match is not None,
+        "date": match,
+        "direction": direction,
+        "found": match is not None,
     }, 200
 
 
 def purge_storage_from_body(data: dict) -> tuple[dict, int]:
     try:
-        date_str = (data.get('date') or '').strip()
-        start_date_str = (data.get('start_date') or '').strip()
-        end_date_str = (data.get('end_date') or '').strip()
+        date_str = (data.get("date") or "").strip()
+        start_date_str = (data.get("start_date") or "").strip()
+        end_date_str = (data.get("end_date") or "").strip()
 
         range_mode = bool(start_date_str or end_date_str)
         purge_date: datetime | None = None
@@ -135,26 +137,26 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
 
         if range_mode:
             if not start_date_str or not end_date_str:
-                return {'error': 'start_date and end_date are required together'}, 400
+                return {"error": "start_date and end_date are required together"}, 400
             try:
-                range_start = datetime.strptime(start_date_str, '%Y-%m-%d')
-                range_end = datetime.strptime(end_date_str, '%Y-%m-%d')
+                range_start = datetime.strptime(start_date_str, "%Y-%m-%d")
+                range_end = datetime.strptime(end_date_str, "%Y-%m-%d")
             except ValueError:
-                return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+                return {"error": "Invalid date format, use YYYY-MM-DD"}, 400
             if range_start > range_end:
-                return {'error': 'start_date must be on or before end_date'}, 400
+                return {"error": "start_date must be on or before end_date"}, 400
             max_span_days = 366 * 5
             if (range_end - range_start).days > max_span_days:
                 return {
-                    'error': f'Date range too large (max {max_span_days} days)',
+                    "error": f"Date range too large (max {max_span_days} days)",
                 }, 400
         elif date_str:
             try:
-                purge_date = datetime.strptime(date_str, '%Y-%m-%d')
+                purge_date = datetime.strptime(date_str, "%Y-%m-%d")
             except ValueError:
-                return {'error': 'Invalid date format, use YYYY-MM-DD'}, 400
+                return {"error": "Invalid date format, use YYYY-MM-DD"}, 400
         else:
-            return {'error': 'Provide date or both start_date and end_date'}, 400
+            return {"error": "Provide date or both start_date and end_date"}, 400
 
         deleted_count = 0
         deleted_size = 0
@@ -165,8 +167,7 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
             assert range_start is not None and range_end is not None
             range_end_exclusive = range_end + timedelta(days=1)
             videos = (
-                Video.query
-                .filter(
+                Video.query.filter(
                     Video.start_time >= range_start,
                     Video.start_time < range_end_exclusive,
                 )
@@ -176,16 +177,11 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
         else:
             assert purge_date is not None
             purge_cutoff = purge_date + timedelta(days=1)
-            videos = (
-                Video.query
-                .filter(Video.start_time < purge_cutoff)
-                .order_by(Video.start_time.asc())
-                .all()
-            )
+            videos = Video.query.filter(Video.start_time < purge_cutoff).order_by(Video.start_time.asc()).all()
 
         video_dirs_to_delete: set[str] = set()
         for video in videos:
-            rel_dir = os.path.dirname(video.video_path or '')
+            rel_dir = os.path.dirname(video.video_path or "")
             if rel_dir:
                 video_dirs_to_delete.add(os.path.join(app_base, rel_dir))
             _delete_video_row_cascade(video)
@@ -212,7 +208,7 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
                     if not os.path.isdir(day_path):
                         continue
                     try:
-                        dir_date = datetime.strptime(f'{year}-{month}-{day}', '%Y-%m-%d')
+                        dir_date = datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d")
                     except ValueError:
                         continue
                     if range_mode:
@@ -234,11 +230,11 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
 
         bust_system_response_caches()
         return {
-            'message': f'Successfully deleted {deleted_count} files',
-            'deletedCount': deleted_count,
-            'deletedSize': deleted_size,
+            "message": f"Successfully deleted {deleted_count} files",
+            "deletedCount": deleted_count,
+            "deletedSize": deleted_size,
         }, 200
     except Exception:
         db.session.rollback()
-        _log.exception('Purge storage failed')
-        return {'error': 'Failed to purge storage'}, 500
+        _log.exception("Purge storage failed")
+        return {"error": "Failed to purge storage"}, 500

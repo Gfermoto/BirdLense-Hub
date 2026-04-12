@@ -1,4 +1,5 @@
 """Flask extensions: SQLAlchemy, Migrate, CORS, SQLite PRAGMA (см. #292)."""
+
 from __future__ import annotations
 
 import os
@@ -17,6 +18,6 @@ def init_extensions(app: Flask) -> None:
     apply_cors(app)
     db.init_app(app)
     web_dir = os.path.dirname(os.path.abspath(__file__))
-    migrations_dir = os.path.join(web_dir, 'migrations')
+    migrations_dir = os.path.join(web_dir, "migrations")
     migrate.init_app(app, db, directory=migrations_dir)
     register_sqlite_connect_pragmas()

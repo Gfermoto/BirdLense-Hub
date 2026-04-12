@@ -21,19 +21,12 @@ def get_primary_video_for_visit_in_window(
     window_end: datetime | None = None,
 ) -> object | None:
     """Pick the earliest visit video, optionally constrained to a time window."""
-    if not visit or not getattr(visit, 'video_species', None):
+    if not visit or not getattr(visit, "video_species", None):
         return None
-    vs_list = [
-        vs for vs in visit.video_species
-        if getattr(vs, 'video', None) and getattr(vs.video, 'start_time', None)
-    ]
+    vs_list = [vs for vs in visit.video_species if getattr(vs, "video", None) and getattr(vs.video, "start_time", None)]
     if window_start is not None or window_end is not None:
-        window_start_utc = (
-            ensure_utc(window_start) if window_start is not None else None
-        )
-        window_end_utc = (
-            ensure_utc(window_end) if window_end is not None else None
-        )
+        window_start_utc = ensure_utc(window_start) if window_start is not None else None
+        window_end_utc = ensure_utc(window_end) if window_end is not None else None
         filtered_vs = []
         for vs in vs_list:
             video_start = ensure_utc(vs.video.start_time)
@@ -50,7 +43,7 @@ def get_primary_video_for_visit_in_window(
         vs_list,
         key=lambda vs: (
             ensure_utc(vs.video.start_time),
-            getattr(vs.video, 'id', 0) or 0,
+            getattr(vs.video, "id", 0) or 0,
         ),
     )
     return primary.video
@@ -71,36 +64,38 @@ def format_visit_for_timeline(visit) -> dict:
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
         det = {
-            'id': vs.id,
-            'video_id': vs.video_id,
-            'start_time': (video_start + timedelta(seconds=vs.start_time)).astimezone(timezone.utc).isoformat(),
-            'end_time': (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
-            'confidence': vs.confidence,
-            'source': vs.source,
+            "id": vs.id,
+            "video_id": vs.video_id,
+            "start_time": (video_start + timedelta(seconds=vs.start_time)).astimezone(timezone.utc).isoformat(),
+            "end_time": (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
+            "confidence": vs.confidence,
+            "source": vs.source,
         }
         if vs.detection_provider:
-            det['detection_provider'] = vs.detection_provider
+            det["detection_provider"] = vs.detection_provider
         detections.append(det)
     return {
-        'id': visit.id,
-        'start_time': ensure_utc(visit.start_time).isoformat(),
-        'end_time': ensure_utc(visit.end_time).isoformat(),
-        'max_simultaneous': visit.max_simultaneous,
-        'total_recording_seconds': round(total_recording_seconds),
-        'video_duration_seconds': video_duration_seconds,
-        'weather': {
-            'temp': video.weather_temp if video else None,
-            'clouds': video.weather_clouds if video else None,
-        } if video else None,
-        'scales': video_scales_estimate_payload(video) if video else None,
-        'species': {
-            'id': visit.species.id,
-            'name': visit.species.name,
-            'image_url': visit.species.image_url,
-            'parent_id': visit.species.parent_id,
+        "id": visit.id,
+        "start_time": ensure_utc(visit.start_time).isoformat(),
+        "end_time": ensure_utc(visit.end_time).isoformat(),
+        "max_simultaneous": visit.max_simultaneous,
+        "total_recording_seconds": round(total_recording_seconds),
+        "video_duration_seconds": video_duration_seconds,
+        "weather": {
+            "temp": video.weather_temp if video else None,
+            "clouds": video.weather_clouds if video else None,
+        }
+        if video
+        else None,
+        "scales": video_scales_estimate_payload(video) if video else None,
+        "species": {
+            "id": visit.species.id,
+            "name": visit.species.name,
+            "image_url": visit.species.image_url,
+            "parent_id": visit.species.parent_id,
         },
-        'detections': detections,
-        'timeline_kind': 'visit',
+        "detections": detections,
+        "timeline_kind": "visit",
     }
 
 
@@ -117,51 +112,53 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
         det = {
-            'id': vs.id,
-            'video_id': vs.video_id,
-            'start_time': (video_start + timedelta(seconds=vs.start_time)).astimezone(timezone.utc).isoformat(),
-            'end_time': (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
-            'confidence': vs.confidence,
-            'source': vs.source,
+            "id": vs.id,
+            "video_id": vs.video_id,
+            "start_time": (video_start + timedelta(seconds=vs.start_time)).astimezone(timezone.utc).isoformat(),
+            "end_time": (video_start + timedelta(seconds=vs.end_time)).astimezone(timezone.utc).isoformat(),
+            "confidence": vs.confidence,
+            "source": vs.source,
         }
         if vs.detection_provider:
-            det['detection_provider'] = vs.detection_provider
+            det["detection_provider"] = vs.detection_provider
         detections.append(det)
     if vss:
         sp = vss[0].species
         species_block = {
-            'id': sp.id,
-            'name': sp.name,
-            'image_url': sp.image_url,
-            'parent_id': sp.parent_id,
+            "id": sp.id,
+            "name": sp.name,
+            "image_url": sp.image_url,
+            "parent_id": sp.parent_id,
         }
     elif fallback_species is not None:
         species_block = {
-            'id': fallback_species.id,
-            'name': fallback_species.name,
-            'image_url': fallback_species.image_url,
-            'parent_id': fallback_species.parent_id,
+            "id": fallback_species.id,
+            "name": fallback_species.name,
+            "image_url": fallback_species.image_url,
+            "parent_id": fallback_species.parent_id,
         }
     else:
         species_block = {
-            'id': 0,
-            'name': GENERIC_BIRD_SPECIES,
-            'image_url': None,
-            'parent_id': None,
+            "id": 0,
+            "name": GENERIC_BIRD_SPECIES,
+            "image_url": None,
+            "parent_id": None,
         }
     return {
-        'id': -(video.id),
-        'start_time': v0.isoformat(),
-        'end_time': v1.isoformat(),
-        'max_simultaneous': 1,
-        'total_recording_seconds': round(total_recording_seconds) if total_recording_seconds else video_duration_seconds,
-        'video_duration_seconds': video_duration_seconds,
-        'weather': {
-            'temp': video.weather_temp,
-            'clouds': video.weather_clouds,
+        "id": -(video.id),
+        "start_time": v0.isoformat(),
+        "end_time": v1.isoformat(),
+        "max_simultaneous": 1,
+        "total_recording_seconds": round(total_recording_seconds)
+        if total_recording_seconds
+        else video_duration_seconds,
+        "video_duration_seconds": video_duration_seconds,
+        "weather": {
+            "temp": video.weather_temp,
+            "clouds": video.weather_clouds,
         },
-        'scales': video_scales_estimate_payload(video),
-        'species': species_block,
-        'detections': detections,
-        'timeline_kind': 'unlinked_video',
+        "scales": video_scales_estimate_payload(video),
+        "species": species_block,
+        "detections": detections,
+        "timeline_kind": "unlinked_video",
     }

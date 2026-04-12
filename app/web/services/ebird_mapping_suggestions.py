@@ -1,4 +1,5 @@
 """Heuristic lines for ebird.species_mapping from regional eBird top vs catalog."""
+
 from __future__ import annotations
 
 import difflib
@@ -35,14 +36,14 @@ def build_ebird_mapping_suggestions(max_items: int = 40) -> dict[str, Any]:
 
     Each suggestion has kind: case_variant, fuzzy, or unmatched.
     """
-    api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
+    api_key = (app_config.get("secrets.ebird_api_key") or "").strip()
     region_code = _build_region_code()
     if not api_key:
         return {
-            'region_code': region_code,
-            'ebird_api_configured': False,
-            'top_count': 0,
-            'suggestions': [],
+            "region_code": region_code,
+            "ebird_api_configured": False,
+            "top_count": 0,
+            "suggestions": [],
         }
 
     top = get_region_top_species_cached(api_key, region_code)
@@ -51,7 +52,7 @@ def build_ebird_mapping_suggestions(max_items: int = 40) -> dict[str, Any]:
     seen: set[str] = set()
 
     for raw in top:
-        ebird = (raw or '').strip()
+        ebird = (raw or "").strip()
         if not ebird or ebird in seen:
             continue
         seen.add(ebird)
@@ -64,53 +65,44 @@ def build_ebird_mapping_suggestions(max_items: int = 40) -> dict[str, Any]:
             canon = lower_to_canon[mapped.lower()]
             suggestions.append(
                 {
-                    'ebird_name': ebird,
-                    'birdlense_name': canon,
-                    'kind': 'case_variant',
-                    'score': 1.0,
+                    "ebird_name": ebird,
+                    "birdlense_name": canon,
+                    "kind": "case_variant",
+                    "score": 1.0,
                 }
             )
-        elif (
-            ebird.lower() in lower_to_canon
-            and ebird.lower() != mapped.lower()
-        ):
+        elif ebird.lower() in lower_to_canon and ebird.lower() != mapped.lower():
             canon = lower_to_canon[ebird.lower()]
             suggestions.append(
                 {
-                    'ebird_name': ebird,
-                    'birdlense_name': canon,
-                    'kind': 'case_variant',
-                    'score': 1.0,
+                    "ebird_name": ebird,
+                    "birdlense_name": canon,
+                    "kind": "case_variant",
+                    "score": 1.0,
                 }
             )
         else:
-            candidates = difflib.get_close_matches(
-                mapped, names, n=3, cutoff=_FUZZY_CUTOFF
-            )
+            candidates = difflib.get_close_matches(mapped, names, n=3, cutoff=_FUZZY_CUTOFF)
             if not candidates:
-                candidates = difflib.get_close_matches(
-                    ebird, names, n=3, cutoff=_FUZZY_CUTOFF
-                )
+                candidates = difflib.get_close_matches(ebird, names, n=3, cutoff=_FUZZY_CUTOFF)
             if candidates:
                 best = candidates[0]
-                score = difflib.SequenceMatcher(
-                    None, mapped.lower(), best.lower()
-                ).ratio()
+                score = difflib.SequenceMatcher(None, mapped.lower(), best.lower()).ratio()
                 suggestions.append(
                     {
-                        'ebird_name': ebird,
-                        'birdlense_name': best,
-                        'kind': 'fuzzy',
-                        'score': round(score, 3),
+                        "ebird_name": ebird,
+                        "birdlense_name": best,
+                        "kind": "fuzzy",
+                        "score": round(score, 3),
                     }
                 )
             else:
                 suggestions.append(
                     {
-                        'ebird_name': ebird,
-                        'birdlense_name': None,
-                        'kind': 'unmatched',
-                        'score': None,
+                        "ebird_name": ebird,
+                        "birdlense_name": None,
+                        "kind": "unmatched",
+                        "score": None,
                     }
                 )
 
@@ -118,8 +110,8 @@ def build_ebird_mapping_suggestions(max_items: int = 40) -> dict[str, Any]:
             break
 
     return {
-        'region_code': region_code,
-        'ebird_api_configured': True,
-        'top_count': len(top),
-        'suggestions': suggestions,
+        "region_code": region_code,
+        "ebird_api_configured": True,
+        "top_count": len(top),
+        "suggestions": suggestions,
     }

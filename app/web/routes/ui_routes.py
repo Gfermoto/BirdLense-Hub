@@ -7,10 +7,10 @@ from time_util import parse_timeline_iso
 _parse_timeline_iso = parse_timeline_iso
 
 __all__ = [
-    'register_routes',
-    'build_merged_timeline_items',
-    'parse_timeline_iso',
-    '_parse_timeline_iso',
+    "register_routes",
+    "build_merged_timeline_items",
+    "parse_timeline_iso",
+    "_parse_timeline_iso",
 ]
 
 

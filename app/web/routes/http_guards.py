@@ -6,7 +6,7 @@ import auth as auth_mod
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def require_ui_settings_password(view: F) -> F:
@@ -15,7 +15,7 @@ def require_ui_settings_password(view: F) -> F:
     @wraps(view)
     def wrapped(*args: Any, **kwargs: Any):
         if not auth_mod.settings_check_access():
-            return {'error': 'Password required'}, 403
+            return {"error": "Password required"}, 403
         return view(*args, **kwargs)
 
     return wrapped  # type: ignore[return-value]
@@ -27,7 +27,7 @@ def require_ui_settings_unauthorized(view: F) -> F:
     @wraps(view)
     def wrapped(*args: Any, **kwargs: Any):
         if not auth_mod.settings_check_access():
-            return {'error': 'Unauthorized'}, 401
+            return {"error": "Unauthorized"}, 401
         return view(*args, **kwargs)
 
     return wrapped  # type: ignore[return-value]
@@ -39,7 +39,7 @@ def require_admin_track_regen(view: F) -> F:
     @wraps(view)
     def wrapped(*args: Any, **kwargs: Any):
         if not auth_mod.admin_track_regen_access():
-            return {'error': 'Access denied'}, 403
+            return {"error": "Access denied"}, 403
         return view(*args, **kwargs)
 
     return wrapped  # type: ignore[return-value]

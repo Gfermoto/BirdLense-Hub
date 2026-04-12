@@ -16,7 +16,7 @@ Pick what matches you — you can read the rest as reference.
 |------|----------------|-------|
 | **Run** | Install Docker, connect cameras, go live | [OVERVIEW](./OVERVIEW.md) (context) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
 | **Integrate** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.md) → [CONFIGURATION](./CONFIGURATION.md) |
-| **Build & ship** | Hacks, tests, releases | [Repository layout](./REPOSITORY_LAYOUT.md) → [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [Contributing](./project/contributing.md) |
+| **Build & ship** | Hacks, tests, releases | [Repository layout](./REPOSITORY_LAYOUT.md) → [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [CI & quality](./CI_AND_QUALITY.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -55,6 +55,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | Document |
 |-------|----------|
 | **CI jobs** (Bandit, pip-audit, Ruff, pytest slices, UI build, MkDocs, Docker tests, Playwright smoke) | [TESTING](./TESTING.md) §1 · [RU](./TESTING.ru.md) |
+| **CI policy** (Ruff format, pip-audit ignores, npm audit, OpenAPI→TS roadmap) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | MCP (Model Context Protocol — external AI assistants) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |

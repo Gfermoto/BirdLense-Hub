@@ -1,4 +1,5 @@
 """Flask entry: фабрика приложения, оркестрация bootstrap и маршрутов (#292)."""
+
 import logging
 import os
 
@@ -25,16 +26,16 @@ _log = logging.getLogger(__name__)
 def create_app():
     """Собрать BirdLense Hub: CORS, БД, фоновые задачи, UI и processor API."""
     _log.info(
-        'create_app() invoked (pid=%s)',
+        "create_app() invoked (pid=%s)",
         os.getpid(),
     )
     app = Flask(__name__)
-    app.config.from_object('config.Config')
+    app.config.from_object("config.Config")
     init_extensions(app)
     register_error_handlers(app)
 
     _web_dir = os.path.dirname(os.path.abspath(__file__))
-    _migrations_dir = os.path.join(_web_dir, 'migrations')
+    _migrations_dir = os.path.join(_web_dir, "migrations")
 
     with app.app_context():
         apply_schema_migrations_and_seed(_migrations_dir)
@@ -49,8 +50,8 @@ def create_app():
 
 # Tests call create_app(); prod gunicorn uses app:app when import creates app.
 # FLASK_CREATE_APP_ON_IMPORT=0 skips auto-create (e.g. FLASK_TESTING).
-_create_flag = os.environ.get('FLASK_CREATE_APP_ON_IMPORT', '1').strip().lower()
-if _create_flag in ('1', 'true', 'yes') and not os.environ.get('FLASK_TESTING'):
+_create_flag = os.environ.get("FLASK_CREATE_APP_ON_IMPORT", "1").strip().lower()
+if _create_flag in ("1", "true", "yes") and not os.environ.get("FLASK_TESTING"):
     app = create_app()
 else:
     app = None

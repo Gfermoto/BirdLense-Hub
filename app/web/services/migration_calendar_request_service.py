@@ -1,12 +1,19 @@
 """Валидация query для /api/ui/migration-calendar (#293)."""
+
 from __future__ import annotations
 
 import re
 
-_ISO_DATE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
-_ALLOWED_CATALOGS = frozenset({
-    'observed', 'dataset', 'full_eu', 'active', 'full',
-})
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_ALLOWED_CATALOGS = frozenset(
+    {
+        "observed",
+        "dataset",
+        "full_eu",
+        "active",
+        "full",
+    }
+)
 
 
 def validate_migration_calendar_params(
@@ -16,13 +23,13 @@ def validate_migration_calendar_params(
 ) -> str | None:
     """None если ок, иначе текст error для API."""
     if catalog not in _ALLOWED_CATALOGS:
-        return 'catalog must be observed, dataset or full_eu'
+        return "catalog must be observed, dataset or full_eu"
     if start_date and not _ISO_DATE.match(start_date):
-        return 'start_date must be YYYY-MM-DD'
+        return "start_date must be YYYY-MM-DD"
     if end_date and not _ISO_DATE.match(end_date):
-        return 'end_date must be YYYY-MM-DD'
+        return "end_date must be YYYY-MM-DD"
     if start_date and end_date and start_date > end_date:
-        return 'start_date must be <= end_date'
+        return "start_date must be <= end_date"
     return None
 
 
@@ -32,9 +39,6 @@ def migration_calendar_cache_key(
     start_date: str | None,
     end_date: str | None,
     catalog: str,
-    evidence: str = 'all',
+    evidence: str = "all",
 ) -> str:
-    return (
-        f'migration_cal:v3:{start_year}:{end_year}:{start_date}:{end_date}:'
-        f'{catalog}:{evidence}'
-    )
+    return f"migration_cal:v3:{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}"

@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-_BROWSER_ID_RE = re.compile(r'[A-Za-z0-9._:-]{16,128}')
+_BROWSER_ID_RE = re.compile(r"[A-Za-z0-9._:-]{16,128}")
 
 
 def build_metrics_summary_dict(flask_app: Flask) -> dict[str, Any]:
@@ -65,24 +65,24 @@ def build_metrics_summary_dict(flask_app: Flask) -> dict[str, Any]:
     ingest_gate = ingest_gate_reason_counts_24h()
     notify_suppressed = notify_suppressed_reason_counts_24h()
     payload: dict[str, Any] = {
-        'service': 'birdlense-hub',
-        'cpu_usage_percent': float(sys_m['cpu']['percent']),
-        'memory_used_percent': float(sys_m['memory']['percent']),
-        'memory_used_bytes': int(sys_m['memory']['used_bytes']),
-        'memory_total_bytes': int(sys_m['memory']['total_bytes']),
-        'disk_used_percent': float(sys_m['disk']['percent']),
-        'detections_total': int(detections),
-        'species_count': int(species_count),
-        'videos_total': int(videos_count),
-        'notify_preview_24h': preview,
-        'notify_preview_generated_24h': preview_generated,
-        'notify_fallback_24h': fallback,
-        'notify_delivery_24h': delivery,
-        'ingest_gate_24h': ingest_gate,
-        'notify_suppressed_24h': notify_suppressed,
+        "service": "birdlense-hub",
+        "cpu_usage_percent": float(sys_m["cpu"]["percent"]),
+        "memory_used_percent": float(sys_m["memory"]["percent"]),
+        "memory_used_bytes": int(sys_m["memory"]["used_bytes"]),
+        "memory_total_bytes": int(sys_m["memory"]["total_bytes"]),
+        "disk_used_percent": float(sys_m["disk"]["percent"]),
+        "detections_total": int(detections),
+        "species_count": int(species_count),
+        "videos_total": int(videos_count),
+        "notify_preview_24h": preview,
+        "notify_preview_generated_24h": preview_generated,
+        "notify_fallback_24h": fallback,
+        "notify_delivery_24h": delivery,
+        "ingest_gate_24h": ingest_gate,
+        "notify_suppressed_24h": notify_suppressed,
     }
-    if sys_m['gpu_percent'] is not None:
-        payload['gpu_usage_percent'] = float(sys_m['gpu_percent'])
+    if sys_m["gpu_percent"] is not None:
+        payload["gpu_usage_percent"] = float(sys_m["gpu_percent"])
     return payload
 
 
@@ -90,31 +90,31 @@ def metrics_summary_json_or_error(flask_app: Flask) -> tuple[dict, int]:
     try:
         return build_metrics_summary_dict(flask_app), 200
     except Exception as e:
-        _log.error('metrics summary: %s', e)
-        return {'error': 'Failed to build metrics summary'}, 500
+        _log.error("metrics summary: %s", e)
+        return {"error": "Failed to build metrics summary"}, 500
 
 
 def prometheus_text_or_error(flask_app: Flask) -> tuple[str, int]:
     try:
         return prometheus_metrics_body(flask_app), 200
     except Exception as e:
-        _log.error('Error getting Prometheus metrics: %s', e)
-        return '# Error\n', 500
+        _log.error("Error getting Prometheus metrics: %s", e)
+        return "# Error\n", 500
 
 
 def system_metrics_live_payload_or_error(flask_app: Flask) -> tuple[dict, int]:
     try:
         m = collect_live_system_metrics(flask_app)
         return {
-            'cpu': m['cpu'],
-            'memory': m['memory'],
-            'disk': m['disk'],
-            'encoding': m['encoding'],
-            'gpu_percent': m['gpu_percent'],
+            "cpu": m["cpu"],
+            "memory": m["memory"],
+            "disk": m["disk"],
+            "encoding": m["encoding"],
+            "gpu_percent": m["gpu_percent"],
         }, 200
     except Exception as e:
-        _log.error('Error getting system metrics: %s', e)
-        return {'error': 'Failed to get system metrics'}, 500
+        _log.error("Error getting system metrics: %s", e)
+        return {"error": "Failed to get system metrics"}, 500
 
 
 def observability_payload_or_error() -> tuple[dict, int]:
@@ -126,31 +126,31 @@ def observability_payload_or_error() -> tuple[dict, int]:
         ingest_gate = ingest_gate_reason_counts_24h()
         notify_suppressed = notify_suppressed_reason_counts_24h()
         return {
-            'notify_preview_24h': preview,
-            'notify_preview_generated_24h': preview_generated,
-            'notify_fallback_24h': fallback,
-            'notify_delivery_24h': delivery,
-            'ingest_gate_24h': ingest_gate,
-            'notify_suppressed_24h': notify_suppressed,
-            'ml_health': {
-                'rolling_7d': ml_health_snapshot(7),
-                'rolling_30d': ml_health_snapshot(30),
+            "notify_preview_24h": preview,
+            "notify_preview_generated_24h": preview_generated,
+            "notify_fallback_24h": fallback,
+            "notify_delivery_24h": delivery,
+            "ingest_gate_24h": ingest_gate,
+            "notify_suppressed_24h": notify_suppressed,
+            "ml_health": {
+                "rolling_7d": ml_health_snapshot(7),
+                "rolling_30d": ml_health_snapshot(30),
             },
-            'model_lineage': current_model_lineage_snapshot(),
-            'hub_metrics': {
-                'prometheus_text': '/metrics',
-                'prometheus_text_alt': '/api/metrics',
-                'json_summary': '/api/metrics/summary',
+            "model_lineage": current_model_lineage_snapshot(),
+            "hub_metrics": {
+                "prometheus_text": "/metrics",
+                "prometheus_text_alt": "/api/metrics",
+                "json_summary": "/api/metrics/summary",
             },
         }, 200
     except Exception as e:
-        _log.error('observability: %s', e)
-        return {'error': 'Failed'}, 500
+        _log.error("observability: %s", e)
+        return {"error": "Failed"}, 500
 
 
 def parse_visitors_days(raw: str | None) -> int:
     try:
-        return int(raw or '7')
+        return int(raw or "7")
     except (TypeError, ValueError):
         return 7
 
@@ -159,8 +159,8 @@ def visitor_stats_or_error(days: int) -> tuple[Any, int]:
     try:
         return collect_visitor_stats(days), 200
     except Exception as e:
-        _log.error('Error getting visitor stats: %s', e)
-        return {'error': 'Failed to get visitor stats'}, 500
+        _log.error("Error getting visitor stats: %s", e)
+        return {"error": "Failed to get visitor stats"}, 500
 
 
 def track_site_visitor(
@@ -170,21 +170,25 @@ def track_site_visitor(
 ) -> tuple[dict, int]:
     try:
         if not check_visitor_track_rate_limit(client_ip):
-            return {'error': 'Too many requests'}, 429
+            return {"error": "Too many requests"}, 429
 
-        raw_browser_id = str(browser_id_raw or '').strip()
+        raw_browser_id = str(browser_id_raw or "").strip()
         if not _BROWSER_ID_RE.fullmatch(raw_browser_id):
-            return {'error': 'Invalid browser_id'}, 400
+            return {"error": "Invalid browser_id"}, 400
 
         now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-        seen_day = now_utc.strftime('%Y-%m-%d')
+        seen_day = now_utc.strftime("%Y-%m-%d")
         bh = browser_hash(raw_browser_id)
         device_class = device_class_from_user_agent(user_agent)
 
-        row = db.session.query(SiteVisitor).filter(
-            SiteVisitor.browser_hash == bh,
-            SiteVisitor.seen_day == seen_day,
-        ).first()
+        row = (
+            db.session.query(SiteVisitor)
+            .filter(
+                SiteVisitor.browser_hash == bh,
+                SiteVisitor.seen_day == seen_day,
+            )
+            .first()
+        )
         if row is None:
             row = SiteVisitor(
                 browser_hash=bh,
@@ -201,26 +205,30 @@ def track_site_visitor(
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-            row = db.session.query(SiteVisitor).filter(
-                SiteVisitor.browser_hash == bh,
-                SiteVisitor.seen_day == seen_day,
-            ).first()
+            row = (
+                db.session.query(SiteVisitor)
+                .filter(
+                    SiteVisitor.browser_hash == bh,
+                    SiteVisitor.seen_day == seen_day,
+                )
+                .first()
+            )
             if row is None:
                 raise
             row.last_seen_at = now_utc
             row.device_class = device_class
             db.session.commit()
-        cache_delete_prefix('system_visitors:')
-        return {'ok': True}, 200
+        cache_delete_prefix("system_visitors:")
+        return {"ok": True}, 200
     except Exception as e:
         db.session.rollback()
-        _log.error('Error tracking site visitor: %s', e)
-        return {'error': 'Failed to track site visitor'}, 500
+        _log.error("Error tracking site visitor: %s", e)
+        return {"error": "Failed to track site visitor"}, 500
 
 
 def clamp_metrics_history_hours(raw: str | None) -> int:
     try:
-        hours = int(raw or '24')
+        hours = int(raw or "24")
     except (TypeError, ValueError):
         hours = 24
     return max(1, min(hours, SYSTEM_METRICS_HISTORY_MAX_HOURS))
@@ -247,20 +255,20 @@ def metrics_history_payload_or_error(hours: int, max_points: int) -> tuple[dict,
         ).all()
         rows = downsample_evenly(rows, max_points)
         return {
-            'samples': [
+            "samples": [
                 {
-                    't': r.recorded_at.isoformat(),
-                    'cpu': round(r.cpu_percent, 2),
-                    'memory': round(r.memory_percent, 2),
-                    'disk': round(r.disk_percent, 2),
-                    'gpu': None if r.gpu_percent is None else round(r.gpu_percent, 2),
+                    "t": r.recorded_at.isoformat(),
+                    "cpu": round(r.cpu_percent, 2),
+                    "memory": round(r.memory_percent, 2),
+                    "disk": round(r.disk_percent, 2),
+                    "gpu": None if r.gpu_percent is None else round(r.gpu_percent, 2),
                 }
                 for r in rows
             ],
-            'sample_interval_seconds': SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
-            'retention_hours': SYSTEM_METRICS_RETENTION_HOURS,
-            'hours_requested': hours,
+            "sample_interval_seconds": SYSTEM_METRICS_SAMPLE_INTERVAL_SEC,
+            "retention_hours": SYSTEM_METRICS_RETENTION_HOURS,
+            "hours_requested": hours,
         }, 200
     except Exception as e:
-        _log.error('Error getting system metrics history: %s', e)
-        return {'error': 'Failed to get system metrics history'}, 500
+        _log.error("Error getting system metrics history: %s", e)
+        return {"error": "Failed to get system metrics history"}, 500

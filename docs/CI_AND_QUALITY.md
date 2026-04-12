@@ -1,0 +1,46 @@
+# CI and code quality policy
+
+[Русский](./CI_AND_QUALITY.ru.md)
+
+This document describes what runs in GitHub Actions, how to reproduce checks locally, and how we extend quality gates without breaking the default green pipeline.
+
+## Workflows (summary)
+
+| Workflow / job | Purpose |
+|----------------|---------|
+| **CI → python-security** | `bandit` on `web/` + `processor/src/`; `pip-audit` on both `requirements.txt` files. |
+| **CI → openapi-contract** | `ruff check` + **`ruff format --check`** on `web/` + `processor/src/`; docs version script; focused pytest slices. |
+| **CI → ui-build** | `npm ci`, `npm run lint`, `npm run build` in `app/ui`. |
+| **CI → docs** | MkDocs strict, settings UI coverage script, version check. |
+| **CI → docker-tests** | Full image build; processor + web tests; Playwright smoke; catalog audit script. |
+
+Source: `.github/workflows/ci-pr.yml`.
+
+## Ruff
+
+- **Config:** `app/pyproject.toml` (`[tool.ruff]`, line length 120, target Python 3.11).
+- **Lint:** `ruff check web/ processor/src/` (must pass in CI).
+- **Format:** `ruff format web/ processor/src/` — output is enforced in CI (`--check`). Apply locally before push:
+  ```bash
+  cd app && docker compose run --rm -v "$(pwd)":/app birdlense \
+    bash -c 'pip install ruff==0.9.2 && ruff format web/ processor/src/'
+  ```
+- **Exceptions:** `processor/src/main.py` uses a deliberate import order (OpenCV init before bootstrap); `E402` is ignored for that file in `pyproject.toml`.
+
+## pip-audit
+
+- Run in **python-security** with both requirement files.
+- Known ignore: `PYSEC-2022-42969` (transitive `py` via dev/docs tooling); documented inline in the workflow.
+
+## npm audit
+
+- Weekly / manual workflow: `.github/workflows/npm-audit-scheduled.yml` (policy in workflow comments; see [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)). Not a required PR check.
+
+## OpenAPI → TypeScript (future)
+
+- Spec: `app/web/openapi.yaml`. Contract tests: `web/tests/test_openapi_contract.py`.
+- **Not automated yet:** codegen for the UI (e.g. `openapi-typescript`) — add a `package.json` script and optional CI step once the team agrees on generator and output path; until then this doc is the placeholder promised in [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297).
+
+## Complexity / radon (optional)
+
+- No required CC threshold in CI yet. To inspect locally: `pip install radon && radon cc app/web app/processor/src -a -s`.

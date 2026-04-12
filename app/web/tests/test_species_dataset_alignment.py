@@ -8,22 +8,22 @@ from models import Species, Video, VideoSpecies, db
 
 @pytest.fixture(autouse=True)
 def _disable_settings_passwords():
-    old_admin = app_config.get('general.settings_password')
-    old_contrib = app_config.get('general.contributor_password')
-    app_config.set('general.settings_password', '')
-    app_config.set('general.contributor_password', '')
+    old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
+    app_config.set("general.settings_password", "")
+    app_config.set("general.contributor_password", "")
     try:
         yield
     finally:
-        app_config.set('general.settings_password', old_admin)
-        app_config.set('general.contributor_password', old_contrib)
+        app_config.set("general.settings_password", old_admin)
+        app_config.set("general.contributor_password", old_contrib)
 
 
 def test_normalize_classifier_label_matches_processor_style():
     from services.species_dataset_alignment_service import normalize_classifier_label
 
-    assert normalize_classifier_label('Parus_major_(Great_Tit)') == 'Parus major (Great Tit)'
-    assert normalize_classifier_label('Blue_OR_Jay') == 'Blue/Jay'
+    assert normalize_classifier_label("Parus_major_(Great_Tit)") == "Parus major (Great Tit)"
+    assert normalize_classifier_label("Blue_OR_Jay") == "Blue/Jay"
 
 
 def test_alignment_when_weights_unreadable(app, monkeypatch):
@@ -31,13 +31,13 @@ def test_alignment_when_weights_unreadable(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (None, 'classifier weights not found: /none'),
+        "load_classifier_labels_or_error",
+        lambda _path: (None, "classifier weights not found: /none"),
     )
     with app.app_context():
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
-    assert rpt['classifier_readable'] is False
-    assert rpt['classifier_error']
+    assert rpt["classifier_readable"] is False
+    assert rpt["classifier_error"]
 
 
 def test_alignment_model_class_matches_catalog_scientific_common(app, monkeypatch):
@@ -45,16 +45,16 @@ def test_alignment_model_class_matches_catalog_scientific_common(app, monkeypatc
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
     )
     with app.app_context():
-        if not Species.query.filter_by(name='Parus major (Great Tit)').first():
-            db.session.add(Species(name='Parus major (Great Tit)'))
+        if not Species.query.filter_by(name="Parus major (Great Tit)").first():
+            db.session.add(Species(name="Parus major (Great Tit)"))
             db.session.commit()
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
-    assert rpt['classifier_readable'] is True
-    assert rpt['in_classifier_not_in_catalog_count'] == 0
+    assert rpt["classifier_readable"] is True
+    assert rpt["in_classifier_not_in_catalog_count"] == 0
 
 
 def test_alignment_common_name_catalog_row_matches_scientific_common_label(app, monkeypatch):
@@ -62,16 +62,16 @@ def test_alignment_common_name_catalog_row_matches_scientific_common_label(app, 
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Aegithalos_caudatus_(Long-tailed_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Aegithalos_caudatus_(Long-tailed_Tit)"], None),
     )
     with app.app_context():
-        if not Species.query.filter_by(name='Long-tailed Tit').first():
-            db.session.add(Species(name='Long-tailed Tit'))
+        if not Species.query.filter_by(name="Long-tailed Tit").first():
+            db.session.add(Species(name="Long-tailed Tit"))
             db.session.commit()
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
-    assert rpt['in_classifier_not_in_catalog_count'] == 0
-    assert 'Aegithalos caudatus (Long-tailed Tit)' not in rpt['in_classifier_not_in_catalog']
+    assert rpt["in_classifier_not_in_catalog_count"] == 0
+    assert "Aegithalos caudatus (Long-tailed Tit)" not in rpt["in_classifier_not_in_catalog"]
 
 
 def test_alignment_extra_model_class_not_in_catalog(app, monkeypatch):
@@ -79,21 +79,21 @@ def test_alignment_extra_model_class_not_in_catalog(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)', 'Only_In_Model_Class'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)", "Only_In_Model_Class"], None),
     )
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_names',
+        "load_catalog_allowlist_names",
         lambda _get: [],
     )
     with app.app_context():
-        if not Species.query.filter_by(name='Parus major (Great Tit)').first():
-            db.session.add(Species(name='Parus major (Great Tit)'))
+        if not Species.query.filter_by(name="Parus major (Great Tit)").first():
+            db.session.add(Species(name="Parus major (Great Tit)"))
             db.session.commit()
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
-    assert rpt['in_classifier_not_in_catalog_count'] == 1
-    assert 'Only In Model Class' in rpt['in_classifier_not_in_catalog']
+    assert rpt["in_classifier_not_in_catalog_count"] == 1
+    assert "Only In Model Class" in rpt["in_classifier_not_in_catalog"]
 
 
 def test_alignment_ignores_model_classes_outside_allowlist(app, monkeypatch):
@@ -101,42 +101,43 @@ def test_alignment_ignores_model_classes_outside_allowlist(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)', 'Only_In_Model_Class'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)", "Only_In_Model_Class"], None),
     )
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_names',
-        lambda _get: ['Parus major (Great Tit)'],
+        "load_catalog_allowlist_names",
+        lambda _get: ["Parus major (Great Tit)"],
     )
     with app.app_context():
-        if not Species.query.filter_by(name='Parus major (Great Tit)').first():
-            db.session.add(Species(name='Parus major (Great Tit)'))
+        if not Species.query.filter_by(name="Parus major (Great Tit)").first():
+            db.session.add(Species(name="Parus major (Great Tit)"))
             db.session.commit()
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
-    assert rpt['in_classifier_not_in_catalog_count'] == 0
-    assert 'Only In Model Class' not in rpt['in_classifier_not_in_catalog']
+    assert rpt["in_classifier_not_in_catalog_count"] == 0
+    assert "Only In Model Class" not in rpt["in_classifier_not_in_catalog"]
 
 
 def test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged(
-    app, monkeypatch,
+    app,
+    monkeypatch,
 ):
     import services.species_dataset_alignment_service as mod
     from datetime import datetime, timezone
 
-    outside_name = 'Knob Billed Duck ALIGN_IN_MODEL'
+    outside_name = "Knob Billed Duck ALIGN_IN_MODEL"
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
+        "load_classifier_labels_or_error",
         lambda _path: (
-            ['Parus_major_(Great_Tit)', 'Knob_Billed_Duck_ALIGN_IN_MODEL'],
+            ["Parus_major_(Great_Tit)", "Knob_Billed_Duck_ALIGN_IN_MODEL"],
             None,
         ),
     )
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_names',
-        lambda _get: ['Parus major (Great Tit)'],
+        "load_catalog_allowlist_names",
+        lambda _get: ["Parus major (Great Tit)"],
     )
 
     with app.app_context():
@@ -144,10 +145,10 @@ def test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged
         db.session.add(duck)
         db.session.flush()
         video = Video(
-            processor_version='t',
+            processor_version="t",
             start_time=datetime.now(timezone.utc),
             end_time=datetime.now(timezone.utc),
-            video_path='align-test/in-model-outside-allowlist.mp4',
+            video_path="align-test/in-model-outside-allowlist.mp4",
         )
         db.session.add(video)
         db.session.flush()
@@ -158,7 +159,7 @@ def test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged
                 start_time=0.0,
                 end_time=1.0,
                 confidence=0.8,
-                source='video',
+                source="video",
             ),
         )
         db.session.commit()
@@ -173,7 +174,7 @@ def test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged
             Species.query.filter_by(id=duck.id).delete()
             db.session.commit()
 
-    names = {row['name'] for row in rpt['in_catalog_not_in_classifier']}
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
     assert outside_name not in names
 
 
@@ -183,22 +184,22 @@ def test_alignment_species_with_video_not_in_model(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
     )
-    jay_name = 'Cyanocitta cristata (Blue Jay ALIGN_TEST_7e4b)'
+    jay_name = "Cyanocitta cristata (Blue Jay ALIGN_TEST_7e4b)"
     with app.app_context():
-        if not Species.query.filter_by(name='Parus major (Great Tit)').first():
-            db.session.add(Species(name='Parus major (Great Tit)'))
+        if not Species.query.filter_by(name="Parus major (Great Tit)").first():
+            db.session.add(Species(name="Parus major (Great Tit)"))
             db.session.commit()
         jay = Species(name=jay_name)
         db.session.add(jay)
         db.session.flush()
         v = Video(
-            processor_version='t',
+            processor_version="t",
             start_time=datetime.now(timezone.utc),
             end_time=datetime.now(timezone.utc),
-            video_path='align-test/7e4b.mp4',
+            video_path="align-test/7e4b.mp4",
         )
         db.session.add(v)
         db.session.flush()
@@ -208,7 +209,7 @@ def test_alignment_species_with_video_not_in_model(app, monkeypatch):
             start_time=0.0,
             end_time=1.0,
             confidence=0.9,
-            source='video',
+            source="video",
             track_id=1,
         )
         db.session.add(vs)
@@ -220,8 +221,8 @@ def test_alignment_species_with_video_not_in_model(app, monkeypatch):
             Video.query.filter_by(id=v.id).delete()
             Species.query.filter_by(id=jay.id).delete()
             db.session.commit()
-    assert rpt['in_catalog_not_in_classifier_count'] >= 1
-    names = {row['name'] for row in rpt['in_catalog_not_in_classifier']}
+    assert rpt["in_catalog_not_in_classifier_count"] >= 1
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
     assert jay_name in names
 
 
@@ -229,15 +230,15 @@ def test_alignment_does_not_treat_allowlist_only_species_as_classifier_match(app
     import services.species_dataset_alignment_service as mod
     from datetime import datetime, timezone
 
-    duck_name = 'Knob Billed Duck ALIGN_ALLOWLIST_ONLY'
+    duck_name = "Knob Billed Duck ALIGN_ALLOWLIST_ONLY"
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
     )
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_names',
+        "load_catalog_allowlist_names",
         lambda _get: [duck_name],
     )
 
@@ -246,10 +247,10 @@ def test_alignment_does_not_treat_allowlist_only_species_as_classifier_match(app
         db.session.add(duck)
         db.session.flush()
         video = Video(
-            processor_version='t',
+            processor_version="t",
             start_time=datetime.now(timezone.utc),
             end_time=datetime.now(timezone.utc),
-            video_path='align-test/allowlist-only.mp4',
+            video_path="align-test/allowlist-only.mp4",
         )
         db.session.add(video)
         db.session.flush()
@@ -260,7 +261,7 @@ def test_alignment_does_not_treat_allowlist_only_species_as_classifier_match(app
                 start_time=0.0,
                 end_time=1.0,
                 confidence=0.8,
-                source='video',
+                source="video",
             ),
         )
         db.session.commit()
@@ -275,7 +276,7 @@ def test_alignment_does_not_treat_allowlist_only_species_as_classifier_match(app
             Species.query.filter_by(id=duck.id).delete()
             db.session.commit()
 
-    names = {row['name'] for row in rpt['in_catalog_not_in_classifier']}
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
     assert duck_name in names
 
 
@@ -285,23 +286,23 @@ def test_alignment_ignores_service_species_not_in_classifier(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
     )
 
     with app.app_context():
-        rodent = Species.query.filter_by(name='Rodent').first()
+        rodent = Species.query.filter_by(name="Rodent").first()
         created_rodent = False
         if not rodent:
-            rodent = Species(name='Rodent')
+            rodent = Species(name="Rodent")
             db.session.add(rodent)
             db.session.flush()
             created_rodent = True
         video = Video(
-            processor_version='t',
+            processor_version="t",
             start_time=datetime.now(timezone.utc),
             end_time=datetime.now(timezone.utc),
-            video_path='align-test/rodent.mp4',
+            video_path="align-test/rodent.mp4",
         )
         db.session.add(video)
         db.session.flush()
@@ -312,7 +313,7 @@ def test_alignment_ignores_service_species_not_in_classifier(app, monkeypatch):
                 start_time=0.0,
                 end_time=1.0,
                 confidence=0.8,
-                source='video',
+                source="video",
             ),
         )
         db.session.commit()
@@ -325,8 +326,8 @@ def test_alignment_ignores_service_species_not_in_classifier(app, monkeypatch):
                 Species.query.filter_by(id=rodent.id).delete()
             db.session.commit()
 
-    names = {row['name'] for row in rpt['in_catalog_not_in_classifier']}
-    assert 'Rodent' not in names
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
+    assert "Rodent" not in names
 
 
 def test_alignment_ignores_service_dataset_folders(app, monkeypatch):
@@ -334,51 +335,51 @@ def test_alignment_ignores_service_dataset_folders(app, monkeypatch):
 
     monkeypatch.setattr(
         mod,
-        'load_classifier_labels_or_error',
-        lambda _path: (['Parus_major_(Great_Tit)'], None),
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
     )
     monkeypatch.setattr(
         mod,
-        '_dataset_split_class_names',
-        lambda _get: {'Rodent', 'Unknown'},
+        "_dataset_split_class_names",
+        lambda _get: {"Rodent", "Unknown"},
     )
 
     with app.app_context():
-        if not Species.query.filter_by(name='Rodent').first():
-            db.session.add(Species(name='Rodent'))
-        if not Species.query.filter_by(name='Unknown').first():
-            db.session.add(Species(name='Unknown'))
+        if not Species.query.filter_by(name="Rodent").first():
+            db.session.add(Species(name="Rodent"))
+        if not Species.query.filter_by(name="Unknown").first():
+            db.session.add(Species(name="Unknown"))
         db.session.commit()
         rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
 
-    assert rpt['dataset_folders_species_not_in_classifier_count'] == 0
-    assert rpt['dataset_folders_species_not_in_classifier'] == []
+    assert rpt["dataset_folders_species_not_in_classifier_count"] == 0
+    assert rpt["dataset_folders_species_not_in_classifier"] == []
 
 
 def test_dataset_split_class_names_uses_real_folders_only(tmp_path, monkeypatch):
     import services.species_dataset_alignment_service as mod
 
-    dataset_root = tmp_path / 'dataset' / 'train' / 'Observed Species'
+    dataset_root = tmp_path / "dataset" / "train" / "Observed Species"
     dataset_root.mkdir(parents=True)
-    monkeypatch.setattr(mod, 'data_dir', lambda: str(tmp_path))
+    monkeypatch.setattr(mod, "data_dir", lambda: str(tmp_path))
     monkeypatch.setattr(
         mod,
-        'load_catalog_allowlist_names',
-        lambda _get: ['Allowlist Only'],
+        "load_catalog_allowlist_names",
+        lambda _get: ["Allowlist Only"],
     )
 
     names = mod._dataset_split_class_names(app_config.get)
 
-    assert 'Observed Species' in names
-    assert 'Allowlist Only' not in names
+    assert "Observed Species" in names
+    assert "Allowlist Only" not in names
 
 
 def test_species_name_match_keys_include_dataset_sanitized_variant():
     from services.species_dataset_alignment_service import _species_name_match_keys
 
-    keys = _species_name_match_keys('Blue/Green Bird', {})
+    keys = _species_name_match_keys("Blue/Green Bird", {})
 
-    assert 'blue green bird' in keys
+    assert "blue green bird" in keys
 
 
 class TestClassifierDatasetAlignmentApi:
@@ -387,10 +388,10 @@ class TestClassifierDatasetAlignmentApi:
 
         monkeypatch.setattr(
             mod,
-            'load_classifier_labels_or_error',
-            lambda _path: (None, 'classifier weights not found'),
+            "load_classifier_labels_or_error",
+            lambda _path: (None, "classifier weights not found"),
         )
-        r = client.get('/api/ui/system/species-registry/classifier-dataset-alignment')
+        r = client.get("/api/ui/system/species-registry/classifier-dataset-alignment")
         assert r.status_code == 200
         body = r.get_json()
-        assert body.get('classifier_readable') is False
+        assert body.get("classifier_readable") is False

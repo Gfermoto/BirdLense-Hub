@@ -3,6 +3,7 @@
 
 Вынесено из ``ui_system_routes`` — меньше монолит, проще тесты.
 """
+
 from __future__ import annotations
 
 from app_config.app_config import app_config
@@ -31,10 +32,10 @@ def run_track_regen_with_precise_fallback(
 def derive_track_regen_species_scope(start_dt=None) -> list[str]:
     """Scope recovery: виды из БД + mapping."""
     names: set[str] = set()
-    mapping = app_config.get('detection.species_mapping') or {}
+    mapping = app_config.get("detection.species_mapping") or {}
     for value in mapping.values():
-        value = str(value or '').strip()
-        if value and value not in {'Unknown', 'Bird'}:
+        value = str(value or "").strip()
+        if value and value not in {"Unknown", "Bird"}:
             names.add(value)
 
     q = (
@@ -45,8 +46,8 @@ def derive_track_regen_species_scope(start_dt=None) -> list[str]:
     if start_dt is not None:
         q = q.filter(Video.start_time < start_dt)
     for (name,) in q.distinct().all():
-        name = str(name or '').strip()
-        if name and name not in {'Unknown', 'Bird'}:
+        name = str(name or "").strip()
+        if name and name not in {"Unknown", "Bird"}:
             names.add(name)
     return sorted(names)
 
@@ -56,17 +57,17 @@ def remap_detection_to_local_scope(
     local_scope_names_lc: set[str],
 ) -> dict:
     """Локальные виды оставить; прочие — Unknown (через resolve)."""
-    name = str(detection.get('species_name') or '').strip()
+    name = str(detection.get("species_name") or "").strip()
     if not name or not local_scope_names_lc:
         return detection
     if name.lower() in local_scope_names_lc:
         return detection
-    resolved = resolve_species_name(name, source='ingest')
+    resolved = resolve_species_name(name, source="ingest")
     if resolved.found and resolved.taxon:
-        common = str(resolved.taxon.common_name or '').strip().lower()
+        common = str(resolved.taxon.common_name or "").strip().lower()
         if common and common in local_scope_names_lc:
-            return {**detection, 'species_name': resolved.taxon.common_name}
-    return {**detection, 'species_name': 'Unknown'}
+            return {**detection, "species_name": resolved.taxon.common_name}
+    return {**detection, "species_name": "Unknown"}
 
 
 def summarize_track_regen_detections(detections: list[dict]) -> dict:
@@ -74,13 +75,13 @@ def summarize_track_regen_detections(detections: list[dict]) -> dict:
     reasons: dict[str, int] = {}
     with_frames = 0
     for d in detections:
-        r = str(d.get('decision_reason') or 'unknown')
+        r = str(d.get("decision_reason") or "unknown")
         reasons[r] = reasons.get(r, 0) + 1
-        if d.get('frames'):
+        if d.get("frames"):
             with_frames += 1
     return {
-        'track_count': len(detections),
-        'decision_reasons': reasons,
-        'detections_with_frames': with_frames,
-        'tracks_overlay_expected': with_frames > 0,
+        "track_count": len(detections),
+        "decision_reasons": reasons,
+        "detections_with_frames": with_frames,
+        "tracks_overlay_expected": with_frames > 0,
     }

@@ -2,6 +2,7 @@
 Frigate MQTT motion detector. Subscribes to frigate/events, triggers on bird/motion.
 FrigateMotionFromAggregator — один MQTT (через aggregator), без второго подключения.
 """
+
 import json
 import logging
 import os

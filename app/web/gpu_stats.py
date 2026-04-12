@@ -3,6 +3,7 @@ Intel GPU utilization — по образцу Frigate NVR.
 1) intel_gpu_top -J (работает на Gen 1–11)
 2) Fallback: DRM fdinfo (/proc/PID/fdinfo) для Gen 12+ (Alder Lake-N и новее)
 """
+
 import json
 import logging
 import os
@@ -72,6 +73,7 @@ def _intel_gpu_top() -> float | None:
 def _fdinfo_snapshot() -> tuple[int, int, int, str] | None:
     """Читает суммарные drm-engine-render и drm-engine-video из /proc/*/fdinfo."""
     import time
+
     total_r, total_v = 0, 0
     driver = ""
     seen_pids = set()

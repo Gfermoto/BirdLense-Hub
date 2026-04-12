@@ -1,4 +1,5 @@
 """Хранилище записей: stats, nearest day, purge (#265)."""
+
 from __future__ import annotations
 
 import os
@@ -19,9 +20,9 @@ from util import recordings_dir
 def register_ui_system_storage_routes(app):
     """Маршруты ``/api/ui/storage/*``."""
 
-    @app.route('/api/ui/storage/stats', methods=['GET'])
+    @app.route("/api/ui/storage/stats", methods=["GET"])
     def get_storage_stats():
-        sck = 'storage_stats:v1'
+        sck = "storage_stats:v1"
         hit, sc = cache_get(sck)
         if hit:
             return sc, 200
@@ -33,14 +34,14 @@ def register_ui_system_storage_routes(app):
         cache_set(sck, stats, _CACHE_STORAGE_STATS_SEC)
         return stats, 200
 
-    @app.route('/api/ui/storage/nearest-recording-day', methods=['GET'])
+    @app.route("/api/ui/storage/nearest-recording-day", methods=["GET"])
     def get_nearest_recording_day():
-        raw_date = (request.args.get('date') or '').strip()
-        direction = (request.args.get('direction') or 'next').strip().lower()
+        raw_date = (request.args.get("date") or "").strip()
+        direction = (request.args.get("direction") or "next").strip().lower()
         body, code = nearest_recording_day_response(raw_date, direction)
         return body, code
 
-    @app.route('/api/ui/storage/purge', methods=['POST'])
+    @app.route("/api/ui/storage/purge", methods=["POST"])
     @require_ui_settings_password
     def purge_storage():
         data = request.json or {}

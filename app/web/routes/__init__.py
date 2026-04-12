@@ -1,4 +1,5 @@
 """Регистрация всех HTTP-маршрутов Hub (единая точка вызова из create_app, #292)."""
+
 from __future__ import annotations
 
 from flask import Flask

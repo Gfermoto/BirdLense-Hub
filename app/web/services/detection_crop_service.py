@@ -1,4 +1,5 @@
 """Extract a single frame from video for iNaturalist export."""
+
 import logging
 import os
 import re
@@ -9,12 +10,12 @@ logger = logging.getLogger(__name__)
 INATURALIST_UPLOAD_URL = "https://www.inaturalist.org/observations/upload"
 
 # Path traversal: only allow DB format data/recordings/YYYY/MM/DD/timestamp/video.mp4
-VIDEO_PATH_SAFE_RE = re.compile(r'^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$')
+VIDEO_PATH_SAFE_RE = re.compile(r"^data/recordings/\d{4}/\d{2}/\d{2}/[\d\-:]+/video\.mp4$")
 
 
 def _safe_filename(name: str) -> str:
     """Replace unsafe chars for filename."""
-    return re.sub(r'[^\w\s\-\(\)]', '_', name).strip().replace(' ', '_')
+    return re.sub(r"[^\w\s\-\(\)]", "_", name).strip().replace(" ", "_")
 
 
 def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
@@ -28,6 +29,7 @@ def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
         logger.warning("Rejected invalid video_path format")
         return None
     from util import full_path_for_video
+
     full_path = full_path_for_video(video_path)
     if not full_path or not os.path.isfile(full_path):
         logger.warning(f"Video not found: {full_path}")
@@ -35,12 +37,21 @@ def extract_detection_frame(video_path: str, offset_sec: float) -> bytes | None:
     try:
         # -ss before -i: fast seek (no full decode)
         cmd = [
-            'ffmpeg', '-y', '-loglevel', 'error',
-            '-ss', str(offset_sec),
-            '-i', full_path,
-            '-vframes', '1',
-            '-q:v', '2',
-            '-f', 'image2', 'pipe:1'
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-ss",
+            str(offset_sec),
+            "-i",
+            full_path,
+            "-vframes",
+            "1",
+            "-q:v",
+            "2",
+            "-f",
+            "image2",
+            "pipe:1",
         ]
         result = subprocess.run(cmd, capture_output=True, timeout=15)
         if result.returncode != 0:
@@ -65,28 +76,27 @@ def _bbox_for_offset(frames_json: str | None, offset_sec: float) -> list[float] 
         return None
     try:
         import json
+
         frames = json.loads(frames_json)
         if not frames or not isinstance(frames, list):
             return None
         # Find frame with t closest to offset_sec
         best = None
-        best_diff = float('inf')
+        best_diff = float("inf")
         for f in frames:
-            if not isinstance(f, dict) or 'bbox' not in f:
+            if not isinstance(f, dict) or "bbox" not in f:
                 continue
-            t = f.get('t', 0)
+            t = f.get("t", 0)
             diff = abs(t - offset_sec)
             if diff < best_diff:
                 best_diff = diff
-                best = f.get('bbox')
+                best = f.get("bbox")
         return best if best and len(best) == 4 else None
     except (json.JSONDecodeError, TypeError):
         return None
 
 
-def extract_detection_frame_cropped(
-    video_path: str, offset_sec: float, bbox_norm: list[float] | None
-) -> bytes | None:
+def extract_detection_frame_cropped(video_path: str, offset_sec: float, bbox_norm: list[float] | None) -> bytes | None:
     """
     Extract frame and crop by normalized bbox [x1,y1,x2,y2] (0–1).
     If bbox_norm is None or invalid, returns None (never full frame — dataset must contain only crops).
@@ -97,6 +107,7 @@ def extract_detection_frame_cropped(
     try:
         import cv2
         import numpy as np
+
         arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
@@ -111,7 +122,7 @@ def extract_detection_frame_cropped(
         if x2 <= x1 or y2 <= y1:
             return None
         crop = img[y1:y2, x1:x2]
-        ok, buf = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 95])
         return buf.tobytes() if ok and buf is not None else None
     except Exception as e:
         logger.warning("Crop failed, skipping (no full-frame fallback): %s", e)
@@ -136,9 +147,10 @@ def crop_filename(species_name: str, start_time_str: str) -> str:
     safe_name = _safe_filename(species_name)
     try:
         from datetime import datetime
-        dt = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
-        date_part = dt.strftime('%Y-%m-%d')
-        time_part = dt.strftime('%H%M%S')
+
+        dt = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+        date_part = dt.strftime("%Y-%m-%d")
+        time_part = dt.strftime("%H%M%S")
         return f"{safe_name}_{date_part}_{time_part}.jpg"
     except Exception:
         return f"{safe_name}.jpg"

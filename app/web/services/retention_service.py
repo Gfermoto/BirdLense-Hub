@@ -1,6 +1,7 @@
 """
 Retention policy: delete old recordings and DB records.
 """
+
 import logging
 import os
 import shutil
@@ -46,7 +47,7 @@ def _get_recordings_size_gb():
                 total += os.path.getsize(os.path.join(root, f))
             except OSError:
                 pass
-    return total / (1024 ** 3)
+    return total / (1024**3)
 
 
 def run_retention():

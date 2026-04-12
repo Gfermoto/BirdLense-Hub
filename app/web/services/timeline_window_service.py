@@ -1,4 +1,5 @@
 """Парсинг окна дат/времени для /api/ui/timeline и export (#293)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,12 +28,12 @@ def resolve_timeline_utc_window(
                 hour=hour_param,
             )
         except ValueError as exc:
-            raise TimelineWindowError('Invalid local date range parameters') from exc
+            raise TimelineWindowError("Invalid local date range parameters") from exc
     if not start_time or not end_time:
-        raise TimelineWindowError('Both start_time and end_time are required')
+        raise TimelineWindowError("Both start_time and end_time are required")
     try:
         start_dt = parse_utc_timestamp(start_time)
         end_dt = parse_utc_timestamp(end_time)
     except ValueError as exc:
-        raise TimelineWindowError('Invalid datetime format') from exc
+        raise TimelineWindowError("Invalid datetime format") from exc
     return start_dt, end_dt

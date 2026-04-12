@@ -1,4 +1,5 @@
 """Gallery opt-in upload (#80): background thread must use Flask app context."""
+
 from datetime import datetime, timezone
 
 
@@ -23,7 +24,7 @@ class TestGalleryUploadThread:
 
         monkeypatch.setattr(
             processor_routes,
-            'upload_video_detections_to_gallery',
+            "upload_video_detections_to_gallery",
             spy,
         )
         processor_routes._run_gallery_upload_thread(mini, 42)
@@ -43,24 +44,24 @@ class TestGalleryUploadService:
         def fake_post(url, files=None, data=None, timeout=None):
             class R:
                 status_code = 200
-                text = 'ok'
+                text = "ok"
 
-            posts.append({'url': url, 'files': files, 'data': dict(data or {})})
+            posts.append({"url": url, "files": files, "data": dict(data or {})})
             return R()
 
         monkeypatch.setattr(
-            'services.gallery_upload_service.requests.post',
+            "services.gallery_upload_service.requests.post",
             fake_post,
         )
         monkeypatch.setattr(
-            'services.gallery_upload_service.extract_detection_frame_cropped_or_full',
-            lambda *a, **k: b'\xff\xd8\xff\xd9',
+            "services.gallery_upload_service.extract_detection_frame_cropped_or_full",
+            lambda *a, **k: b"\xff\xd8\xff\xd9",
         )
 
         overrides = {
-            'gallery.upload_url': 'http://gallery.example/upload',
-            'secrets.latitude': '55.0',
-            'secrets.longitude': '37.0',
+            "gallery.upload_url": "http://gallery.example/upload",
+            "secrets.latitude": "55.0",
+            "secrets.longitude": "37.0",
         }
 
         def get_cfg(key, default=None):
@@ -69,7 +70,7 @@ class TestGalleryUploadService:
             return real_config.get(key, default)
 
         monkeypatch.setattr(
-            'services.gallery_upload_service.app_config.get',
+            "services.gallery_upload_service.app_config.get",
             get_cfg,
         )
 
@@ -77,23 +78,23 @@ class TestGalleryUploadService:
         video = SimpleNamespace(
             id=7,
             start_time=st,
-            video_path='data/recordings/2025/06/01/120000/video.mp4',
+            video_path="data/recordings/2025/06/01/120000/video.mp4",
         )
         vs = SimpleNamespace(
             id=99,
-            source='video',
+            source="video",
             frames='[{"t": 0.5, "bbox": [0.1, 0.2, 0.8, 0.9]}]',
             start_time=0.0,
             end_time=1.0,
             confidence=0.95,
         )
-        ok = _upload_video_species_to_gallery(vs, video, 'GalleryUploadBird')
+        ok = _upload_video_species_to_gallery(vs, video, "GalleryUploadBird")
         assert ok is True
         assert len(posts) == 1
-        assert posts[0]['url'] == 'http://gallery.example/upload'
-        assert posts[0]['data']['species'] == 'GalleryUploadBird'
-        assert posts[0]['data']['detection_id'] == '99'
-        assert posts[0]['data']['video_id'] == '7'
-        assert posts[0]['data']['latitude'] == '55.0'
-        assert posts[0]['data']['longitude'] == '37.0'
-        assert 'image' in posts[0]['files']
+        assert posts[0]["url"] == "http://gallery.example/upload"
+        assert posts[0]["data"]["species"] == "GalleryUploadBird"
+        assert posts[0]["data"]["detection_id"] == "99"
+        assert posts[0]["data"]["video_id"] == "7"
+        assert posts[0]["data"]["latitude"] == "55.0"
+        assert posts[0]["data"]["longitude"] == "37.0"
+        assert "image" in posts[0]["files"]

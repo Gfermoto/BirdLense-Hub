@@ -47,39 +47,39 @@ def seed_species_registry() -> tuple[dict, int]:
     try:
         stats = ensure_species_registry_seeded()
         _bust_registry_caches()
-        return {'ok': True, **stats}, 200
+        return {"ok": True, **stats}, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Seed species registry failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Seed species registry failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def run_species_registry_backfill(payload: dict) -> tuple[dict, int]:
     try:
-        dry_run = bool(payload.get('dry_run', True))
-        limit = payload.get('limit')
+        dry_run = bool(payload.get("dry_run", True))
+        limit = payload.get("limit")
         if limit is not None:
             try:
                 limit = int(limit)
             except (ValueError, TypeError):
-                return {'error': 'limit must be int'}, 400
+                return {"error": "limit must be int"}, 400
         stats = backfill_species_taxa(dry_run=dry_run, limit=limit)
         if not dry_run:
             _bust_registry_caches()
-        return {'ok': True, **stats}, 200
+        return {"ok": True, **stats}, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Species registry backfill failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Species registry backfill failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def get_unresolved_species_report(limit: int) -> tuple[dict, int]:
     try:
         items = unresolved_species_report(limit=limit)
-        return {'items': items, 'count': len(items)}, 200
+        return {"items": items, "count": len(items)}, 200
     except Exception as e:
-        _log.exception('Unresolved species report failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Unresolved species report failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def parse_unresolved_limit(raw: str | None) -> int:
@@ -93,25 +93,27 @@ def parse_unresolved_limit(raw: str | None) -> int:
 
 def start_metadata_enrichment(flask_app: Flask, payload: dict) -> tuple[dict, int]:
     with job_state._species_metadata_lock:
-        if job_state._species_metadata_status.get('status') == 'running':
+        if job_state._species_metadata_status.get("status") == "running":
             return {
-                'error': 'Enrichment already running',
-                'status': job_state._species_metadata_status,
+                "error": "Enrichment already running",
+                "status": job_state._species_metadata_status,
             }, 409
         try:
-            limit = int(payload.get('limit', 300))
+            limit = int(payload.get("limit", 300))
         except (ValueError, TypeError):
-            return {'error': 'limit must be int'}, 400
-        retry_failed_only = bool(payload.get('retry_failed_only', False))
-        job_state._species_metadata_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': {
-                'limit': limit,
-                'retry_failed_only': retry_failed_only,
-            },
-        })
+            return {"error": "limit must be int"}, 400
+        retry_failed_only = bool(payload.get("retry_failed_only", False))
+        job_state._species_metadata_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": {
+                    "limit": limit,
+                    "retry_failed_only": retry_failed_only,
+                },
+            }
+        )
 
         def _run() -> None:
             try:
@@ -122,23 +124,27 @@ def start_metadata_enrichment(flask_app: Flask, payload: dict) -> tuple[dict, in
                         retry_failed_only=retry_failed_only,
                     )
                 with job_state._species_metadata_lock:
-                    job_state._species_metadata_status.update({
-                        'status': 'done',
-                        'result': stats,
-                        'error': None,
-                    })
+                    job_state._species_metadata_status.update(
+                        {
+                            "status": "done",
+                            "result": stats,
+                            "error": None,
+                        }
+                    )
             except Exception as e:
                 with job_state._species_metadata_lock:
-                    job_state._species_metadata_status.update({
-                        'status': 'error',
-                        'result': None,
-                        'error': str(e),
-                    })
+                    job_state._species_metadata_status.update(
+                        {
+                            "status": "error",
+                            "result": None,
+                            "error": str(e),
+                        }
+                    )
 
         threading.Thread(target=_run, daemon=True).start()
         return {
-            'message': 'Species metadata enrichment started',
-            'status': job_state._species_metadata_status,
+            "message": "Species metadata enrichment started",
+            "status": job_state._species_metadata_status,
         }, 202
 
 
@@ -151,17 +157,17 @@ def get_species_registry_health_body() -> tuple[dict, int]:
     try:
         return species_registry_health(), 200
     except Exception as e:
-        _log.exception('Species registry health failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Species registry health failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def materialize_allowlist_species(payload: dict) -> tuple[dict, int]:
-    dry_run = bool(payload.get('dry_run', False))
-    fill_metadata = bool(payload.get('fill_metadata', True))
+    dry_run = bool(payload.get("dry_run", False))
+    fill_metadata = bool(payload.get("fill_metadata", True))
     try:
-        limit = int(payload.get('limit', 5000))
+        limit = int(payload.get("limit", 5000))
     except (TypeError, ValueError):
-        return {'error': 'limit must be int'}, 400
+        return {"error": "limit must be int"}, 400
     try:
         body = ensure_allowlist_species_materialized(
             app_config.get,
@@ -173,31 +179,33 @@ def materialize_allowlist_species(payload: dict) -> tuple[dict, int]:
         return body, 200
     except Exception as e:
         db.session.rollback()
-        _log.exception('Materialize allowlist failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Materialize allowlist failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def start_repair_catalog_cards(flask_app: Flask, payload: dict) -> tuple[dict, int]:
     with job_state._catalog_cards_lock:
-        if job_state._catalog_cards_status.get('status') == 'running':
+        if job_state._catalog_cards_status.get("status") == "running":
             return {
-                'error': 'Repair already running',
-                'status': job_state._catalog_cards_status,
+                "error": "Repair already running",
+                "status": job_state._catalog_cards_status,
             }, 409
         try:
-            limit = int(payload.get('limit', 6000))
+            limit = int(payload.get("limit", 6000))
         except (TypeError, ValueError):
-            return {'error': 'limit must be int'}, 400
+            return {"error": "limit must be int"}, 400
         cov_before = catalog_cards_coverage_snapshot(app_config.get)
-        job_state._catalog_cards_status.update({
-            'status': 'running',
-            'result': None,
-            'error': None,
-            'progress': {
-                'limit': limit,
-                'coverage_before': cov_before,
-            },
-        })
+        job_state._catalog_cards_status.update(
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "progress": {
+                    "limit": limit,
+                    "coverage_before": cov_before,
+                },
+            }
+        )
 
         def _run() -> None:
             try:
@@ -209,32 +217,36 @@ def start_repair_catalog_cards(flask_app: Flask, payload: dict) -> tuple[dict, i
                     )
                     cov_after = catalog_cards_coverage_snapshot(app_config.get)
                 with job_state._catalog_cards_lock:
-                    merged = {**result, 'coverage_after': cov_after}
-                    job_state._catalog_cards_status.update({
-                        'status': 'done',
-                        'result': merged,
-                        'error': None,
-                    })
+                    merged = {**result, "coverage_after": cov_after}
+                    job_state._catalog_cards_status.update(
+                        {
+                            "status": "done",
+                            "result": merged,
+                            "error": None,
+                        }
+                    )
             except Exception as e:
                 with job_state._catalog_cards_lock:
-                    job_state._catalog_cards_status.update({
-                        'status': 'error',
-                        'result': None,
-                        'error': str(e),
-                    })
+                    job_state._catalog_cards_status.update(
+                        {
+                            "status": "error",
+                            "result": None,
+                            "error": str(e),
+                        }
+                    )
 
         threading.Thread(target=_run, daemon=True).start()
         return {
-            'message': 'Catalog cards repair started',
-            'status': job_state._catalog_cards_status,
+            "message": "Catalog cards repair started",
+            "status": job_state._catalog_cards_status,
         }, 202
 
 
 def repair_catalog_cards_status_snapshot() -> dict:
     with job_state._catalog_cards_lock:
         snap = dict(job_state._catalog_cards_status)
-    snap['coverage_now'] = catalog_cards_coverage_snapshot(app_config.get)
-    snap['schedule'] = catalog_cards_schedule_state()
+    snap["coverage_now"] = catalog_cards_coverage_snapshot(app_config.get)
+    snap["schedule"] = catalog_cards_schedule_state()
     return snap
 
 
@@ -249,8 +261,8 @@ def species_data_quality_report(duplicate_limit: int) -> tuple[dict, int]:
         )
         return body, 200
     except Exception as e:
-        _log.exception('Species data quality report failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Species data quality report failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def classifier_dataset_alignment_report(
@@ -272,8 +284,8 @@ def classifier_dataset_alignment_report(
         )
         return body, 200
     except Exception as e:
-        _log.exception('Classifier/dataset alignment report failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Classifier/dataset alignment report failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def catalog_coverage_metrics_body() -> tuple[dict, int]:
@@ -285,33 +297,29 @@ def catalog_coverage_metrics_body() -> tuple[dict, int]:
         body = build_catalog_coverage_metrics(db.session, app_config.get)
         return body, 200
     except Exception as e:
-        _log.exception('Catalog coverage metrics failed: %s', e)
-        return {'error': str(e)}, 500
+        _log.exception("Catalog coverage metrics failed: %s", e)
+        return {"error": str(e)}, 500
 
 
 def export_tuning_targets(fmt: str) -> tuple[dict | Response, int]:
     ids = get_tuning_target_ids()
     rows = Species.query.filter(Species.id.in_(ids)).all() if ids else []
     by_id = {s.id: s for s in rows}
-    body_rows = [
-        {'id': sid, 'name': by_id[sid].name}
-        for sid in ids
-        if sid in by_id
-    ]
-    if fmt == 'csv':
+    body_rows = [{"id": sid, "name": by_id[sid].name} for sid in ids if sid in by_id]
+    if fmt == "csv":
         buf = io.StringIO()
         wr = csv.writer(buf)
-        wr.writerow(['species_id', 'species_name'])
+        wr.writerow(["species_id", "species_name"])
         for r in body_rows:
-            wr.writerow([r['id'], r['name']])
+            wr.writerow([r["id"], r["name"]])
         disp = 'attachment; filename="birdlense_tuning_targets.csv"'
         return Response(
             buf.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': disp},
+            mimetype="text/csv",
+            headers={"Content-Disposition": disp},
         ), 200
-    return {'count': len(body_rows), 'targets': body_rows}, 200
+    return {"count": len(body_rows), "targets": body_rows}, 200
 
 
 def normalize_export_format(raw: str | None) -> str:
-    return (raw or 'json').strip().lower()
+    return (raw or "json").strip().lower()

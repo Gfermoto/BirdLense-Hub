@@ -1,4 +1,5 @@
 """Merge species_confidence_overrides with eBird regional top (#128)."""
+
 from __future__ import annotations
 
 import logging
@@ -17,7 +18,7 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     Auto threshold = max(floor, min_confidence_to_process - delta), clamped to
     (0.01, 0.99).
     """
-    raw_manual = app_config.get('processor.species_confidence_overrides') or {}
+    raw_manual = app_config.get("processor.species_confidence_overrides") or {}
     manual: dict[str, float] = {}
     if isinstance(raw_manual, dict):
         for k, v in raw_manual.items():
@@ -30,34 +31,24 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
             if 0.0 <= fv <= 1.0:
                 manual[str(k).strip()] = fv
 
-    auto = app_config.get('processor.ebird_regional_top_auto_confidence', True)
+    auto = app_config.get("processor.ebird_regional_top_auto_confidence", True)
     if not auto:
         return manual
 
-    api_key = (app_config.get('secrets.ebird_api_key') or '').strip()
+    api_key = (app_config.get("secrets.ebird_api_key") or "").strip()
     if not api_key:
         return manual
 
     try:
-        base = float(
-            app_config.get('processor.min_confidence_to_process', 0.3)
-        )
+        base = float(app_config.get("processor.min_confidence_to_process", 0.3))
     except (TypeError, ValueError):
         base = 0.3
     try:
-        delta = float(
-            app_config.get(
-                'processor.ebird_regional_top_confidence_delta', 0.05
-            )
-        )
+        delta = float(app_config.get("processor.ebird_regional_top_confidence_delta", 0.05))
     except (TypeError, ValueError):
         delta = 0.05
     try:
-        floor_v = float(
-            app_config.get(
-                'processor.ebird_regional_top_confidence_floor', 0.05
-            )
-        )
+        floor_v = float(app_config.get("processor.ebird_regional_top_confidence_floor", 0.05))
     except (TypeError, ValueError):
         floor_v = 0.05
 
@@ -75,8 +66,7 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
         )
     except ImportError as e:
         logger.warning(
-            'eBird regional auto-confidence: import failed (%s). '
-            'Ensure PYTHONPATH includes /app (ebird_region_core).',
+            "eBird regional auto-confidence: import failed (%s). Ensure PYTHONPATH includes /app (ebird_region_core).",
             e,
         )
         return manual
@@ -85,9 +75,7 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     try:
         top = get_region_top_species_cached(api_key, region)
     except Exception as e:
-        logger.warning(
-            'eBird regional auto-confidence: top list failed: %s', e
-        )
+        logger.warning("eBird regional auto-confidence: top list failed: %s", e)
         return manual
 
     if not top:
@@ -96,10 +84,10 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
     out = dict(manual)
     added = 0
     for raw in top:
-        ebird = (raw or '').strip()
+        ebird = (raw or "").strip()
         if not ebird:
             continue
-        bl = (ebird_common_to_birdlense_name(ebird) or '').strip()
+        bl = (ebird_common_to_birdlense_name(ebird) or "").strip()
         if not bl:
             continue
         if bl in out:
@@ -109,8 +97,8 @@ def merge_species_confidence_overrides_with_ebird_top(app_config) -> dict[str, f
 
     if added:
         logger.info(
-            'eBird regional auto-confidence: region=%s +%d species @ %.3f '
-            '(base=%.3f delta=%.3f floor=%.3f; manual keys preserved)',
+            "eBird regional auto-confidence: region=%s +%d species @ %.3f "
+            "(base=%.3f delta=%.3f floor=%.3f; manual keys preserved)",
             region,
             added,
             auto_val,
