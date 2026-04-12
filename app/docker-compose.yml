@@ -17,8 +17,9 @@ services:
 
   birdlense:
     build:
-      context: .
-      dockerfile: Dockerfile
+      # Контекст — корень репозитория: в образ попадает scripts/export_fusion_training_data.py (fusion export).
+      context: ..
+      dockerfile: app/Dockerfile
     container_name: birdlense
     depends_on:
       redis:

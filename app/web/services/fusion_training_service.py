@@ -19,7 +19,11 @@ from models import ActivityLog, VideoSpecies, db
 
 
 def repo_root() -> Path:
-    """Найти корень репо по наличию scripts/export_fusion_training_data.py."""
+    """Найти корень репо по наличию scripts/export_fusion_training_data.py.
+
+    В образе birdlense скрипт лежит в /app/scripts/ (сборка с контекстом корня репозитория).
+    При локальном pytest с монтированием репозитория в /workspace срабатывает fallback на /workspace.
+    """
     current = Path(__file__).resolve()
     candidates: list[Path] = []
     candidates.extend(current.parents)

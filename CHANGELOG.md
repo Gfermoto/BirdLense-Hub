@@ -26,6 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Docker / fusion export:** контекст сборки `birdlense` — **корень репозитория** (`docker-compose`: `context: ..`, `dockerfile: app/Dockerfile`); в образ копируется **`scripts/export_fusion_training_data.py`**, `repo_root()` и E2E/тесты без монтирования `..:/workspace` не ломаются.
+
+- **Тесты без пропусков:** `test_settings_with_mcp_token` задаёт временный `mcp.token`; `test_regional_scope_true_for_birdnet_detection` создаёт и удаляет вид в БД; `test_detection_strategy` не подменяет `ultralytics`, если пакет установлен (интеграции YOLO в Docker); Playwright smoke — пустой Overview без `test.skip`.
+
 - **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.
 
 - **Docker / nginx (non-root):** каталог **`/var/log/nginx`** в образе принадлежит **`birdlense`**; **`error_log`** / **`access_log`** указывают туда же — без alert «could not open … /var/log/nginx/error.log» при старте. Кэши **`app/.ruff_cache`** и **`app/.pytest_cache`** в **`.gitignore`**. См. [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md).

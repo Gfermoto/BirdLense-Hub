@@ -48,6 +48,7 @@ export const SpeciesDistributionChart: React.FC<
   if (pieData.length === 0) {
     return (
       <Box
+        data-testid="overview-species-chart-empty"
         sx={{
           height: '100%',
           display: 'flex',
