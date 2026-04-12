@@ -170,6 +170,8 @@
     "contributorPassword": "Contributor password",
     "contributorPasswordPlaceholder": "Empty — single password for all",
     "contributorPasswordHint": "Species correction, reports, iNaturalist. No access to feed or settings.",
+    "sessionIdleMinutes": "Session idle timeout (minutes)",
+    "sessionIdleMinutesHint": "After this many minutes without API activity, the login session ends. 0 disables the timeout. Default 30. Admin-only when a contributor password is configured.",
     "yamlBackupTitle": "Configuration export (YAML)",
     "yamlBackupDesc": "Safe export masks secrets (***). Full YAML includes secrets for backup/restore (administrators only). Import merges into user_config.yaml and creates .bak; restart processor if needed.",
     "yamlBackupDescSafeOnly": "Download without secrets: keys and passwords appear as placeholders (***). Use when you need to share the config shape without leaking credentials.",

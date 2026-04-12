@@ -103,6 +103,20 @@ def test_normalize_contributor_skips_strip_without_tier(monkeypatch):
     assert out["general"]["donate_url"] == "https://example.test"
 
 
+def test_strip_contributor_admin_only_removes_session_idle_minutes():
+    from app_config.app_config import app_config
+
+    updates = {
+        "general": {
+            "session_idle_minutes": 999,
+            "donate_url": "https://example.test/strip-idle",
+        },
+    }
+    out = app_config.strip_contributor_admin_only_updates(updates)
+    assert "session_idle_minutes" not in out.get("general", {})
+    assert out["general"]["donate_url"] == "https://example.test/strip-idle"
+
+
 def test_apply_merge_updates_donate_url(app, monkeypatch, _noop_caches):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request

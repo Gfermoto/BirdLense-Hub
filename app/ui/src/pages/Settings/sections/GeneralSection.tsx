@@ -541,6 +541,28 @@ export function GeneralSection({
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="general.session_idle_minutes">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 10080, step: 1 }}
+                      value={field.state.value ?? 30}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const n = raw === '' ? 0 : Number(raw);
+                        const clamped = Number.isFinite(n)
+                          ? Math.max(0, Math.min(10080, Math.trunc(n)))
+                          : 30;
+                        field.handleChange(clamped);
+                      }}
+                      label={t('settings.sessionIdleMinutes')}
+                      helperText={t('settings.sessionIdleMinutesHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
             </Grid>
           </Box>
         </AccordionDetails>

@@ -39,6 +39,7 @@ SENSITIVE_KEYS = frozenset({
 CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS = frozenset({
     'general.settings_password',
     'general.contributor_password',
+    'general.session_idle_minutes',
     'mcp.token',
 })
 MASK_PLACEHOLDER = '***'

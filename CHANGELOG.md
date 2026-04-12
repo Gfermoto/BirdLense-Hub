@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.
+
 - **Docker / nginx (non-root):** каталог **`/var/log/nginx`** в образе принадлежит **`birdlense`**; **`error_log`** / **`access_log`** указывают туда же — без alert «could not open … /var/log/nginx/error.log» при старте. Кэши **`app/.ruff_cache`** и **`app/.pytest_cache`** в **`.gitignore`**. См. [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md).
 
 ### Changed
