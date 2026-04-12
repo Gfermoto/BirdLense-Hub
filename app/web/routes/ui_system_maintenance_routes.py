@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import request
 
 from routes.http_guards import require_ui_settings_password
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.system_maintenance_service import (
     post_clean_orphaned_visits,
     post_merge_duplicate_species,
@@ -36,7 +37,9 @@ def register_ui_system_maintenance_routes(app):
         VideoSpecies.species_id с visit.species_id. Исправляет некорректные счётчики
         в календаре миграций и каталоге после старых коррекций.
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = post_clean_orphaned_visits(payload)
         return body, code
 
@@ -44,7 +47,9 @@ def register_ui_system_maintenance_routes(app):
     @require_ui_settings_password
     def realign_visit_times():
         """Preview/apply SpeciesVisit time realignment from actual detection timestamps."""
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = post_realign_visit_times(payload)
         return body, code
 
@@ -52,7 +57,9 @@ def register_ui_system_maintenance_routes(app):
     @require_ui_settings_password
     def split_large_gap_visits():
         """Preview/apply splitting of visits with large internal detection gaps."""
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = post_split_large_gap_visits(payload)
         return body, code
 
@@ -82,6 +89,8 @@ def register_ui_system_maintenance_routes(app):
 
         Allowlist: species.catalog_allowlist_file → scripts/datasets/dump_classifier_allowlist.py
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = post_species_catalog_reconcile(payload)
         return body, code

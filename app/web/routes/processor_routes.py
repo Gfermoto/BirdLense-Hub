@@ -15,6 +15,11 @@ from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
+from services.api_json_validation import (
+    parse_request_json_array_allow_empty,
+    parse_request_json_dict,
+    parse_request_json_object_allow_empty,
+)
 from services.http_response_cache import bust_response_caches
 import requests
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
@@ -150,7 +155,9 @@ def register_routes(app):
     def create_video():
         if not _check_processor_secret():
             return {"error": "Forbidden"}, 403
-        data = request.json
+        data, perr = parse_request_json_dict(request)
+        if perr is not None:
+            return perr, 400
         if not data:
             return {"error": "JSON body required"}, 400
         try:
@@ -259,9 +266,9 @@ def register_routes(app):
         """Set which species are active (from YOLO regional list or config)."""
         if not _check_processor_secret():
             return {"error": "Forbidden"}, 403
-        active_names = request.json or []
-        if not isinstance(active_names, list):
-            return {"error": "active_names must be a list"}, 400
+        active_names, perr = parse_request_json_array_allow_empty(request)
+        if perr is not None:
+            return perr, 400
         if len(active_names) > 500:
             return {"error": "Too many species (max 500)"}, 400
         for name in active_names:
@@ -286,7 +293,9 @@ def register_routes(app):
     def notify_detections_route():
         if not _check_processor_secret():
             return {"error": "Forbidden"}, 403
-        data = request.json or {}
+        data, perr = parse_request_json_object_allow_empty(request)
+        if perr is not None:
+            return perr, 400
         detection = data.get("detection")
         image_path = data.get("image_path")
         image_base64 = data.get("image_base64")
@@ -424,7 +433,9 @@ def register_routes(app):
             app.logger.warning("activity_log: 403 Forbidden (PROCESSOR_SECRET mismatch)")
             return {"error": "Forbidden"}, 403
         try:
-            data = request.json or {}
+            data, perr = parse_request_json_object_allow_empty(request)
+            if perr is not None:
+                return perr, 400
             activity_type = data.get("type")
             raw_data = data.get("data")
             activity_data = json.dumps(raw_data) if raw_data is not None else "{}"

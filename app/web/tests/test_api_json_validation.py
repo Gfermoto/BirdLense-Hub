@@ -53,6 +53,25 @@ def test_parse_request_json_object_allow_empty_unit():
         assert "_body" in err["fields"]
 
 
+def test_parse_request_json_array_allow_empty_unit():
+    from flask import Flask, request
+    from services.api_json_validation import parse_request_json_array_allow_empty
+
+    app = Flask(__name__)
+    with app.test_request_context("/x", method="POST", data="", content_type="application/json"):
+        d, err = parse_request_json_array_allow_empty(request)
+        assert d == []
+        assert err is None
+
+    with app.test_request_context("/x", method="POST", data="{}", content_type="application/json"):
+        d, err = parse_request_json_array_allow_empty(request)
+        assert d is None
+        assert "_body" in err["fields"]
+
+
+PROC_JSON_BODY = "pytest-proc-json-body-val"
+
+
 def test_verify_password_rejects_non_object_json(client):
     r = client.post("/api/ui/settings/verify-password", json=[1, 2])
     assert r.status_code == 400
@@ -188,3 +207,45 @@ def test_purge_storage_date_must_be_string(client, monkeypatch):
     finally:
         app_config.set("general.settings_password", old_admin)
         app_config.set("general.contributor_password", old_contrib)
+
+
+def _processor_secret_json(monkeypatch):
+    monkeypatch.setenv("PROCESSOR_SECRET", PROC_JSON_BODY)
+    monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
+    monkeypatch.setenv("FLASK_ENV", "testing")
+
+
+def test_processor_videos_rejects_broken_json(client, monkeypatch):
+    _processor_secret_json(monkeypatch)
+    r = client.post(
+        "/api/processor/videos",
+        data="not{",
+        content_type="application/json",
+        headers={"X-Processor-Token": PROC_JSON_BODY},
+    )
+    assert r.status_code == 400
+    assert r.get_json()["fields"]["_body"]
+
+
+def test_processor_videos_rejects_json_array(client, monkeypatch):
+    _processor_secret_json(monkeypatch)
+    r = client.post(
+        "/api/processor/videos",
+        json=[],
+        content_type="application/json",
+        headers={"X-Processor-Token": PROC_JSON_BODY},
+    )
+    assert r.status_code == 400
+    assert r.get_json()["fields"]
+
+
+def test_processor_species_active_rejects_non_array_json(client, monkeypatch):
+    _processor_secret_json(monkeypatch)
+    r = client.put(
+        "/api/processor/species/active",
+        json={"names": []},
+        content_type="application/json",
+        headers={"X-Processor-Token": PROC_JSON_BODY},
+    )
+    assert r.status_code == 400
+    assert r.get_json()["fields"]

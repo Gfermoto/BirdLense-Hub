@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import request
 
 from routes.http_guards import require_ui_settings_password
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.species_registry_admin_service import (
     catalog_coverage_metrics_body,
     classifier_dataset_alignment_report,
@@ -41,7 +42,9 @@ def register_ui_system_species_registry_routes(app):
 
         body: {"dry_run": true|false, "limit": 500}
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = run_species_registry_backfill(payload)
         return body, code
 
@@ -63,7 +66,9 @@ def register_ui_system_species_registry_routes(app):
 
         body: {"limit": 300, "retry_failed_only": false}
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = start_metadata_enrichment(app, payload)
         return body, code
 
@@ -90,7 +95,9 @@ def register_ui_system_species_registry_routes(app):
     @require_ui_settings_password
     def species_registry_materialize_allowlist():
         """Create missing Species rows for allowlist; optional metadata fill."""
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = materialize_allowlist_species(payload)
         return body, code
 
@@ -101,7 +108,9 @@ def register_ui_system_species_registry_routes(app):
     @require_ui_settings_password
     def species_registry_repair_cards_start():
         """Start background repair for species cards."""
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = start_repair_catalog_cards(app, payload)
         return body, code
 

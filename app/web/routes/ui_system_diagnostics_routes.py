@@ -8,6 +8,7 @@ from routes.http_guards import (
     require_admin_track_regen,
     require_ui_settings_password,
 )
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.system_diagnostics_service import (
     build_birdnet_fifo_snapshot_response,
     build_broken_videos_list_response,
@@ -36,14 +37,18 @@ def register_ui_system_diagnostics_routes(app):
     @app.route("/api/ui/system/diagnostics/broken-videos/delete-preview", methods=["POST"])
     @require_admin_track_regen
     def preview_broken_video_rows_delete_route():
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = preview_broken_video_rows_delete(payload)
         return body, code
 
     @app.route("/api/ui/system/diagnostics/broken-videos/delete", methods=["POST"])
     @require_admin_track_regen
     def delete_broken_video_rows_route():
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = delete_broken_video_rows(payload)
         return body, code
 
@@ -55,7 +60,9 @@ def register_ui_system_diagnostics_routes(app):
         dry_run (default true): только статистика по первым max_scan строкам Video.
         dry_run false: удалить до limit битых записей за один запрос (повторять до deletedCount=0).
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = purge_broken_video_rows(payload)
         return body, code
 
@@ -68,7 +75,9 @@ def register_ui_system_diagnostics_routes(app):
         dry_run (default true): счётчик и примеры id.
         dry_run false: удалить до limit таких записей за запрос (повторять до deletedCount=0).
         """
-        payload = request.get_json(silent=True) or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         body, code = purge_no_species_video_rows(payload)
         return body, code
 
