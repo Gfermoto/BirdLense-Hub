@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Docker / nginx (non-root):** каталог **`/var/log/nginx`** в образе принадлежит **`birdlense`**; **`error_log`** / **`access_log`** указывают туда же — без alert «could not open … /var/log/nginx/error.log» при старте. Кэши **`app/.ruff_cache`** и **`app/.pytest_cache`** в **`.gitignore`**. См. [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) / [RU](docs/TROUBLESHOOTING.ru.md).
+
 ### Changed
 
 - **[#279](https://github.com/Gfermoto/BirdLense-Hub/issues/279):** опциональный строгий режим UI API — при **production** и **`BIRDLENSE_STRICT_API_AUTH=1`** запросы к **`/api/ui/*`** требуют сессию (после `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**; исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`, preflight **OPTIONS**. **Docker Compose** и **`scripts/deploy.sh`** пробрасывают/сливают `BIRDLENSE_STRICT_API_AUTH` и `BIRDLENSE_UI_API_KEY`; CI — отдельный шаг `test_strict_ui_api_auth.py`. См. **SECURITY** / **ACCESS_CONTROL** / **CONFIGURATION** / **SECRETS_ROTATION** / **INSTALL** (EN/RU), `app/.env.example`, `scripts/deploy.local.sh.example`.

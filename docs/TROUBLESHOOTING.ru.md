@@ -41,6 +41,7 @@ docker logs birdlense --tail 200 2>&1
 - `137` — OOM Kill
 - `139` — segfault
 - `[h264] error while decoding MB` — нестабильный RTSP, сеть
+- **nginx** (прокси до gunicorn): файлы **`/var/log/nginx/error.log`** и **`access.log`** в контейнере, владелец **`birdlense`**. Пример: `docker exec birdlense tail -100 /var/log/nginx/error.log`
 
 **Рекомендации:** `mem_limit: 4g` в compose; логи в файл; Prometheus/Grafana.
 
