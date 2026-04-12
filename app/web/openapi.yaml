@@ -229,6 +229,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /videos/{video_id}/fusion-trace:
+    get:
+      summary: Fusion decision trace for a recording
+      description: |
+        Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload; `tracks` adds grouped step rows for UI.
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trace payload or `available=false` if no log matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FusionTraceResponse"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /birdfood:
     get:
       summary: List all bird food
@@ -815,6 +839,56 @@ components:
       properties:
         error:
           type: string
+    FusionTraceResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+        video_id:
+          type: integer
+        video_path:
+          type: string
+        message:
+          type: string
+          description: Present when available is false (e.g. no_decision_trace)
+        log_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        trace:
+          type: object
+          nullable: true
+          additionalProperties: true
+        tracks:
+          type: array
+          items:
+            type: object
+            properties:
+              bucket:
+                type: string
+                enum: [accepted, rejected]
+              track_id:
+                type: integer
+                nullable: true
+              species_name:
+                type: string
+                nullable: true
+              steps:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    stage:
+                      type: string
+                    lines:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          field:
+                            type: string
+                          value:
+                            type: string
     BirdFood:
       type: object
       properties:

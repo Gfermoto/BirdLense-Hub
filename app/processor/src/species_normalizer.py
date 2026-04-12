@@ -3,6 +3,7 @@ Species name normalization: Frigate/BirdNET/YOLO → canonical (IOC/eBird style)
 
 Поддерживает формат "Scientific (Common)" для слияния детекций.
 """
+
 import logging
 import re
 
@@ -61,17 +62,12 @@ def _to_title_case(s: str) -> str:
 
 
 def _is_squirrel_or_rodent_name(name: str) -> bool:
-    key = _extract_common_for_merge(name or '')
-    return any(
-        token in key for token in ('squirrel', 'chipmunk', 'rodent')
-    )
+    key = _extract_common_for_merge(name or "")
+    return any(token in key for token in ("squirrel", "chipmunk", "rodent"))
 
 
 def _canonical_merge_key(species_name: str) -> str:
-    return (
-        _extract_common_for_merge(species_name or '')
-        or (species_name or '').lower()
-    )
+    return _extract_common_for_merge(species_name or "") or (species_name or "").lower()
 
 
 def _collapse_overlapping_generic_bird_detection(
@@ -89,19 +85,19 @@ def _collapse_overlapping_generic_bird_detection(
         return result_list
 
     def _is_generic_bird_row(det: dict) -> bool:
-        name = det.get('species_name') or det.get('species') or ''
-        return _canonical_merge_key(name) == 'bird'
+        name = det.get("species_name") or det.get("species") or ""
+        return _canonical_merge_key(name) == "bird"
 
     def _is_confident_specific_bird(det: dict) -> bool:
-        name = det.get('species_name') or det.get('species') or ''
+        name = det.get("species_name") or det.get("species") or ""
         if not name or _is_generic_bird_row(det):
             return False
         if _is_squirrel_or_rodent_name(name):
             return False
-        kind = str(det.get('decision_kind') or '').strip().lower()
-        if kind == 'accepted_species':
+        kind = str(det.get("decision_kind") or "").strip().lower()
+        if kind == "accepted_species":
             return True
-        clf = det.get('classifier_confidence')
+        clf = det.get("classifier_confidence")
         if clf is not None:
             try:
                 return float(clf) >= float(min_classifier_confidence)
@@ -114,24 +110,20 @@ def _collapse_overlapping_generic_bird_detection(
     for i, g in enumerate(result_list):
         if not _is_generic_bird_row(g):
             continue
-        gs = float(g.get('start_time') or 0)
-        ge = float(g.get('end_time') or 0)
+        gs = float(g.get("start_time") or 0)
+        ge = float(g.get("end_time") or 0)
         for j, s in enumerate(result_list):
             if i == j or j in to_drop:
                 continue
             if not _is_confident_specific_bird(s):
                 continue
-            ss = float(s.get('start_time') or 0)
-            se = float(s.get('end_time') or 0)
+            ss = float(s.get("start_time") or 0)
+            se = float(s.get("end_time") or 0)
             overlap = min(ge, se) - max(gs, ss)
             if overlap >= overlap_min_sec:
                 to_drop.add(i)
-                prev = s.get('_fusion_used')
-                s['_fusion_used'] = (
-                    f'{prev}+absorbed_generic_bird'
-                    if prev
-                    else 'absorbed_generic_bird'
-                )
+                prev = s.get("_fusion_used")
+                s["_fusion_used"] = f"{prev}+absorbed_generic_bird" if prev else "absorbed_generic_bird"
                 break
     if not to_drop:
         return result_list
@@ -142,6 +134,7 @@ def _collapse_overlapping_generic_bird_detection(
 def _event_offset_seconds(ev, video_start):
     """Смещение MQTT-события от начала видео (сек). None если нет timestamp."""
     from datetime import datetime, timezone
+
     ts_str = ev.get("timestamp")
     if not ts_str:
         return None
@@ -224,7 +217,7 @@ def merge_detections(
 
     def _is_squirrel_like(name: str) -> bool:
         key = _extract_common_for_merge(name)
-        return any(token in key for token in ('squirrel', 'chipmunk', 'rodent'))
+        return any(token in key for token in ("squirrel", "chipmunk", "rodent"))
 
     def _can_frigate_promote(det: dict, ev: dict) -> bool:
         reason = str(det.get("decision_reason") or "").strip().lower()
@@ -234,13 +227,9 @@ def merge_detections(
         if not detector_label:
             return False
         if detector_label.lower() == "bird":
-            return not _is_squirrel_like(
-                str(ev.get("species") or ev.get("sub_label") or ev.get("label") or "")
-            )
+            return not _is_squirrel_like(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         if detector_label.lower() in {"squirrel", "rodent"}:
-            return _is_squirrel_like(
-                str(ev.get("species") or ev.get("sub_label") or ev.get("label") or "")
-            )
+            return _is_squirrel_like(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         return False
 
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
@@ -289,9 +278,7 @@ def merge_detections(
             row["detection_provider"] = provider
             row["track_id"] = d.get("track_id")
             row["frames"] = d.get("frames")
-            row["contributing_providers"] = sorted(
-                {provider, *(d.get("contributing_providers") or [])}
-            )
+            row["contributing_providers"] = sorted({provider, *(d.get("contributing_providers") or [])})
             by_key[(key, visit_id)] = row
 
     # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
@@ -301,8 +288,7 @@ def merge_detections(
             # BirdNET only biases confidence thresholds before YOLO decision-making.
             continue
         if str(provider).strip().lower() == "frigate" and (
-            ev.get("_frigate_merge_suppressed")
-            or ev.get("_skip_mqtt_merge_queue")
+            ev.get("_frigate_merge_suppressed") or ev.get("_skip_mqtt_merge_queue")
         ):
             # Excluded labels (cat/dog): keep out of species merge / promotion only.
             continue
@@ -430,9 +416,7 @@ def merge_detections(
         result_list = _collapse_overlapping_generic_bird_detection(
             result_list,
             overlap_min_sec=float(absorb_generic_bird_overlap_min_sec),
-            min_classifier_confidence=float(
-                absorb_generic_bird_min_classifier_confidence
-            ),
+            min_classifier_confidence=float(absorb_generic_bird_min_classifier_confidence),
         )
 
     # Конфликт: разные виды в одном временном окне — оставляем по source_priority
@@ -461,12 +445,20 @@ def merge_detections(
                         to_remove.add(j)
                         logger.debug(
                             "merge: conflict %s vs %s (overlap=%.1fs), keeping %s (higher priority)",
-                            a.get("species_name"), b.get("species_name"), overlap, a.get("species_name"))
+                            a.get("species_name"),
+                            b.get("species_name"),
+                            overlap,
+                            a.get("species_name"),
+                        )
                     else:
                         to_remove.add(i)
                         logger.debug(
                             "merge: conflict %s vs %s (overlap=%.1fs), keeping %s (higher priority)",
-                            a.get("species_name"), b.get("species_name"), overlap, b.get("species_name"))
+                            a.get("species_name"),
+                            b.get("species_name"),
+                            overlap,
+                            b.get("species_name"),
+                        )
                         break
         result_list = [d for i, d in enumerate(result_list) if i not in to_remove]
 

@@ -323,6 +323,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/videos/{video_id}/fusion-trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fusion decision trace for a recording
+         * @description Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload; `tracks` adds grouped step rows for UI.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    video_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Trace payload or `available=false` if no log matched */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FusionTraceResponse"];
+                    };
+                };
+                /** @description Video not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/birdfood": {
         parameters: {
             query?: never;
@@ -1344,6 +1394,31 @@ export interface components {
     schemas: {
         Error: {
             error?: string;
+        };
+        FusionTraceResponse: {
+            available?: boolean;
+            video_id?: number;
+            video_path?: string;
+            /** @description Present when available is false (e.g. no_decision_trace) */
+            message?: string;
+            /** Format: date-time */
+            log_created_at?: string | null;
+            trace?: {
+                [key: string]: unknown;
+            } | null;
+            tracks?: {
+                /** @enum {string} */
+                bucket?: "accepted" | "rejected";
+                track_id?: number | null;
+                species_name?: string | null;
+                steps?: {
+                    stage?: string;
+                    lines?: {
+                        field?: string;
+                        value?: string;
+                    }[];
+                }[];
+            }[];
         };
         BirdFood: {
             id?: number;

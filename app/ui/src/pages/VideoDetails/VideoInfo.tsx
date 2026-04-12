@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,26 +14,118 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Video } from '../../types';
 import { WeatherCard } from '../../components/WeatherCard';
-import { resolveImageUrl, deleteVideo } from '../../api/api';
+import {
+  BASE_API_URL,
+  deleteVideo,
+  fetchVideoFusionTrace,
+  getApiErrorMessage,
+  resolveImageUrl,
+  type FusionTracePayload,
+  type FusionTraceStep,
+  type FusionTraceTrack,
+} from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
-import { BASE_API_URL } from '../../api/api';
 import { formatLocalDateTime } from '../../util';
 
 function safeInternalPath(from: unknown): string | null {
-  if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//')) {
+  if (
+    typeof from !== 'string' ||
+    !from.startsWith('/') ||
+    from.startsWith('//')
+  ) {
     return null;
   }
   if (from.includes('://') || from.includes('\\')) {
     return null;
   }
   return from;
+}
+
+function stageLabel(t: TFunction, stage: string): string {
+  const key = `fusionTrace.stage.${stage}`;
+  const translated = t(key);
+  return translated === key ? stage : translated;
+}
+
+function fieldLabel(t: TFunction, field: string): string {
+  const key = `fusionTrace.field.${field}`;
+  const translated = t(key);
+  return translated === key ? field : translated;
+}
+
+function trackSummaryLabel(t: TFunction, track: FusionTraceTrack): string {
+  const species = track.species_name?.trim() || '—';
+  const id = track.track_id != null ? String(track.track_id) : '—';
+  if (track.bucket === 'accepted') {
+    return t('fusionTrace.trackAccepted', { species, id });
+  }
+  return t('fusionTrace.trackRejected', { species, id });
+}
+
+function FusionTrackSteps({
+  t,
+  steps,
+}: {
+  t: TFunction;
+  steps: FusionTraceStep[];
+}) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {steps.map((step) => (
+        <Box key={step.stage}>
+          <Typography variant="subtitle2" color="primary" gutterBottom>
+            {stageLabel(t, step.stage)}
+          </Typography>
+          <Box component="dl" sx={{ m: 0 }}>
+            {step.lines.map((line) => (
+              <Box
+                key={line.field}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'minmax(0, 0.95fr) minmax(0, 1.05fr)',
+                  },
+                  gap: 0.5,
+                  mb: 0.75,
+                }}
+              >
+                <Typography
+                  component="dt"
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 600 }}
+                >
+                  {fieldLabel(t, line.field)}
+                </Typography>
+                <Typography
+                  component="dd"
+                  variant="body2"
+                  sx={{ m: 0, wordBreak: 'break-word' }}
+                >
+                  {line.value}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
 }
 
 export const VideoInfo = ({ video }: { video: Video }) => {
@@ -42,7 +135,33 @@ export const VideoInfo = ({ video }: { video: Video }) => {
   const queryClient = useQueryClient();
   const { unlocked } = useProtectedArea();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const downloadUrl = unlocked ? `${BASE_API_URL}/videos/${video.id}/download` : null;
+  const [fusionOpen, setFusionOpen] = useState(false);
+  const [fusionLoading, setFusionLoading] = useState(false);
+  const [fusionErr, setFusionErr] = useState<string | null>(null);
+  const [fusionData, setFusionData] = useState<FusionTracePayload | null>(null);
+  const [fusionRawOpen, setFusionRawOpen] = useState(false);
+  const downloadUrl = unlocked
+    ? `${BASE_API_URL}/videos/${video.id}/download`
+    : null;
+
+  const loadFusionTrace = useCallback(async () => {
+    setFusionLoading(true);
+    setFusionErr(null);
+    try {
+      const data = await fetchVideoFusionTrace(video.id);
+      setFusionData(data);
+    } catch (e) {
+      setFusionData(null);
+      setFusionErr(getApiErrorMessage(e, t('fusionTrace.loadError')));
+    } finally {
+      setFusionLoading(false);
+    }
+  }, [video.id, t]);
+
+  useEffect(() => {
+    if (!fusionOpen) return;
+    void loadFusionTrace();
+  }, [fusionOpen, loadFusionTrace]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteVideo(video.id),
@@ -73,8 +192,15 @@ export const VideoInfo = ({ video }: { video: Video }) => {
       }
     },
   });
-  const { processor_version, start_time, end_time, favorite, weather, food, scales } =
-    video;
+  const {
+    processor_version,
+    start_time,
+    end_time,
+    favorite,
+    weather,
+    food,
+    scales,
+  } = video;
 
   const formatDate = (date: string | Date) => formatLocalDateTime(date);
 
@@ -116,13 +242,21 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         </Box>
       )}
 
-      <Dialog open={deleteDialogOpen} onClose={() => !deleteMutation.isPending && setDeleteDialogOpen(false)}>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !deleteMutation.isPending && setDeleteDialogOpen(false)}
+      >
         <DialogTitle>{t('videoInfo.deleteConfirmTitle')}</DialogTitle>
         <DialogContent>
-          <DialogContentText>{t('videoInfo.deleteConfirmText')}</DialogContentText>
+          <DialogContentText>
+            {t('videoInfo.deleteConfirmText')}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={deleteMutation.isPending}
+          >
             {t('common.cancel')}
           </Button>
           <Button
@@ -131,7 +265,9 @@ export const VideoInfo = ({ video }: { video: Video }) => {
             onClick={() => deleteMutation.mutate()}
             disabled={deleteMutation.isPending}
           >
-            {deleteMutation.isPending ? t('common.deleting') : t('common.delete')}
+            {deleteMutation.isPending
+              ? t('common.deleting')
+              : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -170,13 +306,180 @@ export const VideoInfo = ({ video }: { video: Video }) => {
           <Typography variant="body2" color="text.secondary">
             <strong>{t('videoInfo.processor')}:</strong> v{processor_version}
           </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AccountTreeIcon />}
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={() => {
+              setFusionRawOpen(false);
+              setFusionOpen(true);
+            }}
+          >
+            {t('fusionTrace.openButton')}
+          </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: 0.5 }}
+          >
+            {t('fusionTrace.hint')}
+          </Typography>
         </Box>
       </Paper>
+
+      <Dialog
+        open={fusionOpen}
+        onClose={() => !fusionLoading && setFusionOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>{t('fusionTrace.title')}</DialogTitle>
+        <DialogContent>
+          {fusionLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={32} />
+            </Box>
+          )}
+          {!fusionLoading && fusionErr && (
+            <DialogContentText color="error">{fusionErr}</DialogContentText>
+          )}
+          {!fusionLoading &&
+            !fusionErr &&
+            fusionData &&
+            !fusionData.available && (
+              <>
+                <DialogContentText>
+                  {t('fusionTrace.noTrace')}
+                </DialogContentText>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mt: 1 }}
+                >
+                  {t('fusionTrace.noTraceDetail')}
+                </Typography>
+              </>
+            )}
+          {!fusionLoading &&
+            !fusionErr &&
+            fusionData?.available &&
+            fusionData.tracks && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                  pt: 0.5,
+                }}
+              >
+                {fusionData.log_created_at && (
+                  <Typography variant="body2" color="text.secondary">
+                    {t('fusionTrace.logAt')}:{' '}
+                    {formatLocalDateTime(fusionData.log_created_at)}
+                  </Typography>
+                )}
+                {fusionData.trace && typeof fusionData.trace === 'object' && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {'merge_window_seconds' in fusionData.trace && (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={t('fusionTrace.mergeWindow', {
+                          sec: String(
+                            (fusionData.trace as Record<string, unknown>)
+                              .merge_window_seconds ?? '',
+                          ),
+                        })}
+                      />
+                    )}
+                    {'accepted_track_count' in fusionData.trace && (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={t('fusionTrace.acceptedCount', {
+                          n: String(
+                            (fusionData.trace as Record<string, unknown>)
+                              .accepted_track_count ?? '',
+                          ),
+                        })}
+                      />
+                    )}
+                    {'rejected_track_count' in fusionData.trace && (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={t('fusionTrace.rejectedCount', {
+                          n: String(
+                            (fusionData.trace as Record<string, unknown>)
+                              .rejected_track_count ?? '',
+                          ),
+                        })}
+                      />
+                    )}
+                  </Box>
+                )}
+                {fusionData.tracks.map((tr, idx) => (
+                  <Accordion
+                    key={`${tr.bucket}-${tr.track_id ?? idx}-${idx}`}
+                    defaultExpanded={idx === 0}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">
+                        {trackSummaryLabel(t, tr)}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <FusionTrackSteps t={t} steps={tr.steps} />
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+                <Button
+                  size="small"
+                  onClick={() => setFusionRawOpen((o) => !o)}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  {fusionRawOpen
+                    ? t('fusionTrace.hideRaw')
+                    : t('fusionTrace.showRaw')}
+                </Button>
+                <Collapse in={fusionRawOpen}>
+                  <Box
+                    component="pre"
+                    sx={{
+                      mt: 1,
+                      p: 1,
+                      bgcolor: 'action.hover',
+                      borderRadius: 1,
+                      fontSize: 11,
+                      overflow: 'auto',
+                      maxHeight: 280,
+                    }}
+                  >
+                    {JSON.stringify(fusionData.trace ?? {}, null, 2)}
+                  </Box>
+                </Collapse>
+              </Box>
+            )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFusionOpen(false)} disabled={fusionLoading}>
+            {t('common.close')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Weather Card */}
       <WeatherCard
         weather={weather}
-        date={start_time ? new Date(start_time).toISOString().slice(0, 10) : undefined}
+        date={
+          start_time
+            ? new Date(start_time).toISOString().slice(0, 10)
+            : undefined
+        }
       />
 
       {scales && (
