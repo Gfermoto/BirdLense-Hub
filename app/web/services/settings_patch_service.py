@@ -6,6 +6,7 @@ import copy
 
 from app_config.app_config import app_config
 from services.cache import cache_delete_prefix, reset_redis_client
+from services.ui_password_service import hash_password_fields_in_updates
 from services.http_response_cache import bust_response_caches
 
 
@@ -41,9 +42,10 @@ def normalize_settings_patch_updates(
 
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
+    to_merge = hash_password_fields_in_updates(normalized_updates)
     app_config.config = app_config.merge_dicts(
         app_config.config,
-        normalized_updates,
+        to_merge,
     )
     app_config.save()
 

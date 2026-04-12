@@ -51,6 +51,19 @@ def test_resolve_unlock_admin_contributor_nomatch(monkeypatch):
     assert resolve_password_unlock_role("wrong") is None
 
 
+def test_resolve_unlock_admin_bcrypt_stored(monkeypatch):
+    from app_config.app_config import app_config
+    from services.settings_access_service import resolve_password_unlock_role
+    from services.ui_password_service import hash_ui_password_plain
+
+    g = app_config.config.setdefault("general", {})
+    h = hash_ui_password_plain("bcrypt-admin-secret")
+    monkeypatch.setitem(g, "settings_password", h)
+    monkeypatch.setitem(g, "contributor_password", "")
+    assert resolve_password_unlock_role("bcrypt-admin-secret") == "admin"
+    assert resolve_password_unlock_role("nope") is None
+
+
 def test_empty_passwords_block_in_prod(monkeypatch):
     monkeypatch.setenv("BIRDLENSE_ENV", "production")
     from app_config.app_config import app_config

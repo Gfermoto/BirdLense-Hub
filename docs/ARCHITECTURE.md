@@ -129,7 +129,7 @@ This is the **structural** checkpoint before prioritizing product features (GitH
 
 - **Web ([#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292)):** Flask extensions, startup, and a thin `create_app` factory (`app/web/flask_extensions.py`, `app/web/app_startup.py`, `app/web/app.py`).
 - **Processor ([#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295)):** Detection stack is assembled in `processor_bootstrap.py` / `detection_stack.py`; runtime uses `DetectionStrategy` (ABC) with `detect` / `reset`. For typing and tests without loading YOLO, `app/processor/src/interfaces.py` defines **`DetectionStrategyProtocol`**; `FrameProcessor` depends on that protocol. See `app/processor/tests/test_detection_strategy_protocol.py`.
-- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** Server-backed data on main routes uses **TanStack Query** as the standard fetch/cache layer. Further consolidation (context, smaller components, less prop drilling) remains tracked in the same issue.
+- **UI ([#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296)):** **TanStack Query** on primary routes; stable cache keys and HTTP helpers live under `app/ui/src/api/` (`queryKeys.ts`, `api.tsx` fetchers). Settings gate queries use the same `queryKeys.settings.*` contract. Further consolidation (more screens, context) stays in the issue.
 
 ---
 

@@ -14,6 +14,8 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | **`app/app_config/user_config.yaml`** | Settings UI persistence | Plain text on disk. Prefer env for production secrets ([SECURITY.md](./SECURITY.md) §2). |
 | **`scripts/deploy.local.sh`** (gitignored) | Values pushed into server `app/.env` during `make deploy` | Keep canonical copies of deploy-managed keys here so redeploy does not surprise you. |
 
+**Runtime overlays (`BIRDLENSE_*`):** After YAML merge, non-empty variables such as `BIRDLENSE_SETTINGS_PASSWORD`, `BIRDLENSE_MQTT_PASSWORD`, `BIRDLENSE_REDIS_URL`, API keys, and Telegram tokens override the corresponding config keys **in memory only** (nothing is written back to `user_config.yaml`). Use this in production so disk YAML can hold placeholders. Full list: [CONFIGURATION.md](./CONFIGURATION.md) (Environment variables). UI passwords from env may be plaintext or bcrypt; values saved via Settings are hashed (bcrypt) on PATCH.
+
 ---
 
 ## Inventory (runtime)
