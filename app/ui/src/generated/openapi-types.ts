@@ -332,7 +332,7 @@ export interface paths {
         };
         /**
          * Fusion decision trace for a recording
-         * @description Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload; `tracks` adds grouped step rows for UI.
+         * @description Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload (`persisted_tracks` / `accepted_tracks` alias — rows stored on the clip; `rejected_tracks` — not persisted). `tracks[].bucket` is `persisted` for the clip list and `rejected` for the reject list (`accepted` kept for backward compatibility with older API clients).
          */
         get: {
             parameters: {
@@ -1407,8 +1407,11 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             tracks?: {
-                /** @enum {string} */
-                bucket?: "accepted" | "rejected";
+                /**
+                 * @description persisted = saved on clip; rejected = not on clip; accepted = legacy alias for persisted
+                 * @enum {string}
+                 */
+                bucket?: "persisted" | "rejected" | "accepted";
                 track_id?: number | null;
                 species_name?: string | null;
                 steps?: {

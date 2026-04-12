@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Fusion decision trace (семантика):** в payload `decision_trace` добавлены **`persisted_tracks`** / **`persisted_track_count`** и флаг строки **`persisted_to_clip`**; **`accepted_tracks`** остаётся ссылкой на тот же список (legacy). Экспорт fusion-training и скрипт CSV обходят **один** список клипа, чтобы не дублировать строки. UI/API: bucket трека **`persisted`**, подписи «сохранено в клипе» vs «DecisionMaker accepted».
+
 - **BirdNET ↔ видео, ключ слияния:** в **`birdnet_merge_key`** сначала матчится **`detection.species_mapping`** по научному имени (ключи вида **`Parus major (Great Tit)`**), затем уже **`species_taxon.common_name`** из SQLite — колонка «ключ для видео» и слияние с YOLO не прыгают между русским и английским из‑за локали в каталоге. В **`default_config.yaml`** добавлены типовые европейские виды (в т.ч. из RU BirdNET).
 
 - **`species_normalizer._to_title_case`:** дефисы в составе названия не превращаются в пробелы (корректнее вывод для **`Red-breasted Flycatcher`**, **`Eurasian Eagle-Owl`** и т.п. после **`normalize()`**).

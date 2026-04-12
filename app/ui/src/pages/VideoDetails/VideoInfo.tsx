@@ -70,8 +70,8 @@ function fieldLabel(t: TFunction, field: string): string {
 function trackSummaryLabel(t: TFunction, track: FusionTraceTrack): string {
   const species = track.species_name?.trim() || '—';
   const id = track.track_id != null ? String(track.track_id) : '—';
-  if (track.bucket === 'accepted') {
-    return t('fusionTrace.trackAccepted', { species, id });
+  if (track.bucket === 'persisted' || track.bucket === 'accepted') {
+    return t('fusionTrace.trackPersisted', { species, id });
   }
   return t('fusionTrace.trackRejected', { species, id });
 }
@@ -396,14 +396,18 @@ export const VideoInfo = ({ video }: { video: Video }) => {
                         })}
                       />
                     )}
-                    {'accepted_track_count' in fusionData.trace && (
+                    {('persisted_track_count' in fusionData.trace ||
+                      'accepted_track_count' in fusionData.trace) && (
                       <Chip
                         size="small"
                         variant="outlined"
-                        label={t('fusionTrace.acceptedCount', {
+                        label={t('fusionTrace.persistedCount', {
                           n: String(
-                            (fusionData.trace as Record<string, unknown>)
-                              .accepted_track_count ?? '',
+                            ('persisted_track_count' in fusionData.trace
+                              ? (fusionData.trace as Record<string, unknown>)
+                                  .persisted_track_count
+                              : (fusionData.trace as Record<string, unknown>)
+                                  .accepted_track_count) ?? '',
                           ),
                         })}
                       />
