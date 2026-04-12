@@ -38,9 +38,9 @@
 
 ## Валидация JSON у mutating API
 
-- Утилиты: `app/web/services/api_json_validation.py` (`parse_request_json_dict`, `validation_error`).
-- Эндпоинты с единым телом **400** `{ "error", "fields" }` перечислены в docstring модуля; регрессия: `web/tests/test_api_json_validation.py`.
-- Объём и бэклог: [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281).
+- Утилиты: `app/web/services/api_json_validation.py` — `parse_request_json_dict` (строго JSON-объект в теле), `parse_request_json_object_allow_empty` (объект или пустое тело → `{}`), `validation_error`.
+- Список эндпоинтов — в docstring модуля; регрессия: `web/tests/test_api_json_validation.py`.
+- Заведено в [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281); остальные mutating-маршруты подключаются тем же паттерном по мере необходимости.
 
 ## OpenAPI → TypeScript
 

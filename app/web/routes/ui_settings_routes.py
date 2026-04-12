@@ -28,6 +28,10 @@ from services.settings_access_service import (
     resolve_password_unlock_role,
     settings_gate_requires_password,
 )
+from services.api_json_validation import (
+    parse_request_json_dict,
+    parse_request_json_object_allow_empty,
+)
 from services.settings_patch_service import apply_settings_patch_from_request
 from util import data_dir, notify_telegram_test
 
@@ -58,7 +62,9 @@ def register_ui_settings_routes(app):
                 429,
                 {"Retry-After": str(retry)},
             )
-        data = request.json or {}
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         pw = (data.get("password") or "").strip()
         admin_pw = (app_config.get("general.settings_password") or "").strip()
         contrib_pw = (app_config.get("general.contributor_password") or "").strip()
@@ -202,11 +208,12 @@ def register_ui_settings_routes(app):
     def update_settings():
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
+        updates, v_err = parse_request_json_dict(request)
+        if v_err is not None:
+            return v_err, 400
+        if not updates:
+            return {"error": "No data provided for update"}, 400
         try:
-            updates = request.json
-            if not updates:
-                return {"error": "No data provided for update"}, 400
-
             payload = apply_settings_patch_from_request(
                 updates,
                 access_role=session.get("access_role"),

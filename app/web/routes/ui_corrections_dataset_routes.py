@@ -10,6 +10,7 @@ from services.dataset_export_request_service import (
     parse_dataset_export_query_args,
 )
 from services.dataset_export_service import build_dataset_zip, clean_dataset
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.detection_crop_api_service import get_detection_crop_jpeg_and_filename
 from services.detection_species_correction_service import (
     apply_detection_species_patch,
@@ -58,7 +59,9 @@ def register_ui_corrections_dataset_routes(app):
             return {"error": "Password required"}, 403
         from services.dataset_export_service import retro_export_all_video_detections
 
-        data = request.json or {}
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         min_conf = float(data.get("min_confidence", 0))
         start_date = data.get("start_date")
         end_date = data.get("end_date")
@@ -79,7 +82,9 @@ def register_ui_corrections_dataset_routes(app):
     def clean_dataset_route():
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
-        data = request.json or {}
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         dry_run = bool(data.get("dry_run", False))
         remove_fullframe = data.get("remove_fullframe", True)
         remove_orphaned = data.get("remove_orphaned", False)
@@ -94,7 +99,10 @@ def register_ui_corrections_dataset_routes(app):
     def confirm_detection(detection_id):
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
-        err, ok = run_confirm_detection(db.session, detection_id, request.json or {})
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        err, ok = run_confirm_detection(db.session, detection_id, data)
         if err:
             return err, 404
         return ok, 200
@@ -112,11 +120,14 @@ def register_ui_corrections_dataset_routes(app):
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
         app_obj = current_app._get_current_object()
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         err, ok = apply_detection_species_patch(
             db.session,
             app.logger,
             detection_id,
-            request.json or {},
+            data,
             app_obj_for_thread=app_obj,
         )
         if err:

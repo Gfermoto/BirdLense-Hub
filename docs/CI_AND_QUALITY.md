@@ -38,9 +38,9 @@ Source: `.github/workflows/ci-pr.yml`.
 
 ## Mutating API JSON validation
 
-- Helpers: `app/web/services/api_json_validation.py` (`parse_request_json_dict`, `validation_error`).
-- Endpoints using the unified **400** body `{ "error", "fields" }` are listed in that module’s docstring; regression tests: `web/tests/test_api_json_validation.py`.
-- Scope / backlog: [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281).
+- Helpers: `app/web/services/api_json_validation.py` — `parse_request_json_dict` (strict object body), `parse_request_json_object_allow_empty` (object or empty → `{}`), `validation_error`.
+- Endpoints are listed in that module’s docstring; regression tests: `web/tests/test_api_json_validation.py`.
+- Introduced in [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281); extend the same pattern for remaining mutating routes as needed.
 
 ## OpenAPI → TypeScript
 

@@ -6,6 +6,7 @@ from flask import Response, request
 
 from auth import contributor_or_admin_access
 from models import Species, db
+from services.api_json_validation import parse_request_json_object_allow_empty
 from services.cache import cache_delete, cache_delete_prefix, cache_get, cache_set
 from services.http_response_cache import bust_response_caches
 from services.species_image_proxy_service import run_species_image_proxy
@@ -104,7 +105,9 @@ def register_ui_species_media_routes(app):
     def set_species_tuning_target(species_id: int):
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
-        payload = request.json or {}
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
         enabled = bool(payload.get("enabled"))
         out = apply_tuning_target_toggle(db.session, species_id, enabled)
         if out.get("error"):
