@@ -16,6 +16,10 @@
 - **Коррекция видов** — `contributor_or_admin_access()` (Contributor или Admin).
 - **Экспорт датасета** — Contributor или Admin (в зависимости от места в UI).
 
+### Строгий режим UI API (production, опционально)
+
+При **`BIRDLENSE_ENV=production`** (или `FLASK_ENV=production`) и **`BIRDLENSE_STRICT_API_AUTH=1`** каждый запрос к `/api/ui/*` требует **одно из**: сессия после `verify-password`, **`Authorization: Bearer <MCP_TOKEN>`**, или **`BIRDLENSE_UI_API_KEY`** через **`X-Birdlense-Api-Key`** / **Bearer**. Без сессии по-прежнему доступны: **`GET /api/ui/health`**, **`requires-password`**, **`check-access`**, **`POST verify-password`**, **`vapid-public`**, **`logout`**; для preflight разрешён **`OPTIONS`**.
+
 ---
 
 ## Роли

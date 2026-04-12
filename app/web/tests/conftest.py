@@ -7,6 +7,9 @@ import pytest
 
 # Не наследовать «прод» и секреты хоста разработчика (иначе 403 и рассинхрон MCP Bearer).
 os.environ.pop("BIRDLENSE_ENV", None)
+os.environ.pop("BIRDLENSE_STRICT_API_AUTH", None)
+os.environ.pop("BIRDLENSE_UI_API_KEY", None)
+os.environ.pop("BIRDLENSE_METRICS_TOKEN", None)
 os.environ.pop("MCP_TOKEN", None)
 if (os.environ.get("FLASK_ENV") or "").strip().lower() in ("production", "prod"):
     os.environ["FLASK_ENV"] = "development"

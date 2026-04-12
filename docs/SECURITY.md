@@ -23,7 +23,7 @@
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| **Critical** | API has no authentication by default. Endpoints `/api/ui/*` are accessible without checks. | Add mandatory auth for production (API key, JWT, or reverse proxy with auth). |
+| ~~**Critical**~~ **Mitigated (opt-in)** | `/api/ui/*` open by default for home LAN. | Set **`BIRDLENSE_STRICT_API_AUTH=1`** with production runtime: require session (after `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` or Bearer), or **MCP Bearer**. Bootstrap: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. See [CONFIGURATION](./CONFIGURATION.md). |
 | ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy writes to `.env`. |
 | **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
 | **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |

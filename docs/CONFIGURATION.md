@@ -47,6 +47,8 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | `FLASK_SECRET_KEY` | Flask session key (settings protection) |
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token`) |
 | `MCP_TOKEN` | MCP token (overrides `mcp.token`) |
+| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** рантайме закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY`, или MCP Bearer); см. [SECURITY](./SECURITY.md) |
+| `BIRDLENSE_UI_API_KEY` | Секрет для доступа к UI API при strict-режиме: заголовок **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
 | `CORS_LOCAL_DEV_ORIGINS` | Local/dev CORS origins (comma-separated): Vite, `birdlense.local`, hub port. Default matches former in-code list; set empty to omit |
 | `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
