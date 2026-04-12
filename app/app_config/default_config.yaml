@@ -9,6 +9,9 @@ general:
   settings_password: ""
   # Пароль помощника (Contributor): коррекция видов, отчёты, iNaturalist. Пусто — один пароль на всё.
   contributor_password: ""
+  # Сброс сессии входа (admin/contributor) после N минут без запросов к API. 0 — выключено.
+  # Включается при непустом admin/contributor пароле или в production (см. SECURITY).
+  session_idle_minutes: 30
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
   # Ссылка на Heimdall Dashboard. Пусто — ссылка Heimdall в UI скрыта.

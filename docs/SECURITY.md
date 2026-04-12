@@ -27,7 +27,7 @@
 | ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy writes to `.env`. |
 | **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
 | **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |
-| **High** | Settings session: `session.permanent = True`, no timeout. | Add session timeout (15–30 min). |
+| ~~**High**~~ **Fixed** | Settings session had no idle timeout. | `general.session_idle_minutes` (default 30; `0` disables). See [CONFIGURATION](./CONFIGURATION.md). |
 | **Medium** | Endpoints `/api/ui/system/*` (logs, metrics, purge, scan) protected only by `settings_check_access()`. | Ensure mandatory `settings_password`. |
 
 ---
@@ -124,7 +124,7 @@ Current baseline (Mar 2026): scan of full git history completed with **no leaks 
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| **High** | Container runs as root (no `USER` in Dockerfile). | Add non-privileged user and `USER`. |
+| ~~**High**~~ **Fixed** | Container processes ran as root. | Nginx/Gunicorn/processor run as `birdlense` (**uid 1000**); entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. See [INSTALL](./INSTALL.md). |
 | **Medium** | Base image `ultralytics/ultralytics` — heavy. | Consider multi-stage with minimal runtime. |
 | **Low** | No `--privileged`, `--cap-add`. | Do not add. |
 
@@ -146,7 +146,7 @@ Current baseline (Mar 2026): scan of full git history completed with **no leaks 
 3. ~~**Path traversal**~~ ✅ Nginx: block `\.\.`, `%2e%2e`. `image_path` in notify: `_is_safe_image_path`.
 4. **Restrict access** to `/data/recordings/` (auth or IP).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
-6. **Docker:** run container as non-privileged user.
+6. ~~**Docker:** run as non-privileged user.~~ ✅ Processes use uid 1000 (`birdlense`).
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
 8. **Secret rotation:** follow [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (prod ops).
 
