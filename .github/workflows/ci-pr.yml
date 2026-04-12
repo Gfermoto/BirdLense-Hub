@@ -60,6 +60,14 @@ jobs:
           ruff check web/ processor/src/
           ruff format web/ processor/src/ --check
 
+      - name: Radon cyclomatic complexity (summary only)
+        run: |
+          pip install radon==6.0.5
+          {
+            echo '### Radon cc (web/ + processor/src/)'
+            radon cc -a -s web/ processor/src/ || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
 
@@ -104,9 +112,18 @@ jobs:
           cache: npm
           cache-dependency-path: app/ui/package-lock.json
 
-      - name: Install, lint & build UI
+      - name: Install UI dependencies
+        run: npm ci
+
+      - name: OpenAPI → TypeScript (drift check vs committed file)
+        working-directory: ${{ github.workspace }}
         run: |
-          npm ci
+          (cd app/ui && npm run codegen:openapi)
+          git diff --exit-code -- app/ui/src/generated/openapi-types.ts
+
+      - name: Lint & build UI
+        working-directory: app/ui
+        run: |
           npm run lint
           npm run build
 

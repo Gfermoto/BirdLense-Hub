@@ -9,8 +9,8 @@
 | Workflow / job | Назначение |
 |----------------|------------|
 | **CI → python-security** | `bandit` по `web/` + `processor/src/`; `pip-audit` по обоим `requirements.txt`. |
-| **CI → openapi-contract** | `ruff check` + **`ruff format --check`** по `web/` + `processor/src/`; скрипт версии доков; узкие pytest-наборы. |
-| **CI → ui-build** | `npm ci`, `npm run lint`, `npm run build` в `app/ui`. |
+| **CI → openapi-contract** | `ruff check` + **`ruff format --check`** по `web/` + `processor/src/`; сводка **radon cc** (без порога); скрипт версии доков; узкие pytest-наборы. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` для `src/generated/openapi-types.ts`; `npm run lint`; `npm run build` в `app/ui`. |
 | **CI → docs** | MkDocs strict, скрипт покрытия Settings UI, проверка версии. |
 | **CI → docker-tests** | Сборка образа; тесты processor + web; Playwright smoke; аудит карточек. |
 
@@ -36,11 +36,15 @@
 
 - Раз в неделю / вручную: `.github/workflows/npm-audit-scheduled.yml` (политика в комментариях workflow; [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)). Не входит в обязательные проверки PR.
 
-## OpenAPI → TypeScript (впереди)
+## OpenAPI → TypeScript
 
 - Спека: `app/web/openapi.yaml`. Контрактные тесты: `web/tests/test_openapi_contract.py`.
-- **Пока не автоматизировано:** codegen для UI — после выбора генератора и пути вывода добавить скрипт в `package.json` и при необходимости шаг в CI; до тех пор этот раздел закрывает пункт из [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297).
+- **Codegen:** в `app/ui` — `npm run codegen:openapi` ([openapi-typescript](https://github.com/openapi-ts/openapi-typescript)) пишет `src/generated/openapi-types.ts`. В job **ui-build** файл пересобирается из спеки и PR падает, если закоммиченный артефакт расходится. После правок OpenAPI:
+  ```bash
+  cd app/ui && npm ci && npm run codegen:openapi
+  ```
 
-## Сложность / radon (опционально)
+## Сложность / radon
 
-- Порог cyclomatic complexity в CI пока не задан. Локально: `pip install radon && radon cc app/web app/processor/src -a -s`.
+- **CI:** в `openapi-contract` в summary добавляется вывод **radon cc** (информативно, без порога).
+- Локально: `pip install radon && radon cc app/web app/processor/src -a -s` (от корня репозитория).

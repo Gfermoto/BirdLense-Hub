@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "codegen:openapi": "openapi-typescript ../web/openapi.yaml -o src/generated/openapi-types.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "docs": "node ./node_modules/typedoc/bin/typedoc"
@@ -47,6 +48,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.12.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.3.3",
     "typedoc": "^0.27.0",
     "typescript": "^5.5.3",
