@@ -20,7 +20,22 @@ DESIRED_NAME = "desired.json"
 STATUS_NAME = "status.json"
 
 _VIDEO_GLOBS = ("*.mp4", "*.MP4", "*.mov", "*.MOV", "*.mkv", "*.MKV")
-MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+
+# Лимит upload офлайн-роликов (MiB): дефолт > 10000; зажим в коде.
+_DEFAULT_FILE_TEST_MAX_UPLOAD_MB = 10240
+_MIN_FILE_TEST_MAX_UPLOAD_MB = 64
+_MAX_FILE_TEST_MAX_UPLOAD_MB = 65536
+
+
+def max_upload_bytes() -> int:
+    """Лимит upload в байтах: video.file_test_max_upload_mb, зажат 64..65536 MiB; дефолт 10240 MiB."""
+    raw = app_config.get("video.file_test_max_upload_mb")
+    try:
+        mb = int(raw) if raw is not None else _DEFAULT_FILE_TEST_MAX_UPLOAD_MB
+    except (TypeError, ValueError):
+        mb = _DEFAULT_FILE_TEST_MAX_UPLOAD_MB
+    mb = max(_MIN_FILE_TEST_MAX_UPLOAD_MB, min(mb, _MAX_FILE_TEST_MAX_UPLOAD_MB))
+    return mb * 1024 * 1024
 
 
 def _control_dir() -> str:
@@ -156,12 +171,14 @@ def get_file_test_status() -> tuple[dict[str, Any], int]:
         except (OSError, ValueError):
             desired = {}
     proc = read_processor_status()
+    mb_limit = max_upload_bytes() // (1024 * 1024)
     return {
         "file_dir": base,
         "desired": desired,
         "processor": proc,
         "config_loop_default": bool(app_config.get("video.file_loop", False)),
         "video_source": (app_config.get("video.source") or "").strip().lower(),
+        "file_test_max_upload_mb": mb_limit,
     }, 200
 
 
@@ -208,7 +225,7 @@ def delete_file_test_video(filename: str) -> tuple[dict[str, Any], int]:
 
 
 def save_file_test_upload(stream, filename: str | None) -> tuple[dict[str, Any], int]:
-    """Сохранить werkzeug FileStorage в file_dir (размер ≤ MAX_UPLOAD_BYTES)."""
+    """Сохранить werkzeug FileStorage в file_dir (размер ≤ video.file_test_max_upload_mb)."""
     from werkzeug.utils import secure_filename
 
     base, err = resolved_file_test_dir()
@@ -231,6 +248,7 @@ def save_file_test_upload(stream, filename: str | None) -> tuple[dict[str, Any],
         return {"error": "path_error"}, 400
     if fr == dr or not fr.startswith(dr + os.sep):
         return {"error": "unsafe_path"}, 400
+    limit = max_upload_bytes()
     total = 0
     try:
         with open(dest, "wb") as out:
@@ -239,7 +257,7 @@ def save_file_test_upload(stream, filename: str | None) -> tuple[dict[str, Any],
                 if not chunk:
                     break
                 total += len(chunk)
-                if total > MAX_UPLOAD_BYTES:
+                if total > limit:
                     try:
                         os.remove(dest)
                     except OSError:

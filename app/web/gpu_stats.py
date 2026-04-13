@@ -4,16 +4,20 @@ Intel GPU utilization — по образцу Frigate NVR.
 2) Fallback: DRM fdinfo (/proc/PID/fdinfo) для Gen 12+ (Alder Lake-N и новее)
 """
 
+import glob
 import json
 import logging
 import os
 import subprocess
-import glob
+import time
 
 _log = logging.getLogger("gpu_stats")
 
 _CACHE_PATH = "/tmp/.birdlense_gpu_stats_cache"
 _MIN_DELTA_NS = 100_000_000  # 100ms
+# intel_gpu_top в Docker без PMU шлёт одну и ту же ошибку на каждый poll метрик — душим до 1 раза в час.
+_INTEL_GPU_TOP_PMU_SUPPRESS_S = 3600.0
+_intel_gpu_top_pmu_next_log_monotonic = 0.0
 
 
 def _intel_gpu_top() -> float | None:
@@ -28,7 +32,15 @@ def _intel_gpu_top() -> float | None:
             timeout=5,
         )
         if result.returncode not in (0, 124):
-            _log.warning("intel_gpu_top rc=%s stderr=%s", result.returncode, (result.stderr or "")[:200])
+            stderr = (result.stderr or "")[:200]
+            global _intel_gpu_top_pmu_next_log_monotonic
+            sl = stderr.lower()
+            if "pmu" in sl and "permission denied" in sl:
+                now_m = time.monotonic()
+                if now_m < _intel_gpu_top_pmu_next_log_monotonic:
+                    return None
+                _intel_gpu_top_pmu_next_log_monotonic = now_m + _INTEL_GPU_TOP_PMU_SUPPRESS_S
+            _log.warning("intel_gpu_top rc=%s stderr=%s", result.returncode, stderr)
             return None
         if not os.path.exists(out_path):
             _log.warning("intel_gpu_top: output file missing")

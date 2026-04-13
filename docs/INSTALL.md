@@ -55,7 +55,7 @@ mkdir -p data/recordings data/db app_config
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. Intel GPU: `cp docker-compose.intel.example.yml docker-compose.override.yml`.
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** from `app/` run `bash scripts/docker-compose-intel-override-gen.sh` (all `card*`/`renderD*`, host `group_add` for video/render, `CAP_PERFMON`) or edit `docker-compose.intel.example.yml` manually (set GIDs).
 
 ---
 
@@ -83,13 +83,30 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
+**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), `make build && make start` in `app/` on the server.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
 **Linear checklist**, VPS paths, logs, common pitfalls: [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+
+### HTTPS / nginx and large uploads (Library → file replay)
+
+If uploads return **413** while the UI still shows an old hub limit (e.g. 2048 MiB), the server may be on stale config **or** a **proxy** rejects the body before Flask. The hub image sets a high Flask **`MAX_CONTENT_LENGTH`** (override with **`FLASK_MAX_CONTENT_LENGTH`** bytes in the environment). Nginx **inside** the Hub container already sets **`client_max_body_size 64g`** (`app/nginx/docker-nginx-main.conf`). If you terminate TLS or run another reverse proxy **in front of** the container, raise the limit there too, e.g.:
+
+```nginx
+location /api/ {
+    client_max_body_size 16g;
+    proxy_pass http://127.0.0.1:8085;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Tune **`client_max_body_size`** to your clips; YAML key **`video.file_test_max_upload_mb`** (repo default **10240** MiB after update).
 
 ### Telegram proxy autorotate (one command)
 

@@ -43,6 +43,11 @@ jobs:
             --exclude='.venv-datasets' \
             ./ "$DEPLOY_DIR"/
 
+      - name: Intel GPU compose override
+        run: |
+          cd "${DEPLOY_DIR:-/root/BirdLense}/app"
+          bash scripts/docker-compose-intel-override-gen.sh
+
       - name: Build and restart
         run: |
           cd "${DEPLOY_DIR:-/root/BirdLense}/app"

@@ -41,12 +41,12 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     "processor.models.binary": {
         "category": "ops-only",
         "reason": "Model path is environment/deployment-specific.",
-        "next_step": "Keep config-level; expose only if model manager is introduced.",
+        "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
     "processor.models.classifier": {
         "category": "ops-only",
         "reason": "Model path is environment/deployment-specific.",
-        "next_step": "Keep config-level; expose only if model manager is introduced.",
+        "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
     "processor.regional_species": {
         "category": "planned-ui",
@@ -170,6 +170,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "library-ui",
         "reason": "Default playlist loop for file mode; set in Library when enabling replay.",
         "next_step": "Keep Library as single UX entry.",
+    },
+    "video.file_test_max_upload_mb": {
+        "category": "library-ui",
+        "reason": "Hub upload size cap for Library file replay; tunable in YAML.",
+        "next_step": "Optional expose in Library advanced later.",
     },
     "video.pre_record_seconds": {
         "category": "planned-ui",

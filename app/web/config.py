@@ -42,6 +42,11 @@ class Config:
             "max_overflow": int(os.getenv("SQLALCHEMY_MAX_OVERFLOW", "15")),
         }
     SECRET_KEY = _SECRET_KEY
+    # Верхняя граница размера тела HTTP (multipart upload). Без этого Werkzeug/Flask могут отдать 413
+    # раньше, чем сработает логика video.file_test_max_upload_mb. Переменная — байты; по умолчанию ~80 GiB.
+    MAX_CONTENT_LENGTH = int(
+        os.getenv("FLASK_MAX_CONTENT_LENGTH", str(80 * 1024 * 1024 * 1024)),
+    )
     # Built-in local/dev CORS origins (comma-separated). Пустая env — без этого набора (строгий режим).
     CORS_LOCAL_DEV_ORIGINS = os.getenv(
         "CORS_LOCAL_DEV_ORIGINS",

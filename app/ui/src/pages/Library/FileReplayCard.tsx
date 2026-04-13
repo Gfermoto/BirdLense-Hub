@@ -18,7 +18,6 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import {
   fetchFileTestFiles,
@@ -47,18 +46,22 @@ function filesPollInterval(query: Query<Awaited<ReturnType<typeof fetchFileTestF
   return query.state.status === 'error' ? false : POLL_MS;
 }
 
-export function FileReplayCard() {
+type FileReplayCardProps = {
+  /** Якорь для ссылок вида /library#file-replay */
+  anchorId?: string;
+};
+
+export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps = {}) {
   const { t } = useTranslation();
   const { isAdmin } = useProtectedArea();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loopLocal, setLoopLocal] = useState(false);
-  const [setupDir, setSetupDir] = useState('');
-  const [setupLoop, setSetupLoop] = useState(false);
-  const [activeFolderDraft, setActiveFolderDraft] = useState('');
   const inactiveSeeded = useRef(false);
-  const activeFolderSeeded = useRef(false);
+  /** Не перезаписывать switch из poll сразу после клика (убирает «дёргание» desired vs processor). */
+  const loopQuietUntilRef = useRef(0);
   const [modeBanner, setModeBanner] = useState<{ severity: 'success' | 'error'; text: string } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const statusQuery = useQuery({
     queryKey: ['file-test-status'],
@@ -86,33 +89,9 @@ export function FileReplayCard() {
     }
     const d = statusQuery.data;
     if (!d || inactiveSeeded.current) return;
-    setSetupDir(d.file_dir || '');
-    setSetupLoop(!!d.config_loop_default);
+    setLoopLocal(!!d.config_loop_default);
     inactiveSeeded.current = true;
   }, [inactive, statusQuery.data]);
-
-  useEffect(() => {
-    if (!fileMode) {
-      activeFolderSeeded.current = false;
-      return;
-    }
-    const dir = statusQuery.data?.file_dir;
-    if (dir && !activeFolderSeeded.current) {
-      setActiveFolderDraft(dir);
-      activeFolderSeeded.current = true;
-    }
-  }, [fileMode, statusQuery.data?.file_dir]);
-
-  useEffect(() => {
-    const data = statusQuery.data;
-    if (!data) return;
-    const d = data.desired as Record<string, unknown> | undefined;
-    if (d && typeof d.loop === 'boolean') {
-      setLoopLocal(d.loop);
-    } else {
-      setLoopLocal(!!data.config_loop_default);
-    }
-  }, [statusQuery.data]);
 
   const invalidateAfterConfigChange = () => {
     void qc.invalidateQueries({ queryKey: ['file-test-status'] });
@@ -122,12 +101,12 @@ export function FileReplayCard() {
 
   const enableFileReplayMut = useMutation({
     mutationFn: async () => {
-      const dir = setupDir.trim() || '/app/data/file_test';
+      const dir = (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test';
       await patchSettings({
         video: {
           source: 'file',
           file_dir: dir,
-          file_loop: setupLoop,
+          file_loop: loopLocal,
         },
       });
       return restartProcessor();
@@ -153,28 +132,6 @@ export function FileReplayCard() {
     },
     onSuccess: (r) => {
       invalidateAfterConfigChange();
-      activeFolderSeeded.current = false;
-      setModeBanner(
-        r.success
-          ? { severity: 'success', text: t('library.fileReplayRestartOk') }
-          : { severity: 'error', text: r.message || t('library.fileReplayRestartFail') },
-      );
-    },
-    onError: () => {
-      setModeBanner({ severity: 'error', text: t('library.fileReplayConfigSaveFail') });
-    },
-  });
-
-  const saveFolderMut = useMutation({
-    mutationFn: async () => {
-      await patchSettings({
-        video: { file_dir: activeFolderDraft.trim() },
-      });
-      return restartProcessor();
-    },
-    onSuccess: (r) => {
-      activeFolderSeeded.current = false;
-      invalidateAfterConfigChange();
       setModeBanner(
         r.success
           ? { severity: 'success', text: t('library.fileReplayRestartOk') }
@@ -198,7 +155,29 @@ export function FileReplayCard() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['file-test-status'] });
     },
+    onError: () => {
+      loopQuietUntilRef.current = 0;
+      void qc.invalidateQueries({ queryKey: ['file-test-status'] });
+    },
   });
+
+  useEffect(() => {
+    if (loopMut.isPending) return;
+    if (Date.now() < loopQuietUntilRef.current) return;
+    const data = statusQuery.data;
+    if (!data || data.video_source !== 'file') return;
+    const d = data.desired as Record<string, unknown> | undefined;
+    if (d && typeof d.loop === 'boolean') {
+      setLoopLocal(d.loop);
+      return;
+    }
+    const proc = data.processor as Record<string, unknown> | null | undefined;
+    if (proc && typeof proc.loop === 'boolean') {
+      setLoopLocal(proc.loop);
+      return;
+    }
+    setLoopLocal(!!data.config_loop_default);
+  }, [statusQuery.data, fileMode, loopMut.isPending]);
 
   const stopMut = useMutation({
     mutationFn: () => fileTestStop(),
@@ -216,20 +195,63 @@ export function FileReplayCard() {
 
   const upMut = useMutation({
     mutationFn: (f: File) => fileTestUpload(f),
+    onMutate: () => setUploadError(null),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['file-test-files'] });
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
+    onError: (err: unknown) => {
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { error?: string } | string;
+          headers?: { 'content-type'?: string };
+        };
+      };
+      const st = ax.response?.status;
+      const rawData = ax.response?.data;
+      const apiErr =
+        rawData && typeof rawData === 'object' && rawData !== null && 'error' in rawData
+          ? String((rawData as { error?: string }).error || '')
+          : '';
+      const ct = ax.response?.headers?.['content-type'] ?? '';
+      const likelyProxy413 =
+        st === 413 && (!apiErr || String(ct).toLowerCase().includes('html'));
+      const maxMb = statusQuery.data?.file_test_max_upload_mb;
+      if (st === 413) {
+        setUploadError(
+          likelyProxy413
+            ? t('library.fileReplayUpload413Proxy', { max: maxMb ?? '—' })
+            : maxMb != null
+              ? t('library.fileReplayUpload413', { max: maxMb })
+              : t('library.fileReplayUpload413Generic'),
+        );
+      } else {
+        setUploadError(apiErr || t('library.fileReplayUploadFailed'));
+      }
+    },
   });
 
   const resolvedDir = statusQuery.data?.file_dir ?? '';
-  const folderDirty =
-    fileMode && activeFolderDraft.trim() !== '' && activeFolderDraft.trim() !== resolvedDir;
+  const desiredForLoop = statusQuery.data?.desired as Record<string, unknown> | undefined;
+  const replayArmed = Boolean(desiredForLoop?.armed);
+
+  const handleLoopChange = (_: unknown, v: boolean) => {
+    setLoopLocal(v);
+    loopQuietUntilRef.current = Date.now() + 4500;
+    if (fileMode && replayArmed) loopMut.mutate(v);
+  };
 
   if (statusQuery.isLoading) {
     return (
-      <Card sx={{ mb: 2 }}>
+      <Card id={anchorId} sx={{ mb: 2 }}>
         <CardContent>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {t('library.sectionFileReplay')}
+          </Typography>
+          <Typography variant="h6" gutterBottom>
+            {t('library.fileReplayTitle')}
+          </Typography>
           <LinearProgress />
         </CardContent>
       </Card>
@@ -238,8 +260,11 @@ export function FileReplayCard() {
 
   if (statusQuery.isError) {
     return (
-      <Card sx={{ mb: 2 }}>
+      <Card id={anchorId} sx={{ mb: 2 }}>
         <CardContent>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {t('library.sectionFileReplay')}
+          </Typography>
           <Typography variant="h6" gutterBottom>
             {t('library.fileReplayTitle')}
           </Typography>
@@ -251,8 +276,11 @@ export function FileReplayCard() {
 
   if (inactive) {
     return (
-      <Card sx={{ mb: 2 }}>
+      <Card id={anchorId} sx={{ mb: 2 }}>
         <CardContent>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {t('library.sectionFileReplay')}
+          </Typography>
           <Typography variant="h6" gutterBottom>
             {t('library.fileReplayTitle')}
           </Typography>
@@ -268,28 +296,24 @@ export function FileReplayCard() {
               {modeBanner.text}
             </Alert>
           ) : null}
-          <TextField
-            fullWidth
-            label={t('library.fileReplayDir')}
-            value={setupDir}
-            onChange={(e) => setSetupDir(e.target.value)}
-            placeholder="/app/data/file_test"
-            helperText={t('library.fileReplayFolderHint')}
-            sx={{ mb: 2 }}
-            disabled={!isAdmin || enableFileReplayMut.isPending}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={setupLoop}
-                onChange={(_, v) => setSetupLoop(v)}
-                disabled={!isAdmin || enableFileReplayMut.isPending}
-              />
-            }
-            label={t('library.fileReplayLoopDefault')}
-            sx={{ mb: 1, display: 'block' }}
-          />
-          <FormHelperText sx={{ mb: 2 }}>{t('library.fileReplayLoopDefaultHint')}</FormHelperText>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('library.fileReplaySetupFolderInfo', {
+              path: (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test',
+            })}
+          </Typography>
+          <Box sx={{ width: '100%', mb: 1 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={loopLocal}
+                  onChange={handleLoopChange}
+                  disabled={!isAdmin || enableFileReplayMut.isPending}
+                />
+              }
+              label={t('library.fileReplayLoop')}
+            />
+            <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
+          </Box>
           <Button
             variant="contained"
             disabled={!isAdmin || enableFileReplayMut.isPending}
@@ -315,8 +339,11 @@ export function FileReplayCard() {
   const armed = Boolean(desired?.armed);
 
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card id={anchorId} sx={{ mb: 2 }}>
       <CardContent>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+          {t('library.sectionFileReplay')}
+        </Typography>
         <Typography variant="h6" gutterBottom>
           {t('library.fileReplayTitle')}
         </Typography>
@@ -342,47 +369,28 @@ export function FileReplayCard() {
             {t('library.fileReplayReturnLive')}
           </Button>
         </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {t('library.fileReplayHint')}
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('library.fileReplayFolderReadOnly', { path: resolvedDir || '—' })}
+        </Typography>
 
-        <TextField
-          fullWidth
-          size="small"
-          label={t('library.fileReplayDir')}
-          value={activeFolderDraft}
-          onChange={(e) => setActiveFolderDraft(e.target.value)}
-          helperText={t('library.fileReplayFolderHintActive')}
-          sx={{ mb: 1 }}
-          disabled={!isAdmin || saveFolderMut.isPending}
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={!isAdmin || saveFolderMut.isPending || !folderDirty}
-          onClick={() => {
-            setModeBanner(null);
-            saveFolderMut.mutate();
-          }}
-          sx={{ mb: 2 }}
-        >
-          {t('library.fileReplayApplyFolder')}
-        </Button>
-
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }} alignItems="center">
+        <Box sx={{ width: '100%', mb: 1 }}>
           <FormControlLabel
             control={
               <Switch
                 checked={loopLocal}
-                onChange={(_, v) => {
-                  setLoopLocal(v);
-                  if (armed) loopMut.mutate(v);
-                }}
+                onChange={handleLoopChange}
                 disabled={!isAdmin || loopMut.isPending}
               />
             }
             label={t('library.fileReplayLoop')}
           />
+          <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
+        </Box>
+
+        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }} alignItems="center">
           <Button
             variant="contained"
             color="primary"
@@ -425,12 +433,31 @@ export function FileReplayCard() {
         >
           {t('library.fileReplayUpload')}
         </Button>
+        <FormHelperText sx={{ display: 'block', maxWidth: 560 }}>
+          {statusQuery.data?.file_test_max_upload_mb != null
+            ? t('library.fileReplayUploadLimitHint', { max: statusQuery.data.file_test_max_upload_mb })
+            : t('library.fileReplayUploadLimitHintGeneric')}
+        </FormHelperText>
+        {uploadError ? (
+          <Alert severity="error" sx={{ mt: 1, mb: 1 }} onClose={() => setUploadError(null)}>
+            {uploadError}
+          </Alert>
+        ) : null}
 
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
           {t('library.fileReplayProgress')}
         </Typography>
         {proc ? (
           <Stack spacing={0.5} sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              {t('library.fileReplayLiveSummary', {
+                phase: String(proc.phase ?? '—'),
+                file: String(proc.current_file ?? '—'),
+                index: String(proc.index ?? '—'),
+                total: String(proc.total ?? '—'),
+                frames: String(proc.frame_in_clip ?? '—'),
+              })}
+            </Typography>
             <Typography variant="body2">
               {t('library.fileReplayPhase')}: {String(proc.phase ?? '—')}
             </Typography>
@@ -442,6 +469,9 @@ export function FileReplayCard() {
             </Typography>
             <Typography variant="body2">
               {t('library.fileReplayFrames')}: {String(proc.frame_in_clip ?? '—')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {t('library.fileReplayFramesHint')}
             </Typography>
             {proc.last_error ? (
               <Typography variant="body2" color="error">
@@ -497,11 +527,7 @@ export function FileReplayCard() {
           </Table>
         )}
 
-        {(runMut.isError ||
-          stopMut.isError ||
-          upMut.isError ||
-          loopMut.isError ||
-          filesQuery.isError) && (
+        {(runMut.isError || stopMut.isError || loopMut.isError || filesQuery.isError) && (
           <Box sx={{ mt: 2 }}>
             <Alert severity="error">{t('library.fileReplayActionError')}</Alert>
           </Box>

@@ -790,6 +790,8 @@ export type FileTestStatusPayload = {
   processor: Record<string, unknown> | null;
   config_loop_default: boolean;
   video_source: string;
+  /** Effective upload cap (MiB) from video.file_test_max_upload_mb */
+  file_test_max_upload_mb?: number;
 };
 
 export const fetchFileTestFiles = async (): Promise<FileTestFilesResponse> => {
@@ -915,6 +917,88 @@ export const restartProcessor = async (): Promise<{ success: boolean; message?: 
     return {
       success: false,
       message: err.response?.data?.error || 'Failed to restart',
+    };
+  }
+};
+
+export type ProcessorWeightsSlotStatus = {
+  path: string | null;
+  uses_custom_dir: boolean;
+  default_path: string;
+  bytes: number | null;
+  mtime_unix: number | null;
+};
+
+export type ProcessorWeightsAllowlistStatus = {
+  path: string | null;
+  uses_custom_dir: boolean;
+  bytes: number | null;
+  mtime_unix: number | null;
+};
+
+export type ProcessorWeightsStatusResponse = {
+  custom_weights_dir: string;
+  binary: ProcessorWeightsSlotStatus;
+  classifier: ProcessorWeightsSlotStatus;
+  allowlist: ProcessorWeightsAllowlistStatus;
+};
+
+export const fetchProcessorWeightsStatus = async (): Promise<ProcessorWeightsStatusResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/processor-weights/status`, {
+    withCredentials: true,
+  });
+  return response.data as ProcessorWeightsStatusResponse;
+};
+
+const _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS = 3_600_000; // 1 h
+
+export const uploadProcessorWeight = async (
+  role: 'binary' | 'classifier' | 'class_names',
+  file: File,
+  options?: { acknowledgeClassifierOnly?: boolean },
+): Promise<{ ok: boolean; error?: string; status?: ProcessorWeightsStatusResponse }> => {
+  const form = new FormData();
+  form.append('file', file);
+  const params: Record<string, string> = { role };
+  if (options?.acknowledgeClassifierOnly) {
+    params.acknowledge_classifier_only = '1';
+  }
+  try {
+    const response = await axios.post(
+      `${BASE_API_URL}/system/processor-weights/upload`,
+      form,
+      {
+        withCredentials: true,
+        params,
+        timeout: _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    );
+    return { ok: true, status: response.data?.status };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      ok: false,
+      error: err.response?.data?.error || 'upload_failed',
+    };
+  }
+};
+
+export const resetProcessorWeights = async (
+  roles: Array<'binary' | 'classifier' | 'class_names' | 'all'>,
+): Promise<{ ok: boolean; error?: string; status?: ProcessorWeightsStatusResponse }> => {
+  try {
+    const response = await axios.post(
+      `${BASE_API_URL}/system/processor-weights/reset`,
+      { roles },
+      { withCredentials: true },
+    );
+    return { ok: true, status: response.data?.status };
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { error?: string } } };
+    return {
+      ok: false,
+      error: err.response?.data?.error || 'reset_failed',
     };
   }
 };
