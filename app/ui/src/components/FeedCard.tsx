@@ -112,11 +112,6 @@ export const FeedCard = () => {
         </Typography>
         {feedEnabled && (
           <>
-            {!isAdmin && (
-              <Typography variant="body2" color="text.secondary">
-                {t('feed.adminOnly')}
-              </Typography>
-            )}
             <Button
               variant="contained"
               color="primary"

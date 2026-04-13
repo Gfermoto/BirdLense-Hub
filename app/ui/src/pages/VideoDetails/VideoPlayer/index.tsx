@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useVideoControl } from './useVideoControl';
 import { TrackOverlay } from './TrackOverlay';
 import { SpeciesIcon } from '../../../components/SpeciesIcon';
+import { useProtectedArea } from '../../../contexts/ProtectedAreaContext';
 
 interface ViewToggleProps {
   view: 'video' | 'audio';
@@ -154,6 +155,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showTracksRegenHint = false,
 }) => {
   const { t } = useTranslation();
+  const { isAdmin } = useProtectedArea();
   const videoRef = useRef<HTMLVideoElement>(null);
   const timeoutRef = useRef<number>();
   const [view, setView] = useState<'video' | 'audio'>('video');
@@ -571,7 +573,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {t('video.timelineHint')}
         </Typography>
       )}
-      {showTracksRegenHint && (
+      {showTracksRegenHint && isAdmin && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
           {t('video.noTrackFramesHint')}
         </Typography>
