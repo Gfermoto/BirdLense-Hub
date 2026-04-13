@@ -105,6 +105,7 @@
     "checkApi": "Check: open /api/ui/health in browser — should return {status: ok}.",
     "bySource": "By detection source",
     "bySourceHint": "How many visits include at least one segment from this provider. Row sums can exceed total visits when one visit merged multiple sources.",
+    "volunteerDataLabelingHint": "Volunteers can help with data labeling — contact us.",
     "noData": "No data for selected day",
     "hourlyActivity": "Hourly Activity",
     "dailyPattern": "Daily Activity Pattern",
@@ -124,8 +125,8 @@
     "downloadPdf": "PDF report",
     "weatherLoadError": "Could not load weather. The rest of the overview is shown.",
     "regionComparison": "Region Comparison",
-    "regionComparisonDesc": "You have {{userCount}} species. {{matchCount}} of them are in the region's top {{regionTop}}.",
-    "regionComparisonMatched": "Your species in region top:",
+    "regionComparisonDesc": "{{userCount}} species in the dataset. {{matchCount}} of them are in the region's top {{regionTop}}.",
+    "regionComparisonMatched": "Species from the dataset in the regional top:",
     "regionComparisonTopList": "Region top:",
     "regionComparisonHint": "Based on eBird data for the last 30 days. Region: {{region}}.",
     "regionComparisonConfigure": "Add eBird API key in Settings → Advanced for regional comparison.",
@@ -759,7 +760,7 @@
   },
   "migrationCalendar": {
     "title": "Migration Calendar",
-    "description": "When each species typically appears at your feeder — based on your historical data. Rows and the Σ column are your species list for the selected period (no separate checklist). Period filters apply to the table only, not to the regional reference block below.",
+    "description": "When each species typically appears at the feeder — from data accumulated in the hub. Rows and the Σ column list species for the selected period (no separate checklist). Period filters apply to the table only, not to the regional reference block below.",
     "periodHint": "Switch between year range and exact dates — only one mode is active at a time.",
     "periodModeYears": "By years",
     "periodModeDates": "By dates",
@@ -912,7 +913,7 @@
     "lastDispense": "Last dispense",
     "support": "Support",
     "supportPlaceholder": "Support (set URL in Settings)",
-    "adminOnly": "Button available to admin. Volunteers can help with species — contact us."
+    "adminOnly": "Button available to admin. Volunteers can help with data labeling — contact us."
   },
   "speciesSummary": {
     "totalDetectionStats": "Total Detection Stats",
@@ -1535,7 +1536,7 @@
     },
     "migrationCalendar": {
       "title": "Migration Calendar",
-      "description": "Historical pattern of species activity by month. Shows when each species typically appears at your feeder based on your recorded data.",
+      "description": "Historical pattern of species activity by month. Shows when each species typically appears at the feeder from data in the hub.",
       "details": [
         {
           "title": "Monthly Pattern",

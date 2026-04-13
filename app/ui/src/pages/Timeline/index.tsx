@@ -344,19 +344,21 @@ export function TimelinePage() {
               variant="outlined"
             />
           )}
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {t('timeline.noRecords')}{' '}
-            <Button
-              component={Link}
-              to="/library#recordings"
-              size="small"
-              startIcon={<FolderOpenIcon />}
-              sx={{ verticalAlign: 'baseline' }}
-            >
-              {t('timeline.scanImport')}
-            </Button>{' '}
-            {t('timeline.scanHint')}.
-          </Alert>
+          {canEdit && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {t('timeline.noRecords')}{' '}
+              <Button
+                component={Link}
+                to="/library#recordings"
+                size="small"
+                startIcon={<FolderOpenIcon />}
+                sx={{ verticalAlign: 'baseline' }}
+              >
+                {t('timeline.scanImport')}
+              </Button>{' '}
+              {t('timeline.scanHint')}.
+            </Alert>
+          )}
           <Box
             sx={{
               display: 'grid',
