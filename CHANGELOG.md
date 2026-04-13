@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **Трассировка fusion:** `GET /api/ui/videos/{id}/fusion-trace` и кнопка на странице ролика — только для **оператора (contributor)** и **администратора** (`contributor_or_admin_access`), не для анонимных зрителей. OpenAPI и CONFIGURATION (EN/RU) обновлены.
+
 ### Added
 
 - **Свои веса YOLO из UI ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)):** **Система → Веса процессора** — загрузка `.pt` для бинарного детектора и классификатора и `class_names.txt` в `DATA_DIR/custom_weights/`, обновление `user_config` абсолютными путями, сброс к встроенным путям, флаг перезапуска процессора после операций. API `GET/POST /api/ui/system/processor-weights/*`; проверка `.pt` как zip-чекпойнта без `torch` в web; загрузка классификатора требует существующего allowlist или `acknowledge_classifier_only`.

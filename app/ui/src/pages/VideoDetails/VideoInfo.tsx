@@ -133,7 +133,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { unlocked } = useProtectedArea();
+  const { unlocked, canEdit } = useProtectedArea();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fusionOpen, setFusionOpen] = useState(false);
   const [fusionLoading, setFusionLoading] = useState(false);
@@ -306,27 +306,31 @@ export const VideoInfo = ({ video }: { video: Video }) => {
           <Typography variant="body2" color="text.secondary">
             <strong>{t('videoInfo.processor')}:</strong> v{processor_version}
           </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AccountTreeIcon />}
-            fullWidth
-            sx={{ mt: 1 }}
-            onClick={() => {
-              setFusionRawOpen(false);
-              setFusionOpen(true);
-            }}
-          >
-            {t('fusionTrace.openButton')}
-          </Button>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            display="block"
-            sx={{ mt: 0.5 }}
-          >
-            {t('fusionTrace.hint')}
-          </Typography>
+          {canEdit && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AccountTreeIcon />}
+                fullWidth
+                sx={{ mt: 1 }}
+                onClick={() => {
+                  setFusionRawOpen(false);
+                  setFusionOpen(true);
+                }}
+              >
+                {t('fusionTrace.openButton')}
+              </Button>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5 }}
+              >
+                {t('fusionTrace.hint')}
+              </Typography>
+            </>
+          )}
         </Box>
       </Paper>
 
