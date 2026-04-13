@@ -763,6 +763,221 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /system/file-test/files:
+    get:
+      summary: List file-test replay videos
+      description: |
+        Lists video files in `video.file_dir` when `video.source=file`. Used by Hub System page for offline replay without container restart (#270).
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTestFilesResponse"
+        "403":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode (`video.source` is not `file`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/status:
+    get:
+      summary: File-test processor status
+      description: |
+        Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), and config hints.
+      responses:
+        "200":
+          description: Status payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTestStatusResponse"
+        "403":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/upload:
+    post:
+      summary: Upload a file-test video
+      description: Admin-only. Multipart field `file`. Max size 500 MiB; extensions mp4/mov/mkv.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  name:
+                    type: string
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/files/{name}:
+    delete:
+      summary: Delete a file-test video
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/run:
+    post:
+      summary: Arm file-test replay / update loop
+      description: |
+        Writes `desired.json` for the processor. Empty body arms playback (start). Optional `armed` and `loop` booleans.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                armed:
+                  type: boolean
+                loop:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated desired state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  desired:
+                    type: object
+                    additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/stop:
+    post:
+      summary: Stop file-test replay
+      description: Disarms playback and requests abort of the current session (processor clears abort when the session ends).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                abort:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Updated desired state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  desired:
+                    type: object
+                    additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /storage/stats:
     get:
       summary: Get storage stats
@@ -838,6 +1053,41 @@ components:
       type: object
       properties:
         error:
+          type: string
+    FileTestFileEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        duration_sec:
+          type: number
+          nullable: true
+    FileTestFilesResponse:
+      type: object
+      properties:
+        file_dir:
+          type: string
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileTestFileEntry"
+    FileTestStatusResponse:
+      type: object
+      properties:
+        file_dir:
+          type: string
+        desired:
+          type: object
+          additionalProperties: true
+        processor:
+          type: object
+          nullable: true
+          additionalProperties: true
+        config_loop_default:
+          type: boolean
+        video_source:
           type: string
     FusionTraceResponse:
       type: object
