@@ -1120,7 +1120,7 @@
     "encodingGpuUnavailable": "Intel GPU is selected in settings but the device is not available in the container. Add devices to compose (see docker-compose.intel.example.yml).",
     "processorMqtt": "Processor MQTT (Frigate/BirdNET)",
     "gpu": "GPU",
-    "gpuNoData": "No metrics (sysfs). If Intel recording fails, switch to CPU in Settings → Video.",
+    "gpuNoData": "No GPU load data (sysfs and Intel probe unavailable). If Intel recording fails, switch to CPU in Settings → Video.",
     "uniqueVisitors": "Visitors",
     "speciesVisitSessions": "Visit Sessions",
     "uniqueVisitorsPeriod": "Metric period",

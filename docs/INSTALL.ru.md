@@ -55,7 +55,7 @@ mkdir -p data/recordings data/db app_config
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** из каталога `app/` выполните `bash scripts/docker-compose-intel-override-gen.sh` (все `card*`/`renderD*`, `group_add` video/render, `CAP_PERFMON`) или см. `docker-compose.intel.example.yml` для ручной правки GID.
+Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** из каталога `app/` выполните `bash scripts/docker-compose-intel-override-gen.sh` (все `card*`/`renderD*`, `group_add` video/render, `CAP_PERFMON`) или см. `docker-compose.intel.example.yml` для ручной правки GID. Если в логах **`Failed to initialize PMU`** при этом уже есть `PERFMON` в compose — на **хосте** (не в контейнере) ослабьте **`kernel.perf_event_paranoid`**: `make deploy` и CI при наличии `docker-compose.override.yml` пишут **`/etc/sysctl.d/99-birdlense-perf.conf`** со значением **0** и вызывают `sysctl -p` (дефолт **3** на части VPS режет perf; если **0** мало — вручную **`sudo sysctl kernel.perf_event_paranoid=-1`** или контейнер с **`privileged: true`** в override).
 
 ---
 
