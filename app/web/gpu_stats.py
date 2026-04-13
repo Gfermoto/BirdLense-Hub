@@ -31,17 +31,21 @@ def _intel_gpu_top() -> float | None:
             text=True,
             timeout=5,
         )
-        if result.returncode not in (0, 124):
-            stderr = (result.stderr or "")[:200]
+        rc = result.returncode
+        stderr = (result.stderr or "")[:200]
+        if rc not in (0, 124):
             global _intel_gpu_top_pmu_next_log_monotonic
             sl = stderr.lower()
-            if "pmu" in sl and "permission denied" in sl:
-                now_m = time.monotonic()
-                if now_m < _intel_gpu_top_pmu_next_log_monotonic:
-                    return None
-                _intel_gpu_top_pmu_next_log_monotonic = now_m + _INTEL_GPU_TOP_PMU_SUPPRESS_S
-            _log.warning("intel_gpu_top rc=%s stderr=%s", result.returncode, stderr)
-            return None
+            pmu_denied = "pmu" in sl and "permission denied" in sl
+            now_m = time.monotonic()
+            if pmu_denied:
+                # intel_gpu_top часто пишет JSON при rc=1 (PMU недоступен в контейнере).
+                # Душим только предупреждение в лог, метрику берём из файла при наличии.
+                if now_m >= _intel_gpu_top_pmu_next_log_monotonic:
+                    _intel_gpu_top_pmu_next_log_monotonic = now_m + _INTEL_GPU_TOP_PMU_SUPPRESS_S
+                    _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)
+            else:
+                _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)
         if not os.path.exists(out_path):
             _log.warning("intel_gpu_top: output file missing")
             return None

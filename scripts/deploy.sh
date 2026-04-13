@@ -107,8 +107,14 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
 fi
 
 # 1.8 Intel GPU: при наличии renderD* — сгенерировать override (card+render, group_add video/render хоста, sysfs, PERFMON)
+# 1.8b PMU / intel_gpu_top: дефолт 3 (и иногда даже 1) режет perf в контейнере при CAP_PERFMON → «Failed to initialize PMU». Значение 0 проверено на VPS; −1 только при необходимости.
 echo "1.8 Проверка Intel GPU на сервере..."
-ssh ${SSH_OPTS} "${HOST}" "cd ${REMOTE_DIR}/app && bash scripts/docker-compose-intel-override-gen.sh"
+ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker-compose-intel-override-gen.sh; \
+  if [ -f docker-compose.override.yml ]; then \
+    echo '1.8b sysctl kernel.perf_event_paranoid=0 → /etc/sysctl.d/99-birdlense-perf.conf'; \
+    printf '%s\n' 'kernel.perf_event_paranoid=0' > /etc/sysctl.d/99-birdlense-perf.conf; \
+    sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true; \
+  fi"
 
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."

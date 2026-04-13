@@ -55,7 +55,7 @@ mkdir -p data/recordings data/db app_config
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** from `app/` run `bash scripts/docker-compose-intel-override-gen.sh` (all `card*`/`renderD*`, host `group_add` for video/render, `CAP_PERFMON`) or edit `docker-compose.intel.example.yml` manually (set GIDs).
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** from `app/` run `bash scripts/docker-compose-intel-override-gen.sh` (all `card*`/`renderD*`, host `group_add` for video/render, `CAP_PERFMON`) or edit `docker-compose.intel.example.yml` manually (set GIDs). If logs show **`Failed to initialize PMU`** while `PERFMON` is already in compose, lower **`kernel.perf_event_paranoid` on the host** (not in the container): `make deploy` and CI write **`/etc/sysctl.d/99-birdlense-perf.conf`** with **0** when `docker-compose.override.yml` exists (many VPS images default to **3**). If **0** is not enough, try **`sudo sysctl kernel.perf_event_paranoid=-1`** or add **`privileged: true`** to the Intel override.
 
 ---
 

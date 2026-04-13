@@ -1120,7 +1120,7 @@
     "encodingGpuUnavailable": "В настройках выбран Intel GPU, но устройство недоступно в контейнере. Добавьте devices в compose (см. docker-compose.intel.example.yml).",
     "processorMqtt": "MQTT процессора (Frigate/BirdNET)",
     "gpu": "GPU",
-    "gpuNoData": "Метрики нет (sysfs). Если запись с Intel не идёт — в Настройках → Видео выберите CPU.",
+    "gpuNoData": "Нет данных по загрузке GPU (ни sysfs, ни опрос Intel). Если запись с Intel не идёт — в Настройках → Видео выберите CPU.",
     "uniqueVisitors": "Посетители",
     "speciesVisitSessions": "Сессии посещений",
     "uniqueVisitorsPeriod": "Период метрики",

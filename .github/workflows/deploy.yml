@@ -48,6 +48,14 @@ jobs:
           cd "${DEPLOY_DIR:-/root/BirdLense}/app"
           bash scripts/docker-compose-intel-override-gen.sh
 
+      - name: Intel GPU perf (PMU / intel_gpu_top)
+        run: |
+          cd "${DEPLOY_DIR:-/root/BirdLense}/app"
+          if [ -f docker-compose.override.yml ]; then
+            printf '%s\n' 'kernel.perf_event_paranoid=0' | tee /etc/sysctl.d/99-birdlense-perf.conf
+            sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true
+          fi
+
       - name: Build and restart
         run: |
           cd "${DEPLOY_DIR:-/root/BirdLense}/app"

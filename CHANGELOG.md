@@ -34,7 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **Intel GPU на сервере (VA-API + метрики UI):** `docker-compose.override` теперь генерируется скриптом **`app/scripts/docker-compose-intel-override-gen.sh`**: все `/dev/dri/renderD*` и `card*`, **`group_add`** с GID групп **video/render хоста** (раньше без них устройства были `rw-rw----` → VA-API и косвенно метрики ломались), **`CAP_PERFMON`** вместе с `SYS_ADMIN` для `intel_gpu_top`. Вызывается из **`scripts/deploy.sh`** и из **GitHub Actions Deploy** перед `make start`. На VPS проверено: `intel_gpu_top` отдаёт JSON без PMU error.
+- **Intel GPU на сервере (VA-API + метрики UI):** `docker-compose.override` теперь генерируется скриптом **`app/scripts/docker-compose-intel-override-gen.sh`**: все `/dev/dri/renderD*` и `card*`, **`group_add`** с GID групп **video/render хоста** (раньше без них устройства были `rw-rw----` → VA-API и косвенно метрики ломались), **`CAP_PERFMON`** вместе с `SYS_ADMIN` для `intel_gpu_top`. Вызывается из **`scripts/deploy.sh`** и из **GitHub Actions Deploy** перед `make start`.
+
+- **Intel PMU / `intel_gpu_top` на VPS:** при **`kernel.perf_event_paranoid=3`** (и на части хостов даже при **1**) ядро отказывает в perf/PMU в Docker даже с **`CAP_PERFMON`**. После **1.8** **`scripts/deploy.sh`** и **GitHub Actions** при наличии **`docker-compose.override.yml`** пишут **`/etc/sysctl.d/99-birdlense-perf.conf`** со значением **0** и **`sysctl -p`** (ошибки игнорируются). INSTALL (EN/RU): при нехватке **0** — **−1** вручную или **`privileged: true`** в override.
 
 - **Метрики Intel GPU в Docker:** при `intel_gpu_top` с ошибкой PMU `Permission denied` предупреждение в лог не чаще **раза в час** (если после правок override ошибка останется).
 
