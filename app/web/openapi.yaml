@@ -234,6 +234,8 @@ paths:
       summary: Fusion decision trace for a recording
       description: |
         Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload (`persisted_tracks` / `accepted_tracks` alias — rows stored on the clip; `rejected_tracks` — not persisted). `tracks[].bucket` is `persisted` for the clip list and `rejected` for the reject list (`accepted` kept for backward compatibility with older API clients).
+
+        **Auth:** contributor (operator) or admin session only — not for anonymous viewers (same as download/merge).
       parameters:
         - in: path
           name: video_id
@@ -247,6 +249,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FusionTraceResponse"
+        "403":
+          description: Access denied (contributor or admin session required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Video not found
           content:

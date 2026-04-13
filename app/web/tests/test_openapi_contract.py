@@ -167,6 +167,8 @@ class TestOpenApiContractSmoke:
             db.session.commit()
             vid = v.id
 
+        with client.session_transaction() as sess:
+            sess["access_role"] = "contributor"
         response = client.get(f"/api/ui/videos/{vid}/fusion-trace")
         assert response.status_code == 200
         schema = _schema_for(spec, path="/videos/{video_id}/fusion-trace")

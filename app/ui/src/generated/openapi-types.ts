@@ -333,6 +333,8 @@ export interface paths {
         /**
          * Fusion decision trace for a recording
          * @description Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload (`persisted_tracks` / `accepted_tracks` alias — rows stored on the clip; `rejected_tracks` — not persisted). `tracks[].bucket` is `persisted` for the clip list and `rejected` for the reject list (`accepted` kept for backward compatibility with older API clients).
+         *
+         *     **Auth:** contributor (operator) or admin session only — not for anonymous viewers (same as download/merge).
          */
         get: {
             parameters: {
@@ -352,6 +354,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["FusionTraceResponse"];
+                    };
+                };
+                /** @description Access denied (contributor or admin session required) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Video not found */
@@ -1676,6 +1687,205 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/processor-weights/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Custom processor weights status (#276)
+         * @description Effective paths for binary detector, classifier, and species allowlist; whether each file lives under
+         *     `DATA_DIR/custom_weights`; sizes and mtimes. Settings password (or MCP Bearer) required.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Status payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/processor-weights/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload custom .pt or class_names.txt (#276)
+         * @description Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
+         *     For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
+         *     Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
+         *     Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
+         */
+        post: {
+            parameters: {
+                query: {
+                    role: "binary" | "classifier" | "class_names";
+                    acknowledge_classifier_only?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            path?: string;
+                            role?: string;
+                            status?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/processor-weights/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset custom weights to built-in defaults (#276)
+         * @description JSON body `{ "roles": ["binary"] | ["classifier"] | ["class_names"] | ["all"] | combinations }`.
+         *     Removes files in `custom_weights` and clears matching keys from user_config when they pointed there.
+         *     Sets processor restart flag. Admin-only when contributor password is enabled.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        roles: ("binary" | "classifier" | "class_names" | "all")[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Reset done */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            removed_files?: string[];
+                            status?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storage/stats": {
         parameters: {
             query?: never;
@@ -1819,6 +2029,8 @@ export interface components {
             } | null;
             config_loop_default?: boolean;
             video_source?: string;
+            /** @description Effective per-file upload limit (MiB) for POST /system/file-test/upload (config default 10240, clamped 64–65536 in hub code) */
+            file_test_max_upload_mb?: number;
         };
         FusionTraceResponse: {
             available?: boolean;

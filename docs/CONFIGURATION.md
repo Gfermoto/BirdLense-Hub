@@ -275,7 +275,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `min_confidence_to_store` | Min fused confidence to persist (default **0.30**). Also used as the floor for detector-label fallbacks. |
 | `species_mapping` | Species name mapping |
 
-**Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace`.
+**Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **contributor or admin session only** (not anonymous viewers).
 
 **EU model:** `best.pt`. US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
 

@@ -97,7 +97,12 @@ def register_ui_video_routes(app):
 
     @app.route("/api/ui/videos/<int:video_id>/fusion-trace", methods=["GET"])
     def get_video_fusion_trace(video_id):
-        """Трассировка fusion (ActivityLog decision_trace) для ролика (#272)."""
+        """Трассировка fusion (ActivityLog decision_trace) для ролика (#272).
+
+        Только contributor/admin (как скачивание/merge), не для гостей.
+        """
+        if not contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
         body, code = build_fusion_trace_api_payload(video_id)
         return body, code
 

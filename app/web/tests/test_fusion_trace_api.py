@@ -6,6 +6,51 @@ import json
 from datetime import datetime, timezone
 
 
+def test_fusion_trace_403_when_passwords_and_anonymous(app, client):
+    from app_config.app_config import app_config
+
+    old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
+    app_config.set("general.settings_password", "ft-admin")
+    app_config.set("general.contributor_password", "ft-contrib")
+    try:
+        r = client.get("/api/ui/videos/1/fusion-trace")
+        assert r.status_code == 403
+        assert r.get_json().get("error") == "Access denied"
+    finally:
+        app_config.set("general.settings_password", old_admin)
+        app_config.set("general.contributor_password", old_contrib)
+
+
+def test_fusion_trace_200_contributor_session(app, client):
+    from app_config.app_config import app_config
+    from models import Video, db
+
+    old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
+    app_config.set("general.settings_password", "ft-admin")
+    app_config.set("general.contributor_password", "ft-contrib")
+    try:
+        with app.app_context():
+            v = Video(
+                processor_version="t",
+                start_time=datetime(2026, 4, 10, 12, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 10, 12, 1, 0, tzinfo=timezone.utc),
+                video_path="data/recordings/fusion-trace/contrib.mp4",
+            )
+            db.session.add(v)
+            db.session.commit()
+            vid = v.id
+        with client.session_transaction() as sess:
+            sess["access_role"] = "contributor"
+        r = client.get(f"/api/ui/videos/{vid}/fusion-trace")
+        assert r.status_code == 200
+        assert r.get_json().get("video_id") == vid
+    finally:
+        app_config.set("general.settings_password", old_admin)
+        app_config.set("general.contributor_password", old_contrib)
+
+
 def test_fusion_trace_404_unknown_video(client):
     r = client.get("/api/ui/videos/999999/fusion-trace")
     assert r.status_code == 404
