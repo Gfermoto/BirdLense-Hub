@@ -767,7 +767,7 @@ paths:
     get:
       summary: List file-test replay videos
       description: |
-        Lists video files in `video.file_dir` when `video.source=file`. Used by Hub System page for offline replay without container restart (#270).
+        Lists video files in `video.file_dir` when `video.source=file`. Library UI uses this for offline replay without container restart (#270).
       responses:
         "200":
           description: File list
@@ -791,7 +791,8 @@ paths:
     get:
       summary: File-test processor status
       description: |
-        Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), and config hints.
+        Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), config hints, and `video_source`.
+        Always succeeds when settings are readable: use `video_source === "file"` to know if replay APIs are usable (mutating routes still return 409 when not in file mode).
       responses:
         "200":
           description: Status payload
@@ -799,14 +800,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FileTestStatusResponse"
-        "403":
-          description: Settings password required
+        "400":
+          description: Invalid or unusable `video.file_dir`
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "409":
-          description: Not in file replay mode
+        "403":
+          description: Settings password required
           content:
             application/json:
               schema:

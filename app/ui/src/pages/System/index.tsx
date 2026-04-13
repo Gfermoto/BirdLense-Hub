@@ -5,7 +5,6 @@ import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
-import { FileTestRunCard } from './FileTestRunCard';
 import { AutomationCard } from './AutomationCard';
 import { ProcessorLogs } from './ProcessorLogs';
 import Box from '@mui/material/Box';
@@ -44,12 +43,6 @@ export const System: React.FC = () => {
 
         <Box>
           <CatalogRepairCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <FileTestRunCard />
         </Box>
 
         <Divider sx={{ my: 3 }} />
