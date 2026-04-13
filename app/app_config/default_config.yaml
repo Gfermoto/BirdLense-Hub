@@ -171,6 +171,8 @@ video:
   file_dir: "/app/data/file_test"
   # Для тестового режима source=file: зациклить файл (true) или остановиться в конце (false).
   file_loop: false
+  # Максимум МиБ на один файл при upload через Hub (Library → офлайн-прогон). По умолчанию 10240 (>10000); в коде зажато 64..65536. Прокси (nginx client_max_body_size) может отдать 413 раньше приложения.
+  file_test_max_upload_mb: 10240
   # true — имитировать realtime (пропуск кадров по elapsed), false — кадр за кадром для дебага.
   file_realtime_simulation: false
   # Хост Go2RTC: http://IP:1984

@@ -147,6 +147,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
+| *(custom weights)* | **System → Processor weights** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): upload writes `binary.pt` / `classifier.pt` / `class_names.txt` under **`DATA_DIR/custom_weights/`** and sets **absolute** paths in `user_config` (relative paths here resolve from `app/processor`, not from `DATA_DIR`). After upload/reset the hub sets the processor restart flag. |
 | `file_max_record_floor_seconds` | **`video.source=file` only:** minimum wall-clock segment (seconds) before finalize can split a long clip; default **86400**. See **Video** behaviour row. |
 | `keep_recording_when_no_detections` | **`video.source=file` only** (default **false**). If **true**, keep the finalized session (valid mp4) when there were **zero** stored detections — useful for offline pipelines. For **`go2rtc` / live** this key has **no effect**; empty sessions are still deleted. |
 | `track_regen_parallel_auto_with_manual` | Advanced track-regeneration parallelism when mixing auto and manual scope; ops tuning, YAML-only (see System → track regen docs in UI). |
@@ -160,7 +161,8 @@ The System page also lists these endpoints under **Notification observability** 
 | `source` | `go2rtc` or `file` (test: mp4 folder or single path in container) |
 | `file_path` | Single mp4 absolute path in container; empty with `file_dir` for playlist |
 | `file_dir` | Folder with `*.mp4` / `*.mov` / `*.mkv` (flat list, not recursive). Default in repo: **`/app/data/file_test`** (Docker: host `./data` → `/app/data`). |
-| `file_loop` | Replay playlist/file in a loop |
+| `file_loop` | Replay playlist/file in a loop (Library **File replay** card writes this when you enable `source=file`; loop can be toggled in the same card while the processor runs) |
+| `file_test_max_upload_mb` | Max MiB per clip uploaded via Hub (**Library** → file replay). Clamped **64–65536** in code; default **10240** (>10000 MiB). A reverse proxy may return **413** before Flask — set e.g. nginx `client_max_body_size` ≥ your largest clip. Flask body cap: env **`FLASK_MAX_CONTENT_LENGTH`** (bytes); default in `web/config.py` is large so the YAML limit applies first. |
 | *(behaviour)* | For **`video.source=file`** with a **folder playlist**, each **`VideoPlaylistSource`** clip triggers a **session finalize** when the file ends (crops/DB/notifications for that clip), then the next file continues in a new session. **`processor.max_inactive_seconds`** is floored to **120**s. **`processor.file_max_record_floor_seconds`** (default **86400**) is a wall-clock safety minimum for **`max_record_seconds`** so long files are not cut mid-clip by the live-camera default; lower it only if you want time-based splits. |
 | `go2rtc_url` | Go2RTC URL (`http://YOUR_HOST:1984`) |
 | `cameras` | List: `{id, stream_name, name}` |

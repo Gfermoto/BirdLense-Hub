@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -94,6 +95,7 @@ class FileTestRuntime:
     abort_session: bool = False
     loop_override: bool | None = None
     _last_desired_mtime: float = field(default=0.0, repr=False)
+    _last_poll_during_session_monotonic: float = field(default=0.0, repr=False)
     phase: str = "idle"
     last_error: str | None = None
     frame_in_clip: int = 0
@@ -123,6 +125,14 @@ class FileTestRuntime:
 
         self._apply_media_state()
         self._write_status_file()
+
+    def poll_during_active_session(self, *, min_interval_s: float = 0.35) -> None:
+        """Вызывать из цикла кадров записи: иначе внешний run_motion_loop не делает poll() и status.json замирает (кадры в UI = 0)."""
+        now = time.monotonic()
+        if now - self._last_poll_during_session_monotonic < min_interval_s:
+            return
+        self._last_poll_during_session_monotonic = now
+        self.poll()
 
     def _playlist_paths(self) -> list[str]:
         return scan_video_files_in_dir(resolved_file_dir_for_config())

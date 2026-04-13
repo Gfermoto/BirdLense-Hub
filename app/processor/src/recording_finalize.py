@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import time
 from collections import Counter
 from datetime import datetime
 from typing import Any, Optional
@@ -52,6 +53,10 @@ _DECISION_TRACE_FIELDS = (
     "frigate_merge_suppressed",
 )
 _DECISION_TRACE_LIMIT = 40
+
+# Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
+_NO_DETECTIONS_WARN_INTERVAL_S = 120.0
+_no_detections_warn_next_monotonic = 0.0
 
 
 def _is_playable_video_file(path: str) -> bool:
@@ -290,11 +295,18 @@ def finalize_motion_recording(
         audio_detections,
     )
     if len(video_detections) == 0 and mqtt_aggregator:
-        logging.warning(
+        global _no_detections_warn_next_monotonic
+        now_m = time.monotonic()
+        msg = (
             "No detections after merge. YOLO tracks: %s, MQTT events in window: %s",
             len(frame_processor.tracks),
             len(mqtt_events),
         )
+        if now_m >= _no_detections_warn_next_monotonic:
+            logging.warning(*msg)
+            _no_detections_warn_next_monotonic = now_m + _NO_DETECTIONS_WARN_INTERVAL_S
+        else:
+            logging.debug(*msg)
 
     video_file_ok = _is_playable_video_file(video_output)
     if len(video_detections) > 0 and not video_file_ok:

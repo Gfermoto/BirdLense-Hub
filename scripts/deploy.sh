@@ -106,14 +106,9 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
     grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
-# 1.8 Intel GPU: на сервере с /dev/dri/renderD128 — создать/обновить override (devices + sysfs для метрик GPU)
+# 1.8 Intel GPU: при наличии renderD* — сгенерировать override (card+render, group_add video/render хоста, sysfs, PERFMON)
 echo "1.8 Проверка Intel GPU на сервере..."
-ssh ${SSH_OPTS} "${HOST}" "cd ${REMOTE_DIR}/app && \
-  if [ -e /dev/dri/renderD128 ]; then \
-    cp docker-compose.intel.example.yml docker-compose.override.yml && echo '  override установлен (Intel GPU + sysfs)'; \
-  else \
-    rm -f docker-compose.override.yml; \
-  fi"
+ssh ${SSH_OPTS} "${HOST}" "cd ${REMOTE_DIR}/app && bash scripts/docker-compose-intel-override-gen.sh"
 
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."

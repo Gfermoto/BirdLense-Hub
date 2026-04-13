@@ -26,7 +26,7 @@
 | [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
 | [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
 
-**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск. При **плейлисте из папки** (`file_path` пуст) на странице **Система** доступна карточка **Тестовый прогон по файлам**: список/upload/удаление в `file_dir`, старт/стоп и loop **без перезапуска контейнера** — процессор читает `data/file_test_control/desired.json`, прогресс в `status.json` ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)).
+**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск. При **плейлисте из папки** (`file_path` пуст) на странице **Библиотека** доступна карточка **офлайн-прогона с диска**: список/upload/удаление в `file_dir`, старт/стоп и loop **без перезапуска контейнера** — процессор читает `data/file_test_control/desired.json`, прогресс в `status.json` ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)).
 
 ---
 
@@ -147,6 +147,7 @@
 | `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
+| *(свои веса)* | **Система → Веса процессора** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): загрузка кладёт `binary.pt` / `classifier.pt` / `class_names.txt` в **`DATA_DIR/custom_weights/`** и прописывает в `user_config` **абсолютные** пути (относительные пути здесь резолвятся от `app/processor`, не от `DATA_DIR`). После загрузки/сброса выставляется флаг перезапуска процессора. |
 | `file_max_record_floor_seconds` | Только **`video.source=file`:** минимальный отрезок по «настенным часам» (сек) до возможного split длинного клипа; по умолчанию **86400**. См. *(поведение)* в **Video**. |
 | `keep_recording_when_no_detections` | Только **`video.source=file`** (по умолчанию **false**). Если **true** — оставлять финализированную сессию (валидный mp4) при **нуле** сохранённых детекций (офлайн-пайплайны). Для **`go2rtc` / live** ключ **не действует**; пустые сессии удаляются. |
 | `track_regen_parallel_auto_with_manual` | Продвинутая параллельность перегенерации треков (auto + manual scope); тюнинг для ops, только YAML (см. System → track regen в UI). |
@@ -160,7 +161,8 @@
 | `source` | `go2rtc` или `file` (тест: папка mp4 или один файл в контейнере) |
 | `file_path` | Один mp4, абсолютный путь в контейнере; пусто — плейлист из `file_dir` |
 | `file_dir` | Папка с `*.mp4` / `*.mov` / `*.mkv` (только файлы в каталоге, без рекурсии). В репозитории по умолчанию **`/app/data/file_test`** (Docker: `./data` хоста → `/app/data`). |
-| `file_loop` | Зацикливать плейлист/файл |
+| `file_loop` | Зацикливать плейлист/файл (карточка **прогон с диска** в **Библиотеке** пишет это при включении `source=file`; переключатель там же во время работы процессора) |
+| `file_test_max_upload_mb` | Лимит МиБ на один ролик при upload через Hub (**Библиотека** → прогон с диска). В коде зажато **64–65536**, по умолчанию **10240** (>10000 MiB). Прокси может отдать **413** раньше Flask — поднимите nginx `client_max_body_size` под размер ролика. Потолок тела запроса в Flask: **`FLASK_MAX_CONTENT_LENGTH`** (байты); дефолт в `web/config.py` большой, чтобы первым срабатывал лимит из YAML. |
 | *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
 | `cameras` | Список: `{id, stream_name, name}` |

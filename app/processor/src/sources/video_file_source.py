@@ -497,30 +497,3 @@ class FileTestIdleSource:
 
     def close(self):
         self.stop_recording()
-
-
-class FileTestIdleSource:
-    """Плейсхолдер, когда video.source=file и в каталоге ещё нет роликов (#270)."""
-
-    def __init__(self, main_size=(1280, 720), lores_size=(640, 640)):
-        self.logger = logging.getLogger(__name__)
-        self.main_size = main_size
-        self.lores_size = lores_size
-        self.video_path = ""
-        self.source_fps = 30.0
-        self.frame_count = 0
-
-    def start_recording(self, output):
-        self.logger.debug("FileTestIdleSource: start_recording (no-op) %s", output)
-
-    def stop_recording(self):
-        self.logger.debug("FileTestIdleSource: stop_recording (no-op)")
-
-    def capture(self):
-        return None
-
-    def get_frame_time(self):
-        return 0.0
-
-    def close(self):
-        self.stop_recording()

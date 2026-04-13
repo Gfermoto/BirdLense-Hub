@@ -100,6 +100,8 @@ class MotionRecordingSession:
                 if frame is None:
                     break
                 frame_n += 1
+                if self.file_test_runtime:
+                    self.file_test_runtime.poll_during_active_session()
                 if file_mode and frame_n % 500 == 0:
                     clip = getattr(self.media_source, "video_path", "") or ""
                     clip_name = Path(str(clip)).name if clip else "?"
@@ -123,6 +125,7 @@ class MotionRecordingSession:
             self.fps_tracker.log_summary()
         finally:
             if self.file_test_runtime:
+                self.file_test_runtime.poll()
                 self.file_test_runtime.abort_session = False
             self.media_source.stop_recording()
             end_time = datetime.now(timezone.utc)
