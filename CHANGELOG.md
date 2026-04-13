@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Тестовый прогон по файлам без рестарта ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)):** при `video.source=file` процессор не блокируется на пустой папке; обмен через `data/file_test_control/desired.json` и `status.json` (старт/стоп, loop, abort сессии). API `GET/POST /api/ui/system/file-test/*`, карточка на странице **System** (список, upload, удаление, прогресс polling).
+
 - **Fusion decision trace ([#272](https://github.com/Gfermoto/BirdLense-Hub/issues/272)):** `GET /api/ui/videos/{id}/fusion-trace` и диалог на странице ролика (**Fusion trace** / **Трассировка fusion**) — шаги по трекам (детектор → классификатор → evidence → аудио → fusion → итог) плюс сырой JSON; документация в **CONFIGURATION** (EN/RU).
 
 - **BirdNET MQTT FIFO ([#269](https://github.com/Gfermoto/BirdLense-Hub/issues/269)):** таблица **`birdnet_fifo_event`** в hub БД (Alembic **`004_birdnet_fifo_event`**); процессор пишет в SQLite **`data/db/birdlense.db`** через фоновый поток (**WAL**, **`busy_timeout`**), гидратирует RAM при старте MQTT; **`GET .../diagnostics/birdnet-fifo`** отдаёт снимок из БД при наличии строк (иначе JSON-файл как раньше). Ключи **`processor.birdnet_fifo_persist_enabled`**, **`processor.birdnet_fifo_sqlite_busy_ms`**. При **`DATABASE_URL`** PostgreSQL запись из процессора отключена (нет общего sqlite-файла).
