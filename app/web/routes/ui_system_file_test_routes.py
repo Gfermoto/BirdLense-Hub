@@ -32,8 +32,8 @@ def register_ui_system_file_test_routes(app) -> None:
     @app.route("/api/ui/system/file-test/status", methods=["GET"])
     @require_ui_settings_password
     def file_test_status():
-        if not _file_mode_ok():
-            return {"error": "video.source is not file"}, 409
+        # Always 200 when config is readable: `video_source` tells the UI whether file replay is active.
+        # Avoids axios/React Query treating "not file mode" as an error and polling 409 forever (#270).
         body, code = get_file_test_status()
         return body, code
 

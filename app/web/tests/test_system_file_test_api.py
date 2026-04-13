@@ -38,6 +38,19 @@ def test_file_test_files_409_when_not_file_source(client, monkeypatch):
     assert r.status_code == 409
 
 
+def test_file_test_status_200_when_not_file_source(client, monkeypatch, tmp_path):
+    _open_access(monkeypatch)
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    (tmp_path / "ft").mkdir(parents=True, exist_ok=True)
+    app_config.set("video.source", "go2rtc")
+    app_config.set("video.file_dir", str(tmp_path / "ft"))
+    r = client.get("/api/ui/system/file-test/status")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body.get("video_source") == "go2rtc"
+    assert "file_dir" in body
+
+
 def test_file_test_list_and_status(client, monkeypatch, file_mode_tmp):
     _open_access(monkeypatch)
     (file_mode_tmp / "a.mp4").write_bytes(b"")

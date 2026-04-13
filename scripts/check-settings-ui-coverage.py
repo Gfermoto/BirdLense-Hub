@@ -157,9 +157,19 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     },
     # Runtime controls still config-level.
     "video.source": {
-        "category": "advanced",
-        "reason": "Runtime mode selection; hidden from basic UI flow.",
-        "next_step": "Keep hidden unless file-source mode is productized in UI.",
+        "category": "library-ui",
+        "reason": "go2rtc vs file replay; toggled in Library (PATCH), not Settings form.",
+        "next_step": "Single entry: Library → file replay.",
+    },
+    "video.file_dir": {
+        "category": "library-ui",
+        "reason": "Test clip folder; edited in Library file replay card.",
+        "next_step": "Keep Library as single UX entry.",
+    },
+    "video.file_loop": {
+        "category": "library-ui",
+        "reason": "Default playlist loop for file mode; set in Library when enabling replay.",
+        "next_step": "Keep Library as single UX entry.",
     },
     "video.pre_record_seconds": {
         "category": "planned-ui",

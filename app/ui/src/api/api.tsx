@@ -696,6 +696,14 @@ export const updateSettings = async (settings: Settings) => {
   return response.data;
 };
 
+/** Deep-merge PATCH (same as full save); use for small updates e.g. Library file replay mode. */
+export const patchSettings = async (partial: Record<string, unknown>) => {
+  const response = await axios.patch(`${BASE_API_URL}/settings`, partial, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 // --- System monitor / processor logs (#296)
 export type SystemMetricsLive = {
   cpu: { percent: number };

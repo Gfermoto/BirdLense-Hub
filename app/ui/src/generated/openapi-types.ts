@@ -1280,7 +1280,7 @@ export interface paths {
         };
         /**
          * List file-test replay videos
-         * @description Lists video files in `video.file_dir` when `video.source=file`. Used by Hub System page for offline replay without container restart (#270).
+         * @description Lists video files in `video.file_dir` when `video.source=file`. Library UI uses this for offline replay without container restart (#270).
          */
         get: {
             parameters: {
@@ -1337,7 +1337,8 @@ export interface paths {
         };
         /**
          * File-test processor status
-         * @description Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), and config hints.
+         * @description Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), config hints, and `video_source`.
+         *     Always succeeds when settings are readable: use `video_source === "file"` to know if replay APIs are usable (mutating routes still return 409 when not in file mode).
          */
         get: {
             parameters: {
@@ -1357,8 +1358,8 @@ export interface paths {
                         "application/json": components["schemas"]["FileTestStatusResponse"];
                     };
                 };
-                /** @description Settings password required */
-                403: {
+                /** @description Invalid or unusable `video.file_dir` */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1366,8 +1367,8 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Not in file replay mode */
-                409: {
+                /** @description Settings password required */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
