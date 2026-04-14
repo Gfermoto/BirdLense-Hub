@@ -17,6 +17,21 @@ logger = logging.getLogger(__name__)
 
 VAAPI_DEVICE = "/dev/dri/renderD128"
 
+
+def _ffmpeg_stderr_log_level(line: str) -> int:
+    """Шумные строки прогресса/аудио — DEBUG, итоги и ошибки — INFO."""
+    s = line.strip()
+    if not s:
+        return logging.DEBUG
+    if "Queue input is backward in time" in s:
+        return logging.DEBUG
+    if "Last message repeated" in s:
+        return logging.DEBUG
+    if s.startswith("frame=") and "fps=" in s:
+        return logging.DEBUG
+    return logging.INFO
+
+
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
@@ -198,8 +213,10 @@ class Go2RTCStreamSource:
             self._vaapi_available = self._probe_vaapi()
             if not self._vaapi_available:
                 self.logger.warning(
-                    "VA-API устройство есть, но инициализация не удалась (libva/драйвер в контейнере). "
-                    "Запись идёт на CPU. См. логи FFmpeg при выборе Intel GPU."
+                    "VA-API: %s есть, но init не прошёл — запись на CPU. "
+                    "Частая причина: нет group_add групп video/render хоста в compose. "
+                    "На сервере: bash scripts/docker-compose-intel-override-gen.sh и пересоздайте контейнер.",
+                    VAAPI_DEVICE,
                 )
         return self._vaapi_available
 
@@ -321,7 +338,8 @@ class Go2RTCStreamSource:
                     err = self._ffmpeg_process.stderr.read()
                     if err:
                         for line in err.decode("utf-8", errors="replace").strip().splitlines():
-                            self.logger.info("FFmpeg: %s", line)
+                            lvl = _ffmpeg_stderr_log_level(line)
+                            self.logger.log(lvl, "FFmpeg: %s", line)
                 except Exception:
                     pass
             self._ffmpeg_process = None

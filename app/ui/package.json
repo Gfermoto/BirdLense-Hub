@@ -10,8 +10,10 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "codegen:openapi": "openapi-typescript ../web/openapi.yaml -o src/generated/openapi-types.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
+    "lint:all": "eslint .",
     "preview": "vite preview",
     "docs": "node ./node_modules/typedoc/bin/typedoc"
   },

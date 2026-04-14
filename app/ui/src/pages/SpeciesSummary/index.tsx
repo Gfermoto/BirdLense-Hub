@@ -296,7 +296,7 @@ const SpeciesSummaryPage = () => {
                   }}
                 />
               ) : (
-                <SpeciesIcon speciesName={data.species.name} size={120} />
+                <SpeciesIcon speciesName={data.species.name ?? ''} size={120} />
               )}
             </Box>
           </Grid>

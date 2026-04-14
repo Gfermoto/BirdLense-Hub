@@ -38,6 +38,7 @@ class MotionRecordingSession:
         scales_topic_arg: Optional[str],
         data_dir: str,
         fps_tracker: FPSTracker,
+        file_test_runtime: Any = None,
     ) -> None:
         self.args = args
         self.api = api
@@ -52,6 +53,7 @@ class MotionRecordingSession:
         self.scales_topic_arg = scales_topic_arg
         self.data_dir = data_dir
         self.fps_tracker = fps_tracker
+        self.file_test_runtime = file_test_runtime
 
     @property
     def media_source(self) -> Any:
@@ -91,10 +93,15 @@ class MotionRecordingSession:
             file_mode = (app_config.get("video.source") or "").strip().lower() == "file"
             frame_n = 0
             while True:
+                if self.file_test_runtime and self.file_test_runtime.abort_session:
+                    logger.info("File test: stop requested, ending session")
+                    break
                 frame = self.media_source.capture()
                 if frame is None:
                     break
                 frame_n += 1
+                if self.file_test_runtime:
+                    self.file_test_runtime.poll_during_active_session()
                 if file_mode and frame_n % 500 == 0:
                     clip = getattr(self.media_source, "video_path", "") or ""
                     clip_name = Path(str(clip)).name if clip else "?"
@@ -117,6 +124,9 @@ class MotionRecordingSession:
                     break
             self.fps_tracker.log_summary()
         finally:
+            if self.file_test_runtime:
+                self.file_test_runtime.poll()
+                self.file_test_runtime.abort_session = False
             self.media_source.stop_recording()
             end_time = datetime.now(timezone.utc)
 

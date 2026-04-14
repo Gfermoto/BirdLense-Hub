@@ -132,6 +132,19 @@ def contributor_or_admin_access():
     return False
 
 
+def ui_sensitive_export_access():
+    """Экспорт таймлайна, PDF-отчёт, unknowns: не для гостя при включённых паролях.
+
+    Как скачивание/merge видео: сессия contributor/admin, MCP Bearer, либо UI API key
+    (скрипты при BIRDLENSE_UI_API_KEY).
+    """
+    if contributor_or_admin_access() or mcp_bearer_authorized():
+        return True
+    from services.strict_ui_api_auth_service import ui_api_key_authorized
+
+    return ui_api_key_authorized()
+
+
 def client_ip_for_rate_limit(request) -> str:
     """Client IP for throttling behind nginx. Prefer X-Real-IP / X-Forwarded-For, then remote_addr.
 

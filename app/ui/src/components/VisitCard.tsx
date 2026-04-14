@@ -25,6 +25,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { downloadDetectionCropForINaturalist } from '../api/api';
+import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
 
@@ -33,11 +34,13 @@ const DetectionItem = ({
   speciesName,
   onClick,
   isLastInGroup,
+  inaturalistShareEnabled,
 }: {
   detection: SpeciesVisit['detections'][0];
   speciesName: string;
   onClick: () => void;
   isLastInGroup: boolean;
+  inaturalistShareEnabled: boolean;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -46,7 +49,7 @@ const DetectionItem = ({
 
   const handleINaturalist = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!detection.id || detection.source !== 'video') return;
+    if (!inaturalistShareEnabled || !detection.id || detection.source !== 'video') return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -109,12 +112,18 @@ const DetectionItem = ({
             })()}
           </Typography>
           {detection.source === 'video' && detection.id && (
-            <Tooltip title={t('common.iNaturalist')}>
+            <Tooltip
+              title={
+                inaturalistShareEnabled
+                  ? t('common.iNaturalist')
+                  : t('common.loginRequiredForExport')
+              }
+            >
               <span>
                 <IconButton
                   size="small"
                   onClick={handleINaturalist}
-                  disabled={loading}
+                  disabled={loading || !inaturalistShareEnabled}
                   sx={{ p: 0.5 }}
                   aria-label={t('common.iNaturalist')}
                 >
@@ -166,6 +175,7 @@ export const VisitCard = memo(function VisitCard({
   showDateTime = false,
 }: VisitCardProps) {
   const { t } = useTranslation();
+  const { canEdit } = useProtectedArea();
   const navigate = useNavigate();
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
@@ -316,6 +326,7 @@ export const VisitCard = memo(function VisitCard({
                         key={`${detection.video_id}-${index}`}
                         detection={detection}
                         speciesName={visit.species.name}
+                        inaturalistShareEnabled={canEdit}
                         onClick={() =>
                           navigate(`/videos/${detection.video_id}`, {
                             state: {

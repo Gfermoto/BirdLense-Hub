@@ -5,7 +5,6 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
-import MuiLink from '@mui/material/Link';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -54,13 +53,11 @@ import {
   type UnknownDetection,
   getApiErrorMessage,
 } from '../../api/api';
-import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { PageHelp } from '../../components/PageHelp';
 import { unknownsHelpConfig } from '../../page-help-config';
-import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 
 function UnknownCard({
   detection,
@@ -205,7 +202,7 @@ function UnknownCard({
                 displayEmpty
                 value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
                 label={t('unknowns.correctSpecies')}
-                renderValue={(v) => {
+                renderValue={(v: number | string) => {
                   if (v === '' || v === undefined) {
                     return (
                       <Typography component="span" variant="body2" color="text.secondary">
@@ -234,28 +231,26 @@ function UnknownCard({
                 ))}
               </Select>
             </FormControl>
-            <Tooltip title={!canEdit ? t('unknowns.passwordRequired') : ''}>
-              <span>
-                <Button
-                  variant="contained"
-                  size="small"
-                  disabled={
-                    selectedSpeciesId === '' ||
-                    !Number.isFinite(Number(selectedSpeciesId)) ||
-                    Number(selectedSpeciesId) === Number(detection.species_id) ||
-                    correcting ||
-                    !canEdit
-                  }
-                  onClick={handleCorrect}
-                >
-                  {correcting ? '...' : t('unknowns.apply')}
-                </Button>
-              </span>
-            </Tooltip>
+            <span>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={
+                  selectedSpeciesId === '' ||
+                  !Number.isFinite(Number(selectedSpeciesId)) ||
+                  Number(selectedSpeciesId) === Number(detection.species_id) ||
+                  correcting ||
+                  !canEdit
+                }
+                onClick={handleCorrect}
+              >
+                {correcting ? '...' : t('unknowns.apply')}
+              </Button>
+            </span>
             <Tooltip
               title={
                 !canEdit
-                  ? t('unknowns.passwordRequired')
+                  ? ''
                   : pendingSpeciesChange
                     ? t('unknowns.confirmBlockedPendingApply')
                     : t('unknowns.confirmCorrectHelp')
@@ -272,11 +267,6 @@ function UnknownCard({
                 </Button>
               </span>
             </Tooltip>
-            {!canEdit && (
-              <Typography variant="caption" color="text.secondary">
-                {t('unknowns.passwordRequired')}
-              </Typography>
-            )}
           </Box>
         </Box>
       </CardContent>
@@ -291,8 +281,7 @@ export function UnknownsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const videoListReturnPath = `${location.pathname}${location.search}`;
   const queryClient = useQueryClient();
-  const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
-  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+  const { canEdit } = useProtectedArea();
 
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(() => {
     const paramDate = searchParams.get('date');
@@ -627,36 +616,6 @@ export function UnknownsPage() {
         </Alert>
       )}
 
-      {!canEdit && requiresPassword && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {t('unknowns.passwordRequired')}{' '}
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => setShowUnlockDialog(true)}
-            sx={{ mr: 1 }}
-          >
-            {t('settings.passwordSubmit')}
-          </Button>
-          <MuiLink
-            component={RouterLink}
-            to="/settings"
-            color="inherit"
-            sx={{ fontWeight: 600 }}
-          >
-            {t('nav.settings')}
-          </MuiLink>
-        </Alert>
-      )}
-      <SettingsPasswordDialog
-        open={showUnlockDialog}
-        onSuccess={(role) => {
-          setUnlocked(true, role || 'admin');
-          setShowUnlockDialog(false);
-          queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
-        }}
-        onClose={() => setShowUnlockDialog(false)}
-      />
 
       {canEdit && recentCorrections.length > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>

@@ -7,6 +7,7 @@ from typing import Iterable
 from datetime import datetime, timezone
 
 from multi_camera_confidence import apply_multi_camera_confidence_boost
+from birdnet_merge_key import birdnet_merge_key, sqlite_path_for_birdnet_merge
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
 
@@ -30,17 +31,18 @@ def _aggregate_birdnet_scores(
     end_time,
     species_mapping: dict,
     half_life_hours: float = 6.0,
+    merge_db_path: str | None = None,
 ) -> dict[str, dict]:
     scores: dict[str, dict] = {}
     end_dt = end_time
     if getattr(end_dt, "tzinfo", None) is None:
         end_dt = end_dt.replace(tzinfo=timezone.utc)
     half_life_hours = max(0.1, float(half_life_hours or 6.0))
+    db_path = merge_db_path if merge_db_path is not None else sqlite_path_for_birdnet_merge()
     for ev in mqtt_events or []:
         if str((ev or {}).get("source") or "").strip().lower() != "birdnet":
             continue
-        raw_species = ev.get("species") or ev.get("common_name") or ev.get("label") or ""
-        species = normalize(str(raw_species), species_mapping)
+        species = birdnet_merge_key(ev, species_mapping, db_path)
         if not species or species.lower() == "unknown":
             continue
         conf = max(0.0, min(1.0, _safe_float(ev.get("confidence"), 0.0)))

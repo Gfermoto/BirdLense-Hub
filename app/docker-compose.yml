@@ -1,7 +1,8 @@
 # BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
-# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без devices — всегда CPU.
-# Intel GPU: см. docker-compose.intel.example.yml → скопировать в docker-compose.override.yml на хосте с Intel.
+# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без override — всегда CPU.
+# Intel: при деплое scripts/deploy.sh вызывает scripts/docker-compose-intel-override-gen.sh (DRI + group_add + PERFMON).
+# Вручную: см. docker-compose.intel.example.yml.
 
 services:
   redis:
@@ -17,8 +18,9 @@ services:
 
   birdlense:
     build:
-      context: .
-      dockerfile: Dockerfile
+      # Контекст — корень репозитория: в образ попадает scripts/export_fusion_training_data.py (fusion export).
+      context: ..
+      dockerfile: app/Dockerfile
     container_name: birdlense
     depends_on:
       redis:
@@ -40,11 +42,14 @@ services:
       - BIRDLENSE_ENV=${BIRDLENSE_ENV:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_USERNAME=${MQTT_USERNAME:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}
       - BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}
       - BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}
+      - TRUSTED_PROXY=${TRUSTED_PROXY:-}
+      - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped
     deploy:
       resources:

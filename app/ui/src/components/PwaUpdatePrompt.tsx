@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import { useTranslation } from 'react-i18next';

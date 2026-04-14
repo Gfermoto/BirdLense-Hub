@@ -143,13 +143,25 @@ export interface Settings {
       enabled?: boolean;
       source?: 'mqtt' | 'homeassistant';
       mqtt_topic?: string;
+      mqtt_topic_prefix?: string;
+      mqtt_command_topic?: string;
+      mqtt_tare_payload?: string;
       homeassistant_entity_id?: string;
       unit?: 'kg' | 'g';
+      weight_estimate_enabled?: boolean;
+      estimate_require_consecutive_spike?: boolean;
+      motion_trigger_enabled?: boolean;
+      motion_trigger_min_delta_kg?: number;
+      motion_trigger_debounce_seconds?: number;
+      min_delta_kg_for_estimate?: number;
+      history_max_lines?: number;
     };
   };
   processor: {
     tracker: string; // Path to tracker config, e.g., "bytetrack.yaml"
     max_record_seconds: number; // Max recording duration in seconds
+    /** Post-roll seconds added to inactivity gap before stop (#157). */
+    post_record_seconds?: number;
     max_inactive_seconds: number; // Max inactivity before stopping recording
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
@@ -175,6 +187,13 @@ export interface Settings {
     ebird_regional_top_confidence_floor?: number;
     /** BirdNET affects classifier confidence only; does not create video labels directly. */
     birdnet_mqtt_auto_confidence?: boolean;
+    birdnet_mqtt_bias_delta?: number;
+    birdnet_mqtt_bias_floor?: number;
+    /** Frigate camera id groups at one location, e.g. [["BirdBox","Forest"]]. */
+    multi_camera_groups?: string[][];
+    multi_camera_confidence_boost?: number;
+    save_dataset_crops?: boolean;
+    dataset_min_confidence?: number;
     classifier_fallback_bird?: boolean; // Keep generic detector label when classifier stays uncertain
     spectrogram_px_per_sec: number; // Spectrogram pixels per second
     /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
@@ -269,6 +288,7 @@ export interface Settings {
   };
   motion?: {
     source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
+    check_every_n_frames?: number;
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
     frigate_label_exclude?: string[];

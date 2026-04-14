@@ -279,6 +279,32 @@ def test_settings_patch_contributor_placeholder_does_not_wipe_telegram_token(
         (app_config.config.get("notifications") or {}).pop("telegram_bot_token", None)
 
 
+def test_settings_patch_json_null_contributor_password_does_not_wipe(app, client, monkeypatch):
+    """PATCH с contributor_password: null не должен обнулять сохранённый пароль помощника."""
+    from app_config.app_config import app_config
+
+    monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
+    monkeypatch.delenv("FLASK_ENV", raising=False)
+    old_contrib = app_config.get("general.contributor_password")
+    monkeypatch.setattr(app_config, "save", lambda: None)
+    _patch_general_key(monkeypatch, "settings_password", "admin-for-null-test")
+    _patch_general_key(monkeypatch, "contributor_password", "contrib-must-keep")
+
+    try:
+        with client.session_transaction() as sess:
+            sess["access_role"] = "admin"
+
+        r = client.patch(
+            "/api/ui/settings",
+            json={"general": {"contributor_password": None}},
+            content_type="application/json",
+        )
+        assert r.status_code == 200
+        assert app_config.get("general.contributor_password") == "contrib-must-keep"
+    finally:
+        app_config.set("general.contributor_password", old_contrib or "")
+
+
 def test_settings_patch_admin_password_stored_as_bcrypt_and_verify_ok(app, client, monkeypatch):
     """PATCH нового plaintext → bcrypt в конфиге; verify-password принимает тот же пароль (#278)."""
     from app_config.app_config import app_config

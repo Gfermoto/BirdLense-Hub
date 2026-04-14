@@ -12,7 +12,7 @@
 
 | Путь | Задача | Куда идти |
 |------|--------|-----------|
-| **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
+| **Запуск** | Docker, камеры, прод | [OVERVIEW](./OVERVIEW.ru.md) → [INSTALL](./INSTALL.ru.md) → [SCENARIOS](./SCENARIOS.ru.md) |
 | **Интеграции** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.ru.md) → [CONFIGURATION](./CONFIGURATION.ru.md) |
 | **Разработка** | Код, тесты, релизы | [Структура репозитория](./REPOSITORY_LAYOUT.ru.md) → [LOCAL_DEV](./LOCAL_DEV.ru.md) → [TESTING](./TESTING.ru.md) → [CI и качество](./CI_AND_QUALITY.ru.md) → [Contributing](./project/contributing.md) |
 

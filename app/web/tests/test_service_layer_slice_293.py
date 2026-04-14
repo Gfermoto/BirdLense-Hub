@@ -297,8 +297,10 @@ def test_parse_review_only_noise_limit():
 
 def test_birdnet_fifo_snapshot_missing_file(monkeypatch, tmp_path):
     import data_paths
+    from services import birdnet_fifo_view_service as bfvs
     from services.system_diagnostics_service import build_birdnet_fifo_snapshot_response
 
+    monkeypatch.setattr(bfvs, "try_build_birdnet_fifo_snapshot_from_db", lambda: None)
     monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
     body, code = build_birdnet_fifo_snapshot_response()
     assert code == 200

@@ -87,7 +87,14 @@ function parseHourFromSearchParams(
 
 export function TimelinePage() {
   const { t } = useTranslation();
-  const { canEdit } = useProtectedArea();
+  const { canEdit, role, requiresPassword } = useProtectedArea();
+  /** Только админ: оператор не ходит в Библиотеку — подсказка про скан диска ему не нужна. */
+  const showLibraryDiskScanHint = canEdit && role === 'admin';
+  /** Только после входа админа или оператора, если включён пароль (не гостю с улицы). */
+  const showReportsAndSharingHint =
+    requiresPassword &&
+    canEdit &&
+    (role === 'admin' || role === 'contributor');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isReviewMode = searchParams.get('review') === '1';
@@ -329,9 +336,18 @@ export function TimelinePage() {
       ) : (
         <>
           <PageHelp {...timelineHelpConfig} />
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: showReportsAndSharingHint ? 1 : 2 }}
+          >
             {t('timeline.intro')}
           </Typography>
+          {showReportsAndSharingHint ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('timeline.reportsAndSharingHint')}
+            </Typography>
+          ) : null}
           {filterHour !== null && (
             <Chip
               label={t('timeline.hourFilterChip', {
@@ -344,19 +360,21 @@ export function TimelinePage() {
               variant="outlined"
             />
           )}
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {t('timeline.noRecords')}{' '}
-            <Button
-              component={Link}
-              to="/library#recordings"
-              size="small"
-              startIcon={<FolderOpenIcon />}
-              sx={{ verticalAlign: 'baseline' }}
-            >
-              {t('timeline.scanImport')}
-            </Button>{' '}
-            {t('timeline.scanHint')}.
-          </Alert>
+          {showLibraryDiskScanHint && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {t('timeline.noRecords')}{' '}
+              <Button
+                component={Link}
+                to="/library#recordings"
+                size="small"
+                startIcon={<FolderOpenIcon />}
+                sx={{ verticalAlign: 'baseline' }}
+              >
+                {t('timeline.scanImport')}
+              </Button>{' '}
+              {t('timeline.scanHint')}.
+            </Alert>
+          )}
           <Box
             sx={{
               display: 'grid',

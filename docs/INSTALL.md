@@ -12,7 +12,7 @@ BirdLense Hub — bird feeder monitoring: video and audio detection, recordings,
 |-----------|-------------|
 | **Docker** | **x86_64 / amd64** (Intel or AMD), Compose v2 — ARM/aarch64 not supported |
 | **Go2RTC** | Video streams from IP cameras (standalone or Frigate) |
-| **MQTT** (optional) | Frigate events, BirdNET sightings |
+| **MQTT** (optional) | Frigate events; BirdNET (any compatible JSON publisher, often BirdNET-Go or BirdNET-Pi) |
 
 ---
 
@@ -45,17 +45,19 @@ make build && make start
 
 ## Option 4: Image without repo (for users)
 
-No cloning — image and config only:
+No cloning — image and config only (single `birdlense` container; no Redis stack from `docker-compose.yml`):
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
 mkdir -p data/recordings data/db app_config
-# .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (openssl rand -hex 16)
-# docker-compose.image.yml from repo app/
+# Download `app/docker-compose.image.yml` and `app/.env.example` from the repo, then:
+cp .env.example .env
+# Fill .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (e.g. openssl rand -hex 16).
+# Optional: BIRDLENSE_IMAGE=… for a custom registry (see docker-compose.image.yml).
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. Intel GPU: `cp docker-compose.intel.example.yml docker-compose.override.yml`.
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** from `app/` run `bash scripts/docker-compose-intel-override-gen.sh` (all `card*`/`renderD*`, host `group_add` for video/render, `CAP_PERFMON`) or edit `docker-compose.intel.example.yml` manually (set GIDs). If logs show **`Failed to initialize PMU`** while `PERFMON` is already in compose, lower **`kernel.perf_event_paranoid` on the host** (not in the container): `make deploy` and CI write **`/etc/sysctl.d/99-birdlense-perf.conf`** with **0** when `docker-compose.override.yml` exists (many VPS images default to **3**). If **0** is not enough, try **`sudo sysctl kernel.perf_event_paranoid=-1`** or add **`privileged: true`** to the Intel override.
 
 ---
 
@@ -64,7 +66,7 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 **Docker volumes and uid:** container processes run as **`birdlense` (uid 1000)**. The entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. If `chown` is not allowed on your filesystem, from the host under `app/`: `chown -R 1000:1000 data app_config`.
 
 1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`, and from `./install.sh`.
-2. **Config** — `app/app_config/user_config.yaml`. Examples: `cp configs/minimal.yaml app_config/user_config.yaml`.
+2. **Config** — `app/app_config/user_config.yaml`. Example from the repo **`app/`** directory: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
 4. **Cameras** — Settings → Cameras: stream names from Go2RTC.
 
@@ -83,13 +85,30 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, No
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), Intel GPU override if `/dev/dri/renderD128` exists, `make build && make start` in `app/` on the server.
+**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), `make build && make start` in `app/` on the server.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
 **Linear checklist**, VPS paths, logs, common pitfalls: [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+
+### HTTPS / nginx and large uploads (Library → file replay)
+
+If uploads return **413** while the UI still shows an old hub limit (e.g. 2048 MiB), the server may be on stale config **or** a **proxy** rejects the body before Flask. The hub image sets a high Flask **`MAX_CONTENT_LENGTH`** (override with **`FLASK_MAX_CONTENT_LENGTH`** bytes in the environment). Nginx **inside** the Hub container already sets **`client_max_body_size 64g`** (`app/nginx/docker-nginx-main.conf`). If you terminate TLS or run another reverse proxy **in front of** the container, raise the limit there too, e.g.:
+
+```nginx
+location /api/ {
+    client_max_body_size 16g;
+    proxy_pass http://127.0.0.1:8085;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Tune **`client_max_body_size`** to your clips; YAML key **`video.file_test_max_upload_mb`** (repo default **10240** MiB after update).
 
 ### Telegram proxy autorotate (one command)
 

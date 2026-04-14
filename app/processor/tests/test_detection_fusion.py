@@ -1,11 +1,15 @@
 import os
+import sqlite3
 import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.insert(0, src_path)
 
+import detection_fusion as detection_fusion_mod
+from birdnet_merge_key import reset_birdnet_merge_key_cache_for_tests
 from detection_fusion import build_fused_video_detections
 
 
@@ -379,3 +383,69 @@ def test_frigate_standalone_keeps_matching_camera_when_hub_scoped():
     )
     assert len(out) == 1
     assert out[0]['decision_kind'] == 'frigate_standalone'
+
+
+def test_fusion_birdnet_locale_resolved_via_scientific_name(monkeypatch):
+    """Русское common в MQTT + Parus major → тот же ключ, что у YOLO Great Tit (SQLite каталог)."""
+    reset_birdnet_merge_key_cache_for_tests()
+    fd, path = tempfile.mkstemp(suffix='.db')
+    os.close(fd)
+    try:
+        conn = sqlite3.connect(path)
+        conn.execute(
+            'CREATE TABLE species_taxon ('
+            'id INTEGER PRIMARY KEY, taxon_key TEXT UNIQUE NOT NULL, '
+            'scientific_name TEXT, common_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT \'active\')'
+        )
+        conn.execute(
+            'CREATE TABLE species_alias ('
+            'id INTEGER PRIMARY KEY, alias TEXT NOT NULL UNIQUE, '
+            'alias_key TEXT NOT NULL, taxon_id INTEGER NOT NULL)'
+        )
+        conn.execute(
+            "INSERT INTO species_taxon (id, taxon_key, scientific_name, common_name) "
+            "VALUES (1, 'pm', 'Parus major', 'Great Tit')"
+        )
+        conn.commit()
+        conn.close()
+
+        monkeypatch.setattr(detection_fusion_mod, 'sqlite_path_for_birdnet_merge', lambda: path)
+
+        start = datetime.now(timezone.utc)
+        end = start + timedelta(seconds=30)
+        cfg = DummyConfig({
+            'detection.merge_window_seconds': 5,
+            'detection.dedup_window_seconds': 45,
+            'detection.one_per_species': True,
+            'detection.source_priority': ['yolo', 'frigate'],
+            'detection.cross_source_confidence_bonus': 0.0,
+            'detection.min_confidence_to_store': 0.05,
+            'processor.birdnet_mqtt_half_life_hours': 6.0,
+            'processor.multi_camera_groups': [],
+        })
+        mqtt_events = [
+            {
+                'source': 'birdnet',
+                'species': 'Большая синица',
+                'common_name': 'Большая синица',
+                'scientific_name': 'Parus major',
+                'confidence': 0.92,
+                'timestamp': end.isoformat(),
+            },
+        ]
+        out = build_fused_video_detections(
+            [_base_detection('Great Tit')],
+            mqtt_events,
+            start_time=start,
+            end_time=end,
+            app_config=cfg,
+        )
+        assert out[0]['audio_evidence'] == 'support'
+        assert out[0]['audio_support_species'] == 'Great Tit'
+        assert out[0]['_birdnet_prior'] > 0
+    finally:
+        reset_birdnet_merge_key_cache_for_tests()
+        try:
+            os.unlink(path)
+        except OSError:
+            pass

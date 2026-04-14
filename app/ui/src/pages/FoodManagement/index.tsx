@@ -9,12 +9,10 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import Info from '@mui/icons-material/Info';
-import Tooltip from '@mui/material/Tooltip';
 import { resolveImageUrl, fetchBirdFood, toggleBirdFood } from '../../api/api';
 import { BirdFood } from '../../types';
 import { PageHelp } from '../../components/PageHelp';
@@ -24,7 +22,7 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 export const FoodManagement = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { isAdmin } = useProtectedArea();
+  const { isAdmin, canEdit } = useProtectedArea();
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const { data: foodData, isLoading } = useQuery({
     queryKey: ['birdFood'],
@@ -45,7 +43,7 @@ export const FoodManagement = () => {
 
       return { previousFoods };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       queryClient.setQueryData(['birdFood'], context?.previousFoods);
     },
     onSettled: () => {
@@ -63,12 +61,7 @@ export const FoodManagement = () => {
 
   return (
     <Box mb={4}>
-      <PageHelp {...foodHelpConfig} />
-      {!isAdmin && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {t('food.loginRequired')}
-        </Alert>
-      )}
+      {canEdit && <PageHelp {...foodHelpConfig} />}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -117,16 +110,14 @@ export const FoodManagement = () => {
                   </Typography>
                 </TableCell>
                 <TableCell align="center" sx={{ width: '100px' }}>
-                  <Tooltip title={!isAdmin ? t('food.loginRequired') : ''}>
-                    <span>
-                      <Checkbox
-                        checked={food.active}
-                        onChange={() => isAdmin && toggleMutation.mutate(food.id)}
-                        color="primary"
-                        disabled={!isAdmin}
-                      />
-                    </span>
-                  </Tooltip>
+                  <span>
+                    <Checkbox
+                      checked={food.active}
+                      onChange={() => isAdmin && toggleMutation.mutate(food.id)}
+                      color="primary"
+                      disabled={!isAdmin}
+                    />
+                  </span>
                 </TableCell>
               </TableRow>
             ))}

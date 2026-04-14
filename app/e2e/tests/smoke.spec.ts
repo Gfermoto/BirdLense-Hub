@@ -47,15 +47,29 @@ test.describe('Smoke tests', () => {
     });
   });
 
-  test('Overview species chart click opens timeline with species filter', async ({ page }) => {
+  test('Overview species chart: legend opens timeline or shows empty state', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
+    const topHeading = page.getByRole('heading', { name: /Top Species Distribution|Топ видов/i });
+    await expect(topHeading).toBeVisible({ timeout: 20000 });
+
     const chips = page.getByTestId('overview-species-legend-chip');
-    const n = await chips.count();
-    if (n === 0) {
-      test.skip(true, 'Overview has no species distribution data in this environment');
+    if ((await chips.count()) > 0) {
+      await chips.first().click();
+      await expect(page).toHaveURL(/\/timeline\?speciesId=\d+&date=/);
+      return;
     }
-    await chips.first().click();
-    await expect(page).toHaveURL(/\/timeline\?speciesId=\d+&date=/);
+
+    const chartEmpty = page.getByTestId('overview-species-chart-empty');
+    if (await chartEmpty.isVisible()) {
+      await expect(chartEmpty).toBeVisible();
+      return;
+    }
+
+    // Несколько блоков Overview делят один и тот же текст «no data» — привязываем к секции «Топ видов».
+    const panel = topHeading.locator('..');
+    await expect(
+      panel.getByText(/No data for selected day|Нет данных за выбранный день/i),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {

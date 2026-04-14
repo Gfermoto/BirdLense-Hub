@@ -27,7 +27,7 @@ import Alert from '@mui/material/Alert';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
-import { Video } from '../../types';
+import type { Video, VideoSpecies } from '../../types';
 import { VideoInfo } from './VideoInfo';
 import { VideoPlayer } from './VideoPlayer';
 import { DetectedSpecies } from './DetectedSpecies';
@@ -181,7 +181,8 @@ export const VideoDetails = () => {
     if (!video || detectionFramesPending || detectionFramesError) return false;
     const merged = displayVideo ?? video;
     const anyFrames = merged.species.some(
-      (s) => s.source === 'video' && Array.isArray(s.frames) && s.frames.length > 0,
+      (s: VideoSpecies) =>
+        s.source === 'video' && Array.isArray(s.frames) && s.frames.length > 0,
     );
     return Boolean(video.video_path) && !anyFrames;
   }, [video, displayVideo, detectionFramesPending, detectionFramesError]);
