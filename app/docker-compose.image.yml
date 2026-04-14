@@ -1,8 +1,8 @@
 # Развёртывание из готового образа (без сборки)
-# Использование: см. docs/INSTALL.md — Вариант 3
+# Использование: docs/INSTALL.md — Option 4 / docs/INSTALL.ru.md — Вариант 4
 #
 #   export BIRDLENSE_IMAGE=ghcr.io/gfermoto/birdlense-hub:latest   # или свой registry
-#   cp .env.example .env   # и заполнить
+#   cp .env.example .env   # и заполнить PROCESSOR_SECRET, FLASK_SECRET_KEY и при необходимости MQTT_* и др.
 #   mkdir -p data/recordings data/db app_config
 #   docker compose -f docker-compose.image.yml up -d
 
@@ -25,6 +25,7 @@ services:
       - BIRDLENSE_ENV=${BIRDLENSE_ENV:-}
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
+      - MQTT_USERNAME=${MQTT_USERNAME:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - MCP_TOKEN=${MCP_TOKEN:-}

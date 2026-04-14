@@ -22,7 +22,7 @@ local: setup local-build start
 # Полная сборка для локального запуска: UI + Docker-образ
 local-build:
 	@echo "1. Сборка UI..."
-	@(cd ui && npm run build) || { echo "Ошибка: npm run build. Выполните: cd ui && npm ci && npm run build"; exit 1; }
+	@(cd ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build. Проверьте Node/npm (см. app/ui/package.json engines)."; exit 1; }
 	@echo "2. Сборка Docker-образа..."
 	@docker compose build
 	@echo "Build finished."

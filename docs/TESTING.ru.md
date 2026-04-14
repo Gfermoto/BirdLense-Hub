@@ -18,7 +18,7 @@
 |-----|------------|
 | **`python-security`** | **Bandit** для `web/` + `processor/src`; **pip-audit** по `web/requirements.txt` и `processor/requirements.txt` |
 | **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` для `web/` + `processor/src/`; сводка **radon cc**; **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + проверка расхождения `src/generated/openapi-types.ts`; `npm run lint`; production-сборка SPA (`app/ui`) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + проверка расхождения `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; production-сборка SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, отчёт **Settings UI coverage** (артефакт + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — загрузка весов процессора, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` на compose, скрипт **аудита карточек каталога** (артефакт) |
 

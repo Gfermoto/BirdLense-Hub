@@ -10,7 +10,7 @@ This document describes what runs in GitHub Actions, how to reproduce checks loc
 |----------------|---------|
 | **CI → python-security** | `bandit` on `web/` + `processor/src/`; `pip-audit` on both `requirements.txt` files. |
 | **CI → openapi-contract** | `ruff check` + **`ruff format --check`** on `web/` + `processor/src/`; **radon cc** summary (non-blocking); docs version script; focused pytest slices. |
-| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` on `src/generated/openapi-types.ts`; `npm run lint`; `npm run build` in `app/ui`. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` on `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; `npm run build` in `app/ui`. |
 | **CI → docs** | MkDocs strict, settings UI coverage script, version check. |
 | **CI → docker-tests** | Full image build; processor + web tests; Playwright smoke; catalog audit script. |
 

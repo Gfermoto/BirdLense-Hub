@@ -148,7 +148,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
     setFusionLoading(true);
     setFusionErr(null);
     try {
-      const data = await fetchVideoFusionTrace(video.id);
+      const data = await fetchVideoFusionTrace(Number(video.id));
       setFusionData(data);
     } catch (e) {
       setFusionData(null);
@@ -164,7 +164,7 @@ export const VideoInfo = ({ video }: { video: Video }) => {
   }, [fusionOpen, loadFusionTrace]);
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteVideo(video.id),
+    mutationFn: () => deleteVideo(Number(video.id)),
     onSuccess: async () => {
       setDeleteDialogOpen(false);
       const vid = String(video.id);

@@ -45,13 +45,15 @@ make build && make start
 
 ## Option 4: Image without repo (for users)
 
-No cloning — image and config only:
+No cloning — image and config only (single `birdlense` container; no Redis stack from `docker-compose.yml`):
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
 mkdir -p data/recordings data/db app_config
-# .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (openssl rand -hex 16)
-# docker-compose.image.yml from repo app/
+# Download `app/docker-compose.image.yml` and `app/.env.example` from the repo, then:
+cp .env.example .env
+# Fill .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (e.g. openssl rand -hex 16).
+# Optional: BIRDLENSE_IMAGE=… for a custom registry (see docker-compose.image.yml).
 docker compose -f docker-compose.image.yml up -d
 ```
 
@@ -64,7 +66,7 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 **Docker volumes and uid:** container processes run as **`birdlense` (uid 1000)**. The entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. If `chown` is not allowed on your filesystem, from the host under `app/`: `chown -R 1000:1000 data app_config`.
 
 1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`, and from `./install.sh`.
-2. **Config** — `app/app_config/user_config.yaml`. Examples: `cp configs/minimal.yaml app_config/user_config.yaml`.
+2. **Config** — `app/app_config/user_config.yaml`. Example from the repo **`app/`** directory: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
 4. **Cameras** — Settings → Cameras: stream names from Go2RTC.
 

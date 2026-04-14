@@ -45,13 +45,15 @@ make build && make start
 
 ## Вариант 4: Образ без сборки (для пользователей)
 
-Без клонирования репо — только образ и конфиг:
+Без клонирования репо — только образ и конфиг (один контейнер `birdlense`, без Redis из `docker-compose.yml`):
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
 mkdir -p data/recordings data/db app_config
-# .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (openssl rand -hex 16)
-# docker-compose.image.yml из репо app/
+# Скачайте из репозитория файлы app/docker-compose.image.yml и app/.env.example, затем:
+cp .env.example .env
+# Заполните .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (например openssl rand -hex 16).
+# Опционально: BIRDLENSE_IMAGE=… для своего registry (см. docker-compose.image.yml).
 docker compose -f docker-compose.image.yml up -d
 ```
 
@@ -64,7 +66,7 @@ docker compose -f docker-compose.image.yml up -d
 **Тома Docker и uid:** процессы в контейнере `birdlense` идут от пользователя **birdlense (uid 1000)**. При старте entrypoint от root делает `chown` на примонтированные `./data` и `./app_config`. Если `chown` на вашей ФС недоступен, с хоста из каталога `app/`: `chown -R 1000:1000 data app_config`.
 
 1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`, а также из `./install.sh`.
-2. **Конфиг** — `app/app_config/user_config.yaml`. Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`.
+2. **Конфиг** — `app/app_config/user_config.yaml`. Пример из каталога **`app/`** репозитория: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
 4. **Камеры** — Настройки → Камеры: stream names из Go2RTC.
 

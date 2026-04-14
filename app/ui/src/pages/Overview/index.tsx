@@ -38,7 +38,12 @@ const formatHour = (hour: number) => {
 
 export const Overview = () => {
   const { t } = useTranslation();
-  const { canEdit } = useProtectedArea();
+  const { canEdit, unlocked, requiresPassword, role } = useProtectedArea();
+  /** Подсказка про волонтёров — только для гостей, не после входа админа/оператора. */
+  const showVolunteerDataLabelingHint =
+    !unlocked ||
+    !requiresPassword ||
+    (role !== 'admin' && role !== 'contributor');
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -167,7 +172,7 @@ export const Overview = () => {
                 gap: 2,
               }}
             >
-              <BirdIcon size={40} />
+              <BirdIcon sx={{ fontSize: 40 }} />
               <Box>
                 <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.92)' }}>
                   {t('overview.lastBird')}
@@ -253,25 +258,27 @@ export const Overview = () => {
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                   {t('overview.bySourceHint')}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mb: 1.5,
-                    color: 'info.main',
-                    fontWeight: 500,
-                    bgcolor: (theme) =>
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(2, 136, 209, 0.12)'
-                        : 'rgba(2, 136, 209, 0.08)',
-                    px: 1.25,
-                    py: 0.75,
-                    borderRadius: 1,
-                    border: 1,
-                    borderColor: 'info.light',
-                  }}
-                >
-                  {t('overview.volunteerDataLabelingHint')}
-                </Typography>
+                {showVolunteerDataLabelingHint && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mb: 1.5,
+                      color: 'info.main',
+                      fontWeight: 500,
+                      bgcolor: (theme) =>
+                        theme.palette.mode === 'dark'
+                          ? 'rgba(2, 136, 209, 0.12)'
+                          : 'rgba(2, 136, 209, 0.08)',
+                      px: 1.25,
+                      py: 0.75,
+                      borderRadius: 1,
+                      border: 1,
+                      borderColor: 'info.light',
+                    }}
+                  >
+                    {t('overview.volunteerDataLabelingHint')}
+                  </Typography>
+                )}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   {Object.entries(overviewData.stats.detectionByProvider).map(
                     ([provider, count]) => (

@@ -53,7 +53,6 @@ import {
   type UnknownDetection,
   getApiErrorMessage,
 } from '../../api/api';
-import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -203,7 +202,7 @@ function UnknownCard({
                 displayEmpty
                 value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
                 label={t('unknowns.correctSpecies')}
-                renderValue={(v) => {
+                renderValue={(v: number | string) => {
                   if (v === '' || v === undefined) {
                     return (
                       <Typography component="span" variant="body2" color="text.secondary">

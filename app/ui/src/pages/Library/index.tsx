@@ -14,7 +14,7 @@ export const Library: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <ProtectedRoute title={t('nav.library')} requireAdmin={false}>
+    <ProtectedRoute title={t('nav.library')}>
       <Box display="grid" gap={2}>
         <PageHelp {...libraryHelpConfig} />
         <FileReplayCard />

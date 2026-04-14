@@ -156,8 +156,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isAdmin } = useProtectedArea();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const timeoutRef = useRef<number>();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [view, setView] = useState<'video' | 'audio'>('video');
   const [error, setError] = useState<string | null>(null);
 

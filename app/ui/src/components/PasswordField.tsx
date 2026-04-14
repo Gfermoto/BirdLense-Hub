@@ -36,6 +36,7 @@ export function PasswordField({
   return (
     <TextField
       fullWidth={fullWidth}
+      variant="outlined"
       type={showPassword && !isMasked ? 'text' : 'password'}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -45,6 +46,8 @@ export function PasswordField({
       error={error}
       disabled={disabled}
       autoFocus={autoFocus}
+      /* В диалогах и плотных формах «всплывающая» метка обрезается сверху — держим в вырезе рамки. */
+      InputLabelProps={{ shrink: true }}
       InputProps={{
         endAdornment: !isMasked ? (
           <InputAdornment position="end">

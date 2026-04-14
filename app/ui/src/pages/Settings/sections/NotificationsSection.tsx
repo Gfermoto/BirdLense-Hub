@@ -29,7 +29,7 @@ import {
   fetchVapidPublicKey,
   refreshTelegramProxy,
   subscribePush,
-  updateSettings,
+  patchSettings,
   sendTestNotification,
 } from '../../../api/api';
 
@@ -68,12 +68,12 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
         setStatus('error');
         return;
       }
-      await updateSettings({ general: { enable_notifications: true } });
+      await patchSettings({ general: { enable_notifications: true } });
       const reg = await navigator.serviceWorker.ready;
       const vapidKey = await fetchVapidPublicKey();
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
       await subscribePush(sub);
       setStatus('subscribed');

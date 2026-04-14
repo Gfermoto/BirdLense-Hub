@@ -53,7 +53,9 @@ export function VideoSection({ form }: Props) {
                           value={field.state.value ?? 'opencv'}
                           label={t('settings.triggerLabel')}
                           onChange={(e) =>
-                            field.handleChange(e.target.value as Settings['motion']['source'])
+                            field.handleChange(
+                              e.target.value as NonNullable<Settings['motion']>['source'],
+                            )
                           }
                         >
                           <MenuItem value="opencv">{t('settings.triggerOpencv')}</MenuItem>

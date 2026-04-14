@@ -47,14 +47,18 @@ interface GroupedSpecies {
 const INaturalistButton = ({
   detectionId,
   speciesName,
+  disabled: gateDisabled,
 }: {
   detectionId: number;
   speciesName: string;
+  /** Нет сессии админа/оператора — как экспорт на таймлайне. */
+  disabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const handleClick = async () => {
+    if (gateDisabled) return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -68,9 +72,18 @@ const INaturalistButton = ({
   };
   return (
     <>
-      <Tooltip title={t('common.iNaturalist')}>
+      <Tooltip
+        title={
+          gateDisabled ? t('common.loginRequiredForExport') : t('common.iNaturalist')
+        }
+      >
         <span>
-          <IconButton size="small" onClick={handleClick} disabled={loading} aria-label={t('common.iNaturalist')}>
+          <IconButton
+            size="small"
+            onClick={handleClick}
+            disabled={loading || !!gateDisabled}
+            aria-label={t('common.iNaturalist')}
+          >
             <Share fontSize="small" />
           </IconButton>
         </span>
@@ -319,7 +332,11 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   };
                   return providers.length > 0 ? (
                     <Typography variant="body2" color="text.secondary">
-                      {t('video.detectionSource')}: {providers.map((p) => providerLabels[p] || p).join(', ')}
+                      {t('video.detectionSource')}:{' '}
+                      {providers
+                        .map((p) => (p ? providerLabels[p] ?? p : ''))
+                        .filter(Boolean)
+                        .join(', ')}
                     </Typography>
                   ) : null;
                 })()}
@@ -355,6 +372,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       <INaturalistButton
                         detectionId={bestDet.id!}
                         speciesName={group.species_name}
+                        disabled={!canEdit}
                       />
                     ) : null;
                   })()}
@@ -384,7 +402,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                         labelId={`video-correct-species-${group.species_id}`}
                         value={selectedSpeciesId}
                         label={t('unknowns.correctSpecies')}
-                        renderValue={(v) => {
+                        renderValue={(v: number | string) => {
                           if (v === '' || v === undefined) return '';
                           const id = Number(v);
                           const row = speciesList.find((s) => Number(s.id) === id);
