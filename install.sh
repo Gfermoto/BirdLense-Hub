@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="${ROOT_DIR}/app"
+UI_PORT="${BIRDLENSE_PORT:-8085}"
 
 log() {
   printf '%s\n' "$*"
@@ -55,8 +56,11 @@ main() {
     (cd "${APP_DIR}" && sudo docker compose up -d --build)
   fi
 
+  log "Verifying startup contract"
+  "${ROOT_DIR}/scripts/verify-stack.sh" --base-url "http://127.0.0.1:${UI_PORT}"
+
   log "BirdLense Hub started."
-  log "UI: http://127.0.0.1:8085"
+  log "UI: http://127.0.0.1:${UI_PORT}"
 }
 
 main "$@"

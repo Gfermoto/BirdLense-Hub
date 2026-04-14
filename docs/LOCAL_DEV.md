@@ -56,6 +56,7 @@ Details: [Documentation](./Documentation.md).
 ### Maintainer checklist (before a release)
 
 - [ ] `cd app && make test && make test-web` (or green **CI** on `dev` → `main`)
+- [ ] `cd app && make verify`
 - [ ] From repo root: `mkdocs build --strict` (or `.venv-docs` commands above)
 - [ ] Optional: `cd app && make start` then `make test-e2e` (or workflow **E2E (Playwright)** → *Run workflow*)
 - [ ] After deploy: smoke `curl`/UI per [TESTING](./TESTING.md) §2
@@ -76,6 +77,12 @@ Open **http://localhost:8085**.
 `make local` runs **setup** (creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` if missing), **local-build** (UI + Docker image), then **start**.
 
 Without cameras or Go2RTC, the processor idles in wait mode — **the web UI and API still work**.
+
+Verify after start:
+
+```bash
+cd app && make verify
+```
 
 ---
 

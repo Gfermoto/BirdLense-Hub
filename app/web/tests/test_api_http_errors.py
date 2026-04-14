@@ -24,3 +24,16 @@ def test_api_method_not_allowed_returns_json(client):
     data = r.get_json()
     assert isinstance(data, dict)
     assert "error" in data
+
+
+def test_api_request_id_header_is_generated(client):
+    r = client.get("/api/ui/health")
+    assert r.status_code == 200
+    assert isinstance(r.headers.get("X-Request-ID"), str)
+    assert len(r.headers["X-Request-ID"]) >= 8
+
+
+def test_api_request_id_header_preserves_client_value(client):
+    r = client.get("/api/ui/health", headers={"X-Request-ID": "ci-request-123"})
+    assert r.status_code == 200
+    assert r.headers.get("X-Request-ID") == "ci-request-123"

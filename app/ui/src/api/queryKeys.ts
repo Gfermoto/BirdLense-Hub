@@ -11,6 +11,7 @@ export const queryKeys = {
     observed: ['species', 'observed'] as const,
   },
   system: {
+    readiness: ['system', 'readiness'] as const,
     metricsLive: ['system', 'metrics', 'live'] as const,
     metricsHistory: (hours: number) => ['system', 'metrics', 'history', hours] as const,
     visitors: (days: number) => ['system', 'visitors', days] as const,

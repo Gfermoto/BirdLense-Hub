@@ -14,9 +14,9 @@ Pick what matches you — you can read the rest as reference.
 
 | Path | You want to… | Go to |
 |------|----------------|-------|
-| **Run** | Install Docker, connect cameras, go live | [OVERVIEW](./OVERVIEW.md) (context) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
+| **Run** | Install Docker, connect cameras, go live | [QUICKSTART](./QUICKSTART.md) → [OVERVIEW](./OVERVIEW.md) → [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
 | **Integrate** | Frigate, BirdNET, MQTT, HA, Telegram | [SCENARIOS](./SCENARIOS.md) → [CONFIGURATION](./CONFIGURATION.md) |
-| **Build & ship** | Hacks, tests, releases | [Repository layout](./REPOSITORY_LAYOUT.md) → [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [CI & quality](./CI_AND_QUALITY.md) → [Contributing](./project/contributing.md) |
+| **Build & ship** | Hacks, tests, releases | [QUICKSTART](./QUICKSTART.md) → [Repository layout](./REPOSITORY_LAYOUT.md) → [LOCAL_DEV](./LOCAL_DEV.md) → [TESTING](./TESTING.md) → [CI & quality](./CI_AND_QUALITY.md) → [Contributing](./project/contributing.md) |
 
 ---
 
@@ -27,6 +27,7 @@ Pick what matches you — you can read the rest as reference.
 | **Short description** (GitHub About, press) | [SHORT_DESCRIPTION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
 | **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
+| **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | — |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
@@ -47,6 +48,7 @@ Pick what matches you — you can read the rest as reference.
 | Threats & hardening | [SECURITY](./SECURITY.md) |
 | Recover broken config | [RECOVERY_CONFIG](./RECOVERY_CONFIG.md) · [RU](./RECOVERY_CONFIG.ru.md) |
 | When something fails | [TROUBLESHOOTING](./TROUBLESHOOTING.md) · [RU](./TROUBLESHOOTING.ru.md) |
+| Operator runbooks | [RUNBOOKS](./RUNBOOKS.md) |
 
 ---
 
@@ -99,6 +101,7 @@ Pick what matches you — you can read the rest as reference.
 | Goal | Command |
 |------|---------|
 | Local stack | `cd app && make local` → http://localhost:8085 |
+| Shared smoke contract | `make verify` (or `BASE_URL=http://YOUR_HOST:8085 make verify`) |
 | Web tests | `cd app && make test-web` |
 | Telegram proxy autorotate | `make proxy-rotation-install` (status: `make proxy-rotation-status`) |
 | Full doc index above | You are here ✓ |

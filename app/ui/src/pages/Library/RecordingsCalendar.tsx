@@ -184,6 +184,8 @@ export function RecordingsCalendar() {
           </Typography>
         ) : isError ? (
           <Alert severity="error">{t('library.recordingsLoadFailed')}</Alert>
+        ) : validStorageStats.length === 0 ? (
+          <Alert severity="info">{t('library.recordingsEmptyHint')}</Alert>
         ) : (
           <>
             <Box

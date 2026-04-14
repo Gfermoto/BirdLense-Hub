@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -49,6 +49,9 @@ stop:
 
 logs:
 	@docker compose logs -f --tail=200
+
+verify:
+	@../scripts/verify-stack.sh --base-url "http://127.0.0.1:$${BIRDLENSE_PORT:-8085}"
 
 # Деплой на сервер: ../scripts/deploy.sh (см. docs/INSTALL.md)
 deploy:
