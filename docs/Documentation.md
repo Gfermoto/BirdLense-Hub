@@ -34,7 +34,7 @@ python3 -m venv .venv-docs
 
 Build output goes to `site/` (ignored by git).
 
-**Excluded from the published site** (see root `mkdocs.yml` `exclude_docs`): `docs/archive/**`, `docs/article/**` (publication drafts), and `CONSILIUM_AUDIT.ru.md` (historical RU audit; linked from [archive/README](./archive/README.md)).
+**Excluded from the published site** (see root `mkdocs.yml` `exclude_docs`): `docs/archive/**`, `docs/article/**` (publication drafts), `CONSILIUM_AUDIT.ru.md` (historical RU audit; see [archive on GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), and `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (maintainer pre-flight checklist for specific GitHub issues—kept in the repo, not part of the operator manual), and `LEGACY_CLEANUP.md` (internal inventory notes).
 
 ### Publish (CI)
 

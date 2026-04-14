@@ -65,7 +65,7 @@
 | **Admin (роль)** | Разблокировка `settings_password` — полный UI, кормушка, система, перезапуск processor. |
 | **Contributor (роль)** | `contributor_password` — разметка и экспорты без админ-функций. |
 | **Viewer** | Без разблокировки — просмотр (экспорты см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)). |
-| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **внешних ИИ-ассистентов** (LLM-хосты); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./MCP_SETUP.ru.md). |
+| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **авторизованных клиентов** (автоматизация, интеграции); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./MCP_SETUP.ru.md). |
 | **`PROCESSOR_SECRET`** | Секрет processor → web API (`X-Processor-Token`). |
 
 ---

@@ -46,7 +46,7 @@
 | Тесты | [TESTING.ru.md](./TESTING.ru.md) |
 | Доступность | [A11Y.ru.md](./A11Y.ru.md) · [EN](./A11Y.md) |
 | UX: подсказки и тултипы | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) |
-| UX: неизвестные и правки в видео | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
+| Проверка видов: список и видео | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
 
 ---
 
@@ -73,14 +73,14 @@
 | Корневой README | [project/root-readme.md](./project/root-readme.md) |
 | Структура репозитория | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
 | Журнал верификации релизов | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
-| Чеклист до реализации (issues) | [PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) · [EN](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) |
+| Чеклист до реализации (только в репо, не в MkDocs) | [RU на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) · [EN на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) |
 | Правила доков | [Documentation.ru.md](./Documentation.ru.md) |
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) |
 | Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) |
 | Локализация | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
-| Issues, доска и roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) § Триаж · [EN](./ROADMAP.md); корень репо CONTRIBUTING.ru.md |
+| Issues, доска и roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) (Триаж) · [EN](./ROADMAP.md); корень репо CONTRIBUTING.ru.md |
 | Настройка GitHub (`gh`) | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 | Wiki и отчёты CI | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
 

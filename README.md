@@ -10,7 +10,7 @@
 
 Canonical one-liners for **GitHub About**, mirrors, and press: **[SHORT_DESCRIPTION.md](./SHORT_DESCRIPTION.md)** · **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)**
 
-Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
+Bird monitoring for feeders, gardens, and field setups: computer vision and audio recognition to detect, identify, record, and analyze visits—aimed at ornithology, citizen science, and operators who keep data on their own hardware. Runs in Docker on x86; integrates with Go2RTC, Frigate, BirdNET via MQTT. No vendor cloud required for core processing.
 
 **Docs:** [Project overview](./docs/OVERVIEW.md) · [Full documentation index](./docs/README.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 
@@ -58,7 +58,7 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 - **UI** — React 19, Material UI, i18n (en/ru/zh), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
-- **MCP** — [Model Context Protocol](https://modelcontextprotocol.io/) for **external AI assistants** talking to the hub (see `docs/MCP_SETUP.md`)
+- **MCP** — optional [Model Context Protocol](https://modelcontextprotocol.io/) for **authorized clients** (automation, integrations; see `docs/MCP_SETUP.md`)
 
 ### Analytics & Export
 - **CSV/JSON export** — download visits for analysis in Excel/Python

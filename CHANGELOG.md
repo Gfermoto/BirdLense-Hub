@@ -32,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Deploy script:** `scripts/deploy.sh` — `set -euo pipefail`, локально **`npm ci && npm run build`** в `app/ui`, пост-деплой проверка через `verify-stack.sh`; безопасная подстановка необязательных переменных окружения в remote heredoc (`${VAR:-}`).
 
+- **Документация (тон и структура):** MCP описан как протокол для **авторизованных клиентов** (автоматизация, интеграции), без акцента на ИИ-редакторы; README / OVERVIEW / SHORT_DESCRIPTION — явная аудитория **орнитология** и **citizen science**; внутренние файлы `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` и `LEGACY_CLEANUP.md` исключены из публикуемого MkDocs; навигация и перекрёстные ссылки подогнаны под `mkdocs build --strict`.
+
 - **UI / CI:** job `ui-build` запускает **`npm run typecheck`** (`tsc -p tsconfig.app.json`); тип **`Settings`** расширен полями процессора / весов / motion из конфига; мелкие правки под строгий TS (Pie highlightScope, PWA virtual module, web-push `patchSettings`). **`locales/zh.json`** — полное дерево ключей как в `en.json`, перевод на упрощённый китайский (zh-CN); пилотная локаль **`de`** удалена, сохранённый язык **`de`** в localStorage однократно переносится на **`zh`**.
 
 - **Офлайн-прогон по файлам (UI):** заголовок секции и единственный переключатель зацикливания — только внутри карточки на **Библиотеке**; якорь `#file-replay` на самой карточке. Документация RU: исправлена ссылка «Система» → **Библиотека**. Лимит upload `video.file_test_max_upload_mb`: по умолчанию **10240 MiB** (>10000), зажим в коде **64–65536 MiB**.
@@ -151,7 +153,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
-- **Деплой:** правило Cursor и `scripts/deploy.local.sh.example` описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
+- **Деплой:** `scripts/deploy.local.sh.example` и [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
 - **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor фаза 2: **`MotionRecordingSession`** **сделано**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**#225** в хабе: Alembic **`001`** + сессия записи **сделано**); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
 - **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) и [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыты. [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
@@ -189,12 +191,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.3.2] - 2026-04-03
 
-Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, CodeRabbit follow-up, синхронизация версий.
+Патч безопасности и документации после **v0.3.1**: CodeQL, прокси изображений, доработки по итогам ревью PR, синхронизация версий.
 
 ### Security
 
 - **CodeQL-driven hardening (Python):** species image proxy (`GET /api/ui/species-image`) follows redirects manually with an allowlisted host check on every hop; each request uses a URL rebuilt from parsed host/port/path (no userinfo). Client-facing proxy errors are generic; details only in server logs. Telegram/notification image paths use `_safe_image_path_or_none` that returns only a resolved path under `DATA_DIR`. Go2RTC: connect log omits URL-derived fields (credentials never hit log lines). eBird region comparison cache key uses **SHA-256** (truncated) instead of MD5. Species catalog allowlist parsing avoids a polynomial-ReDoS-prone regex.
-- **Follow-up (CodeRabbit review on PR #218):** iNaturalist open-data allowlist for the species image proxy is **hostname-only** (`_host_is_inaturalist_open_data_asset`) — no substring match on the full URL (closes query-string SSRF bypass). `urlparse` / `hostname` / `port` wrapped where needed to avoid 500 on malformed URLs. `_is_safe_image_path` / `_safe_image_path_or_none` use `os.path.commonpath` against `DATA_DIR` to block `data_evil`-style prefix tricks. Regression tests added.
+- **Follow-up (security review on PR #218):** iNaturalist open-data allowlist for the species image proxy is **hostname-only** (`_host_is_inaturalist_open_data_asset`) — no substring match on the full URL (closes query-string SSRF bypass). `urlparse` / `hostname` / `port` wrapped where needed to avoid 500 on malformed URLs. `_is_safe_image_path` / `_safe_image_path_or_none` use `os.path.commonpath` against `DATA_DIR` to block `data_evil`-style prefix tricks. Regression tests added.
 - **UI (`app/ui`):** refreshed `package-lock.json` and `overrides` so **lodash** resolves to **≥4.18.0** (addresses [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc), [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh)); **serialize-javascript** pinned via override to **≥7.0.5**. `npm audit` clean. Python `requests` / **Flask-Cors** were already at patched versions in `app/web` and `app/processor` requirements.
 
 ### Changed
@@ -202,7 +204,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Docs / repo hygiene:** added [REPOSITORY_LAYOUT](docs/REPOSITORY_LAYOUT.md) (EN/RU) for onboarding; moved publication drafts to `docs/article/`; refreshed docs index version line and roadmap stack (Ultralytics pip vs Docker base). Root `.gitignore` now ignores `/.pytest_cache/`.
 - **Docs refactor:** MkDocs `nav` aligned with [SITE_MAP](docs/SITE_MAP.md) — `DEPLOY_SERVER`, `VERIFICATION`, pre-implementation checklist, `UX_TOOLTIPS`, Russian **A11Y** / **REPOSITORY_LAYOUT**; `INSTALL` cross-links the deploy checklist; [API](docs/API.md) version line tracks root `VERSION`; ROADMAP changelog links use [project/changelog](docs/project/changelog.md); `article/**` and `CONSILIUM_AUDIT.ru.md` excluded from the static site build; ROADMAP anchor IDs fixed for strict builds.
 - **Contributor docs:** removed `AGENTS.md`; maintainer workflow lives in [CONTRIBUTING](CONTRIBUTING.md) / RU. [GOVERNANCE](docs/GOVERNANCE.md) / RU, [MCP_SETUP](docs/MCP_SETUP.md), OpenAPI description, PR template, CodeQL/local dev guides, and related copy updated for a standard open-source tone (human reviewers, VS Code).
-- **Docs:** MCP again documented explicitly as **Model Context Protocol** for **external AI assistants** (README, OpenAPI narrative, FEATURES, GLOSSARY, MCP_SETUP EN/RU)—without implying the project itself was authored by AI.
+- **Docs:** MCP again documented explicitly as **Model Context Protocol** for **authorized automation and integrations** (README, OpenAPI narrative, FEATURES, GLOSSARY, MCP_SETUP EN/RU).
 
 ## [0.3.1] - 2026-04-04
 
@@ -394,7 +396,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Отчётность:** без отдельных страниц `PROJECT_REPORTING*` — правила в [docs/ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) и [CONTRIBUTING](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); вести **Issues** и доску, не дублировать политикой в `docs/`.
-- **Доки окружения:** прод-UI **https://birdlense.eyera.info/**, SSH **185.218.111.196:2222** — [`.cursor/rules/deploy.mdc`](.cursor/rules/deploy.mdc), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
+- **Доки окружения:** прод-UI **https://birdlense.eyera.info/**, SSH **185.218.111.196:2222** — [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) / [RU](docs/DEPLOY_SERVER.ru.md), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
 - **#85 (video neighbors):** `GET /api/ui/videos/:id/neighbors` теперь поддерживает локальный день (`day_scope=local`, `tz_offset_minutes`) и опциональный переход на соседние сутки (`cross_day`); UI страницы видео использует локальный режим по умолчанию.
 - **#50 (processor MQTT resilience):** MQTT-клиент процессора использует встроенный reconnect/backoff paho (`reconnect_min_delay`/`reconnect_max_delay`), а в конфиг/доки добавлены параметры и пояснение про пропуски live-событий при обрывах.
 - **Settings UI (MQTT):** в форму добавлены `publish_topic`, `reconnect_min_delay`, `reconnect_max_delay` для полной настройки MQTT без ручного редактирования YAML.
@@ -444,7 +446,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **Репозиторий:** в git добавлено **`.cursor/rules/deploy.mdc`** (шаблон деплоя для локальной среды); в **`.gitignore`** — исключение только для этого файла, остальной `.cursor/` по-прежнему не коммитится.
+- **Репозиторий:** расширена документация и шаблоны локального деплоя; в **`.gitignore`** по-прежнему не коммитятся персональные локальные файлы редактора и секреты.
 - **CI: CodeQL** — `github/codeql-action` **v3 → v4** ([changelog GitHub](https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/)): без предупреждений о Node 20 и deprecation v3 на раннере.
 - **Доки CodeQL** (EN/RU): `workflow_dispatch`, **codeql-action@v4** в вводном абзаце; установка расширения в VS Code (CLI, VSIX, ID **`GitHub.vscode-codeql`**). **`.vscode/extensions.json`** — тот же ID издателя.
 - ROADMAP (EN/RU): бэклог оператора — issues [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) (галерея), [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) (коррекция видов Unknowns ↔ видео), [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) (навигация по видео); карточки на Project **BirdLense Hub — Roadmap**.

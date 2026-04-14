@@ -122,7 +122,7 @@ Prioritize by capacity; open a new **GitHub issue** when work is scoped (see [CO
 
 Tracked as separate issues; acceptance criteria live in each issue.
 
-**Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md).
+**Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) (maintainer notes in the repository; omitted from the static documentation site).
 
 **Progress update (Mar 2026):**
 - [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](./A11Y.md).

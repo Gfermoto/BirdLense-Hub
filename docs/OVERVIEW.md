@@ -1,6 +1,6 @@
 # BirdLense Hub — Overview
 
-**BirdLense Hub** is open-source software for **smart bird feeder and garden monitoring**: it detects birds (and squirrels) on video, classifies species with on-device ML, records clips, and ties everything into a timeline you own.
+**BirdLense Hub** is open-source software for **bird monitoring at feeders, gardens, and field stations**: it detects birds (and squirrels) on video, classifies species with on-device ML, records clips, and ties visits into a structured timeline for operators, ornithology, and citizen science.
 
 [Русский](./OVERVIEW.ru.md)
 
@@ -18,7 +18,8 @@
 
 | Audience | Start here |
 |----------|------------|
-| **Home / nature enthusiast** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) |
+| **Observers & ringers** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.md) — reliable counts, exports (eBird, CSV), review of uncertain IDs |
+| **Researchers & stations** | [CONFIGURATION](./CONFIGURATION.md), [DATASETS](./DATASETS.md), [TRAINING](./TRAINING.md) — catalogs, dataset export, custom weights |
 | **Frigate / Home Assistant user** | [SCENARIOS](./SCENARIOS.md) (Frigate + MQTT), [CONFIGURATION](./CONFIGURATION.md) |
 | **Developer / contributor** | [LOCAL_DEV](./LOCAL_DEV.md), [Contributing](./project/contributing.md), [ARCHITECTURE](./ARCHITECTURE.md) |
 | **Writer / advocate** | This page + [FEATURES](./FEATURES.md) — factual bullets for articles and landing copy |
