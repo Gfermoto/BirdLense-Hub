@@ -82,10 +82,12 @@ test.describe('Smoke tests', () => {
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {
+  test('Unknowns legacy URL lands on timeline (guest strips review query)', async ({ page }) => {
     await gotoReady(page, '/unknowns');
-    await expect(page).toHaveURL(/\/timeline\?review=1/);
-    await expect(page.getByText(/Review|На проверке|Unknown|Неизвестн/i).first()).toBeVisible({
+    // SPA: /unknowns → /timeline?review=1 → гость replace на /timeline без review
+    await expect(page).not.toHaveURL(/review=1/);
+    await expect(page).toHaveURL(/\/timeline/);
+    await expect(page.getByText(/Timeline|Записи|时间线|Select/i).first()).toBeVisible({
       timeout: 15000,
     });
   });
