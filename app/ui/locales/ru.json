@@ -96,7 +96,17 @@
     "datasetToolsLibraryHint": "Ниже на этой же странице доступны сканирование архива, обслуживание БД, backup/restore и обзор хранилища.",
     "datasetExportStarted": "Архив датасета подготовлен, загрузка началась.",
     "maintenanceMovedToSystem": "Операции по архиву, датасету и базе собраны на странице «Библиотека», чтобы не разрывать рабочий поток.",
-    "openSystem": "Открыть Систему"
+    "openSystem": "Открыть Систему",
+    "sections": {
+      "archiveTitle": "Архив и записи",
+      "archiveDescription": "Начинайте с архива записей: выберите день и перейдите в Timeline, чтобы смотреть реальные ролики и детекции.",
+      "exportTitle": "Экспорт для обучения",
+      "exportDescription": "В простом режиме оставлены только период, полезный фильтр и основной экспорт. Параметры подготовки датасета перенесены в «Расширенный».",
+      "storageTitle": "Хранилище и база",
+      "storageDescription": "Контроль диска и объёма записей без смешения с рискованными операциями обслуживания.",
+      "maintenanceTitle": "Обслуживание и отладка",
+      "maintenanceDescription": "Редкие админские действия живут здесь: file replay, перескан, очистка, восстановление и другие операционные инструменты."
+    }
   },
   "overview": {
     "lastBird": "Последняя птица сегодня",
@@ -756,6 +766,9 @@
     "na": "н/д",
     "help": "Справка",
     "language": "Язык",
+    "viewMode": "Режим страницы",
+    "simpleMode": "Простой",
+    "advancedMode": "Расширенный",
     "iNaturalist": "Отправить в iNaturalist",
     "skipToContent": "Перейти к основному содержимому"
   },
@@ -1058,6 +1071,18 @@
   },
   "system": {
     "storage": "Хранилище",
+    "sections": {
+      "healthTitle": "Состояние системы",
+      "healthDescription": "Сначала показываем состояние хоста: CPU, память, диск, GPU и короткие тренды. Статистику посетителей убираем в «Расширенный».",
+      "integrationsTitle": "Интеграции и доставка",
+      "integrationsDescription": "В простом режиме остаётся ответ на главный вопрос: работают ли ключевые интеграции и уведомления. Сырые URL и глубокая телеметрия — только в «Расширенный».",
+      "catalogTitle": "Каталог видов",
+      "catalogDescription": "Качество каталога и его починка должны жить рядом. В простом режиме виден основной путь обслуживания, а глубокая диагностика скрыта.",
+      "processingTitle": "Обработка и модели",
+      "processingDescription": "Веса, fusion и операции уровня процессора полезны, но слишком технические для режима по умолчанию.",
+      "diagnosticsTitle": "Техническая диагностика",
+      "diagnosticsDescription": "Логи и низкоуровневые инструменты остаются доступны, но только в явном расширенном рабочем режиме."
+    },
     "processorLogs": "Логи процессора",
     "processorLogsHint": "Последние {{lines}} строк. Автообновление каждые 10 с. Для удалённой диагностики без доступа к docker logs.",
     "processorWeightsTitle": "Веса процессора (YOLO)",
@@ -1298,7 +1323,20 @@
     "observabilityPreviewTitle": "Источники превью в финальных уведомлениях",
     "observabilityDeliveryTitle": "Итог доставки",
     "observabilityFallbackTitle": "Причины fallback",
+    "mlHealthTitle": "Состояние ML",
+    "mlHealthCorrections7d": "Исправлений за 7 дн.: {{n}}",
+    "mlHealthCorrectionRate7d": "Доля исправлений за 7 дн.: {{n}}%",
+    "mlHealthManualRate30d": "Ручных аннотаций за 30 дн.: {{n}}%",
+    "mlHealthUnknownRate30d": "Unknown rate за 30 дн.: {{n}}%",
+    "mlHealthGenericRate30d": "Generic rate за 30 дн.: {{n}}%",
+    "modelLineageTitle": "Линейка модели",
+    "modelLineageFingerprint": "Fingerprint конфига",
+    "modelLineageNoArtifacts": "Нет деталей по артефактам модели.",
+    "statusPresent": "есть",
+    "statusMissing": "нет",
     "hubMetricsForHeimdall": "Экспорт метрик Hub (для виджетов Heimdall)",
+    "hubMetricsPrometheus": "Prometheus",
+    "hubMetricsJson": "JSON",
     "hubMetricsHeimdallNote": "Укажите полный URL вашего BirdLense (например http://192.168.1.11:8085/metrics). Hub отдаёт метрики наружу; Heimdall «смотрит» на Hub, а не наоборот.",
     "previewSource": {
       "best_frame": "best_frame",

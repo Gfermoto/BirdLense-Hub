@@ -96,7 +96,17 @@
     "datasetToolsLibraryHint": "Scan/import, DB maintenance, backup/restore, and storage overview are available below on this same page.",
     "datasetExportStarted": "Dataset archive is ready and the download has started.",
     "maintenanceMovedToSystem": "Archive, dataset, and database operations are grouped on the Library page so the operator workflow stays consistent.",
-    "openSystem": "Open System"
+    "openSystem": "Open System",
+    "sections": {
+      "archiveTitle": "Archive and recordings",
+      "archiveDescription": "Start with the recordings archive. Pick a day, then jump into Timeline for the actual clips and detections.",
+      "exportTitle": "Export for training",
+      "exportDescription": "The basic view keeps only the period, the most useful filter, and the main export action. Training-specific options move to Advanced.",
+      "storageTitle": "Storage and database",
+      "storageDescription": "Keep an eye on disk usage and recording volume without mixing routine checks with risky maintenance actions.",
+      "maintenanceTitle": "Maintenance and debugging",
+      "maintenanceDescription": "Rare admin actions live here: file replay, re-scan, cleanup, restore, and other operational tools."
+    }
   },
   "overview": {
     "lastBird": "Last bird today",
@@ -756,6 +766,9 @@
     "na": "N/A",
     "help": "Help",
     "language": "Language",
+    "viewMode": "View mode",
+    "simpleMode": "Simple",
+    "advancedMode": "Advanced",
     "iNaturalist": "Share to iNaturalist",
     "skipToContent": "Skip to main content"
   },
@@ -1058,6 +1071,18 @@
   },
   "system": {
     "storage": "Storage",
+    "sections": {
+      "healthTitle": "System health",
+      "healthDescription": "Show the state of the host first: CPU, memory, disk, GPU, and short-term trends. Visitor analytics move to Advanced.",
+      "integrationsTitle": "Integrations and delivery",
+      "integrationsDescription": "Keep the simple view focused on whether key integrations and notifications are healthy. Raw URLs and deep telemetry belong to Advanced.",
+      "catalogTitle": "Species catalog",
+      "catalogDescription": "Catalog quality and repair belong together. The simple view shows the main maintenance path; deeper diagnostics stay folded away.",
+      "processingTitle": "Processing and models",
+      "processingDescription": "Weights, fusion workflows, and processor-level operations are powerful, but too technical for the default view.",
+      "diagnosticsTitle": "Technical diagnostics",
+      "diagnosticsDescription": "Logs and low-level troubleshooting stay available, but only when you explicitly switch to the advanced workspace."
+    },
     "processorLogs": "Processor Logs",
     "processorLogsHint": "Last {{lines}} lines. Auto-refresh every 10s. For remote diagnostics when you can't access docker logs.",
     "processorWeightsTitle": "Processor weights (YOLO)",
@@ -1296,7 +1321,20 @@
     "observabilityPreviewTitle": "Preview sources in final notifications",
     "observabilityDeliveryTitle": "Delivery outcomes",
     "observabilityFallbackTitle": "Fallback reasons",
+    "mlHealthTitle": "ML health",
+    "mlHealthCorrections7d": "7d corrections: {{n}}",
+    "mlHealthCorrectionRate7d": "7d correction rate: {{n}}%",
+    "mlHealthManualRate30d": "30d manual annotations: {{n}}%",
+    "mlHealthUnknownRate30d": "30d unknown rate: {{n}}%",
+    "mlHealthGenericRate30d": "30d generic rate: {{n}}%",
+    "modelLineageTitle": "Model lineage",
+    "modelLineageFingerprint": "Config fingerprint",
+    "modelLineageNoArtifacts": "No model artifact details available.",
+    "statusPresent": "present",
+    "statusMissing": "missing",
     "hubMetricsForHeimdall": "Hub metric export (for Heimdall widgets)",
+    "hubMetricsPrometheus": "Prometheus",
+    "hubMetricsJson": "JSON",
     "hubMetricsHeimdallNote": "Use your BirdLense base URL (e.g. http://192.168.1.11:8085/metrics). Hub exposes metrics outward; Heimdall points to Hub.",
     "previewSource": {
       "best_frame": "best_frame",
