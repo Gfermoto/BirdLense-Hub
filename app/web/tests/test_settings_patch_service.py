@@ -117,6 +117,23 @@ def test_strip_contributor_admin_only_removes_session_idle_minutes():
     assert out["general"]["donate_url"] == "https://example.test/strip-idle"
 
 
+def test_filter_sensitive_json_null_removes_secret_from_patch():
+    """JSON null для секрета не должен попадать в merge (иначе затирает хранимое значение)."""
+    from app_config.app_config import app_config
+
+    out = app_config.filter_sensitive_placeholders(
+        {
+            "general": {
+                "contributor_password": None,
+                "donate_url": "https://example.test/null-secret",
+            },
+        },
+    )
+    gen = out.get("general") or {}
+    assert "contributor_password" not in gen
+    assert gen.get("donate_url") == "https://example.test/null-secret"
+
+
 def test_apply_merge_updates_donate_url(app, monkeypatch, _noop_caches):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request

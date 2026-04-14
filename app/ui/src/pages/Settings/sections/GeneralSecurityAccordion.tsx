@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';

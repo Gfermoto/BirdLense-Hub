@@ -101,8 +101,17 @@ export function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.split('?')[0];
-  const { requiresPassword, unlocked, setUnlocked, logoutAccess, isLoading } =
-    useProtectedArea();
+  const {
+    requiresPassword,
+    unlocked,
+    setUnlocked,
+    logoutAccess,
+    isLoading,
+    isAdmin,
+  } = useProtectedArea();
+  /** Гость (без сессии) пункты нужны для входа; после входа оператору не показываем админские разделы. */
+  const showSettingsSystemLibraryLinks =
+    !requiresPassword || !unlocked || isAdmin;
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
@@ -271,27 +280,31 @@ export function Navigation() {
                 {t('nav.liveView')}
               </MenuItem>
 
-              {/* Settings Section */}
-              <Divider />
-              <MenuItem
-                onClick={(e) => handleProtectedNav('/settings', e)}
-                selected={currentPath === '/settings'}
-              >
-                <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
-                {t('nav.settings')}
-              </MenuItem>
-              <MenuItem
-                onClick={(e) => handleProtectedNav('/system', e)}
-                selected={currentPath === '/system'}
-              >
-                {t('nav.system')}
-              </MenuItem>
-              <MenuItem
-                onClick={(e) => handleProtectedNav('/library', e)}
-                selected={currentPath === '/library'}
-              >
-                {t('nav.library')}
-              </MenuItem>
+              {/* Settings Section — только гость (вход) или админ; оператор без доступа */}
+              {showSettingsSystemLibraryLinks ? (
+                <>
+                  <Divider />
+                  <MenuItem
+                    onClick={(e) => handleProtectedNav('/settings', e)}
+                    selected={currentPath === '/settings'}
+                  >
+                    <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
+                    {t('nav.settings')}
+                  </MenuItem>
+                  <MenuItem
+                    onClick={(e) => handleProtectedNav('/system', e)}
+                    selected={currentPath === '/system'}
+                  >
+                    {t('nav.system')}
+                  </MenuItem>
+                  <MenuItem
+                    onClick={(e) => handleProtectedNav('/library', e)}
+                    selected={currentPath === '/library'}
+                  >
+                    {t('nav.library')}
+                  </MenuItem>
+                </>
+              ) : null}
               {showLogout ? (
                 <>
                   <Divider />
@@ -497,30 +510,34 @@ export function Navigation() {
               },
             }}
           >
-            <MenuItem
-              component={Link}
-              to="/settings"
-              onClick={handleSettingsMenuClose}
-              selected={currentPath === '/settings'}
-            >
-              {t('nav.settings')}
-            </MenuItem>
-            <MenuItem
-              component={Link}
-              to="/system"
-              onClick={handleSettingsMenuClose}
-              selected={currentPath === '/system'}
-            >
-              {t('nav.system')}
-            </MenuItem>
-            <MenuItem
-              component={Link}
-              to="/library"
-              onClick={handleSettingsMenuClose}
-              selected={currentPath === '/library'}
-            >
-              {t('nav.library')}
-            </MenuItem>
+            {showSettingsSystemLibraryLinks ? (
+              <>
+                <MenuItem
+                  component={Link}
+                  to="/settings"
+                  onClick={handleSettingsMenuClose}
+                  selected={currentPath === '/settings'}
+                >
+                  {t('nav.settings')}
+                </MenuItem>
+                <MenuItem
+                  component={Link}
+                  to="/system"
+                  onClick={handleSettingsMenuClose}
+                  selected={currentPath === '/system'}
+                >
+                  {t('nav.system')}
+                </MenuItem>
+                <MenuItem
+                  component={Link}
+                  to="/library"
+                  onClick={handleSettingsMenuClose}
+                  selected={currentPath === '/library'}
+                >
+                  {t('nav.library')}
+                </MenuItem>
+              </>
+            ) : null}
             {showLogout ? (
               <>
                 <Divider />

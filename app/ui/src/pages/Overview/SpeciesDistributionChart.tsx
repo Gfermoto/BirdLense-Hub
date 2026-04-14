@@ -89,7 +89,7 @@ export const SpeciesDistributionChart: React.FC<
         series={[
           {
             data: pieData,
-            highlightScope: { faded: 'global', highlighted: 'item' },
+            highlightScope: { fade: 'global', highlight: 'item' },
             faded: { innerRadius: 24, additionalRadius: -18, color: 'gray' },
             innerRadius,
             outerRadius,

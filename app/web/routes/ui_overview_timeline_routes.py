@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from flask import Response, request
 from app_config.app_config import app_config
+from auth import ui_sensitive_export_access
 from models import db
 from services.cache import cache_get, cache_set
 from services.ebird_region_service import (
@@ -138,6 +139,8 @@ def register_ui_overview_timeline_routes(app):
     @app.route("/api/ui/timeline/export", methods=["GET"])
     def export_timeline():
         """Export timeline data as CSV or JSON. Same params as /api/ui/timeline."""
+        if not ui_sensitive_export_access():
+            return {"error": "Access denied"}, 403
         date_param = request.args.get("date")
         time_of_day = (request.args.get("time_of_day") or "all").strip().lower()
         hour_param = request.args.get("hour", type=int)
@@ -176,6 +179,8 @@ def register_ui_overview_timeline_routes(app):
     @app.route("/api/ui/report/pdf", methods=["GET"])
     def report_pdf():
         """Monthly PDF report: N species, top 5, stats, chart."""
+        if not ui_sensitive_export_access():
+            return {"error": "Access denied"}, 403
         month_param = request.args.get("month")
         start_param = request.args.get("start_time")
         end_param = request.args.get("end_time")
@@ -202,6 +207,8 @@ def register_ui_overview_timeline_routes(app):
     @app.route("/api/ui/unknowns", methods=["GET"])
     def get_unknowns():
         """List of low-confidence detections for manual review."""
+        if not ui_sensitive_export_access():
+            return {"error": "Access denied"}, 403
         date_param = request.args.get("date")
         time_of_day = (request.args.get("time_of_day") or "all").strip().lower()
         hour_param = request.args.get("hour", type=int)

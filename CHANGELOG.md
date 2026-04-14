@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **UI / CI:** job `ui-build` запускает **`npm run typecheck`** (`tsc -p tsconfig.app.json`); тип **`Settings`** расширен полями процессора / весов / motion из конфига; мелкие правки под строгий TS (Pie highlightScope, PWA virtual module, web-push `patchSettings`). **`locales/de.json`** — полное дерево ключей как в `en.json`, с сохранением уже переведённых строк (nav, common, protected, часть settings) и **`nav.logout`**; остальное пока на английском до отдельного перевода.
+
 - **Офлайн-прогон по файлам (UI):** заголовок секции и единственный переключатель зацикливания — только внутри карточки на **Библиотеке**; якорь `#file-replay` на самой карточке. Документация RU: исправлена ссылка «Система» → **Библиотека**. Лимит upload `video.file_test_max_upload_mb`: по умолчанию **10240 MiB** (>10000), зажим в коде **64–65536 MiB**.
 
 - **Fusion decision trace (семантика):** в payload `decision_trace` добавлены **`persisted_tracks`** / **`persisted_track_count`** и флаг строки **`persisted_to_clip`**; **`accepted_tracks`** остаётся ссылкой на тот же список (legacy). Экспорт fusion-training и скрипт CSV обходят **один** список клипа, чтобы не дублировать строки. UI/API: bucket трека **`persisted`**, подписи «сохранено в клипе» vs «DecisionMaker accepted».

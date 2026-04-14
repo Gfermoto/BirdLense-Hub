@@ -43,7 +43,7 @@ export const FoodManagement = () => {
 
       return { previousFoods };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       queryClient.setQueryData(['birdFood'], context?.previousFoods);
     },
     onSettled: () => {

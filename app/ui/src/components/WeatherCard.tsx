@@ -15,8 +15,9 @@ import WindIcon from '@mui/icons-material/Air';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Weather } from '../types';
 import { fetchSunTimes } from '../api/api';
-import { SunHorizon } from './SunHorizon';
+import { SunHorizon, type SunTimes } from './SunHorizon';
 import { formatLocalDateTime } from '../util';
+import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 
 interface WeatherCardProps {
   weather: Weather;
@@ -26,6 +27,7 @@ interface WeatherCardProps {
 
 export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
   const { t } = useTranslation();
+  const { isAdmin } = useProtectedArea();
   const isConfigured = Object.keys(weather).length > 0;
   const weatherMeta = (() => {
     if (!weather.source && !weather.fetched_at) return null;
@@ -59,15 +61,17 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
             <Typography color="text.secondary" paragraph>
               {t('weather.notConfigured')}
             </Typography>
-            <Button
-              component={Link}
-              to="/settings"
-              startIcon={<SettingsIcon />}
-              variant="contained"
-              color="primary"
-            >
-              {t('weather.configureSettings')}
-            </Button>
+            {isAdmin ? (
+              <Button
+                component={Link}
+                to="/settings"
+                startIcon={<SettingsIcon />}
+                variant="contained"
+                color="primary"
+              >
+                {t('weather.configureSettings')}
+              </Button>
+            ) : null}
           </Box>
         </Stack>
       </Paper>
@@ -109,7 +113,15 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
         </Box>
         {sunTimes && (
           <Box sx={{ pt: 0.75, borderTop: 1, borderColor: 'divider' }}>
-            <SunHorizon sunTimes={sunTimes} />
+            <SunHorizon
+              sunTimes={{
+                dawn: sunTimes.dawn ?? '',
+                sunrise: sunTimes.sunrise ?? '',
+                noon: sunTimes.noon ?? '',
+                sunset: sunTimes.sunset ?? '',
+                dusk: sunTimes.dusk ?? '',
+              } satisfies SunTimes}
+            />
           </Box>
         )}
       </Stack>
