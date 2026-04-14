@@ -50,12 +50,14 @@ nav:
   - Overview: OVERVIEW.md
   - Documentation index: README.md
   - "Use the hub":
+      - Quickstart: QUICKSTART.md
       - Install: INSTALL.md
       - Server deploy checklist: DEPLOY_SERVER.md
       - Scenarios: SCENARIOS.md
       - Configuration: CONFIGURATION.md
       - Features: FEATURES.md
       - Troubleshooting: TROUBLESHOOTING.md
+      - Runbooks: RUNBOOKS.md
       - Recover config: RECOVERY_CONFIG.md
       - Glossary: GLOSSARY.md
       - "Heimdall (tiles)": HEIMDALL.md

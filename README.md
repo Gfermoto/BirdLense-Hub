@@ -55,7 +55,7 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 - **Audio** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) sightings via MQTT (BirdNET-Pi/Go)
 - **Triggers** — OpenCV motion, Frigate events, MQTT binary, ESPHome
 - **Timeline** — date + time-of-day filter (Morning, Day, Evening, Night 22–06), video playback, spectrograms, track visualization
-- **UI** — React 19, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
+- **UI** — React 19, Material UI, i18n (en/ru/zh), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
 - **MCP** — [Model Context Protocol](https://modelcontextprotocol.io/) for **external AI assistants** talking to the hub (see `docs/MCP_SETUP.md`)
@@ -86,9 +86,9 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Quickstart:** [docs/QUICKSTART.md](./docs/QUICKSTART.md) | **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, and starts the stack.
+For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract.
 
 ## Developers
 
@@ -118,6 +118,7 @@ From repo root:
 | Command | Description |
 |---------|-------------|
 | `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
+| `make verify` | Check `health` + `readiness` + `status` on `BASE_URL` or localhost |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |

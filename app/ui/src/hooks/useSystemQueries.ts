@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  fetchReadiness,
   fetchProcessorLogs,
   fetchSystemMetricsHistory,
   fetchSystemMetricsLive,
@@ -12,6 +13,14 @@ export function useSystemMetricsLiveQuery() {
     queryKey: queryKeys.system.metricsLive,
     queryFn: fetchSystemMetricsLive,
     refetchInterval: 5000,
+  });
+}
+
+export function useSystemReadinessQuery() {
+  return useQuery({
+    queryKey: queryKeys.system.readiness,
+    queryFn: fetchReadiness,
+    refetchInterval: 30_000,
   });
 }
 

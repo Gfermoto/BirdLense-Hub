@@ -36,6 +36,203 @@ paths:
                   status:
                     type: string
                     example: ok
+  /readiness:
+    get:
+      summary: Readiness check
+      description: |
+        Returns a richer operational payload for install/deploy verification. Unlike `/health`,
+        this includes database and filesystem checks plus the same component summary used by the UI.
+      responses:
+        "200":
+          description: Core services and writable paths are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, ready, checked_at, checks, components]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  ready:
+                    type: boolean
+                    example: true
+                  checked_at:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                      data_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                      app_config_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                  components:
+                    type: object
+                    properties:
+                      web:
+                        type: string
+                      processor:
+                        type: string
+                      video:
+                        type: string
+                      mqtt:
+                        type: string
+                      esphome:
+                        type: string
+                      yolo:
+                        type: string
+                      motion_source:
+                        type: string
+                      trigger_display:
+                        type: string
+                      birdnet_url:
+                        type: string
+                        nullable: true
+                      heimdall_url:
+                        type: string
+                        nullable: true
+        "503":
+          description: App is up but not fully ready for use
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, ready, checked_at, checks, components]
+                properties:
+                  status:
+                    type: string
+                    example: degraded
+                  ready:
+                    type: boolean
+                    example: false
+                  checked_at:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          error:
+                            type: string
+                      data_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                      app_config_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                  components:
+                    type: object
+                    properties:
+                      web:
+                        type: string
+                      processor:
+                        type: string
+                      video:
+                        type: string
+                      mqtt:
+                        type: string
+                      esphome:
+                        type: string
+                      yolo:
+                        type: string
+                      motion_source:
+                        type: string
+                      trigger_display:
+                        type: string
+                      birdnet_url:
+                        type: string
+                        nullable: true
+                      heimdall_url:
+                        type: string
+                        nullable: true
+  /status:
+    get:
+      summary: Component status
+      description: |
+        Returns the lightweight component summary used by the navigation indicators in the UI.
+      responses:
+        "200":
+          description: Current component status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [web, processor, video, mqtt, yolo]
+                properties:
+                  web:
+                    type: string
+                  processor:
+                    type: string
+                  video:
+                    type: string
+                  mqtt:
+                    type: string
+                  esphome:
+                    type: string
+                  yolo:
+                    type: string
+                  motion_source:
+                    type: string
+                  trigger_display:
+                    type: string
+                  birdnet_url:
+                    type: string
+                    nullable: true
+                  heimdall_url:
+                    type: string
+                    nullable: true
   /weather:
     get:
       summary: Get current weather

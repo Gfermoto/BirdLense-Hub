@@ -5,7 +5,7 @@ import os
 
 from flask import Flask
 
-from app_logging import configure_process_logging
+from app_logging import configure_process_logging, init_request_logging
 from app_startup import (
     apply_schema_migrations_and_seed,
     bootstrap_legacy_import_cleanup,
@@ -32,6 +32,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
     init_extensions(app)
+    init_request_logging(app)
     register_error_handlers(app)
 
     _web_dir = os.path.dirname(os.path.abspath(__file__))

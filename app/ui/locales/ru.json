@@ -86,6 +86,7 @@
     "recordingsFilesChip": "Файлов: {{count}}",
     "recordingsLoading": "Загрузка статистики архива...",
     "recordingsLoadFailed": "Не удалось загрузить статистику архива записей.",
+    "recordingsEmptyHint": "Записи пока не индексированы. Импортируйте файлы или дождитесь первых клипов, и календарь архива начнёт подсвечиваться.",
     "recordingsLevelNone": "Файлов нет",
     "recordingsLevelLow": "1-7 файлов",
     "recordingsLevelMedium": "8-15 файлов",
@@ -1320,6 +1321,24 @@
     "observabilityHint": "За последние 24 часа показываем источник превью, итог доставки и причину fallback для Telegram-уведомлений. Ниже — URL экспорта метрик Hub для Heimdall/Grafana.",
     "observabilityGeneratedTitle": "Сгенерированные превью",
     "observabilityLoadError": "Не удалось загрузить данные наблюдаемости",
+    "readinessTitle": "Готовность установки и деплоя",
+    "readinessHint": "Эта карточка показывает тот же verify-контракт, который используют install, deploy и smoke-проверки.",
+    "readinessLoadError": "Не удалось загрузить данные готовности",
+    "readinessReady": "Готово",
+    "readinessDegraded": "Требует внимания",
+    "readinessCheckedAt": "Последняя проверка: {{at}}",
+    "readinessVerifyPass": "Общий verify-контракт проходит: health, readiness и status выглядят нормально.",
+    "readinessVerifyFail": "Базовое приложение поднялось, но одна из readiness-проверок не прошла. Перед завершением деплоя проверьте пути, базу данных или логи.",
+    "readinessCheck": {
+      "database": "БД",
+      "dataDir": "data/",
+      "configDir": "app_config/",
+      "web": "web"
+    },
+    "readinessState": {
+      "ok": "ok",
+      "error": "ошибка"
+    },
     "observabilityPreviewTitle": "Источники превью в финальных уведомлениях",
     "observabilityDeliveryTitle": "Итог доставки",
     "observabilityFallbackTitle": "Причины fallback",

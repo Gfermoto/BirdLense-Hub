@@ -86,6 +86,7 @@
     "recordingsFilesChip": "{{count}} 文件",
     "recordingsLoading": "正在加载存档统计数据...",
     "recordingsLoadFailed": "无法加载录音存档统计信息。",
+    "recordingsEmptyHint": "尚未索引任何录像。先导入文件或等待第一批片段出现，归档日历就会开始高亮。",
     "recordingsLevelNone": "没有文件",
     "recordingsLevelLow": "1-7 个文件",
     "recordingsLevelMedium": "8-15 个文件",
@@ -1318,6 +1319,24 @@
     "observabilityHint": "显示过去 24 小时内的 Telegram 预览来源、传送结果和回退原因计数。下图：Heimdall/Grafana 的 Hub 指标导出 URL。",
     "observabilityGeneratedTitle": "生成的预览",
     "observabilityLoadError": "加载可观察性数据失败",
+    "readinessTitle": "安装与部署就绪状态",
+    "readinessHint": "这张卡片显示 install、deploy 和 smoke 检查共用的 verify 合约。",
+    "readinessLoadError": "无法加载就绪状态数据",
+    "readinessReady": "已就绪",
+    "readinessDegraded": "需要关注",
+    "readinessCheckedAt": "最近检查：{{at}}",
+    "readinessVerifyPass": "共享 verify 合约已通过：health、readiness 和 status 都正常。",
+    "readinessVerifyFail": "核心应用已启动，但有一项 readiness 检查失败。把部署视为完成前，请检查路径、数据库或日志。",
+    "readinessCheck": {
+      "database": "数据库",
+      "dataDir": "data/",
+      "configDir": "app_config/",
+      "web": "web"
+    },
+    "readinessState": {
+      "ok": "正常",
+      "error": "错误"
+    },
     "observabilityPreviewTitle": "在最终通知中预览来源",
     "observabilityDeliveryTitle": "交付成果",
     "observabilityFallbackTitle": "回退原因",

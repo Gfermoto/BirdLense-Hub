@@ -8,6 +8,7 @@ import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
 import { ProcessorLogs } from './ProcessorLogs';
 import { ProcessorWeightsCard } from './ProcessorWeightsCard';
+import { SystemReadinessCard } from './SystemReadinessCard';
 import Box from '@mui/material/Box';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
@@ -26,6 +27,7 @@ export const System: React.FC = () => {
           description={t('system.sections.healthDescription')}
           actions={<PageModeToggle value={mode} onChange={setMode} />}
         >
+          <SystemReadinessCard />
           <SystemMonitor showVisitors={isAdvanced} />
         </PageSection>
 

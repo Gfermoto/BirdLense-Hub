@@ -26,6 +26,12 @@ cd BirdLense-Hub
 
 The script checks Docker, installs it if needed, creates `app/.env`, and starts the stack.
 
+Verify:
+
+```bash
+make verify
+```
+
 ## Option 2: Pre-built image (recommended)
 
 ```bash
@@ -36,11 +42,25 @@ make pull
 
 Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
 
+Verify:
+
+```bash
+cd ..
+make verify
+```
+
 ## Option 3: Build from source
 
 ```bash
 cd BirdLense-Hub/app
 make build && make start
+```
+
+Then verify from the repository root:
+
+```bash
+cd ..
+make verify
 ```
 
 ## Option 4: Image without repo (for users)
@@ -61,6 +81,14 @@ Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml
 
 ---
 
+Verify:
+
+```bash
+curl -s http://127.0.0.1:8085/api/ui/health
+curl -s http://127.0.0.1:8085/api/ui/readiness
+curl -s http://127.0.0.1:8085/api/ui/status
+```
+
 ## First run
 
 **Docker volumes and uid:** container processes run as **`birdlense` (uid 1000)**. The entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. If `chown` is not allowed on your filesystem, from the host under `app/`: `chown -R 1000:1000 data app_config`.
@@ -79,13 +107,13 @@ cd BirdLense-Hub   # repo root (folder from git clone; rename OK)
 make deploy
 ```
 
-Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, Node.js locally for UI build.
+Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, **Node.js 22 + npm locally** for the UI build contract.
 
 **Setup:** copy `scripts/deploy.local.sh.example` to `deploy.local.sh` and set `DEPLOY_HOST`, `DEPLOY_URL`, secrets; optional `DEPLOY_REMOTE_DIR`. File is gitignored.
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container `birdlense`, builds UI locally, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), `make build && make start` in `app/` on the server.
+**What it does:** stops/removes container `birdlense`, runs local UI `npm ci && npm run build`, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), `make build && make start` in `app/` on the server, then runs the shared verify contract against `DEPLOY_URL`.
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
@@ -135,7 +163,10 @@ If `status` shows `not installed`, verify `scripts/deploy.local.sh` (`DEPLOY_HOS
 
 ## Verification
 
+- **Shared contract:** `make verify`
 - **Health:** `curl http://localhost:8085/api/ui/health`
+- **Readiness:** `curl http://localhost:8085/api/ui/readiness`
+- **Status:** `curl http://localhost:8085/api/ui/status`
 - **Cameras:** Settings → Cameras
 - **Live:** video stream with overlay
 - **DB backup:** System → Storage → “Download DB backup”

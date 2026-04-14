@@ -36,19 +36,24 @@ jobs:
             -p "${HOST_PORT}:8080" \
             "$IMAGE"
 
-      - name: Wait for /api/ui/health
+      - name: Wait for /api/ui/readiness
         run: |
           set -e
           for i in $(seq 1 30); do
-            if curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/health" >/dev/null; then
-              echo "health OK after ${i} attempts"
+            if curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/readiness" | tee /tmp/readiness.json | tr -d '\n\r\t ' | grep -q '"ready":true'; then
+              echo "readiness OK after ${i} attempts"
               exit 0
             fi
             sleep 3
           done
-          echo "health check failed for ${IMAGE}"
+          echo "readiness check failed for ${IMAGE}"
           docker logs "$CONTAINER" || true
           exit 1
+
+      - name: Check /api/ui/status
+        run: |
+          curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/status" | tee /tmp/status.json
+          tr -d '\n\r\t ' < /tmp/status.json | grep -q '"web":"ok"'
 
       - name: Container logs on failure
         if: failure()

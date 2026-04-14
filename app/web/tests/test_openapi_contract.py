@@ -92,6 +92,26 @@ class TestOpenApiContractSmoke:
         schema = _schema_for(spec, path="/health")
         _assert_matches_schema(spec, response.json, schema)
 
+    def test_readiness_matches_openapi_schema(self, client):
+        spec = _load_spec()
+        response = client.get("/api/ui/readiness")
+        assert response.status_code == 200
+        schema = _schema_for(spec, path="/readiness")
+        _assert_matches_schema(spec, response.json, schema)
+
+    def test_readiness_503_matches_openapi_schema(self, client, monkeypatch):
+        spec = _load_spec()
+        from models import db
+
+        def _boom(*_args, **_kwargs):
+            raise RuntimeError("db unavailable")
+
+        monkeypatch.setattr(db.session, "execute", _boom)
+        response = client.get("/api/ui/readiness")
+        assert response.status_code == 503
+        schema = _schema_for(spec, path="/readiness", status="503")
+        _assert_matches_schema(spec, response.json, schema)
+
     def test_species_matches_openapi_schema(self, client):
         spec = _load_spec()
         response = client.get("/api/ui/species")

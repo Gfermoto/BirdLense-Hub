@@ -284,7 +284,7 @@ export function DatasetExportsCard({
           <Stack spacing={1}>
             <Button
               variant="outlined"
-              disabled={exportingDataset}
+              disabled={exportingDataset || !storageRange}
               onClick={handleExportDataset}
               startIcon={<DownloadIcon />}
               fullWidth
@@ -343,7 +343,7 @@ export function DatasetExportsCard({
             <Stack spacing={1}>
               <Button
                 variant="outlined"
-                disabled={retroExporting}
+                disabled={retroExporting || !storageRange}
                 onClick={handleRetroExport}
                 startIcon={<FolderOpenIcon />}
                 fullWidth

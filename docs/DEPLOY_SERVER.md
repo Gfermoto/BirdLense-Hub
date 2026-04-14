@@ -31,16 +31,24 @@ make deploy
 The command:
 
 1. Syncs code to server (excluding `app/data`, `site/`, local helper folders).
-2. Runs `make stop`, `make build`, `make start` on server.
-3. Performs basic post-deploy health checks.
+2. Runs local UI `npm ci && npm run build`, then `make stop`, `make build`, `make start` on server.
+3. Runs the shared verify contract against `DEPLOY_URL`.
 
 ## 3) Verify
 
 - Open UI: `http://<server>:8085`
-- Check API health:
+- Run the shared verify contract:
+
+```bash
+BASE_URL=http://<server>:8085 make verify
+```
+
+- Or check the endpoints manually:
 
 ```bash
 curl -sS http://<server>:8085/api/ui/health
+curl -sS http://<server>:8085/api/ui/readiness
+curl -sS http://<server>:8085/api/ui/status
 ```
 
 Expected:
@@ -48,6 +56,8 @@ Expected:
 ```json
 {"status":"ok"}
 ```
+
+For readiness, expect `"ready": true`. For status, expect `"web": "ok"`.
 
 ## 4) Data safety
 

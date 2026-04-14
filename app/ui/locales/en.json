@@ -86,6 +86,7 @@
     "recordingsFilesChip": "{{count}} files",
     "recordingsLoading": "Loading archive stats...",
     "recordingsLoadFailed": "Failed to load recordings archive stats.",
+    "recordingsEmptyHint": "No recordings are indexed yet. Import files or wait for the first clips, then this archive calendar will light up.",
     "recordingsLevelNone": "No files",
     "recordingsLevelLow": "1-7 files",
     "recordingsLevelMedium": "8-15 files",
@@ -1318,6 +1319,24 @@
     "observabilityHint": "For the last 24 hours, show Telegram preview source, delivery outcome, and fallback reason counts. Below: Hub metric export URLs for Heimdall/Grafana.",
     "observabilityGeneratedTitle": "Generated previews",
     "observabilityLoadError": "Failed to load observability data",
+    "readinessTitle": "Install and deploy readiness",
+    "readinessHint": "This card mirrors the shared verify contract used by install, deploy, and smoke checks.",
+    "readinessLoadError": "Failed to load readiness data",
+    "readinessReady": "Ready",
+    "readinessDegraded": "Needs attention",
+    "readinessCheckedAt": "Last checked: {{at}}",
+    "readinessVerifyPass": "Shared verify contract passes: health, readiness, and status all look good.",
+    "readinessVerifyFail": "Core app is up, but one of the readiness checks failed. Inspect paths, database, or logs before treating the deploy as complete.",
+    "readinessCheck": {
+      "database": "DB",
+      "dataDir": "data/",
+      "configDir": "app_config/",
+      "web": "web"
+    },
+    "readinessState": {
+      "ok": "ok",
+      "error": "error"
+    },
     "observabilityPreviewTitle": "Preview sources in final notifications",
     "observabilityDeliveryTitle": "Delivery outcomes",
     "observabilityFallbackTitle": "Fallback reasons",

@@ -4,7 +4,7 @@
 # Критично: app/data целиком не синхронизируем (как в .github/workflows/deploy.yml) — записи, БД, dataset и images остаются на сервере. Корневой datasets/ (YOLO) не синхронизируем. user_config не перезаписываем.
 # Сам следит и исправляет: rsync на сервере, повтор при сбоях
 
-set -e
+set -euo pipefail
 
 # Загрузить локальные переопределения (создайте из deploy.local.sh.example)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -41,7 +41,9 @@ fi
 # 0.9. Сборка UI локально (обход ETIMEDOUT npm на сервере)
 echo "0.9. Сборка UI локально..."
 cd "$(dirname "$0")/.."
-(cd app/ui && npm run build) || { echo "Ошибка: сборка UI не удалась"; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "Ошибка: node не найден. Нужен Node.js 22 для локальной сборки UI."; exit 1; }
+command -v npm >/dev/null 2>&1 || { echo "Ошибка: npm не найден. Нужен npm 10+ для локальной сборки UI."; exit 1; }
+(cd app/ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
 
 # 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
 echo "1. Синхронизация кода..."
@@ -140,18 +142,8 @@ sleep 8
 echo "  - Docker logs (последние 25 строк):"
 ssh ${SSH_OPTS} "${HOST}" "docker logs birdlense --tail=25 2>&1" | tail -30
 echo ""
-echo "  - API health:"
-health_ok=0
-for htry in $(seq 1 5); do
-  if curl -sS -L --max-time 20 -f "${DEPLOY_URL}/api/ui/health" >/dev/null 2>&1; then
-    health_ok=1
-    break
-  fi
-  [[ $htry -lt 5 ]] && sleep 5
-done
-[[ $health_ok -eq 1 ]] && echo "    OK" || echo "    FAIL (проверьте ${DEPLOY_URL}; с хоста: curl -sS -L ${DEPLOY_URL}/api/ui/health)"
-echo "  - API cameras:"
-cameras=$(curl -sS -L --max-time 20 -f "${DEPLOY_URL}/api/ui/cameras" 2>/dev/null | head -c 150) && echo "    ${cameras}..." || echo "    (не доступен)"
+echo "  - Shared verify contract:"
+BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 ./scripts/verify-stack.sh
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Настройки и записи на сервере не тронуты."
