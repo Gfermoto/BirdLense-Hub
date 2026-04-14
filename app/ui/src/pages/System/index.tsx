@@ -13,19 +13,27 @@ import Box from '@mui/material/Box';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageSection } from '../../components/PageSection';
+import { PageHeader } from '../../components/PageHeader';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const System: React.FC = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.system'));
   const [mode, setMode] = useState<PageMode>('simple');
   const isAdvanced = mode === 'advanced';
 
   return (
     <ProtectedRoute title={t('nav.system')}>
       <Box display="grid" gap={4}>
+        <PageHeader
+          title={t('nav.system')}
+          description={t('system.pageDescription')}
+          actions={<PageModeToggle value={mode} onChange={setMode} />}
+          titleVariant="h3"
+        />
         <PageSection
           title={t('system.sections.healthTitle')}
           description={t('system.sections.healthDescription')}
-          actions={<PageModeToggle value={mode} onChange={setMode} />}
         >
           <SystemReadinessCard />
           <SystemMonitor showVisitors={isAdvanced} />

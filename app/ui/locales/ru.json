@@ -592,6 +592,7 @@
     "noCameras": "Нет камер. Добавьте в Настройки → Видео → Камеры (stream name из Go2RTC/Frigate).",
     "streamTitle": "Прямой эфир",
     "loading": "Загрузка...",
+    "errorLoad": "Не удалось загрузить список камер.",
     "modeGo2rtc": "RTC/MSE",
     "modeMjpeg": "MJPEG"
   },
@@ -766,12 +767,20 @@
     "appName": "BirdLense Hub",
     "na": "н/д",
     "help": "Справка",
+    "helpAbout": "Справка о разделе «{{title}}»",
     "language": "Язык",
+    "openMenu": "Открыть меню навигации",
+    "openSettingsMenu": "Открыть меню настроек",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
     "viewMode": "Режим страницы",
     "simpleMode": "Простой",
     "advancedMode": "Расширенный",
     "iNaturalist": "Отправить в iNaturalist",
-    "skipToContent": "Перейти к основному содержимому"
+    "skipToContent": "Перейти к основному содержимому",
+    "pageNotFoundTitle": "Страница не найдена",
+    "pageNotFoundDescription": "Этой страницы нет или ссылка устарела.",
+    "backToDashboard": "На главную"
   },
   "migrationCalendar": {
     "title": "Календарь миграций",
@@ -843,7 +852,8 @@
     "bulkDeleteNoSelection": "Сначала выберите хотя бы один объект на проверке.",
     "bulkDeleteNoDate": "Сначала выберите дату.",
     "bulkDeletePreviewRequired": "Сначала создайте предпросмотр.",
-    "bulkDeleteFailed": "Не удалось выполнить массовое удаление."
+    "bulkDeleteFailed": "Не удалось выполнить массовое удаление.",
+    "bulkDeleteAdminOnly": "Предпросмотр и массовое удаление доступны только администратору, если настроен отдельный пароль оператора."
   },
   "species": {
     "searchPlaceholder": "Поиск видов...",
@@ -1071,6 +1081,7 @@
     "noon": "Полдень"
   },
   "system": {
+    "pageDescription": "Здесь собраны здоровье хаба, интеграции, состояние каталога и сервисные инструменты.",
     "storage": "Хранилище",
     "sections": {
       "healthTitle": "Состояние системы",

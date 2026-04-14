@@ -592,6 +592,7 @@
     "noCameras": "没有相机。添加到设置 → 视频 → 摄像机（来自 Go2RTC/Frigate 的流名称）。",
     "streamTitle": "直播",
     "loading": "加载中...",
+    "errorLoad": "无法加载摄像机列表。",
     "modeGo2rtc": "实时时钟/MSE",
     "modeMjpeg": "MJPEG"
   },
@@ -766,12 +767,20 @@
     "appName": "BirdLense 中心",
     "na": "不适用",
     "help": "帮助",
+    "helpAbout": "{{title}} 帮助",
     "language": "语言",
+    "openMenu": "打开导航菜单",
+    "openSettingsMenu": "打开设置菜单",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
     "viewMode": "查看模式",
     "simpleMode": "简单",
     "advancedMode": "高级",
     "iNaturalist": "分享到 iNaturalist",
-    "skipToContent": "跳至主要内容"
+    "skipToContent": "跳至主要内容",
+    "pageNotFoundTitle": "未找到页面",
+    "pageNotFoundDescription": "此页面不存在，或者链接已过期。",
+    "backToDashboard": "返回概览"
   },
   "migrationCalendar": {
     "title": "迁移日历",
@@ -843,7 +852,8 @@
     "bulkDeleteNoSelection": "至少选择一项评论项目。",
     "bulkDeleteNoDate": "首先选择一个日期。",
     "bulkDeletePreviewRequired": "首先生成预览。",
-    "bulkDeleteFailed": "批量删除失败。"
+    "bulkDeleteFailed": "批量删除失败。",
+    "bulkDeleteAdminOnly": "在配置了单独操作员密码时，仅管理员可使用批量删除预览与执行。"
   },
   "species": {
     "searchPlaceholder": "搜索物种...",
@@ -1071,6 +1081,7 @@
     "noon": "中午"
   },
   "system": {
+    "pageDescription": "在一个页面中检查中心健康状态、集成、物种目录质量和维护工具。",
     "storage": "存储",
     "sections": {
       "healthTitle": "系统状态",

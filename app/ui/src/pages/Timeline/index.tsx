@@ -5,7 +5,6 @@ import { TimelineStats } from './TimelineStats';
 import { SpeciesVisit, Species } from '../../types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -38,6 +37,7 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
 import { PageHelp } from '../../components/PageHelp';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
 import {
   type TimeOfDay,
@@ -45,6 +45,7 @@ import {
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -87,7 +88,10 @@ function parseHourFromSearchParams(
 
 export function TimelinePage() {
   const { t } = useTranslation();
-  const { canEdit, role, requiresPassword } = useProtectedArea();
+  const { canEdit, role, requiresPassword, isLoading: accessContextLoading } =
+    useProtectedArea();
+  /** Пока контекст доступа грузится — не прячем чип (избегаем мигания у вошедших по cookie). */
+  const showReviewModeEntry = canEdit || accessContextLoading;
   /** Только админ: оператор не ходит в Библиотеку — подсказка про скан диска ему не нужна. */
   const showLibraryDiskScanHint = canEdit && role === 'admin';
   /** Только после входа админа или оператора, если включён пароль (не гостю с улицы). */
@@ -98,6 +102,15 @@ export function TimelinePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isReviewMode = searchParams.get('review') === '1';
+
+  useEffect(() => {
+    if (accessContextLoading || canEdit || !isReviewMode) return;
+    navigate('/timeline', { replace: true });
+  }, [accessContextLoading, canEdit, isReviewMode, navigate]);
+
+  useDocumentTitle(
+    isReviewMode ? t('timeline.modeReview') : t('nav.timeline'),
+  );
   const filterHour = useMemo(
     () => parseHourFromSearchParams(searchParams),
     [searchParams],
@@ -181,7 +194,7 @@ export function TimelinePage() {
       );
       return rows.length;
     },
-    enabled: true,
+    enabled: showReviewModeEntry,
   });
 
   useEffect(() => {
@@ -269,31 +282,33 @@ export function TimelinePage() {
   };
 
   if (!isReviewMode && isLoading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
+  if (isReviewMode && !canEdit)
+    return <PageLoadingState label={t('common.loading')} />;
   if (!isReviewMode && error)
     return (
-      <Box sx={{ p: 2 }}>
-        <Typography color="error">{t('timeline.errorLoad')}</Typography>
-        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </Box>
+      <PageMessageState
+        title={t('nav.timeline')}
+        message={t('timeline.errorLoad')}
+        severity="error"
+        action={
+          <Button variant="outlined" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      />
     );
 
-  return (
-    <>
-      <Box display="flex" gap={1} alignItems="center" sx={{ mb: 2 }}>
-        <Chip
-          color={!isReviewMode ? 'primary' : 'default'}
-          variant={!isReviewMode ? 'filled' : 'outlined'}
-          label={t('timeline.modeTimeline')}
-          aria-pressed={!isReviewMode}
-          onClick={() => navigate('/timeline')}
-        />
+  const timelineModeSwitcher = (
+    <Box display="flex" gap={1} alignItems="center" sx={{ mb: 2 }}>
+      <Chip
+        color={!isReviewMode ? 'primary' : 'default'}
+        variant={!isReviewMode ? 'filled' : 'outlined'}
+        label={t('timeline.modeTimeline')}
+        aria-pressed={!isReviewMode}
+        onClick={() => navigate('/timeline')}
+      />
+      {showReviewModeEntry ? (
         <Chip
           color={isReviewMode ? 'primary' : 'default'}
           variant={isReviewMode ? 'filled' : 'outlined'}
@@ -330,12 +345,18 @@ export function TimelinePage() {
             </Box>
           }
         />
-      </Box>
+      ) : null}
+    </Box>
+  );
+
+  return (
+    <>
       {isReviewMode ? (
-        <UnknownsPage />
+        <UnknownsPage afterTitleSlot={timelineModeSwitcher} />
       ) : (
         <>
           <PageHelp {...timelineHelpConfig} />
+          {timelineModeSwitcher}
           <Typography
             variant="body2"
             color="text.secondary"

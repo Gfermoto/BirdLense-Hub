@@ -18,7 +18,6 @@ import {
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
-import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
@@ -32,8 +31,10 @@ import { VideoInfo } from './VideoInfo';
 import { VideoPlayer } from './VideoPlayer';
 import { DetectedSpecies } from './DetectedSpecies';
 import { PageHelp } from '../../components/PageHelp';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { videoDetailsHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 function summarizeTrackRegenJob(
   st: TrackRegenerationJobStatus | undefined,
@@ -148,6 +149,7 @@ export const VideoDetails = () => {
     queryKey: ['video', params.id],
     queryFn: () => fetchVideo(params.id as string),
   });
+  useDocumentTitle(video ? `${t('video.video')} ${params.id}` : t('video.video'));
 
   const { data: neighbors } = useQuery({
     queryKey: ['video-neighbors', params.id],
@@ -268,21 +270,19 @@ export const VideoDetails = () => {
   })();
 
   if (isLoading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   if (error || !video)
     return (
-      <Box sx={{ p: 2 }}>
-        <Box component="span" sx={{ color: 'error.main' }}>
-          {t('errors.loadSightings')}
-        </Box>
-        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </Box>
+      <PageMessageState
+        title={t('video.video')}
+        message={t('errors.loadVideo')}
+        severity="error"
+        action={
+          <Button variant="outlined" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      />
     );
 
   return (
