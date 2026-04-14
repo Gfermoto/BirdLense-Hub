@@ -10,7 +10,7 @@
 
 Канонические формулировки для **About** на GitHub, зеркал и анонсов: **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)** · **[English](./SHORT_DESCRIPTION.md)**
 
-Мониторинг кормушки: компьютерное зрение и распознавание голосов для детекции, идентификации, записи и анализа птиц. Работает в Docker на x86, интегрируется с Go2RTC, Frigate, BirdNET через MQTT. Без облака — полностью локально.
+Мониторинг птиц у кормушек, в саду и на площадках: компьютерное зрение и аудио для детекции, идентификации, записи и анализа визитов — для орнитологии, гражданской науки и операторов, которые держат данные на своём железе. Docker на x86; интеграции с Go2RTC, Frigate, BirdNET по MQTT. Ядро обработки без облака вендора.
 
 **Документация:** [Обзор проекта](./docs/OVERVIEW.ru.md) · [Полный индекс](./docs/README.ru.md) · [Сайт документации (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 
@@ -55,10 +55,10 @@
 - **Аудио** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) через MQTT (BirdNET-Pi/Go)
 - **Триггеры** — OpenCV motion, события Frigate, MQTT binary, ESPHome
 - **Таймлайн** — дата + время суток (Утро, День, Вечер, Ночь 22–06), воспроизведение видео, спектрограммы, визиты видов
-- **UI** — React, Material UI, i18n (en/ru), адаптивный, PWA (установка на экран, офлайн)
+- **UI** — React, Material UI, i18n (en/ru/zh), адаптивный, PWA (установка на экран, офлайн)
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — Telegram Bot API
-- **MCP** — [Model Context Protocol](https://modelcontextprotocol.io/) для **внешних ИИ-ассистентов**, работающих с хабом (см. `docs/MCP_SETUP.ru.md`)
+- **MCP** — опциональный [Model Context Protocol](https://modelcontextprotocol.io/) для **авторизованных клиентов** (автоматизация, интеграции; см. `docs/MCP_SETUP.ru.md`)
 
 ### Аналитика и экспорт
 - **CSV/JSON** — скачать визиты для анализа в Excel/Python
