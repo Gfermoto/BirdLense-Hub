@@ -90,11 +90,11 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     fi"
   ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
     (grep -v -E '^(MCP_TOKEN|PROCESSOR_SECRET|FLASK_SECRET_KEY|BIRDLENSE_ENV|BIRDLENSE_STRICT_API_AUTH|BIRDLENSE_UI_API_KEY)=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
-     [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN}\"; \
-     [ -n \"${FLASK_SECRET_KEY:-}\" ] && printf 'FLASK_SECRET_KEY=%s\n' \"${FLASK_SECRET_KEY}\"; \
-     [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV}\"; \
-     [ -n \"${BIRDLENSE_STRICT_API_AUTH:-}\" ] && printf 'BIRDLENSE_STRICT_API_AUTH=%s\n' \"${BIRDLENSE_STRICT_API_AUTH}\"; \
-     [ -n \"${BIRDLENSE_UI_API_KEY:-}\" ] && printf 'BIRDLENSE_UI_API_KEY=%s\n' \"${BIRDLENSE_UI_API_KEY}\"; \
+     [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN:-}\"; \
+     [ -n \"${FLASK_SECRET_KEY:-}\" ] && printf 'FLASK_SECRET_KEY=%s\n' \"${FLASK_SECRET_KEY:-}\"; \
+     [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV:-}\"; \
+     [ -n \"${BIRDLENSE_STRICT_API_AUTH:-}\" ] && printf 'BIRDLENSE_STRICT_API_AUTH=%s\n' \"${BIRDLENSE_STRICT_API_AUTH:-}\"; \
+     [ -n \"${BIRDLENSE_UI_API_KEY:-}\" ] && printf 'BIRDLENSE_UI_API_KEY=%s\n' \"${BIRDLENSE_UI_API_KEY:-}\"; \
      printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
     mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
 fi
