@@ -6,15 +6,15 @@ import logging
 import os
 import threading
 import time
-from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 from api import API
 from app_config.app_config import app_config
 from processor_support import check_restart_flag
+from file_test_paths import scan_video_files_in_dir
 from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
-from sources.video_file_source import VideoFileSource, VideoPlaylistSource
+from sources.video_file_source import FileTestIdleSource, VideoFileSource, VideoPlaylistSource
 
 
 @dataclass
@@ -98,22 +98,24 @@ def setup_processor_media(
         rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
         if rcodec not in ("h264", "copy"):
             rcodec = "h264"
-        playlist_paths = []
+        playlist_paths: list[str] = []
         if not file_path and file_dir:
-            exts = ("*.mp4", "*.MP4", "*.mov", "*.MOV", "*.mkv", "*.MKV")
-            pdir = Path(file_dir)
-            if pdir.exists() and pdir.is_dir():
-                for ext in exts:
-                    playlist_paths.extend(str(p) for p in sorted(pdir.glob(ext)))
+            playlist_paths = scan_video_files_in_dir(file_dir)
         if not file_path:
             if not playlist_paths:
                 logging.warning(
-                    "video.source=file, но video.file_path пуст и в video.file_dir нет видео (%s). Жду перезапуска.",
+                    "video.source=file: в video.file_dir нет видео (%s). Режим ожидания (Hub → тестовый прогон или положите файлы).",
                     file_dir,
                 )
-                while True:
-                    check_restart_flag()
-                    time.sleep(30)
+                default_camera_id = cameras[0]["id"] if cameras else "default"
+                idle = FileTestIdleSource(main_size=main_size, lores_size=lores_size)
+                return ProcessorMediaSetup(
+                    media_source=idle,
+                    get_media_source=lambda _cid: idle,
+                    media_sources_cache={},
+                    default_camera_id=default_camera_id,
+                    cameras=cameras,
+                )
         default_camera_id = cameras[0]["id"] if cameras else "default"
         if file_path:
             vf = VideoFileSource(

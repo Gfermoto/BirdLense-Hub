@@ -48,6 +48,7 @@ export const SpeciesDistributionChart: React.FC<
   if (pieData.length === 0) {
     return (
       <Box
+        data-testid="overview-species-chart-empty"
         sx={{
           height: '100%',
           display: 'flex',
@@ -88,7 +89,7 @@ export const SpeciesDistributionChart: React.FC<
         series={[
           {
             data: pieData,
-            highlightScope: { faded: 'global', highlighted: 'item' },
+            highlightScope: { fade: 'global', highlight: 'item' },
             faded: { innerRadius: 24, additionalRadius: -18, color: 'gray' },
             innerRadius,
             outerRadius,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import time
 from collections import Counter
 from datetime import datetime
 from typing import Any, Optional
@@ -53,6 +54,10 @@ _DECISION_TRACE_FIELDS = (
 )
 _DECISION_TRACE_LIMIT = 40
 
+# Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
+_NO_DETECTIONS_WARN_INTERVAL_S = 120.0
+_no_detections_warn_next_monotonic = 0.0
+
 
 def _is_playable_video_file(path: str) -> bool:
     if not path or not os.path.isfile(path):
@@ -74,12 +79,13 @@ def _is_playable_video_file(path: str) -> bool:
         return False
 
 
-def _decision_trace_row(item: dict) -> dict:
+def _decision_trace_row(item: dict, *, persisted_to_clip: bool) -> dict:
     row = {}
     for key in _DECISION_TRACE_FIELDS:
         if key in item:
             row[key] = item.get(key)
     row["accepted"] = bool(item.get("accepted", False))
+    row["persisted_to_clip"] = bool(persisted_to_clip)
     row["confidence"] = float(item.get("confidence") or 0.0)
     row["best_frame_score"] = float(item.get("best_frame_score") or 0.0)
     row["key_frame_count"] = int(item.get("key_frame_count") or 0)
@@ -264,37 +270,43 @@ def finalize_motion_recording(
         "end_time": end_time.isoformat(),
         "video_path": video_path_for_api,
         "merge_window_seconds": merge_window,
-        "accepted_tracks": [],
+        "persisted_tracks": [],
         "rejected_tracks": [],
     }
-    accepted_trace_rows = [_decision_trace_row(item) for item in video_detections]
-    rejected_trace_rows = [_decision_trace_row(item) for item in rejected_decisions]
+    accepted_trace_rows = [_decision_trace_row(item, persisted_to_clip=True) for item in video_detections]
+    rejected_trace_rows = [_decision_trace_row(item, persisted_to_clip=False) for item in rejected_decisions]
     accepted_trace_rows, accepted_trimmed = _clip_trace_rows(accepted_trace_rows)
     rejected_trace_rows, rejected_trimmed = _clip_trace_rows(rejected_trace_rows)
-    decision_trace["accepted_tracks"] = accepted_trace_rows
+    # persisted_* — строки, попавшие в video_detections (клип / БД); accepted_* — тот же список (legacy).
+    decision_trace["persisted_tracks"] = accepted_trace_rows
+    decision_trace["accepted_tracks"] = decision_trace["persisted_tracks"]
     decision_trace["rejected_tracks"] = rejected_trace_rows
+    decision_trace["persisted_track_count"] = len(video_detections)
     decision_trace["accepted_track_count"] = len(video_detections)
     decision_trace["rejected_track_count"] = len(rejected_decisions)
     if accepted_trimmed:
+        decision_trace["persisted_tracks_truncated"] = accepted_trimmed
         decision_trace["accepted_tracks_truncated"] = accepted_trimmed
     if rejected_trimmed:
         decision_trace["rejected_tracks_truncated"] = rejected_trimmed
-    try:
-        if api and (video_detections or rejected_decisions):
-            api.activity_log("decision_trace", decision_trace)
-    except Exception:
-        logging.exception("Failed to write decision_trace activity log")
     logging.info(
         "Processing stopped. Video Result: %s; Audio Result: %s",
         video_summary,
         audio_detections,
     )
     if len(video_detections) == 0 and mqtt_aggregator:
-        logging.warning(
+        global _no_detections_warn_next_monotonic
+        now_m = time.monotonic()
+        msg = (
             "No detections after merge. YOLO tracks: %s, MQTT events in window: %s",
             len(frame_processor.tracks),
             len(mqtt_events),
         )
+        if now_m >= _no_detections_warn_next_monotonic:
+            logging.warning(*msg)
+            _no_detections_warn_next_monotonic = now_m + _NO_DETECTIONS_WARN_INTERVAL_S
+        else:
+            logging.debug(*msg)
 
     video_file_ok = _is_playable_video_file(video_output)
     if len(video_detections) > 0 and not video_file_ok:
@@ -350,6 +362,11 @@ def finalize_motion_recording(
             scales_weight_delta_kg=scales_delta_kg,
         )
         video_id = resp.get("video_id") if isinstance(resp, dict) else None
+        if video_id is not None:
+            try:
+                decision_trace["video_id"] = int(video_id)
+            except (TypeError, ValueError):
+                decision_trace["video_id"] = video_id
         save_crops = app_config.get("processor.save_dataset_crops")
         if video_id is not None and save_crops and video_detections:
             crops_data_dir = get_data_dir()
@@ -439,6 +456,11 @@ def finalize_motion_recording(
                             hint = " (check PROCESSOR_SECRET in app/.env)"
                         hint = f" {resp_err.status_code}{hint}"
                     logging.warning("Notify species failed%s: %s", hint, e)
+    try:
+        if api and (decision_trace.get("persisted_tracks") or decision_trace.get("rejected_tracks")):
+            api.activity_log("decision_trace", decision_trace)
+    except Exception:
+        logging.exception("Failed to write decision_trace activity log")
     if not video_file_ok:
         try:
             shutil.rmtree(output_path_physical)

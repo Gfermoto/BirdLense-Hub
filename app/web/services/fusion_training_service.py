@@ -19,7 +19,11 @@ from models import ActivityLog, VideoSpecies, db
 
 
 def repo_root() -> Path:
-    """Найти корень репо по наличию scripts/export_fusion_training_data.py."""
+    """Найти корень репо по наличию scripts/export_fusion_training_data.py.
+
+    В образе birdlense скрипт лежит в /app/scripts/ (сборка с контекстом корня репозитория).
+    При локальном pytest с монтированием репозитория в /workspace срабатывает fallback на /workspace.
+    """
     current = Path(__file__).resolve()
     candidates: list[Path] = []
     candidates.extend(current.parents)
@@ -100,6 +104,15 @@ def ensure_fusion_processor_src_on_path() -> None:
         sys.path.insert(0, str(src))
 
 
+def _persisted_track_list_from_trace_payload(payload: dict) -> list:
+    """Строки, сохранённые на клип: persisted_tracks или legacy accepted_tracks (один список)."""
+    pt = payload.get("persisted_tracks")
+    if pt is not None:
+        return pt if isinstance(pt, list) else []
+    at = payload.get("accepted_tracks")
+    return at if isinstance(at, list) else []
+
+
 def normalize_fusion_trace_row(row: dict) -> dict:
     """Привести строку трассы к полям CSV экспорта."""
     accepted = bool(row.get("accepted"))
@@ -139,6 +152,7 @@ def normalize_fusion_trace_row(row: dict) -> dict:
         "track_id": row.get("track_id") or 0,
         "video_id": row.get("video_id") or 0,
         "species_name": row.get("species_name") or row.get("species") or "",
+        "persisted_to_clip": 1 if row.get("persisted_to_clip") else 0,
     }
 
 
@@ -215,6 +229,7 @@ def run_fusion_export_job() -> dict:
                 "track_id",
                 "video_id",
                 "species_name",
+                "persisted_to_clip",
             ],
         )
         writer.writeheader()
@@ -232,10 +247,12 @@ def run_fusion_export_job() -> dict:
                     payload = json.loads(trace.data or "{}")
                 except (TypeError, ValueError):
                     continue
-                for section_name in ("accepted_tracks", "rejected_tracks"):
-                    for row in payload.get(section_name) or []:
-                        writer.writerow(normalize_fusion_trace_row(row))
-                        written += 1
+                for row in _persisted_track_list_from_trace_payload(payload):
+                    writer.writerow(normalize_fusion_trace_row(row))
+                    written += 1
+                for row in payload.get("rejected_tracks") or []:
+                    writer.writerow(normalize_fusion_trace_row(row))
+                    written += 1
             return {
                 "output_path": str(out_path),
                 "rows_written": written,
@@ -286,6 +303,7 @@ def run_fusion_export_job() -> dict:
                         "best_frame_score": extra.get("best_frame_score") or 0.0,
                         "key_frame_count": extra.get("key_frame_count") or 0,
                         "_multi_camera_count": extra.get("_multi_camera_count") or 0,
+                        "persisted_to_clip": True,
                     }
                 )
             )

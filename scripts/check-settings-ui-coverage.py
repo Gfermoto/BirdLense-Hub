@@ -41,12 +41,12 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     "processor.models.binary": {
         "category": "ops-only",
         "reason": "Model path is environment/deployment-specific.",
-        "next_step": "Keep config-level; expose only if model manager is introduced.",
+        "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
     "processor.models.classifier": {
         "category": "ops-only",
         "reason": "Model path is environment/deployment-specific.",
-        "next_step": "Keep config-level; expose only if model manager is introduced.",
+        "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
     "processor.regional_species": {
         "category": "planned-ui",
@@ -91,6 +91,21 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     "processor.birdnet_fifo_snapshot_stale_sec": {
         "category": "ops-only",
         "reason": "Web UI stale threshold when reading snapshot from disk.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_fifo_persist_enabled": {
+        "category": "ops-only",
+        "reason": "Processor writes BirdNET FIFO rows to hub SQLite (#269); not Settings UI.",
+        "next_step": "Same as birdnet_fifo_snapshot_enabled.",
+    },
+    "processor.birdnet_fifo_sqlite_busy_ms": {
+        "category": "ops-only",
+        "reason": "SQLite busy_timeout for BirdNET FIFO writer thread.",
+        "next_step": "Same as birdnet_fifo_persist_enabled.",
+    },
+    "processor.birdnet_fifo_hearing_active_hours": {
+        "category": "ops-only",
+        "reason": "Hearing active window for BirdNET FIFO diagnostics UI (species active 1/0); not Settings.",
         "next_step": "Same as birdnet_fifo_snapshot_enabled.",
     },
     "processor.birdnet_mqtt_observability_level": {
@@ -142,9 +157,24 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     },
     # Runtime controls still config-level.
     "video.source": {
-        "category": "advanced",
-        "reason": "Runtime mode selection; hidden from basic UI flow.",
-        "next_step": "Keep hidden unless file-source mode is productized in UI.",
+        "category": "library-ui",
+        "reason": "go2rtc vs file replay; toggled in Library (PATCH), not Settings form.",
+        "next_step": "Single entry: Library → file replay.",
+    },
+    "video.file_dir": {
+        "category": "library-ui",
+        "reason": "Test clip folder; edited in Library file replay card.",
+        "next_step": "Keep Library as single UX entry.",
+    },
+    "video.file_loop": {
+        "category": "library-ui",
+        "reason": "Default playlist loop for file mode; set in Library when enabling replay.",
+        "next_step": "Keep Library as single UX entry.",
+    },
+    "video.file_test_max_upload_mb": {
+        "category": "library-ui",
+        "reason": "Hub upload size cap for Library file replay; tunable in YAML.",
+        "next_step": "Optional expose in Library advanced later.",
     },
     "video.pre_record_seconds": {
         "category": "planned-ui",

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import type { Settings } from '../../../types';
 import { GeneralConnectionAccordion } from './GeneralConnectionAccordion';

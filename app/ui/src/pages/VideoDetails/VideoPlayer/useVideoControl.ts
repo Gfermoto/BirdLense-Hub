@@ -1,7 +1,8 @@
+import type { RefObject } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
 export const useVideoControl = (
-  videoRef: React.RefObject<HTMLVideoElement>,
+  videoRef: RefObject<HTMLVideoElement | null>,
 ) => {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);

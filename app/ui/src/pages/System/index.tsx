@@ -7,6 +7,7 @@ import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
 import { ProcessorLogs } from './ProcessorLogs';
+import { ProcessorWeightsCard } from './ProcessorWeightsCard';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -49,6 +50,12 @@ export const System: React.FC = () => {
 
         <Box>
           <AutomationCard />
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box>
+          <ProcessorWeightsCard />
         </Box>
 
         <Divider sx={{ my: 3 }} />

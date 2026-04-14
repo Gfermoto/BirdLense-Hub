@@ -95,7 +95,7 @@ export const Settings: React.FC = () => {
           <SettingsForm
             key={formKey}
             currentSettings={settings as SettingsType}
-            observedSpecies={observedSpecies}
+            observedSpecies={observedSpecies ?? []}
             onSubmit={updateMutation.mutate}
             yamlSafeExportEnabled={canEdit}
             yamlAdminBackupEnabled={isAdmin}

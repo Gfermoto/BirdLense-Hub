@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
+from typing import Optional
 
 from api import API
 from app_config.app_config import app_config
 from detection_stack import build_detection_stack
+from file_test_control import FileTestRuntime, maybe_build_file_test_runtime
 from fps_tracker import FPSTracker
 from media_runtime import ProcessorMediaSetup, setup_processor_media
 from motion_runtime import build_processor_motion_detector
@@ -28,6 +31,7 @@ class ProcessorRunContext:
 
     session: MotionRecordingSession
     media_setup: ProcessorMediaSetup
+    file_test: Optional[FileTestRuntime] = None
 
 
 def parse_processor_args(argv: list[str] | None = None) -> Namespace:
@@ -114,6 +118,13 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     fps_tracker = FPSTracker()
 
     media_source_ref = [media_setup.media_source]
+    file_test = maybe_build_file_test_runtime(
+        media_setup=media_setup,
+        media_source_ref=media_source_ref,
+        args=args,
+        main_size=main_size,
+        lores_size=lores_size,
+    )
     session = MotionRecordingSession(
         args=args,
         api=api,
@@ -128,14 +139,21 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         scales_topic_arg=scales_topic_arg,
         data_dir=_data_dir,
         fps_tracker=fps_tracker,
+        file_test_runtime=file_test,
     )
-    return ProcessorRunContext(session=session, media_setup=media_setup)
+    return ProcessorRunContext(session=session, media_setup=media_setup, file_test=file_test)
 
 
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     while True:
         check_restart_flag()
+        ft = ctx.file_test
+        if ft is not None:
+            ft.poll()
+            if not ft.armed:
+                time.sleep(0.25)
+                continue
         if not ctx.session.motion_detector.detect():
             continue
         ctx.session.api.notify_motion()

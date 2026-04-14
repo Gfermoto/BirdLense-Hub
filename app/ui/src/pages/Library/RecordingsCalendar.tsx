@@ -68,8 +68,8 @@ function CalendarDay({
       {...other}
       day={day}
       title={fileCount > 0 ? `${formattedDate}: ${fileCount}` : formattedDate}
-      onClick={() => {
-        other.onClick?.();
+      onClick={(e) => {
+        other.onClick?.(e);
         if (fileCount > 0) onOpenDay(formattedDate);
       }}
       sx={{

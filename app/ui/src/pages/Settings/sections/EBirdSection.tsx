@@ -69,13 +69,16 @@ export function EBirdSection({ form }: Props) {
   return (
     <Accordion>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        {t('settings.accordionEbird', 'eBird')}
+        {t('settings.accordionEbird')}
       </AccordionSummary>
       <AccordionDetails>
         <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
           <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
-            {t('settings.accordionEbird', 'eBird')}
+            {t('settings.accordionEbird')}
           </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionEbirdDesc')}
+          </Typography>
 
           <ServiceBlock title={t('settings.serviceEbird')}>
             <Grid container spacing={2}>

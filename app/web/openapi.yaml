@@ -229,6 +229,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /videos/{video_id}/fusion-trace:
+    get:
+      summary: Fusion decision trace for a recording
+      description: |
+        Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload (`persisted_tracks` / `accepted_tracks` alias — rows stored on the clip; `rejected_tracks` — not persisted). `tracks[].bucket` is `persisted` for the clip list and `rejected` for the reject list (`accepted` kept for backward compatibility with older API clients).
+
+        **Auth:** contributor (operator) or admin session only — not for anonymous viewers (same as download/merge).
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trace payload or `available=false` if no log matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FusionTraceResponse"
+        "403":
+          description: Access denied (contributor or admin session required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /birdfood:
     get:
       summary: List all bird food
@@ -739,6 +771,352 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /system/file-test/files:
+    get:
+      summary: List file-test replay videos
+      description: |
+        Lists video files in `video.file_dir` when `video.source=file`. Library UI uses this for offline replay without container restart (#270).
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTestFilesResponse"
+        "403":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode (`video.source` is not `file`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/status:
+    get:
+      summary: File-test processor status
+      description: |
+        Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), config hints, and `video_source`.
+        Always succeeds when settings are readable: use `video_source === "file"` to know if replay APIs are usable (mutating routes still return 409 when not in file mode).
+      responses:
+        "200":
+          description: Status payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTestStatusResponse"
+        "400":
+          description: Invalid or unusable `video.file_dir`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/upload:
+    post:
+      summary: Upload a file-test video
+      description: Admin-only. Multipart field `file`. Max size 500 MiB; extensions mp4/mov/mkv.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  name:
+                    type: string
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/files/{name}:
+    delete:
+      summary: Delete a file-test video
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/run:
+    post:
+      summary: Arm file-test replay / update loop
+      description: |
+        Writes `desired.json` for the processor. Empty body arms playback (start). Optional `armed` and `loop` booleans.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                armed:
+                  type: boolean
+                loop:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated desired state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  desired:
+                    type: object
+                    additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/file-test/stop:
+    post:
+      summary: Stop file-test replay
+      description: Disarms playback and requests abort of the current session (processor clears abort when the session ends).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                abort:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Updated desired state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  desired:
+                    type: object
+                    additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in file replay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/processor-weights/status:
+    get:
+      summary: Custom processor weights status (#276)
+      description: |
+        Effective paths for binary detector, classifier, and species allowlist; whether each file lives under
+        `DATA_DIR/custom_weights`; sizes and mtimes. Settings password (or MCP Bearer) required.
+      responses:
+        "200":
+          description: Status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/processor-weights/upload:
+    post:
+      summary: Upload custom .pt or class_names.txt (#276)
+      description: |
+        Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
+        For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
+        Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
+        Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [binary, classifier, class_names]
+        - name: acknowledge_classifier_only
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Set to 1/true/yes to skip allowlist-exists check for classifier upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  path:
+                    type: string
+                  role:
+                    type: string
+                  status:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/processor-weights/reset:
+    post:
+      summary: Reset custom weights to built-in defaults (#276)
+      description: |
+        JSON body `{ "roles": ["binary"] | ["classifier"] | ["class_names"] | ["all"] | combinations }`.
+        Removes files in `custom_weights` and clears matching keys from user_config when they pointed there.
+        Sets processor restart flag. Admin-only when contributor password is enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [binary, classifier, class_names, all]
+      responses:
+        "200":
+          description: Reset done
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  removed_files:
+                    type: array
+                    items:
+                      type: string
+                  status:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /storage/stats:
     get:
       summary: Get storage stats
@@ -815,6 +1193,95 @@ components:
       properties:
         error:
           type: string
+    FileTestFileEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        duration_sec:
+          type: number
+          nullable: true
+    FileTestFilesResponse:
+      type: object
+      properties:
+        file_dir:
+          type: string
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileTestFileEntry"
+    FileTestStatusResponse:
+      type: object
+      properties:
+        file_dir:
+          type: string
+        desired:
+          type: object
+          additionalProperties: true
+        processor:
+          type: object
+          nullable: true
+          additionalProperties: true
+        config_loop_default:
+          type: boolean
+        video_source:
+          type: string
+        file_test_max_upload_mb:
+          type: integer
+          description: Effective per-file upload limit (MiB) for POST /system/file-test/upload (config default 10240, clamped 64–65536 in hub code)
+    FusionTraceResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+        video_id:
+          type: integer
+        video_path:
+          type: string
+        message:
+          type: string
+          description: Present when available is false (e.g. no_decision_trace)
+        log_created_at:
+          type: string
+          format: date-time
+          nullable: true
+        trace:
+          type: object
+          nullable: true
+          additionalProperties: true
+        tracks:
+          type: array
+          items:
+            type: object
+            properties:
+              bucket:
+                type: string
+                enum: [persisted, rejected, accepted]
+                description: persisted = saved on clip; rejected = not on clip; accepted = legacy alias for persisted
+              track_id:
+                type: integer
+                nullable: true
+              species_name:
+                type: string
+                nullable: true
+              steps:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    stage:
+                      type: string
+                    lines:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          field:
+                            type: string
+                          value:
+                            type: string
     BirdFood:
       type: object
       properties:

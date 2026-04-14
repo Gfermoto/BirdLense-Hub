@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 from app_config.app_config import app_config
+from birdnet_merge_key import birdnet_merge_key
 from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -416,6 +417,41 @@ class MQTTEventAggregator:
         fs_dir = (fifo_snapshot_data_dir or "").strip()
         self._fifo_snapshot_dir = fs_dir or None
         self._fifo_snapshot_last_monotonic = 0.0
+        self._birdnet_fifo_persist = None
+        self._birdnet_merge_db_path = None
+        _merge_data_root = fs_dir or None
+        if not _merge_data_root:
+            from processor_support import get_data_dir
+
+            _merge_data_root = get_data_dir()
+        try:
+            from birdnet_fifo_persist import processor_birdnet_persist_db_path
+
+            _pdb = processor_birdnet_persist_db_path(_merge_data_root)
+            if _pdb and os.path.isfile(_pdb):
+                self._birdnet_merge_db_path = _pdb
+        except Exception:
+            logger.debug("BirdNET merge-key db path failed", exc_info=True)
+            self._birdnet_merge_db_path = None
+        if bool(app_config.get("processor.birdnet_fifo_persist_enabled", True)):
+            data_root = fs_dir or None
+            if not data_root:
+                from processor_support import get_data_dir
+
+                data_root = get_data_dir()
+            try:
+                from birdnet_fifo_persist import BirdnetFifoPersist, processor_birdnet_persist_db_path
+
+                pdb = processor_birdnet_persist_db_path(data_root)
+                if pdb:
+                    try:
+                        busy_ms = int(app_config.get("processor.birdnet_fifo_sqlite_busy_ms") or 30000)
+                    except (TypeError, ValueError):
+                        busy_ms = 30000
+                    self._birdnet_fifo_persist = BirdnetFifoPersist(pdb, busy_timeout_ms=busy_ms)
+            except Exception:
+                logger.debug("BirdNET FIFO persist init failed", exc_info=True)
+                self._birdnet_fifo_persist = None
         self.scales_unit = (scales_unit or "kg").strip().lower() or "kg"
         self.scales_history_max_lines = max(100, int(scales_history_max_lines or 10000))
         self._scale_motion_trigger_cb = scale_motion_trigger_cb
@@ -515,7 +551,13 @@ class MQTTEventAggregator:
                 ev.get("source"),
             )
 
-    def _prune_birdnet_events_locked(self, now=None, ttl_hours: float = 25.0) -> None:
+    def _prune_birdnet_events_locked(
+        self,
+        now=None,
+        ttl_hours: float = 25.0,
+        *,
+        sync_persist: bool = False,
+    ) -> None:
         now = now or datetime.now(timezone.utc)
         try:
             ttl_hours = float(ttl_hours)
@@ -541,7 +583,7 @@ class MQTTEventAggregator:
                     if abs(float(parsed_epoch) - float(ts_epoch)) > 1.0:
                         ts_epoch = parsed_epoch
                         ev["_ts_epoch"] = ts_epoch
-            if ts_epoch >= low_epoch:
+            if float(ts_epoch) >= low_epoch:
                 kept.append(ev)
         # FIFO cap: drop oldest *within TTL window* only. Previously this could
         # remove still-valid history when transient spam arrived, collapsing support_count.
@@ -565,6 +607,8 @@ class MQTTEventAggregator:
                 ttl_hours,
             )
         self._maybe_write_birdnet_fifo_snapshot_locked()
+        if sync_persist and self._birdnet_fifo_persist is not None:
+            self._birdnet_fifo_persist.enqueue_prune(low_epoch, int(self._birdnet_event_cap))
 
     def _maybe_write_birdnet_fifo_snapshot_locked(self) -> None:
         """Обновить JSON-снимок FIFO (только под lock; дешёвый no-op если рано для throttle)."""
@@ -625,7 +669,18 @@ class MQTTEventAggregator:
             # Prune relative to the newest event time, not wall clock: unit tests and
             # offline replays may inject historical timestamps while host time differs.
             prune_now = ts or datetime.fromtimestamp(float(ev["_ts_epoch"]), tz=timezone.utc)
-            self._prune_birdnet_events_locked(now=prune_now)
+            try:
+                ttl_h = float(app_config.get("processor.birdnet_mqtt_prior_ttl_hours", 25))
+            except (TypeError, ValueError):
+                ttl_h = 25.0
+            ttl_h = max(1.0, min(ttl_h, 168.0))
+            self._prune_birdnet_events_locked(now=prune_now, ttl_hours=ttl_h, sync_persist=True)
+            if self._birdnet_fifo_persist is not None and any(e is ev for e in self._birdnet_events):
+                try:
+                    frozen = json.loads(json.dumps(ev, default=str))
+                except (TypeError, ValueError):
+                    frozen = dict(ev)
+                self._birdnet_fifo_persist.enqueue_insert(frozen)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -1053,6 +1108,27 @@ class MQTTEventAggregator:
         if not self.broker:
             logger.warning("MQTT broker not configured, aggregator disabled")
             return
+        if self._birdnet_fifo_persist is not None:
+            try:
+                from birdnet_fifo_persist import hydrate_birdnet_events_from_db
+
+                try:
+                    ttl_h = float(app_config.get("processor.birdnet_mqtt_prior_ttl_hours", 25))
+                except (TypeError, ValueError):
+                    ttl_h = 25.0
+                ttl_h = max(1.0, min(ttl_h, 168.0))
+                loaded = hydrate_birdnet_events_from_db(
+                    self._birdnet_fifo_persist.db_path,
+                    ttl_hours=ttl_h,
+                    cap=self._birdnet_event_cap,
+                )
+                with self._lock:
+                    self._birdnet_events = deque(loaded)
+                if loaded:
+                    logger.info("BirdNET FIFO hydrated from SQLite: %s events", len(loaded))
+            except Exception:
+                logger.exception("BirdNET FIFO hydrate skipped")
+            self._birdnet_fifo_persist.start()
         self._thread = threading.Thread(target=self._run_client, daemon=True)
         self._thread.start()
         time.sleep(0.5)
@@ -1118,12 +1194,13 @@ class MQTTEventAggregator:
         low_epoch = now.timestamp() - (window_hours * 3600.0)
         decay_base = 0.5
         out: dict[str, dict] = {}
+        species_mapping = app_config.get("detection.species_mapping") or {}
 
         with self._lock:
             self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)
             for ev in self._birdnet_events:
-                species = str(ev.get("species") or ev.get("common_name") or "").strip()
-                if not species or species.lower() == "unknown":
+                merge_species = birdnet_merge_key(ev, species_mapping, self._birdnet_merge_db_path)
+                if not merge_species or merge_species.lower() == "unknown":
                     continue
                 try:
                     conf = float(ev.get("confidence") or 0.0)
@@ -1143,7 +1220,7 @@ class MQTTEventAggregator:
                 decay = decay_base ** (age_hours / half_life_hours)
                 weighted = conf * decay
                 bucket = out.setdefault(
-                    species,
+                    merge_species,
                     {
                         "score": 0.0,
                         "support_count": 0,

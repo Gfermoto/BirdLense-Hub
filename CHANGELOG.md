@@ -8,7 +8,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **Трассировка fusion:** `GET /api/ui/videos/{id}/fusion-trace` и кнопка на странице ролика — только для **оператора (contributor)** и **администратора** (`contributor_or_admin_access`), не для анонимных зрителей. OpenAPI и CONFIGURATION (EN/RU) обновлены.
+
+### Added
+
+- **Свои веса YOLO из UI ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)):** **Система → Веса процессора** — загрузка `.pt` для бинарного детектора и классификатора и `class_names.txt` в `DATA_DIR/custom_weights/`, обновление `user_config` абсолютными путями, сброс к встроенным путям, флаг перезапуска процессора после операций. API `GET/POST /api/ui/system/processor-weights/*`; проверка `.pt` как zip-чекпойнта без `torch` в web; загрузка классификатора требует существующего allowlist или `acknowledge_classifier_only`.
+
+- **Тестовый прогон по файлам без рестарта ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)):** при `video.source=file` процессор не блокируется на пустой папке; обмен через `data/file_test_control/desired.json` и `status.json` (старт/стоп, loop, abort сессии). API `GET/POST /api/ui/system/file-test/*`, карточка на странице **Библиотека** (список, upload, удаление, прогресс polling). `GET .../status` всегда 200 с полем `video_source`, чтобы UI не опрашивал 409 вне режима `file`.
+
+- **Fusion decision trace ([#272](https://github.com/Gfermoto/BirdLense-Hub/issues/272)):** `GET /api/ui/videos/{id}/fusion-trace` и диалог на странице ролика (**Fusion trace** / **Трассировка fusion**) — шаги по трекам (детектор → классификатор → evidence → аудио → fusion → итог) плюс сырой JSON; документация в **CONFIGURATION** (EN/RU).
+
+- **BirdNET MQTT FIFO ([#269](https://github.com/Gfermoto/BirdLense-Hub/issues/269)):** таблица **`birdnet_fifo_event`** в hub БД (Alembic **`004_birdnet_fifo_event`**); процессор пишет в SQLite **`data/db/birdlense.db`** через фоновый поток (**WAL**, **`busy_timeout`**), гидратирует RAM при старте MQTT; **`GET .../diagnostics/birdnet-fifo`** отдаёт снимок из БД при наличии строк (иначе JSON-файл как раньше). Ключи **`processor.birdnet_fifo_persist_enabled`**, **`processor.birdnet_fifo_sqlite_busy_ms`**. При **`DATABASE_URL`** PostgreSQL запись из процессора отключена (нет общего sqlite-файла).
+
+- **BirdNET FIFO — диагностика в UI ([#303](https://github.com/Gfermoto/BirdLense-Hub/issues/303)):** диалог **Система → Автоматизация → BirdNET FIFO** — таблица видов (`species_fifo_table`: MQTT-имя, ключ слияния с видео, счётчик событий, латинское имя, «как давно»), зелёная полоса слева для «услышан в окне»; сырой JSON в свёрнутом блоке; общий merge-key (**`app_config/birdnet_merge_key`**) для web и processor; тесты web/processor; локали EN/RU. Закрывает UX по сравнению с «стеной JSON».
+
+### Changed
+
+- **UI / CI:** job `ui-build` запускает **`npm run typecheck`** (`tsc -p tsconfig.app.json`); тип **`Settings`** расширен полями процессора / весов / motion из конфига; мелкие правки под строгий TS (Pie highlightScope, PWA virtual module, web-push `patchSettings`). **`locales/de.json`** — полное дерево ключей как в `en.json`, с сохранением уже переведённых строк (nav, common, protected, часть settings) и **`nav.logout`**; остальное пока на английском до отдельного перевода.
+
+- **Офлайн-прогон по файлам (UI):** заголовок секции и единственный переключатель зацикливания — только внутри карточки на **Библиотеке**; якорь `#file-replay` на самой карточке. Документация RU: исправлена ссылка «Система» → **Библиотека**. Лимит upload `video.file_test_max_upload_mb`: по умолчанию **10240 MiB** (>10000), зажим в коде **64–65536 MiB**.
+
+- **Fusion decision trace (семантика):** в payload `decision_trace` добавлены **`persisted_tracks`** / **`persisted_track_count`** и флаг строки **`persisted_to_clip`**; **`accepted_tracks`** остаётся ссылкой на тот же список (legacy). Экспорт fusion-training и скрипт CSV обходят **один** список клипа, чтобы не дублировать строки. UI/API: bucket трека **`persisted`**, подписи «сохранено в клипе» vs «DecisionMaker accepted».
+
+- **BirdNET ↔ видео, ключ слияния:** в **`birdnet_merge_key`** сначала матчится **`detection.species_mapping`** по научному имени (ключи вида **`Parus major (Great Tit)`**), затем уже **`species_taxon.common_name`** из SQLite — колонка «ключ для видео» и слияние с YOLO не прыгают между русским и английским из‑за локали в каталоге. В **`default_config.yaml`** добавлены типовые европейские виды (в т.ч. из RU BirdNET).
+
+- **`species_normalizer._to_title_case`:** дефисы в составе названия не превращаются в пробелы (корректнее вывод для **`Red-breasted Flycatcher`**, **`Eurasian Eagle-Owl`** и т.п. после **`normalize()`**).
+
+- **`birdnet_merge_key`:** значение из **`detection.species_mapping`** по научному имени возвращается **как в YAML** (без повторного **`normalize()`**), чтобы не портить написание вроде **Red-breasted** / **Eagle-Owl**.
+
 ### Fixed
+
+- **Intel GPU на сервере (VA-API + метрики UI):** `docker-compose.override` теперь генерируется скриптом **`app/scripts/docker-compose-intel-override-gen.sh`**: все `/dev/dri/renderD*` и `card*`, **`group_add`** с GID групп **video/render хоста** (раньше без них устройства были `rw-rw----` → VA-API и косвенно метрики ломались), **`CAP_PERFMON`** вместе с `SYS_ADMIN` для `intel_gpu_top`. Вызывается из **`scripts/deploy.sh`** и из **GitHub Actions Deploy** перед `make start`.
+
+- **Intel PMU / `intel_gpu_top` на VPS:** при **`kernel.perf_event_paranoid=3`** (и на части хостов даже при **1**) ядро отказывает в perf/PMU в Docker даже с **`CAP_PERFMON`**. После **1.8** **`scripts/deploy.sh`** и **GitHub Actions** при наличии **`docker-compose.override.yml`** пишут **`/etc/sysctl.d/99-birdlense-perf.conf`** со значением **0** и **`sysctl -p`** (ошибки игнорируются). INSTALL (EN/RU): при нехватке **0** — **−1** вручную или **`privileged: true`** в override.
+
+- **Метрики Intel GPU в Docker:** при `intel_gpu_top` с ошибкой PMU `Permission denied` предупреждение в лог не чаще **раза в час** (если после правок override ошибка останется).
+
+- **Логи процессора:** «No detections after merge…» — не чаще **раза в 120 с** на уровне WARNING (между — DEBUG).
+
+- **Логи FFmpeg при записи go2rtc:** прогресс `frame=` / «Queue input is backward in time» / «Last message repeated» — **DEBUG**, итоговые строки — INFO.
+
+- **Файл-реплей UI:** переключатель зацикливания — приоритет `desired.loop` над `processor.loop`, пауза ~4.5s без перезаписи из polling после клика, сброс при ошибке `loopMut`. **Upload 413:** в Flask задан высокий **`MAX_CONTENT_LENGTH`** (переменная **`FLASK_MAX_CONTENT_LENGTH`** в байтах); в UI отдельный текст, если 413 похож на ответ прокси (не JSON хаба). Документация INSTALL/CONFIGURATION: nginx `client_max_body_size` для `/api/`. **Встроенный nginx образа Hub:** в `docker-nginx-main.conf` задан **`client_max_body_size 64g`**; для `location /api` — длинные **`proxy_*_timeout`** и **`proxy_request_buffering off`**, чтобы прокси в контейнере не отсекал большие тела запросов.
+
+- **CI processor tests:** `test_two_stage_strategy_integration` больше не требует jay/bird в top-1 на `1.jpg` — реальные веса дают другие виды (напр. GYRFALCON в Docker); проверяется конвейер binary + species head и валидные `class_name`.
+
+- **Docker / fusion export:** контекст сборки `birdlense` — **корень репозитория** (`docker-compose`: `context: ..`, `dockerfile: app/Dockerfile`); в образ копируется **`scripts/export_fusion_training_data.py`**, `repo_root()` и E2E/тесты без монтирования `..:/workspace` не ломаются.
+
+- **Тесты без пропусков:** `test_settings_with_mcp_token` задаёт временный `mcp.token`; `test_regional_scope_true_for_birdnet_detection` создаёт и удаляет вид в БД; `test_detection_strategy` не подменяет `ultralytics`, если пакет установлен (интеграции YOLO в Docker); Playwright smoke — пустой Overview без `test.skip`.
 
 - **CI / Settings UI:** ключ **`general.session_idle_minutes`** из `default_config` — поле в **Settings → Security** (EN/RU), тип **`session_idle_minutes`**, при двух уровнях доступа PATCH для помощника снимает это поле (**`CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS`**). **Ruff format** для **`app/processor/src/interfaces.py`**.
 

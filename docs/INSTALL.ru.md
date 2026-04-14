@@ -12,7 +12,7 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 |-----------|----------|
 | **Docker** | **x86_64 / amd64** (Intel или AMD), Compose v2 — ARM/aarch64 не поддерживаются |
 | **Go2RTC** | Видеопотоки с IP-камер (standalone или Frigate) |
-| **MQTT** (опционально) | Frigate events, BirdNET sightings |
+| **MQTT** (опционально) | Frigate events; BirdNET (любой совместимый источник JSON, чаще BirdNET-Go или BirdNET-Pi) |
 
 ---
 
@@ -45,17 +45,19 @@ make build && make start
 
 ## Вариант 4: Образ без сборки (для пользователей)
 
-Без клонирования репо — только образ и конфиг:
+Без клонирования репо — только образ и конфиг (один контейнер `birdlense`, без Redis из `docker-compose.yml`):
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
 mkdir -p data/recordings data/db app_config
-# .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (openssl rand -hex 16)
-# docker-compose.image.yml из репо app/
+# Скачайте из репозитория файлы app/docker-compose.image.yml и app/.env.example, затем:
+cp .env.example .env
+# Заполните .env: PROCESSOR_SECRET, FLASK_SECRET_KEY (например openssl rand -hex 16).
+# Опционально: BIRDLENSE_IMAGE=… для своего registry (см. docker-compose.image.yml).
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. Intel GPU: `cp docker-compose.intel.example.yml docker-compose.override.yml`.
+Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** из каталога `app/` выполните `bash scripts/docker-compose-intel-override-gen.sh` (все `card*`/`renderD*`, `group_add` video/render, `CAP_PERFMON`) или см. `docker-compose.intel.example.yml` для ручной правки GID. Если в логах **`Failed to initialize PMU`** при этом уже есть `PERFMON` в compose — на **хосте** (не в контейнере) ослабьте **`kernel.perf_event_paranoid`**: `make deploy` и CI при наличии `docker-compose.override.yml` пишут **`/etc/sysctl.d/99-birdlense-perf.conf`** со значением **0** и вызывают `sysctl -p` (дефолт **3** на части VPS режет perf; если **0** мало — вручную **`sudo sysctl kernel.perf_event_paranoid=-1`** или контейнер с **`privileged: true`** в override).
 
 ---
 
@@ -64,7 +66,7 @@ docker compose -f docker-compose.image.yml up -d
 **Тома Docker и uid:** процессы в контейнере `birdlense` идут от пользователя **birdlense (uid 1000)**. При старте entrypoint от root делает `chown` на примонтированные `./data` и `./app_config`. Если `chown` на вашей ФС недоступен, с хоста из каталога `app/`: `chown -R 1000:1000 data app_config`.
 
 1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`, а также из `./install.sh`.
-2. **Конфиг** — `app/app_config/user_config.yaml`. Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`.
+2. **Конфиг** — `app/app_config/user_config.yaml`. Пример из каталога **`app/`** репозитория: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
 4. **Камеры** — Настройки → Камеры: stream names из Go2RTC.
 
@@ -83,13 +85,30 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при Intel GPU выставляет override, на сервере в `app/` — `make build && make start`.
+**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` запускает **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + метрики GPU), на сервере в `app/` — `make build && make start`.
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
 **Пошаговый чеклист**, пути на VPS, логи и типичные сбои: [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
+
+### HTTPS / nginx и большие upload (Библиотека → прогон с диска)
+
+Если **413** при загрузке mp4, а в UI всё ещё «лимит 2048 МиБ» — на сервере старый `default_config`/`user_config` **или** **прокси** режет тело запроса **до** Flask. В образе хаба лимит тела запроса поднят (`MAX_CONTENT_LENGTH` в `web/config.py`, переопределение **`FLASK_MAX_CONTENT_LENGTH`** в байтах). Nginx **внутри** контейнера Hub уже задаёт **`client_max_body_size 64g`** (`app/nginx/docker-nginx-main.conf`). Если перед контейнером стоит **ещё один** reverse proxy (TLS на хосте и т.п.), поднимите лимит и там, например:
+
+```nginx
+location /api/ {
+    client_max_body_size 16g;
+    proxy_pass http://127.0.0.1:8085;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Подберите **client_max_body_size** под ваши ролики; в YAML смотрите **`video.file_test_max_upload_mb`** (по умолчанию в репозитории **10240** MiB после обновления).
 
 ### Telegram proxy autorotate (одной кнопкой)
 

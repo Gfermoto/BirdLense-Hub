@@ -282,11 +282,30 @@ class AppConfig:
 
     @classmethod
     def filter_sensitive_placeholders(cls, updates):
-        """Не перезаписывать секреты placeholder'ами (***) или пустой строкой."""
+        """Не перезаписывать секреты placeholder'ами (***) или пустой строкой.
+
+        Явный JSON ``null`` для секретного ключа тоже убираем из PATCH: иначе
+        ``merge_dicts`` записывает None поверх сохранённого пароля/токена.
+        """
         out = copy.deepcopy(updates)
         for path in SENSITIVE_KEYS:
-            val = cls._get_nested(out, path)
+            keys = path.split('.')
+            parent = out
+            for k in keys[:-1]:
+                if not isinstance(parent, dict):
+                    parent = None
+                    break
+                parent = parent.get(k)
+                if parent is None:
+                    break
+            if not isinstance(parent, dict):
+                continue
+            last = keys[-1]
+            if last not in parent:
+                continue
+            val = parent[last]
             if val is None:
+                cls._remove_nested(out, path)
                 continue
             if isinstance(val, str) and (val.strip() == MASK_PLACEHOLDER or not val.strip()):
                 cls._remove_nested(out, path)

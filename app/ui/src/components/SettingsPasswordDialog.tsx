@@ -59,7 +59,7 @@ export const SettingsPasswordDialog = ({
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>{t('settings.passwordTitle')}</DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
+        <DialogContent sx={{ pt: 2.5, px: 3, overflow: 'visible' }}>
           <PasswordField
             value={password}
             onChange={setPassword}

@@ -45,10 +45,20 @@ def normalize(species: str, mapping: dict = None) -> str:
 
 
 def _to_title_case(s: str) -> str:
-    """Convert 'house_sparrow' or 'house sparrow' to 'House Sparrow'."""
-    s = s.replace("_", " ").replace("-", " ")
-    parts = s.split()
-    return " ".join(p.capitalize() for p in parts if p)
+    """Convert 'house_sparrow' or 'house sparrow' to 'House Sparrow'.
+
+    Дефисы внутри слова не разрываем (IOC/eBird: Red-breasted Flycatcher, Eagle-Owl).
+    """
+    s = s.replace("_", " ").strip()
+    out: list[str] = []
+    for w in s.split():
+        if not w:
+            continue
+        if "-" in w:
+            out.append("-".join(seg.capitalize() for seg in w.split("-") if seg))
+        else:
+            out.append(w.capitalize())
+    return " ".join(out)
 
 
 def _is_squirrel_or_rodent_name(name: str) -> bool:

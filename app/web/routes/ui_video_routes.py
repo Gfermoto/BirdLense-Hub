@@ -23,6 +23,7 @@ from services.video_neighbors_service import (
     build_video_neighbors_payload,
     parse_video_neighbors_request_args,
 )
+from services.fusion_trace_service import build_fusion_trace_api_payload
 from services.video_payload_service import (
     build_video_detail_dict,
     build_video_detection_frames_dict,
@@ -93,6 +94,17 @@ def register_ui_video_routes(app):
         body = build_video_detection_frames_dict(video)
         cache_set(ck, body, CACHE_DETECTION_FRAMES_SEC)
         return body, 200
+
+    @app.route("/api/ui/videos/<int:video_id>/fusion-trace", methods=["GET"])
+    def get_video_fusion_trace(video_id):
+        """Трассировка fusion (ActivityLog decision_trace) для ролика (#272).
+
+        Только contributor/admin (как скачивание/merge), не для гостей.
+        """
+        if not contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
+        body, code = build_fusion_trace_api_payload(video_id)
+        return body, code
 
     @app.route("/api/ui/videos/<int:video_id>", methods=["DELETE"])
     def delete_video(video_id):

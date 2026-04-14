@@ -323,6 +323,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/videos/{video_id}/fusion-trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fusion decision trace for a recording
+         * @description Returns the latest `decision_trace` ActivityLog row linked to this video (`video_id` in payload after processor ingest, or legacy match on `video_path`). Used for debugging fusion (detector → classifier → audio priors). Raw `trace` mirrors the processor payload (`persisted_tracks` / `accepted_tracks` alias — rows stored on the clip; `rejected_tracks` — not persisted). `tracks[].bucket` is `persisted` for the clip list and `rejected` for the reject list (`accepted` kept for backward compatibility with older API clients).
+         *
+         *     **Auth:** contributor (operator) or admin session only — not for anonymous viewers (same as download/merge).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    video_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Trace payload or `available=false` if no log matched */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FusionTraceResponse"];
+                    };
+                };
+                /** @description Access denied (contributor or admin session required) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Video not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/birdfood": {
         parameters: {
             query?: never;
@@ -1221,6 +1282,610 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/file-test/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List file-test replay videos
+         * @description Lists video files in `video.file_dir` when `video.source=file`. Library UI uses this for offline replay without container restart (#270).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FileTestFilesResponse"];
+                    };
+                };
+                /** @description Settings password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not in file replay mode (`video.source` is not `file`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/file-test/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * File-test processor status
+         * @description Returns desired state (`file_test_control/desired.json`), processor-written `status.json` (current clip, index, phase), config hints, and `video_source`.
+         *     Always succeeds when settings are readable: use `video_source === "file"` to know if replay APIs are usable (mutating routes still return 409 when not in file mode).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Status payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FileTestStatusResponse"];
+                    };
+                };
+                /** @description Invalid or unusable `video.file_dir` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Settings password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/file-test/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a file-test video
+         * @description Admin-only. Multipart field `file`. Max size 500 MiB; extensions mp4/mov/mkv.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            name?: string;
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not in file replay mode */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/file-test/files/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a file-test video */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                        };
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not in file replay mode */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/file-test/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Arm file-test replay / update loop
+         * @description Writes `desired.json` for the processor. Empty body arms playback (start). Optional `armed` and `loop` booleans.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        armed?: boolean;
+                        loop?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated desired state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            desired?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not in file replay mode */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/file-test/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop file-test replay
+         * @description Disarms playback and requests abort of the current session (processor clears abort when the session ends).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @default true */
+                        abort?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated desired state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            desired?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not in file replay mode */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/processor-weights/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Custom processor weights status (#276)
+         * @description Effective paths for binary detector, classifier, and species allowlist; whether each file lives under
+         *     `DATA_DIR/custom_weights`; sizes and mtimes. Settings password (or MCP Bearer) required.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Status payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/processor-weights/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload custom .pt or class_names.txt (#276)
+         * @description Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
+         *     For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
+         *     Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
+         *     Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
+         */
+        post: {
+            parameters: {
+                query: {
+                    role: "binary" | "classifier" | "class_names";
+                    acknowledge_classifier_only?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            path?: string;
+                            role?: string;
+                            status?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/processor-weights/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset custom weights to built-in defaults (#276)
+         * @description JSON body `{ "roles": ["binary"] | ["classifier"] | ["class_names"] | ["all"] | combinations }`.
+         *     Removes files in `custom_weights` and clears matching keys from user_config when they pointed there.
+         *     Sets processor restart flag. Admin-only when contributor password is enabled.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        roles: ("binary" | "classifier" | "class_names" | "all")[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Reset done */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            removed_files?: string[];
+                            status?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storage/stats": {
         parameters: {
             query?: never;
@@ -1344,6 +2009,56 @@ export interface components {
     schemas: {
         Error: {
             error?: string;
+        };
+        FileTestFileEntry: {
+            name?: string;
+            size?: number;
+            duration_sec?: number | null;
+        };
+        FileTestFilesResponse: {
+            file_dir?: string;
+            files?: components["schemas"]["FileTestFileEntry"][];
+        };
+        FileTestStatusResponse: {
+            file_dir?: string;
+            desired?: {
+                [key: string]: unknown;
+            };
+            processor?: {
+                [key: string]: unknown;
+            } | null;
+            config_loop_default?: boolean;
+            video_source?: string;
+            /** @description Effective per-file upload limit (MiB) for POST /system/file-test/upload (config default 10240, clamped 64–65536 in hub code) */
+            file_test_max_upload_mb?: number;
+        };
+        FusionTraceResponse: {
+            available?: boolean;
+            video_id?: number;
+            video_path?: string;
+            /** @description Present when available is false (e.g. no_decision_trace) */
+            message?: string;
+            /** Format: date-time */
+            log_created_at?: string | null;
+            trace?: {
+                [key: string]: unknown;
+            } | null;
+            tracks?: {
+                /**
+                 * @description persisted = saved on clip; rejected = not on clip; accepted = legacy alias for persisted
+                 * @enum {string}
+                 */
+                bucket?: "persisted" | "rejected" | "accepted";
+                track_id?: number | null;
+                species_name?: string | null;
+                steps?: {
+                    stage?: string;
+                    lines?: {
+                        field?: string;
+                        value?: string;
+                    }[];
+                }[];
+            }[];
         };
         BirdFood: {
             id?: number;

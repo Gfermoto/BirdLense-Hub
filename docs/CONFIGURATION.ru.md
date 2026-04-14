@@ -26,7 +26,7 @@
 | [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
 | [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
 
-**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск.
+**Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск. При **плейлисте из папки** (`file_path` пуст) на странице **Библиотека** доступна карточка **офлайн-прогона с диска**: список/upload/удаление в `file_dir`, старт/стоп и loop **без перезапуска контейнера** — процессор читает `data/file_test_control/desired.json`, прогресс в `status.json` ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)).
 
 ---
 
@@ -92,7 +92,7 @@
 | `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
-| `birdnet_url` | Ссылка на вашу установку BirdNET (BirdNET-Pi/Go). Пусто — ссылка/иконка скрыта. |
+| `birdnet_url` | Ссылка на веб-интерфейс вашего аудио-стека (BirdNET-Go, BirdNET-Pi и т.д.). Пусто — ссылка/иконка в UI скрыта. От выбора сборки настройки слияния не зависят — важен MQTT. |
 | `heimdall_url` | Базовый URL Heimdall только для **проверки с Hub** (раздел System). Можно указать `http://heimdall.local`, если имя резолвится **с хоста/контейнера Hub** (Docker: общая сеть, `extra_hosts`, DNS в LAN). Это **не** настройка «Heimdall читает Hub» — см. ниже. |
 | `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
@@ -147,6 +147,7 @@
 | `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
+| *(свои веса)* | **Система → Веса процессора** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): загрузка кладёт `binary.pt` / `classifier.pt` / `class_names.txt` в **`DATA_DIR/custom_weights/`** и прописывает в `user_config` **абсолютные** пути (относительные пути здесь резолвятся от `app/processor`, не от `DATA_DIR`). После загрузки/сброса выставляется флаг перезапуска процессора. |
 | `file_max_record_floor_seconds` | Только **`video.source=file`:** минимальный отрезок по «настенным часам» (сек) до возможного split длинного клипа; по умолчанию **86400**. См. *(поведение)* в **Video**. |
 | `keep_recording_when_no_detections` | Только **`video.source=file`** (по умолчанию **false**). Если **true** — оставлять финализированную сессию (валидный mp4) при **нуле** сохранённых детекций (офлайн-пайплайны). Для **`go2rtc` / live** ключ **не действует**; пустые сессии удаляются. |
 | `track_regen_parallel_auto_with_manual` | Продвинутая параллельность перегенерации треков (auto + manual scope); тюнинг для ops, только YAML (см. System → track regen в UI). |
@@ -160,7 +161,8 @@
 | `source` | `go2rtc` или `file` (тест: папка mp4 или один файл в контейнере) |
 | `file_path` | Один mp4, абсолютный путь в контейнере; пусто — плейлист из `file_dir` |
 | `file_dir` | Папка с `*.mp4` / `*.mov` / `*.mkv` (только файлы в каталоге, без рекурсии). В репозитории по умолчанию **`/app/data/file_test`** (Docker: `./data` хоста → `/app/data`). |
-| `file_loop` | Зацикливать плейлист/файл |
+| `file_loop` | Зацикливать плейлист/файл (карточка **прогон с диска** в **Библиотеке** пишет это при включении `source=file`; переключатель там же во время работы процессора) |
+| `file_test_max_upload_mb` | Лимит МиБ на один ролик при upload через Hub (**Библиотека** → прогон с диска). В коде зажато **64–65536**, по умолчанию **10240** (>10000 MiB). Прокси может отдать **413** раньше Flask — поднимите nginx `client_max_body_size` под размер ролика. Потолок тела запроса в Flask: **`FLASK_MAX_CONTENT_LENGTH`** (байты); дефолт в `web/config.py` большой, чтобы первым срабатывал лимит из YAML. |
 | *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
 | `cameras` | Список: `{id, stream_name, name}` |
@@ -201,7 +203,7 @@
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
 
-**BirdNET:** `CommonName`, `Confidence`, `BeginTime`, `ScientificName`, `BirdImage.URL`. BirdNET влияет только на confidence. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
+**BirdNET (универсально):** процессор принимает несколько схем имён полей — в частности **BirdNET-Go** (`CommonName`, `ScientificName`, `SpeciesCode`, `Confidence`, `BeginTime`, опционально `BirdImage.URL`) и **BirdNET-Pi** (`Common_Name`, `Confidence_Score`, `Date`, и др.). Отдельно в конфиге не выбирается «Go или Pi»: достаточно, чтобы JSON приходил на `mqtt.birdnet_topic`. **Слияние с видео и приоритеты по FIFO** опираются на **каноническое имя вида** в Hub: при типичном payload с **научным именем** язык подписи в MQTT (русский/английский) не мешает; если научного имени нет, помогают **алиасы** в реестре видов (`species_alias`) и при необходимости `detection.species_mapping`. При Hub только на PostgreSQL без общего файла `birdlense.db` автоматическое сопоставление по каталогу из SQLite недоступно — используйте маппинг в YAML. BirdNET по-прежнему **confidence-only** для финального video label. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
 
 **Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
 
@@ -272,6 +274,8 @@
 | `cross_source_confidence_bonus` | При первом подтверждении YOLO track со стороны Frigate — разово прибавить confidence (потолок 1.0). `0` — выключить. |
 | `min_confidence_to_store` | Мин. fused confidence для записи в БД (по умолчанию **0.30**). Это же floor для detector-label fallback. |
 | `species_mapping` | Маппинг названий видов |
+
+**Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
 **EU-модель:** `best.pt`. US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
 

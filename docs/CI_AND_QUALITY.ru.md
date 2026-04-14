@@ -10,7 +10,7 @@
 |----------------|------------|
 | **CI → python-security** | `bandit` по `web/` + `processor/src/`; `pip-audit` по обоим `requirements.txt`. |
 | **CI → openapi-contract** | `ruff check` + **`ruff format --check`** по `web/` + `processor/src/`; сводка **radon cc** (без порога); скрипт версии доков; узкие pytest-наборы. |
-| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` для `src/generated/openapi-types.ts`; `npm run lint`; `npm run build` в `app/ui`. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` для `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; `npm run build` в `app/ui`. |
 | **CI → docs** | MkDocs strict, скрипт покрытия Settings UI, проверка версии. |
 | **CI → docker-tests** | Сборка образа; тесты processor + web; Playwright smoke; аудит карточек. |
 

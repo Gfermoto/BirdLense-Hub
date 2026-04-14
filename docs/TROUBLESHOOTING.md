@@ -104,6 +104,19 @@ curl -s http://YOUR_GO2RTC_HOST:1984/api/streams
 
 **Order:** motion source → camera ids → logs (`Frigate trigger` / `Frigate event skipped`) → `GET /api/ui/status` (`mqtt: ok`).
 
+### BirdNET: FIFO fills but video merge / audio evidence does not match
+
+Symptom: **System → Automation → BirdNET FIFO** shows events, but fusion with YOLO never shows `support` or BirdNET auto-thresholds do not apply.
+
+| # | Cause | What to do |
+|---|--------|------------|
+| 1 | MQTT payload has **no scientific name** (`ScientificName` or equivalent), only a localized label | Prefer **BirdNET-Go** (usually sends Latin name). Otherwise add a **species alias** in the Hub registry for that MQTT string → taxon, or a `detection.species_mapping` entry. |
+| 2 | Taxon **scientific name** in Hub does not match the MQTT value | Check `species_taxon.scientific_name` for typos/extra spaces. |
+| 3 | Hub on **PostgreSQL** without a shared `birdlense.db` for the processor | SQLite-catalog auto-match is unavailable — use **`detection.species_mapping`** for MQTT strings. |
+| 4 | Resolved name still differs from **video classifier** output | After catalog resolution, the merge key must match `normalize()` on video detections (see [CONFIGURATION.md](./CONFIGURATION.md) § MQTT). |
+
+**On-server checks:** `GET /api/ui/health` — `mqtt: ok`; processor logs — `MQTT aggregator connected`; for verbose BirdNET path set `processor.birdnet_mqtt_observability_level: debug`. FIFO UI: **System → Automation → BirdNET FIFO snapshot** (admin password required).
+
 ---
 
 ## SQLite restore failed

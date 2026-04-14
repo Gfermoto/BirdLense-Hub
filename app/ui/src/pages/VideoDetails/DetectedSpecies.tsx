@@ -20,13 +20,11 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import MuiLink from '@mui/material/Link';
 import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
-import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import {
   resolveImageUrl,
   downloadDetectionCropForINaturalist,
@@ -35,7 +33,6 @@ import {
   fetchBirdDirectory,
   getApiErrorMessage,
 } from '../../api/api';
-import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
 interface GroupedSpecies {
@@ -50,14 +47,18 @@ interface GroupedSpecies {
 const INaturalistButton = ({
   detectionId,
   speciesName,
+  disabled: gateDisabled,
 }: {
   detectionId: number;
   speciesName: string;
+  /** Нет сессии админа/оператора — как экспорт на таймлайне. */
+  disabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const handleClick = async () => {
+    if (gateDisabled) return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -71,9 +72,18 @@ const INaturalistButton = ({
   };
   return (
     <>
-      <Tooltip title={t('common.iNaturalist')}>
+      <Tooltip
+        title={
+          gateDisabled ? t('common.loginRequiredForExport') : t('common.iNaturalist')
+        }
+      >
         <span>
-          <IconButton size="small" onClick={handleClick} disabled={loading} aria-label={t('common.iNaturalist')}>
+          <IconButton
+            size="small"
+            onClick={handleClick}
+            disabled={loading || !!gateDisabled}
+            aria-label={t('common.iNaturalist')}
+          >
             <Share fontSize="small" />
           </IconButton>
         </span>
@@ -103,9 +113,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 }) => {
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
-  const { requiresPassword, canEdit, setUnlocked } = useProtectedArea();
+  const { canEdit } = useProtectedArea();
   const queryClient = useQueryClient();
-  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
   const { data: speciesList = [] } = useQuery({
     queryKey: ['species'],
@@ -223,36 +232,6 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       <Typography variant="h6" gutterBottom>
         {t('video.speciesInVideo')}
       </Typography>
-      {!canEdit && requiresPassword && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {t('unknowns.passwordRequired')}{' '}
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => setShowUnlockDialog(true)}
-            sx={{ mr: 1 }}
-          >
-            {t('settings.passwordSubmit')}
-          </Button>
-          <MuiLink
-            component={RouterLink}
-            to="/settings"
-            color="inherit"
-            sx={{ fontWeight: 600 }}
-          >
-            {t('nav.settings')}
-          </MuiLink>
-        </Alert>
-      )}
-      <SettingsPasswordDialog
-        open={showUnlockDialog}
-        onSuccess={(role) => {
-          setUnlocked(true, role || 'admin');
-          setShowUnlockDialog(false);
-          queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
-        }}
-        onClose={() => setShowUnlockDialog(false)}
-      />
       {groupedSpecies.length >= 2 && videoId && (
         <Box
           sx={{
@@ -353,7 +332,11 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   };
                   return providers.length > 0 ? (
                     <Typography variant="body2" color="text.secondary">
-                      {t('video.detectionSource')}: {providers.map((p) => providerLabels[p] || p).join(', ')}
+                      {t('video.detectionSource')}:{' '}
+                      {providers
+                        .map((p) => (p ? providerLabels[p] ?? p : ''))
+                        .filter(Boolean)
+                        .join(', ')}
                     </Typography>
                   ) : null;
                 })()}
@@ -389,11 +372,12 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       <INaturalistButton
                         detectionId={bestDet.id!}
                         speciesName={group.species_name}
+                        disabled={!canEdit}
                       />
                     ) : null;
                   })()}
                   {editingGroupKey !== String(group.species_id) && (
-                    <Tooltip title={!canEdit ? t('unknowns.passwordRequired') : t('unknowns.correctSpecies')}>
+                    <Tooltip title={canEdit ? t('unknowns.correctSpecies') : ''}>
                       <span>
                         <Button
                           size="small"
@@ -418,7 +402,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                         labelId={`video-correct-species-${group.species_id}`}
                         value={selectedSpeciesId}
                         label={t('unknowns.correctSpecies')}
-                        renderValue={(v) => {
+                        renderValue={(v: number | string) => {
                           if (v === '' || v === undefined) return '';
                           const id = Number(v);
                           const row = speciesList.find((s) => Number(s.id) === id);
