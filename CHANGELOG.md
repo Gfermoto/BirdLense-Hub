@@ -187,6 +187,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **CI:** синхронизация **`app/ui/src/generated/openapi-types.ts`** с `openapi.yaml` (шаг `codegen:openapi` + `git diff` в workflow).
 - **CI:** `ruff format` для `web/services/readiness_service.py`, `web/tests/test_system_stabilization.py`.
 - **npm (Dependabot GHSA-r4q5-vmmm-2653):** обновлён **follow-redirects** (транзитивно от axios) — `npm audit` без находок.
+- **E2E smoke (CI docker-tests):** сценарий **`/unknowns`** — ожидание финального URL **`/timeline`** без **`review=1`** для гостя (как в UI после `Navigate` + сброса review).
 
 ## [0.3.4] - 2026-04-09
 
