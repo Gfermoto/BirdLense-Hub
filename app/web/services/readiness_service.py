@@ -36,9 +36,7 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         checks["database"] = {"status": "error", "error": "database_unavailable"}
 
     checks["data_dir"] = _path_status(Path(data_dir()), "data/")
-    checks["app_config_dir"] = _path_status(
-        Path(__file__).resolve().parents[2] / "app_config", "app_config/"
-    )
+    checks["app_config_dir"] = _path_status(Path(__file__).resolve().parents[2] / "app_config", "app_config/")
 
     ready = all(check.get("status") == "ok" for check in checks.values())
     payload = {
