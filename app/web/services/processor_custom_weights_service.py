@@ -198,9 +198,7 @@ def save_upload(
             return {"error": err}, 400
         target_name = BINARY_NAME if role == "binary" else CLASSIFIER_NAME
         config_path = _canonical_file(target_name)
-        user_key = (
-            "processor.models.binary" if role == "binary" else "processor.models.classifier"
-        )
+        user_key = "processor.models.binary" if role == "binary" else "processor.models.classifier"
     else:
         ext = os.path.splitext(str(file_storage.filename).lower())[1]
         if ext not in (".txt", ""):

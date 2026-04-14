@@ -31,6 +31,7 @@ def _ffmpeg_stderr_log_level(line: str) -> int:
         return logging.DEBUG
     return logging.INFO
 
+
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
