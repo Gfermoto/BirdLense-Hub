@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Единый контракт verify / readiness:** `scripts/verify-stack.sh` — последовательная проверка `/api/ui/health`, `/api/ui/readiness` (200 или 503 с полезной нагрузкой), `/api/ui/status` (опционально камеры); подключено в `install.sh`, `scripts/deploy.sh`, `make verify` (корень и `app/`). **`GET /api/ui/readiness`** — пинг БД, проверка записи в `data/` и `app_config/`, компоненты в JSON; в строгом UI API добавлен allowlist для readiness/status. Карточка **Система → готовность** (`SystemReadinessCard`), axios `validateStatus` для 200/503. OpenAPI: `/readiness`, расширенная схема 503. **Vitest** (`app/ui/`: `npm run test`) в CI; E2E smoke — ожидание health и навигация. Документация: `docs/QUICKSTART.md`, `docs/RUNBOOKS.md`, обновления README, INSTALL, LOCAL_DEV, DEPLOY_SERVER, TESTING, VERIFICATION, `mkdocs.yml`.
+
 - **Свои веса YOLO из UI ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)):** **Система → Веса процессора** — загрузка `.pt` для бинарного детектора и классификатора и `class_names.txt` в `DATA_DIR/custom_weights/`, обновление `user_config` абсолютными путями, сброс к встроенным путям, флаг перезапуска процессора после операций. API `GET/POST /api/ui/system/processor-weights/*`; проверка `.pt` как zip-чекпойнта без `torch` в web; загрузка классификатора требует существующего allowlist или `acknowledge_classifier_only`.
 
 - **Тестовый прогон по файлам без рестарта ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)):** при `video.source=file` процессор не блокируется на пустой папке; обмен через `data/file_test_control/desired.json` и `status.json` (старт/стоп, loop, abort сессии). API `GET/POST /api/ui/system/file-test/*`, карточка на странице **Библиотека** (список, upload, удаление, прогресс polling). `GET .../status` всегда 200 с полем `video_source`, чтобы UI не опрашивал 409 вне режима `file`.
@@ -25,6 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **BirdNET FIFO — диагностика в UI ([#303](https://github.com/Gfermoto/BirdLense-Hub/issues/303)):** диалог **Система → Автоматизация → BirdNET FIFO** — таблица видов (`species_fifo_table`: MQTT-имя, ключ слияния с видео, счётчик событий, латинское имя, «как давно»), зелёная полоса слева для «услышан в окне»; сырой JSON в свёрнутом блоке; общий merge-key (**`app_config/birdnet_merge_key`**) для web и processor; тесты web/processor; локали EN/RU. Закрывает UX по сравнению с «стеной JSON».
 
 ### Changed
+
+- **Web / observability:** заголовок **`X-Request-ID`** и логирование с привязкой к запросу (`app/web/app_logging.py`, подключение из `app.py`).
+
+- **Deploy script:** `scripts/deploy.sh` — `set -euo pipefail`, локально **`npm ci && npm run build`** в `app/ui`, пост-деплой проверка через `verify-stack.sh`; безопасная подстановка необязательных переменных окружения в remote heredoc (`${VAR:-}`).
 
 - **UI / CI:** job `ui-build` запускает **`npm run typecheck`** (`tsc -p tsconfig.app.json`); тип **`Settings`** расширен полями процессора / весов / motion из конфига; мелкие правки под строгий TS (Pie highlightScope, PWA virtual module, web-push `patchSettings`). **`locales/zh.json`** — полное дерево ключей как в `en.json`, перевод на упрощённый китайский (zh-CN); пилотная локаль **`de`** удалена, сохранённый язык **`de`** в localStorage однократно переносится на **`zh`**.
 
