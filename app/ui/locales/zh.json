@@ -94,9 +94,19 @@
     "datasetToolsTitle": "数据集导出",
     "datasetToolsSubtitle": "数据集准备和存档维护现在直接位于库中，因此整个工作流程都集中在一个地方。",
     "datasetToolsLibraryHint": "扫描/导入、数据库维护、备份/恢复和存储概述位于同一页面下方。",
-    "datasetExportStarted": "数据集存档已准备就绪，下载已开始。",
-    "maintenanceMovedToSystem": "存档、数据集和数据库操作在“库”页面上分组，以便操作员工作流程保持一致。",
-    "openSystem": "开放系统"
+    "datasetExportStarted": "数据集压缩包已准备好，下载已开始。",
+    "maintenanceMovedToSystem": "归档、数据集和数据库操作现在都集中在“资料库”页面，便于按一个流程完成。",
+    "openSystem": "打开系统",
+    "sections": {
+      "archiveTitle": "归档与录像",
+      "archiveDescription": "先从录像归档开始：选择一天，再跳转到 Timeline 查看当天的实际片段和检测结果。",
+      "exportTitle": "训练导出",
+      "exportDescription": "简单模式只保留时间范围、最常用筛选和主导出动作。训练相关细节移到“高级”。",
+      "storageTitle": "存储与数据库",
+      "storageDescription": "先查看磁盘占用和录像量，不把日常查看与高风险维护操作混在一起。",
+      "maintenanceTitle": "维护与调试",
+      "maintenanceDescription": "较少使用的管理操作放在这里：文件回放、重新扫描、清理、恢复和其他运维工具。"
+    }
   },
   "overview": {
     "lastBird": "今天最后一只鸟",
@@ -756,6 +766,9 @@
     "na": "不适用",
     "help": "帮助",
     "language": "语言",
+    "viewMode": "查看模式",
+    "simpleMode": "简单",
+    "advancedMode": "高级",
     "iNaturalist": "分享到 iNaturalist",
     "skipToContent": "跳至主要内容"
   },
@@ -1057,7 +1070,19 @@
     "noon": "中午"
   },
   "system": {
-    "storage": "贮存",
+    "storage": "存储",
+    "sections": {
+      "healthTitle": "系统状态",
+      "healthDescription": "先显示主机状态：CPU、内存、磁盘、GPU 和短期趋势。访客统计放到“高级”。",
+      "integrationsTitle": "集成与投递",
+      "integrationsDescription": "简单模式只回答最重要的问题：关键集成和通知是否正常。原始 URL 和深层遥测放到“高级”。",
+      "catalogTitle": "物种目录",
+      "catalogDescription": "目录质量和修复应该放在一起。简单模式保留主要维护路径，深度诊断隐藏起来。",
+      "processingTitle": "处理与模型",
+      "processingDescription": "权重、fusion 和处理器级操作很强大，但对默认界面来说过于技术化。",
+      "diagnosticsTitle": "技术诊断",
+      "diagnosticsDescription": "日志和底层排错工具仍然可用，但只在明确切换到高级工作区时显示。"
+    },
     "processorLogs": "处理器日志",
     "processorLogsHint": "最后{{lines}}行。每 10 秒自动刷新一次。用于在无法访问 docker 日志时进行远程诊断。",
     "processorWeightsTitle": "处理器权重 (YOLO)",
@@ -1296,7 +1321,20 @@
     "observabilityPreviewTitle": "在最终通知中预览来源",
     "observabilityDeliveryTitle": "交付成果",
     "observabilityFallbackTitle": "回退原因",
+    "mlHealthTitle": "ML 状态",
+    "mlHealthCorrections7d": "7 天修正数：{{n}}",
+    "mlHealthCorrectionRate7d": "7 天修正率：{{n}}%",
+    "mlHealthManualRate30d": "30 天人工标注率：{{n}}%",
+    "mlHealthUnknownRate30d": "30 天未知率：{{n}}%",
+    "mlHealthGenericRate30d": "30 天 generic 比例：{{n}}%",
+    "modelLineageTitle": "模型谱系",
+    "modelLineageFingerprint": "配置指纹",
+    "modelLineageNoArtifacts": "没有可显示的模型产物详情。",
+    "statusPresent": "存在",
+    "statusMissing": "缺失",
     "hubMetricsForHeimdall": "集线器指标导出（适用于 Heimdall 小部件）",
+    "hubMetricsPrometheus": "Prometheus",
+    "hubMetricsJson": "JSON",
     "hubMetricsHeimdallNote": "使用您的 BirdLense 基本 URL（例如 http://192.168.1.11:8085/metrics）。 Hub 向外公开指标；海姆达尔指着哈布。",
     "previewSource": {
       "best_frame": "最佳框架",

@@ -31,7 +31,13 @@ export function CatalogRepairCard() {
   if (error || !data) return <Alert severity="warning">{t('system.catalogRepairLoadError')}</Alert>;
 
   const running = data.status === 'running';
-  const cov = data.coverage_now;
+  const cov = data.coverage_now ?? {
+    completion_percent: 0,
+    complete_cards: 0,
+    allowlist_total: 0,
+    with_image: 0,
+    with_description: 0,
+  };
   const nextRunSec = Math.max(0, data.schedule?.next_run_in_sec ?? 0);
   const nextRunMin = Math.ceil(nextRunSec / 60);
 
