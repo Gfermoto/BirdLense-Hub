@@ -592,6 +592,7 @@
     "noCameras": "No cameras. Add in Settings → Video → Cameras (stream name from Go2RTC/Frigate).",
     "streamTitle": "Live Stream",
     "loading": "Loading...",
+    "errorLoad": "Could not load the live camera list.",
     "modeGo2rtc": "RTC/MSE",
     "modeMjpeg": "MJPEG"
   },
@@ -766,12 +767,20 @@
     "appName": "BirdLense Hub",
     "na": "N/A",
     "help": "Help",
+    "helpAbout": "Help about {{title}}",
     "language": "Language",
+    "openMenu": "Open navigation menu",
+    "openSettingsMenu": "Open settings menu",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "viewMode": "View mode",
     "simpleMode": "Simple",
     "advancedMode": "Advanced",
     "iNaturalist": "Share to iNaturalist",
-    "skipToContent": "Skip to main content"
+    "skipToContent": "Skip to main content",
+    "pageNotFoundTitle": "Page not found",
+    "pageNotFoundDescription": "This page does not exist or the link is outdated.",
+    "backToDashboard": "Back to dashboard"
   },
   "migrationCalendar": {
     "title": "Migration Calendar",
@@ -843,7 +852,8 @@
     "bulkDeleteNoSelection": "Select at least one review item.",
     "bulkDeleteNoDate": "Select a date first.",
     "bulkDeletePreviewRequired": "Generate preview first.",
-    "bulkDeleteFailed": "Bulk delete failed."
+    "bulkDeleteFailed": "Bulk delete failed.",
+    "bulkDeleteAdminOnly": "Bulk delete preview and execution are available to administrators only when a separate operator password is configured."
   },
   "species": {
     "searchPlaceholder": "Search species...",
@@ -1071,6 +1081,7 @@
     "noon": "Noon"
   },
   "system": {
+    "pageDescription": "Check hub health, integrations, catalog quality, and maintenance tools from one place.",
     "storage": "Storage",
     "sections": {
       "healthTitle": "System health",

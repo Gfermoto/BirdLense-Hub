@@ -25,7 +25,6 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CloudIcon from '@mui/icons-material/Cloud';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
-import CircularProgress from '@mui/material/CircularProgress';
 import { SpeciesSummary } from '../../types';
 import {
   fetchSpeciesSummary,
@@ -38,6 +37,8 @@ import { VisitCard } from '../../components/VisitCard';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { resolveImageUrl } from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { PageLoadingState } from '../../components/PageState';
 
 const BirdSongButton = ({
   speciesId,
@@ -163,6 +164,7 @@ const SpeciesSummaryPage = () => {
     queryFn: () => fetchSpeciesSummary(speciesId!),
     enabled: speciesIdValid,
   });
+  useDocumentTitle(data?.species.name ?? t('speciesSummary.totalDetectionStats'));
 
   const refreshMetaMutation = useMutation({
     mutationFn: () => refreshSpeciesMetadata(speciesId as number),
@@ -199,11 +201,7 @@ const SpeciesSummaryPage = () => {
   }
 
   if (isLoading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   if (error || !data) {
     const notFound = axios.isAxiosError(error) && error.response?.status === 404;
     return (

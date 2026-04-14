@@ -94,7 +94,11 @@ const activeNavPillStyles = {
 
 type PendingAction =
   | { type: 'openMenu' }
-  | { type: 'navigate'; path: string };
+  | {
+      type: 'navigate';
+      path: string;
+      minRole?: 'contributor' | 'admin';
+    };
 
 export function Navigation() {
   const { t } = useTranslation();
@@ -109,9 +113,10 @@ export function Navigation() {
     isLoading,
     isAdmin,
   } = useProtectedArea();
-  /** Гость (без сессии) пункты нужны для входа; после входа оператору не показываем админские разделы. */
-  const showSettingsSystemLibraryLinks =
-    !requiresPassword || !unlocked || isAdmin;
+  /** Настройки: только гость (вход) или админ. Оператор (contributor) — без пункта «Настройки». */
+  const showSettingsLink = !requiresPassword || !unlocked || isAdmin;
+  /** Система/библиотека: гость или админ (оператор после входа не видит). */
+  const showAdminOnlyLinks = !requiresPassword || !unlocked || isAdmin;
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
@@ -141,8 +146,15 @@ export function Navigation() {
       if (pendingAction.type === 'openMenu' && gearButtonRef.current) {
         setSettingsMenuAnchor(gearButtonRef.current);
       } else if (pendingAction.type === 'navigate') {
-        navigate(pendingAction.path);
-        setMobileMenuAnchor(null);
+        const grantedRole = role || 'admin';
+        const canProceed =
+          !pendingAction.minRole ||
+          grantedRole === pendingAction.minRole ||
+          grantedRole === 'admin';
+        if (canProceed) {
+          navigate(pendingAction.path);
+          setMobileMenuAnchor(null);
+        }
       }
       setPendingAction(null);
     }
@@ -159,10 +171,14 @@ export function Navigation() {
     }
   };
 
-  const handleProtectedNav = (path: string, e: React.MouseEvent) => {
+  const handleProtectedNav = (
+    path: string,
+    e: React.MouseEvent,
+    minRole?: 'contributor' | 'admin',
+  ) => {
     e.preventDefault();
     if (needsPassword) {
-      setPendingAction({ type: 'navigate', path });
+      setPendingAction({ type: 'navigate', path, minRole });
       setShowPasswordDialog(true);
     } else {
       navigate(path);
@@ -224,7 +240,7 @@ export function Navigation() {
               size="large"
               onClick={(e) => setMobileMenuAnchor(e.currentTarget)}
               color="inherit"
-              aria-label="menu"
+              aria-label={t('common.openMenu')}
             >
               <MenuIcon />
             </IconButton>
@@ -281,28 +297,34 @@ export function Navigation() {
               </MenuItem>
 
               {/* Settings Section — только гость (вход) или админ; оператор без доступа */}
-              {showSettingsSystemLibraryLinks ? (
+              {showSettingsLink || showAdminOnlyLinks ? (
                 <>
                   <Divider />
-                  <MenuItem
-                    onClick={(e) => handleProtectedNav('/settings', e)}
-                    selected={currentPath === '/settings'}
-                  >
-                    <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
-                    {t('nav.settings')}
-                  </MenuItem>
-                  <MenuItem
-                    onClick={(e) => handleProtectedNav('/system', e)}
-                    selected={currentPath === '/system'}
-                  >
-                    {t('nav.system')}
-                  </MenuItem>
-                  <MenuItem
-                    onClick={(e) => handleProtectedNav('/library', e)}
-                    selected={currentPath === '/library'}
-                  >
-                    {t('nav.library')}
-                  </MenuItem>
+                  {showSettingsLink ? (
+                    <MenuItem
+                      onClick={(e) => handleProtectedNav('/settings', e, 'admin')}
+                      selected={currentPath === '/settings'}
+                    >
+                      <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
+                      {t('nav.settings')}
+                    </MenuItem>
+                  ) : null}
+                  {showAdminOnlyLinks ? (
+                    <MenuItem
+                      onClick={(e) => handleProtectedNav('/system', e, 'admin')}
+                      selected={currentPath === '/system'}
+                    >
+                      {t('nav.system')}
+                    </MenuItem>
+                  ) : null}
+                  {showAdminOnlyLinks ? (
+                    <MenuItem
+                      onClick={(e) => handleProtectedNav('/library', e, 'admin')}
+                      selected={currentPath === '/library'}
+                    >
+                      {t('nav.library')}
+                    </MenuItem>
+                  ) : null}
                 </>
               ) : null}
               {showLogout ? (
@@ -479,7 +501,7 @@ export function Navigation() {
               ref={gearButtonRef}
               color="inherit"
               onClick={handleGearClick}
-              aria-label="settings"
+              aria-label={t('common.openSettingsMenu')}
               aria-controls="settings-menu"
               aria-expanded={Boolean(settingsMenuAnchor)}
               sx={{
@@ -510,32 +532,38 @@ export function Navigation() {
               },
             }}
           >
-            {showSettingsSystemLibraryLinks ? (
+            {showSettingsLink || showAdminOnlyLinks ? (
               <>
-                <MenuItem
-                  component={Link}
-                  to="/settings"
-                  onClick={handleSettingsMenuClose}
-                  selected={currentPath === '/settings'}
-                >
-                  {t('nav.settings')}
-                </MenuItem>
-                <MenuItem
-                  component={Link}
-                  to="/system"
-                  onClick={handleSettingsMenuClose}
-                  selected={currentPath === '/system'}
-                >
-                  {t('nav.system')}
-                </MenuItem>
-                <MenuItem
-                  component={Link}
-                  to="/library"
-                  onClick={handleSettingsMenuClose}
-                  selected={currentPath === '/library'}
-                >
-                  {t('nav.library')}
-                </MenuItem>
+                {showSettingsLink ? (
+                  <MenuItem
+                    component={Link}
+                    to="/settings"
+                    onClick={handleSettingsMenuClose}
+                    selected={currentPath === '/settings'}
+                  >
+                    {t('nav.settings')}
+                  </MenuItem>
+                ) : null}
+                {showAdminOnlyLinks ? (
+                  <MenuItem
+                    component={Link}
+                    to="/system"
+                    onClick={handleSettingsMenuClose}
+                    selected={currentPath === '/system'}
+                  >
+                    {t('nav.system')}
+                  </MenuItem>
+                ) : null}
+                {showAdminOnlyLinks ? (
+                  <MenuItem
+                    component={Link}
+                    to="/library"
+                    onClick={handleSettingsMenuClose}
+                    selected={currentPath === '/library'}
+                  >
+                    {t('nav.library')}
+                  </MenuItem>
+                ) : null}
               </>
             ) : null}
             {showLogout ? (

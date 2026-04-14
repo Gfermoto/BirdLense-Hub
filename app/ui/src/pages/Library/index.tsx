@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import { useLocation } from 'react-router-dom';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageHelp } from '../../components/PageHelp';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
@@ -11,20 +14,31 @@ import { DatabaseMaintenanceCard } from '../System/DatabaseMaintenanceCard';
 import { RecordingsCalendar } from './RecordingsCalendar';
 import { DatasetExportsCard } from './DatasetExportsCard';
 import { FileReplayCard } from './FileReplayCard';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const Library: React.FC = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.library'));
+  const location = useLocation();
   const [mode, setMode] = useState<PageMode>('simple');
   const isAdvanced = mode === 'advanced';
+
+  React.useEffect(() => {
+    if (location.hash === '#file-replay') {
+      setMode('advanced');
+    }
+  }, [location.hash]);
 
   return (
     <ProtectedRoute title={t('nav.library')}>
       <Box display="grid" gap={4}>
-        <PageHelp {...libraryHelpConfig} />
+        <PageHelp
+          {...libraryHelpConfig}
+          actions={<PageModeToggle value={mode} onChange={setMode} />}
+        />
         <PageSection
           title={t('library.sections.archiveTitle')}
           description={t('library.sections.archiveDescription')}
-          actions={<PageModeToggle value={mode} onChange={setMode} />}
         >
           <Box id="recordings">
             <RecordingsCalendar />
@@ -44,16 +58,29 @@ export const Library: React.FC = () => {
         >
           <StorageOverview simple={!isAdvanced} />
         </PageSection>
-        {isAdvanced ? (
-          <PageSection
-            title={t('library.sections.maintenanceTitle')}
-            description={t('library.sections.maintenanceDescription')}
-            dividerTop
-          >
-            <FileReplayCard />
-            <DatabaseMaintenanceCard />
-          </PageSection>
-        ) : null}
+        <Box id="file-replay">
+          {isAdvanced ? (
+            <PageSection
+              title={t('library.sections.maintenanceTitle')}
+              description={t('library.sections.maintenanceDescription')}
+              dividerTop
+            >
+              <FileReplayCard anchorId="file-replay" />
+              <DatabaseMaintenanceCard />
+            </PageSection>
+          ) : location.hash === '#file-replay' ? (
+            <Alert
+              severity="info"
+              action={
+                <Button color="inherit" size="small" onClick={() => setMode('advanced')}>
+                  {t('common.advancedMode')}
+                </Button>
+              }
+            >
+              {t('library.sections.maintenanceDescription')}
+            </Alert>
+          ) : null}
+        </Box>
       </Box>
     </ProtectedRoute>
   );

@@ -637,7 +637,9 @@ class TestReviewQueueBulkDelete:
         app_config.set("general.settings_password", old_admin or "")
         app_config.set("general.contributor_password", old_contrib or "")
 
-    def test_review_queue_bulk_delete_requires_admin_access(self, app, client):
+    def test_review_queue_bulk_delete_denies_guest_when_passwords_configured(
+        self, app, client
+    ):
         from app_config.app_config import app_config
 
         old_admin = app_config.get("general.settings_password")
@@ -656,6 +658,35 @@ class TestReviewQueueBulkDelete:
                 },
             )
             assert response.status_code == 403
+        finally:
+            app_config.set("general.settings_password", old_admin or "")
+            app_config.set("general.contributor_password", old_contrib or "")
+
+    def test_review_queue_bulk_delete_preview_allows_contributor_session(
+        self, app, client
+    ):
+        """Оператор (contributor) может вызывать предпросмотр — не только admin_track_regen."""
+        from app_config.app_config import app_config
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        with app.app_context():
+            app_config.set("general.settings_password", "admin-secret")
+            app_config.set("general.contributor_password", "contrib-secret")
+
+        try:
+            with client.session_transaction() as sess:
+                sess["access_role"] = "contributor"
+            response = client.post(
+                "/api/ui/system/review-queue/delete-preview",
+                json={
+                    "date": "2026-03-24",
+                    "time_of_day": "all",
+                    "unknown_ids": [999999],
+                },
+            )
+            assert response.status_code == 400
+            assert "not present" in (response.get_json() or {}).get("error", "")
         finally:
             app_config.set("general.settings_password", old_admin or "")
             app_config.set("general.contributor_password", old_contrib or "")

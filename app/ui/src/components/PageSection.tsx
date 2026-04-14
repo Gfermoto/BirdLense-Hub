@@ -26,10 +26,10 @@ export function PageSection({
         direction={{ xs: 'column', md: 'row' }}
         spacing={1.5}
         justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', md: 'flex-start' }}
+        alignItems={{ xs: 'flex-start', md: 'center' }}
       >
         <Box>
-          <Typography variant="h4" sx={{ mb: description ? 0.75 : 0 }}>
+          <Typography variant="h5" sx={{ mb: description ? 0.75 : 0 }}>
             {title}
           </Typography>
           {description ? (
