@@ -5,11 +5,11 @@ from __future__ import annotations
 import yaml
 
 DEPRECATED_USER_CONFIG_KEYS = (
-    'gallery.enabled',
-    'gallery.min_confidence',
-    'gallery.only_manually_corrected',
-    'gallery.upload_url',
-    'general.heimdall_url',
+    "gallery.enabled",
+    "gallery.min_confidence",
+    "gallery.only_manually_corrected",
+    "gallery.upload_url",
+    "general.heimdall_url",
     "notifications.enabled",
     "notifications.excluded_species",
     "notifications.rate_limit_per_minute",
