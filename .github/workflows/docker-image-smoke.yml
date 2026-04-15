@@ -14,18 +14,21 @@ permissions:
   contents: read
   packages: read
 
-env:
-  # Docker/OCI: имя репозитория в reference должно быть в нижнем регистре.
-  IMAGE: ghcr.io/${{ toLower(github.repository_owner) }}/birdlense-hub:latest
-  CONTAINER: birdlense-smoke
-  HOST_PORT: "18085"
-
 jobs:
   smoke:
     name: smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CONTAINER: birdlense-smoke
+      HOST_PORT: "18085"
     steps:
+      # OCI reference: owner в пути образа должен быть lowercase (toLower в expressions здесь даёт invalid workflow).
+      - name: Set IMAGE (lowercase GHCR owner)
+        run: |
+          o=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${o}/birdlense-hub:latest" >> "$GITHUB_ENV"
+
       - name: Pull published latest image
         run: docker pull "$IMAGE"
 
