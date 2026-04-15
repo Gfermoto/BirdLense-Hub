@@ -28,9 +28,9 @@ const CARD_MIN_HEIGHT = 280;
 
 type ChartPoint = {
   at: Date;
-  cpu: number;
-  memory: number;
-  disk: number;
+  cpu: number | null;
+  memory: number | null;
+  disk: number | null;
   gpu: number | null;
 };
 
@@ -122,7 +122,11 @@ function SparkMetricCard({
   );
 }
 
-export const SystemMonitor = () => {
+export const SystemMonitor = ({
+  showVisitors = true,
+}: {
+  showVisitors?: boolean;
+}) => {
   const { t } = useTranslation();
   const [visitorsDays, setVisitorsDays] = useState<number>(7);
   const [historyHours, setHistoryHours] = useState<number>(24);
@@ -144,9 +148,9 @@ export const SystemMonitor = () => {
         ...prev,
         {
           at: new Date(),
-          cpu: live.cpu.percent,
-          memory: live.memory.percent,
-          disk: live.disk.percent,
+          cpu: live.cpu?.percent ?? null,
+          memory: live.memory?.percent ?? null,
+          disk: live.disk?.percent ?? null,
           gpu: live.gpu_percent,
         },
       ];
@@ -184,6 +188,19 @@ export const SystemMonitor = () => {
 
   const showGpuCard =
     live.encoding === 'intel' || live.gpu_percent != null;
+  const cpuPercent = live.cpu?.percent ?? null;
+  const memoryPercent = live.memory?.percent ?? null;
+  const diskPercent = live.disk?.percent ?? null;
+  const formatPercent = (percent: number | null) =>
+    percent != null ? t('system.usagePercent', { percent }) : t('common.na');
+  const formatResourceText = (
+    used: number | undefined,
+    total: number | undefined,
+    percent: number | null,
+  ) => {
+    if (used == null || total == null || percent == null) return t('common.na');
+    return `${used}GB / ${total}GB (${percent}%)`;
+  };
 
   const visitors = visitorsQuery.data;
 
@@ -253,7 +270,7 @@ export const SystemMonitor = () => {
             chartPoints={chartPoints}
             metricKey="cpu"
             collectingLabel={t('system.chartCollecting')}
-            currentText={t('system.usagePercent', { percent: live.cpu.percent })}
+            currentText={formatPercent(cpuPercent)}
             yMax={100}
           />
         </Grid>
@@ -264,7 +281,11 @@ export const SystemMonitor = () => {
             chartPoints={chartPoints}
             metricKey="memory"
             collectingLabel={t('system.chartCollecting')}
-            currentText={`${live.memory.used}GB / ${live.memory.total}GB (${live.memory.percent}%)`}
+            currentText={formatResourceText(
+              live.memory?.used,
+              live.memory?.total,
+              memoryPercent,
+            )}
             yMax={100}
           />
         </Grid>
@@ -275,7 +296,11 @@ export const SystemMonitor = () => {
             chartPoints={chartPoints}
             metricKey="disk"
             collectingLabel={t('system.chartCollecting')}
-            currentText={`${live.disk.used}GB / ${live.disk.total}GB (${live.disk.percent}%)`}
+            currentText={formatResourceText(
+              live.disk?.used,
+              live.disk?.total,
+              diskPercent,
+            )}
             yMax={100}
           />
         </Grid>
@@ -299,72 +324,76 @@ export const SystemMonitor = () => {
         ) : null}
       </Grid>
 
-      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-        {t('system.uniqueVisitorsSection')}
-      </Typography>
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel id="visitors-period-label">
-            {t('system.uniqueVisitorsPeriod')}
-          </InputLabel>
-          <Select
-            labelId="visitors-period-label"
-            value={visitorsDays}
-            label={t('system.uniqueVisitorsPeriod')}
-            onChange={(e) => setVisitorsDays(Number(e.target.value))}
-          >
-            <MenuItem value={1}>{t('system.lastDays', { count: 1 })}</MenuItem>
-            <MenuItem value={7}>{t('system.lastDays', { count: 7 })}</MenuItem>
-            <MenuItem value={30}>{t('system.lastDays', { count: 30 })}</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      {showVisitors ? (
+        <>
+          <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+            {t('system.uniqueVisitorsSection')}
+          </Typography>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel id="visitors-period-label">
+                {t('system.uniqueVisitorsPeriod')}
+              </InputLabel>
+              <Select
+                labelId="visitors-period-label"
+                value={visitorsDays}
+                label={t('system.uniqueVisitorsPeriod')}
+                onChange={(e) => setVisitorsDays(Number(e.target.value))}
+              >
+                <MenuItem value={1}>{t('system.lastDays', { count: 1 })}</MenuItem>
+                <MenuItem value={7}>{t('system.lastDays', { count: 7 })}</MenuItem>
+                <MenuItem value={30}>{t('system.lastDays', { count: 30 })}</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
-      {visitorsQuery.isLoading ? (
-        <LinearProgress />
-      ) : visitorsQuery.error ? (
-        <Typography color="error">{t('system.errorLoadVisitors')}</Typography>
-      ) : visitors ? (
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ minHeight: 140 }}>
-              <CardContent>
-                <Box
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-                >
-                  <GroupsIcon color="action" />
-                  <Typography variant="h6">
-                    {t('system.uniqueVisitors')}
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ lineHeight: 1.2 }}>
-                  {visitors.browser_count ?? visitors.unique_visits}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  {t('system.uniqueVisitorsHint', {
-                    days: visitors.period_days ?? visitorsDays,
-                    activeDays: visitors.active_days ?? 0,
-                  })}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  {t('system.visitorDeviceBreakdown', {
-                    desktop: visitors.device_breakdown?.desktop ?? 0,
-                    mobile: visitors.device_breakdown?.mobile ?? 0,
-                    tablet: visitors.device_breakdown?.tablet ?? 0,
-                  })}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+          {visitorsQuery.isLoading ? (
+            <LinearProgress />
+          ) : visitorsQuery.error ? (
+            <Typography color="error">{t('system.errorLoadVisitors')}</Typography>
+          ) : visitors ? (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Card sx={{ minHeight: 140 }}>
+                  <CardContent>
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
+                    >
+                      <GroupsIcon color="action" />
+                      <Typography variant="h6">
+                        {t('system.uniqueVisitors')}
+                      </Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ lineHeight: 1.2 }}>
+                      {visitors.browser_count ?? visitors.unique_visits}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {t('system.uniqueVisitorsHint', {
+                        days: visitors.period_days ?? visitorsDays,
+                        activeDays: visitors.active_days ?? 0,
+                      })}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {t('system.visitorDeviceBreakdown', {
+                        desktop: visitors.device_breakdown?.desktop ?? 0,
+                        mobile: visitors.device_breakdown?.mobile ?? 0,
+                        tablet: visitors.device_breakdown?.tablet ?? 0,
+                      })}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : null}
+        </>
       ) : null}
     </Box>
   );

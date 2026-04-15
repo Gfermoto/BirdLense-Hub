@@ -10,6 +10,8 @@ from sqlalchemy import desc
 
 from models import ActivityLog, Video, db
 
+_DECISION_TRACE_LOOKBACK_LIMIT = 5000
+
 
 def _normalize_path(p: str) -> str:
     s = (p or "").strip().replace("\\", "/")
@@ -40,6 +42,13 @@ def _persisted_track_rows(trace: dict[str, Any]) -> list[Any]:
     return rows
 
 
+def _rejected_track_rows(trace: dict[str, Any]) -> list[Any]:
+    rows = trace.get("rejected_tracks")
+    if not isinstance(rows, list):
+        return []
+    return rows
+
+
 def _parse_log_data(raw: str | None) -> dict[str, Any] | None:
     if not raw:
         return None
@@ -59,7 +68,7 @@ def find_decision_trace_for_video(video: Video) -> tuple[dict[str, Any] | None, 
         db.session.query(ActivityLog)
         .filter(ActivityLog.type == "decision_trace")
         .order_by(desc(ActivityLog.created_at))
-        .limit(1000)
+        .limit(_DECISION_TRACE_LOOKBACK_LIMIT)
         .all()
     )
     vid = int(video.id)
@@ -127,6 +136,8 @@ def build_track_step_rows(track: dict[str, Any]) -> list[dict[str, Any]]:
     block(
         "scores",
         [
+            ("arbitration_reason", track.get("arbitration_reason")),
+            ("decision_reason_before_arbitration", track.get("decision_reason_before_arbitration")),
             ("best_frame_score", _fmt_num(track.get("best_frame_score"))),
             ("key_frame_count", track.get("key_frame_count")),
             ("trust_band", track.get("trust_band")),
@@ -161,6 +172,7 @@ def build_track_step_rows(track: dict[str, Any]) -> list[dict[str, Any]]:
     block(
         "outcome",
         [
+            ("outcome_bucket", track.get("outcome_bucket")),
             ("persisted_to_clip", track.get("persisted_to_clip")),
             ("species_name", track.get("species_name")),
             ("confidence", _fmt_num(track.get("confidence"))),
@@ -187,7 +199,7 @@ def build_fusion_trace_api_payload(video_id: int) -> tuple[dict[str, Any], int]:
         }, 200
 
     persisted = _persisted_track_rows(trace)
-    rejected = trace.get("rejected_tracks") or []
+    rejected = _rejected_track_rows(trace)
     tracks_out: list[dict[str, Any]] = []
     for row in persisted:
         if isinstance(row, dict):

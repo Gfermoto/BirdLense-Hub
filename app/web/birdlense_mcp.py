@@ -1,7 +1,7 @@
 """
 BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты.
-Запуск: python birdlense_mcp.py [--transport stdio|http] [--port 8001]
-В контейнере: entrypoint запускает при mcp.enabled=true с transport=http.
+Запуск: python birdlense_mcp.py [--transport stdio|http|streamable-http] [--port 8001]
+В контейнере: entrypoint запускает при mcp.enabled=true через streamable HTTP на /mcp.
 Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
 """
 
@@ -87,9 +87,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="BirdLense Hub MCP server")
     parser.add_argument(
         "--transport",
-        choices=["stdio", "http"],
+        choices=["stdio", "http", "streamable-http"],
         default="stdio",
-        help="Transport: stdio (default) or http (for container)",
+        help="Transport: stdio (default) or streamable-http (container/web). 'http' is kept as alias.",
     )
     parser.add_argument("--port", type=int, default=8001, help="Port for HTTP transport")
     parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport")
@@ -102,10 +102,10 @@ def main() -> None:
         asyncio.run(check_mcp(mcp))
         return
 
-    if args.transport == "http":
+    if args.transport in ("http", "streamable-http"):
         auth_status = "protected" if get_mcp_token() else "no auth"
         print(f"BirdLense Hub MCP HTTP: http://{args.host}:{args.port}/mcp ({auth_status})")
-        mcp.run(transport="http", host=args.host, port=args.port)
+        mcp.run(transport="streamable-http", host=args.host, port=args.port)
     else:
         mcp.run()
 

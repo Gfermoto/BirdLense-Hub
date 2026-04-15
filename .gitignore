@@ -84,7 +84,9 @@ docs/ui/
 # MkDocs (static doc site)
 site/
 .venv-docs/
+.venv-docs-polish/
 .venv-docs-tmp/
+app/data/file_test_control/
 
 # Flask — локальный instance (сессии, временные БД при разработке)
 app/web/instance/

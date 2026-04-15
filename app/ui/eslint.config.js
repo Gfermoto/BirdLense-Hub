@@ -47,11 +47,6 @@ export default [
                 'Please use specific imports from @mui/material instead of importing the entire module.',
             },
             {
-              name: '@mui/lab',
-              message:
-                'Please use specific imports from @mui/lab instead of importing the entire module.',
-            },
-            {
               name: '@mui/x-charts',
               message:
                 'Please use specific imports from @mui/x-charts instead of importing the entire module.',

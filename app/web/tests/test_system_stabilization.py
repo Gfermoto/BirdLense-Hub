@@ -1,6 +1,6 @@
 """Regression tests for stabilization work across system maintenance and overview."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import data_paths as data_paths_mod
 import services.broken_videos_inventory_service as broken_videos_inventory_mod
@@ -8,6 +8,149 @@ from services.http_response_cache import bust_response_caches
 
 
 class TestSystemMaintenanceEndpoints:
+    def test_domain_health_snapshot_reports_integrity_counters(self, app, client):
+        from app_config.app_config import app_config
+        from models import Species, SpeciesUnresolvedName, SpeciesVisit, Video, VideoSpecies, db
+
+        with app.app_context():
+            app_config.set("general.settings_password", "")
+            app_config.set("general.contributor_password", "")
+            app_config.set("detection.dedup_window_seconds", 60)
+            app_config.set("processor.min_seconds_between_recordings", 8)
+
+            species = Species(name="Domain Health Finch")
+            duplicate_a = Species(name="Magpie")
+            duplicate_b = Species(name="magpie")
+            unresolved = SpeciesUnresolvedName(
+                raw_name="Totally Unknown Crow",
+                normalized_key="totally unknown crow",
+                source="test_case",
+                reason="no_match",
+            )
+            db.session.add_all([species, duplicate_a, duplicate_b, unresolved])
+            db.session.flush()
+
+            orphan_visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 4, 1, 10, 0, 0),
+                end_time=datetime(2026, 4, 1, 10, 1, 0),
+                max_simultaneous=1,
+            )
+            linked_visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 4, 1, 10, 0, 5),
+                end_time=datetime(2026, 4, 1, 10, 0, 55),
+                max_simultaneous=1,
+            )
+            video_1 = Video(
+                processor_version="test",
+                start_time=datetime.now(timezone.utc) - timedelta(minutes=5),
+                end_time=datetime.now(timezone.utc) - timedelta(minutes=4, seconds=50),
+                video_path="data/recordings/2026/04/01/100000/video.mp4",
+            )
+            video_2 = Video(
+                processor_version="test",
+                start_time=datetime.now(timezone.utc) - timedelta(minutes=4, seconds=46),
+                end_time=datetime.now(timezone.utc) - timedelta(minutes=4, seconds=36),
+                video_path="data/recordings/2026/04/01/100014/video.mp4",
+            )
+            db.session.add_all([orphan_visit, linked_visit, video_1, video_2])
+            db.session.flush()
+
+            mismatched_detection = VideoSpecies(
+                video_id=video_1.id,
+                species_id=duplicate_a.id,
+                species_visit_id=linked_visit.id,
+                start_time=0.0,
+                end_time=5.0,
+                confidence=0.93,
+                source="video",
+            )
+            first_clip_same_species = VideoSpecies(
+                video_id=video_1.id,
+                species_id=species.id,
+                species_visit_id=linked_visit.id,
+                start_time=0.0,
+                end_time=4.0,
+                confidence=0.95,
+                source="video",
+            )
+            nearby_clip = VideoSpecies(
+                video_id=video_2.id,
+                species_id=species.id,
+                species_visit_id=linked_visit.id,
+                start_time=0.0,
+                end_time=4.0,
+                confidence=0.92,
+                source="video",
+            )
+            review_only = VideoSpecies(
+                video_id=video_1.id,
+                species_id=species.id,
+                species_visit_id=None,
+                start_time=6.0,
+                end_time=9.0,
+                confidence=0.41,
+                source="video",
+                detection_provider="arbitration",
+            )
+            db.session.add_all([mismatched_detection, first_clip_same_species, nearby_clip, review_only])
+            db.session.commit()
+
+        response = client.get("/api/ui/system/domain-health")
+        assert response.status_code == 200
+        body = response.get_json()
+        metrics = body["metrics"]
+        assert body["domain_contract_version"] == "2026-04-polish-v1"
+        assert metrics["orphaned_visits"] >= 1
+        assert metrics["visit_species_mismatches"] >= 1
+        assert metrics["duplicate_species_name_groups"] >= 1
+        assert metrics["review_only_video_detections"] >= 1
+        assert metrics["unresolved_species_names"] >= 1
+        assert metrics["duplicate_clip_candidates_24h"] >= 1
+        assert body["thresholds"]["min_seconds_between_recordings"] == 8.0
+        assert body["samples"]["duplicate_clip_candidates"]
+        assert body["samples"]["recent_unresolved_species"]
+
+    def test_review_only_detections_do_not_inflate_monthly_report_stats(self, app):
+        from models import Species, Video, VideoSpecies, db
+        from services.report_service import get_monthly_report_data
+
+        with app.app_context():
+            species = Species(name="Report Review Only Species")
+            db.session.add(species)
+            db.session.flush()
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 2, 12, 0, 0),
+                end_time=datetime(2026, 4, 2, 12, 1, 0),
+                video_path="data/recordings/2026/04/02/120000/video.mp4",
+            )
+            db.session.add(video)
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=None,
+                    start_time=0.0,
+                    end_time=5.0,
+                    confidence=0.42,
+                    source="video",
+                    detection_provider="arbitration",
+                )
+            )
+            db.session.commit()
+
+            top_species, stats = get_monthly_report_data(
+                db.session,
+                datetime(2026, 4, 1, 0, 0, 0),
+                datetime(2026, 4, 30, 23, 59, 59),
+            )
+
+        assert top_species == []
+        assert stats["totalDetections"] == 0
+
     def test_clean_orphaned_visits_preview_and_apply(self, app, client):
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
@@ -637,7 +780,7 @@ class TestReviewQueueBulkDelete:
         app_config.set("general.settings_password", old_admin or "")
         app_config.set("general.contributor_password", old_contrib or "")
 
-    def test_review_queue_bulk_delete_requires_admin_access(self, app, client):
+    def test_review_queue_bulk_delete_denies_guest_when_passwords_configured(self, app, client):
         from app_config.app_config import app_config
 
         old_admin = app_config.get("general.settings_password")
@@ -656,6 +799,33 @@ class TestReviewQueueBulkDelete:
                 },
             )
             assert response.status_code == 403
+        finally:
+            app_config.set("general.settings_password", old_admin or "")
+            app_config.set("general.contributor_password", old_contrib or "")
+
+    def test_review_queue_bulk_delete_preview_allows_contributor_session(self, app, client):
+        """Оператор (contributor) может вызывать предпросмотр — не только admin_track_regen."""
+        from app_config.app_config import app_config
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        with app.app_context():
+            app_config.set("general.settings_password", "admin-secret")
+            app_config.set("general.contributor_password", "contrib-secret")
+
+        try:
+            with client.session_transaction() as sess:
+                sess["access_role"] = "contributor"
+            response = client.post(
+                "/api/ui/system/review-queue/delete-preview",
+                json={
+                    "date": "2026-03-24",
+                    "time_of_day": "all",
+                    "unknown_ids": [999999],
+                },
+            )
+            assert response.status_code == 400
+            assert "not present" in (response.get_json() or {}).get("error", "")
         finally:
             app_config.set("general.settings_password", old_admin or "")
             app_config.set("general.contributor_password", old_contrib or "")

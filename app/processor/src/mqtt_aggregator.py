@@ -845,6 +845,17 @@ class MQTTEventAggregator:
                 if self._on_frigate_motion:
                     cam_f, lbl_f, cb = self._on_frigate_motion
                     camera = ev.get("camera", "")
+                    try:
+                        trigger_score = float(ev.get("confidence") or 0.0)
+                    except (TypeError, ValueError):
+                        trigger_score = 0.0
+                    raw_min_trigger_score = app_config.get("motion.frigate_min_trigger_score")
+                    try:
+                        min_trigger_score = (
+                            0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
+                        )
+                    except (TypeError, ValueError):
+                        min_trigger_score = 0.0
                     cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
                     # Пустой camera_filter = любая камера (как пустой label_filter).
                     cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)
@@ -873,20 +884,26 @@ class MQTTEventAggregator:
                                 label,
                                 sub_label,
                             )
-                    if cam_ok and lbl_ok:
+                    score_ok = trigger_score >= max(0.0, min_trigger_score)
+                    if cam_ok and lbl_ok and score_ok:
                         logger.info(
                             "Frigate trigger accepted: reason=%s camera=%s label=%s sub_label=%s "
-                            "merge_suppressed=%s has_geometry=%s filter_empty=%s",
+                            "score=%.3f min_score=%.3f merge_suppressed=%s has_geometry=%s filter_empty=%s",
                             accepted_by,
                             camera,
                             label,
                             sub_label,
+                            trigger_score,
+                            min_trigger_score,
                             skip_merge_queue,
                             has_geometry,
                             not bool(lbl_f_lower),
                         )
                         try:
-                            cb(camera, species)
+                            try:
+                                cb(camera, species, trigger_score)
+                            except TypeError:
+                                cb(camera, species)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
@@ -898,9 +915,12 @@ class MQTTEventAggregator:
                                 reasons.append("label_filter_miss")
                             if not has_geometry:
                                 reasons.append("no_tracked_geometry")
+                        if not score_ok:
+                            reasons.append("score_below_trigger_min")
                         logger.info(
                             "Frigate trigger rejected: reason=%s camera=%s label=%s sub_label=%s "
-                            "camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s",
+                            "camera_filter=%s label_filter=%s has_geometry=%s relaxed=%s "
+                            "score=%.3f min_score=%.3f",
                             ",".join(reasons) if reasons else "unknown",
                             camera,
                             label,
@@ -909,6 +929,8 @@ class MQTTEventAggregator:
                             list(lbl_f) if lbl_f else "any",
                             has_geometry,
                             relaxed,
+                            trigger_score,
+                            min_trigger_score,
                         )
         elif mqtt.topic_matches_sub(getattr(self, "_frigate_snapshot_topic", ""), msg.topic):
             # Fallback when frigate/events is sparse/disabled: topic like
@@ -1152,6 +1174,50 @@ class MQTTEventAggregator:
                 if low <= ts <= high:
                     result.append(ev)
             return result
+
+    def has_recent_frigate_activity(
+        self,
+        *,
+        camera_ids=None,
+        max_age_seconds=0,
+        min_confidence=0.0,
+    ) -> bool:
+        try:
+            max_age = float(max_age_seconds or 0.0)
+        except (TypeError, ValueError):
+            max_age = 0.0
+        if max_age <= 0:
+            return False
+        try:
+            min_conf = float(min_confidence or 0.0)
+        except (TypeError, ValueError):
+            min_conf = 0.0
+        now = datetime.now(timezone.utc)
+        camera_allow = {str(camera).strip().lower() for camera in (camera_ids or []) if str(camera).strip()}
+        with self._lock:
+            for ev in reversed(self._events):
+                if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+                    continue
+                ts = _parse_iso8601_utc(ev.get("timestamp"))
+                if ts is None:
+                    continue
+                age = (now - ts).total_seconds()
+                if age < 0:
+                    age = 0
+                if age > max_age:
+                    continue
+                if camera_allow:
+                    camera = str((ev or {}).get("camera") or "").strip().lower()
+                    if camera not in camera_allow:
+                        continue
+                try:
+                    conf = float(ev.get("confidence") or 0.0)
+                except (TypeError, ValueError):
+                    conf = 0.0
+                if conf < min_conf:
+                    continue
+                return True
+        return False
 
     def get_birdnet_events(self, now=None, ttl_hours: float = 25.0) -> list[dict]:
         now = now or datetime.now(timezone.utc)

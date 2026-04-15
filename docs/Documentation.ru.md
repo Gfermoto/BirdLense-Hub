@@ -34,7 +34,7 @@ python3 -m venv .venv-docs
 
 Каталог `site/` в git не коммитится (см. `.gitignore`).
 
-**Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций) и `CONSILIUM_AUDIT.ru.md` (исторический аудит; ссылка из [archive/README](./archive/README.md)).
+**Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций), `CONSILIUM_AUDIT.ru.md` (исторический аудит; см. [архив на GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), а также `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (внутренний чеклист перед крупными изменениями UI/API — файл в репозитории, не часть операторского руководства) и `LEGACY_CLEANUP.md` (внутренние заметки по инвентарю/legacy).
 
 ### Публикация (CI)
 

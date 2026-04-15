@@ -1,6 +1,6 @@
 # MCP setup — BirdLense Hub
 
-[**Model Context Protocol (MCP)**](https://modelcontextprotocol.io/) exposes BirdLense Hub tools (from your OpenAPI surface) to **external AI assistants**—LLM-based apps, IDE integrations, and other MCP hosts—so they can query and operate the hub with your consent and a valid token.
+[**Model Context Protocol (MCP)**](https://modelcontextprotocol.io/) exposes BirdLense Hub tools (from your OpenAPI surface) to **authorized MCP clients**—automation, IDE extensions, monitoring, or custom integrations—so they can query and operate the hub with your consent and a valid token.
 
 [Русский](./MCP_SETUP.ru.md)
 
@@ -36,9 +36,9 @@ You can also set the token in **Settings → MCP** in the UI; env overrides are 
 
 ---
 
-## 3. Client configuration (AI / IDE hosts)
+## 3. Client configuration
 
-Add the server entries below in your MCP-capable host (Cursor, Claude Desktop, VS Code with MCP, custom stacks—exact path depends on the product). **Never commit** tokens or secrets.
+Add the server entries below in your **MCP host application** (exact config path depends on the product). **Never commit** tokens or secrets.
 
 ### 3a. Hub API (tools + OpenAPI)
 
@@ -66,11 +66,9 @@ Replace:
 
 With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
 
-If you use Cursor, add the always-on rule `.cursor/rules/mcp-skill-autopilot.mdc` so the agent can pick MCP skills proactively without repeated reminders.
-
 ### 3b. Repository documentation (GitMCP, read-only)
 
-For AI hosts that should read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub, add [GitMCP](https://gitmcp.io):
+Optional: read **Markdown in the GitHub repo** (`docs/`, `README`, etc.) without a running Hub via [GitMCP](https://gitmcp.io):
 
 ```json
 {
@@ -82,7 +80,7 @@ For AI hosts that should read **Markdown in the GitHub repo** (`docs/`, `README`
 }
 ```
 
-You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** a substitute for Hub MCP — it does not call your deployment; it exposes repo content for documentation lookup.
+You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** a substitute for Hub MCP — it does not call your deployment; it only mirrors repository documentation.
 
 ---
 
@@ -90,7 +88,7 @@ You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** 
 
 A message like `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` means the **MCP client never completed TCP/TLS** to the server in time. This is usually **network path from your PC to the VPS**, not a wrong token (the Bearer check may never run).
 
-**On the same machine and network as Cursor:**
+**On the same machine and network as the MCP client:**
 
 ```bash
 curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/api/ui/health
@@ -98,7 +96,7 @@ curl -m 15 -sS -H "Authorization: Bearer YOUR_MCP_TOKEN" -o /dev/null -w '%{http
 ```
 
 - If **curl also times out** — routing or firewall to `185.218.111.196:443`. Try another network or VPN.
-- If **curl is fast (200/401) but Cursor times out** — try disabling the **system proxy**, testing **IPv4-only** (add `185.218.111.196 birdlense.eyera.info` to hosts), or updating Cursor.
+- If **curl is fast (200/401) but the MCP client times out** — try disabling the **system proxy**, forcing **IPv4** (e.g. add `185.218.111.196 birdlense.eyera.info` to hosts), or updating the client.
 
 **SSH tunnel** when SSH to the VPS works but direct HTTPS from the PC does not:
 

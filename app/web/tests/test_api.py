@@ -645,6 +645,33 @@ class TestHealth:
         assert r.status_code == 200
         assert r.json == {"status": "ok"}
 
+    def test_readiness_returns_checks_and_components(self, client):
+        r = client.get("/api/ui/readiness")
+        assert r.status_code == 200
+        data = r.json
+        assert data["status"] == "ok"
+        assert data["ready"] is True
+        assert "checked_at" in data
+        assert data["checks"]["database"]["status"] == "ok"
+        assert data["checks"]["data_dir"]["status"] == "ok"
+        assert data["checks"]["app_config_dir"]["status"] == "ok"
+        assert data["components"]["web"] == "ok"
+
+    def test_readiness_returns_503_when_database_check_fails(self, client, monkeypatch):
+        from models import db
+
+        def _boom(*_args, **_kwargs):
+            raise RuntimeError("db unavailable")
+
+        monkeypatch.setattr(db.session, "execute", _boom)
+
+        r = client.get("/api/ui/readiness")
+
+        assert r.status_code == 503
+        assert r.json["ready"] is False
+        assert r.json["checks"]["database"]["status"] == "error"
+        assert r.json["checks"]["database"]["error"] == "database_unavailable"
+
 
 class TestStatus:
     def test_status_returns_component_status(self, client):

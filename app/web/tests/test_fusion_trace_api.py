@@ -157,3 +157,32 @@ def test_fusion_trace_path_fallback_without_video_id_in_payload(app, client):
     body = r.get_json()
     assert body["available"] is True
     assert (body.get("tracks") or [])[0]["track_id"] == 1
+
+
+def test_fusion_trace_ignores_non_list_rejected_tracks(app, client):
+    from models import ActivityLog, Video, db
+
+    with app.app_context():
+        v = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 10, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 10, 12, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/fusion-trace/malformed-rejected.mp4",
+        )
+        db.session.add(v)
+        db.session.flush()
+        vid = v.id
+        payload = {
+            "video_id": vid,
+            "accepted_tracks": [{"track_id": 3, "species_name": "Bird", "accepted": True}],
+            "rejected_tracks": {"broken": True},
+        }
+        db.session.add(ActivityLog(type="decision_trace", data=json.dumps(payload)))
+        db.session.commit()
+
+    r = client.get(f"/api/ui/videos/{vid}/fusion-trace")
+    assert r.status_code == 200
+    body = r.get_json()
+    tracks = body.get("tracks") or []
+    assert len(tracks) == 1
+    assert tracks[0]["bucket"] == "persisted"

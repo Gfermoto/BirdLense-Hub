@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: BirdLense Hub UI API
-  version: 0.3.4
+  version: 0.3.5
   description: |
     BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. The API supports:
       - Querying real-time and historical bird visit data
@@ -16,7 +16,7 @@ info:
 
     All endpoints return JSON. PATCH/POST endpoints may update system state. No authentication is required by default, but this can be enabled in deployment.
 
-    The same REST surface is used by humans, automation scripts, and—when you enable it—**external AI assistants** via [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) (`/mcp` on the hub), so assistants can answer questions about visits, status, and configuration or perform allowed operations under `MCP_TOKEN`.
+    When MCP is enabled, the same REST surface is also available to **authorized MCP clients** ([Model Context Protocol](https://modelcontextprotocol.io/)) at `/mcp` on the hub: automation, IDE integrations, or custom tooling can query visits, status, and configuration or perform allowed operations under `MCP_TOKEN`.
 servers:
   - url: http://birdlense.local/api/ui
 paths:
@@ -36,6 +36,203 @@ paths:
                   status:
                     type: string
                     example: ok
+  /readiness:
+    get:
+      summary: Readiness check
+      description: |
+        Returns a richer operational payload for install/deploy verification. Unlike `/health`,
+        this includes database and filesystem checks plus the same component summary used by the UI.
+      responses:
+        "200":
+          description: Core services and writable paths are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, ready, checked_at, checks, components]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  ready:
+                    type: boolean
+                    example: true
+                  checked_at:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                      data_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                      app_config_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                  components:
+                    type: object
+                    properties:
+                      web:
+                        type: string
+                      processor:
+                        type: string
+                      video:
+                        type: string
+                      mqtt:
+                        type: string
+                      esphome:
+                        type: string
+                      yolo:
+                        type: string
+                      motion_source:
+                        type: string
+                      trigger_display:
+                        type: string
+                      birdnet_url:
+                        type: string
+                        nullable: true
+                      heimdall_url:
+                        type: string
+                        nullable: true
+        "503":
+          description: App is up but not fully ready for use
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, ready, checked_at, checks, components]
+                properties:
+                  status:
+                    type: string
+                    example: degraded
+                  ready:
+                    type: boolean
+                    example: false
+                  checked_at:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          error:
+                            type: string
+                      data_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                      app_config_dir:
+                        type: object
+                        properties:
+                          path:
+                            type: string
+                          exists:
+                            type: boolean
+                          is_dir:
+                            type: boolean
+                          writable:
+                            type: boolean
+                          status:
+                            type: string
+                  components:
+                    type: object
+                    properties:
+                      web:
+                        type: string
+                      processor:
+                        type: string
+                      video:
+                        type: string
+                      mqtt:
+                        type: string
+                      esphome:
+                        type: string
+                      yolo:
+                        type: string
+                      motion_source:
+                        type: string
+                      trigger_display:
+                        type: string
+                      birdnet_url:
+                        type: string
+                        nullable: true
+                      heimdall_url:
+                        type: string
+                        nullable: true
+  /status:
+    get:
+      summary: Component status
+      description: |
+        Returns the lightweight component summary used by the navigation indicators in the UI.
+      responses:
+        "200":
+          description: Current component status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [web, processor, video, mqtt, yolo]
+                properties:
+                  web:
+                    type: string
+                  processor:
+                    type: string
+                  video:
+                    type: string
+                  mqtt:
+                    type: string
+                  esphome:
+                    type: string
+                  yolo:
+                    type: string
+                  motion_source:
+                    type: string
+                  trigger_display:
+                    type: string
+                  birdnet_url:
+                    type: string
+                    nullable: true
+                  heimdall_url:
+                    type: string
+                    nullable: true
   /weather:
     get:
       summary: Get current weather

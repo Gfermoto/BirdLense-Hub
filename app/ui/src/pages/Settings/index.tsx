@@ -3,10 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import Container from '@mui/material/Container';
 import Snackbar from '@mui/material/Snackbar';
-import Typography from '@mui/material/Typography';
 import { SettingsForm } from './SettingsForm';
 import { updateSettings, restartProcessor } from '../../api/api';
 import { queryKeys } from '../../api/queryKeys';
@@ -14,9 +11,13 @@ import { useObservedSpeciesQuery, useSettingsQuery } from '../../hooks/useSettin
 import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { PageHeader } from '../../components/PageHeader';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const Settings: React.FC = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [restartMessage, setRestartMessage] = useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
@@ -58,30 +59,24 @@ export const Settings: React.FC = () => {
   }, [settings]);
 
   return (
-    <ProtectedRoute title={t('settings.updateTitle')} requireAdmin={false}>
+    <ProtectedRoute title={t('settings.updateTitle')} requireAdmin>
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress />
-        </Box>
+        <PageLoadingState label={t('common.loading')} />
       ) : settingsError ? (
-        <Container maxWidth="md" sx={{ pb: 5 }}>
-          <Typography variant="h4" gutterBottom>
-            {t('settings.updateTitle')}
-          </Typography>
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {t('settings.settingsLoadFailed')}
-          </Alert>
-        </Container>
+        <PageMessageState
+          title={t('settings.updateTitle')}
+          message={t('settings.settingsLoadFailed')}
+          severity="error"
+        />
       ) : (
-        <Container maxWidth="md" sx={{ pb: 5 }}>
-          <Typography variant="h4" gutterBottom>
-            {t('settings.updateTitle')}
-          </Typography>
+        <Box display="grid" gap={4} sx={{ pb: 5 }}>
+          <PageHeader
+            title={t('settings.updateTitle')}
+            description={t('settings.restartInfo')}
+            titleVariant="h3"
+          />
           <Alert severity="success" sx={{ mb: 2 }}>
             {t('settings.loaded')}
-          </Alert>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            {t('settings.restartInfo')}
           </Alert>
           {restartMessage && (
             <Alert
@@ -113,7 +108,7 @@ export const Settings: React.FC = () => {
               {t('settings.savedRestarting')}
             </Alert>
           </Snackbar>
-        </Container>
+        </Box>
       )}
     </ProtectedRoute>
   );

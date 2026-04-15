@@ -1,6 +1,6 @@
 # BirdLense Hub — обзор проекта
 
-**BirdLense Hub** — открытое ПО для **умной кормушки и наблюдения за садом**: детекция птиц (и белок) на видео, классификация видов локальным ML, запись роликов и таймлайн, которым владеете вы.
+**BirdLense Hub** — открытое ПО для **мониторинга птиц у кормушек, в саду и на площадках**: детекция на видео, классификация видов локальным ML, запись роликов и структурированный таймлайн для операторов, орнитологии и гражданской науки.
 
 [English](./OVERVIEW.md)
 
@@ -18,8 +18,9 @@
 
 | Аудитория | С чего начать |
 |-----------|----------------|
-| **Дом / любитель природы** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) |
-| **Пользователь Frigate / HA** | [SCENARIOS](./SCENARIOS.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md) |
+| **Наблюдатели, кольцеватели** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) — учёт визитов, экспорт (eBird, CSV), проверка неуверенных детекций |
+| **Исследователи, станции** | [CONFIGURATION](./CONFIGURATION.ru.md), [DATASETS](./DATASETS.ru.md), [TRAINING](./TRAINING.ru.md) — каталоги, датасеты, свои веса |
+| **Frigate / Home Assistant** | [SCENARIOS](./SCENARIOS.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md) |
 | **Разработчик / контрибьютор** | [LOCAL_DEV](./LOCAL_DEV.ru.md), [Contributing](./project/contributing.md), [ARCHITECTURE](./ARCHITECTURE.md) |
 | **Автор статей / лендинга** | Эта страница + [FEATURES](./FEATURES.ru.md) |
 
