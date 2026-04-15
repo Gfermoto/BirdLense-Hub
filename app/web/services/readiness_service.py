@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from data_paths import data_dir
-from services.component_status_service import build_component_status_payload
+from services.component_status_service import build_component_status_payload_safe
 
 
 def _path_status(path: Path, label: str) -> dict[str, object]:
@@ -44,6 +44,6 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "ready": ready,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
-        "components": build_component_status_payload(session),
+        "components": build_component_status_payload_safe(session),
     }
     return payload, (200 if ready else 503)
