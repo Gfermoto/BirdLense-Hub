@@ -25,10 +25,7 @@ export function ConfigAuditCard({
   if (isLoading) return <LinearProgress />;
   if (error || !data) return <Alert severity="warning">{t('system.configAuditLoadError')}</Alert>;
   const mappingOk = data.mapping?.gray_to_grey_ok ?? false;
-  const heimdallConfigured = data.heimdall?.configured ?? false;
-  const galleryEnabled = Boolean(data.gallery?.enabled && data.gallery?.upload_url);
   const telegramPhoto = data.telegram?.send_photo ?? false;
-  const heimdallProbe = data.heimdall?.probe;
   const deprecatedKeys = Array.isArray(data.deprecated_keys_present) ? data.deprecated_keys_present : [];
   const unknownKeys = Array.isArray(data.unknown_keys) ? data.unknown_keys : [];
 
@@ -50,16 +47,6 @@ export function ConfigAuditCard({
           />
           <Chip
             size="small"
-            color={heimdallConfigured ? 'success' : 'default'}
-            label={heimdallConfigured ? t('system.heimdallConfigured') : t('system.heimdallNotConfigured')}
-          />
-          <Chip
-            size="small"
-            color={galleryEnabled ? 'success' : 'default'}
-            label={data.gallery?.enabled ? t('system.galleryEnabled') : t('system.galleryDisabled')}
-          />
-          <Chip
-            size="small"
             color={telegramPhoto ? 'success' : 'warning'}
             label={telegramPhoto ? t('system.telegramPhotoOn') : t('system.telegramPhotoOff')}
           />
@@ -71,20 +58,6 @@ export function ConfigAuditCard({
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               <strong>{t('system.telegramProxyType')}:</strong> {data.telegram?.proxy_type || '—'}
             </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>{t('system.galleryUrl')}:</strong> {data.gallery?.upload_url || '—'}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1.5 }}>
-              <strong>{t('system.heimdallUrl')}:</strong> {data.heimdall?.url || '—'}
-            </Typography>
-            {heimdallProbe ? (
-              <Typography variant="body2" sx={{ mb: 1.5 }}>
-                <strong>{t('system.heimdallProbe')}:</strong>{' '}
-                {heimdallProbe.reachable
-                  ? `${t('system.ok')} (${heimdallProbe.http_status ?? '200'}, ${heimdallProbe.latency_ms ?? '-'}ms${heimdallProbe.title ? `, ${heimdallProbe.title}` : ''})`
-                  : `${t('system.unreachable')} (${heimdallProbe.error || heimdallProbe.http_status || 'n/a'})`}
-              </Typography>
-            ) : null}
           </>
         ) : null}
 

@@ -1,6 +1,6 @@
 # Heimdall tiles for BirdLense Hub
 
-How to add **BirdLense** (and related services) to **[linuxserver/Heimdall](https://github.com/linuxserver/Heimdall)** v2 as dashboard tiles. For the opposite direction (Hub probing Heimdall), see **heimdall_url** in [Configuration](./CONFIGURATION.md) (section *Heimdall vs Hub metrics*).
+How to add **BirdLense** (and related services) to **[linuxserver/Heimdall](https://github.com/linuxserver/Heimdall)** v2 as dashboard tiles. This is a **manual dashboard-only** workflow: BirdLense exposes URLs and metrics, Heimdall links to them.
 
 [Русский](./HEIMDALL.ru.md)
 
@@ -77,5 +77,5 @@ Heimdall does **not** import this file. For Firefox / Chrome bookmark import, ed
 
 ## See also
 
-- [CONFIGURATION](./CONFIGURATION.md)
+- [CONFIGURATION](./CONFIGURATION.md) — BirdNET URL, metrics, MQTT / HA
 - [SCENARIOS](./SCENARIOS.md)

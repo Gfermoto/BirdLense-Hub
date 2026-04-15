@@ -358,13 +358,4 @@ curl -s http://YOUR_HOST:8085/api/ui/status
 3. **Детекции есть?** — В логах: `Processing stopped. Video Result: [...]` — если пусто, YOLO/MQTT не нашли птиц. Уведомления шлются только при `video_detections > 0`.
 4. **Исключения** — `general.notification_excluded_species` — виды из списка не уходят в Telegram.
 
-### 8. Публичная галерея (opt-in)
-
-1. **Локальный приёмник:** из корня репозитория `docker compose -f docker/gallery-test/docker-compose.yml up -d` → `http://localhost:8086/api/upload` (см. [CONFIGURATION.ru](./CONFIGURATION.ru.md) → Gallery).
-2. **BirdLense + тестовая галерея в одной сети Docker:** `cd app && docker compose -f docker-compose.yml -f docker-compose.gallery-test.yml up -d`, в настройках Gallery указать `upload_url`: `http://gallery-test:5000/api/upload` (имя сервиса, не `localhost` хоста).
-3. **Триггер:** после обработки клипа с **video**-детекциями и **frames** в треке web шлёт POST в фоне. Логи: `Gallery upload:` или ошибки `Gallery upload failed` / `Gallery upload thread failed`.
-4. **Автотесты:** `app/web/tests/test_gallery_upload.py` — в CI через `make test-web`.
-
----
-
 См. также: [INSTALL](./INSTALL.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md).

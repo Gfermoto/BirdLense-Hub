@@ -27,7 +27,6 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 - **Dataset pipeline** — `best_frame` in YOLO layout, ZIP export (`GET /api/ui/dataset/export`), relabel moves on-disk crops. **System → Storage**.
 - **Video prev/next (same UTC day)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) closed (**v0.2.6**): `GET /api/ui/videos/:id/neighbors` + arrows on video details (browse clips for that calendar day in UTC without losing list context).
 - **Overview mean recording duration** — [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) closed: metric is the average length of **one clip** (`Video`), not a visit aggregate; PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106).
-- **Public gallery (opt-in)** — [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) closed (v0.2.4): background upload runs inside **Flask app context**; troubleshooting in [CONFIGURATION](./CONFIGURATION.md) → Gallery.
 - **System: resource charts with server-side history** — SQLite `system_resource_sample`, `GET /api/ui/system/metrics/history`, UI windows 6/24/48 h plus live tail; tune with `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 
 ---
@@ -60,7 +59,6 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 9 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ Migration page: year filter + table (rows and Σ) — no duplicate checklist block | `area:web`, P3 |
 | 10 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo host moved out of hardcoded CORS defaults into `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS` | `area:web`, P3 |
 | 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.md) | `area:docs`, P3 |
-| 12 | Gallery: investigate / fix (opt-in public gallery) | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context in upload thread + docs/tests v0.2.4 | `area:web`, P2, `bug` |
 | 13 | Manual species correction: unify Unknowns vs in-video flow | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ phases A+B+C: shared API + Unknowns **Open video** snackbar + recent shared correction history | `area:web`, P2 |
 | 14 | Video navigation: sequential browse (e.g. same day), no list reset | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | `area:web`, P2 |
 | 15 | Video neighbors: local TZ, cross-day jump, docs clarity (follow-up to #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ local day + `cross_day` + API/UI docs | `area:web`, P3 |
@@ -168,7 +166,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 13 | Detector: non-bird classes (mice, squirrels, cats) | [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) ✅ issue closed; tracker: [consilium item 17](#detection-strategy-consilium); new issue when training starts | P3, processor, research |
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
-| 16 | Heimdall integration | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ issue closed; idea retained here; new issue when work starts | P3, infra |
+| 16 | Heimdall manual widgets / docs | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs direction retained; no runtime integration promised | P3, infra |
 | 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); optional auto-tare | — | P3, web + API |
 
 **System initiative (P1):**
@@ -199,7 +197,6 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | ✅ Per-species confidence overrides | Settings | Medium |
 | ✅ iNaturalist crop export | Species / export flows | Medium |
 | ✅ Web Push | Settings (notifications) | Medium |
-| ✅ Public gallery (opt-in) | [CONFIGURATION](./CONFIGURATION.md) → Gallery | High |
 | ✅ Migration calendar | Overview / patterns | High |
 | ✅ Region comparison (eBird) | Overview card | High |
 | ✅ Sun/moon card on weather | Overview / weather | Low |

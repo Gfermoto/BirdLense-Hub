@@ -111,7 +111,6 @@ def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, 
         "min_confidence_to_store",
         0.05,
     )
-    monkeypatch.setitem(app_config.config.setdefault("gallery", {}), "enabled", False)
     monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
 
     token = str(id(app))[-6:].zfill(6)
@@ -149,7 +148,6 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
         "min_confidence_to_store",
         0.05,
     )
-    monkeypatch.setitem(app_config.config.setdefault("gallery", {}), "enabled", False)
     monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
 
     token = str(id(app))[-6:].zfill(6)
@@ -190,7 +188,6 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
         "min_confidence_to_store",
         0.05,
     )
-    monkeypatch.setitem(app_config.config.setdefault("gallery", {}), "enabled", False)
     monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
     monkeypatch.setitem(app_config.config.setdefault("integrations", {}), "scales", {"enabled": True})
 
@@ -238,7 +235,6 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
         "min_confidence_to_store",
         0.05,
     )
-    monkeypatch.setitem(app_config.config.setdefault("gallery", {}), "enabled", False)
     monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
     monkeypatch.setitem(app_config.config.setdefault("integrations", {}), "scales", {"enabled": False})
 
