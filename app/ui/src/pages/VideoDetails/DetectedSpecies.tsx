@@ -232,7 +232,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       <Typography variant="h6" gutterBottom>
         {t('video.speciesInVideo')}
       </Typography>
-      {groupedSpecies.length >= 2 && videoId && (
+      {groupedSpecies.length >= 2 && videoId && canEdit && (
         <Box
           sx={{
             mb: 2,
