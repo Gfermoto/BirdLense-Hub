@@ -51,6 +51,11 @@ class FrigateMotionFromAggregator:
             return True
         return False
 
+    def mark_pending(self):
+        """Re-arm the pending motion flag when caller defers recording."""
+        if self._last_camera is not None:
+            self._event.set()
+
     @property
     def _connected(self):
         return self._aggregator.is_mqtt_live()
@@ -233,6 +238,11 @@ class FrigateMQTTMotionDetector:
         self._last_camera = None
         self._event.wait(timeout=300)
         return self._event.is_set()
+
+    def mark_pending(self):
+        """Re-arm the pending motion flag when caller defers recording."""
+        if self._last_camera is not None:
+            self._event.set()
 
     def get_triggered_camera(self):
         """Return camera id from last Frigate event, or None."""

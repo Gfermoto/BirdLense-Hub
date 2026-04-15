@@ -20,12 +20,16 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
+| Quickstart | [QUICKSTART.md](./QUICKSTART.md) |
 | Install | [INSTALL.md](./INSTALL.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
 | Scenarios | [SCENARIOS.md](./SCENARIOS.md) |
 | Configuration | [CONFIGURATION.md](./CONFIGURATION.md) |
 | Features | [FEATURES.md](./FEATURES.md) |
+| Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
+| Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
+| Runbooks | [RUNBOOKS.md](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
 | Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
 | Glossary | [GLOSSARY.md](./GLOSSARY.md) |
 | Heimdall tiles | [HEIMDALL.md](./HEIMDALL.md) · [RU](./HEIMDALL.ru.md) |
@@ -44,6 +48,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
 | CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
 | Testing | [TESTING.md](./TESTING.md) |
+| CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Accessibility | [A11Y.md](./A11Y.md) · [RU](./A11Y.ru.md) |
 | UX: Tooltips & inline hints | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) |
 | Review mode & video corrections | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |

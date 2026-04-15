@@ -29,11 +29,13 @@
 | **Сценарии** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Конфигурация** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Термины (Hub, Frigate, слияние…)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
+| **Доменный контракт** (trigger/clip/visit/review/taxon) | [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) | [RU](./DOMAIN_CONTRACT.ru.md) |
 | **Возможности и API** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
 | **Архитектура** | [ARCHITECTURE](./ARCHITECTURE.md) | [RU](./ARCHITECTURE.ru.md) |
 | **API** | [API](./API.md) · [OpenAPI Redoc](./reference/openapi.md) | [RU](./API.ru.md) · [Redoc](./reference/openapi.ru.md) |
 | **Версионирование** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | **Чеклист деплоя на сервер** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
+| **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Плитки Heimdall** | [HEIMDALL](./HEIMDALL.md) | [RU](./HEIMDALL.ru.md) |
 
 ---
@@ -46,7 +48,7 @@
 | Риски и рекомендации | [SECURITY](./SECURITY.md) |
 | Восстановление конфига | [RECOVERY_CONFIG](./RECOVERY_CONFIG.ru.md) |
 | Не работает | [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) |
-| Runbooks для операторов | [RUNBOOKS](./RUNBOOKS.md) |
+| Runbooks для операторов | [RUNBOOKS.ru.md](./RUNBOOKS.ru.md) |
 
 ---
 
@@ -58,6 +60,7 @@
 | **Политика CI** (Ruff format, игноры pip-audit, npm audit, OpenAPI→TS) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) |
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
+| Проверка доменных инвариантов | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md) |
 | MCP (Model Context Protocol — автоматизация и интеграции) | [MCP_SETUP](./MCP_SETUP.ru.md) |
 
 ---

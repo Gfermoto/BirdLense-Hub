@@ -64,7 +64,48 @@ class TestSpeciesRegistryApi:
         assert "species_total" in body
         assert "species_with_taxon" in body
         assert "coverage_percent" in body
+        assert "species_resolution_mismatches" in body
+        assert "duplicate_name_group_count" in body
+        assert "drift_scan_limit" in body
+        assert "drift_scan_complete" in body
         assert body["species_with_taxon"] <= body["species_total"]
+
+    def test_species_registry_health_reports_resolution_drift(self, client, app):
+        from models import SpeciesAlias, SpeciesTaxon
+
+        with app.app_context():
+            target = SpeciesTaxon(
+                taxon_key="target-finch",
+                common_name="Target Finch",
+                scientific_name="Targetus finchus",
+            )
+            wrong = SpeciesTaxon(
+                taxon_key="wrong-finch",
+                common_name="Wrong Finch",
+                scientific_name="Wrongus finchus",
+            )
+            db.session.add_all([target, wrong])
+            db.session.flush()
+            db.session.add(
+                SpeciesAlias(
+                    alias="Mapped Finch",
+                    alias_key="mapped finch",
+                    taxon_id=target.id,
+                )
+            )
+            drifted = Species(name="Mapped Finch", taxon_id=wrong.id)
+            duplicate = Species(name="mapped finch")
+            unresolved = Species(name="Ghost Bird Name")
+            db.session.add_all([drifted, duplicate, unresolved])
+            db.session.commit()
+
+        r = client.get("/api/ui/system/species-registry/health")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["species_resolution_mismatches"] >= 1
+        assert body["species_unresolved_rows"] >= 1
+        assert body["duplicate_name_group_count"] >= 1
+        assert body["mismatch_samples"]
 
     def test_species_registry_backfill_reaches_full_coverage(self, client):
         r = client.post("/api/ui/system/species-registry/backfill", json={"dry_run": False})
@@ -97,6 +138,24 @@ class TestSpeciesResolverIntegration:
             assert sp is not None
             assert sp.name == "Hooded Crow"
             assert sp.taxon_id is not None
+
+    def test_resolve_species_name_matches_normalized_common_name_without_alias(self, app):
+        from models import SpeciesTaxon
+
+        with app.app_context():
+            taxon = SpeciesTaxon(
+                taxon_key="great-tit-normalized",
+                common_name="Great-Tit",
+                scientific_name="Parus major",
+            )
+            db.session.add(taxon)
+            db.session.commit()
+
+            resolved = resolve_species_name("great tit", source="test_case")
+            assert resolved.found is True
+            assert resolved.taxon is not None
+            assert resolved.method in ("alias_key", "common_name_normalized")
+            assert resolved.taxon.common_name == "Great Tit"
 
     def test_unresolved_name_is_logged_and_reported(self, client, app):
         with app.app_context():

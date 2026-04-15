@@ -1,0 +1,75 @@
+# Runbooks для операторов — BirdLense Hub
+
+[English](./RUNBOOKS.md)
+
+Короткие сценарии на случай типичных сбоев.
+
+## Установка прошла, но UI не открывается
+
+1. Из корня репозитория выполните `make verify`.
+2. Если падает `health`, посмотрите контейнеры: `cd app && docker compose ps && docker compose logs --tail=100 birdlense`.
+3. Если образ собрался, но порт занят, задайте `BIRDLENSE_PORT` или добавьте `docker-compose.override.yml`, как в [LOCAL_DEV](./LOCAL_DEV.ru.md).
+
+## `/api/ui/health` в порядке, но деплою нельзя доверять
+
+Используйте `BASE_URL=http://ВАШ_ХОСТ:8085 make verify` или `scripts/verify-stack.sh --base-url ...`.
+
+Как читать результат:
+
+- `health` OK, `readiness` FAIL: веб-процесс жив, но БД или каталоги для записи недоступны.
+- `readiness` OK, `status` degraded: ядро хаба готово, но опциональные части (processor, видео, MQTT и т.д.) требуют внимания.
+
+Если настройки открыты или у вас есть админский доступ, дополнительно проверьте:
+
+- `GET /api/ui/system/domain-health`
+- `GET /api/ui/system/species-registry/health`
+
+Для скриптов на хабе с закрытыми настройками передайте `BIRDLENSE_UI_API_KEY` и выполните  
+`REQUIRE_SETTINGS_HEALTH=1 BASE_URL=... ./scripts/verify-release.sh`.
+
+Для `scripts/verify-stack.sh` добавьте `--check-domain-health` и задайте `BIRDLENSE_UI_API_KEY` (или `UI_API_KEY`), чтобы запросы к доменным и registry-эндпоинтам проходили с авторизацией.
+
+Деплой через GitHub Actions: опциональный секрет репозитория **`BIRDLENSE_UI_API_KEY`** (то же значение, что в `app/.env` на сервере) включает проверки domain-health на шаге Verify — см. [RELEASE_READINESS](./RELEASE_READINESS.ru.md).
+
+Чеклист релиза: [RELEASE_READINESS](./RELEASE_READINESS.ru.md).
+
+## Деплой завершён, но в браузере старый UI
+
+1. Жёсткое обновление страницы.
+2. Очистка кэша PWA / Service Worker.
+3. Повторный `make verify` с `BASE_URL` развёрнутого хаба.
+
+## API отвечает, но нет processor / детекций
+
+1. Проверьте `/api/ui/status`, System → readiness и логи.
+2. Логи processor:
+
+```bash
+ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/data/processor.log"
+```
+
+3. Убедитесь, что в `app/.env` у `PROCESSOR_SECRET` реальное значение, а не заглушка из примера.
+
+## Падает readiness при установке или после деплоя
+
+Сейчас readiness проверяет:
+
+- путь к БД и возможность запроса;
+- наличие и запись в `data/`;
+- наличие и запись в `app_config/`.
+
+Типичные исправления:
+
+- пересоздать примонтированные каталоги под `app/data` и `app/app_config`;
+- поправить владельца (`uid 1000`) или права на хосте;
+- проверить путь к БД и volume в `DATA_DIR`.
+
+## Отладка по запросам
+
+Каждый ответ API содержит заголовок `X-Request-ID`.
+
+Сопоставление с логами сервера:
+
+1. Воспроизведите сбой в браузере или через `curl`.
+2. Скопируйте `X-Request-ID` из ответа.
+3. Найдите тот же идентификатор в `docker logs birdlense`.

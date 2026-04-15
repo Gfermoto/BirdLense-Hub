@@ -214,6 +214,10 @@ class MotionRecordingSession:
                 video_path_for_api=video_path_for_api,
                 scales_topic_arg=self.scales_topic_arg,
                 data_dir=self.data_dir,
+                recording_context={
+                    "triggered_camera": camera_id,
+                    "frigate_activity_hold_seconds": frigate_hold_seconds,
+                },
             )
         except Exception as e:
             logger.error(e)

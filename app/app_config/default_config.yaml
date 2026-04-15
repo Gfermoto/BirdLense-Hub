@@ -30,6 +30,9 @@ processor:
   max_inactive_seconds: 12
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 3
+  # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.
+  # Уменьшает почти совпадающие по времени дубли-клипы при Frigate+OpenCV или объекте, всё ещё в кадре.
+  min_seconds_between_recordings: 8
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
@@ -74,8 +77,8 @@ processor:
   min_confidence_to_notify: 0.46
   # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
   light_gate_enabled: true
-  light_gate_min_brightness: 25
-  light_gate_min_contrast: 20
+  light_gate_min_brightness: 20
+  light_gate_min_contrast: 14
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
@@ -136,11 +139,11 @@ processor:
   blur_threshold: 100.0
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Для мелких птиц у кромки кормушки снижайте до 0.03-0.05.
-  min_center_dist: 0.06
+  min_center_dist: 0.04
   # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
-  binary_imgsz: 512
+  binary_imgsz: 640
   # Small boxes on feeder scenes are often debris or motion noise.
-  min_box_size_px: 72
+  min_box_size_px: 56
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   generic_bird_min_detector_conf: 0.42
   generic_bird_min_frames: 2
@@ -209,10 +212,10 @@ video:
 motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
-  check_every_n_frames: 2
+  check_every_n_frames: 1
   # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
-  opencv_diff_threshold: 22
-  opencv_min_contour_area: 320
+  opencv_diff_threshold: 18
+  opencv_min_contour_area: 240
   frigate_camera_filter: []  # from cameras list; frigate/events
   # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
   # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.

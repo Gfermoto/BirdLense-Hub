@@ -59,6 +59,8 @@ nav:
       - Scenarios: SCENARIOS.md
       - Configuration: CONFIGURATION.md
       - Features: FEATURES.md
+      - "Domain contract": DOMAIN_CONTRACT.md
+      - "Release readiness": RELEASE_READINESS.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Runbooks: RUNBOOKS.md
       - Recover config: RECOVERY_CONFIG.md
@@ -109,7 +111,10 @@ nav:
       - Сценарии: SCENARIOS.ru.md
       - Конфигурация: CONFIGURATION.ru.md
       - Возможности: FEATURES.ru.md
+      - "Доменный контракт": DOMAIN_CONTRACT.ru.md
+      - "Готовность к релизу": RELEASE_READINESS.ru.md
       - Решение проблем: TROUBLESHOOTING.ru.md
+      - Runbooks: RUNBOOKS.ru.md
       - Восстановление конфига: RECOVERY_CONFIG.ru.md
       - Глоссарий: GLOSSARY.ru.md
       - "Heimdall (плитки)": HEIMDALL.ru.md

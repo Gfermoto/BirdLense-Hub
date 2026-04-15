@@ -6,10 +6,12 @@ ATTEMPTS="${ATTEMPTS:-30}"
 SLEEP_SEC="${SLEEP_SEC:-2}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-15}"
 CHECK_CAMERAS="${CHECK_CAMERAS:-0}"
+CHECK_DOMAIN_HEALTH="${CHECK_DOMAIN_HEALTH:-0}"
+UI_API_KEY="${BIRDLENSE_UI_API_KEY:-${UI_API_KEY:-}}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/verify-stack.sh [--base-url URL] [--attempts N] [--sleep SEC] [--check-cameras]
+Usage: scripts/verify-stack.sh [--base-url URL] [--attempts N] [--sleep SEC] [--check-cameras] [--check-domain-health]
 
 Verifies the shared install/deploy contract:
 1. /api/ui/health responds with {"status":"ok"}
@@ -18,6 +20,9 @@ Verifies the shared install/deploy contract:
 
 Optional:
   --check-cameras   Also fetch /api/ui/cameras and print a short preview.
+  --check-domain-health   Also require domain-health, species-registry health, and config-audit.
+                            On strict hubs set BIRDLENSE_UI_API_KEY (or UI_API_KEY) so curl can
+                            send X-Birdlense-Api-Key; otherwise those endpoints may 403.
 EOF
 }
 
@@ -37,6 +42,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --check-cameras)
       CHECK_CAMERAS=1
+      shift
+      ;;
+    --check-domain-health)
+      CHECK_DOMAIN_HEALTH=1
       shift
       ;;
     -h|--help)
@@ -61,6 +70,26 @@ fetch_with_retries() {
   local attempt
   for attempt in $(seq 1 "${ATTEMPTS}"); do
     if body="$(curl -sS -L --max-time "${TIMEOUT_SEC}" "${BASE_URL}${path}")"; then
+      printf '%s' "${body}"
+      return 0
+    fi
+    if [[ "${attempt}" -lt "${ATTEMPTS}" ]]; then
+      sleep "${SLEEP_SEC}"
+    fi
+  done
+  return 1
+}
+
+fetch_with_retries_auth() {
+  local path="$1"
+  local body=""
+  local attempt
+  local curl_args=()
+  if [[ -n "${UI_API_KEY}" ]]; then
+    curl_args=(-H "X-Birdlense-Api-Key: ${UI_API_KEY}")
+  fi
+  for attempt in $(seq 1 "${ATTEMPTS}"); do
+    if body="$(curl -sS -L --max-time "${TIMEOUT_SEC}" "${curl_args[@]}" "${BASE_URL}${path}")"; then
       printf '%s' "${body}"
       return 0
     fi
@@ -110,6 +139,42 @@ if [[ "${CHECK_CAMERAS}" == "1" ]]; then
   else
     echo "cameras: WARN not reachable"
   fi
+fi
+
+if [[ "${CHECK_DOMAIN_HEALTH}" == "1" ]]; then
+  domain_body="$(fetch_with_retries_auth '/api/ui/system/domain-health')" || {
+    echo "domain-health: FAIL (${BASE_URL}/api/ui/system/domain-health unreachable)" >&2
+    exit 1
+  }
+  if ! printf '%s' "${domain_body}" | normalize_json | grep -q '"domain_contract_version"'; then
+    echo "domain-health: FAIL ${domain_body}" >&2
+    exit 1
+  fi
+  echo "domain-health: OK $(printf '%s' "${domain_body}" | head -c 220)..."
+
+  registry_body="$(fetch_with_retries_auth '/api/ui/system/species-registry/health')" || {
+    echo "species-registry-health: FAIL (${BASE_URL}/api/ui/system/species-registry/health unreachable)" >&2
+    exit 1
+  }
+  if ! printf '%s' "${registry_body}" | normalize_json | grep -q '"ok":true'; then
+    echo "species-registry-health: FAIL ${registry_body}" >&2
+    exit 1
+  fi
+  if printf '%s' "${registry_body}" | normalize_json | grep -q '"drift_scan_complete":false'; then
+    echo "species-registry-health: FAIL partial drift scan ${registry_body}" >&2
+    exit 1
+  fi
+  echo "species-registry-health: OK $(printf '%s' "${registry_body}" | head -c 220)..."
+
+  config_body="$(fetch_with_retries_auth '/api/ui/system/config-audit')" || {
+    echo "config-audit: FAIL (${BASE_URL}/api/ui/system/config-audit unreachable)" >&2
+    exit 1
+  }
+  if ! printf '%s' "${config_body}" | normalize_json | grep -q '"status"'; then
+    echo "config-audit: FAIL ${config_body}" >&2
+    exit 1
+  fi
+  echo "config-audit: OK $(printf '%s' "${config_body}" | head -c 220)..."
 fi
 
 echo "verify-stack: PASS"

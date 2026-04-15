@@ -107,6 +107,15 @@ export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisi
           </Box>
         );
 
+        const cardCell = (
+          <Box
+            data-testid={`timeline-card-shell-${visit.id}`}
+            sx={{ width: '100%', minWidth: 0 }}
+          >
+            {card}
+          </Box>
+        );
+
         return (
           <Box
             key={visit.id}
@@ -122,12 +131,12 @@ export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisi
               <>
                 {timeCell}
                 <TimelineRail isFirst={isFirst} isLast={isLast} />
-                <Box sx={{ flex: 1, pl: 2, py: 1, minWidth: 0 }}>{card}</Box>
+                <Box sx={{ flex: 1, pl: 2, py: 1, minWidth: 0 }}>{cardCell}</Box>
               </>
             ) : (
               <>
                 <Box sx={{ flex: 1, pr: 2, py: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
-                  {card}
+                  {cardCell}
                 </Box>
                 <TimelineRail isFirst={isFirst} isLast={isLast} />
                 {timeCell}

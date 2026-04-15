@@ -91,9 +91,18 @@ def _resolve_without_logging(name: str) -> SpeciesResolution:
     if taxon:
         return SpeciesResolution(True, taxon, "common_name_exact", 1.0, key)
 
-    for candidate in SpeciesTaxon.query.all():
-        if _norm_key(candidate.common_name) == key:
-            return SpeciesResolution(True, candidate, "common_name_normalized", 0.95, key)
+    normalized_expr = func.lower(
+        func.trim(
+            func.replace(
+                func.replace(SpeciesTaxon.common_name, "_", " "),
+                "-",
+                " ",
+            )
+        )
+    )
+    taxon = SpeciesTaxon.query.filter(normalized_expr == key).first()
+    if taxon:
+        return SpeciesResolution(True, taxon, "common_name_normalized", 0.95, key)
     return SpeciesResolution(False, None, "unresolved", 0.0, key)
 
 
@@ -491,6 +500,7 @@ def enrich_species_metadata_with_status(
 
 def species_registry_health() -> dict:
     """Quality snapshot for registry rollout and CI gates."""
+    drift_scan_limit = 5000
     species_total = Species.query.count()
     species_with_taxon = Species.query.filter(Species.taxon_id.isnot(None)).count()
     unresolved_total = SpeciesUnresolvedName.query.count()
@@ -501,6 +511,45 @@ def species_registry_health() -> dict:
     metadata_error = Species.query.filter(Species.metadata_status == "error").count()
     metadata_not_found = Species.query.filter(Species.metadata_status == "not_found").count()
     metadata_pending = Species.query.filter(Species.metadata_status == "pending").count()
+    species_resolution_mismatches = 0
+    species_unresolved_rows = 0
+    mismatch_samples: list[dict] = []
+    unresolved_samples: list[dict] = []
+    for sp in Species.query.order_by(Species.id.asc()).limit(drift_scan_limit).all():
+        resolution = _resolve_without_logging(sp.name or "")
+        if not resolution.found:
+            species_unresolved_rows += 1
+            if len(unresolved_samples) < 5:
+                unresolved_samples.append(
+                    {
+                        "species_id": sp.id,
+                        "name": sp.name,
+                        "taxon_id": sp.taxon_id,
+                    }
+                )
+            continue
+        resolved_taxon_id = resolution.taxon.id if resolution.taxon else None
+        if resolved_taxon_id and sp.taxon_id and resolved_taxon_id != sp.taxon_id:
+            species_resolution_mismatches += 1
+            if len(mismatch_samples) < 5:
+                mismatch_samples.append(
+                    {
+                        "species_id": sp.id,
+                        "name": sp.name,
+                        "taxon_id": sp.taxon_id,
+                        "resolved_taxon_id": resolved_taxon_id,
+                        "resolved_common_name": resolution.taxon.common_name if resolution.taxon else None,
+                    }
+                )
+    from services.species_data_quality_service import find_duplicate_name_groups
+
+    duplicate_name_group_count = len(
+        find_duplicate_name_groups(
+            db.session,
+            limit_groups=500,
+            skip_inactive_empty_groups=False,
+        )
+    )
     return {
         "species_total": species_total,
         "species_with_taxon": species_with_taxon,
@@ -512,6 +561,13 @@ def species_registry_health() -> dict:
         "metadata_error": metadata_error,
         "metadata_not_found": metadata_not_found,
         "metadata_pending": metadata_pending,
+        "species_resolution_mismatches": species_resolution_mismatches,
+        "species_unresolved_rows": species_unresolved_rows,
+        "duplicate_name_group_count": duplicate_name_group_count,
+        "drift_scan_limit": drift_scan_limit,
+        "drift_scan_complete": species_total <= drift_scan_limit,
+        "mismatch_samples": mismatch_samples,
+        "unresolved_samples": unresolved_samples,
     }
 
 
@@ -723,21 +779,22 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
         host = _url_hostname_lower(current_img)
         if current_img and _host_is_wikipedia_family(host):
             blocked = False
-            try:
-                resp = requests.get(
-                    current_img,
-                    timeout=8,
-                    allow_redirects=True,
-                    headers={
-                        "User-Agent": "BirdLense-Hub/1.0",
-                        "Accept": "image/*,*/*;q=0.8",
-                    },
-                    stream=True,
-                )
-                blocked = resp.status_code >= 400
-                resp.close()
-            except Exception:
-                blocked = True
+            if not dry_run:
+                try:
+                    resp = requests.get(
+                        current_img,
+                        timeout=8,
+                        allow_redirects=True,
+                        headers={
+                            "User-Agent": "BirdLense-Hub/1.0",
+                            "Accept": "image/*,*/*;q=0.8",
+                        },
+                        stream=True,
+                    )
+                    blocked = resp.status_code >= 400
+                    resp.close()
+                except Exception:
+                    blocked = True
 
             if blocked:
                 title = _extract_wiki_search_title(sp.name) or sp.name

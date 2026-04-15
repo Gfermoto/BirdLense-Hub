@@ -66,6 +66,7 @@ python -m pytest web/tests/test_species_registry.py -q
 - доступность API реестра (`seed`, `backfill`, `health`, async status);
 - целостность покрытия (`coverage_percent = 100.0` после backfill);
 - отсутствие регресса в базовой нормализации.
+- если `drift_scan_complete = false`, то drift-метрики посчитаны по первым `drift_scan_limit` строкам каталога и требуют отдельного полного аудита.
 
 Операционный контроль на инстансе:
 
@@ -78,6 +79,24 @@ curl -s -X POST http://YOUR_HOST:8085/api/ui/system/species-registry/backfill \
   -H "Content-Type: application/json" \
   -d '{"dry_run": false}'
 ```
+
+### Доменные инварианты — quality gate
+
+Админский срез:
+
+```bash
+curl -s http://YOUR_HOST:8085/api/ui/system/domain-health
+```
+
+Проверяйте минимум:
+
+- `orphaned_visits = 0`
+- `visit_species_mismatches = 0`
+- `duplicate_name_group_count` не растёт без объяснимой миграции/импорта
+- `duplicate_clip_candidates_24h` не становится массовым паттерном
+- `review_only_video_detections` остаются объяснимыми и не попадают в визиты
+
+Смысл метрик и инварианты: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md).
 
 ### Покрытие (coverage)
 

@@ -66,6 +66,7 @@ def _processor_detection_payload(raw: dict) -> dict:
         "decision_reason_before_arbitration",
         "decision_reason",
         "decision_kind",
+        "outcome_bucket",
         "evidence_state",
         "trust_band",
         "detector_confidence",

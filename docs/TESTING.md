@@ -50,6 +50,24 @@ Runs pytest against the Flask API (health, status, settings, feed, cameras). Bui
 
 Includes **`TestVerifyPasswordRateLimit`** — `POST /api/ui/settings/verify-password` returns **429** after five wrong passwords in 60s, **`Retry-After`**, separate buckets per `X-Real-IP`, counter reset on success ([ACCESS_CONTROL](./ACCESS_CONTROL.md)).
 
+### Domain integrity quality gate
+
+Admin snapshot:
+
+```bash
+curl -s http://YOUR_HOST:8085/api/ui/system/domain-health
+```
+
+At minimum, check:
+
+- `orphaned_visits = 0`
+- `visit_species_mismatches = 0`
+- `duplicate_name_group_count` does not drift upward without a known migration/import
+- `duplicate_clip_candidates_24h` is not turning into a repeated pattern
+- review-only rows remain explainable and do not leak into visits or monthly stats
+
+Contract details: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md).
+
 ### Coverage
 
 ```bash
