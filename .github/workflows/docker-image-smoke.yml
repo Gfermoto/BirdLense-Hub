@@ -15,7 +15,8 @@ permissions:
   packages: read
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/birdlense-hub:latest
+  # Docker/OCI: имя репозитория в reference должно быть в нижнем регистре.
+  IMAGE: ghcr.io/${{ toLower(github.repository_owner) }}/birdlense-hub:latest
   CONTAINER: birdlense-smoke
   HOST_PORT: "18085"
 

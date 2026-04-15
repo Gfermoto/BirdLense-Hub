@@ -2,13 +2,20 @@ import { test, expect } from '@playwright/test';
 
 async function gotoReady(page: import('@playwright/test').Page, path = '/') {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
-  await page.waitForResponse((response) => {
-    return (
-      response.url().includes('/api/ui/health') &&
-      response.request().method() === 'GET' &&
-      response.ok()
-    );
-  }, { timeout: 15000 }).catch(() => undefined);
+  // UI не дергает /api/ui/health на каждой странице (readiness — отдельно). Ждём любой успешный GET к API хаба.
+  await page
+    .waitForResponse(
+      (response) => {
+        const url = response.url();
+        return (
+          url.includes('/api/ui/') &&
+          response.request().method() === 'GET' &&
+          response.ok()
+        );
+      },
+      { timeout: 20000 },
+    )
+    .catch(() => undefined);
 }
 
 test.describe('Smoke tests', () => {
