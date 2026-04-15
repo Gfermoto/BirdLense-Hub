@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Пока нет записей после релиза **v0.3.5**.
+
+---
+
+## [0.3.5] - 2026-04-15
+
+### Changed
+
+- Версия проекта **0.3.5** (`VERSION`, OpenAPI, MkDocs `site_version`, UI `package.json`).
+
 ### Security
 
 - **Трассировка fusion:** `GET /api/ui/videos/{id}/fusion-trace` и кнопка на странице ролика — только для **оператора (contributor)** и **администратора** (`contributor_or_admin_access`), не для анонимных зрителей. OpenAPI и CONFIGURATION (EN/RU) обновлены.
@@ -161,6 +171,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **UI (Overview):** карточка погоды больше не пропадает из сетки: пока `/api/ui/weather` грузится, показывается скелетон; сбой погоды не блокирует весь обзор — только блок погоды с кнопкой «Повторить».
 
+- **CI:** синхронизация **`app/ui/src/generated/openapi-types.ts`** с `openapi.yaml` (шаг `codegen:openapi` + `git diff` в workflow).
+
+- **CI:** `ruff format` для `web/services/readiness_service.py`, `web/tests/test_system_stabilization.py`.
+
+- **npm (Dependabot GHSA-r4q5-vmmm-2653):** обновлён **follow-redirects** (транзитивно от axios) — `npm audit` без находок.
+
+- **E2E smoke (CI docker-tests):** сценарий **`/unknowns`** — ожидание финального URL **`/timeline`** без **`review=1`** для гостя (как в UI после `Navigate` + сброса review).
+
 ### Tests
 
 - **Visitors track:** `test_security_hardening.py` — **429** при превышении лимита POST `/api/ui/system/visitors/track` по IP (PR #227).
@@ -176,18 +194,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Metrics endpoints (optional auth):** если задан **`BIRDLENSE_METRICS_TOKEN`**, `GET /metrics`, `GET /api/metrics` и `GET /api/metrics/summary` требуют `Authorization: Bearer <тот же токен>` (`hmac.compare_digest`); без переменной поведение как раньше (удобно для scrape в LAN). См. [CONFIGURATION](docs/CONFIGURATION.ru.md) → Prometheus.
 - **Code scanning (path injection):** чтение и удаление превью для Telegram — **`read_safe_image_bytes`** / **`remove_safe_image_file`** в `util.py`: `realpath` + `commonpath` + **`startswith(DATA_DIR + sep)`**, затем `open`/`os.remove`; логика вынесена из `notifications.py`. Удалён **`_safe_image_path_or_none`**. Для **`py/path-injection`** на sink-строках — **`# lgtm[py/path-injection]`** (путь уже ограничен каталогом данных); иначе анализатор не снимает taint с `realpath(path)` до `open`/`remove`.
 
-## [0.3.5] - 2026-04-14
-
-### Changed
-
-- Версия проекта **0.3.5** (`VERSION`, OpenAPI, MkDocs `site_version`, UI `package.json`).
-
-### Fixed
-
-- **CI:** синхронизация **`app/ui/src/generated/openapi-types.ts`** с `openapi.yaml` (шаг `codegen:openapi` + `git diff` в workflow).
-- **CI:** `ruff format` для `web/services/readiness_service.py`, `web/tests/test_system_stabilization.py`.
-- **npm (Dependabot GHSA-r4q5-vmmm-2653):** обновлён **follow-redirects** (транзитивно от axios) — `npm audit` без находок.
-- **E2E smoke (CI docker-tests):** сценарий **`/unknowns`** — ожидание финального URL **`/timeline`** без **`review=1`** для гостя (как в UI после `Navigate` + сброса review).
+---
 
 ## [0.3.4] - 2026-04-09
 
@@ -826,6 +833,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
+[Unreleased]: https://github.com/Gfermoto/BirdLense-Hub/compare/v0.3.5...HEAD
 [0.3.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.5
 [0.3.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.4
 [0.3.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.2
