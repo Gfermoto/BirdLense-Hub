@@ -1,7 +1,9 @@
 """Tests for MQTT outbound queue (processor tech debt #224, disconnect policy #238)."""
 
+import json
 import os
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock
 
@@ -61,6 +63,71 @@ class TestMqttAggregatorPublishQueue(unittest.TestCase):
         self.agg.broker = ""
         self.agg.publish_detection("X", 0.5)
         self.assertEqual(self.agg._publish_queue.qsize(), 0)
+
+    def test_publish_ha_discovery_adds_scale_entities_when_topics_configured(self):
+        agg = MQTTEventAggregator(
+            broker="127.0.0.1",
+            ha_discovery=True,
+            scales_topic="birdlense/scale/weight",
+            scales_bird_present_topic="birdlense/scale/bird_present",
+            scales_unit="g",
+        )
+        agg._client = MagicMock()
+        agg._connected = True
+
+        agg._publish_ha_discovery()
+
+        payloads = [call.args[1] for call in agg._client.publish.call_args_list]
+        self.assertTrue(
+            any('"unique_id": "birdlense_feeder_weight"' in p for p in payloads if isinstance(p, str))
+        )
+        self.assertTrue(
+            any('"unique_id": "birdlense_feeder_bird_present"' in p for p in payloads if isinstance(p, str))
+        )
+
+    def test_publish_ha_discovery_replays_scale_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "feeder_scale_state.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"weight": 12.3, "bird_present": True}, f)
+
+            agg = MQTTEventAggregator(
+                broker="127.0.0.1",
+                ha_discovery=True,
+                scales_topic="birdlense/scale/weight",
+                scales_bird_present_topic="birdlense/scale/bird_present",
+                scales_data_dir=tmpdir,
+                scales_unit="g",
+            )
+            agg._client = MagicMock()
+            agg._connected = True
+
+            agg._publish_ha_discovery()
+
+            calls = [(call.args[0], call.args[1]) for call in agg._client.publish.call_args_list]
+            self.assertIn(("birdlense/sensor/feeder_weight/state", "12.3"), calls)
+            self.assertIn(("birdlense/binary_sensor/feeder_bird_present/state", "ON"), calls)
+
+    def test_scale_mqtt_messages_enqueue_ha_state_updates(self):
+        agg = MQTTEventAggregator(
+            broker="127.0.0.1",
+            ha_discovery=True,
+            scales_topic="birdlense/scale/weight",
+            scales_bird_present_topic="birdlense/scale/bird_present",
+            scales_unit="g",
+        )
+
+        class Msg:
+            def __init__(self, topic, payload):
+                self.topic = topic
+                self.payload = payload
+
+        agg._on_message(None, None, Msg("birdlense/scale/weight", b"45.6"))
+        agg._on_message(None, None, Msg("birdlense/scale/bird_present", b"ON"))
+
+        queued = list(agg._publish_queue.queue)
+        self.assertIn(("birdlense/sensor/feeder_weight/state", "45.6", 1, True), queued)
+        self.assertIn(("birdlense/binary_sensor/feeder_bird_present/state", "ON", 1, True), queued)
 
 
 if __name__ == "__main__":

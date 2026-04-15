@@ -136,6 +136,8 @@ HA_TOPIC_LAST_SPECIES = "birdlense/sensor/last_species/state"
 HA_TOPIC_LAST_CONFIDENCE = "birdlense/sensor/last_confidence/state"
 HA_TOPIC_LAST_TIME = "birdlense/sensor/last_detection_time/state"
 HA_TOPIC_BIRD_DETECTED = "birdlense/binary_sensor/bird_detected/state"
+HA_TOPIC_FEEDER_WEIGHT = "birdlense/sensor/feeder_weight/state"
+HA_TOPIC_FEEDER_BIRD_PRESENT = "birdlense/binary_sensor/feeder_bird_present/state"
 
 
 def _frigate_labels_match_exclude(labels: set, exclude: set) -> bool:
@@ -769,9 +771,73 @@ class MQTTEventAggregator:
             )
             # Initial state: bird_detected OFF
             self._client.publish(HA_TOPIC_BIRD_DETECTED, "OFF", qos=1, retain=True)
+            if self.scales_topic:
+                cfg = {
+                    "name": "Feeder Weight",
+                    "state_topic": HA_TOPIC_FEEDER_WEIGHT,
+                    "unique_id": "birdlense_feeder_weight",
+                    "device": device,
+                    "availability": [{"topic": "birdlense/status"}],
+                    "state_class": "measurement",
+                    "unit_of_measurement": self.scales_unit,
+                    "icon": "mdi:scale",
+                }
+                self._client.publish(
+                    f"{prefix}/sensor/birdlense_feeder_weight/config",
+                    json.dumps(cfg),
+                    qos=1,
+                    retain=True,
+                )
+            if self.scales_bird_present_topic:
+                cfg = {
+                    "name": "Bird on Feeder Scale",
+                    "state_topic": HA_TOPIC_FEEDER_BIRD_PRESENT,
+                    "payload_on": "ON",
+                    "payload_off": "OFF",
+                    "unique_id": "birdlense_feeder_bird_present",
+                    "device": device,
+                    "availability": [{"topic": "birdlense/status"}],
+                    "icon": "mdi:bird",
+                }
+                self._client.publish(
+                    f"{prefix}/binary_sensor/birdlense_feeder_bird_present/config",
+                    json.dumps(cfg),
+                    qos=1,
+                    retain=True,
+                )
+            self._publish_ha_scale_snapshot()
             logger.info("Home Assistant MQTT Autodiscovery configs published")
         except Exception as e:
             logger.warning("HA discovery publish failed: %s", e)
+
+    def _publish_ha_scale_snapshot(self) -> None:
+        """Republish retained scale states after reconnect when a local snapshot exists."""
+        if not self._client or not self.scales_data_dir:
+            return
+        path = os.path.join(self.scales_data_dir, FEEDER_SCALE_STATE_FILE)
+        if not os.path.isfile(path):
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                raw = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return
+        weight = raw.get("weight")
+        if self.scales_topic and weight is not None and str(weight).strip() != "":
+            self._client.publish(HA_TOPIC_FEEDER_WEIGHT, str(weight), qos=1, retain=True)
+        bp = raw.get("bird_present")
+        bp_norm = None
+        if isinstance(bp, bool):
+            bp_norm = bp
+        elif bp is not None:
+            bp_norm = _parse_bird_present_payload(str(bp).encode("utf-8"))
+        if self.scales_bird_present_topic and bp_norm is not None:
+            self._client.publish(
+                HA_TOPIC_FEEDER_BIRD_PRESENT,
+                "ON" if bp_norm else "OFF",
+                qos=1,
+                retain=True,
+            )
 
     def _on_disconnect(self, client, userdata, *args):
         self._connected = False
@@ -1026,6 +1092,13 @@ class MQTTEventAggregator:
                     bird_present=None,
                 )
                 logger.debug("Scales MQTT: weight=%s %s", w, self.scales_unit)
+            if w is not None and self.ha_discovery:
+                self._enqueue_publish(
+                    HA_TOPIC_FEEDER_WEIGHT,
+                    str(w),
+                    qos=1,
+                    retain=True,
+                )
             if w is not None and self._scale_motion_trigger_cb and self._scale_motion_min_delta_kg:
                 w_kg = weight_reading_to_kg(w, self.scales_unit)
                 prev = self._prev_scale_kg
@@ -1049,6 +1122,13 @@ class MQTTEventAggregator:
                     bird_present=bp,
                 )
                 logger.debug("Scales MQTT: bird_present=%s", bp)
+            if bp is not None and self.ha_discovery:
+                self._enqueue_publish(
+                    HA_TOPIC_FEEDER_BIRD_PRESENT,
+                    "ON" if bp else "OFF",
+                    qos=1,
+                    retain=True,
+                )
             return
         if ev:
             self._validate_normalized_event(ev)

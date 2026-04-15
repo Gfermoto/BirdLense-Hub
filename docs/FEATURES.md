@@ -67,7 +67,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 |---------|--------|-------------|
 | **Webhook** | `webhook.url` | POST JSON on each detection (IFTTT, Zapier, custom) |
 | **eBird** | `ebird.country`, `ebird.state`, `ebird.location_name` | Checklist export |
-| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | MQTT discovery — Last Species, Bird at Feeder, … |
+| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | Observe-only MQTT discovery — last species / confidence / detection time, feeder presence, feeder weight (via MQTT scales), availability |
 | **Grafana** | Prometheus scrape | Dashboards from Hub metrics |
 
 ---

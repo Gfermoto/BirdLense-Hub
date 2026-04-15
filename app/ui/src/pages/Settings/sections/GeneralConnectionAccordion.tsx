@@ -352,20 +352,6 @@ export function GeneralConnectionAccordion({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <form.Field name="general.heimdall_url">
-                  {(field) => (
-                    <TextField
-                      fullWidth
-                      value={field.state.value ?? ''}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      label={t('settings.heimdallUrl')}
-                      placeholder="http://heimdall.local"
-                      helperText={t('settings.heimdallUrlHint')}
-                    />
-                  )}
-                </form.Field>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
                 <form.Field name="general.donate_url">
                   {(field) => (
                     <TextField

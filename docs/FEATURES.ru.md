@@ -69,7 +69,7 @@
 |------|--------|----------|
 | **Webhook** | `webhook.url` | POST при детекции (IFTTT, Zapier) |
 | **eBird** | `ebird.country`, `ebird.state`, `ebird.location_name` | Экспорт чеклиста |
-| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | MQTT Autodiscovery — Last Species, Bird at Feeder и др. |
+| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | Observe-only MQTT Autodiscovery — last species / confidence / detection time, присутствие птицы, вес кормушки (через MQTT), availability |
 | **Grafana** | Prometheus scrape | Метрики для дашбордов |
 
 ---

@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 from models import ActivityLog, db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
-from services.gallery_upload_service import upload_video_detections_to_gallery
 from app_config.app_config import app_config
 from services.api_json_validation import (
     parse_request_json_array_allow_empty,
@@ -23,16 +22,6 @@ from services.api_json_validation import (
 from services.http_response_cache import bust_response_caches
 import requests
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
-
-
-def _run_gallery_upload_thread(flask_app, video_id: int):
-    """Gallery upload runs in a daemon thread — must push Flask app context for DB access."""
-    with flask_app.app_context():
-        try:
-            upload_video_detections_to_gallery(video_id)
-        except Exception as e:
-            flask_app.logger.warning("Gallery upload thread failed: %s", e)
-
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
@@ -248,14 +237,6 @@ def register_routes(app):
                     ).start()
                 else:
                     app.logger.warning("Unsafe webhook.url blocked: %s", webhook_url)
-
-            # Публичная галерея: opt-in загрузка кадров (отдельный поток с app context — иначе SQLAlchemy вне контекста)
-            if app_config.get("gallery.enabled") and (app_config.get("gallery.upload_url") or "").strip():
-                threading.Thread(
-                    target=_run_gallery_upload_thread,
-                    args=(app, video.id),
-                    daemon=True,
-                ).start()
 
             return {"message": "Video and associated data inserted successfully.", "video_id": video.id}, 201
 

@@ -51,7 +51,6 @@ _CONFIG_TOP_LEVEL_MAPPING_KEYS = frozenset({
     'camera',
     'detection',
     'ebird',
-    'gallery',
     'general',
     'homeassistant',
     'mcp',

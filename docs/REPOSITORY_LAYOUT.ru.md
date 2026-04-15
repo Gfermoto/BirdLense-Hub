@@ -17,7 +17,6 @@
 | **`Makefile`** (корень) | `deploy`, `docs-site`, Telegram proxy, `restore-config` и т.д. Сборка/запуск приложения — в `app/Makefile`. |
 | **`VERSION`** | Текущая semver-версия хаба (единый источник для проверок версии). |
 | **`examples/`** | Примеры конфигов (например правила Prometheus), приложение их само не подхватывает. |
-| **`docker/gallery-test/`** | Небольшой **отдельный** Docker-пример (галерея); не основной стек из `app/`. |
 | **`wiki-source/`** | Заготовки / автоматизация для GitHub Wiki — см. [WIKI_AUTOMATION.ru](./WIKI_AUTOMATION.ru.md). |
 | **`screenshots/`** | Картинки для доков и статей. |
 | **`docs/article/`** | Черновики внешних публикаций (например Хабр); не часть рантайма. |

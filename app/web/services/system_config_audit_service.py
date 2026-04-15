@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import yaml
 
-from services.heimdall_service import probe_heimdall
-
 DEPRECATED_USER_CONFIG_KEYS = (
+    "gallery.enabled",
+    "gallery.min_confidence",
+    "gallery.only_manually_corrected",
+    "gallery.upload_url",
+    "general.heimdall_url",
     "notifications.enabled",
     "notifications.excluded_species",
     "notifications.rate_limit_per_minute",
@@ -163,8 +166,6 @@ def build_system_config_audit_payload(
     deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
 
     notif = app_config_get("notifications", {}) or {}
-    gallery_enabled = bool(app_config_get("gallery.enabled"))
-    gallery_url = (app_config_get("gallery.upload_url") or "").strip()
     detection_map = app_config_get("detection.species_mapping") or {}
     ebird_map = app_config_get("ebird.species_mapping") or {}
     combined_map = {**detection_map, **ebird_map}
@@ -176,7 +177,6 @@ def build_system_config_audit_payload(
         gray_pairs.get("Gray-headed Woodpecker") == "Grey-headed Woodpecker"
         and gray_pairs.get("Great Gray Shrike") == "Great Grey Shrike"
     )
-    heimdall_url = (app_config_get("general.heimdall_url") or "").strip()
     recall_tuning, recall_warnings = _recall_audit(app_config_get)
     return {
         "deprecated_keys_present": deprecated_present,
@@ -185,20 +185,10 @@ def build_system_config_audit_payload(
             "proxy_type": (notif.get("telegram_proxy_type") or "none"),
             "send_photo": bool(notif.get("send_photo")),
         },
-        "gallery": {
-            "enabled": gallery_enabled,
-            "upload_url": gallery_url or None,
-            "min_confidence": app_config_get("gallery.min_confidence"),
-        },
         "recall_tuning": recall_tuning,
         "recall_warnings": recall_warnings,
         "mapping": {
             "gray_to_grey_ok": gray_to_grey_ok,
             "pairs": gray_pairs,
-        },
-        "heimdall": {
-            "url": heimdall_url or None,
-            "configured": bool(heimdall_url),
-            "probe": probe_heimdall(heimdall_url),
         },
     }
