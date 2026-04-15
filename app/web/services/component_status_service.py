@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +12,8 @@ from models import ActivityLog
 from services.feed_service import check_esphome_reachable, check_mqtt_connected
 from services.status_service import check_video_reachable, parse_yolo_status_from_heartbeat
 from util import ensure_utc
+
+logger = logging.getLogger(__name__)
 
 _TRIGGER_LABELS = {
     "opencv": "OpenCV",
@@ -30,6 +33,30 @@ def _trigger_display(motion_source: str, frigate_parallel: bool) -> str:
     if motion_source == "esphome" and frigate_parallel:
         return "ESPHome + Frigate (MQTT)"
     return trigger_display
+
+
+def _fallback_component_status_payload() -> dict[str, str | None]:
+    """Минимальный payload, если основная сборка упала (деплой/verify не должны валить воркер)."""
+    return {
+        "web": "ok",
+        "processor": "unknown",
+        "video": "unknown",
+        "mqtt": "unknown",
+        "esphome": "unknown",
+        "yolo": "unknown",
+        "motion_source": "unknown",
+        "trigger_display": "unknown",
+        "birdnet_url": None,
+    }
+
+
+def build_component_status_payload_safe(session) -> dict:
+    """Как build_component_status_payload, но без необработанных исключений (readiness / status)."""
+    try:
+        return build_component_status_payload(session)
+    except Exception:
+        logger.exception("build_component_status_payload failed; using fallback")
+        return _fallback_component_status_payload()
 
 
 def build_component_status_payload(session) -> dict:
