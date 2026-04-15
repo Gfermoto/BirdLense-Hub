@@ -32,6 +32,8 @@ def test_cors_local_dev_origins_disabled_by_default_in_production(monkeypatch):
     monkeypatch.delenv("CORS_LOCAL_DEV_ORIGINS", raising=False)
     monkeypatch.setenv("BIRDLENSE_ENV", "production")
     monkeypatch.delenv("FLASK_ENV", raising=False)
+    # В CI Docker .env часто без секрета; web/config.py в production требует FLASK_SECRET_KEY при reload.
+    monkeypatch.setenv("FLASK_SECRET_KEY", "pytest-config-reload-secret")
     import config as config_module
 
     importlib.reload(config_module)
