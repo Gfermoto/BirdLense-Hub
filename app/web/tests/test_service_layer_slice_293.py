@@ -342,19 +342,14 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
             "processor.binary_imgsz": 512,
             "processor.min_center_dist": 0.06,
             "processor.min_box_size_px": 72,
-            "gallery.enabled": True,
-            "gallery.upload_url": " https://x.example/upload ",
-            "gallery.min_confidence": 0.5,
             "detection.species_mapping": {
                 "Gray-headed Woodpecker": "Grey-headed Woodpecker",
                 "Great Gray Shrike": "Great Grey Shrike",
             },
             "ebird.species_mapping": {},
-            "general.heimdall_url": "",
         }
         return mapping.get(key, default)
 
-    monkeypatch.setattr(scas, "probe_heimdall", lambda _url: {"ok": True, "stub": True})
     payload = scas.build_system_config_audit_payload(
         user_config_file=str(user),
         default_config_file=str(default_f),
@@ -365,7 +360,6 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["recall_tuning"]["binary_imgsz"] == 512
     assert payload["recall_tuning"]["check_every_n_frames"] == 2
     assert payload["recall_warnings"]
-    assert payload["heimdall"]["probe"]["ok"] is True
 
 
 def test_build_timeline_export_response_ebird(monkeypatch):

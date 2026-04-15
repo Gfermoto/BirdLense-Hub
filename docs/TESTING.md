@@ -202,15 +202,6 @@ Startup message **“App is UP!”** is from the **web** app. **Detection** noti
 3. Confirm detections exist: log line `Processing stopped. Video Result: [...]` with species; empty result → no Telegram by design.
 4. Check `general.notification_excluded_species`.
 
-### 2.6 Gallery (opt-in public upload)
-
-1. **Local smoke:** from repo root, `docker compose -f docker/gallery-test/docker-compose.yml up -d` → receiver at `http://localhost:8086/api/upload` (see [CONFIGURATION](./CONFIGURATION.md) → Gallery).
-2. **BirdLense + test gallery on one Docker network:** `cd app && docker compose -f docker-compose.yml -f docker-compose.gallery-test.yml up -d`, then set **Settings → Gallery** `upload_url` to `http://gallery-test:5000/api/upload` (service name, not host `localhost`).
-3. **Trigger:** process a clip with **video** YOLO detections that include **track frames**; after `POST /api/processor/videos`, the web app uploads in a background thread. Logs: `Gallery upload:` or `Gallery upload failed` / `Gallery upload thread failed`.
-4. **pytest:** `TestGalleryUploadThread` and `TestGalleryUploadService` in `app/web/tests/test_gallery_upload.py` (run via `make test-web`).
-
----
-
 ## See also
 
 [INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md)

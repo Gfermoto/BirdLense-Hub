@@ -438,7 +438,6 @@ export const fetchStatus = async (): Promise<{
   motion_source?: string;
   trigger_display?: string;
   birdnet_url?: string | null;
-  heimdall_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);
   return response.data;
@@ -475,7 +474,6 @@ export type ReadinessPayload = {
     motion_source?: string;
     trigger_display?: string;
     birdnet_url?: string | null;
-    heimdall_url?: string | null;
   };
 };
 
@@ -557,28 +555,12 @@ export type ConfigAudit = {
     proxy_type: string;
     send_photo: boolean;
   };
-  gallery: {
-    enabled: boolean;
-    upload_url: string | null;
-    min_confidence?: number;
-  };
   mapping: {
     gray_to_grey_ok: boolean;
     pairs: Record<string, string | undefined>;
   };
-  heimdall: {
-    url: string | null;
-    configured: boolean;
-    probe?: {
-      configured: boolean;
-      reachable: boolean;
-      http_status?: number | null;
-      latency_ms?: number | null;
-      title?: string | null;
-      version?: string | null;
-      error?: string | null;
-    };
-  };
+  recall_tuning?: Record<string, unknown>;
+  recall_warnings?: string[];
 };
 
 export const fetchConfigAudit = async (): Promise<ConfigAudit> => {

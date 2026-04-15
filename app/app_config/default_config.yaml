@@ -14,8 +14,6 @@ general:
   session_idle_minutes: 30
   # Ссылка на установку BirdNET (BirdNET-Pi, BirdNET-Go). Пусто — иконка BirdNET не показывается.
   birdnet_url: ""
-  # Ссылка на Heimdall Dashboard. Пусто — ссылка Heimdall в UI скрыта.
-  heimdall_url: ""
   # Ссылка на донаты: задаётся в Настройках → Общие; в UI только иконка-сердце в шапке. Пусто — скрыто.
   donate_url: ""
 
@@ -414,13 +412,6 @@ web_push:
 # Webhook: POST при каждой детекции (IFTTT, Zapier, свои скрипты)
 webhook:
   url: ""  # например https://maker.ifttt.com/trigger/bird_detected/with/key/xxx
-
-# Публичная галерея: opt-in загрузка лучших кадров на общий сайт сообщества
-gallery:
-  enabled: false
-  upload_url: ""  # URL API галереи для приёма кадров (multipart/form-data)
-  min_confidence: 0.55
-  only_manually_corrected: false
 
 # Весы у кормушки: MQTT (топик состояния) или сущность Home Assistant.
 # Совместимо с ESPHome/HA (напр. github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection).
