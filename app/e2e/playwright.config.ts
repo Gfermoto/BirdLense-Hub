@@ -28,6 +28,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  timeout: 15000,
+  // gotoReady ждёт до 20s ответ API; пер-тестовый лимит должен быть с запасом.
+  timeout: process.env.CI ? 45000 : 15000,
   expect: { timeout: 5000 },
 });
