@@ -672,6 +672,20 @@ class TestHealth:
         assert r.json["checks"]["database"]["status"] == "error"
         assert r.json["checks"]["database"]["error"] == "database_unavailable"
 
+    def test_readiness_survives_component_status_exception(self, client, monkeypatch):
+        import services.component_status_service as cs
+
+        def _boom(_session):
+            raise RuntimeError("boom components")
+
+        monkeypatch.setattr(cs, "build_component_status_payload", _boom)
+        r = client.get("/api/ui/readiness")
+        assert r.status_code == 200
+        data = r.json
+        assert data["ready"] is True
+        assert data["components"]["web"] == "ok"
+        assert data["components"]["processor"] == "unknown"
+
 
 class TestStatus:
     def test_status_returns_component_status(self, client):
@@ -697,6 +711,21 @@ class TestStatus:
         r = client.get("/api/ui/status")
         assert r.status_code == 200
         assert r.json["esphome"] in ("ok", "error", "not_configured", "not_used")
+
+    def test_status_survives_component_status_exception(self, client, monkeypatch):
+        from services.cache import cache_delete
+
+        import services.component_status_service as cs
+
+        def _boom(_session):
+            raise RuntimeError("boom components")
+
+        cache_delete("component_status:v1")
+        monkeypatch.setattr(cs, "build_component_status_payload", _boom)
+        r = client.get("/api/ui/status")
+        assert r.status_code == 200
+        assert r.json["web"] == "ok"
+        assert r.json["processor"] == "unknown"
 
 
 class TestSettings:
