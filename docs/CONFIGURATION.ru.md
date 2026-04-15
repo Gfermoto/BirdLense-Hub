@@ -119,6 +119,7 @@
 | `max_record_seconds` | Макс. запись в секундах |
 | `max_inactive_seconds` | Макс. пауза без детекций |
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
+| `min_seconds_between_recordings` | Минимальная пауза после завершения клипа до старта следующего. По умолчанию `8`. Срезает near-duplicate клипы, когда птица осталась в кадре или Frigate/OpenCV почти мгновенно триггерят новую сессию. `0` — выключить cooldown. |
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
 | `min_confidence_binary_bird` | Опционально: отдельный порог **только для боксов Bird** после `track()` (Ultralytics получает `min` всех порогов; отсев по метке в Python). Пример: **0.48** при `min_confidence_binary_squirrel: 0.22` — меньше ложных «птиц» (мышь→синица), белки/грызуны не душатся тем же числом. |
 | `min_confidence_binary_squirrel` | Опционально: порог для боксов Squirrel (нормализация rodent/chipmunk → Squirrel). |
@@ -254,6 +255,8 @@
 - YOLO detector/classifier — основной источник всех persisted video detections.
 - Frigate — helper source: может продвинуть generic detector fallback или добавить confidence boost.
 - BirdNET — confidence-only для видео: bias порогов до решения классификатора, без создания final video label.
+
+**Профиль для максимального recall:** если важнее не пропустить мелких птиц, чем минимизировать ложные срабатывания, при наличии Frigate лучше использовать MQTT-триггер Frigate, оставить `motion.check_every_n_frames=1` и поднять `processor.binary_imgsz` до `640`, `processor.min_center_dist` опустить до `0.03-0.05`, `processor.min_box_size_px` держать `<=64`. В сумерках лучше ослаблять light gate, а не выключать детектор целиком.
 
 **Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 

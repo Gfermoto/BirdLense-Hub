@@ -6,10 +6,12 @@ import logging
 from typing import Iterable
 from datetime import datetime, timezone
 
+from decision_outcome import compute_outcome_bucket
 from multi_camera_confidence import apply_multi_camera_confidence_boost
 from birdnet_merge_key import birdnet_merge_key, sqlite_path_for_birdnet_merge
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
+from hypothesis_arbitration import apply_hypothesis_arbitration
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,15 @@ def _aggregate_birdnet_scores(
         conf = max(0.0, min(1.0, _safe_float(ev.get("confidence"), 0.0)))
         ts = ev.get("timestamp")
         age_hours = 0.0
+        bucket = scores.setdefault(
+            species,
+            {
+                "score": 0.0,
+                "support_count": 0,
+                "max_confidence": 0.0,
+                "timestamp_parse_failed": False,
+            },
+        )
         if ts:
             try:
                 parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
@@ -56,15 +67,8 @@ def _aggregate_birdnet_scores(
                 age_hours = max(0.0, (end_dt - parsed).total_seconds() / 3600.0)
             except Exception:
                 age_hours = 0.0
+                bucket["timestamp_parse_failed"] = True
         weighted = conf * (0.5 ** (age_hours / half_life_hours))
-        bucket = scores.setdefault(
-            species,
-            {
-                "score": 0.0,
-                "support_count": 0,
-                "max_confidence": 0.0,
-            },
-        )
         bucket["score"] += weighted
         bucket["support_count"] += 1
         bucket["max_confidence"] = max(bucket["max_confidence"], conf)
@@ -102,6 +106,7 @@ def _attach_audio_evidence(
         ),
     )
     top_score = _safe_float(top_bucket.get("score"), 0.0)
+    top_support_count = int(top_bucket.get("support_count") or 0)
     for d in detections:
         species_name = normalize(
             str(d.get("species_name") or d.get("species") or ""),
@@ -110,6 +115,10 @@ def _attach_audio_evidence(
         support = birdnet_scores.get(species_name)
         prior = _safe_float((support or {}).get("score"), 0.0)
         d["_birdnet_prior"] = prior
+        d["audio_top_species"] = top_species
+        d["audio_top_score"] = top_score
+        d["audio_top_support_count"] = top_support_count
+        d["_birdnet_timestamp_parse_failed"] = bool((support or top_bucket or {}).get("timestamp_parse_failed"))
         if support:
             d["audio_evidence"] = "support"
             d["audio_support_count"] = int(support.get("support_count") or 0)
@@ -216,6 +225,8 @@ def _frigate_standalone_prepared_rows(
         rows.append(
             {
                 "track_id": -(i + 1),
+                "accepted": True,
+                "visit_eligible": True,
                 "species_name": species,
                 "species": species,
                 "confidence": conf,
@@ -226,6 +237,11 @@ def _frigate_standalone_prepared_rows(
                 "classifier_confidence": None,
                 "decision_reason": reason,
                 "decision_kind": kind,
+                "outcome_bucket": compute_outcome_bucket(
+                    accepted=True,
+                    visit_eligible=True,
+                    decision_kind=kind,
+                ),
                 "notification_eligible": (not suppressed) and notify_standalone,
                 "source": "video",
                 "frigate_standalone": True,
@@ -389,6 +405,7 @@ def build_fused_video_detections(
         end_time=end_time,
         app_config=app_config,
     )
+    fused = apply_hypothesis_arbitration(fused)
     # Optional learned fusion/calibration step. If enabled, the learned scorer
     # produces a calibrated probability from multimodal features and is blended
     # with the existing rule-based confidence.
@@ -412,15 +429,19 @@ def build_fused_video_detections(
                 "key_frame_count": int(d.get("key_frame_count") or 0),
                 "multi_camera_count": int(d.get("_multi_camera_count") or 0),
             }
+            d["_fusion_model_path"] = model_path
             try:
                 fused_score = float(scorer.score(features) or 0.0)
+                d["_fusion_scorer_status"] = "ok"
             except Exception:
                 fused_score = 0.0
+                d["_fusion_scorer_status"] = "error"
             # blend learned score with existing confidence to be conservative by default
             base_conf = float(d.get("confidence") or 0.0)
             final_conf = alpha * fused_score + (1 - alpha) * base_conf
             d["confidence"] = float(final_conf)
-            d["_fusion_used"] = "learned"
+            prev_fusion_used = str(d.get("_fusion_used") or "").strip()
+            d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
     min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)

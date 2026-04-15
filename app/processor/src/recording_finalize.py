@@ -13,17 +13,22 @@ from typing import Any, Optional
 from api import API
 from app_config.app_config import app_config
 from dataset_saver import save_dataset_crops
+from decision_outcome import compute_outcome_bucket
 from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
 from processor_support import get_data_dir
+from processor_provenance import build_pipeline_fingerprint
 from spectrogram import generate_spectrogram
 
 
 _DECISION_TRACE_FIELDS = (
     "track_id",
     "accepted",
+    "outcome_bucket",
     "species_name",
     "confidence",
+    "arbitration_reason",
+    "decision_reason_before_arbitration",
     "decision_reason",
     "decision_kind",
     "trust_band",
@@ -45,10 +50,16 @@ _DECISION_TRACE_FIELDS = (
     "audio_conflict_species",
     "audio_conflict_score",
     "_birdnet_prior",
+    "_birdnet_timestamp_parse_failed",
     "_multi_camera_count",
     "_multi_camera_support",
     "_fusion_used",
     "_fusion_score",
+    "_fusion_scorer_status",
+    "_fusion_model_path",
+    "audio_top_species",
+    "audio_top_score",
+    "audio_top_support_count",
     "frigate_standalone",
     "frigate_merge_suppressed",
 )
@@ -122,6 +133,7 @@ def finalize_motion_recording(
     video_path_for_api: str,
     scales_topic_arg: Optional[str],
     data_dir: str,
+    recording_context: Optional[dict[str, Any]] = None,
 ) -> None:
     """Свести YOLO+MQTT, сохранить видео в API, уведомления; без детекций — удалить папку."""
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
@@ -233,10 +245,25 @@ def finalize_motion_recording(
                 "accepted": False,
                 "decision_reason": "rejected_post_fusion_below_store_threshold",
                 "decision_kind": "rejected",
+                "outcome_bucket": compute_outcome_bucket(
+                    accepted=False,
+                    visit_eligible=bool(item.get("visit_eligible", True)),
+                    decision_kind="rejected",
+                ),
                 "trust_band": "red",
                 "reject_reason_code": "low_confidence",
             }
         )
+
+    logging.info(
+        "Finalize merge snapshot: bytetrack_rows=%s pre_fusion_accepted=%s "
+        "post_fusion_persisted=%s rejected_decision_rows=%s mqtt_events_in_window=%s",
+        yolo_tracks_count,
+        len(accepted_pre_fusion),
+        len(video_detections),
+        len(rejected_decisions),
+        len(mqtt_events),
+    )
 
     for i, d in enumerate(video_detections):
         n_frames = len(d.get("frames") or [])
@@ -266,12 +293,47 @@ def finalize_motion_recording(
             dict(sorted(audio_evidence_summary.items())),
         )
     decision_trace = {
+        "decision_contract_version": "2026-04-polish-v1",
         "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
         "video_path": video_path_for_api,
         "merge_window_seconds": merge_window,
         "persisted_tracks": [],
         "rejected_tracks": [],
+    }
+    decision_trace["pipeline_fingerprint"] = build_pipeline_fingerprint(app_config)
+    clip_duration_seconds = max(0.0, (end_time - start_time).total_seconds())
+    review_only_count = sum(1 for item in video_detections if str(item.get("outcome_bucket") or "") == "review_only")
+    decision_trace["recording_context"] = {
+        "motion_source": app_config.get("motion.source"),
+        "video_source": app_config.get("video.source"),
+        "triggered_camera": (recording_context or {}).get("triggered_camera"),
+        "frigate_activity_hold_seconds": (recording_context or {}).get("frigate_activity_hold_seconds"),
+        "min_seconds_between_recordings": float(app_config.get("processor.min_seconds_between_recordings") or 0),
+        "clip_duration_seconds": round(clip_duration_seconds, 3),
+    }
+    scales_evidence = {
+        "enabled": bool(app_config.get("integrations.scales.enabled")),
+        "weight_estimate_enabled": bool(app_config.get("integrations.scales.weight_estimate_enabled", True)),
+        "topic_present": bool(scales_topic_arg),
+        "estimated_delta_kg": None,
+        "sample_count": 0,
+        "min_delta_kg": None,
+        "require_consecutive_spike": bool(
+            app_config.get("integrations.scales.estimate_require_consecutive_spike", True)
+        ),
+    }
+    raw_min_delta = app_config.get("integrations.scales.min_delta_kg_for_estimate")
+    if raw_min_delta is not None:
+        try:
+            scales_evidence["min_delta_kg"] = float(raw_min_delta)
+        except (TypeError, ValueError):
+            scales_evidence["min_delta_kg"] = None
+    decision_trace["scales_evidence"] = scales_evidence
+    decision_trace["outcome_summary"] = {
+        "persisted_track_count": len(video_detections),
+        "review_only_count": review_only_count,
+        "rejected_track_count": len(rejected_decisions),
     }
     accepted_trace_rows = [_decision_trace_row(item, persisted_to_clip=True) for item in video_detections]
     rejected_trace_rows = [_decision_trace_row(item, persisted_to_clip=False) for item in rejected_decisions]
@@ -352,6 +414,9 @@ def finalize_motion_recording(
                 require_consecutive_spike=bool(require_spike),
             )
             scales_delta_kg = est
+            scales_evidence["estimated_delta_kg"] = est
+            scales_evidence["sample_count"] = int(_n or 0)
+            scales_evidence["min_delta_kg"] = float(min_d)
         resp = api.create_video(
             video_detections,
             audio_detections,

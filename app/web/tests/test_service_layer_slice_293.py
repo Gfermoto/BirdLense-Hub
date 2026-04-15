@@ -331,6 +331,17 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     def _get(key, default=None):
         mapping = {
             "notifications": {"telegram_proxy_type": "http", "send_photo": True},
+            "motion.source": "opencv",
+            "mqtt.broker": "",
+            "motion.check_every_n_frames": 2,
+            "motion.opencv_diff_threshold": 22,
+            "motion.opencv_min_contour_area": 320,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
             "gallery.enabled": True,
             "gallery.upload_url": " https://x.example/upload ",
             "gallery.min_confidence": 0.5,
@@ -351,6 +362,9 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     )
     assert "extra_key" in payload["unknown_keys"]
     assert payload["mapping"]["gray_to_grey_ok"] is True
+    assert payload["recall_tuning"]["binary_imgsz"] == 512
+    assert payload["recall_tuning"]["check_every_n_frames"] == 2
+    assert payload["recall_warnings"]
     assert payload["heimdall"]["probe"]["ok"] is True
 
 

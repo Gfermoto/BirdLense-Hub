@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -32,6 +32,7 @@ const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.L
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
 );
+const NotFoundPage = lazy(() => import('./pages/NotFound'));
 
 /** Keyboard focus ring (WCAG 2.4.7); distinct from mouse-only :focus where supported. */
 const focusVisibleOutline = {
@@ -153,11 +154,6 @@ const theme = createTheme({
         },
       },
     },
-    MuiCircularProgress: {
-      defaultProps: {
-        'aria-label': 'Loading',
-      },
-    },
   },
 });
 
@@ -191,16 +187,19 @@ function App() {
     }
   }, []);
 
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 15,
-        refetchOnWindowFocus: false,
-        retry: 1,
-      },
-    },
-  });
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1000 * 60 * 5, // 5 minutes
+            gcTime: 1000 * 60 * 15,
+            refetchOnWindowFocus: false,
+            retry: 1,
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -208,53 +207,60 @@ function App() {
         <CssBaseline />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ProtectedAreaProvider>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: '100vh',
-              position: 'relative',
-            }}
-          >
-            <SkipToContent />
-            <Navigation />
             <Box
-              id="main-content"
-              component="main"
-              tabIndex={-1}
-              sx={{ flexGrow: 1, pb: 4, outline: 'none' }}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: '100vh',
+                position: 'relative',
+              }}
             >
-              <Container maxWidth="xl">
-                <Suspense
-                  fallback={
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                      <CircularProgress />
-                    </Box>
-                  }
-                >
-                  <ErrorBoundary>
-                  <Routes>
-                    <Route path="/" element={<Overview />} />
-                    <Route path="/timeline" element={<TimelinePage />} />
-                    <Route path="/migration-calendar" element={<MigrationCalendar />} />
-                    <Route path="/videos/:id" element={<VideoDetails />} />
-                    <Route path="/food" element={<FoodManagement />} />
-                    <Route path="/species" element={<Navigate to="/migration-calendar" replace />} />
-                    <Route path="/live" element={<LivePage />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/species/:id" element={<SpeciesSummary />} />
-                    <Route path="/unknowns" element={<Navigate to="/timeline?review=1" replace />} />
-                    <Route path="/system" element={<System />} />
-                    <Route path="/library" element={<Library />} />
-                  </Routes>
-                  </ErrorBoundary>
-                </Suspense>
-              </Container>
+              <SkipToContent />
+              <Navigation />
+              <Box
+                id="main-content"
+                component="main"
+                tabIndex={-1}
+                sx={{ flexGrow: 1, pb: 4, outline: 'none' }}
+              >
+                <Container maxWidth="xl">
+                  <Suspense
+                    fallback={
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                        <CircularProgress />
+                      </Box>
+                    }
+                  >
+                    <ErrorBoundary>
+                      <Routes>
+                        <Route path="/" element={<Overview />} />
+                        <Route path="/timeline" element={<TimelinePage />} />
+                        <Route path="/migration-calendar" element={<MigrationCalendar />} />
+                        <Route path="/videos/:id" element={<VideoDetails />} />
+                        <Route path="/food" element={<FoodManagement />} />
+                        <Route
+                          path="/species"
+                          element={<Navigate to="/migration-calendar" replace />}
+                        />
+                        <Route path="/live" element={<LivePage />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/species/:id" element={<SpeciesSummary />} />
+                        <Route
+                          path="/unknowns"
+                          element={<Navigate to="/timeline?review=1" replace />}
+                        />
+                        <Route path="/system" element={<System />} />
+                        <Route path="/library" element={<Library />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Routes>
+                    </ErrorBoundary>
+                  </Suspense>
+                </Container>
+              </Box>
+              <Footer />
+              <InstallPrompt />
+              <PwaUpdatePrompt />
             </Box>
-            <Footer />
-            <InstallPrompt />
-            <PwaUpdatePrompt />
-          </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />

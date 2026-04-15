@@ -1,12 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
+import { PageHeader } from './PageHeader';
+import { PageLoadingState, PageMessageState } from './PageState';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -38,41 +36,34 @@ export function ProtectedRoute({
   const showNetworkError = accessError === 'network' && !hasAccess;
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   }
 
   if (showNetworkError) {
     return (
-      <Container maxWidth="md" sx={{ pb: 5 }}>
-        <Typography variant="h4" gutterBottom>
-          {title}
-        </Typography>
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {t('settings.accessErrorNetwork')}
-        </Alert>
-      </Container>
+      <PageMessageState
+        title={title}
+        message={t('settings.accessErrorNetwork')}
+        severity="error"
+      />
     );
   }
 
   if (showPasswordDialog) {
     return (
-      <Container maxWidth="md" sx={{ pb: 5 }}>
-        <Typography variant="h4" gutterBottom>
-          {title}
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          {t('protected.passwordRequired')}
-        </Typography>
+      <Box sx={{ pb: 5, maxWidth: 720 }}>
+        <PageHeader
+          title={title}
+          description={t('protected.passwordRequired')}
+          titleVariant="h3"
+          sx={{ mb: 3 }}
+        />
         <SettingsPasswordDialog
           open
           requireAdmin={requireAdmin}
           onSuccess={(role) => setUnlocked(true, role || 'admin')}
         />
-      </Container>
+      </Box>
     );
   }
 

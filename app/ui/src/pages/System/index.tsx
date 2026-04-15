@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
@@ -8,61 +8,75 @@ import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
 import { ProcessorLogs } from './ProcessorLogs';
 import { ProcessorWeightsCard } from './ProcessorWeightsCard';
+import { SystemReadinessCard } from './SystemReadinessCard';
 import Box from '@mui/material/Box';
-import Divider from '@mui/material/Divider';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
+import { PageSection } from '../../components/PageSection';
+import { PageHeader } from '../../components/PageHeader';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const System: React.FC = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.system'));
+  const [mode, setMode] = useState<PageMode>('simple');
+  const isAdvanced = mode === 'advanced';
 
   return (
     <ProtectedRoute title={t('nav.system')}>
-      <Box>
-        <Box>
-          <SystemMonitor />
-        </Box>
+      <Box display="grid" gap={4}>
+        <PageHeader
+          title={t('nav.system')}
+          description={t('system.pageDescription')}
+          actions={<PageModeToggle value={mode} onChange={setMode} />}
+          titleVariant="h3"
+        />
+        <PageSection
+          title={t('system.sections.healthTitle')}
+          description={t('system.sections.healthDescription')}
+        >
+          <SystemReadinessCard />
+          <SystemMonitor showVisitors={isAdvanced} />
+        </PageSection>
 
-        <Divider sx={{ my: 3 }} />
+        <PageSection
+          title={t('system.sections.integrationsTitle')}
+          description={t('system.sections.integrationsDescription')}
+          dividerTop
+        >
+          <ConfigAuditCard simple={!isAdvanced} />
+          <ObservabilityCard simple={!isAdvanced} />
+        </PageSection>
 
-        <Box>
-          <ConfigAuditCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <ObservabilityCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <CatalogDiagnosticsAccordion />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
+        <PageSection
+          title={t('system.sections.catalogTitle')}
+          description={t('system.sections.catalogDescription')}
+          dividerTop
+        >
           <CatalogRepairCard />
-        </Box>
+          {isAdvanced ? <CatalogDiagnosticsAccordion /> : null}
+        </PageSection>
 
-        <Divider sx={{ my: 3 }} />
+        {isAdvanced ? (
+          <PageSection
+            title={t('system.sections.processingTitle')}
+            description={t('system.sections.processingDescription')}
+            dividerTop
+          >
+            <ProcessorWeightsCard />
+            <AutomationCard />
+          </PageSection>
+        ) : null}
 
-        <Box>
-          <AutomationCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <ProcessorWeightsCard />
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Box>
-          <ProcessorLogs />
-        </Box>
+        {isAdvanced ? (
+          <PageSection
+            title={t('system.sections.diagnosticsTitle')}
+            description={t('system.sections.diagnosticsDescription')}
+            dividerTop
+          >
+            <ProcessorLogs />
+          </PageSection>
+        ) : null}
       </Box>
     </ProtectedRoute>
   );

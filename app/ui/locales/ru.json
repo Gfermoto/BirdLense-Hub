@@ -86,6 +86,7 @@
     "recordingsFilesChip": "Файлов: {{count}}",
     "recordingsLoading": "Загрузка статистики архива...",
     "recordingsLoadFailed": "Не удалось загрузить статистику архива записей.",
+    "recordingsEmptyHint": "Записи пока не индексированы. Импортируйте файлы или дождитесь первых клипов, и календарь архива начнёт подсвечиваться.",
     "recordingsLevelNone": "Файлов нет",
     "recordingsLevelLow": "1-7 файлов",
     "recordingsLevelMedium": "8-15 файлов",
@@ -96,7 +97,17 @@
     "datasetToolsLibraryHint": "Ниже на этой же странице доступны сканирование архива, обслуживание БД, backup/restore и обзор хранилища.",
     "datasetExportStarted": "Архив датасета подготовлен, загрузка началась.",
     "maintenanceMovedToSystem": "Операции по архиву, датасету и базе собраны на странице «Библиотека», чтобы не разрывать рабочий поток.",
-    "openSystem": "Открыть Систему"
+    "openSystem": "Открыть Систему",
+    "sections": {
+      "archiveTitle": "Архив и записи",
+      "archiveDescription": "Начинайте с архива записей: выберите день и перейдите в Timeline, чтобы смотреть реальные ролики и детекции.",
+      "exportTitle": "Экспорт для обучения",
+      "exportDescription": "В простом режиме оставлены только период, полезный фильтр и основной экспорт. Параметры подготовки датасета перенесены в «Расширенный».",
+      "storageTitle": "Хранилище и база",
+      "storageDescription": "Контроль диска и объёма записей без смешения с рискованными операциями обслуживания.",
+      "maintenanceTitle": "Обслуживание и отладка",
+      "maintenanceDescription": "Редкие админские действия живут здесь: file replay, перескан, очистка, восстановление и другие операционные инструменты."
+    }
   },
   "overview": {
     "lastBird": "Последняя птица сегодня",
@@ -581,6 +592,7 @@
     "noCameras": "Нет камер. Добавьте в Настройки → Видео → Камеры (stream name из Go2RTC/Frigate).",
     "streamTitle": "Прямой эфир",
     "loading": "Загрузка...",
+    "errorLoad": "Не удалось загрузить список камер.",
     "modeGo2rtc": "RTC/MSE",
     "modeMjpeg": "MJPEG"
   },
@@ -602,6 +614,7 @@
     "exportCsv": "Экспорт CSV",
     "exportJson": "Экспорт JSON",
     "exportEbird": "Экспорт для eBird",
+    "exportFailed": "Не удалось экспортировать таймлайн",
     "timeOfDay": "Время суток",
     "timeAllDay": "Весь день",
     "timeNight": "Ночь (22–06)",
@@ -755,9 +768,20 @@
     "appName": "BirdLense Hub",
     "na": "н/д",
     "help": "Справка",
+    "helpAbout": "Справка о разделе «{{title}}»",
     "language": "Язык",
+    "openMenu": "Открыть меню навигации",
+    "openSettingsMenu": "Открыть меню настроек",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
+    "viewMode": "Режим страницы",
+    "simpleMode": "Простой",
+    "advancedMode": "Расширенный",
     "iNaturalist": "Отправить в iNaturalist",
-    "skipToContent": "Перейти к основному содержимому"
+    "skipToContent": "Перейти к основному содержимому",
+    "pageNotFoundTitle": "Страница не найдена",
+    "pageNotFoundDescription": "Этой страницы нет или ссылка устарела.",
+    "backToDashboard": "На главную"
   },
   "migrationCalendar": {
     "title": "Календарь миграций",
@@ -795,6 +819,8 @@
     "viewVideo": "Смотреть видео",
     "correctSpecies": "Исправить вид",
     "reviewStatePending": "На проверке",
+    "reviewReasonLowConfidence": "Низкая уверенность",
+    "reviewReasonGenericBird": "Общая метка Bird",
     "confirmCorrect": "Верно",
     "confirmCorrectHelp": "Вид определён верно — убрать из списка",
     "confirmBlockedPendingApply": "В списке выбран другой вид — нажмите «Применить», чтобы сохранить, или сбросьте выбор в списке, чтобы нажать «Верно».",
@@ -829,7 +855,8 @@
     "bulkDeleteNoSelection": "Сначала выберите хотя бы один объект на проверке.",
     "bulkDeleteNoDate": "Сначала выберите дату.",
     "bulkDeletePreviewRequired": "Сначала создайте предпросмотр.",
-    "bulkDeleteFailed": "Не удалось выполнить массовое удаление."
+    "bulkDeleteFailed": "Не удалось выполнить массовое удаление.",
+    "bulkDeleteAdminOnly": "Предпросмотр и массовое удаление доступны только администратору, если настроен отдельный пароль оператора."
   },
   "species": {
     "searchPlaceholder": "Поиск видов...",
@@ -1057,7 +1084,20 @@
     "noon": "Полдень"
   },
   "system": {
+    "pageDescription": "Здесь собраны здоровье хаба, интеграции, состояние каталога и сервисные инструменты.",
     "storage": "Хранилище",
+    "sections": {
+      "healthTitle": "Состояние системы",
+      "healthDescription": "Сначала показываем состояние хоста: CPU, память, диск, GPU и короткие тренды. Статистику посетителей убираем в «Расширенный».",
+      "integrationsTitle": "Интеграции и доставка",
+      "integrationsDescription": "В простом режиме остаётся ответ на главный вопрос: работают ли ключевые интеграции и уведомления. Сырые URL и глубокая телеметрия — только в «Расширенный».",
+      "catalogTitle": "Каталог видов",
+      "catalogDescription": "Качество каталога и его починка должны жить рядом. В простом режиме виден основной путь обслуживания, а глубокая диагностика скрыта.",
+      "processingTitle": "Обработка и модели",
+      "processingDescription": "Веса, fusion и операции уровня процессора полезны, но слишком технические для режима по умолчанию.",
+      "diagnosticsTitle": "Техническая диагностика",
+      "diagnosticsDescription": "Логи и низкоуровневые инструменты остаются доступны, но только в явном расширенном рабочем режиме."
+    },
     "processorLogs": "Логи процессора",
     "processorLogsHint": "Последние {{lines}} строк. Автообновление каждые 10 с. Для удалённой диагностики без доступа к docker logs.",
     "processorWeightsTitle": "Веса процессора (YOLO)",
@@ -1295,10 +1335,41 @@
     "observabilityHint": "За последние 24 часа показываем источник превью, итог доставки и причину fallback для Telegram-уведомлений. Ниже — URL экспорта метрик Hub для Heimdall/Grafana.",
     "observabilityGeneratedTitle": "Сгенерированные превью",
     "observabilityLoadError": "Не удалось загрузить данные наблюдаемости",
+    "readinessTitle": "Готовность установки и деплоя",
+    "readinessHint": "Эта карточка показывает тот же verify-контракт, который используют install, deploy и smoke-проверки.",
+    "readinessLoadError": "Не удалось загрузить данные готовности",
+    "readinessReady": "Готово",
+    "readinessDegraded": "Требует внимания",
+    "readinessCheckedAt": "Последняя проверка: {{at}}",
+    "readinessVerifyPass": "Общий verify-контракт проходит: health, readiness и status выглядят нормально.",
+    "readinessVerifyFail": "Базовое приложение поднялось, но одна из readiness-проверок не прошла. Перед завершением деплоя проверьте пути, базу данных или логи.",
+    "readinessCheck": {
+      "database": "БД",
+      "dataDir": "data/",
+      "configDir": "app_config/",
+      "web": "web"
+    },
+    "readinessState": {
+      "ok": "ok",
+      "error": "ошибка"
+    },
     "observabilityPreviewTitle": "Источники превью в финальных уведомлениях",
     "observabilityDeliveryTitle": "Итог доставки",
     "observabilityFallbackTitle": "Причины fallback",
+    "mlHealthTitle": "Состояние ML",
+    "mlHealthCorrections7d": "Исправлений за 7 дн.: {{n}}",
+    "mlHealthCorrectionRate7d": "Доля исправлений за 7 дн.: {{n}}%",
+    "mlHealthManualRate30d": "Ручных аннотаций за 30 дн.: {{n}}%",
+    "mlHealthUnknownRate30d": "Unknown rate за 30 дн.: {{n}}%",
+    "mlHealthGenericRate30d": "Generic rate за 30 дн.: {{n}}%",
+    "modelLineageTitle": "Линейка модели",
+    "modelLineageFingerprint": "Fingerprint конфига",
+    "modelLineageNoArtifacts": "Нет деталей по артефактам модели.",
+    "statusPresent": "есть",
+    "statusMissing": "нет",
     "hubMetricsForHeimdall": "Экспорт метрик Hub (для виджетов Heimdall)",
+    "hubMetricsPrometheus": "Prometheus",
+    "hubMetricsJson": "JSON",
     "hubMetricsHeimdallNote": "Укажите полный URL вашего BirdLense (например http://192.168.1.11:8085/metrics). Hub отдаёт метрики наружу; Heimdall «смотрит» на Hub, а не наоборот.",
     "previewSource": {
       "best_frame": "best_frame",

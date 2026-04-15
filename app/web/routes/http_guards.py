@@ -43,3 +43,15 @@ def require_admin_track_regen(view: F) -> F:
         return view(*args, **kwargs)
 
     return wrapped  # type: ignore[return-value]
+
+
+def require_ui_contributor_or_admin(view: F) -> F:
+    """UI-сессия админа или оператора (``contributor_or_admin_access``); иначе 403."""
+
+    @wraps(view)
+    def wrapped(*args: Any, **kwargs: Any):
+        if not auth_mod.contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
+        return view(*args, **kwargs)
+
+    return wrapped  # type: ignore[return-value]

@@ -27,7 +27,7 @@
 | Tokens in examples | `your-secret-token`, `your-api-key` |
 | `user_config.yaml.bak` committed | `.gitignore` |
 
-`app/.env.example` may keep **example** private IPs. Editor-specific local overrides (e.g. deploy hints under `.cursor/`) stay untracked—only committed templates apply to everyone.
+`app/.env.example` may keep **example** private IPs. Maintainer-only local overrides (untracked deploy env files, personal SSH aliases) stay out of git—only committed templates apply to everyone.
 
 ### 1.3 Security themes (from [docs/SECURITY](./SECURITY.md))
 

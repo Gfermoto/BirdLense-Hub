@@ -44,7 +44,14 @@ class MQTTBinaryMotionDetector:
             self._connected = False
             logger.warning(f"MQTT binary connect failed: {reason_code}")
 
-    def _on_disconnect(self, client, userdata, reason_code, properties=None):
+    def _on_disconnect(
+        self,
+        client,
+        userdata,
+        disconnect_flags,
+        reason_code,
+        properties=None,
+    ):
         self._connected = False
         logger.warning(f"MQTT binary disconnected: {reason_code}")
 
@@ -91,6 +98,10 @@ class MQTTBinaryMotionDetector:
             self._event.clear()
             return True
         return False
+
+    def mark_pending(self):
+        """Re-arm the pending motion flag when caller defers recording."""
+        self._event.set()
 
     def detect(self):
         """Block until motion (ON) received. Returns True."""

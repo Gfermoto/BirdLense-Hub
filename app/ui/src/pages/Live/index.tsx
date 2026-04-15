@@ -2,11 +2,15 @@ import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCameras } from '../../api/api';
+import { PageHeader } from '../../components/PageHeader';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 type StreamMode = 'go2rtc' | 'mjpeg';
 
@@ -59,20 +63,29 @@ const CameraStream = ({
 
 export const LivePage = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.liveView'));
   const [streamMode, setStreamMode] = useState<StreamMode>('go2rtc');
-  const { data: cameras, isLoading } = useQuery({
+  const { data: cameras, isLoading, error, refetch } = useQuery({
     queryKey: ['cameras'],
     queryFn: fetchCameras,
   });
 
   if (isLoading) {
+    return <PageLoadingState label={t('live.loading')} />;
+  }
+
+  if (error) {
     return (
-      <Box>
-        <Typography variant="h4" mb={3}>
-          {t('live.streamTitle')}
-        </Typography>
-        <Typography>{t('live.loading')}</Typography>
-      </Box>
+      <PageMessageState
+        title={t('nav.liveView')}
+        message={t('live.errorLoad')}
+        severity="error"
+        action={
+          <Button variant="outlined" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      />
     );
   }
 
@@ -85,26 +98,26 @@ export const LivePage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-        <Typography variant="h4">
-          {t('live.title')}
-        </Typography>
-        {hasMjpeg && (
-          <ToggleButtonGroup
-            value={streamMode}
-            exclusive
-            onChange={(_, v: StreamMode | null) => v != null && setStreamMode(v)}
-            size="small"
-          >
-            <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
-            <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>
-          </ToggleButtonGroup>
-        )}
-      </Box>
+      <PageHeader
+        title={t('live.title')}
+        description={t('live.streamTitle')}
+        actions={
+          hasMjpeg ? (
+            <ToggleButtonGroup
+              value={streamMode}
+              exclusive
+              onChange={(_, v: StreamMode | null) => v != null && setStreamMode(v)}
+              size="small"
+            >
+              <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
+              <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>
+            </ToggleButtonGroup>
+          ) : null
+        }
+        sx={{ mb: 3 }}
+      />
       {cams.length === 0 ? (
-        <Typography color="text.secondary">
-          {t('live.noCameras')}
-        </Typography>
+        <PageMessageState message={t('live.noCameras')} />
       ) : (
       <Grid container spacing={2}>
         {cams.map((cam) => (

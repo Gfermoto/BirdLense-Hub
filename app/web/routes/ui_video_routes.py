@@ -8,7 +8,7 @@ from flask import request, send_file
 from sqlalchemy.orm import joinedload
 
 from app_config.app_config import app_config
-from auth import contributor_or_admin_access
+from auth import contributor_or_admin_access, ui_sensitive_export_access
 from models import Species, SpeciesVisit, Video, VideoSpecies, db
 from services.api_json_validation import parse_request_json_dict
 from services.cache import cache_get, cache_set
@@ -99,9 +99,9 @@ def register_ui_video_routes(app):
     def get_video_fusion_trace(video_id):
         """Трассировка fusion (ActivityLog decision_trace) для ролика (#272).
 
-        Только contributor/admin (как скачивание/merge), не для гостей.
+        Как export/download: contributor/admin, MCP Bearer или UI API key; не для гостей.
         """
-        if not contributor_or_admin_access():
+        if not ui_sensitive_export_access():
             return {"error": "Access denied"}, 403
         body, code = build_fusion_trace_api_payload(video_id)
         return body, code

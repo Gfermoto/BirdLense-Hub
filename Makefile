@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards
+.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards
 
 deploy:
 	@./scripts/deploy.sh
@@ -9,6 +9,9 @@ restore-config:
 
 build start stop logs:
 	@$(MAKE) -C app $@
+
+verify:
+	@./scripts/verify-stack.sh --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
 
 docs:
 	@$(MAKE) -C app docs

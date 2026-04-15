@@ -42,6 +42,16 @@
 9. **Спектрограмма** → FFmpeg (аудио) + librosa (mel) → `spectrogram_200.jpg`
 10. **API** → processor отправляет POST `/api/processor/videos` с fused-детекциями
 
+### Доменные границы времени
+
+BirdLense держит три разные временные сущности:
+
+- **trigger-time** — когда источник движения разбудил сессию;
+- **clip-time** — физические границы `Video` / файла `video.mp4`;
+- **visit-time** — логическое окно присутствия вида после дедупликации.
+
+Подробный контракт и инварианты: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md).
+
 ### Видео: Frigate (опционально)
 
 1. **Frigate** → публикует в MQTT `frigate/events` (детекция + Bird Classification)

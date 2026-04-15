@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import {
   Link as RouterLink,
   useLocation,
@@ -59,7 +59,18 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { PageHelp } from '../../components/PageHelp';
 import { unknownsHelpConfig } from '../../page-help-config';
 
-function UnknownCard({
+function reviewReasonLabel(t: (key: string) => string, reason?: string) {
+  switch (reason) {
+    case 'low_confidence':
+      return t('unknowns.reviewReasonLowConfidence');
+    case 'generic_bird':
+      return t('unknowns.reviewReasonGenericBird');
+    default:
+      return reason || '';
+  }
+}
+
+export function UnknownCard({
   detection,
   speciesList,
   onCorrect,
@@ -82,6 +93,7 @@ function UnknownCard({
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [correcting, setCorrecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const reviewReason = reviewReasonLabel(t, detection.review_reason);
 
   const pendingSpeciesChange =
     selectedSpeciesId !== '' && Number(selectedSpeciesId) !== Number(detection.species_id);
@@ -152,16 +164,24 @@ function UnknownCard({
               {detection.detection_provider && (
                 <Chip label={detection.detection_provider} size="small" variant="outlined" />
               )}
-            {detection.review_state && (
-              <Chip
-                label={detection.review_state === 'pending'
-                  ? t('unknowns.reviewStatePending')
-                  : detection.review_state}
-                size="small"
-                color="info"
-                variant="outlined"
-              />
-            )}
+              {detection.review_state && (
+                <Chip
+                  label={detection.review_state === 'pending'
+                    ? t('unknowns.reviewStatePending')
+                    : detection.review_state}
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                />
+              )}
+              {reviewReason && (
+                <Chip
+                  label={reviewReason}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                />
+              )}
             </Box>
           </Box>
           <CardActionArea
@@ -196,7 +216,12 @@ function UnknownCard({
               />
             )}
             <FormControl size="small" fullWidth>
-              <InputLabel id={`unknowns-correct-species-${detection.id}`}>{t('unknowns.correctSpecies')}</InputLabel>
+              <InputLabel
+                id={`unknowns-correct-species-${detection.id}`}
+                shrink
+              >
+                {t('unknowns.correctSpecies')}
+              </InputLabel>
               <Select
                 labelId={`unknowns-correct-species-${detection.id}`}
                 displayEmpty
@@ -274,7 +299,12 @@ function UnknownCard({
   );
 }
 
-export function UnknownsPage() {
+export type UnknownsPageProps = {
+  /** Ряд чипов переключения режима (Записи / На проверке) — под заголовком страницы. */
+  afterTitleSlot?: ReactNode;
+};
+
+export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -365,15 +395,20 @@ export function UnknownsPage() {
   }, [selectedDateKey, timeOfDay]);
 
   useEffect(() => {
+    if (!selectedDate) return;
+    const dateStr = selectedDate.format('YYYY-MM-DD');
+    if (
+      searchParams.get('review') === '1' &&
+      searchParams.get('date') === dateStr &&
+      searchParams.get('time_of_day') === timeOfDay
+    ) {
+      return;
+    }
     const next = new URLSearchParams(searchParams);
     next.set('review', '1');
-    if (selectedDate) {
-      next.set('date', selectedDate.format('YYYY-MM-DD'));
-    }
+    next.set('date', dateStr);
     next.set('time_of_day', timeOfDay);
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true });
-    }
+    setSearchParams(next, { replace: true });
   }, [searchParams, selectedDate, setSearchParams, timeOfDay]);
 
   useEffect(() => {
@@ -440,8 +475,8 @@ export function UnknownsPage() {
       setBulkActionError(null);
       setBulkDialogOpen(true);
     },
-    onError: (err: Error) => {
-      setBulkActionError(err.message || t('errors.loadSightings'));
+    onError: (err: unknown) => {
+      setBulkActionError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
 
@@ -470,8 +505,8 @@ export function UnknownsPage() {
       setBulkConfirmText('');
       setBulkActionError(null);
     },
-    onError: (err: Error) => {
-      setBulkActionError(err.message || t('unknowns.bulkDeleteFailed'));
+    onError: (err: unknown) => {
+      setBulkActionError(getApiErrorMessage(err, t('unknowns.bulkDeleteFailed')));
     },
   });
 
@@ -546,6 +581,7 @@ export function UnknownsPage() {
   return (
     <>
       <PageHelp {...unknownsHelpConfig} />
+      {afterTitleSlot}
       <Box
         display="flex"
         flexWrap="wrap"
@@ -580,40 +616,54 @@ export function UnknownsPage() {
       </Box>
 
       {canEdit && unknowns && unknowns.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
-            <Box>
-              <Typography variant="body2" fontWeight={600}>
-                {t('unknowns.bulkDeleteSummary', {
-                  detectionCount: selectedDetectionCount,
-                  videoCount: selectedVideoCount,
-                })}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {t('unknowns.bulkDeleteHint', { phrase: bulkPreview?.confirmation_phrase || 'permanent_full' })}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button
-                variant="outlined"
-                color="warning"
-                onClick={() => void openBulkPreview()}
-                disabled={previewBulkDeleteMutation.isPending || selectedDetectionCount === 0}
-              >
-                {previewBulkDeleteMutation.isPending
-                  ? t('unknowns.bulkDeletePreviewing')
-                  : t('unknowns.bulkDeletePreview')}
-              </Button>
-              <Button
-                variant="text"
-                onClick={clearBulkSelection}
-                disabled={selectedDetectionCount === 0}
-              >
-                {t('unknowns.bulkDeleteClear')}
-              </Button>
+        <>
+          {bulkActionError && !bulkDialogOpen && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              onClose={() => setBulkActionError(null)}
+            >
+              {bulkActionError}
+            </Alert>
+          )}
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  {t('unknowns.bulkDeleteSummary', {
+                    detectionCount: selectedDetectionCount,
+                    videoCount: selectedVideoCount,
+                  })}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t('unknowns.bulkDeleteHint', { phrase: bulkPreview?.confirmation_phrase || 'permanent_full' })}
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => void openBulkPreview()}
+                  disabled={
+                    previewBulkDeleteMutation.isPending ||
+                    selectedDetectionCount === 0
+                  }
+                >
+                  {previewBulkDeleteMutation.isPending
+                    ? t('unknowns.bulkDeletePreviewing')
+                    : t('unknowns.bulkDeletePreview')}
+                </Button>
+                <Button
+                  variant="text"
+                  onClick={clearBulkSelection}
+                  disabled={selectedDetectionCount === 0}
+                >
+                  {t('unknowns.bulkDeleteClear')}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        </Alert>
+          </Alert>
+        </>
       )}
 
 

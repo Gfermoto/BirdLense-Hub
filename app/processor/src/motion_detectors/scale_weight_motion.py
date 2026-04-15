@@ -23,3 +23,6 @@ class ScaleWeightMotionPending:
             self._event.clear()
             return True
         return False
+
+    def mark_pending(self) -> None:
+        self._event.set()
