@@ -58,9 +58,7 @@ def _support_count(row: dict) -> int:
     if bool(row.get("_multi_camera_support")):
         supports += 1
     providers = {
-        str(provider).strip().lower()
-        for provider in (row.get("contributing_providers") or [])
-        if str(provider).strip()
+        str(provider).strip().lower() for provider in (row.get("contributing_providers") or []) if str(provider).strip()
     }
     provider = str(row.get("detection_provider") or "").strip().lower()
     if provider:
@@ -105,11 +103,7 @@ def _merge_provider_sets(rows: Iterable[dict]) -> list[str]:
         provider = str(row.get("detection_provider") or "").strip()
         if provider:
             providers.add(provider)
-        providers.update(
-            str(item).strip()
-            for item in (row.get("contributing_providers") or [])
-            if str(item).strip()
-        )
+        providers.update(str(item).strip() for item in (row.get("contributing_providers") or []) if str(item).strip())
     return sorted(providers)
 
 

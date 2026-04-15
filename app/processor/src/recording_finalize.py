@@ -255,6 +255,16 @@ def finalize_motion_recording(
             }
         )
 
+    logging.info(
+        "Finalize merge snapshot: bytetrack_rows=%s pre_fusion_accepted=%s "
+        "post_fusion_persisted=%s rejected_decision_rows=%s mqtt_events_in_window=%s",
+        yolo_tracks_count,
+        len(accepted_pre_fusion),
+        len(video_detections),
+        len(rejected_decisions),
+        len(mqtt_events),
+    )
+
     for i, d in enumerate(video_detections):
         n_frames = len(d.get("frames") or [])
         if n_frames > 0:

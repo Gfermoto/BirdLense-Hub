@@ -86,17 +86,13 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
             f"motion.opencv_diff_threshold={opencv_diff_threshold} is conservative; lower values are more sensitive."
         )
     if opencv_min_contour_area > 250:
-        warnings.append(
-            f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds."
-        )
+        warnings.append(f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds.")
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
         warnings.append(
             "processor.light_gate_* may skip dusk/night frames before YOLO runs; lower them if you need more recall in low light."
         )
     if binary_imgsz < 640:
-        warnings.append(
-            f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss."
-        )
+        warnings.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
     if min_center_dist > 0.05:
         warnings.append(
             f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge."
