@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -50,6 +50,9 @@ stop:
 logs:
 	@docker compose logs -f --tail=200
 
+verify:
+	@../scripts/verify-stack.sh --base-url "http://127.0.0.1:$${BIRDLENSE_PORT:-8085}"
+
 # Деплой на сервер: ../scripts/deploy.sh (см. docs/INSTALL.md)
 deploy:
 	@cd .. && ./scripts/deploy.sh
@@ -70,8 +73,10 @@ test-processor-light:
 		bash -c 'export PYTHONPATH=/app:/app/web:/app/processor/src SKIP_HEAVY_PROCESSOR_TESTS=1 && \
 		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
 
+# По умолчанию -q: 400+ тестов с -v раздувают лог CI (обрыв/лимит раннера). Для отладки: TEST_WEB_VERBOSE=1 make test-web
 test-web:
-	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense python -m pytest web/tests/ -v
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
+		bash -c 'if [ "$$TEST_WEB_VERBOSE" = 1 ]; then exec python -m pytest web/tests/ -v; else exec python -m pytest web/tests/ -q --tb=short; fi'
 
 # Один раз: python3 -m venv .venv && pip install -r web/requirements.txt
 venv-web:

@@ -119,6 +119,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_record_seconds` | Max recording length (seconds) |
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
+| `min_seconds_between_recordings` | Minimum pause after a clip ends before a new one may start. Default `8`. Helps suppress near-duplicate clips when the bird stays in frame or Frigate/OpenCV retrigger immediately. `0` disables the cooldown. |
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
 | `min_confidence_binary_bird` | Optional: stricter **Bird-only** threshold after `track()` (Ultralytics uses `min` of all thresholds; per-label filter in Python). Example: **0.48** with `min_confidence_binary_squirrel: 0.22` cuts false “birds” (e.g. mouse→tit) without choking rodents. |
 | `min_confidence_binary_squirrel` | Optional: threshold for Squirrel boxes (rodent/chipmunk names normalize to Squirrel). |
@@ -254,6 +255,8 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 - YOLO detector/classifier is the primary source of every persisted video detection.
 - Frigate is a helper source: it can promote a generic detector fallback or add a confidence boost when it agrees with the video track.
 - BirdNET is confidence-only for video. It can bias thresholds before the classifier decision but does not create a final video label.
+
+**Recall-first feeder profile:** when you care more about not missing small birds than minimizing false positives, prefer Frigate MQTT as the trigger when available, keep `motion.check_every_n_frames=1`, and use `processor.binary_imgsz=640`, `processor.min_center_dist=0.03-0.05`, `processor.min_box_size_px<=64`. In low light, relax the light gate instead of disabling detection entirely.
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 

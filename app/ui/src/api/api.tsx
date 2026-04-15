@@ -444,6 +444,48 @@ export const fetchStatus = async (): Promise<{
   return response.data;
 };
 
+export type ReadinessPayload = {
+  status: string;
+  ready: boolean;
+  checked_at: string;
+  checks: {
+    database: { status: string; error?: string };
+    data_dir: {
+      path: string;
+      exists: boolean;
+      is_dir: boolean;
+      writable: boolean;
+      status: string;
+    };
+    app_config_dir: {
+      path: string;
+      exists: boolean;
+      is_dir: boolean;
+      writable: boolean;
+      status: string;
+    };
+  };
+  components: {
+    web: string;
+    processor: string;
+    video: string;
+    mqtt: string;
+    esphome?: string;
+    yolo: string;
+    motion_source?: string;
+    trigger_display?: string;
+    birdnet_url?: string | null;
+    heimdall_url?: string | null;
+  };
+};
+
+export const fetchReadiness = async (): Promise<ReadinessPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/readiness`, {
+    validateStatus: (status) => status === 200 || status === 503,
+  });
+  return response.data;
+};
+
 export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
   donate_url: string | null;

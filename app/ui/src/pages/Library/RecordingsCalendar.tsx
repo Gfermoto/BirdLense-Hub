@@ -106,22 +106,33 @@ export function RecordingsCalendar() {
       return data;
     },
   });
+  const validStorageStats = useMemo(() => {
+    const rows = Array.isArray(storageStats) ? storageStats : [];
+    return rows.filter(
+      (item): item is StorageDay =>
+        typeof item?.date === 'string' &&
+        typeof item?.fileCount === 'number' &&
+        Number.isFinite(item.fileCount) &&
+        typeof item?.totalSize === 'number' &&
+        Number.isFinite(item.totalSize),
+    );
+  }, [storageStats]);
 
   const statsRange = useMemo(() => {
-    if (storageStats.length === 0) return null;
-    const sorted = [...storageStats].sort((a, b) =>
+    if (validStorageStats.length === 0) return null;
+    const sorted = [...validStorageStats].sort((a, b) =>
       a.date.localeCompare(b.date),
     );
     return {
       first: sorted[0]?.date ?? null,
       last: sorted[sorted.length - 1]?.date ?? null,
     };
-  }, [storageStats]);
+  }, [validStorageStats]);
 
   const monthPrefix = selectedMonth.format('YYYY-MM-');
   const monthStats = useMemo(
-    () => storageStats.filter((item) => item.date.startsWith(monthPrefix)),
-    [storageStats, monthPrefix],
+    () => validStorageStats.filter((item) => item.date.startsWith(monthPrefix)),
+    [validStorageStats, monthPrefix],
   );
   const recordedDays = monthStats.length;
   const totalFiles = monthStats.reduce((sum, item) => sum + item.fileCount, 0);
@@ -173,6 +184,8 @@ export function RecordingsCalendar() {
           </Typography>
         ) : isError ? (
           <Alert severity="error">{t('library.recordingsLoadFailed')}</Alert>
+        ) : validStorageStats.length === 0 ? (
+          <Alert severity="info">{t('library.recordingsEmptyHint')}</Alert>
         ) : (
           <>
             <Box
@@ -236,7 +249,7 @@ export function RecordingsCalendar() {
                   day: (props) => (
                     <CalendarDay
                       {...props}
-                      days={storageStats}
+                      days={validStorageStats}
                       levels={levels}
                       onOpenDay={(date) => navigate(`/timeline?date=${date}`)}
                     />

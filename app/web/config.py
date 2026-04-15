@@ -13,10 +13,11 @@ if not _SECRET_KEY:
     _SECRET_KEY = "birdlense-settings-session"
 
 # Локальная разработка (Vite, LAN): не хранить в app.py — один источник для CORS.
-_CORS_LOCAL_DEV_ORIGINS_DEFAULT = (
+_CORS_LOCAL_DEV_ORIGINS_DEV = (
     "http://localhost:5173,http://127.0.0.1:5173,http://birdlense.local,"
     "http://birdlense.local:80,http://localhost:8085,http://127.0.0.1:8085"
 )
+_CORS_LOCAL_DEV_ORIGINS_DEFAULT = "" if _is_production else _CORS_LOCAL_DEV_ORIGINS_DEV
 
 
 class Config:

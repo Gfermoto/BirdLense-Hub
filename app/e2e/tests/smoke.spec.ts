@@ -1,16 +1,39 @@
 import { test, expect } from '@playwright/test';
 
+async function gotoReady(page: import('@playwright/test').Page, path = '/') {
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
+  // UI не дергает /api/ui/health на каждой странице (readiness — отдельно). Ждём любой успешный GET к API хаба.
+  await page
+    .waitForResponse(
+      (response) => {
+        const url = response.url();
+        return (
+          url.includes('/api/ui/') &&
+          response.request().method() === 'GET' &&
+          response.ok()
+        );
+      },
+      { timeout: 20000 },
+    )
+    .catch(() => undefined);
+}
+
+/** Страницы с React Query часто показывают MUI progressbar в main после первого API-ответа. */
+async function waitMainSpinnerGone(page: import('@playwright/test').Page) {
+  const bar = page.locator('main [role="progressbar"]');
+  await expect(bar).toHaveCount(0, { timeout: 60000 });
+}
+
 test.describe('Smoke tests', () => {
   test('homepage loads and shows main navigation', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await gotoReady(page, '/');
     await expect(page).toHaveTitle(/Bird/i, { timeout: 15000 });
-    await expect(page.getByRole('link', { name: 'Timeline' }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('a[href="/timeline"]').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('navigation links work', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: /Timeline|Записи/i }).first().click();
+    await gotoReady(page, '/');
+    await page.locator('a[href="/timeline"]').first().click();
     await expect(page).toHaveURL(/\/timeline/);
 
     await page.goto('/settings');
@@ -21,35 +44,49 @@ test.describe('Smoke tests', () => {
   });
 
   test('Settings page loads', async ({ page }) => {
-    await page.goto('/settings', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible({ timeout: 15000 });
+    await gotoReady(page, '/settings');
+    await expect(page.getByText(/Update Settings|Обновить настройки|更新设置/i)).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Live page loads', async ({ page }) => {
-    await page.goto('/live', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: /Live/i })).toBeVisible({ timeout: 15000 });
+    await gotoReady(page, '/live');
+    await expect(page.getByRole('heading', { name: /Live|直播/i })).toBeVisible({ timeout: 15000 });
   });
 
   test('Overview page loads', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Overview|Обзор/i).first()).toBeVisible({ timeout: 15000 });
+    await gotoReady(page, '/');
+    await waitMainSpinnerGone(page);
+    // nav.dashboard: EN «Dashboard», RU «Панель», ZH «仪表板» (не «Overview»).
+    await expect(page.getByText(/Dashboard|Панель|仪表板|Overview|Обзор/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Timeline page loads', async ({ page }) => {
-    await page.goto('/timeline', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Timeline|Записи|Select/i).first()).toBeVisible({ timeout: 15000 });
+    await gotoReady(page, '/timeline');
+    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Migration page shows region comparison block', async ({ page }) => {
-    await page.goto('/migration-calendar', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/Region Comparison|Сравнение с регионом/i).first()).toBeVisible({
+    await gotoReady(page, '/migration-calendar');
+    await waitMainSpinnerGone(page);
+    await expect(
+      page.getByText(/Region Comparison|Сравнение с регионом|区域比较|地区比较/i).first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
 
   test('Overview species chart: legend opens timeline or shows empty state', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
-    const topHeading = page.getByRole('heading', { name: /Top Species Distribution|Топ видов/i });
+    await gotoReady(page, '/');
+    await waitMainSpinnerGone(page);
+    const topHeading = page.getByRole('heading', {
+      name: /Top Species Distribution|Топ видов|主要物种分布/i,
+    });
     await expect(topHeading).toBeVisible({ timeout: 20000 });
 
     const chips = page.getByTestId('overview-species-legend-chip');
@@ -68,26 +105,31 @@ test.describe('Smoke tests', () => {
     // Несколько блоков Overview делят один и тот же текст «no data» — привязываем к секции «Топ видов».
     const panel = topHeading.locator('..');
     await expect(
-      panel.getByText(/No data for selected day|Нет данных за выбранный день/i),
+      panel.getByText(/No data for selected day|Нет данных за выбранный день|所选日期没有数据/i),
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test('Unknowns legacy URL redirects to timeline review mode', async ({ page }) => {
-    await page.goto('/unknowns', { waitUntil: 'networkidle' });
-    await expect(page).toHaveURL(/\/timeline\?review=1/);
-    await expect(page.getByText(/Review|На проверке|Unknown|Неизвестн/i).first()).toBeVisible({
+  test('Unknowns legacy URL lands on timeline', async ({ page }) => {
+    await gotoReady(page, '/unknowns');
+    // /unknowns → /timeline?review=1. На хабе без пароля canEdit=true — review=1 остаётся (это ок).
+    // С паролем гость получает replace без review=1 (см. TimelinePage useEffect).
+    await expect(page).toHaveURL(/\/timeline/);
+    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
       timeout: 15000,
     });
   });
 
   test('Species legacy URL redirects to migration page', async ({ page }) => {
-    await page.goto('/species', { waitUntil: 'networkidle' });
+    await gotoReady(page, '/species');
     await expect(page).toHaveURL(/\/migration-calendar/);
-    await expect(page.getByText(/Migration|Мигра/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Migration|Мигра|迁移/i).first()).toBeVisible({ timeout: 15000 });
   });
 
   test('System page loads', async ({ page }) => {
-    await page.goto('/system', { waitUntil: 'networkidle' });
-    await expect(page.getByText(/System|Система/i).first()).toBeVisible({ timeout: 15000 });
+    await gotoReady(page, '/system');
+    await expect(page.getByText(/System|Система|系统/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 });

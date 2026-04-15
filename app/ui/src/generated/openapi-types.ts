@@ -46,6 +46,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness check
+         * @description Returns a richer operational payload for install/deploy verification. Unlike `/health`,
+         *     this includes database and filesystem checks plus the same component summary used by the UI.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Core services and writable paths are ready */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example true */
+                            ready: boolean;
+                            /** Format: date-time */
+                            checked_at: string;
+                            checks: {
+                                database?: {
+                                    status?: string;
+                                };
+                                data_dir?: {
+                                    path?: string;
+                                    exists?: boolean;
+                                    is_dir?: boolean;
+                                    writable?: boolean;
+                                    status?: string;
+                                };
+                                app_config_dir?: {
+                                    path?: string;
+                                    exists?: boolean;
+                                    is_dir?: boolean;
+                                    writable?: boolean;
+                                    status?: string;
+                                };
+                            };
+                            components: {
+                                web?: string;
+                                processor?: string;
+                                video?: string;
+                                mqtt?: string;
+                                esphome?: string;
+                                yolo?: string;
+                                motion_source?: string;
+                                trigger_display?: string;
+                                birdnet_url?: string | null;
+                                heimdall_url?: string | null;
+                            };
+                        };
+                    };
+                };
+                /** @description App is up but not fully ready for use */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example degraded */
+                            status: string;
+                            /** @example false */
+                            ready: boolean;
+                            /** Format: date-time */
+                            checked_at: string;
+                            checks: {
+                                database?: {
+                                    status?: string;
+                                    error?: string;
+                                };
+                                data_dir?: {
+                                    path?: string;
+                                    exists?: boolean;
+                                    is_dir?: boolean;
+                                    writable?: boolean;
+                                    status?: string;
+                                };
+                                app_config_dir?: {
+                                    path?: string;
+                                    exists?: boolean;
+                                    is_dir?: boolean;
+                                    writable?: boolean;
+                                    status?: string;
+                                };
+                            };
+                            components: {
+                                web?: string;
+                                processor?: string;
+                                video?: string;
+                                mqtt?: string;
+                                esphome?: string;
+                                yolo?: string;
+                                motion_source?: string;
+                                trigger_display?: string;
+                                birdnet_url?: string | null;
+                                heimdall_url?: string | null;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Component status
+         * @description Returns the lightweight component summary used by the navigation indicators in the UI.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Current component status payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            web: string;
+                            processor: string;
+                            video: string;
+                            mqtt: string;
+                            esphome?: string;
+                            yolo: string;
+                            motion_source?: string;
+                            trigger_display?: string;
+                            birdnet_url?: string | null;
+                            heimdall_url?: string | null;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/weather": {
         parameters: {
             query?: never;

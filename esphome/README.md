@@ -18,6 +18,8 @@ esphome upload esphome/bird-feeder-relay.yaml
 
 - Топики по умолчанию: **`birdlense/scale/weight`**, **`birdlense/scale/bird_present`**, **`birdlense/scale/command`** (см. `substitutions` в начале файла).
 - В настройках BirdLense: **`integrations.scales.mqtt_topic_prefix: birdlense/scale`**, **`unit: g`**, поле **MQTT topic для веса** оставить пустым (или задать полный топик вручную).
+- **API** и **OTA** (как у реле): `ota_password` в `secrets.yaml`; при желании включите шифрование API (см. комментарий в YAML).
+- Пины HX711: **`hx_dout_pin`**, **`hx_clk_pin`** в `substitutions` (по умолчанию GPIO27 / GPIO25).
 - Секреты вынесите в **`secrets.yaml`** рядом с конфигом (см. пример ниже).
 
 ### Секреты

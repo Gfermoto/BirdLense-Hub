@@ -18,7 +18,7 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 |-----|----------------|
 | **`python-security`** | **Bandit** on `web/` + `processor/src`; **pip-audit** on `web/requirements.txt` + `processor/requirements.txt` |
 | **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` on `web/` + `processor/src/`; **radon cc** summary; **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + drift check on `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; production build of the SPA (`app/ui`) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + drift check on `src/generated/openapi-types.ts`; **Vitest** (`npm run test -- --run`); **`npm run typecheck`**; `npm run lint`; production build of the SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, **Settings UI coverage** report (artifact + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **catalog cards audit** script (artifact) |
 
@@ -49,6 +49,24 @@ cd app && make test-web
 Runs pytest against the Flask API (health, status, settings, feed, cameras). Build the image first: `make build`.
 
 Includes **`TestVerifyPasswordRateLimit`** — `POST /api/ui/settings/verify-password` returns **429** after five wrong passwords in 60s, **`Retry-After`**, separate buckets per `X-Real-IP`, counter reset on success ([ACCESS_CONTROL](./ACCESS_CONTROL.md)).
+
+### Domain integrity quality gate
+
+Admin snapshot:
+
+```bash
+curl -s http://YOUR_HOST:8085/api/ui/system/domain-health
+```
+
+At minimum, check:
+
+- `orphaned_visits = 0`
+- `visit_species_mismatches = 0`
+- `duplicate_name_group_count` does not drift upward without a known migration/import
+- `duplicate_clip_candidates_24h` is not turning into a repeated pattern
+- review-only rows remain explainable and do not leak into visits or monthly stats
+
+Contract details: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md).
 
 ### Coverage
 
@@ -98,11 +116,19 @@ Use this when you need confidence **without** waiting for real birds (e.g. after
 ### 2.1 Health & logs (first pass)
 
 ```bash
+BASE_URL=http://YOUR_HOST:8085 make verify
 curl -s http://YOUR_HOST:8085/api/ui/health
+curl -s http://YOUR_HOST:8085/api/ui/readiness
 curl -s http://YOUR_HOST:8085/api/ui/status
 ```
 
-Expect `processor: ok`, `web: ok`. Motion source: `opencv` or `frigate` as configured.
+Expect:
+
+- `health` → `{"status":"ok"}`
+- `readiness` → `"ready": true`
+- `status` → `processor: ok|offline`, `web: ok`
+
+Motion source: `opencv` or `frigate` as configured.
 
 **Processor logs:** UI **System → Processor logs**, or:
 
@@ -160,11 +186,12 @@ Use `-u` / `-P` if the broker requires auth.
 
 ### 2.4 Overnight checklist (minimal)
 
-1. `curl .../api/ui/status` → `processor: ok`; if Frigate motion, `mqtt: ok`
-2. `.env` has real `PROCESSOR_SECRET`; deploy health URL is the **server**, not localhost
-3. Last 50 lines of processor log — no errors / 403
-4. `./scripts/test-deploy-recognition.sh` → new clip in UI (YOLO path)
-5. If Frigate: synthetic `mosquitto_pub` → `Frigate trigger` in log
+1. `BASE_URL=http://YOUR_HOST:8085 make verify` → PASS
+2. `curl .../api/ui/status` → `processor: ok`; if Frigate motion, `mqtt: ok`
+3. `.env` has real `PROCESSOR_SECRET`; deploy health URL is the **server**, not localhost
+4. Last 50 lines of processor log — no errors / 403
+5. `./scripts/test-deploy-recognition.sh` → new clip in UI (YOLO path)
+6. If Frigate: synthetic `mosquitto_pub` → `Frigate trigger` in log
 
 ### 2.5 Telegram: detections missing until restart
 

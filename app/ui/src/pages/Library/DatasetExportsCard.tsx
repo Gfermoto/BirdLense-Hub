@@ -37,7 +37,11 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-export function DatasetExportsCard() {
+export function DatasetExportsCard({
+  simple = false,
+}: {
+  simple?: boolean;
+}) {
   const { t } = useTranslation();
   const [exportingDataset, setExportingDataset] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
@@ -64,10 +68,21 @@ export function DatasetExportsCard() {
       return data;
     },
   });
+  const validStorageStats = useMemo(() => {
+    const rows = Array.isArray(storageStats) ? storageStats : [];
+    return rows.filter(
+      (item): item is StorageDay =>
+        typeof item?.date === 'string' &&
+        typeof item?.fileCount === 'number' &&
+        Number.isFinite(item.fileCount) &&
+        typeof item?.totalSize === 'number' &&
+        Number.isFinite(item.totalSize),
+    );
+  }, [storageStats]);
 
   const storageRange = useMemo(() => {
-    if (!storageStats.length) return null;
-    const sorted = [...storageStats].sort((a, b) =>
+    if (!validStorageStats.length) return null;
+    const sorted = [...validStorageStats].sort((a, b) =>
       a.date.localeCompare(b.date),
     );
     const first = sorted[0]?.date;
@@ -81,7 +96,7 @@ export function DatasetExportsCard() {
       totalFiles: sorted.reduce((sum, item) => sum + (item.fileCount || 0), 0),
       totalSize: sorted.reduce((sum, item) => sum + (item.totalSize || 0), 0),
     };
-  }, [storageStats]);
+  }, [validStorageStats]);
 
   const applyPreset = (preset: 'last7' | 'last30' | 'all') => {
     const today = storageRange?.end || dayjs();
@@ -269,7 +284,7 @@ export function DatasetExportsCard() {
           <Stack spacing={1}>
             <Button
               variant="outlined"
-              disabled={exportingDataset}
+              disabled={exportingDataset || !storageRange}
               onClick={handleExportDataset}
               startIcon={<DownloadIcon />}
               fullWidth
@@ -282,60 +297,66 @@ export function DatasetExportsCard() {
               <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
             )}
 
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={readyForTrain}
-                  onChange={(event) => setReadyForTrain(event.target.checked)}
-                  size="small"
-                />
-              }
-              label={t('storage.readyForTrain')}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeTestSplit}
-                  onChange={(event) =>
-                    setIncludeTestSplit(event.target.checked)
+            {!simple ? (
+              <>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={readyForTrain}
+                      onChange={(event) => setReadyForTrain(event.target.checked)}
+                      size="small"
+                    />
                   }
-                  disabled={!readyForTrain}
-                  size="small"
+                  label={t('storage.readyForTrain')}
                 />
-              }
-              label={t('storage.includeTestSplit')}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={strictQualityExport}
-                  onChange={(event) =>
-                    setStrictQualityExport(event.target.checked)
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={includeTestSplit}
+                      onChange={(event) =>
+                        setIncludeTestSplit(event.target.checked)
+                      }
+                      disabled={!readyForTrain}
+                      size="small"
+                    />
                   }
-                  disabled={!readyForTrain}
-                  size="small"
+                  label={t('storage.includeTestSplit')}
                 />
-              }
-              label={t('storage.strictQualityExport')}
-            />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={strictQualityExport}
+                      onChange={(event) =>
+                        setStrictQualityExport(event.target.checked)
+                      }
+                      disabled={!readyForTrain}
+                      size="small"
+                    />
+                  }
+                  label={t('storage.strictQualityExport')}
+                />
+              </>
+            ) : null}
           </Stack>
 
-          <Stack spacing={1}>
-            <Button
-              variant="outlined"
-              disabled={retroExporting}
-              onClick={handleRetroExport}
-              startIcon={<FolderOpenIcon />}
-              fullWidth
-            >
-              {retroExporting
-                ? t('storage.retroExporting')
-                : t('storage.retroExport')}
-            </Button>
-            {retroExporting && (
-              <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
-            )}
-          </Stack>
+          {!simple ? (
+            <Stack spacing={1}>
+              <Button
+                variant="outlined"
+                disabled={retroExporting || !storageRange}
+                onClick={handleRetroExport}
+                startIcon={<FolderOpenIcon />}
+                fullWidth
+              >
+                {retroExporting
+                  ? t('storage.retroExporting')
+                  : t('storage.retroExport')}
+              </Button>
+              {retroExporting && (
+                <LinearProgress sx={{ height: 4, borderRadius: 2 }} />
+              )}
+            </Stack>
+          ) : null}
 
           <Alert severity="info">{t('library.datasetToolsLibraryHint')}</Alert>
         </Stack>

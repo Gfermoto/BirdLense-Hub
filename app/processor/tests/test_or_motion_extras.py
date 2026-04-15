@@ -15,12 +15,17 @@ from motion_detectors.or_motion import OrMotionDetector
 class _Primary:
     def __init__(self):
         self._e = threading.Event()
+        self.recent_calls = []
 
     def check_pending(self):
         return False
 
     def get_triggered_camera(self):
         return 'cam1'
+
+    def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
+        self.recent_calls.append((camera, max_age_seconds, min_confidence))
+        return camera == 'cam1' and max_age_seconds == 6 and min_confidence == 0.0
 
 
 class _Extra:
@@ -34,6 +39,9 @@ class _Extra:
         return False
 
     def fire(self):
+        self._e.set()
+
+    def mark_pending(self):
         self._e.set()
 
 
@@ -58,6 +66,27 @@ class TestOrMotionExtras(unittest.TestCase):
         self.assertTrue(or_det.detect())
         self.assertLess(time.time() - t0, 2.0)
         self.assertTrue(or_det.get_triggered_camera() is None)
+
+    def test_requeue_last_trigger_rearms_extra_event(self):
+        primary = _Primary()
+        extra = _Extra()
+        or_det = OrMotionDetector(primary=primary, additional=None, extras=[extra])
+        extra.fire()
+        self.assertTrue(or_det.detect())
+        self.assertTrue(or_det.requeue_last_trigger())
+        self.assertTrue(or_det.detect())
+
+    def test_has_recent_frigate_activity_delegates_to_primary(self):
+        primary = _Primary()
+        or_det = OrMotionDetector(primary=primary, additional=None, extras=[])
+        self.assertTrue(
+            or_det.has_recent_frigate_activity(
+                camera='cam1',
+                max_age_seconds=6,
+                min_confidence=0.0,
+            )
+        )
+        self.assertEqual(primary.recent_calls, [('cam1', 6, 0.0)])
 
 
 if __name__ == '__main__':

@@ -23,6 +23,8 @@
 | **Go2RTC** | Внешний (или рядом) шлюз потоков. Hub забирает RTSP/WebRTC/HLS; nginx может проксировать `/go2rtc/*`. Конфиг: `video.go2rtc_url`. |
 | **Live** | Просмотр в браузере — UI Go2RTC или MJPEG процессора `/processor/live`. |
 | **Запись** | Клип в `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4` + строка в БД и детекции. |
+| **Recording session** | Один цикл `motion -> capture -> finalize` в процессоре; может закончиться пустым удалённым клипом, review-only клипом или клипом с визитами. |
+| **Clip-time** | Физические границы одного `Video` / `video.mp4`. |
 
 ---
 
@@ -55,6 +57,7 @@
 |--------|----------|
 | **Источник движения** | Что запускает запись: OpenCV на потоке, события Frigate по MQTT, binary MQTT, ESPHome. `motion.source`. |
 | **Триггер** | Событие начала/продолжения записи; YOLO запускается после валидного триггера (в зависимости от режима). |
+| **Trigger-time** | Время, когда motion source инициировал сессию записи. |
 
 ---
 
@@ -65,7 +68,7 @@
 | **Admin (роль)** | Разблокировка `settings_password` — полный UI, кормушка, система, перезапуск processor. |
 | **Contributor (роль)** | `contributor_password` — разметка и экспорты без админ-функций. |
 | **Viewer** | Без разблокировки — просмотр (экспорты см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)). |
-| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **внешних ИИ-ассистентов** (LLM-хосты); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./MCP_SETUP.ru.md). |
+| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **авторизованных клиентов** (автоматизация, интеграции); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./MCP_SETUP.ru.md). |
 | **`PROCESSOR_SECRET`** | Секрет processor → web API (`X-Processor-Token`). |
 
 ---
@@ -76,6 +79,8 @@
 |--------|----------|
 | **Timeline** | Визиты и клипы по времени; экспорт CSV/JSON/eBird. |
 | **Визит вида** | Логическая сущность из детекций и окон дедупликации (`dedup_window_seconds`). |
+| **Review-only detection** | Детекция, видимая человеку, но не создающая `SpeciesVisit`; обычно `visit_eligible = false`. |
+| **Canonical taxon** | Каноническая сущность вида (`SpeciesTaxon`), к которой сводятся алиасы и исторические имена. |
 | **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](./DATASETS.ru.md)). |
 
 ---

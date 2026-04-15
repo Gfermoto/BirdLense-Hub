@@ -3,6 +3,8 @@ import time
 from collections import Counter
 import re
 
+from decision_outcome import compute_outcome_bucket
+
 logger = logging.getLogger(__name__)
 
 # Default min confidence; can be overridden via app_config processor.min_confidence_to_process.
@@ -42,6 +44,10 @@ class DecisionMaker:
         post_record_seconds=0,
         min_confidence_to_store=0.30,
         classifier_fallback_bird=True,
+        generic_bird_min_detector_conf=None,
+        generic_bird_min_frames=3,
+        generic_bird_min_area_frac=0.01,
+        generic_bird_min_best_frame_score=6.5,
     ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
@@ -66,6 +72,26 @@ class DecisionMaker:
         except (TypeError, ValueError):
             self.min_confidence_to_store = 0.30
         self.classifier_fallback_bird = bool(classifier_fallback_bird)
+        try:
+            self.generic_bird_min_detector_conf = (
+                float(generic_bird_min_detector_conf)
+                if generic_bird_min_detector_conf is not None
+                else max(float(self.min_confidence_to_store), 0.45)
+            )
+        except (TypeError, ValueError):
+            self.generic_bird_min_detector_conf = max(float(self.min_confidence_to_store), 0.45)
+        try:
+            self.generic_bird_min_frames = max(1, int(generic_bird_min_frames))
+        except (TypeError, ValueError):
+            self.generic_bird_min_frames = 3
+        try:
+            self.generic_bird_min_area_frac = max(0.0, min(1.0, float(generic_bird_min_area_frac)))
+        except (TypeError, ValueError):
+            self.generic_bird_min_area_frac = 0.01
+        try:
+            self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
+        except (TypeError, ValueError):
+            self.generic_bird_min_best_frame_score = 6.5
         self.reset()
 
     def _trust_band_for_decision(
@@ -110,6 +136,19 @@ class DecisionMaker:
             return "low_confidence"
         return None
 
+    def _outcome_bucket(
+        self,
+        *,
+        accepted: bool,
+        visit_eligible: bool,
+        decision_kind: str,
+    ) -> str:
+        return compute_outcome_bucket(
+            accepted=accepted,
+            visit_eligible=visit_eligible,
+            decision_kind=decision_kind,
+        )
+
     def _bbox_area_frac(self, bbox) -> float:
         if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
             return 0.0
@@ -144,16 +183,16 @@ class DecisionMaker:
         """Generic Bird is accepted for visits/notifications only with stronger visual support."""
         if str(detector_label or "").strip().lower() != "bird":
             return True
-        # Conservative defaults: require multiple bbox samples + non-tiny object + decent detector conf.
-        min_det = max(float(self.min_confidence_to_store), 0.45)
+        # Configurable defaults: keep obvious generic Bird visits, but avoid tiny/noisy tracks.
+        min_det = max(float(self.min_confidence_to_store), float(self.generic_bird_min_detector_conf))
         if float(detector_conf or 0.0) < min_det:
             return False
         max_area, n_frames = self._generic_bird_visual_support(track)
-        if n_frames < 3:
+        if n_frames < self.generic_bird_min_frames:
             return False
-        if max_area < 0.01:  # ~1% of frame area (normalized xyxy)
+        if max_area < self.generic_bird_min_area_frac:
             return False
-        if float(track.get("best_frame_score") or 0.0) < 6.5:
+        if float(track.get("best_frame_score") or 0.0) < self.generic_bird_min_best_frame_score:
             return False
         return True
 
@@ -310,6 +349,7 @@ class DecisionMaker:
                     {
                         "track_id": track_id,
                         "accepted": False,
+                        "outcome_bucket": "rejected",
                         "decision_reason": "rejected_short_track",
                         "trust_band": "red",
                         "start_time": track["start_time"],
@@ -325,6 +365,7 @@ class DecisionMaker:
                     {
                         "track_id": track_id,
                         "accepted": False,
+                        "outcome_bucket": "rejected",
                         "decision_reason": "rejected_missing_detector_candidate",
                         "trust_band": "red",
                         "start_time": track["start_time"],
@@ -490,6 +531,11 @@ class DecisionMaker:
                 {
                     "track_id": track_id,
                     "accepted": accepted,
+                    "outcome_bucket": self._outcome_bucket(
+                        accepted=accepted,
+                        visit_eligible=bool(visit_eligible),
+                        decision_kind=decision_kind,
+                    ),
                     "visit_eligible": bool(visit_eligible),
                     "notification_eligible": bool(notification_eligible),
                     "species_name": out_species,

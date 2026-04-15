@@ -27,6 +27,7 @@ def test_production_strict_blocks_species_list_without_session(client, _strict_p
 
 def test_production_strict_allows_bootstrap_endpoints(client, _strict_prod_env):
     assert client.get("/api/ui/health").status_code == 200
+    assert client.get("/api/ui/readiness").status_code == 200
     assert client.get("/api/ui/settings/requires-password").status_code == 200
     assert client.get("/api/ui/settings/check-access").status_code == 200
     r = client.post("/api/ui/settings/verify-password", json={"password": ""})
