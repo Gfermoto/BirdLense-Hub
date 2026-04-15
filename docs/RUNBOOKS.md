@@ -1,5 +1,7 @@
 # Operations runbooks — BirdLense Hub
 
+[Русский](./RUNBOOKS.ru.md)
+
 Short operator playbooks for the most common failures.
 
 ## Install succeeded, but UI does not open
@@ -16,6 +18,20 @@ Interpretation:
 
 - `health` OK, `readiness` FAIL: web process is alive, but DB or writable directories are broken.
 - `readiness` OK, `status` degraded: the core hub is ready, but optional integrations like processor/video/MQTT still need attention.
+
+If settings are open or you have admin access, also check:
+
+- `GET /api/ui/system/domain-health`
+- `GET /api/ui/system/species-registry/health`
+
+For scripted checks on a locked hub, pass `BIRDLENSE_UI_API_KEY` and run
+`REQUIRE_SETTINGS_HEALTH=1 BASE_URL=... ./scripts/verify-release.sh`.
+
+For `scripts/verify-stack.sh`, add `--check-domain-health` when you also set `BIRDLENSE_UI_API_KEY` (or `UI_API_KEY`) so domain and registry endpoints can authenticate.
+
+GitHub Actions deploy: optional repository secret **`BIRDLENSE_UI_API_KEY`** (match server `app/.env`) turns on domain-health checks in the Verify step — see [RELEASE_READINESS](./RELEASE_READINESS.md).
+
+Release checklist: [RELEASE_READINESS](./RELEASE_READINESS.md).
 
 ## Deploy finished, but the browser shows stale UI
 

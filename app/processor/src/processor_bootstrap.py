@@ -24,6 +24,8 @@ from mqtt_runtime import (
 from processor_support import check_restart_flag
 from recording_session import MotionRecordingSession
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class ProcessorRunContext:
@@ -146,6 +148,8 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
 
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
+    last_recording_end = 0.0
+    cooldown = float(app_config.get("processor.min_seconds_between_recordings") or 0)
     while True:
         check_restart_flag()
         ft = ctx.file_test
@@ -156,8 +160,31 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 continue
         if not ctx.session.motion_detector.detect():
             continue
+        wait = recording_cooldown_remaining(
+            last_recording_end=last_recording_end,
+            cooldown=cooldown,
+        )
+        if wait > 0:
+            elapsed = cooldown - wait
+            requeued = bool(
+                getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)()
+            )
+            logger.info(
+                "Skipping motion trigger: processor.min_seconds_between_recordings=%.1fs "
+                "(%.1fs since last clip, requeued=%s)",
+                cooldown,
+                elapsed,
+                requeued,
+            )
+            time.sleep(wait)
+            continue
         ctx.session.api.notify_motion()
-        if ctx.session.run():
+        should_stop = False
+        try:
+            should_stop = bool(ctx.session.run())
+        finally:
+            last_recording_end = time.monotonic()
+        if should_stop:
             break
 
 
@@ -167,3 +194,17 @@ def close_processor_media(ctx: ProcessorRunContext) -> None:
             src.close()
     else:
         ctx.media_setup.media_source.close()
+
+
+def recording_cooldown_remaining(
+    *,
+    last_recording_end: float,
+    cooldown: float,
+    now_monotonic: float | None = None,
+) -> float:
+    """Return remaining seconds before a new recording may start."""
+    if cooldown <= 0 or last_recording_end <= 0:
+        return 0.0
+    now = time.monotonic() if now_monotonic is None else float(now_monotonic)
+    elapsed = max(0.0, now - float(last_recording_end))
+    return max(0.0, float(cooldown) - elapsed)

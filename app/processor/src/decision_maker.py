@@ -3,6 +3,8 @@ import time
 from collections import Counter
 import re
 
+from decision_outcome import compute_outcome_bucket
+
 logger = logging.getLogger(__name__)
 
 # Default min confidence; can be overridden via app_config processor.min_confidence_to_process.
@@ -133,6 +135,19 @@ class DecisionMaker:
                 return "insufficient_frames"
             return "low_confidence"
         return None
+
+    def _outcome_bucket(
+        self,
+        *,
+        accepted: bool,
+        visit_eligible: bool,
+        decision_kind: str,
+    ) -> str:
+        return compute_outcome_bucket(
+            accepted=accepted,
+            visit_eligible=visit_eligible,
+            decision_kind=decision_kind,
+        )
 
     def _bbox_area_frac(self, bbox) -> float:
         if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
@@ -334,6 +349,7 @@ class DecisionMaker:
                     {
                         "track_id": track_id,
                         "accepted": False,
+                        "outcome_bucket": "rejected",
                         "decision_reason": "rejected_short_track",
                         "trust_band": "red",
                         "start_time": track["start_time"],
@@ -349,6 +365,7 @@ class DecisionMaker:
                     {
                         "track_id": track_id,
                         "accepted": False,
+                        "outcome_bucket": "rejected",
                         "decision_reason": "rejected_missing_detector_candidate",
                         "trust_band": "red",
                         "start_time": track["start_time"],
@@ -514,6 +531,11 @@ class DecisionMaker:
                 {
                     "track_id": track_id,
                     "accepted": accepted,
+                    "outcome_bucket": self._outcome_bucket(
+                        accepted=accepted,
+                        visit_eligible=bool(visit_eligible),
+                        decision_kind=decision_kind,
+                    ),
                     "visit_eligible": bool(visit_eligible),
                     "notification_eligible": bool(notification_eligible),
                     "species_name": out_species,

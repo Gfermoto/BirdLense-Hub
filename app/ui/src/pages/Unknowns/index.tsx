@@ -59,7 +59,18 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { PageHelp } from '../../components/PageHelp';
 import { unknownsHelpConfig } from '../../page-help-config';
 
-function UnknownCard({
+function reviewReasonLabel(t: (key: string) => string, reason?: string) {
+  switch (reason) {
+    case 'low_confidence':
+      return t('unknowns.reviewReasonLowConfidence');
+    case 'generic_bird':
+      return t('unknowns.reviewReasonGenericBird');
+    default:
+      return reason || '';
+  }
+}
+
+export function UnknownCard({
   detection,
   speciesList,
   onCorrect,
@@ -82,6 +93,7 @@ function UnknownCard({
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [correcting, setCorrecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const reviewReason = reviewReasonLabel(t, detection.review_reason);
 
   const pendingSpeciesChange =
     selectedSpeciesId !== '' && Number(selectedSpeciesId) !== Number(detection.species_id);
@@ -152,16 +164,24 @@ function UnknownCard({
               {detection.detection_provider && (
                 <Chip label={detection.detection_provider} size="small" variant="outlined" />
               )}
-            {detection.review_state && (
-              <Chip
-                label={detection.review_state === 'pending'
-                  ? t('unknowns.reviewStatePending')
-                  : detection.review_state}
-                size="small"
-                color="info"
-                variant="outlined"
-              />
-            )}
+              {detection.review_state && (
+                <Chip
+                  label={detection.review_state === 'pending'
+                    ? t('unknowns.reviewStatePending')
+                    : detection.review_state}
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                />
+              )}
+              {reviewReason && (
+                <Chip
+                  label={reviewReason}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                />
+              )}
             </Box>
           </Box>
           <CardActionArea

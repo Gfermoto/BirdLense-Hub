@@ -77,6 +77,28 @@ class OrMotionDetector:
             return getattr(self._primary, "get_triggered_camera", lambda: None)()
         return None
 
+    def requeue_last_trigger(self):
+        """Re-arm the detector that most recently fired when caller delays recording."""
+        target = None
+        if self._triggered_by == "primary":
+            target = self._primary
+        elif self._triggered_by == "additional":
+            target = self._additional
+        elif isinstance(self._triggered_by, str) and self._triggered_by.startswith("extra_"):
+            try:
+                idx = int(self._triggered_by.split("_", 1)[1])
+            except (TypeError, ValueError):
+                idx = -1
+            if 0 <= idx < len(self._extras):
+                target = self._extras[idx]
+        if target is None:
+            return False
+        fn = getattr(target, "mark_pending", None)
+        if callable(fn):
+            fn()
+            return True
+        return False
+
     def has_recent_frigate_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         """Delegate Frigate keepalive checks to primary detector when present."""
         if not self._primary:

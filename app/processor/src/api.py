@@ -3,6 +3,7 @@ import os
 import time
 
 import requests
+from processor_provenance import resolve_processor_version
 
 
 class API:
@@ -89,12 +90,13 @@ class API:
     ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {"best_frame"}
+        processor_version, _version_source = resolve_processor_version()
 
         def clean_detection(d):
             return {k: v for k, v in d.items() if k not in exclude_fields}
 
         video_data = {
-            "processor_version": "1",
+            "processor_version": processor_version,
             "species": [clean_detection(sp) for sp in species_video]
             + [{**sp, "source": "audio", "detection_provider": "birdnet_mqtt"} for sp in species_audio],
             "start_time": start_time.isoformat(),

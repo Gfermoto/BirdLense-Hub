@@ -32,6 +32,7 @@ import {
   fetchUnknownsForObserverDate,
   fetchNearestRecordingDay,
   fetchOverviewData,
+  getApiErrorMessage,
 } from '../../api/api';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
@@ -46,6 +47,7 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import Snackbar from '@mui/material/Snackbar';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -119,6 +121,7 @@ export function TimelinePage() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const selectedDate = useMemo(() => {
     const paramDate = searchParams.get('date');
     const parsed = paramDate ? dayjs(paramDate).startOf('date') : dayjs().startOf('date');
@@ -265,6 +268,7 @@ export function TimelinePage() {
   const handleExport = async (format: 'csv' | 'json' | 'ebird') => {
     if (!selectedDate) return;
     setExportAnchor(null);
+    setExportError(null);
     setExporting(true);
     try {
       await exportTimelineForObserverDate(
@@ -276,6 +280,9 @@ export function TimelinePage() {
       );
     } catch (err) {
       console.error('Export failed:', err);
+      setExportError(
+        getApiErrorMessage(err, t('timeline.exportFailed')),
+      );
     } finally {
       setExporting(false);
     }
@@ -531,6 +538,7 @@ export function TimelinePage() {
                     onClick={(e) => setExportAnchor(e.currentTarget)}
                     disabled={exporting || !canEdit}
                     aria-label={t('timeline.export')}
+                    data-testid="timeline-export-menu-trigger"
                   >
                     <DownloadIcon />
                   </IconButton>
@@ -561,6 +569,22 @@ export function TimelinePage() {
           <Timeline visits={filteredVisits ?? []} />
         </>
       )}
+      <Snackbar
+        open={!!exportError}
+        autoHideDuration={8000}
+        onClose={() => setExportError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setExportError(null)}
+          severity="error"
+          variant="filled"
+          sx={{ width: '100%' }}
+          data-testid="timeline-export-error"
+        >
+          {exportError}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

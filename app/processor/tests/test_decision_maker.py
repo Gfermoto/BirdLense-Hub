@@ -311,6 +311,7 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertTrue(decisions[0]['accepted'])
         self.assertEqual(decisions[0]['decision_reason'], 'accepted_species')
         self.assertEqual(decisions[0]['trust_band'], 'green')
+        self.assertEqual(decisions[0]['outcome_bucket'], 'auto_accept')
 
     def test_decision_trace_includes_keyframe_and_vote_metadata(self):
         tracks = {
@@ -377,6 +378,31 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(decisions[0]['reject_reason_code'], 'conflicting_evidence')
         self.assertEqual(decisions[0]['trust_band'], 'gray')
         self.assertEqual(decisions[0]['decision_kind'], 'rejected')
+        self.assertEqual(decisions[0]['outcome_bucket'], 'rejected')
+
+    def test_review_only_generic_has_review_only_outcome_bucket(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_store=0.3,
+            generic_bird_min_detector_conf=0.9,
+            generic_bird_min_frames=10,
+            generic_bird_min_area_frac=0.8,
+            generic_bird_min_best_frame_score=10.0,
+        )
+        tracks = {
+            1: _make_track(
+                detector_label='Bird',
+                detector_confidences=[0.6] * 4,
+                classifier_events=[],
+                frames=[{'t': 0.0, 'bbox': [0.0, 0.0, 0.1, 0.1]}],
+                best_frame_score=2.0,
+            )
+        }
+        decisions = dm.get_decisions(tracks)
+        self.assertTrue(decisions[0]['accepted'])
+        self.assertFalse(decisions[0]['visit_eligible'])
+        self.assertEqual(decisions[0]['decision_kind'], 'review_only_generic')
+        self.assertEqual(decisions[0]['outcome_bucket'], 'review_only')
 
 if __name__ == '__main__':
     unittest.main()

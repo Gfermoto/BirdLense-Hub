@@ -41,6 +41,9 @@ class _Extra:
     def fire(self):
         self._e.set()
 
+    def mark_pending(self):
+        self._e.set()
+
 
 class _Additional:
     def check_pending(self):
@@ -63,6 +66,15 @@ class TestOrMotionExtras(unittest.TestCase):
         self.assertTrue(or_det.detect())
         self.assertLess(time.time() - t0, 2.0)
         self.assertTrue(or_det.get_triggered_camera() is None)
+
+    def test_requeue_last_trigger_rearms_extra_event(self):
+        primary = _Primary()
+        extra = _Extra()
+        or_det = OrMotionDetector(primary=primary, additional=None, extras=[extra])
+        extra.fire()
+        self.assertTrue(or_det.detect())
+        self.assertTrue(or_det.requeue_last_trigger())
+        self.assertTrue(or_det.detect())
 
     def test_has_recent_frigate_activity_delegates_to_primary(self):
         primary = _Primary()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from decision_outcome import compute_outcome_bucket
 from species_normalizer import _extract_common_for_merge
 
 GENERIC_BIRD_NAME = "Bird"
@@ -87,6 +88,17 @@ def _tag_row(row: dict, reason: str) -> None:
     row["_fusion_used"] = f"{tag}+{reason}" if tag else reason
 
 
+def _sync_outcome_bucket(row: dict) -> dict:
+    row["accepted"] = bool(row.get("accepted", True))
+    row["visit_eligible"] = bool(row.get("visit_eligible", True))
+    row["outcome_bucket"] = compute_outcome_bucket(
+        accepted=bool(row.get("accepted", True)),
+        visit_eligible=bool(row.get("visit_eligible", True)),
+        decision_kind=str(row.get("decision_kind") or ""),
+    )
+    return row
+
+
 def _merge_provider_sets(rows: Iterable[dict]) -> list[str]:
     providers = set()
     for row in rows:
@@ -101,7 +113,11 @@ def _merge_provider_sets(rows: Iterable[dict]) -> list[str]:
     return sorted(providers)
 
 
-def _build_generic_review_row(rows: list[dict]) -> dict:
+def _build_generic_review_row(
+    rows: list[dict],
+    *,
+    reason: str = "downgraded_to_generic_due_to_conflict",
+) -> dict:
     leader = max(rows, key=_arbitration_score)
     start_time = min(_safe_float(row.get("start_time")) for row in rows)
     end_time = max(_safe_float(row.get("end_time")) for row in rows)
@@ -119,8 +135,8 @@ def _build_generic_review_row(rows: list[dict]) -> dict:
     review_row["contributing_providers"] = _merge_provider_sets(rows)
     review_row["confidence"] = max(_safe_float(leader.get("confidence")), 0.45)
     review_row["_pre_fusion_confidence"] = _safe_float(review_row.get("confidence"))
-    _tag_row(review_row, "downgraded_to_generic_due_to_conflict")
-    return review_row
+    _tag_row(review_row, reason)
+    return _sync_outcome_bucket(review_row)
 
 
 def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
@@ -185,12 +201,12 @@ def _connected_conflict_groups(rows: list[dict]) -> list[list[int]]:
 def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
     """Collapse generic/species conflicts and choose one strong species when justified."""
     if len(detections or []) < 2:
-        return list(detections or [])
+        return [_sync_outcome_bucket(row) for row in list(detections or [])]
 
     rows = _absorb_generic_bird(list(detections))
     groups = _connected_conflict_groups(rows)
     if not groups:
-        return rows
+        return [_sync_outcome_bucket(row) for row in rows]
 
     replacements: dict[int, dict | None] = {}
     for group in groups:
@@ -211,6 +227,7 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
             _tag_row(winner, "species_won_by_multi_source_consensus")
             winner["visit_eligible"] = True
             winner["notification_eligible"] = bool(winner.get("notification_eligible", True))
+            _sync_outcome_bucket(winner)
             for idx in group:
                 replacements[idx] = winner if rows[idx] is winner else None
             continue
@@ -221,9 +238,17 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
             review_row = _build_generic_review_row(candidates)
             for idx in group:
                 replacements[idx] = review_row if rows[idx] is winner else None
+            continue
+
+        review_row = _build_generic_review_row(
+            candidates,
+            reason="downgraded_to_generic_due_to_strong_conflict",
+        )
+        for idx in group:
+            replacements[idx] = review_row if rows[idx] is winner else None
 
     if not replacements:
-        return rows
+        return [_sync_outcome_bucket(row) for row in rows]
 
     out: list[dict] = []
     seen_ids: set[int] = set()
@@ -239,4 +264,6 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
             continue
         seen_ids.add(marker)
         out.append(replacement)
+    for row in out:
+        _sync_outcome_bucket(row)
     return out

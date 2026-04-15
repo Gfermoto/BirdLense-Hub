@@ -34,6 +34,96 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
 )
 
 
+def _safe_int(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
+    motion_source = str(app_config_get("motion.source", "opencv") or "opencv").strip().lower()
+    mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
+    check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
+    opencv_diff_threshold = max(5, min(80, _safe_int(app_config_get("motion.opencv_diff_threshold", 25), 25)))
+    opencv_min_contour_area = max(
+        50,
+        min(20000, _safe_int(app_config_get("motion.opencv_min_contour_area", 500), 500)),
+    )
+    light_gate_enabled = bool(app_config_get("processor.light_gate_enabled", True))
+    light_gate_min_brightness = max(
+        0,
+        min(255, _safe_int(app_config_get("processor.light_gate_min_brightness", 25), 25)),
+    )
+    light_gate_min_contrast = max(
+        0,
+        min(255, _safe_int(app_config_get("processor.light_gate_min_contrast", 20), 20)),
+    )
+    binary_imgsz = max(320, _safe_int(app_config_get("processor.binary_imgsz", 512), 512))
+    min_center_dist = max(0.0, min(1.0, _safe_float(app_config_get("processor.min_center_dist", 0.06), 0.06)))
+    min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
+
+    warnings: list[str] = []
+    if motion_source == "opencv" and not mqtt_broker:
+        warnings.append(
+            "motion.source=opencv without mqtt.broker means Frigate never becomes a trigger; "
+            "use motion.source=frigate or configure MQTT if Frigate sees more objects."
+        )
+    if check_every_n_frames > 1:
+        warnings.append(
+            f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
+            "1 is the highest-recall setting."
+        )
+    if opencv_diff_threshold > 20:
+        warnings.append(
+            f"motion.opencv_diff_threshold={opencv_diff_threshold} is conservative; lower values are more sensitive."
+        )
+    if opencv_min_contour_area > 250:
+        warnings.append(
+            f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds."
+        )
+    if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
+        warnings.append(
+            "processor.light_gate_* may skip dusk/night frames before YOLO runs; lower them if you need more recall in low light."
+        )
+    if binary_imgsz < 640:
+        warnings.append(
+            f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss."
+        )
+    if min_center_dist > 0.05:
+        warnings.append(
+            f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge."
+        )
+    if min_box_size_px > 64:
+        warnings.append(
+            f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes."
+        )
+
+    return (
+        {
+            "motion_source": motion_source,
+            "mqtt_broker_configured": bool(mqtt_broker),
+            "check_every_n_frames": check_every_n_frames,
+            "opencv_diff_threshold": opencv_diff_threshold,
+            "opencv_min_contour_area": opencv_min_contour_area,
+            "light_gate_enabled": light_gate_enabled,
+            "light_gate_min_brightness": light_gate_min_brightness,
+            "light_gate_min_contrast": light_gate_min_contrast,
+            "binary_imgsz": binary_imgsz,
+            "min_center_dist": min_center_dist,
+            "min_box_size_px": min_box_size_px,
+        },
+        warnings,
+    )
+
+
 def flatten_config_keys(d: dict, prefix: str = "") -> set[str]:
     out: set[str] = set()
     if not isinstance(d, dict):
@@ -91,6 +181,7 @@ def build_system_config_audit_payload(
         and gray_pairs.get("Great Gray Shrike") == "Great Grey Shrike"
     )
     heimdall_url = (app_config_get("general.heimdall_url") or "").strip()
+    recall_tuning, recall_warnings = _recall_audit(app_config_get)
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -103,6 +194,8 @@ def build_system_config_audit_payload(
             "upload_url": gallery_url or None,
             "min_confidence": app_config_get("gallery.min_confidence"),
         },
+        "recall_tuning": recall_tuning,
+        "recall_warnings": recall_warnings,
         "mapping": {
             "gray_to_grey_ok": gray_to_grey_ok,
             "pairs": gray_pairs,
