@@ -64,6 +64,32 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 - поправить владельца (`uid 1000`) или права на хосте;
 - проверить путь к БД и volume в `DATA_DIR`.
 
+## Устаревшие ключи в config-audit (gallery / Heimdall)
+
+Если `GET /api/ui/system/config-audit` всё ещё показывает `gallery.*` или `general.heimdall_url`, они живут в **`app/app_config/user_config.yaml`** на хабе (в API токены/секреты замаскированы, «вытащить» их для чистки нельзя).
+
+На сервере (путь к деплою подставьте свой):
+
+```bash
+cd /root/BirdLense
+python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_config.yaml --dry-run
+python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_config.yaml
+cd app && docker compose restart birdlense
+```
+
+Перед записью создаётся резервная копия `user_config.yaml.bak`. См. также [SECRETS_ROTATION](./SECRETS_ROTATION.ru.md).
+
+## Быстрая проверка MCP (Bearer)
+
+Нужен **тот же** секрет, что на хабе: `MCP_TOKEN` в `app/.env` (или `mcp.token` в UI — не строка `***` из GET settings).
+
+```bash
+export MCP_TOKEN='ваш-токен-с-сервера'
+./scripts/verify-mcp.sh https://ВАШ_ХОСТ/
+```
+
+Подробнее: [MCP_SETUP.ru](./MCP_SETUP.ru.md).
+
 ## Отладка по запросам
 
 Каждый ответ API содержит заголовок `X-Request-ID`.
