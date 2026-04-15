@@ -11,7 +11,7 @@ from auth import settings_check_access
 from models import ActivityLog, db
 from services.cache import cache_get, cache_set
 from services.api_json_validation import parse_request_json_dict
-from services.component_status_service import build_component_status_payload
+from services.component_status_service import build_component_status_payload_safe
 from services.readiness_service import build_readiness_payload
 from services.feed_service import dispense_feed, get_last_dispense
 from services.web_push_service import (
@@ -86,7 +86,7 @@ def register_ui_status_push_routes(app):
         hit, cached = cache_get("component_status:v1")
         if hit:
             return cached
-        payload = build_component_status_payload(db.session)
+        payload = build_component_status_payload_safe(db.session)
         cache_set("component_status:v1", payload, CACHE_STATUS_SEC)
         return payload
 
