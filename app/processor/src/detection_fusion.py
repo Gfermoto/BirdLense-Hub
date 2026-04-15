@@ -118,9 +118,7 @@ def _attach_audio_evidence(
         d["audio_top_species"] = top_species
         d["audio_top_score"] = top_score
         d["audio_top_support_count"] = top_support_count
-        d["_birdnet_timestamp_parse_failed"] = bool(
-            (support or top_bucket or {}).get("timestamp_parse_failed")
-        )
+        d["_birdnet_timestamp_parse_failed"] = bool((support or top_bucket or {}).get("timestamp_parse_failed"))
         if support:
             d["audio_evidence"] = "support"
             d["audio_support_count"] = int(support.get("support_count") or 0)

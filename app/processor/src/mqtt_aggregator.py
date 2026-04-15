@@ -852,9 +852,7 @@ class MQTTEventAggregator:
                     raw_min_trigger_score = app_config.get("motion.frigate_min_trigger_score")
                     try:
                         min_trigger_score = (
-                            0.0
-                            if isinstance(raw_min_trigger_score, bool)
-                            else float(raw_min_trigger_score or 0.0)
+                            0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
                         )
                     except (TypeError, ValueError):
                         min_trigger_score = 0.0
@@ -1195,11 +1193,7 @@ class MQTTEventAggregator:
         except (TypeError, ValueError):
             min_conf = 0.0
         now = datetime.now(timezone.utc)
-        camera_allow = {
-            str(camera).strip().lower()
-            for camera in (camera_ids or [])
-            if str(camera).strip()
-        }
+        camera_allow = {str(camera).strip().lower() for camera in (camera_ids or []) if str(camera).strip()}
         with self._lock:
             for ev in reversed(self._events):
                 if str((ev or {}).get("source") or "").strip().lower() != "frigate":

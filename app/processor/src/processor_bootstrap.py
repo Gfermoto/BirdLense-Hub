@@ -166,9 +166,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         )
         if wait > 0:
             elapsed = cooldown - wait
-            requeued = bool(
-                getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)()
-            )
+            requeued = bool(getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)())
             logger.info(
                 "Skipping motion trigger: processor.min_seconds_between_recordings=%.1fs "
                 "(%.1fs since last clip, requeued=%s)",
