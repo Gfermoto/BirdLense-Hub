@@ -10,6 +10,7 @@ from multi_camera_confidence import apply_multi_camera_confidence_boost
 from birdnet_merge_key import birdnet_merge_key, sqlite_path_for_birdnet_merge
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
+from hypothesis_arbitration import apply_hypothesis_arbitration
 
 logger = logging.getLogger(__name__)
 
@@ -389,6 +390,7 @@ def build_fused_video_detections(
         end_time=end_time,
         app_config=app_config,
     )
+    fused = apply_hypothesis_arbitration(fused)
     # Optional learned fusion/calibration step. If enabled, the learned scorer
     # produces a calibrated probability from multimodal features and is blended
     # with the existing rule-based confidence.
@@ -420,7 +422,8 @@ def build_fused_video_detections(
             base_conf = float(d.get("confidence") or 0.0)
             final_conf = alpha * fused_score + (1 - alpha) * base_conf
             d["confidence"] = float(final_conf)
-            d["_fusion_used"] = "learned"
+            prev_fusion_used = str(d.get("_fusion_used") or "").strip()
+            d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
     min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)

@@ -127,6 +127,8 @@ def build_track_step_rows(track: dict[str, Any]) -> list[dict[str, Any]]:
     block(
         "scores",
         [
+            ("arbitration_reason", track.get("arbitration_reason")),
+            ("decision_reason_before_arbitration", track.get("decision_reason_before_arbitration")),
             ("best_frame_score", _fmt_num(track.get("best_frame_score"))),
             ("key_frame_count", track.get("key_frame_count")),
             ("trust_band", track.get("trust_band")),

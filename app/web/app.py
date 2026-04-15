@@ -2,6 +2,7 @@
 
 import logging
 import os
+import threading
 
 from flask import Flask
 
@@ -45,7 +46,13 @@ def create_app():
         bootstrap_species_metadata_repair(app)
         bootstrap_species_metadata_enrich(app)
     register_all_routes(app)
-    notify_app_startup(app)
+    # Startup notification must not block health/readiness: Telegram/proxy can lag behind app boot.
+    threading.Thread(
+        target=notify_app_startup,
+        args=(app,),
+        daemon=True,
+        name="birdlense-startup-notify",
+    ).start()
     return app
 
 

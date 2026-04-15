@@ -449,3 +449,270 @@ def test_fusion_birdnet_locale_resolved_via_scientific_name(monkeypatch):
             os.unlink(path)
         except OSError:
             pass
+
+
+def test_arbitration_keeps_strongest_species_with_multi_source_consensus():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [['cam-a', 'cam-b']],
+        'processor.multi_camera_confidence_boost': 0.05,
+    })
+    detections = [
+        {
+            **_base_detection('Great Tit'),
+            'confidence': 0.68,
+            'classifier_confidence': 0.68,
+            'start_time': 0.0,
+            'end_time': 8.0,
+            'decision_kind': 'accepted_species',
+        },
+        {
+            **_base_detection('Blue Tit'),
+            'track_id': 2,
+            'confidence': 0.54,
+            'classifier_confidence': 0.54,
+            'start_time': 1.0,
+            'end_time': 7.5,
+            'decision_kind': 'accepted_species',
+        },
+    ]
+    mqtt_events = [
+        {
+            'source': 'birdnet',
+            'species': 'Great Tit',
+            'confidence': 0.93,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-a',
+            'species': 'Great Tit',
+            'confidence': 0.81,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-b',
+            'species': 'Great Tit',
+            'confidence': 0.79,
+            'timestamp': end.isoformat(),
+        },
+    ]
+    out = build_fused_video_detections(
+        detections,
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0]['decision_reason'] == 'species_won_by_multi_source_consensus'
+    assert out[0].get('arbitration_reason') == 'species_won_by_multi_source_consensus'
+
+
+def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [['cam-a', 'cam-b']],
+        'processor.multi_camera_confidence_boost': 0.05,
+    })
+    detections = [
+        {
+            **_base_detection('Bird'),
+            'confidence': 0.56,
+            'classifier_confidence': None,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'start_time': 0.0,
+            'end_time': 10.0,
+        },
+        {
+            **_base_detection('Great Tit'),
+            'track_id': 2,
+            'confidence': 0.51,
+            'classifier_confidence': 0.18,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 1.0,
+            'end_time': 9.0,
+        },
+    ]
+    mqtt_events = [
+        {
+            'source': 'birdnet',
+            'species': 'Great Tit',
+            'confidence': 0.91,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-a',
+            'species': 'Great Tit',
+            'confidence': 0.78,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-b',
+            'species': 'Great Tit',
+            'confidence': 0.76,
+            'timestamp': end.isoformat(),
+        },
+    ]
+    out = build_fused_video_detections(
+        detections,
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0].get('arbitration_reason') == 'absorbed_generic_into_species'
+
+
+def test_arbitration_downgrades_weak_conflict_to_single_generic_review():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    detections = [
+        {
+            **_base_detection('Great Tit'),
+            'confidence': 0.51,
+            'classifier_confidence': 0.19,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 0.0,
+            'end_time': 8.0,
+        },
+        {
+            **_base_detection('Blue Tit'),
+            'track_id': 2,
+            'confidence': 0.5,
+            'classifier_confidence': 0.18,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 0.5,
+            'end_time': 8.5,
+        },
+    ]
+    out = build_fused_video_detections(
+        detections,
+        [],
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Bird'
+    assert out[0]['decision_reason'] == 'downgraded_to_generic_due_to_conflict'
+    assert out[0]['decision_kind'] == 'review_only_generic'
+    assert out[0]['visit_eligible'] is False
+
+
+def test_learned_fusion_preserves_arbitration_trace(monkeypatch):
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'detection.use_learned_fusion': True,
+        'detection.fusion_alpha': 0.6,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [['cam-a', 'cam-b']],
+        'processor.multi_camera_confidence_boost': 0.05,
+    })
+    detections = [
+        {
+            **_base_detection('Bird'),
+            'confidence': 0.56,
+            'classifier_confidence': None,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'start_time': 0.0,
+            'end_time': 10.0,
+        },
+        {
+            **_base_detection('Great Tit'),
+            'track_id': 2,
+            'confidence': 0.51,
+            'classifier_confidence': 0.18,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 1.0,
+            'end_time': 9.0,
+        },
+    ]
+    mqtt_events = [
+        {
+            'source': 'birdnet',
+            'species': 'Great Tit',
+            'confidence': 0.91,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-a',
+            'species': 'Great Tit',
+            'confidence': 0.78,
+            'timestamp': end.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'camera': 'cam-b',
+            'species': 'Great Tit',
+            'confidence': 0.76,
+            'timestamp': end.isoformat(),
+        },
+    ]
+
+    class _Scorer:
+        def __init__(self, model_path=None):
+            self.model_path = model_path
+
+        def score(self, features):
+            return 0.8
+
+    monkeypatch.setattr(detection_fusion_mod, 'FusionScorer', _Scorer)
+
+    out = build_fused_video_detections(
+        detections,
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert len(out) == 1
+    assert 'learned' in out[0]['_fusion_used']
+    assert 'absorbed_generic_into_species' in out[0]['_fusion_used']
