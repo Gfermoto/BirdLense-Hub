@@ -5,6 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TimelinePage } from './index';
 
+/** Align with App.tsx BrowserRouter future flags (silences v7 upgrade warnings). */
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 vi.mock('@mui/material/useMediaQuery', () => ({
   default: () => false,
 }));
@@ -53,7 +59,10 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/timeline?date=2026-04-15']}>
+      <MemoryRouter
+        future={memoryRouterFuture}
+        initialEntries={['/timeline?date=2026-04-15']}
+      >
         <Routes>
           <Route path="/timeline" element={<TimelinePage />} />
         </Routes>
