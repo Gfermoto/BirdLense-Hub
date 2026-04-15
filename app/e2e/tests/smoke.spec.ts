@@ -89,10 +89,10 @@ test.describe('Smoke tests', () => {
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test('Unknowns legacy URL lands on timeline (guest strips review query)', async ({ page }) => {
+  test('Unknowns legacy URL lands on timeline', async ({ page }) => {
     await gotoReady(page, '/unknowns');
-    // SPA: /unknowns → /timeline?review=1 → гость replace на /timeline без review
-    await expect(page).not.toHaveURL(/review=1/);
+    // /unknowns → /timeline?review=1. На хабе без пароля canEdit=true — review=1 остаётся (это ок).
+    // С паролем гость получает replace без review=1 (см. TimelinePage useEffect).
     await expect(page).toHaveURL(/\/timeline/);
     await expect(page.getByText(/Timeline|Записи|时间线|Select/i).first()).toBeVisible({
       timeout: 15000,
