@@ -140,7 +140,8 @@ class Go2RTCStreamSource:
         if not self.auto_reconnect:
             return False
         while True:
-            self.logger.warning(f"Reconnecting in {self._reconnect_delay}s...")
+            # Ожидаемое поведение при кратковременных обрывах RTSP; не WARNING — иначе шум в логах/алертах.
+            self.logger.info("Reconnecting in %ss...", self._reconnect_delay)
             time.sleep(self._reconnect_delay)
             if self._connect():
                 return True

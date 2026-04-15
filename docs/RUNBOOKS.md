@@ -64,6 +64,32 @@ Typical fixes:
 - fix ownership (`uid 1000`) or host filesystem permissions
 - inspect DB path / volume mount under `DATA_DIR`
 
+## Legacy keys in config-audit (gallery / Heimdall)
+
+If `GET /api/ui/system/config-audit` still lists deprecated keys such as `gallery.*` or `general.heimdall_url`, they are coming from **`app/app_config/user_config.yaml`** on the hub (the UI never returns real secrets, so you cannot “copy” them out for cleanup).
+
+On the server (adjust paths to your deploy directory):
+
+```bash
+cd /root/BirdLense
+python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_config.yaml --dry-run
+python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_config.yaml
+cd app && docker compose restart birdlense
+```
+
+The script writes `user_config.yaml.bak` next to the file before replacing it. See also [SECRETS_ROTATION](./SECRETS_ROTATION.md).
+
+## MCP smoke check (Bearer token)
+
+Use the **same** secret as on the hub: `MCP_TOKEN` in `app/.env` (or `mcp.token` in UI, not the masked `***`).
+
+```bash
+export MCP_TOKEN='your-token-from-server-env'
+./scripts/verify-mcp.sh https://YOUR_HOST/
+```
+
+Details: [MCP_SETUP](./MCP_SETUP.md).
+
 ## Request-level debugging
 
 Every API response now includes `X-Request-ID`.
