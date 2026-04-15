@@ -23,10 +23,22 @@ class FrigateMotionFromAggregator:
         self._label_filter = set(label_filter or ["bird", "Bird"])
         self._event = threading.Event()
         self._last_camera = None
+        self._last_confidence = 0.0
+        self._last_event_ts = 0.0
 
-    def _on_motion(self, camera, label):
+    def _on_motion(self, camera, label, confidence=0.0):
         self._last_camera = camera
-        logger.info(f"Frigate motion: camera={camera}, label={label}")
+        try:
+            self._last_confidence = float(confidence or 0.0)
+        except (TypeError, ValueError):
+            self._last_confidence = 0.0
+        self._last_event_ts = time.time()
+        logger.info(
+            "Frigate motion: camera=%s, label=%s, confidence=%.3f",
+            camera,
+            label,
+            self._last_confidence,
+        )
         self._event.set()
 
     def get_on_frigate_motion_tuple(self):
@@ -60,6 +72,23 @@ class FrigateMotionFromAggregator:
     def get_triggered_camera(self):
         return self._last_camera
 
+    def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
+        try:
+            max_age = float(max_age_seconds or 0.0)
+        except (TypeError, ValueError):
+            max_age = 0.0
+        if max_age <= 0 or self._last_event_ts <= 0:
+            return False
+        if time.time() - self._last_event_ts > max_age:
+            return False
+        if camera and self._last_camera and str(camera) != str(self._last_camera):
+            return False
+        try:
+            min_conf = float(min_confidence or 0.0)
+        except (TypeError, ValueError):
+            min_conf = 0.0
+        return float(self._last_confidence or 0.0) >= min_conf
+
     def stop(self):
         pass
 
@@ -91,6 +120,8 @@ class FrigateMQTTMotionDetector:
         self.password = password or os.environ.get("MQTT_PASSWORD")
         self._event = threading.Event()
         self._last_camera = None
+        self._last_confidence = 0.0
+        self._last_event_ts = 0.0
         self._client = None
         self._thread = None
         self._connected = False
@@ -125,13 +156,26 @@ class FrigateMQTTMotionDetector:
             sub_label = sub_label_raw
         elif isinstance(sub_label_raw, (list, tuple)) and sub_label_raw:
             sub_label = str(sub_label_raw[0]) if sub_label_raw else ""
+        score = after.get("top_score") or after.get("score") or 0.0
+        try:
+            score = float(score)
+        except (TypeError, ValueError):
+            score = 0.0
         if self.camera_filter and camera not in self.camera_filter:
             return
         labels = {label, sub_label} if sub_label else {label}
         if not (labels & self.label_filter):
             return
         self._last_camera = camera
-        logger.info(f"Frigate event: camera={camera}, label={label}, sub_label={sub_label}")
+        self._last_confidence = score
+        self._last_event_ts = time.time()
+        logger.info(
+            "Frigate event: camera=%s, label=%s, sub_label=%s, confidence=%.3f",
+            camera,
+            label,
+            sub_label,
+            self._last_confidence,
+        )
         self._event.set()
 
     def _run_client(self):
@@ -193,6 +237,23 @@ class FrigateMQTTMotionDetector:
     def get_triggered_camera(self):
         """Return camera id from last Frigate event, or None."""
         return self._last_camera
+
+    def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
+        try:
+            max_age = float(max_age_seconds or 0.0)
+        except (TypeError, ValueError):
+            max_age = 0.0
+        if max_age <= 0 or self._last_event_ts <= 0:
+            return False
+        if time.time() - self._last_event_ts > max_age:
+            return False
+        if camera and self._last_camera and str(camera) != str(self._last_camera):
+            return False
+        try:
+            min_conf = float(min_confidence or 0.0)
+        except (TypeError, ValueError):
+            min_conf = 0.0
+        return float(self._last_confidence or 0.0) >= min_conf
 
     def stop(self):
         self._stopped = True

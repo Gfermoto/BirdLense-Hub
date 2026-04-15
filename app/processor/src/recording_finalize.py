@@ -24,6 +24,8 @@ _DECISION_TRACE_FIELDS = (
     "accepted",
     "species_name",
     "confidence",
+    "arbitration_reason",
+    "decision_reason_before_arbitration",
     "decision_reason",
     "decision_kind",
     "trust_band",

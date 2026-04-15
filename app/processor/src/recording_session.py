@@ -63,6 +63,65 @@ class MotionRecordingSession:
     def media_source(self, value: Any) -> None:
         self._media_source_ref[0] = value
 
+    def _session_activity_camera_ids(self, camera_id: str | None) -> list[str]:
+        cameras: list[str] = []
+        if camera_id:
+            cameras.append(str(camera_id))
+        groups = app_config.get("processor.multi_camera_groups") or []
+        for group in groups:
+            if not isinstance(group, (list, tuple, set)):
+                continue
+            normalized = [str(item).strip() for item in group if str(item).strip()]
+            if camera_id and str(camera_id) in normalized:
+                cameras.extend(normalized)
+        return sorted(set(cameras))
+
+    def _has_session_activity(
+        self,
+        *,
+        has_detections: bool,
+        camera_id: str | None,
+        frigate_hold_seconds: float,
+    ) -> bool:
+        if has_detections:
+            return True
+        if frigate_hold_seconds <= 0:
+            return False
+
+        recent_frigate = getattr(self.motion_detector, "has_recent_frigate_activity", None)
+        if recent_frigate is None:
+            recent_frigate = getattr(self.motion_detector, "has_recent_activity", None)
+        if callable(recent_frigate):
+            try:
+                if bool(
+                    recent_frigate(
+                        camera=camera_id,
+                        max_age_seconds=frigate_hold_seconds,
+                    )
+                ):
+                    return True
+            except Exception:
+                pass
+
+        aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
+        if callable(aggregator_recent):
+            camera_ids = self._session_activity_camera_ids(camera_id)
+            if not camera_ids and getattr(self, "default_camera_id", None):
+                camera_ids = [str(self.default_camera_id)]
+            if not camera_ids:
+                return False
+            try:
+                return bool(
+                    aggregator_recent(
+                        camera_ids=camera_ids,
+                        max_age_seconds=frigate_hold_seconds,
+                        min_confidence=0.0,
+                    )
+                )
+            except Exception:
+                return False
+        return False
+
     def run(self) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
         session_overrides = merge_birdnet_mqtt_bias_into_overrides(
@@ -91,6 +150,10 @@ class MotionRecordingSession:
             self.decision_maker.reset()
             self.fps_tracker.reset()
             file_mode = (app_config.get("video.source") or "").strip().lower() == "file"
+            try:
+                frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
+            except (TypeError, ValueError):
+                frigate_hold_seconds = 0.0
             frame_n = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
@@ -115,6 +178,12 @@ class MotionRecordingSession:
                 with self.fps_tracker:
                     has_detections = self.frame_processor.run(frame, frame_time=frame_time)
                 processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
+
+                has_detections = self._has_session_activity(
+                    has_detections=has_detections,
+                    camera_id=camera_id,
+                    frigate_hold_seconds=frigate_hold_seconds,
+                )
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(

@@ -77,6 +77,21 @@ class OrMotionDetector:
             return getattr(self._primary, "get_triggered_camera", lambda: None)()
         return None
 
+    def has_recent_frigate_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
+        """Delegate Frigate keepalive checks to primary detector when present."""
+        if not self._primary:
+            return False
+        fn = getattr(self._primary, "has_recent_activity", None)
+        if not callable(fn):
+            return False
+        return bool(
+            fn(
+                camera=camera,
+                max_age_seconds=max_age_seconds,
+                min_confidence=min_confidence,
+            )
+        )
+
     def stop(self):
         for d in (self._primary, self._additional):
             if d and hasattr(d, "stop"):

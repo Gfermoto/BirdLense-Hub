@@ -62,6 +62,8 @@ def _processor_detection_payload(raw: dict) -> dict:
         "detection_provider",
         "visit_eligible",
         "notification_eligible",
+        "arbitration_reason",
+        "decision_reason_before_arbitration",
         "decision_reason",
         "decision_kind",
         "evidence_state",
