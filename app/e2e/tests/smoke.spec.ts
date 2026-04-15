@@ -18,6 +18,12 @@ async function gotoReady(page: import('@playwright/test').Page, path = '/') {
     .catch(() => undefined);
 }
 
+/** Страницы с React Query часто показывают MUI progressbar в main после первого API-ответа. */
+async function waitMainSpinnerGone(page: import('@playwright/test').Page) {
+  const bar = page.locator('main [role="progressbar"]');
+  await expect(bar).toHaveCount(0, { timeout: 60000 });
+}
+
 test.describe('Smoke tests', () => {
   test('homepage loads and shows main navigation', async ({ page }) => {
     await gotoReady(page, '/');
@@ -39,34 +45,48 @@ test.describe('Smoke tests', () => {
 
   test('Settings page loads', async ({ page }) => {
     await gotoReady(page, '/settings');
-    await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Update Settings|Обновить настройки|更新设置/i)).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Live page loads', async ({ page }) => {
     await gotoReady(page, '/live');
-    await expect(page.getByRole('heading', { name: /Live/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Live|直播/i })).toBeVisible({ timeout: 15000 });
   });
 
   test('Overview page loads', async ({ page }) => {
     await gotoReady(page, '/');
-    await expect(page.getByText(/Overview|Обзор/i).first()).toBeVisible({ timeout: 15000 });
+    await waitMainSpinnerGone(page);
+    // nav.dashboard: EN «Dashboard», RU «Панель», ZH «仪表板» (не «Overview»).
+    await expect(page.getByText(/Dashboard|Панель|仪表板|Overview|Обзор/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Timeline page loads', async ({ page }) => {
     await gotoReady(page, '/timeline');
-    await expect(page.getByText(/Timeline|Записи|时间线|Select/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Migration page shows region comparison block', async ({ page }) => {
     await gotoReady(page, '/migration-calendar');
-    await expect(page.getByText(/Region Comparison|Сравнение с регионом|区域比较/i).first()).toBeVisible({
+    await waitMainSpinnerGone(page);
+    await expect(
+      page.getByText(/Region Comparison|Сравнение с регионом|区域比较|地区比较/i).first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
 
   test('Overview species chart: legend opens timeline or shows empty state', async ({ page }) => {
     await gotoReady(page, '/');
-    const topHeading = page.getByRole('heading', { name: /Top Species Distribution|Топ видов/i });
+    await waitMainSpinnerGone(page);
+    const topHeading = page.getByRole('heading', {
+      name: /Top Species Distribution|Топ видов|主要物种分布/i,
+    });
     await expect(topHeading).toBeVisible({ timeout: 20000 });
 
     const chips = page.getByTestId('overview-species-legend-chip');
@@ -85,7 +105,7 @@ test.describe('Smoke tests', () => {
     // Несколько блоков Overview делят один и тот же текст «no data» — привязываем к секции «Топ видов».
     const panel = topHeading.locator('..');
     await expect(
-      panel.getByText(/No data for selected day|Нет данных за выбранный день/i),
+      panel.getByText(/No data for selected day|Нет данных за выбранный день|所选日期没有数据/i),
     ).toBeVisible({ timeout: 15000 });
   });
 
@@ -94,7 +114,7 @@ test.describe('Smoke tests', () => {
     // /unknowns → /timeline?review=1. На хабе без пароля canEdit=true — review=1 остаётся (это ок).
     // С паролем гость получает replace без review=1 (см. TimelinePage useEffect).
     await expect(page).toHaveURL(/\/timeline/);
-    await expect(page.getByText(/Timeline|Записи|时间线|Select/i).first()).toBeVisible({
+    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
       timeout: 15000,
     });
   });
@@ -102,7 +122,7 @@ test.describe('Smoke tests', () => {
   test('Species legacy URL redirects to migration page', async ({ page }) => {
     await gotoReady(page, '/species');
     await expect(page).toHaveURL(/\/migration-calendar/);
-    await expect(page.getByText(/Migration|Мигра/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Migration|Мигра|迁移/i).first()).toBeVisible({ timeout: 15000 });
   });
 
   test('System page loads', async ({ page }) => {

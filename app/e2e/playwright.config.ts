@@ -20,6 +20,8 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
+    // Детерминизм CI: иначе navigator.language раннера → i18n (zh/ru) ломает смоук с EN-строками.
+    locale: 'en-US',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -28,7 +30,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  // gotoReady ждёт до 20s ответ API; пер-тестовый лимит должен быть с запасом.
-  timeout: process.env.CI ? 45000 : 15000,
+  // gotoReady + waitMainSpinnerGone до 60s; пер-тестовый лимит с запасом (раннеры CI бывают медленными).
+  timeout: process.env.CI ? 90000 : 60000,
   expect: { timeout: 5000 },
 });
