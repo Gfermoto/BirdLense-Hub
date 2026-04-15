@@ -13,14 +13,16 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Link from '@mui/material/Link';
-import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import dayjs from 'dayjs';
 import { visuallyHidden } from '@mui/utils';
 
@@ -31,6 +33,7 @@ type PeriodMode = 'years' | 'dates';
 
 export const MigrationCalendar = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.migrationCalendar'));
   const [periodMode, setPeriodMode] = useState<PeriodMode>('years');
   const [startYear, setStartYear] = useState<number | ''>('');
   const [endYear, setEndYear] = useState<number | ''>('');
@@ -85,7 +88,7 @@ export const MigrationCalendar = () => {
     };
   }, [periodMode, startYear, endYear, startDate, endDate, catalogMode]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['migration-calendar', params],
     queryFn: () => fetchMigrationCalendar(params),
   });
@@ -98,18 +101,21 @@ export const MigrationCalendar = () => {
   });
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   }
 
   if (error || !data) {
     return (
-      <Box sx={{ p: 2 }}>
-        <Typography color="error">{t('migrationCalendar.errorLoad')}</Typography>
-      </Box>
+      <PageMessageState
+        title={t('migrationCalendar.title')}
+        message={t('migrationCalendar.errorLoad')}
+        severity="error"
+        action={
+          <Button variant="outlined" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      />
     );
   }
 

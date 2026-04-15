@@ -57,6 +57,7 @@ def strict_ui_request_authorized() -> bool:
 _STRICT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/api/ui/health"),
+        ("GET", "/api/ui/readiness"),
         ("GET", "/api/ui/settings/requires-password"),
         ("GET", "/api/ui/settings/check-access"),
         ("POST", "/api/ui/settings/verify-password"),

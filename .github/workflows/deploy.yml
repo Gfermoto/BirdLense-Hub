@@ -63,7 +63,11 @@ jobs:
           make build
           make start
 
+      # Optional repo secret: same value as server app/.env BIRDLENSE_UI_API_KEY when strict UI auth is on.
+      # Enables verify-stack --check-domain-health and verify-release with REQUIRE_SETTINGS_HEALTH=1.
       - name: Verify
+        env:
+          BIRDLENSE_UI_API_KEY: ${{ secrets.BIRDLENSE_UI_API_KEY }}
         run: |
           set -euo pipefail
           DEPLOY_DIR="${DEPLOY_DIR:-/root/BirdLense}"
@@ -77,19 +81,19 @@ jobs:
               PORT="${PORT//\'/}"
             fi
           fi
-          URL="http://127.0.0.1:${PORT}/api/ui/health"
-          echo "Health check: $URL"
+          BASE_URL="http://127.0.0.1:${PORT}"
+          echo "Verify stack: ${BASE_URL}"
           sleep 10
-          for i in $(seq 1 36); do
-            if curl -sf "$URL"; then
-              echo "Health OK (attempt $i)"
-              exit 0
-            fi
-            echo "Health not ready, attempt $i/36 …"
-            sleep 5
-          done
-          echo "::error::Health check failed after retries ($URL)"
-          exit 1
+          VERIFY_ARGS=(--base-url "$BASE_URL")
+          if [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
+            VERIFY_ARGS+=(--check-domain-health)
+          fi
+          cd "$DEPLOY_DIR"
+          BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" scripts/verify-stack.sh "${VERIFY_ARGS[@]}"
+          if [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
+            REQUIRE_SETTINGS_HEALTH=1 BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY}" BASE_URL="${BASE_URL}" \
+              scripts/verify-release.sh
+          fi
 
       - name: Test recognition (optional)
         if: success()

@@ -44,6 +44,10 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | FEATURES | ✅ | ✅ |
 | TESTING | ✅ | ✅ |
 | TROUBLESHOOTING | ✅ | ✅ |
+| RUNBOOKS | ✅ | ✅ |
+| DOMAIN_CONTRACT | ✅ | ✅ |
+| RELEASE_READINESS | ✅ | ✅ |
+| CI_AND_QUALITY | ✅ | ✅ |
 | LOCAL_DEV | ✅ | ✅ |
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
@@ -61,7 +65,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
 | VERIFICATION (release checks log) | ✅ | ✅ |
-| PRE_IMPLEMENTATION_UNKNOWN_TIMELINE | ✅ | ✅ |
+| PRE_IMPLEMENTATION_UNKNOWN_TIMELINE (maintainer; excluded from MkDocs) | ✅ | ✅ |
 | SECURITY (analysis in docs/) | ✅ | ✅ |
 | SECRETS_ROTATION (ops runbook) | ✅ | ✅ |
 | OPEN_SOURCE_PREP | ✅ | ✅ |

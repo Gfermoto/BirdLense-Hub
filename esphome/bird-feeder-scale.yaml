@@ -13,11 +13,14 @@ substitutions:
   topic_prefix: birdlense/scale
   # Сенсор температуры в Home Assistant (для компенсации нуля). Замените на свой.
   ha_temperature_entity: sensor.ws2350_v2_37_outdoor_temperature
+  hx_dout_pin: GPIO27
+  hx_clk_pin: GPIO25
 
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   comment: "BirdLense Hub — весы у кормушки (HX711, MQTT)"
+  min_version: 2024.6.0
 
 esp32:
   board: esp32dev
@@ -30,6 +33,16 @@ wifi:
   ap:
     ssid: "${friendly_name} AP"
     password: "12345678"
+
+api:
+  reboot_timeout: 30min
+  # Раскомментируйте при необходимости шифрования (и добавьте ключ в secrets.yaml):
+  # encryption:
+  #   key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
 
 mqtt:
   broker: !secret mqtt_broker_ip
@@ -100,8 +113,8 @@ sensor:
   - platform: hx711
     id: raw_hx711
     name: "Raw HX711 Value"
-    dout_pin: GPIO27
-    clk_pin: GPIO25
+    dout_pin: ${hx_dout_pin}
+    clk_pin: ${hx_clk_pin}
     gain: 128
     update_interval: 250ms
     filters:

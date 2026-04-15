@@ -21,6 +21,7 @@ from services.system_admin_api_service import (
     start_single_video_spectrogram_regeneration,
     start_single_video_track_regeneration,
 )
+from services.system_domain_health_service import build_domain_health_payload
 from services.system_metrics_constants import _CACHE_SYSTEM_ACTIVITY_SEC
 from services.system_metrics_sampler_service import start_system_metrics_sampler
 
@@ -71,6 +72,12 @@ def register_routes(app):
         return processor_logs_tail_http_response(
             request.args.get("lines", LOG_LINES_DEFAULT),
         )
+
+    @app.route("/api/ui/system/domain-health", methods=["GET"])
+    @require_ui_settings_password
+    def system_domain_health():
+        """Domain-level integrity snapshot for recordings, visits and species registry."""
+        return build_domain_health_payload()
 
     @app.route("/api/ui/system/activity", methods=["GET"])
     def get_activity():

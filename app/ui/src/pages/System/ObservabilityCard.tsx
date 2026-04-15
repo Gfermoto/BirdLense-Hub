@@ -26,7 +26,11 @@ const FALLBACK_ORDER = [
   'unknown',
 ] as const;
 
-export function ObservabilityCard() {
+export function ObservabilityCard({
+  simple = false,
+}: {
+  simple?: boolean;
+}) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
     queryKey: ['system-observability'],
@@ -35,7 +39,10 @@ export function ObservabilityCard() {
   });
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const abs = (p: string) => (p.startsWith('http') ? p : `${origin}${p}`);
+  const abs = (p?: string) => {
+    if (!p) return '—';
+    return p.startsWith('http') ? p : `${origin}${p}`;
+  };
 
   if (isLoading) return <LinearProgress />;
   if (error || !data) return <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>;
@@ -47,6 +54,18 @@ export function ObservabilityCard() {
   const ml7 = data.ml_health?.rolling_7d;
   const ml30 = data.ml_health?.rolling_30d;
   const lineage = data.model_lineage;
+  const lineageFingerprint =
+    typeof lineage?.config_fingerprint === 'string'
+      ? lineage.config_fingerprint.slice(0, 12)
+      : null;
+  const artifactEntries = (
+    lineage?.artifacts && typeof lineage.artifacts === 'object'
+      ? Object.entries(lineage.artifacts)
+      : []
+  ).filter((entry) => {
+    const [, value] = entry;
+    return typeof value === 'object' && value !== null;
+  });
 
   return (
     <Card>
@@ -58,33 +77,37 @@ export function ObservabilityCard() {
           {t('system.observabilityHint')}
         </Typography>
 
-        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
-          {t('system.observabilityGeneratedTitle')}
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-          {PREVIEW_ORDER.map((key) => (
-            <Chip
-              key={`generated-${key}`}
-              size="small"
-              variant="outlined"
-              label={`${t(`system.previewSource.${key}`)}: ${generatedCounts[key] ?? 0}`}
-            />
-          ))}
-        </Box>
+        {!simple ? (
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+              {t('system.observabilityGeneratedTitle')}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              {PREVIEW_ORDER.map((key) => (
+                <Chip
+                  key={`generated-${key}`}
+                  size="small"
+                  variant="outlined"
+                  label={`${t(`system.previewSource.${key}`)}: ${generatedCounts[key] ?? 0}`}
+                />
+              ))}
+            </Box>
 
-        <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
-          {t('system.observabilityPreviewTitle')}
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-          {PREVIEW_ORDER.map((key) => (
-            <Chip
-              key={key}
-              size="small"
-              variant="outlined"
-              label={`${t(`system.previewSource.${key}`)}: ${counts[key] ?? 0}`}
-            />
-          ))}
-        </Box>
+            <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+              {t('system.observabilityPreviewTitle')}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              {PREVIEW_ORDER.map((key) => (
+                <Chip
+                  key={key}
+                  size="small"
+                  variant="outlined"
+                  label={`${t(`system.previewSource.${key}`)}: ${counts[key] ?? 0}`}
+                />
+              ))}
+            </Box>
+          </>
+        ) : null}
 
         <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
           {t('system.observabilityDeliveryTitle')}
@@ -114,71 +137,93 @@ export function ObservabilityCard() {
           ))}
         </Box>
 
-        {ml7 && ml30 ? (
+        {!simple && ml7 && ml30 ? (
           <>
             <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
-              ML Health
+              {t('system.mlHealthTitle')}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              <Chip size="small" variant="outlined" label={`7d corrections: ${ml7.corrections_logged}`} />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`7d correction rate: ${(ml7.correction_rate * 100).toFixed(1)}%`}
+                label={t('system.mlHealthCorrections7d', { n: ml7.corrections_logged })}
               />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`30d manual annotations: ${(ml30.manual_annotation_rate * 100).toFixed(1)}%`}
+                label={t('system.mlHealthCorrectionRate7d', {
+                  n: (ml7.correction_rate * 100).toFixed(1),
+                })}
               />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`30d unknown rate: ${(ml30.unknown_rate * 100).toFixed(1)}%`}
+                label={t('system.mlHealthManualRate30d', {
+                  n: (ml30.manual_annotation_rate * 100).toFixed(1),
+                })}
               />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`30d generic rate: ${(ml30.generic_rate * 100).toFixed(1)}%`}
+                label={t('system.mlHealthUnknownRate30d', {
+                  n: (ml30.unknown_rate * 100).toFixed(1),
+                })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.mlHealthGenericRate30d', {
+                  n: (ml30.generic_rate * 100).toFixed(1),
+                })}
               />
             </Box>
           </>
         ) : null}
 
-        {lineage ? (
+        {!simple && lineageFingerprint ? (
           <>
             <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
-              Model Lineage
+              {t('system.modelLineageTitle')}
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              Config fingerprint: <code>{lineage.config_fingerprint.slice(0, 12)}</code>
+              {t('system.modelLineageFingerprint')}: <code>{lineageFingerprint}</code>
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              {Object.entries(lineage.artifacts || {}).map(([key, value]) => (
-                <Chip
-                  key={key}
-                  size="small"
-                  color={value.exists ? 'success' : 'default'}
-                  variant="outlined"
-                  label={`${key}: ${value.exists ? 'ok' : 'missing'}`}
-                />
-              ))}
-            </Box>
+            {artifactEntries.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {artifactEntries.map(([key, value]) => (
+                  <Chip
+                    key={key}
+                    size="small"
+                    color={value.exists ? 'success' : 'default'}
+                    variant="outlined"
+                    label={`${key}: ${value.exists ? t('system.statusPresent') : t('system.statusMissing')}`}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('system.modelLineageNoArtifacts')}
+              </Typography>
+            )}
           </>
         ) : null}
 
-        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-          {t('system.hubMetricsForHeimdall')}
-        </Typography>
-        <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
-          <strong>Prometheus:</strong> {abs(data.hub_metrics.prometheus_text)}
-        </Typography>
-        <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
-          <strong>JSON:</strong> {abs(data.hub_metrics.json_summary)}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {t('system.hubMetricsHeimdallNote')}
-        </Typography>
+        {!simple && data.hub_metrics ? (
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.hubMetricsForHeimdall')}
+            </Typography>
+            <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
+              <strong>{t('system.hubMetricsPrometheus')}:</strong> {abs(data.hub_metrics.prometheus_text)}
+            </Typography>
+            <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
+              <strong>{t('system.hubMetricsJson')}:</strong> {abs(data.hub_metrics.json_summary)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('system.hubMetricsHeimdallNote')}
+            </Typography>
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );

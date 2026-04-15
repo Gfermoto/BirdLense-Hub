@@ -20,12 +20,16 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
+| Quickstart | [QUICKSTART.md](./QUICKSTART.md) |
 | Install | [INSTALL.md](./INSTALL.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
 | Scenarios | [SCENARIOS.md](./SCENARIOS.md) |
 | Configuration | [CONFIGURATION.md](./CONFIGURATION.md) |
 | Features | [FEATURES.md](./FEATURES.md) |
+| Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
+| Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
+| Runbooks | [RUNBOOKS.md](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
 | Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
 | Glossary | [GLOSSARY.md](./GLOSSARY.md) |
 | Heimdall tiles | [HEIMDALL.md](./HEIMDALL.md) · [RU](./HEIMDALL.ru.md) |
@@ -44,9 +48,10 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
 | CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
 | Testing | [TESTING.md](./TESTING.md) |
+| CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Accessibility | [A11Y.md](./A11Y.md) · [RU](./A11Y.ru.md) |
 | UX: Tooltips & inline hints | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) |
-| UX: Unknowns vs video | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
+| Review mode & video corrections | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
 
 ---
 
@@ -73,14 +78,14 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
 | Repository layout | [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
 | Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
-| Pre-implementation checklist | [PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU](./PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) |
+| Pre-implementation checklist (repo only; not in MkDocs) | [EN on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) |
 | Doc conventions | [Documentation.md](./Documentation.md) |
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
 | Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
-| Issues, board & roadmap | [ROADMAP.md](./ROADMAP.md) § Triage · [RU](./ROADMAP.ru.md); repo root CONTRIBUTING.md |
+| Issues, board & roadmap | [ROADMAP.md](./ROADMAP.md) (Triage) · [RU](./ROADMAP.ru.md); repo root CONTRIBUTING.md |
 | GitHub via `gh` CLI | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | Wiki & CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
 

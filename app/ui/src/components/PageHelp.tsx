@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import Typography from '@mui/material/Typography';
+import type { ReactNode } from 'react';
+import { PageHeader } from './PageHeader';
 
 export interface HelpDetail {
   title: string;
@@ -22,6 +21,8 @@ export interface PageHelpProps {
   description?: string;
   details?: HelpDetail[];
   dialogMaxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  actions?: ReactNode;
+  titleVariant?: 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 }
 
 export interface PageHelpConfig {
@@ -52,6 +53,8 @@ export const PageHelp = (
   let description: string | undefined;
   let details: HelpDetail[] | undefined;
   const dialogMaxWidth = props.dialogMaxWidth ?? 'sm';
+  const actions = 'actions' in props ? props.actions : undefined;
+  const titleVariant = 'titleVariant' in props ? props.titleVariant : undefined;
 
   if (configKey) {
     const helpData = t(`help.${configKey}`, { returnObjects: true }) as {
@@ -72,27 +75,16 @@ export const PageHelp = (
   const dialogDescriptionId = `${dialogTitleId}-description`;
 
   return (
-    <Box component="section" sx={{ mb: 3, mt: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="h4">{title}</Typography>
-        <Tooltip title={t('common.clickForHelp')}>
-          <IconButton
-            onClick={handleOpenDialog}
-            size="small"
-            aria-label={`Help about ${title}`}
-            sx={{ color: 'text.secondary' }}
-          >
-            <HelpOutlineIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {description}
-        </Typography>
-      )}
-
+    <Box component="section" sx={{ mb: 3 }}>
+      <PageHeader
+        title={title}
+        description={description}
+        actions={actions}
+        onHelpClick={handleOpenDialog}
+        helpTooltip={t('common.clickForHelp')}
+        helpAriaLabel={t('common.helpAbout', { title })}
+        titleVariant={titleVariant ?? 'h3'}
+      />
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}

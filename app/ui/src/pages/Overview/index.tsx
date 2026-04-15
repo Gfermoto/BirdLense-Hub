@@ -6,7 +6,6 @@ import dayjs, { Dayjs } from 'dayjs';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -27,8 +26,10 @@ import WbSunnyOutlined from '@mui/icons-material/WbSunnyOutlined';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { BirdIcon } from '../../components/icons/BirdIcon';
 import { PageHelp } from '../../components/PageHelp';
+import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import Tooltip from '@mui/material/Tooltip';
 import type { Weather } from '../../types';
 
@@ -38,6 +39,7 @@ const formatHour = (hour: number) => {
 
 export const Overview = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.dashboard'));
   const { canEdit, unlocked, requiresPassword, role } = useProtectedArea();
   /** Подсказка про волонтёров — только для гостей, не после входа админа/оператора. */
   const showVolunteerDataLabelingHint =
@@ -74,24 +76,26 @@ export const Overview = () => {
     (isWeatherPending || isWeatherFetching) && weather === undefined;
 
   if (isLoadingSightings)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   if (errorSightings) {
     const err = errorSightings as Error;
     return (
-      <Box sx={{ p: 2 }}>
-        <Typography color="error">{t('overview.errorLoad')}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {err?.message || String(errorSightings)}
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 2 }}>{t('overview.checkApi')}</Typography>
-        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => { refetchOverview(); refetchWeather(); }}>
-          {t('common.retry')}
-        </Button>
-      </Box>
+      <PageMessageState
+        title={t('nav.dashboard')}
+        message={`${t('overview.errorLoad')} ${err?.message || String(errorSightings)} ${t('overview.checkApi')}`}
+        severity="error"
+        action={
+          <Button
+            variant="outlined"
+            onClick={() => {
+              refetchOverview();
+              refetchWeather();
+            }}
+          >
+            {t('common.retry')}
+          </Button>
+        }
+      />
     );
   }
 
@@ -104,19 +108,11 @@ export const Overview = () => {
 
   return (
     <Box sx={{ pb: 4 }}>
-      <Grid
-        container
-        sx={{ pb: 4 }}
-        spacing={3}
-        justifyContent="space-between"
-        alignItems="center"
-      >
-        {/* Header */}
-        <Grid size={{ xs: 12, sm: 8 }}>
-          <PageHelp {...overviewHelpConfig} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box sx={{ mb: 4 }}>
+        <PageHelp
+          {...overviewHelpConfig}
+          actions={
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 value={selectedDay}
@@ -154,9 +150,10 @@ export const Overview = () => {
                 </Button>
               </span>
             </Tooltip>
-          </Box>
-        </Grid>
-      </Grid>
+            </Box>
+          }
+        />
+      </Box>
 
       <Grid container spacing={2} sx={{ minHeight: '300px' }}>
         {/* Last bird widget */}

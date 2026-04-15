@@ -27,11 +27,17 @@ processor:
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400
-  max_inactive_seconds: 10
+  max_inactive_seconds: 12
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
-  post_record_seconds: 0
+  post_record_seconds: 3
+  # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.
+  # Уменьшает почти совпадающие по времени дубли-клипы при Frigate+OpenCV или объекте, всё ещё в кадре.
+  min_seconds_between_recordings: 8
+  # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
+  # Помогает не обрывать ролик, пока объект ещё реально в кадре.
+  frigate_activity_hold_seconds: 6
   # Мин. длительность трека ByteTrack (сек). Короткие визиты (белка) — 0.9–1.0; при шуме поднимите.
-  min_track_duration: 1.0
+  min_track_duration: 0.9
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
@@ -60,19 +66,19 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
-  min_confidence_binary: 0.30  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  min_confidence_binary: 0.28  # Детектор «птица/не птица»; ниже — больше ложных bbox
   # Раздельные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
-  min_confidence_binary_bird: 0.42
+  min_confidence_binary_bird: 0.46
   min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 — выкл.
   bird_skip_classifier_max_area_frac: 0.018
-  min_confidence_to_process: 0.40  # Классификатор (combined); запись/БД
+  min_confidence_to_process: 0.38  # Классификатор (combined); запись/БД
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
   # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
   light_gate_enabled: true
-  light_gate_min_brightness: 25
-  light_gate_min_contrast: 20
+  light_gate_min_brightness: 20
+  light_gate_min_contrast: 14
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
@@ -128,16 +134,21 @@ processor:
   detector_scope: ["Bird", "Squirrel"]
   # Планировщик классификации species внутри кадра: priority | round_robin.
   classification_scheduler: priority
-  max_classifications_per_frame: 2
+  max_classifications_per_frame: 3
   max_blur_checks: 3
   blur_threshold: 100.0
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Для мелких птиц у кромки кормушки снижайте до 0.03-0.05.
-  min_center_dist: 0.1
+  min_center_dist: 0.04
   # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
-  binary_imgsz: 320
+  binary_imgsz: 640
   # Small boxes on feeder scenes are often debris or motion noise.
-  min_box_size_px: 78
+  min_box_size_px: 56
+  # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
+  generic_bird_min_detector_conf: 0.42
+  generic_bird_min_frames: 2
+  generic_bird_min_area_frac: 0.008
+  generic_bird_min_best_frame_score: 6.0
   key_frame_limit: 3
   # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
   # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
@@ -201,10 +212,10 @@ video:
 motion:
   source: opencv
   # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
-  check_every_n_frames: 2
+  check_every_n_frames: 1
   # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
-  opencv_diff_threshold: 22
-  opencv_min_contour_area: 320
+  opencv_diff_threshold: 18
+  opencv_min_contour_area: 240
   frigate_camera_filter: []  # from cameras list; frigate/events
   # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
   # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.
@@ -213,6 +224,9 @@ motion:
   frigate_label_exclude: ["cat", "dog"]
   # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).
   frigate_trigger_on_tracked_object: true
+  # Мин. top_score Frigate для старта записи по событию events. 0 = как раньше, без порога.
+  # Позволяет отсечь слабые/шумовые события до запуска клипа.
+  frigate_min_trigger_score: 0.50
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
   esphome_url: ""
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
@@ -246,14 +260,14 @@ detection:
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
   # Ниже порога детекция отбрасывается после fusion; держите чуть ниже processor.min_confidence_to_process
-  min_confidence_to_store: 0.36
+  min_confidence_to_store: 0.34
   # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
   # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
   frigate_standalone_when_no_yolo: true
   # Мин. top_score Frigate для обычных лейблов (птица и т.д.). Ниже — мягче, больше записей в БД.
-  frigate_standalone_min_score: 0.40
+  frigate_standalone_min_score: 0.48
   # Если score в MQTT = 0 (часто snapshot), подставить для standalone; 0 = не подставлять.
-  frigate_standalone_missing_score_fallback: 0.68
+  frigate_standalone_missing_score_fallback: 0.72
   # Лейблы из motion.frigate_label_exclude (cat/dog): только БД, без merge в YOLO и без Telegram.
   frigate_standalone_excluded_min_score: 0.0
   frigate_standalone_excluded_missing_score_fallback: 0.58

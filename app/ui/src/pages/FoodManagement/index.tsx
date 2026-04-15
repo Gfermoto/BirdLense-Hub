@@ -9,20 +9,22 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import Info from '@mui/icons-material/Info';
 import { resolveImageUrl, fetchBirdFood, toggleBirdFood } from '../../api/api';
 import { BirdFood } from '../../types';
 import { PageHelp } from '../../components/PageHelp';
+import { PageLoadingState } from '../../components/PageState';
 import { foodHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const FoodManagement = () => {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.food'));
   const queryClient = useQueryClient();
-  const { isAdmin, canEdit } = useProtectedArea();
+  const { isAdmin } = useProtectedArea();
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const { data: foodData, isLoading } = useQuery({
     queryKey: ['birdFood'],
@@ -52,16 +54,12 @@ export const FoodManagement = () => {
   });
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoadingState label={t('common.loading')} />;
   }
 
   return (
     <Box mb={4}>
-      {canEdit && <PageHelp {...foodHelpConfig} />}
+      <PageHelp {...foodHelpConfig} />
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

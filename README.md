@@ -4,13 +4,13 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.3.4-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.3.5-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 ### Short description
 
 Canonical one-liners for **GitHub About**, mirrors, and press: **[SHORT_DESCRIPTION.md](./SHORT_DESCRIPTION.md)** · **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)**
 
-Smart bird feeder monitoring: computer vision and audio recognition to detect, identify, record, and analyze birds. Runs in Docker on x86, integrates with Go2RTC, Frigate, BirdNET via MQTT. No cloud — fully local.
+Bird monitoring for feeders, gardens, and field setups: computer vision and audio recognition to detect, identify, record, and analyze visits—aimed at ornithology, citizen science, and operators who keep data on their own hardware. Runs in Docker on x86; integrates with Go2RTC, Frigate, BirdNET via MQTT. No vendor cloud required for core processing.
 
 **Docs:** [Project overview](./docs/OVERVIEW.md) · [Full documentation index](./docs/README.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 
@@ -55,10 +55,10 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 - **Audio** — [BirdNET](https://github.com/kahst/BirdNET-Analyzer) sightings via MQTT (BirdNET-Pi/Go)
 - **Triggers** — OpenCV motion, Frigate events, MQTT binary, ESPHome
 - **Timeline** — date + time-of-day filter (Morning, Day, Evening, Night 22–06), video playback, spectrograms, track visualization
-- **UI** — React 19, Material UI, i18n (en/ru), mobile-friendly, PWA (install prompt, offline cache)
+- **UI** — React 19, Material UI, i18n (en/ru/zh), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
-- **MCP** — [Model Context Protocol](https://modelcontextprotocol.io/) for **external AI assistants** talking to the hub (see `docs/MCP_SETUP.md`)
+- **MCP** — optional [Model Context Protocol](https://modelcontextprotocol.io/) for **authorized clients** (automation, integrations; see `docs/MCP_SETUP.md`)
 
 ### Analytics & Export
 - **CSV/JSON export** — download visits for analysis in Excel/Python
@@ -86,9 +86,9 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Quickstart:** [docs/QUICKSTART.md](./docs/QUICKSTART.md) | **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, and starts the stack.
+For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract.
 
 ## Developers
 
@@ -118,6 +118,7 @@ From repo root:
 | Command | Description |
 |---------|-------------|
 | `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
+| `make verify` | Check `health` + `readiness` + `status` on `BASE_URL` or localhost |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |

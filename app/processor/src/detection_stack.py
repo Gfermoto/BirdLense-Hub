@@ -174,5 +174,9 @@ def build_detection_stack(
         post_record_seconds=app_config.get("processor.post_record_seconds", 0),
         min_confidence_to_store=min_confidence_to_store,
         classifier_fallback_bird=fallback_bird,
+        generic_bird_min_detector_conf=app_config.get("processor.generic_bird_min_detector_conf"),
+        generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
+        generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
+        generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
     )
     return frame_processor, decision_maker, merged_overrides

@@ -3,7 +3,22 @@ set -e
 # Сброс прав на примонтированные тома, затем весь стек под birdlense (uid 1000), не root (#277).
 if [ "$(id -u)" = "0" ]; then
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
-  exec gosu birdlense:birdlense /bin/bash "$0" "$@"
+  # docker compose group_add добавляет группы root-процессу контейнера, но после gosu
+  # пользователь birdlense их теряет. Подмешиваем GID DRM-устройств в самого пользователя.
+  if [ -d /dev/dri ]; then
+    for dev in /dev/dri/renderD128 /dev/dri/card0; do
+      [ -e "$dev" ] || continue
+      gid="$(stat -c '%g' "$dev" 2>/dev/null || true)"
+      [ -n "$gid" ] || continue
+      [ "$gid" = "0" ] && continue
+      if ! getent group "$gid" >/dev/null 2>&1; then
+        groupadd -g "$gid" "hostgpu_$gid" 2>/dev/null || true
+      fi
+      grp="$(getent group "$gid" | awk -F: 'NR==1{print $1}')"
+      [ -n "$grp" ] && usermod -aG "$grp" birdlense 2>/dev/null || true
+    done
+  fi
+  exec gosu birdlense /bin/bash "$0" "$@"
 fi
 
 # Go2RTC upstream: из GO2RTC_URL или video.go2rtc_url в конфиге
@@ -46,9 +61,9 @@ if ! curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null; then
   echo "API health check failed after 400s (continuing anyway)"
   # Не выходим — контейнер остаётся живым для отладки; оркестратор может использовать healthcheck из compose
 fi
-# MCP server (при mcp.enabled) — HTTP на 8001, nginx проксирует /mcp
+# MCP server (при mcp.enabled) — streamable HTTP на 8001, nginx проксирует /mcp
 if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
-  PYTHONPATH=/app python3 /app/web/birdlense_mcp.py --transport http --port 8001 --host 127.0.0.1 &
+  PYTHONPATH=/app python3 /app/web/birdlense_mcp.py --transport streamable-http --port 8001 --host 127.0.0.1 &
 fi
 # Процессор в цикле: при перезапуске по флагу из UI контейнер не выходит, перезапускается только процесс
 while true; do

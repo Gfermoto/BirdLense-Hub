@@ -14,17 +14,21 @@ permissions:
   contents: read
   packages: read
 
-env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/birdlense-hub:latest
-  CONTAINER: birdlense-smoke
-  HOST_PORT: "18085"
-
 jobs:
   smoke:
     name: smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CONTAINER: birdlense-smoke
+      HOST_PORT: "18085"
     steps:
+      # OCI reference: owner в пути образа должен быть lowercase (toLower в expressions здесь даёт invalid workflow).
+      - name: Set IMAGE (lowercase GHCR owner)
+        run: |
+          o=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${o}/birdlense-hub:latest" >> "$GITHUB_ENV"
+
       - name: Pull published latest image
         run: docker pull "$IMAGE"
 
@@ -36,19 +40,24 @@ jobs:
             -p "${HOST_PORT}:8080" \
             "$IMAGE"
 
-      - name: Wait for /api/ui/health
+      - name: Wait for /api/ui/readiness
         run: |
           set -e
           for i in $(seq 1 30); do
-            if curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/health" >/dev/null; then
-              echo "health OK after ${i} attempts"
+            if curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/readiness" | tee /tmp/readiness.json | tr -d '\n\r\t ' | grep -q '"ready":true'; then
+              echo "readiness OK after ${i} attempts"
               exit 0
             fi
             sleep 3
           done
-          echo "health check failed for ${IMAGE}"
+          echo "readiness check failed for ${IMAGE}"
           docker logs "$CONTAINER" || true
           exit 1
+
+      - name: Check /api/ui/status
+        run: |
+          curl -sf "http://127.0.0.1:${HOST_PORT}/api/ui/status" | tee /tmp/status.json
+          tr -d '\n\r\t ' < /tmp/status.json | grep -q '"web":"ok"'
 
       - name: Container logs on failure
         if: failure()

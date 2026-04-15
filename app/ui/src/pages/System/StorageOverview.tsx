@@ -50,7 +50,11 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-export const StorageOverview = () => {
+export const StorageOverview = ({
+  simple = false,
+}: {
+  simple?: boolean;
+}) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { isAdmin } = useProtectedArea();
@@ -87,16 +91,24 @@ export const StorageOverview = () => {
   if (isLoading) {
     return <Typography>{t('storage.loadingStats')}</Typography>;
   }
+  const validStorageStats = (Array.isArray(storageStats) ? storageStats : []).filter(
+    (stat): stat is StorageStats =>
+      typeof stat?.date === 'string' &&
+      typeof stat?.fileCount === 'number' &&
+      Number.isFinite(stat.fileCount) &&
+      typeof stat?.totalSize === 'number' &&
+      Number.isFinite(stat.totalSize),
+  );
 
   const chartData: ChartDataPoint[] =
-    storageStats?.map((stat) => ({
+    validStorageStats.map((stat) => ({
       date: dayjs(stat.date).format('MM/DD'),
       size: Number((stat.totalSize / (1024 * 1024)).toFixed(2)),
-    })) || [];
+    }));
   const totalSize =
-    storageStats?.reduce((acc, stat) => acc + stat.totalSize, 0) || 0;
+    validStorageStats.reduce((acc, stat) => acc + stat.totalSize, 0) || 0;
   const totalFiles =
-    storageStats?.reduce((acc, stat) => acc + stat.fileCount, 0) || 0;
+    validStorageStats.reduce((acc, stat) => acc + stat.fileCount, 0) || 0;
 
   const handleDownloadDb = async () => {
     setDbError('');
@@ -234,143 +246,151 @@ export const StorageOverview = () => {
           </Typography>
         )}
       </Paper>
-      <Paper sx={{ p: 2, mt: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          {t('storage.dbBackupRestore')}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('storage.dbBackupRestoreHint')}
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button
-            variant="outlined"
-            onClick={handleDownloadDb}
-            disabled={isDownloadingDb || isRestoringDb}
-          >
-            {isDownloadingDb ? t('storage.dbBackingUp') : t('storage.dbBackupAction')}
-          </Button>
-          <Button
-            color="warning"
-            variant="outlined"
-            onClick={handleRestorePick}
-            disabled={isDownloadingDb || isRestoringDb}
-          >
-            {isRestoringDb ? t('storage.dbRestoring') : t('storage.dbRestoreAction')}
-          </Button>
-          <input
-            ref={restoreInputRef}
-            type="file"
-            accept=".db,.sqlite,.sqlite3,application/octet-stream"
-            style={{ display: 'none' }}
-            onChange={handleRestoreFile}
-          />
-        </Stack>
-        {dbMessage && <Alert severity="success" sx={{ mt: 2 }}>{dbMessage}</Alert>}
-        {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
-      </Paper>
-
-      {isAdmin && (
-        <Paper sx={{ p: 2, mt: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {t('storage.purgeOld')}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('storage.purgeHint')}
-          </Typography>
-          <ToggleButtonGroup
-            value={purgeMode}
-            exclusive
-            onChange={(_, value: PurgeMode | null) => {
-              if (value) setPurgeMode(value);
-            }}
-            size="small"
-            sx={{ mb: 2 }}
-          >
-            <ToggleButton value="before">{t('storage.purgeModeBefore')}</ToggleButton>
-            <ToggleButton value="range">{t('storage.purgeModeRange')}</ToggleButton>
-          </ToggleButtonGroup>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              alignItems={{ xs: 'stretch', sm: 'center' }}
-              sx={{ mb: 2 }}
-            >
-              {purgeMode === 'before' ? (
-                <DatePicker
-                  label={t('storage.deleteBeforeDate')}
-                  value={purgeBeforeDate}
-                  onChange={(v) => setPurgeBeforeDate(v)}
-                  maxDate={dayjs()}
-                  slotProps={{ textField: { size: 'small' } }}
-                />
-              ) : (
-                <>
-                  <DatePicker
-                    label={t('storage.periodFrom')}
-                    value={purgeRangeFrom}
-                    onChange={(v) => setPurgeRangeFrom(v)}
-                    maxDate={purgeRangeTo ?? dayjs()}
-                    slotProps={{ textField: { size: 'small' } }}
-                  />
-                  <DatePicker
-                    label={t('storage.periodTo')}
-                    value={purgeRangeTo}
-                    onChange={(v) => setPurgeRangeTo(v)}
-                    minDate={purgeRangeFrom ?? undefined}
-                    maxDate={dayjs()}
-                    slotProps={{ textField: { size: 'small' } }}
-                  />
-                </>
-              )}
+      {!simple ? (
+        <>
+          <Paper sx={{ p: 2, mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              {t('storage.dbBackupRestore')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('storage.dbBackupRestoreHint')}
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Button
+                variant="outlined"
+                onClick={handleDownloadDb}
+                disabled={isDownloadingDb || isRestoringDb}
+              >
+                {isDownloadingDb ? t('storage.dbBackingUp') : t('storage.dbBackupAction')}
+              </Button>
+              <Button
+                color="warning"
+                variant="outlined"
+                onClick={handleRestorePick}
+                disabled={isDownloadingDb || isRestoringDb}
+              >
+                {isRestoringDb ? t('storage.dbRestoring') : t('storage.dbRestoreAction')}
+              </Button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept=".db,.sqlite,.sqlite3,application/octet-stream"
+                style={{ display: 'none' }}
+                onChange={handleRestoreFile}
+              />
             </Stack>
-          </LocalizationProvider>
-          <Button
-            color="error"
-            variant="outlined"
-            disabled={!canStartPurgeDialog || purgeRunning}
-            onClick={() => {
-              setPurgeError(null);
-              setPurgeConfirmOpen(true);
-            }}
-          >
-            {t('storage.purge')}
-          </Button>
-          {purgeMessage && <Alert severity="success" sx={{ mt: 2 }}>{purgeMessage}</Alert>}
-          {purgeError && <Alert severity="error" sx={{ mt: 2 }}>{purgeError}</Alert>}
-        </Paper>
-      )}
+            {dbMessage && <Alert severity="success" sx={{ mt: 2 }}>{dbMessage}</Alert>}
+            {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
+          </Paper>
 
-      <ConfirmDialog
-        open={pendingRestoreFile !== null}
-        title={t('storage.dbRestoreTitle')}
-        description={t('storage.dbRestoreConfirm', { name: pendingRestoreFile?.name ?? '' })}
-        confirmLabel={t('storage.dbRestoreAction')}
-        cancelLabel={t('common.cancel')}
-        confirmColor="error"
-        onConfirm={handleRestoreConfirmed}
-        onCancel={() => setPendingRestoreFile(null)}
-      />
+          {isAdmin && (
+            <Paper sx={{ p: 2, mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                {t('storage.purgeOld')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('storage.purgeHint')}
+              </Typography>
+              <ToggleButtonGroup
+                value={purgeMode}
+                exclusive
+                onChange={(_, value: PurgeMode | null) => {
+                  if (value) setPurgeMode(value);
+                }}
+                size="small"
+                sx={{ mb: 2 }}
+              >
+                <ToggleButton value="before">{t('storage.purgeModeBefore')}</ToggleButton>
+                <ToggleButton value="range">{t('storage.purgeModeRange')}</ToggleButton>
+              </ToggleButtonGroup>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                  sx={{ mb: 2 }}
+                >
+                  {purgeMode === 'before' ? (
+                    <DatePicker
+                      label={t('storage.deleteBeforeDate')}
+                      value={purgeBeforeDate}
+                      onChange={(v) => setPurgeBeforeDate(v)}
+                      maxDate={dayjs()}
+                      slotProps={{ textField: { size: 'small' } }}
+                    />
+                  ) : (
+                    <>
+                      <DatePicker
+                        label={t('storage.periodFrom')}
+                        value={purgeRangeFrom}
+                        onChange={(v) => setPurgeRangeFrom(v)}
+                        maxDate={purgeRangeTo ?? dayjs()}
+                        slotProps={{ textField: { size: 'small' } }}
+                      />
+                      <DatePicker
+                        label={t('storage.periodTo')}
+                        value={purgeRangeTo}
+                        onChange={(v) => setPurgeRangeTo(v)}
+                        minDate={purgeRangeFrom ?? undefined}
+                        maxDate={dayjs()}
+                        slotProps={{ textField: { size: 'small' } }}
+                      />
+                    </>
+                  )}
+                </Stack>
+              </LocalizationProvider>
+              <Button
+                color="error"
+                variant="outlined"
+                disabled={!canStartPurgeDialog || purgeRunning}
+                onClick={() => {
+                  setPurgeError(null);
+                  setPurgeConfirmOpen(true);
+                }}
+              >
+                {t('storage.purge')}
+              </Button>
+              {purgeMessage && <Alert severity="success" sx={{ mt: 2 }}>{purgeMessage}</Alert>}
+              {purgeError && <Alert severity="error" sx={{ mt: 2 }}>{purgeError}</Alert>}
+            </Paper>
+          )}
+        </>
+      ) : null}
 
-      <ConfirmDialog
-        open={purgeConfirmOpen}
-        title={t('storage.purgeOld')}
-        description={
-          purgeMode === 'before' && purgeBeforeDate
-            ? t('storage.purgeConfirm', { date: purgeBeforeDate.format('YYYY-MM-DD') })
-            : purgeRangeFrom && purgeRangeTo
-              ? t('storage.purgeConfirmRange', {
-                  start: purgeRangeFrom.format('YYYY-MM-DD'),
-                  end: purgeRangeTo.format('YYYY-MM-DD'),
-                })
-              : ''
-        }
-        confirmLabel={t('storage.purge')}
-        cancelLabel={t('common.cancel')}
-        confirmColor="error"
-        onConfirm={() => void handlePurgeConfirmed()}
-        onCancel={() => setPurgeConfirmOpen(false)}
-      />
+      {!simple ? (
+        <>
+          <ConfirmDialog
+            open={pendingRestoreFile !== null}
+            title={t('storage.dbRestoreTitle')}
+            description={t('storage.dbRestoreConfirm', { name: pendingRestoreFile?.name ?? '' })}
+            confirmLabel={t('storage.dbRestoreAction')}
+            cancelLabel={t('common.cancel')}
+            confirmColor="error"
+            onConfirm={handleRestoreConfirmed}
+            onCancel={() => setPendingRestoreFile(null)}
+          />
+
+          <ConfirmDialog
+            open={purgeConfirmOpen}
+            title={t('storage.purgeOld')}
+            description={
+              purgeMode === 'before' && purgeBeforeDate
+                ? t('storage.purgeConfirm', { date: purgeBeforeDate.format('YYYY-MM-DD') })
+                : purgeRangeFrom && purgeRangeTo
+                  ? t('storage.purgeConfirmRange', {
+                      start: purgeRangeFrom.format('YYYY-MM-DD'),
+                      end: purgeRangeTo.format('YYYY-MM-DD'),
+                    })
+                  : ''
+            }
+            confirmLabel={t('storage.purge')}
+            cancelLabel={t('common.cancel')}
+            confirmColor="error"
+            onConfirm={() => void handlePurgeConfirmed()}
+            onCancel={() => setPurgeConfirmOpen(false)}
+          />
+        </>
+      ) : null}
     </Box>
   );
 };
