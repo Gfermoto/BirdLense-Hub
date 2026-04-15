@@ -4,6 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { UnknownCard } from './index';
 import type { UnknownDetection } from '../../api/api';
 
+/** Align with App.tsx BrowserRouter future flags (silences v7 upgrade warnings). */
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 const detection: UnknownDetection = {
   id: 1,
   video_id: 10,
@@ -20,7 +26,7 @@ const detection: UnknownDetection = {
 describe('UnknownCard', () => {
   it('shows localized review reason chip for operator explainability', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={memoryRouterFuture}>
         <UnknownCard
           detection={detection}
           speciesList={[]}
