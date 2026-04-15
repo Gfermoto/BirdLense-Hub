@@ -109,7 +109,6 @@ export interface paths {
                                 motion_source?: string;
                                 trigger_display?: string;
                                 birdnet_url?: string | null;
-                                heimdall_url?: string | null;
                             };
                         };
                     };
@@ -157,7 +156,6 @@ export interface paths {
                                 motion_source?: string;
                                 trigger_display?: string;
                                 birdnet_url?: string | null;
-                                heimdall_url?: string | null;
                             };
                         };
                     };
@@ -208,7 +206,6 @@ export interface paths {
                             motion_source?: string;
                             trigger_display?: string;
                             birdnet_url?: string | null;
-                            heimdall_url?: string | null;
                         };
                     };
                 };

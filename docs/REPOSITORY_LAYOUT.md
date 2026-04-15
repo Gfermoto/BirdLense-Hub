@@ -17,7 +17,6 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 | **`Makefile`** (root) | `deploy`, `docs-site`, Telegram proxy helpers, `restore-config`, etc. Application build/start is under `app/Makefile`. |
 | **`VERSION`** | Current release semver for the hub (single source of truth for version checks). |
 | **`examples/`** | Reference configs (e.g. Prometheus alert rules), not loaded by the app automatically. |
-| **`docker/gallery-test/`** | Small **standalone** Docker sample (gallery); not the main `app/` stack. |
 | **`wiki-source/`** | Seeds / automation for GitHub Wiki (see [WIKI_AUTOMATION](./WIKI_AUTOMATION.md)). |
 | **`screenshots/`** | Images for docs and articles. |
 | **`docs/article/`** | Drafts for external posts (e.g. Habr); not part of the running product. |

@@ -69,7 +69,6 @@ def build_component_status_payload(session) -> dict:
         mqtt_display = "not_used"
     esphome_display = esphome_status if feed_source == "esphome" else "not_used"
     birdnet_url = (app_config.get("general.birdnet_url") or "").strip()
-    heimdall_url = (app_config.get("general.heimdall_url") or "").strip()
     frigate_parallel = bool(mqtt_broker and (app_config.get("mqtt.frigate_topic") or "").strip())
     trigger_display = _trigger_display(motion_source, frigate_parallel)
     video_display = check_video_reachable()
@@ -84,5 +83,4 @@ def build_component_status_payload(session) -> dict:
         "motion_source": motion_source,
         "trigger_display": trigger_display,
         "birdnet_url": birdnet_url or None,
-        "heimdall_url": heimdall_url or None,
     }

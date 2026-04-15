@@ -1,6 +1,6 @@
 # Плитки Heimdall для BirdLense Hub
 
-Как добавить **BirdLense** (и соседние сервисы) в дашборд **[linuxserver/Heimdall](https://github.com/linuxserver/Heimdall)** v2. Проверка **с Hub на Heimdall** (`heimdall_url`) — в [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (раздел про метрики и Heimdall).
+Как добавить **BirdLense** (и соседние сервисы) в дашборд **[linuxserver/Heimdall](https://github.com/linuxserver/Heimdall)** v2. Это **ручной dashboard-only** сценарий: BirdLense отдаёт URL и метрики, а Heimdall просто ссылается на них.
 
 [English](./HEIMDALL.md)
 
@@ -81,5 +81,5 @@ Heimdall этот файл **не импортирует**. Для импорт�
 
 ## См. также
 
-- [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) — `heimdall_url`, `birdnet_url`, метрики.
+- [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) — `birdnet_url`, метрики, MQTT / HA.
 - [SCENARIOS.ru.md](./SCENARIOS.ru.md) — сценарии стека.

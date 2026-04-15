@@ -93,17 +93,17 @@
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на веб-интерфейс вашего аудио-стека (BirdNET-Go, BirdNET-Pi и т.д.). Пусто — ссылка/иконка в UI скрыта. От выбора сборки настройки слияния не зависят — важен MQTT. |
-| `heimdall_url` | Базовый URL Heimdall только для **проверки с Hub** (раздел System). Можно указать `http://heimdall.local`, если имя резолвится **с хоста/контейнера Hub** (Docker: общая сеть, `extra_hosts`, DNS в LAN). Это **не** настройка «Heimdall читает Hub» — см. ниже. |
 | `donate_url` | Ссылка на поддержку. Если задана, показывается только иконка-сердце в шапке. Пусто — скрыто. |
 
 **Платформы:** РФ — [Boosty](https://boosty.to), [DonationAlerts](https://donationalerts.com), [DONAT24](https://donat24.ru), ЮMoney. За рубежом — Ko-fi, GitHub Sponsors, Patreon. Настройки → General → вставить URL страницы.
 
-### Heimdall и метрики Hub (направление данных)
+### Heimdall и метрики Hub
 
-- **Heimdall → Hub:** Чтобы в Heimdall отображалось состояние BirdLense, в Heimdall добавьте внешнюю ссылку или плитку на ваш хаб, например:
-  - текст Prometheus: `http://<хост>:<порт>/metrics` или `/api/metrics`
-  - JSON (те же счётчики): `http://<хост>:<порт>/api/metrics/summary`
-- **Hub → Heimdall:** Поле `heimdall_url` нужно только чтобы **Hub проверял** доступность Heimdall с сервера (latency, HTTP, заголовок). Это не замена экспорта метрик из Hub.
+- Heimdall остаётся **ручным дашбордом** для ссылок и виджетов вокруг BirdLense Hub.
+- Добавляйте плитки напрямую на URL хаба, например:
+  - Prometheus text: `http://<хост>:<порт>/metrics` или `/api/metrics`
+  - JSON-снимок: `http://<хост>:<порт>/api/metrics/summary`
+- В самом BirdLense больше нет отдельного `heimdall_url` и server-side проверки Heimdall.
 
 На странице «Система» эти URL также показаны в блоке **Наблюдаемость уведомлений** (после входа в настройки).
 
@@ -200,9 +200,9 @@
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
 | `reconnect_min_delay` | Минимальная задержка reconnect/backoff MQTT (сек) |
 | `reconnect_max_delay` | Максимальная задержка reconnect/backoff MQTT (сек) |
-| `ha_discovery` | Home Assistant MQTT Autodiscovery — Last Species, Bird at Feeder и др. По умолчанию true. |
+| `ha_discovery` | Home Assistant MQTT Autodiscovery для сущностей BirdLense. По умолчанию true. Только observe-only: last species / confidence / detection time, присутствие птицы, текущий вес кормушки (если весы идут по MQTT) и связанная availability/device metadata. |
 
-**Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
+**Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA), `birdlense/sensor/feeder_weight/state` (HA), `birdlense/binary_sensor/feeder_bird_present/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
 
 **BirdNET (универсально):** процессор принимает несколько схем имён полей — в частности **BirdNET-Go** (`CommonName`, `ScientificName`, `SpeciesCode`, `Confidence`, `BeginTime`, опционально `BirdImage.URL`) и **BirdNET-Pi** (`Common_Name`, `Confidence_Score`, `Date`, и др.). Отдельно в конфиге не выбирается «Go или Pi»: достаточно, чтобы JSON приходил на `mqtt.birdnet_topic`. **Слияние с видео и приоритеты по FIFO** опираются на **каноническое имя вида** в Hub: при типичном payload с **научным именем** язык подписи в MQTT (русский/английский) не мешает; если научного имени нет, помогают **алиасы** в реестре видов (`species_alias`) и при необходимости `detection.species_mapping`. При Hub только на PostgreSQL без общего файла `birdlense.db` автоматическое сопоставление по каталогу из SQLite недоступно — используйте маппинг в YAML. BirdNET по-прежнему **confidence-only** для финального video label. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
 
@@ -288,29 +288,6 @@
 |------|----------|
 | `days` | Удалять записи старше N дней |
 | `max_gb` | Макс. размер в GB (опционально) |
-
----
-
-## Gallery (публичная галерея)
-
-Opt-in: при `enabled=true` и `upload_url` Hub загружает лучшие кадры на указанный URL. POST multipart/form-data: `image`, `species`, `confidence`, `timestamp`, `detection_id`, `video_id`, `latitude`, `longitude`. Фильтры: `min_confidence` (0.5), `only_manually_corrected`. Тест: `docker compose -f docker/gallery-test/docker-compose.yml up -d` → http://localhost:8086/api/upload.
-
-| Ключ | Описание |
-|------|----------|
-| `enabled` | Включить загрузку |
-| `upload_url` | URL API приёмника |
-| `min_confidence` | Только детекции ≥ порога |
-| `only_manually_corrected` | Только проверенные вручную |
-
-**Разбор проблем**
-
-- **«Были посещения», но в галерею пусто:** в Timeline/Overview учитываются и **audio** (BirdNET), и **video**. В галерею попадают **только** строки `VideoSpecies` с `source=video`, с **заполненным `frames`** (боксы трека от процессора) и `confidence >= gallery.min_confidence`. Чисто аудио-визит или видео без `frames` в JSON — **не загружаются**.
-- **`min_confidence`:** по умолчанию **0.5**. Если модель даёт 0.35 — снизьте в `user_config.yaml`, например `gallery.min_confidence: 0.35`.
-- **`only_manually_corrected: true`:** тогда загрузятся только детекции после ручной правки на Unknowns/видео; иначе галерея будет пустой до правок.
-- **Адрес `upload_url`:** полный URL **POST** приёмника (multipart). Сервер должен отвечать **200, 201 или 204**. Проверьте с машины, где крутится Hub: `docker exec birdlense curl -sS -o /dev/null -w '%{http_code}' -X POST …` или временный тестовый контейнер из репозитория.
-- **URL из Docker:** хост в `upload_url` должен быть доступен **из контейнера web** (например `http://gallery-test:5000/api/upload` с `docker-compose.gallery-test.yml`). **`http://127.0.0.1:…` на хосте** из контейнера часто указывает **на сам контейнер**, а не на ваш ПК.
-- **Логи:** в логе web — `Gallery upload:` (успех), `Gallery upload failed` (код ответа), `Gallery: video N — нет строк для загрузки` (условия фильтра не выполнены), `Gallery upload thread failed` (исключение в потоке).
-- **Качество картинки:** кадр по-прежнему извлекается из записи; добавлена **нормализация JPEG** (минимальный размер, ограничение по длинной стороне), как для «капризных» приёмников. Если кроп по bbox не получился — отправляется **полный кадр** в середине клипа (аналогично fallback для Telegram).
 
 ---
 

@@ -116,9 +116,6 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
-                      heimdall_url:
-                        type: string
-                        nullable: true
         "503":
           description: App is up but not fully ready for use
           content:
@@ -194,9 +191,6 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
-                      heimdall_url:
-                        type: string
-                        nullable: true
   /status:
     get:
       summary: Component status
@@ -228,9 +222,6 @@ paths:
                   trigger_display:
                     type: string
                   birdnet_url:
-                    type: string
-                    nullable: true
-                  heimdall_url:
                     type: string
                     nullable: true
   /weather:

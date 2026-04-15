@@ -123,7 +123,6 @@ export interface Settings {
     /** Minutes without /api/* before login session clears; 0 = off. Default 30. */
     session_idle_minutes?: number;
     birdnet_url?: string; // URL to BirdNET installation; empty = no icon in UI
-    heimdall_url?: string; // URL to Heimdall dashboard; empty = no link in UI
     /** URL донатов: одна иконка в шапке; поле задаётся здесь же в «Общие» */
     donate_url?: string;
   };
@@ -322,12 +321,6 @@ export interface Settings {
   };
   webhook?: {
     url?: string;  // POST при детекции (IFTTT, Zapier)
-  };
-  gallery?: {
-    enabled?: boolean;
-    upload_url?: string;
-    min_confidence?: number;
-    only_manually_corrected?: boolean;
   };
   ui?: {
     unknown_confidence_threshold?: number;  // 0–1; детекции ниже попадают в «Неизвестные»
