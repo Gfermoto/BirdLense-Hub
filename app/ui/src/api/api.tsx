@@ -488,6 +488,8 @@ export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
   donate_url: string | null;
   feed_source?: string;
+  scales_enabled?: boolean;
+  scales_source?: string | null;
   scale_tare_available?: boolean;
   scale?: {
     weight?: number;

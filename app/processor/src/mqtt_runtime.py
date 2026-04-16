@@ -19,7 +19,7 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     """DATA_DIR, MQTT topic веса (если source=mqtt), unit.
 
     Вес: явный ``mqtt_topic`` или, если пусто, ``{mqtt_topic_prefix}/weight``.
-    ``bird_present`` подписывается отдельно при непустом префиксе (см. ``start_mqtt_aggregator_session``).
+    ``bird_present``: явный ``mqtt_bird_present_topic`` или ``{mqtt_topic_prefix}/bird_present`` при непустом префиксе.
     """
     data_dir = get_data_dir()
     scales_topic_arg: Optional[str] = None
@@ -38,11 +38,14 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
 
 
 def scales_mqtt_bird_present_topic() -> Optional[str]:
-    """``{prefix}/bird_present`` при включённых весах и source=mqtt."""
+    """Топик присутствия птицы: явный ``mqtt_bird_present_topic`` или ``{prefix}/bird_present``."""
     if not app_config.get("integrations.scales.enabled"):
         return None
     if (app_config.get("integrations.scales.source") or "mqtt").strip().lower() != "mqtt":
         return None
+    explicit = (app_config.get("integrations.scales.mqtt_bird_present_topic") or "").strip()
+    if explicit:
+        return explicit
     prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
     if not prefix:
         return None

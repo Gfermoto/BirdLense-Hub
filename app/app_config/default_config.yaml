@@ -421,6 +421,8 @@ integrations:
     source: mqtt  # mqtt | homeassistant
     # Топик веса (полный путь). Если пусто, но задан mqtt_topic_prefix — вес: {prefix}/weight
     mqtt_topic: ""
+    # Полный топик bird_present (ON/OFF). Если пусто — {mqtt_topic_prefix}/bird_present при непустом префиксе
+    mqtt_bird_present_topic: ""
     # Префикс ESPHome/своей прошивки: вес {prefix}/weight, птица {prefix}/bird_present, команда тары {prefix}/command
     mqtt_topic_prefix: ""
     # Явный топик команды (тара). Пусто = {mqtt_topic_prefix}/command при непустом префиксе

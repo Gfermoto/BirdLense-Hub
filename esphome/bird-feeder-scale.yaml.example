@@ -1,0 +1,329 @@
+# Копия в репозитории без паролей. Локально: cp bird-feeder-scale.yaml.example bird-feeder-scale.yaml и заполните Wi‑Fi / OTA.
+# Файл bird-feeder-scale.yaml в .gitignore — не коммитится.
+
+# Умные весы для кормушки: HX711 + ESP32-WROOM-32. Данные в Home Assistant — через api: (нативная интеграция ESPHome).
+# Если хабу BirdLense нужны вес по MQTT, журнал дельты и тара из UI хаба — см. docs/CONFIGURATION.md (integrations.scales) и автоматизацию HA «sensor → MQTT» или отдельный конфиг.
+#
+# Перед прошивкой: подставьте Wi‑Fi и OTA в substitutions ниже; dout/clk и ha_temperature_entity.
+#
+# Калибровка (два сырых отсчёта HX711 → calibrate_linear). Цифры из репозитория — чужие; иначе вес «врёт».
+#  1) Пустая платформа, стабилизация ~30 с → сенсор «HX711 raw (cal)» → cal_empty_reading.
+#  2) Ровно известный груз (лучше 500–1000 г) → снова raw → cal_loaded_reading, в cal_loaded_grams — его истинная масса в граммах.
+#  3) Прошить. Проверка: без груза ~0 г, с грузом — близко к эталону. Если всё ещё мимо — повторить шаги 1–2 (дрожь/ветер портят raw).
+#
+# Авто-тара (если auto_tare_on_boot: "true"), «стабильно» = |Δ| < auto_tare_stability_eps_g между тактами:
+#  A) Почти пусто: |вес| < auto_tare_light_max_g (по умолчанию 10 г) и короткое стабильное окно auto_tare_light_stable_ms.
+#  B) Дозагрузка: |вес| ≥ auto_tare_refill_min_g и стабильно ≥ auto_tare_refill_stable_ms (по умолчанию 5 мин).
+#  После срабатывания авто-тара отключается, пока вес снова заметно не дёрнется (> eps). Ручная «Manual Tare» в HA — всегда.
+
+substitutions:
+  device_name: bird-feeder-scale
+  friendly_name: Bird feeder scale
+
+  # Wi‑Fi и OTA (без secrets.yaml)
+  wifi_ssid: "YOUR_WIFI_SSID"
+  wifi_password: "YOUR_WIFI_PASSWORD"
+  ota_password: ""
+
+  # Entity HA с уличной температурой (подставьте свой id, например с WS2350).
+  ha_temperature_entity: sensor.ws2350_v2_37_outdoor_temperature
+  hx_dout_pin: GPIO27
+  hx_clk_pin: GPIO25
+
+  # Калибровка: сырые отсчёта HX711 (см. сенсор «HX711 raw (cal)»).
+  cal_empty_reading: "235839"
+  cal_loaded_reading: "338674"
+  cal_loaded_grams: "500.0"
+
+  # Опрос HX711: 250 ms + медиана 3 + среднее 3 — быстрее отклик; при шуме поднять окно или интервал.
+  hx711_update_interval: 250ms
+
+  # Публикация в HA/MQTT при изменении ≥ N г (heartbeat ниже).
+  weight_publish_delta_g: "0.2"
+
+  bird_present_debounce: "1.5s"
+
+  # Порог «птичка на кормушке», г (мелкие птицы под навесом — подстроить при ложных срабатываниях).
+  bird_present_threshold_g: "18.0"
+
+  # true = авто-тара по правилам A/B в шапке; false = только кнопка / MQTT TARE.
+  auto_tare_on_boot: "true"
+  auto_tare_light_max_g: "10.0"
+  auto_tare_light_stable_ms: "2500"
+  auto_tare_refill_stable_ms: "300000"
+  auto_tare_refill_min_g: "55.0"
+  auto_tare_stability_eps_g: "1.5"
+
+  # true = скрытый SSID; false = сеть в эфире (типичный домашний роутер).
+  wifi_ssid_hidden: "false"
+
+  # MQTT (ESPHome: broker/username). Топики: {mqtt_topic_prefix}/weight, .../bird_present, .../command
+  mqtt_broker: "192.168.1.10"
+  mqtt_port: "1883"
+  mqtt_username: "homeassistant"
+  mqtt_password: "YOUR_MQTT_PASSWORD"
+  mqtt_client_id: "scale"
+  mqtt_topic_prefix: "frigate"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Bird feeder scale (HX711, HA API)"
+  # 2026.4+ в HA addon — ок; для локального esphome compile достаточно 2025.10.
+  min_version: 2025.10.0
+  on_boot:
+    priority: 800
+    then:
+      - logger.log:
+          level: INFO
+          format: "Bird feeder scale firmware up"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+wifi:
+  networks:
+    - ssid: ${wifi_ssid}
+      password: ${wifi_password}
+      hidden: ${wifi_ssid_hidden}
+  # Стабильнее линк для API/веб при питании от USB/аккумулятора у кормушки.
+  power_save_mode: NONE
+  ap:
+    ssid: "${friendly_name} AP"
+    password: "12345678"
+
+captive_portal:
+
+api:
+  reboot_timeout: 30min
+
+ota:
+  - platform: esphome
+    password: ${ota_password}
+
+# stats_interval (Frigate) в ESPHome mqtt не поддерживается.
+mqtt:
+  broker: ${mqtt_broker}
+  port: ${mqtt_port}
+  username: ${mqtt_username}
+  password: ${mqtt_password}
+  client_id: ${mqtt_client_id}
+  discovery: true
+  discovery_retain: true
+  birth_message:
+    topic: ${mqtt_topic_prefix}/scale/availability
+    payload: online
+    retain: true
+  will_message:
+    topic: ${mqtt_topic_prefix}/scale/availability
+    payload: offline
+    retain: true
+  on_message:
+    - topic: ${mqtt_topic_prefix}/command
+      qos: 0
+      then:
+        - lambda: |-
+            std::string msg(x.begin(), x.end());
+            while (!msg.empty() && (msg.back() == '\r' || msg.back() == '\n' || msg.back() == ' '))
+              msg.pop_back();
+            if (msg == "TARE") {
+              float net = id(last_net_weight);
+              id(tare_offset) += net;
+              float current_temp = id(outdoor_temperature).state;
+              if (!isnan(current_temp)) {
+                id(reference_temperature) = current_temp;
+              }
+              id(auto_tare_enabled) = false;
+              ESP_LOGI("scale", "MQTT tare, delta_offset=%.2f", net);
+            }
+
+web_server:
+  port: 80
+  version: 3
+  # Меньше RAM/CPU: без потока логов в UI (логи остаются в UART / при необходимости logger).
+  log: false
+  # JS/CSS с устройства — страница открывается без CDN oi.esphome.io (частая причина «не грузится»).
+  local: true
+
+logger:
+  level: INFO
+  deassert_rts_dtr: true
+  logs:
+    mqtt: WARN
+    wifi: WARN
+    web_server: WARN
+    mdns: WARN
+
+globals:
+  - id: tare_offset
+    type: float
+    restore_value: true
+    initial_value: "0.0"
+  - id: last_stable_weight
+    type: float
+    initial_value: "0.0"
+  - id: last_change_time
+    type: uint32_t
+    initial_value: "0"
+  - id: auto_tare_enabled
+    type: bool
+    initial_value: "${auto_tare_on_boot}"
+  - id: reference_temperature
+    type: float
+    restore_value: true
+    initial_value: "20.0"
+  - id: temp_compensation_coefficient
+    type: float
+    restore_value: true
+    initial_value: "0.5"
+  - id: last_hx711_raw
+    type: float
+    initial_value: "0.0"
+  - id: last_net_weight
+    type: float
+    initial_value: "0.0"
+
+sensor:
+  - platform: homeassistant
+    id: outdoor_temperature
+    entity_id: ${ha_temperature_entity}
+    internal: true
+
+  - platform: hx711
+    id: raw_hx711
+    name: "Feeder weight"
+    dout_pin: ${hx_dout_pin}
+    clk_pin: ${hx_clk_pin}
+    gain: 128
+    update_interval: ${hx711_update_interval}
+    filters:
+      - lambda: |-
+          id(last_hx711_raw) = x;
+          return x;
+      - calibrate_linear:
+          - ${cal_empty_reading} -> 0.0
+          - ${cal_loaded_reading} -> ${cal_loaded_grams}
+      - median:
+          window_size: 3
+          send_every: 1
+      - sliding_window_moving_average:
+          window_size: 3
+          send_every: 1
+      - lambda: |-
+          float weight = x - id(tare_offset);
+          uint32_t now = millis();
+          const float STABILITY_EPS = ${auto_tare_stability_eps_g};
+          const float LIGHT_MAX_G = ${auto_tare_light_max_g};
+          const float REFILL_MIN_G = ${auto_tare_refill_min_g};
+          const uint32_t LIGHT_STABLE_MS = ${auto_tare_light_stable_ms};
+          const uint32_t REFILL_STABLE_MS = ${auto_tare_refill_stable_ms};
+
+          float current_temp = id(outdoor_temperature).state;
+          if (!isnan(current_temp)) {
+            float temp_diff = current_temp - id(reference_temperature);
+            float compensation = temp_diff * id(temp_compensation_coefficient);
+            weight = weight - compensation;
+          }
+
+          bool stable = fabs(weight - id(last_stable_weight)) < STABILITY_EPS;
+          if (!stable) {
+            id(last_change_time) = now;
+            id(auto_tare_enabled) = true;
+          } else {
+            if (id(last_change_time) == 0)
+              id(last_change_time) = now;
+            if (id(auto_tare_enabled)) {
+              uint32_t stable_for = now - id(last_change_time);
+              bool light_rule = fabs(weight) < LIGHT_MAX_G && stable_for >= LIGHT_STABLE_MS;
+              bool refill_rule = fabs(weight) >= REFILL_MIN_G && stable_for >= REFILL_STABLE_MS;
+              if (light_rule || refill_rule) {
+                id(tare_offset) += weight;
+                if (!isnan(current_temp)) {
+                  id(reference_temperature) = current_temp;
+                }
+                if (light_rule) {
+                  ESP_LOGI("scale", "Auto tare light (|w|<%.0f g, %lu ms), offset=%.2f, T_ref=%.1f C",
+                            LIGHT_MAX_G, (unsigned long)stable_for, id(tare_offset), id(reference_temperature));
+                } else {
+                  ESP_LOGI("scale", "Auto tare refill (>=%.0f g, %lu ms @ %.1f g), offset=%.2f, T_ref=%.1f C",
+                            REFILL_MIN_G, (unsigned long)stable_for, weight, id(tare_offset), id(reference_temperature));
+                }
+                id(auto_tare_enabled) = false;
+                id(last_change_time) = now;
+              }
+            }
+          }
+
+          id(last_stable_weight) = weight;
+          id(last_net_weight) = weight;
+          return weight;
+      - or:
+          - delta: ${weight_publish_delta_g}
+          - heartbeat: 10s
+
+    unit_of_measurement: "g"
+    accuracy_decimals: 1
+    on_value:
+      then:
+        - mqtt.publish:
+            topic: ${mqtt_topic_prefix}/weight
+            payload: !lambda |-
+              return str_sprintf("%.1f", x);
+            retain: true
+
+  - platform: template
+    name: "HX711 raw (cal)"
+    id: calibration_raw_counts
+    entity_category: diagnostic
+    unit_of_measurement: "cts"
+    accuracy_decimals: 0
+    lambda: return id(last_hx711_raw);
+    update_interval: 500ms
+
+  - platform: template
+    id: weight_live_internal
+    internal: true
+    update_interval: 250ms
+    lambda: return id(last_net_weight);
+
+binary_sensor:
+  - platform: template
+    name: "Bird Present"
+    id: bird_present
+    lambda: |-
+      return id(weight_live_internal).state > ${bird_present_threshold_g};
+    filters:
+      - delayed_on_off: ${bird_present_debounce}
+    on_state:
+      then:
+        - mqtt.publish:
+            topic: ${mqtt_topic_prefix}/bird_present
+            payload: !lambda |-
+              return x ? std::string("ON") : std::string("OFF");
+            retain: true
+
+button:
+  - platform: template
+    name: "Manual Tare"
+    id: manual_tare
+    on_press:
+      then:
+        - lambda: |-
+            float net = id(last_net_weight);
+            id(tare_offset) += net;
+            float current_temp = id(outdoor_temperature).state;
+            if (!isnan(current_temp)) {
+              id(reference_temperature) = current_temp;
+            }
+            id(auto_tare_enabled) = false;
+            ESP_LOGI("scale", "Manual tare, delta_offset=%.2f, T_ref=%.1f C", net, id(reference_temperature));
+
+# Прошивка с вашего ПК (выполнить у себя в каталоге репозитория):
+#   Windows + USB (COM3):  esphome run esphome/bird-feeder-scale.yaml --device COM3
+#   OTA по IP:             esphome upload esphome/bird-feeder-scale.yaml --device 192.168.3.65
+#
+# Если в логе boot: «invalid segment length 0xffffffff», «No bootable app» — битый слот OTA. Восстановление:
+#   esptool.py --chip esp32 --port COM3 erase_flash
+#   esphome run esphome/bird-feeder-scale.yaml --device COM3
