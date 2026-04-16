@@ -17,8 +17,11 @@ esphome upload esphome/bird-feeder-relay.yaml
 ## Весы у кормушки (`bird-feeder-scale.yaml`)
 
 - Шаблон в репозитории: **`bird-feeder-scale.yaml.example`** → скопируйте в **`bird-feeder-scale.yaml`** (он в `.gitignore`, с паролями не в git).
-- Вес и **Bird Present** попадают в **Home Assistant через `api:`** (нативная интеграция ESPHome). Отдельный **MQTT-брокер на устройстве не нужен**.
-- **BirdLense Hub:** снимок веса в вебе можно брать по REST из HA (`integrations.scales.source: homeassistant`, `homeassistant_entity_id`). Журнал дельты за клип и триггер записи по весу в процессоре — по доке только при **`source: mqtt`**; тогда либо автоматизация HA «датчик → MQTT», либо свой топик, см. `docs/CONFIGURATION.md`.
+- В шаблоне можно использовать и **`api:`** (нативная интеграция ESPHome / Home Assistant), и **`mqtt:`**. Для BirdLense это теперь три разных сценария:
+  - **`source: esphome_mqtt`** — рекомендовано для этой прошивки: хаб читает `frigate/weight`, `frigate/bird_present`, шлёт тару в `frigate/command`
+  - **`source: esphome_direct`** — хаб опрашивает само устройство по ESPHome Web API (`/sensor/<id>`, `/binary_sensor/<id>`, `/button/<id>/press`)
+  - **`source: homeassistant`** — только текущий вес в веб-карточке через HA REST
+- Журнал дельты за клип и trigger записи по скачку веса в процессоре работают только в **MQTT-backed** режимах (`mqtt` / `esphome_mqtt`), см. `docs/CONFIGURATION.md`.
 - **OTA** (как у реле): `ota_password` в `secrets.yaml`; при желании включите шифрование API (см. комментарий в YAML).
 - Пины HX711: **`hx_dout_pin`**, **`hx_clk_pin`** в `substitutions` (по умолчанию GPIO27 / GPIO25).
 

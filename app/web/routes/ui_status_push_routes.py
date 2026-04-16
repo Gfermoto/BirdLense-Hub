@@ -117,12 +117,16 @@ def register_ui_status_push_routes(app):
     @app.route("/api/ui/feed/info", methods=["GET"])
     def feed_info():
         """Last dispense time, donate URL, feed source, optional scale weight. No auth required."""
-        from services.feeder_scale import get_feeder_scale_snapshot, scale_tare_mqtt_available
+        from services.feeder_scale import (
+            get_feeder_scale_snapshot,
+            scale_tare_available,
+        )
+        from app_config.scales_config import normalize_scales_source
 
         donate_url = (app_config.get("general.donate_url") or "").strip()
         feed_source = app_config.get("feed.source", "mqtt")
         scales_enabled = bool(app_config.get("integrations.scales.enabled"))
-        scales_source = (app_config.get("integrations.scales.source") or "mqtt").strip().lower()
+        scales_source = normalize_scales_source(app_config.get("integrations.scales.source"))
         scale = get_feeder_scale_snapshot()
         return {
             "last_dispense_at": get_last_dispense(),
@@ -131,19 +135,19 @@ def register_ui_status_push_routes(app):
             "scales_enabled": scales_enabled,
             "scales_source": scales_source if scales_enabled else None,
             "scale": scale,
-            "scale_tare_available": scale_tare_mqtt_available(),
+            "scale_tare_available": scale_tare_available(),
         }, 200
 
     @app.route("/api/ui/feed/scale-tare", methods=["POST"])
     def feed_scale_tare():
-        """MQTT-команда тары на весы. Доступ: админ или помощник; MCP Bearer — как раньше."""
+        """Команда тары на весы. Доступ: админ или помощник; MCP Bearer — как раньше."""
         if not (contributor_or_admin_access() or mcp_bearer_authorized()):
             return {"error": "Password required"}, 403
-        from services.feeder_scale import publish_scale_tare_via_mqtt, scale_tare_mqtt_available
+        from services.feeder_scale import scale_tare_available, trigger_scale_tare
 
-        if not scale_tare_mqtt_available():
-            return {"error": "Scale MQTT command topic not configured"}, 400
-        ok, msg = publish_scale_tare_via_mqtt()
+        if not scale_tare_available():
+            return {"error": "Scale tare is not configured for the selected source"}, 400
+        ok, msg = trigger_scale_tare()
         if ok:
             return {"ok": True, "message": msg}, 200
         return {"error": msg}, 500

@@ -7,6 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from app_config.app_config import app_config
+from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 from frigate_scope import frigate_camera_allow_ids, frigate_label_resolve_set
 from mqtt_aggregator import MQTTEventAggregator
 from processor_support import get_data_dir, heartbeat_mqtt_ref
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 
 def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
-    """DATA_DIR, MQTT topic веса (если source=mqtt), unit.
+    """DATA_DIR, MQTT topic веса (если source MQTT-backed), unit.
 
     Вес: явный ``mqtt_topic`` или, если пусто, ``{mqtt_topic_prefix}/weight``.
     ``bird_present``: явный ``mqtt_bird_present_topic`` или ``{mqtt_topic_prefix}/bird_present`` при непустом префиксе.
@@ -26,8 +27,8 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     scales_unit_arg = "kg"
     if app_config.get("integrations.scales.enabled"):
         scales_unit_arg = (app_config.get("integrations.scales.unit") or "kg").strip().lower() or "kg"
-        src = (app_config.get("integrations.scales.source") or "mqtt").strip().lower()
-        if src == "mqtt":
+        src = normalize_scales_source(app_config.get("integrations.scales.source"))
+        if scales_source_uses_mqtt(src):
             mq_st = (app_config.get("integrations.scales.mqtt_topic") or "").strip()
             prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
             if mq_st:
@@ -41,7 +42,7 @@ def scales_mqtt_bird_present_topic() -> Optional[str]:
     """Топик присутствия птицы: явный ``mqtt_bird_present_topic`` или ``{prefix}/bird_present``."""
     if not app_config.get("integrations.scales.enabled"):
         return None
-    if (app_config.get("integrations.scales.source") or "mqtt").strip().lower() != "mqtt":
+    if not scales_source_uses_mqtt(app_config.get("integrations.scales.source")):
         return None
     explicit = (app_config.get("integrations.scales.mqtt_bird_present_topic") or "").strip()
     if explicit:
