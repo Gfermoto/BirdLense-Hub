@@ -466,8 +466,36 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesMqttPrefix')}
-                                          placeholder="birdlense/scale"
+                                          placeholder="frigate"
                                           helperText={t('settings.scalesMqttPrefixHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.mqtt_bird_present_topic">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesMqttBirdPresentTopic')}
+                                          placeholder="frigate/bird_present"
+                                          helperText={t('settings.scalesMqttBirdPresentTopicHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.mqtt_command_topic">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesMqttCommandTopic')}
+                                          placeholder="frigate/command"
+                                          helperText={t('settings.scalesMqttCommandTopicHint')}
                                         />
                                       )}
                                     </form.Field>

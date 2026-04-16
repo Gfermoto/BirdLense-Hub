@@ -16,15 +16,15 @@ esphome upload esphome/bird-feeder-relay.yaml
 
 ## Весы у кормушки (`bird-feeder-scale.yaml`)
 
-- Топики по умолчанию: **`birdlense/scale/weight`**, **`birdlense/scale/bird_present`**, **`birdlense/scale/command`** (см. `substitutions` в начале файла).
-- В настройках BirdLense: **`integrations.scales.mqtt_topic_prefix: birdlense/scale`**, **`unit: g`**, поле **MQTT topic для веса** оставить пустым (или задать полный топик вручную).
-- **API** и **OTA** (как у реле): `ota_password` в `secrets.yaml`; при желании включите шифрование API (см. комментарий в YAML).
+- Шаблон в репозитории: **`bird-feeder-scale.yaml.example`** → скопируйте в **`bird-feeder-scale.yaml`** (он в `.gitignore`, с паролями не в git).
+- Вес и **Bird Present** попадают в **Home Assistant через `api:`** (нативная интеграция ESPHome). Отдельный **MQTT-брокер на устройстве не нужен**.
+- **BirdLense Hub:** снимок веса в вебе можно брать по REST из HA (`integrations.scales.source: homeassistant`, `homeassistant_entity_id`). Журнал дельты за клип и триггер записи по весу в процессоре — по доке только при **`source: mqtt`**; тогда либо автоматизация HA «датчик → MQTT», либо свой топик, см. `docs/CONFIGURATION.md`.
+- **OTA** (как у реле): `ota_password` в `secrets.yaml`; при желании включите шифрование API (см. комментарий в YAML).
 - Пины HX711: **`hx_dout_pin`**, **`hx_clk_pin`** в `substitutions` (по умолчанию GPIO27 / GPIO25).
-- Секреты вынесите в **`secrets.yaml`** рядом с конфигом (см. пример ниже).
 
 ### Секреты
 
-Шаблон: **`secrets.yaml.example`**. Скопируйте в `secrets.yaml` в том же каталоге, куда кладёте конфиг при сборке (или рядом с `bird-feeder-scale.yaml`), и заполните Wi‑Fi и MQTT.
+В **`bird-feeder-scale.yaml`** Wi‑Fi и OTA задаются в **`substitutions`** (без `secrets.yaml`). Для реле и других конфигов по-прежнему можно использовать **`secrets.yaml.example`**.
 
 ### Сборка
 
@@ -33,7 +33,31 @@ esphome compile esphome/bird-feeder-scale.yaml
 esphome upload esphome/bird-feeder-scale.yaml
 ```
 
+**WSL + COM-порт:** проброс USB-UART с Windows — [`scripts/wsl-usb-forward.sh`](../scripts/wsl-usb-forward.sh) и [`scripts/wsl-usb-forward.ps1`](../scripts/wsl-usb-forward.ps1) (нужен [usbipd-win](https://learn.microsoft.com/windows/wsl/connect-usb)).
+
 Путь к файлу укажите от каталога, где лежит ваш `secrets.yaml`, или скопируйте YAML в свой проект ESPHome.
+
+### ESP32: цикл перезагрузок, `invalid segment length 0xffffffff`, «No bootable app»
+
+Так бывает, если в слот **OTA (app0)** попала **битая или обрезанная** прошивка (оборвана OTA/USB, залит **не тот** `.bin`, сбой записи). Бутлоадер ESP-IDF 5.x читает образ и падает в цикл.
+
+**Восстановление по USB (надёжно):**
+
+1. Полное стирание флеша (порт подставьте свой, Windows — `COM3`):
+
+   ```bash
+   esptool.py --chip esp32 --port COM3 erase_flash
+   ```
+
+   (или `python -m esptool ...`, если так установлен esptool.)
+
+2. Прошивка «с нуля» одной командой ESPHome (подтянет bootloader + factory + таблицу разделов):
+
+   ```bash
+   esphome run esphome/bird-feeder-scale.yaml --device COM3
+   ```
+
+Не заливайте вручную только `firmware.ota.bin` на `0x10000`, если не уверены в смещениях — для восстановления используйте **`esphome run`** или **`firmware.factory.bin`** с адреса **0x0** по инструкции ESPHome.
 
 ### Примечания
 

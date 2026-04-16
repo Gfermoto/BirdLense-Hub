@@ -133,6 +133,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 - [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
 - [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **closed:** scales — MQTT/HA, **weight spike → recording**, per-clip **delta** on video page, HA settings split, perf defaults; optional auto-tare out of scope.
 - [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **closed:** scale **delta on visit card** (timeline/overview) like feeder/weather.
+- [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — **open QA gate:** field acceptance for feeder scales (ESPHome HX711 + hub). Before running tests: move the issue card on [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) to **Ready** (or assign + date), deploy hub code, and set `integrations.scales.*` to match your MQTT prefix/units (`g`); checklist is in the issue body.
 
 | # | Issue | Summary |
 |---|--------|--------|
@@ -167,7 +168,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 14 | Classifier: transfer learning (US + local dataset) | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue closed; idea retained here; new issue when work starts | P2, processor, research |
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall manual widgets / docs | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs direction retained; no runtime integration promised | P3, infra |
-| 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); optional auto-tare | — | P3, web + API |
+| 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); field acceptance — [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) (open until run) | — | P3, web + API |
 
 **System initiative (P1):**
 
@@ -215,6 +216,12 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 ---
 
 <h2 id="completion-then-operator-testing">Work order: finish in-flight work, then operator testing</h2>
+
+**Feeder scales (before field run, short):**
+
+1. **Hub (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**, **`source: mqtt`** if the processor ingests weight (writes `feeder_scale_state.json`), **`mqtt_topic_prefix`** must match ESPHome (e.g. `frigate` → `…/weight`, `…/bird_present`, `…/command`). Or **`source: homeassistant`** + `homeassistant_entity_id` for **web snapshot only** (no processor MQTT history / spike trigger from that path alone).
+2. **Overview card:** the “Feeder scale” block uses **`GET /api/ui/feed/info`** — weight, bird chip, MQTT tare, empty/stale hints. The **feeder relay is optional** for scales to show.
+3. **GitHub board:** issue [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) → column **Ready** before the run; after the checklist — comment + close.
 
 **Agreement:** first **complete** the agreed slice of work (open issues in the current wave / **BirdLense Hub — Roadmap** milestone: PR merged, issue **closed**, **`make deploy`** if needed, CI green). **Then** the operator runs **manual testing** on the live hub and files **feedback as new issues** (or flags regressions on an existing issue) — without growing the same wave in parallel.
 

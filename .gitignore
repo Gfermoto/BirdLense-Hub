@@ -42,6 +42,10 @@ scripts/deploy.local.sh
 **/*secret*
 # ESPHome: пример секретов — в репозитории (см. esphome/README.md)
 !esphome/secrets.yaml.example
+# Локальный конфиг весов с Wi‑Fi/OTA — в репо шаблон bird-feeder-scale.yaml.example
+esphome/bird-feeder-scale.yaml
+!esphome/bird-feeder-scale.yaml.example
+esphome/.esphome/
 # Код без секретов: имена файлов совпадают с шаблонами **/*secret* / **/*password*
 !app/app_config/secret_env.py
 !app/web/services/ui_password_service.py

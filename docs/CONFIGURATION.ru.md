@@ -300,8 +300,9 @@
 | `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). |
 | `integrations.scales.source` | `mqtt` (по умолчанию) — processor и файлы состояния/журнала; или `homeassistant` — только REST в вебе для текущего веса (см. абзац выше). |
 | `integrations.scales.mqtt_topic` | Полный топик **веса** (число или JSON с `value`/`weight`/`state`). Если **пусто** и задан **`mqtt_topic_prefix`**, процессор слушает **`{prefix}/weight`**. |
-| `integrations.scales.mqtt_topic_prefix` | Префикс для набора топиков: **`{prefix}/weight`**, **`{prefix}/bird_present`** (`ON`/`OFF`, retain). Кнопка «Тара» в UI шлёт **`mqtt_tare_payload`** в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример: `birdlense/scale`. |
-| `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Только YAML, не в форме настроек. |
+| `integrations.scales.mqtt_bird_present_topic` | Полный топик **птица на платформе** (`ON`/`OFF` или state как у HA). Если **пусто** и задан **`mqtt_topic_prefix`** — **`{prefix}/bird_present`**. Нужен, когда вес на `homeassistant/sensor/.../state`, а присутствие на префиксе прошивки (пример репо: `frigate/bird_present`). |
+| `integrations.scales.mqtt_topic_prefix` | Префикс: **`{prefix}/weight`** при пустом `mqtt_topic`; **`{prefix}/bird_present`** при пустом `mqtt_bird_present_topic`; тара в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример: `frigate` (как в `esphome/bird-feeder-scale.yaml`) или `birdlense/scale`. |
+| `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Дублируется в Настройках → Видео (весы MQTT). |
 | `integrations.scales.mqtt_tare_payload` | Строка для тары (по умолчанию **`TARE`**); прошивка должна подписаться на command topic. |
 | `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant` (снимок для UI). |
 | `integrations.scales.unit` | `kg` или `g` для отображения и записи (рецепты ESP32+HX711 часто в **граммах**). |
@@ -317,6 +318,8 @@
 
 **Стек как у [умных весов с ESPHome + HA](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, проксимити, auto-tare в Home Assistant): логика тары и «объект на платформе» остаётся в **ESPHome/HA**. BirdLense не дублирует эти сущности: хаб подписывается на **тот же MQTT-топик состояния веса**, который публикует интеграция (часто `homeassistant/sensor/<имя_датчика>/state` — укажите его в `mqtt_topic`). Тогда и «текущий вес» в UI, и журнал для дельты за клип идут из одного потока, совместимого с вашей прошивкой.
 
+**Смешанная схема (репо `bird-feeder-scale.yaml`):** в ESPHome может быть `mqtt_topic_prefix: frigate` — тогда **`frigate/weight`**, **`frigate/bird_present`**, подписка на **`frigate/command`**. Либо задайте **`mqtt_topic_prefix: frigate`** и оставьте **`mqtt_topic`** пустым, либо укажите **`mqtt_topic`** на HA state веса и отдельно **`mqtt_bird_present_topic`** / **`mqtt_command_topic`** как `frigate/bird_present` и `frigate/command`.
+
 ### ESPHome / своя прошивка (`birdlense/scale/*`)
 
 Задайте **`integrations.scales.mqtt_topic_prefix`**: например **`birdlense/scale`**, оставьте **`mqtt_topic`** пустым, при необходимости **`unit: g`**, брокер — тот же, что у процессора.
@@ -329,7 +332,7 @@
 
 В прошивке публикуйте вес **текстовой десятичной строкой** (в ESPHome — например `str_sprintf` в lambda для `mqtt.publish`). Для тары подпишитесь на command topic (`on_message` в компоненте `mqtt`).
 
-**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
+**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml.example) (локально скопировать в `bird-feeder-scale.yaml`), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 

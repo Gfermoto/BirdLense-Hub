@@ -300,8 +300,9 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). |
 | `integrations.scales.source` | `mqtt` (default) — processor + file state/history; or `homeassistant` — REST in web for current weight only (see note above). |
 | `integrations.scales.mqtt_topic` | Full MQTT topic for **weight** (plain number or JSON with `value` / `weight` / `state`). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/weight`**. |
-| `integrations.scales.mqtt_topic_prefix` | Optional prefix for a multi-topic layout (recommended for custom ESPHome firmware): processor subscribes to **`{prefix}/weight`** and **`{prefix}/bird_present`** (`ON`/`OFF`, retained). The web UI can send **tare** via **`POST /api/ui/feed/scale-tare`**, which publishes `mqtt_tare_payload` to **`{prefix}/command`** unless `mqtt_command_topic` overrides it. Example prefix: `birdlense/scale`. |
-| `integrations.scales.mqtt_command_topic` | Optional full command topic (overrides `{prefix}/command`). Config-only; not in Settings UI. |
+| `integrations.scales.mqtt_bird_present_topic` | Optional full topic for **bird on platform** (`ON`/`OFF` or HA-style state). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/bird_present`**. Use when weight is on e.g. `homeassistant/sensor/.../state` but presence is still published on the device prefix (repo ESPHome example: `frigate/bird_present`). |
+| `integrations.scales.mqtt_topic_prefix` | Optional prefix: **`{prefix}/weight`** when `mqtt_topic` is empty; **`{prefix}/bird_present`** when `mqtt_bird_present_topic` is empty; tare publishes to **`{prefix}/command`** unless `mqtt_command_topic` is set. Example: `frigate` (matches `esphome/bird-feeder-scale.yaml`) or `birdlense/scale`. |
+| `integrations.scales.mqtt_command_topic` | Optional full command topic (overrides `{prefix}/command`). Also in Settings → Video (scales). |
 | `integrations.scales.mqtt_tare_payload` | String published for tare (default **`TARE`**). Your device must subscribe on the command topic if you use the Hub button. |
 | `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant` (REST snapshot for UI). |
 | `integrations.scales.unit` | `kg` or `g` for display and stored values (ESP32+HX711 recipes often use **`g`**). |
@@ -317,6 +318,8 @@ The processor compares min/max scale readings between `start_time` and `end_time
 
 **Stack like [ESPHome + Home Assistant smart scale](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, proximity, auto-tare in HA): tare and “object on platform” stay in **ESPHome/HA**. BirdLense does not replicate those entities: subscribe the processor to the **same MQTT state topic** your integration publishes (often `homeassistant/sensor/<sensor_id>/state` — set it in `mqtt_topic`). Current weight in the UI and the per-clip delta log then follow that single stream, compatible with that firmware.
 
+**Mixed layout (repo `bird-feeder-scale.yaml`):** ESPHome may use `mqtt_topic_prefix: frigate` so the device publishes **`frigate/weight`**, **`frigate/bird_present`**, and listens on **`frigate/command`**. Either set **`mqtt_topic_prefix`** to `frigate` and leave **`mqtt_topic`** empty, or set **`mqtt_topic`** to the HA discovery weight state topic and set **`mqtt_bird_present_topic`** / **`mqtt_command_topic`** to `frigate/bird_present` and `frigate/command` so presence and tare still match the firmware.
+
 ### ESPHome / custom firmware (`birdlense/scale/*`)
 
 For a **dedicated topic family** (weight + bird presence + optional command), set **`integrations.scales.mqtt_topic_prefix`** to e.g. **`birdlense/scale`**, leave **`mqtt_topic`** empty, set **`unit: g`** if the device publishes grams, and point the device at the same broker as the Hub.
@@ -329,7 +332,7 @@ For a **dedicated topic family** (weight + bird presence + optional command), se
 
 **Firmware note:** publish weight as a **plain decimal string** (not a C struct). In ESPHome, use e.g. `str_sprintf` in the `mqtt.publish` payload lambda. Subscribe to `{prefix}/command` for tare (BirdLense sends **`mqtt_tare_payload`**, default `TARE`).
 
-**Example firmware** in the repository: [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml) and [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
+**Example firmware** in the repository: [`esphome/bird-feeder-scale.yaml.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml.example) (copy to `bird-feeder-scale.yaml` locally) and [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 

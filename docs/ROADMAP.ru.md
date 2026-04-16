@@ -144,6 +144,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues закрыты для нулевого открытого хвоста: ворота UX в [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), E2E — [TESTING.ru.md](./TESTING.ru.md), остальное — строки таблиц ниже + консилиум п.17.
 - [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **закрыт:** весы — MQTT/HA, **триггер записи по скачку**, **дельта за клип** на странице видео, отдельные настройки HA, дефолты производительности; auto-tare вне scope.
 - [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **закрыт:** дельта весов на карточке визита (timeline/overview), как корм/погода.
+- [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — **QA до закрытия:** полевой прогон весов (ESPHome HX711 + хаб). Перед тестами: карточка на доске [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) в **Ready** (или явный assignee + дата), на хабе выкатить код и выставить `integrations.scales.*` под свои топики/единицу (`g`); чеклист — в теле issue.
 
 **Новые идеи (март 2026) — таблица с историческими номерами GitHub; открытый issue заводится при старте работ:**
 
@@ -166,7 +167,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 14  | Classifier strategy: transfer learning (US + локальный датасет)                                                                          | [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) ✅ issue закрыт; идея здесь; новый issue при старте работ | P2, processor, research                                      |
 | 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue закрыт; идея здесь; новый issue при старте | P3, web                                                      |
 | 16  | Heimdall: ручные виджеты / docs                                                                                                          | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs-направление сохранено; runtime-интеграции не обещаем | P3, infra                                                    |
-| 17  | Весы: триггер + дельта + UI видео ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт); карточка визита ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыт); опционально auto-tare | — | P3, web + API                                               |
+| 17  | Весы: триггер + дельта + UI видео ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт); карточка визита ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыт); полевая приёмка — [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) (открыт до прогона) | — | P3, web + API                                               |
 
 
 **Системная инициатива (приоритет P1):**
@@ -235,6 +236,12 @@ bash scripts/github-project-add-backlog-consilium.sh
 ---
 
 <h2 id="completion-then-operator-testing">Порядок работ: завершение задач → тестирование оператором</h2>
+
+**Весы на кормушке (перед полем, кратко):**
+
+1. **Хаб (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**, **`source: mqtt`** если вес с процессора (файл `feeder_scale_state.json`), **`mqtt_topic_prefix`** = тот же префикс, что в ESPHome (например `frigate`, тогда топики `…/weight`, `…/bird_present`, `…/command`). Либо **`source: homeassistant`** + `homeassistant_entity_id` — тогда только снимок веса в вебе, без журнала/триггера по MQTT.
+2. **Карточка на Overview:** блок «Весы кормушки» тянет **`GET /api/ui/feed/info`** — вес, птица, тара по MQTT, подсказки «нет данных» / устарело. Реле кормушки для этого **не обязательно**.
+3. **Доска GitHub:** issue [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — в колонку **Ready** до прогона; после чеклиста — комментарий + закрыть.
 
 **Договорённость:** сначала **доводим до конца** согласованный объём работ (открытые issues текущей волны / milestone на доске **BirdLense Hub — Roadmap**: PR смержен, issue **закрыт**, при необходимости **`make deploy`**, CI зелёный). **Затем** оператор ведёт **ручное тестирование** на живой установке и передаёт **замечания отдельными новыми issues** (или указывает регрессию в существующем issue) — без параллельного наращивания «хвостов» в той же волне.
 
