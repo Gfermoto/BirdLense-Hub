@@ -219,7 +219,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 **Feeder scales (before field run, short):**
 
-1. **Hub (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**, **`source: mqtt`** if the processor ingests weight (writes `feeder_scale_state.json`), **`mqtt_topic_prefix`** must match ESPHome (e.g. `frigate` → `…/weight`, `…/bird_present`, `…/command`). Or **`source: homeassistant`** + `homeassistant_entity_id` for **web snapshot only** (no processor MQTT history / spike trigger from that path alone).
+1. **Hub (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**. Use **`source: esphome_mqtt`** (recommended for the repo firmware) with `mqtt_topic_prefix: frigate` so the hub derives `…/weight`, `…/bird_present`, `…/command`; or **`source: mqtt`** for fully manual topics; or **`source: esphome_direct`** / **`source: homeassistant`** for live snapshot only (no processor MQTT history / spike trigger from those paths).
 2. **Overview card:** the “Feeder scale” block uses **`GET /api/ui/feed/info`** — weight, bird chip, MQTT tare, empty/stale hints. The **feeder relay is optional** for scales to show.
 3. **GitHub board:** issue [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) → column **Ready** before the run; after the checklist — comment + close.
 

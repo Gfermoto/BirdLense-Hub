@@ -239,7 +239,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **Весы на кормушке (перед полем, кратко):**
 
-1. **Хаб (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**, **`source: mqtt`** если вес с процессора (файл `feeder_scale_state.json`), **`mqtt_topic_prefix`** = тот же префикс, что в ESPHome (например `frigate`, тогда топики `…/weight`, `…/bird_present`, `…/command`). Либо **`source: homeassistant`** + `homeassistant_entity_id` — тогда только снимок веса в вебе, без журнала/триггера по MQTT.
+1. **Хаб (`user_config.yaml`):** `integrations.scales.enabled: true`, **`unit: g`**. Для прошивки из репо лучше **`source: esphome_mqtt`** и `mqtt_topic_prefix: frigate`, тогда хаб сам берёт `…/weight`, `…/bird_present`, `…/command`; **`source: mqtt`** — для полностью ручных топиков; **`source: esphome_direct`** или **`source: homeassistant`** — только для live-снимка без журнала/триггера по MQTT.
 2. **Карточка на Overview:** блок «Весы кормушки» тянет **`GET /api/ui/feed/info`** — вес, птица, тара по MQTT, подсказки «нет данных» / устарело. Реле кормушки для этого **не обязательно**.
 3. **Доска GitHub:** issue [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — в колонку **Ready** до прогона; после чеклиста — комментарий + закрыть.
 

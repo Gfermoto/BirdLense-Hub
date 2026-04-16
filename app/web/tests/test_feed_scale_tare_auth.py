@@ -20,11 +20,11 @@ def dual_password(monkeypatch):
 
 def test_feed_scale_tare_403_without_session(client, dual_password, monkeypatch):
     monkeypatch.setattr(
-        "services.feeder_scale.scale_tare_mqtt_available",
+        "services.feeder_scale.scale_tare_available",
         lambda: True,
     )
     monkeypatch.setattr(
-        "services.feeder_scale.publish_scale_tare_via_mqtt",
+        "services.feeder_scale.trigger_scale_tare",
         lambda: (True, "ok"),
     )
     r = client.post("/api/ui/feed/scale-tare")
@@ -33,11 +33,11 @@ def test_feed_scale_tare_403_without_session(client, dual_password, monkeypatch)
 
 def test_feed_scale_tare_200_contributor_session(client, dual_password, monkeypatch):
     monkeypatch.setattr(
-        "services.feeder_scale.scale_tare_mqtt_available",
+        "services.feeder_scale.scale_tare_available",
         lambda: True,
     )
     monkeypatch.setattr(
-        "services.feeder_scale.publish_scale_tare_via_mqtt",
+        "services.feeder_scale.trigger_scale_tare",
         lambda: (True, "ok"),
     )
     with client.session_transaction() as sess:

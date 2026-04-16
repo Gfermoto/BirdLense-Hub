@@ -140,11 +140,16 @@ export interface Settings {
   integrations?: {
     scales?: {
       enabled?: boolean;
-      source?: 'mqtt' | 'homeassistant';
+      source?: 'mqtt' | 'esphome_mqtt' | 'esphome_direct' | 'homeassistant';
       mqtt_topic?: string;
+      mqtt_bird_present_topic?: string;
       mqtt_topic_prefix?: string;
       mqtt_command_topic?: string;
       mqtt_tare_payload?: string;
+      esphome_url?: string;
+      esphome_weight_sensor_id?: string;
+      esphome_bird_present_sensor_id?: string;
+      esphome_tare_button_id?: string;
       homeassistant_entity_id?: string;
       unit?: 'kg' | 'g';
       weight_estimate_enabled?: boolean;
