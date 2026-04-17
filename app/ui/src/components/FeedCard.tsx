@@ -103,6 +103,8 @@ export const FeedCard = () => {
       : scalesSource === 'esphome'
         ? 'feed.scalesSourceLabelEsp'
           : 'feed.scalesSourceLabelMqtt';
+  const scaleNoDataLabelKey =
+    scalesSource === 'esphome' ? 'feed.scaleNoDataEsp' : 'feed.scaleNoData';
 
   const handleScaleTare = async () => {
     if (!canEdit) return;
@@ -161,7 +163,7 @@ export const FeedCard = () => {
             )}
             {!scale && (
               <Typography variant="body2" color="text.secondary">
-                {t('feed.scaleNoData')}
+                {t(scaleNoDataLabelKey)}
               </Typography>
             )}
             {weightDefined && weightStr && (

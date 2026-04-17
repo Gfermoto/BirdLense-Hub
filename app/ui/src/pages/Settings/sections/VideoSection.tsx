@@ -537,7 +537,7 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesEspWeightSensorId')}
-                                          placeholder="weight_live_internal"
+                                          placeholder="raw_hx711"
                                           helperText={t('settings.scalesEspWeightSensorIdHint')}
                                         />
                                       )}
