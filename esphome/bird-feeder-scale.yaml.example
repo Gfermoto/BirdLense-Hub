@@ -63,7 +63,8 @@ substitutions:
   mqtt_username: "homeassistant"
   mqtt_password: "YOUR_MQTT_PASSWORD"
   mqtt_client_id: "scale"
-  mqtt_topic_prefix: "frigate"
+  # Должен совпадать с integrations.scales.mqtt_topic_prefix на хабе (по умолчанию birdlense/scale).
+  mqtt_topic_prefix: "birdlense/scale"
 
 esphome:
   name: ${device_name}

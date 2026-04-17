@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -19,6 +17,7 @@ import {
   uploadProcessorWeight,
   type ProcessorWeightsSlotStatus,
 } from '../../api/api';
+import { SystemCardShell } from './SystemCardShell';
 
 function formatBytes(n: number | null | undefined): string {
   if (n == null || n < 0) return '—';
@@ -191,29 +190,31 @@ export function ProcessorWeightsCard() {
 
   if (statusQ.isError) {
     return (
-      <Card>
-        <CardContent>
+      <SystemCardShell
+        title={t('system.processorWeightsTitle')}
+        description={t('system.processorWeightsIntro')}
+        statusLabel={t('system.configAuditNeedsReview')}
+        statusTone="error"
+      >
           <Typography variant="h6">{t('system.processorWeightsTitle')}</Typography>
           <Alert severity="error" sx={{ mt: 1 }}>
             {getApiErrorMessage(statusQ.error, t('system.processorWeightsLoadError'))}
           </Alert>
-        </CardContent>
-      </Card>
+      </SystemCardShell>
     );
   }
 
   const st = statusQ.data;
 
   return (
-    <Card id="processor-weights">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          {t('system.processorWeightsTitle')}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          {t('system.processorWeightsIntro')}
-        </Typography>
-
+    <SystemCardShell
+      id="processor-weights"
+      title={t('system.processorWeightsTitle')}
+      description={t('system.processorWeightsIntro')}
+      statusLabel={busy ? t('system.catalogRepairRunning') : t('system.readinessReady')}
+      statusTone={busy ? 'warning' : 'default'}
+    >
+      <Box>
         {info ? (
           <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>
             {info}
@@ -318,7 +319,7 @@ export function ProcessorWeightsCard() {
             {t('system.processorWeightsRestartProcessor')}
           </Button>
         </Stack>
-      </CardContent>
-    </Card>
+      </Box>
+    </SystemCardShell>
   );
 }
