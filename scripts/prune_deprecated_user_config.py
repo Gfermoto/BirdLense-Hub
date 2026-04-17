@@ -22,9 +22,11 @@ from pathlib import Path
 import yaml
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_WEB_ROOT = _REPO_ROOT / "app" / "web"
-if str(_WEB_ROOT) not in sys.path:
-    sys.path.insert(0, str(_WEB_ROOT))
+_APP_ROOT = _REPO_ROOT / "app"
+_WEB_ROOT = _APP_ROOT / "web"
+for _p in (_APP_ROOT, _WEB_ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from services.system_config_audit_service import DEPRECATED_USER_CONFIG_KEYS  # noqa: E402
 
