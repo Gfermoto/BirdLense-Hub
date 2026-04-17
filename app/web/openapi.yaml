@@ -941,6 +941,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /system/config-audit:
+    get:
+      summary: Configuration audit (YAML keys, recall tuning, MQTT scales)
+      description: |
+        Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
+        species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
+        and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`).
+        Requires the same settings/session access as other protected system views when passwords are enabled.
+      responses:
+        "200":
+          description: Audit payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigAuditResponse"
+        "401":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /system/logs:
     get:
       summary: Tail of processor log file
@@ -1403,6 +1430,60 @@ components:
       properties:
         error:
           type: string
+    ConfigAuditResponse:
+      type: object
+      required:
+        - deprecated_keys_present
+        - unknown_keys
+        - telegram
+        - mapping
+        - recall_tuning
+        - recall_warnings
+        - scales_mqtt
+        - scales_warnings
+        - config_warnings
+      properties:
+        deprecated_keys_present:
+          type: array
+          items:
+            type: string
+        unknown_keys:
+          type: array
+          items:
+            type: string
+        telegram:
+          type: object
+          properties:
+            proxy_type:
+              type: string
+            send_photo:
+              type: boolean
+        mapping:
+          type: object
+          properties:
+            gray_to_grey_ok:
+              type: boolean
+            pairs:
+              type: object
+              additionalProperties: true
+        recall_tuning:
+          type: object
+          additionalProperties: true
+        recall_warnings:
+          type: array
+          items:
+            type: string
+        scales_mqtt:
+          type: object
+          additionalProperties: true
+        scales_warnings:
+          type: array
+          items:
+            type: string
+        config_warnings:
+          type: array
+          items:
+            type: string
     FileTestFileEntry:
       type: object
       properties:

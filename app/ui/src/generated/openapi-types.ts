@@ -106,8 +106,11 @@ export interface paths {
                                 mqtt?: string;
                                 esphome?: string;
                                 yolo?: string;
+                                /** @description Comma-separated effective trigger ids, or `none` (same resolver as active_triggers). */
                                 motion_source?: string;
+                                /** @description Space-join of trigger ids with ` + ` (matches processor recording_context); empty if none. */
                                 trigger_display?: string;
+                                /** @description Enabled motion trigger keys from effective config. */
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
                             };
@@ -154,7 +157,9 @@ export interface paths {
                                 mqtt?: string;
                                 esphome?: string;
                                 yolo?: string;
+                                /** @description Comma-separated effective trigger ids, or `none`. */
                                 motion_source?: string;
+                                /** @description Trigger ids joined with ` + `; empty if none enabled. */
                                 trigger_display?: string;
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
@@ -205,7 +210,9 @@ export interface paths {
                             mqtt: string;
                             esphome?: string;
                             yolo: string;
+                            /** @description Comma-separated effective trigger ids, or `none`. */
                             motion_source?: string;
+                            /** @description Trigger ids joined with ` + `; empty if none enabled. */
                             trigger_display?: string;
                             active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                             birdnet_url?: string | null;
@@ -1395,6 +1402,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/config-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Configuration audit (YAML keys, recall tuning, MQTT scales)
+         * @description Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
+         *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
+         *     and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`).
+         *     Requires the same settings/session access as other protected system views when passwords are enabled.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Audit payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConfigAuditResponse"];
+                    };
+                };
+                /** @description Settings password required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/logs": {
         parameters: {
             query?: never;
@@ -2185,6 +2252,29 @@ export interface components {
     schemas: {
         Error: {
             error?: string;
+        };
+        ConfigAuditResponse: {
+            deprecated_keys_present: string[];
+            unknown_keys: string[];
+            telegram: {
+                proxy_type?: string;
+                send_photo?: boolean;
+            };
+            mapping: {
+                gray_to_grey_ok?: boolean;
+                pairs?: {
+                    [key: string]: unknown;
+                };
+            };
+            recall_tuning: {
+                [key: string]: unknown;
+            };
+            recall_warnings: string[];
+            scales_mqtt: {
+                [key: string]: unknown;
+            };
+            scales_warnings: string[];
+            config_warnings: string[];
         };
         FileTestFileEntry: {
             name?: string;

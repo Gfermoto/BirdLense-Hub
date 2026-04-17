@@ -363,6 +363,103 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["recall_tuning"]["binary_imgsz"] == 512
     assert payload["recall_tuning"]["check_every_n_frames"] == 2
     assert payload["recall_warnings"]
+    assert "scales_mqtt" in payload
+    assert payload["scales_mqtt"]["enabled"] is False
+    assert payload["scales_warnings"] == []
+    assert payload["config_warnings"] == payload["recall_warnings"]
+
+
+def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+
+    user = tmp_path / "user.yaml"
+    user.write_text(
+        "integrations:\n  scales:\n    enabled: true\n    source: mqtt\n    mqtt_topic_prefix: bird-feeder-scale\n",
+        encoding="utf-8",
+    )
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        m = {
+            "integrations.scales.enabled": True,
+            "integrations.scales.source": "mqtt",
+            "integrations.scales.mqtt_topic_prefix": "bird-feeder-scale",
+            "integrations.scales.mqtt_topic": "",
+            "mqtt.broker": "",
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 20,
+            "processor.light_gate_min_contrast": 15,
+            "processor.binary_imgsz": 640,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return m.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    sw = payload["scales_warnings"]
+    assert any("mqtt.broker is empty" in w for w in sw)
+    assert any("bird-feeder-scale" in w and "birdlense/scale" in w for w in sw)
+    assert payload["scales_mqtt"]["mqtt_weight_topic_resolved"] == "bird-feeder-scale/weight"
+
+
+def test_scales_mqtt_audit_detects_explicit_empty_prefix(tmp_path):
+    from services import system_config_audit_service as scas
+
+    user = tmp_path / "user.yaml"
+    # Без PyYAML: в полном web-suite ``yaml`` может быть подменён autouse-фикстурой.
+    user.write_text(
+        "integrations:\n"
+        "  scales:\n"
+        "    enabled: true\n"
+        "    source: mqtt\n"
+        "    mqtt_topic_prefix: \"\"\n",
+        encoding="utf-8",
+    )
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("x: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        m = {
+            "integrations.scales.enabled": True,
+            "integrations.scales.source": "mqtt",
+            "integrations.scales.mqtt_topic_prefix": "",
+            "integrations.scales.mqtt_topic": "",
+            "mqtt.broker": "192.168.1.10",
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 20,
+            "processor.light_gate_min_contrast": 15,
+            "processor.binary_imgsz": 640,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return m.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    assert any("mqtt_topic_prefix is explicitly empty" in w for w in payload["scales_warnings"])
+    assert any("both mqtt_topic and mqtt_topic_prefix are empty" in w for w in payload["scales_warnings"])
 
 
 def test_build_timeline_export_response_ebird(monkeypatch):

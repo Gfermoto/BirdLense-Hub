@@ -193,3 +193,13 @@ class TestOpenApiContractSmoke:
         assert response.status_code == 200
         schema = _schema_for(spec, path="/videos/{video_id}/fusion-trace")
         _assert_matches_schema(spec, response.json, schema)
+
+    def test_system_config_audit_matches_openapi_schema(self, client):
+        spec = _load_spec()
+        with client.session_transaction() as sess:
+            sess["access_role"] = "admin"
+            sess["settings_unlocked"] = True
+        response = client.get("/api/ui/system/config-audit")
+        assert response.status_code == 200
+        schema = _schema_for(spec, path="/system/config-audit")
+        _assert_matches_schema(spec, response.json, schema)

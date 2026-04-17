@@ -10,6 +10,13 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 **Precedence:** `user_config.yaml` merges over `default_config.yaml`, then **runtime secret overlays** apply: if a `BIRDLENSE_*` variable below is set to a non-empty value, it replaces that key in the merged config (same effect as editing YAML, but without persisting to disk). Older single keys such as `GO2RTC_URL` still override `video.go2rtc_url` where documented.
 
+### Merge, empty strings, and UI saves
+
+- **Recursive merge:** user values override defaults. A key **missing** from `user_config` leaves the default in place.
+- **Empty string is a value:** `some_key: ""` in `user_config` **clears** the default (it does **not** mean “fall back to default”). A common failure mode is `integrations.scales.mqtt_topic_prefix: ""`, which prevents derived `{prefix}/weight` subscriptions until you set `mqtt_topic` or remove the key.
+- **Saving from the web UI** writes the **full merged tree** to `user_config.yaml`, not a minimal diff. That pins many keys, so upgrading `default_config.yaml` alone will not change values already persisted in `user_config`.
+- **Audit:** System → configuration audit (`GET /api/ui/system/config-audit`) includes MQTT feeder-scale checks (broker, prefix, explicit `""` keys in raw user YAML).
+
 **UI:** Most options are editable in the web app (Settings → gear). YAML remains for advanced cases and env-based overrides.
 
 **Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms).
@@ -300,8 +307,8 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). |
 | `integrations.scales.source` | `mqtt` (default) — firmware topics / manual MQTT setup; `esphome` — ESPHome Web API (live weight / bird_present / tare only). |
 | `integrations.scales.mqtt_topic` | Full MQTT topic for **weight** (plain number or JSON with `value` / `weight` / `state`). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/weight`**. |
-| `integrations.scales.mqtt_bird_present_topic` | Optional full topic for **bird on platform** (`ON`/`OFF` or HA-style state). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/bird_present`**. Use when weight is on e.g. `homeassistant/sensor/.../state` but presence is still published on the device prefix (repo ESPHome example: `frigate/bird_present`). |
-| `integrations.scales.mqtt_topic_prefix` | Optional prefix: **`{prefix}/weight`** when `mqtt_topic` is empty; **`{prefix}/bird_present`** when `mqtt_bird_present_topic` is empty; tare publishes to **`{prefix}/command`** unless `mqtt_command_topic` is set. Example: `frigate` (matches `esphome/bird-feeder-scale.yaml`) or `birdlense/scale`. |
+| `integrations.scales.mqtt_bird_present_topic` | Optional full topic for **bird on platform** (`ON`/`OFF` or HA-style state). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/bird_present`**. Use when weight is on e.g. `homeassistant/sensor/.../state` but presence is still published on the device prefix. |
+| `integrations.scales.mqtt_topic_prefix` | Optional prefix: **`{prefix}/weight`** when `mqtt_topic` is empty; **`{prefix}/bird_present`** when `mqtt_bird_present_topic` is empty; tare publishes to **`{prefix}/command`** unless `mqtt_command_topic` is set. Stock repo ESPHome sketch: **`birdlense/scale`** (`esphome/bird-feeder-scale.yaml`). |
 | `integrations.scales.mqtt_command_topic` | Optional full command topic (overrides `{prefix}/command`). Also in Settings → Video (scales). |
 | `integrations.scales.mqtt_tare_payload` | String published for tare (default **`TARE`**). Your device must subscribe on the command topic if you use the Hub button. |
 | `integrations.scales.esphome_url` | Base URL for direct ESPHome Web API mode, e.g. `http://192.168.1.50`. |
