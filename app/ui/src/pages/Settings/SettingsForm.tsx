@@ -10,6 +10,7 @@ import { NotificationsSection } from './sections/NotificationsSection';
 import { IntegrationsSection } from './sections/IntegrationsSection';
 import { ProcessorSection } from './sections/ProcessorSection';
 
+/** Настройки: секции по смыслу (подключения → захват/кормушка → уведомления → интеграции → процессор). */
 export const SettingsForm = ({
   currentSettings,
   observedSpecies,
