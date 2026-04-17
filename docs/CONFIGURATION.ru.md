@@ -10,6 +10,13 @@
 
 **Приоритет:** `user_config.yaml` накладывается на `default_config.yaml`, затем в рантайме применяются **оверлеи секретов**: если ниже задана непустая переменная `BIRDLENSE_*`, она подставляется в объединённый конфиг (как правка YAML, но без записи на диск). Отдельные ключи вроде `GO2RTC_URL` по-прежнему переопределяют соответствующие поля там, где это описано.
 
+### Merge, пустые строки и сохранение из UI
+
+- **Рекурсивный merge:** значения из `user_config` перекрывают `default_config` по дереву. Отсутствующий в `user_config` ключ **не** трогает дефолт.
+- **Пустая строка — это тоже значение:** запись вида `some_key: ""` в `user_config` **затирает** дефолт пустым значением (это не «вернуться к дефолту»). Типичный сбой: `integrations.scales.mqtt_topic_prefix: ""` — процессор не подписывается на вес, пока не задан явный `mqtt_topic` или не убран ключ из YAML.
+- **Сохранение настроек из веб-UI** записывает в `user_config.yaml` **полное смерженное дерево** (как видит рантайм после merge и env), а не только дифф к дефолту. Поэтому: (1) файл со временем разрастается и «фиксирует» значения; (2) обновление `default_config.yaml` в новой версии хаба **не изменит** уже сохранённые в user-файле ключи; (3) секреты из env, попавшие в память merged-конфига, теоретически могут оказаться в YAML при следующем сохранении из UI — в проде предпочтительно держать секреты в **env** и не сохранять настройки без необходимости, либо использовать только `BIRDLENSE_*` без дублей в YAML.
+- **Ревизия:** System → ревизия конфигурации (`GET /api/ui/system/config-audit`) дополняется проверками MQTT-весов (брокер, префикс, явные `""` в user YAML).
+
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
 **Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины).
@@ -301,7 +308,7 @@
 | `integrations.scales.source` | `mqtt` (по умолчанию) — топики прошивки / ручная MQTT-настройка; `esphome` — ESPHome Web API (только live weight / bird_present / tare). |
 | `integrations.scales.mqtt_topic` | Полный топик **веса** (число или JSON с `value`/`weight`/`state`). Если **пусто** и задан **`mqtt_topic_prefix`**, процессор слушает **`{prefix}/weight`**. |
 | `integrations.scales.mqtt_bird_present_topic` | Полный топик **птица на платформе** (`ON`/`OFF` или state как у HA). Если **пусто** и задан **`mqtt_topic_prefix`** — **`{prefix}/bird_present`**. Нужен, когда вес на `homeassistant/sensor/.../state`, а присутствие на префиксе прошивки (пример репо: `frigate/bird_present`). |
-| `integrations.scales.mqtt_topic_prefix` | Префикс: **`{prefix}/weight`** при пустом `mqtt_topic`; **`{prefix}/bird_present`** при пустом `mqtt_bird_present_topic`; тара в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример: `frigate` (как в `esphome/bird-feeder-scale.yaml`) или `birdlense/scale`. |
+| `integrations.scales.mqtt_topic_prefix` | Префикс: **`{prefix}/weight`** при пустом `mqtt_topic`; **`{prefix}/bird_present`** при пустом `mqtt_bird_present_topic`; тара в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример прошивки в репозитории: **`birdlense/scale`** (`esphome/bird-feeder-scale.yaml`). |
 | `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Дублируется в Настройках → Видео (весы MQTT). |
 | `integrations.scales.mqtt_tare_payload` | Строка для тары (по умолчанию **`TARE`**); прошивка должна подписаться на command topic. |
 | `integrations.scales.esphome_url` | Базовый URL прямого ESPHome Web API, например `http://192.168.1.50`. |

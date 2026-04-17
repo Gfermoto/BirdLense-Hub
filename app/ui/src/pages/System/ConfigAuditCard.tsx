@@ -7,6 +7,9 @@ import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { fetchConfigAudit } from '../../api/api';
 
@@ -28,6 +31,8 @@ export function ConfigAuditCard({
   const telegramPhoto = data.telegram?.send_photo ?? false;
   const deprecatedKeys = Array.isArray(data.deprecated_keys_present) ? data.deprecated_keys_present : [];
   const unknownKeys = Array.isArray(data.unknown_keys) ? data.unknown_keys : [];
+  const configWarnings = Array.isArray(data.config_warnings) ? data.config_warnings : [];
+  const sm = data.scales_mqtt as Record<string, unknown> | undefined;
 
   return (
     <Card>
@@ -38,6 +43,45 @@ export function ConfigAuditCard({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('system.configAuditHint')}
         </Typography>
+
+        {sm?.enabled === true && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.configAuditScalesSection')}
+            </Typography>
+            <Typography variant="body2" component="div" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+              {t('system.configAuditScalesSource')}: {String(sm.source ?? '—')}
+              {' · '}
+              {t('system.configAuditScalesBroker')}:{' '}
+              {sm.mqtt_broker_configured === true ? t('system.configAuditYes') : t('system.configAuditNo')}
+            </Typography>
+            {typeof sm.mqtt_weight_topic_resolved === 'string' && sm.mqtt_weight_topic_resolved ? (
+              <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                {t('system.configAuditScalesWeightTopic')}: {sm.mqtt_weight_topic_resolved}
+              </Typography>
+            ) : null}
+            {sm.mqtt_note === 'esphome_or_ha' ? (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                {t('system.configAuditScalesNotMqtt')}
+              </Typography>
+            ) : null}
+          </Box>
+        )}
+
+        {configWarnings.length > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.configAuditWarningsTitle')}
+            </Typography>
+            <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
+              {configWarnings.map((w, i) => (
+                <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
+                  <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={w} />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
+        )}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           <Chip

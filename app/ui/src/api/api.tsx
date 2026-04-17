@@ -11,6 +11,7 @@ import {
 import axios from 'axios';
 import { formatLocalTime } from '../util';
 import type { TimeOfDay } from '../utils/timeUtils';
+import type { components } from '../generated/openapi-types';
 
 // Relative path = same origin (works with any host/IP). При SSR/тестах — из env или дефолт.
 export const BASE_URL =
@@ -552,20 +553,8 @@ export const fetchSettingsRequiresPassword = async (): Promise<RequiresPasswordR
   };
 };
 
-export type ConfigAudit = {
-  deprecated_keys_present: string[];
-  unknown_keys: string[];
-  telegram: {
-    proxy_type: string;
-    send_photo: boolean;
-  };
-  mapping: {
-    gray_to_grey_ok: boolean;
-    pairs: Record<string, string | undefined>;
-  };
-  recall_tuning?: Record<string, unknown>;
-  recall_warnings?: string[];
-};
+/** Ответ `GET /system/config-audit` (см. OpenAPI `ConfigAuditResponse`). */
+export type ConfigAudit = components['schemas']['ConfigAuditResponse'];
 
 export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
   const response = await axios.get(`${BASE_API_URL}/system/config-audit`, {
