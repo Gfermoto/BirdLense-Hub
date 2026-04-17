@@ -66,7 +66,7 @@ def test_get_feeder_scale_snapshot_esphome_reads_weight_and_bird_present(
     monkeypatch,
 ):
     def fake_get(url, timeout):
-        if url.endswith("/sensor/raw_hx711"):
+        if url.endswith("/sensor/weight_live_internal"):
             return _Resp({"state": "12.34", "unit_of_measurement": "g"})
         if url.endswith("/binary_sensor/bird_present"):
             return _Resp({"state": "ON"})
@@ -77,7 +77,7 @@ def test_get_feeder_scale_snapshot_esphome_reads_weight_and_bird_present(
             "integrations.scales.enabled": True,
             "integrations.scales.source": "esphome",
             "integrations.scales.esphome_url": "http://scale.local",
-            "integrations.scales.esphome_weight_sensor_id": "raw_hx711",
+            "integrations.scales.esphome_weight_sensor_id": "weight_live_internal",
             "integrations.scales.esphome_bird_present_sensor_id": (
                 "bird_present"
             ),

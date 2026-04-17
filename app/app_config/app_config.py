@@ -148,8 +148,8 @@ def migrate_legacy_scales_source(user_config: dict) -> bool:
         changed = True
 
     weight_sensor_id = str(scales.get('esphome_weight_sensor_id') or '').strip()
-    if weight_sensor_id == 'weight_live_internal':
-        scales['esphome_weight_sensor_id'] = 'raw_hx711'
+    if weight_sensor_id == 'raw_hx711':
+        scales['esphome_weight_sensor_id'] = 'weight_live_internal'
         changed = True
 
     return changed

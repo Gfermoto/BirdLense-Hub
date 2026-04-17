@@ -305,7 +305,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `integrations.scales.mqtt_command_topic` | Optional full command topic (overrides `{prefix}/command`). Also in Settings → Video (scales). |
 | `integrations.scales.mqtt_tare_payload` | String published for tare (default **`TARE`**). Your device must subscribe on the command topic if you use the Hub button. |
 | `integrations.scales.esphome_url` | Base URL for direct ESPHome Web API mode, e.g. `http://192.168.1.50`. |
-| `integrations.scales.esphome_weight_sensor_id` | ESPHome `sensor` id for weight in `esphome` mode. Default: `raw_hx711`. Hub reads `GET /sensor/<id>`. |
+| `integrations.scales.esphome_weight_sensor_id` | ESPHome `sensor` id for weight in `esphome` mode. Default: `weight_live_internal`. Hub reads `GET /sensor/<id>`. |
 | `integrations.scales.esphome_bird_present_sensor_id` | Optional ESPHome `binary_sensor` id for bird presence in `esphome` mode. Default: `bird_present`. Hub reads `GET /binary_sensor/<id>`. |
 | `integrations.scales.esphome_tare_button_id` | Optional ESPHome `button` id for tare in `esphome` mode. Default: `manual_tare`. Hub calls `POST /button/<id>/press`. |
 | `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires `mqtt` and `feeder_scale_history.jsonl` under `DATA_DIR`. The delta is **not** saved when the clip only has BirdNET rows (`source=audio`) with no frame/track: audio helps species ID; it is not tied to feeder weight. |
