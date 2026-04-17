@@ -10,11 +10,41 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
 const STATUS_KEYS: Record<string, Record<string, string>> = {
-  processor: { ok: 'status.processorOk', unknown: 'status.processorUnknown', offline: 'status.processorOffline', error: 'status.processorError' },
-  video: { ok: 'status.videoOk', unknown: 'status.videoUnknown', offline: 'status.videoUnknown', error: 'status.videoError', not_configured: 'status.videoNotConfigured' },
-  mqtt: { ok: 'status.mqttOk', unknown: 'status.mqttUnknown', not_used: 'status.mqttNotUsed', not_configured: 'status.mqttNotConfigured', error: 'status.mqttError', offline: 'status.mqttUnknown' },
-  esphome: { ok: 'status.esphomeOk', not_used: 'status.esphomeNotUsed', not_configured: 'status.esphomeNotConfigured', unknown: 'status.esphomeUnknown', error: 'status.esphomeError', offline: 'status.esphomeUnknown' },
-  yolo: { ok: 'status.yoloOk', unknown: 'status.yoloUnknown', offline: 'status.yoloUnknown', error: 'status.yoloUnknown' },
+  processor: {
+    ok: 'status.processorOk',
+    unknown: 'status.processorUnknown',
+    offline: 'status.processorOffline',
+    error: 'status.processorError',
+  },
+  video: {
+    ok: 'status.videoOk',
+    unknown: 'status.videoUnknown',
+    offline: 'status.videoUnknown',
+    error: 'status.videoError',
+    not_configured: 'status.videoNotConfigured',
+  },
+  mqtt: {
+    ok: 'status.mqttOk',
+    unknown: 'status.mqttUnknown',
+    not_used: 'status.mqttNotUsed',
+    not_configured: 'status.mqttNotConfigured',
+    error: 'status.mqttError',
+    offline: 'status.mqttUnknown',
+  },
+  esphome: {
+    ok: 'status.esphomeOk',
+    not_used: 'status.esphomeNotUsed',
+    not_configured: 'status.esphomeNotConfigured',
+    unknown: 'status.esphomeUnknown',
+    error: 'status.esphomeError',
+    offline: 'status.esphomeUnknown',
+  },
+  yolo: {
+    ok: 'status.yoloOk',
+    unknown: 'status.yoloUnknown',
+    offline: 'status.yoloUnknown',
+    error: 'status.yoloUnknown',
+  },
 };
 
 const StatusDot = ({
@@ -29,7 +59,8 @@ const StatusDot = ({
   t: (key: string) => string;
 }) => {
   const keys = STATUS_KEYS[component];
-  const tipKey = keys?.[status] ?? keys?.unknown ?? `status.${component}Unknown`;
+  const tipKey =
+    keys?.[status] ?? keys?.unknown ?? `status.${component}Unknown`;
   const tooltip = t(tipKey);
 
   const color =
@@ -63,17 +94,59 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
-  const activeLabel = data.trigger_display ?? data.motion_source ?? 'OpenCV';
+  const triggersLabel = data.trigger_display ?? data.motion_source ?? 'OpenCV';
+  const scalesFeed = data.scales_feed_enabled === true;
+  const line =
+    scalesFeed && !triggersLabel.toLowerCase().includes('scales')
+      ? `${triggersLabel} · ${t('status.scalesFeed')}`
+      : triggersLabel;
+  const tooltip = scalesFeed
+    ? [
+        t('status.motionActive'),
+        `${t('status.motionTriggersLine')}: ${triggersLabel}`,
+        t('status.scalesFeedLine'),
+      ].join('\n')
+    : t('status.motionActive');
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-      <StatusDot status={data.processor} component="processor" icon={MemoryOutlined} t={t} />
-      <StatusDot status={data.video} component="video" icon={VideocamOutlined} t={t} />
-      <StatusDot status={data.mqtt} component="mqtt" icon={CloudOutlined} t={t} />
-      <StatusDot status={data.esphome ?? 'not_used'} component="esphome" icon={SmartToyOutlined} t={t} />
-      <StatusDot status={data.yolo} component="yolo" icon={PsychologyOutlined} t={t} />
-      <Tooltip title={t('status.motionActive')}>
-        <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-          {t('status.motion')}: {activeLabel}
+    <Box
+      sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}
+    >
+      <StatusDot
+        status={data.processor}
+        component="processor"
+        icon={MemoryOutlined}
+        t={t}
+      />
+      <StatusDot
+        status={data.video}
+        component="video"
+        icon={VideocamOutlined}
+        t={t}
+      />
+      <StatusDot
+        status={data.mqtt}
+        component="mqtt"
+        icon={CloudOutlined}
+        t={t}
+      />
+      <StatusDot
+        status={data.esphome ?? 'not_used'}
+        component="esphome"
+        icon={SmartToyOutlined}
+        t={t}
+      />
+      <StatusDot
+        status={data.yolo}
+        component="yolo"
+        icon={PsychologyOutlined}
+        t={t}
+      />
+      <Tooltip title={tooltip}>
+        <Box
+          component="span"
+          sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+        >
+          {t('status.motion')}: {line}
         </Box>
       </Tooltip>
     </Box>

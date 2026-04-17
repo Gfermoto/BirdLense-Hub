@@ -698,6 +698,8 @@ class TestStatus:
         assert data["mqtt"] in ("ok", "error", "not_configured", "not_used", "unknown")
         assert data["esphome"] in ("ok", "error", "not_configured", "not_used")
         assert data["yolo"] in ("ok", "unknown")
+        assert "scales_feed_enabled" in data
+        assert isinstance(data["scales_feed_enabled"], bool)
 
     def test_status_mqtt_reflects_feed_source(self, client):
         """MQTT status is real when feed.source=mqtt, else not_used."""
