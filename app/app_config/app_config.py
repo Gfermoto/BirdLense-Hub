@@ -138,14 +138,21 @@ def migrate_legacy_scales_source(user_config: dict) -> bool:
     scales = integrations.get('scales')
     if not isinstance(scales, dict):
         return False
+    changed = False
     src = str(scales.get('source') or '').strip().lower()
     if src == 'esphome_mqtt':
         scales['source'] = 'mqtt'
-        return True
-    if src == 'esphome_direct':
+        changed = True
+    elif src == 'esphome_direct':
         scales['source'] = 'esphome'
-        return True
-    return False
+        changed = True
+
+    weight_sensor_id = str(scales.get('esphome_weight_sensor_id') or '').strip()
+    if weight_sensor_id == 'weight_live_internal':
+        scales['esphome_weight_sensor_id'] = 'raw_hx711'
+        changed = True
+
+    return changed
 
 
 class AppConfig:

@@ -305,7 +305,7 @@
 | `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Дублируется в Настройках → Видео (весы MQTT). |
 | `integrations.scales.mqtt_tare_payload` | Строка для тары (по умолчанию **`TARE`**); прошивка должна подписаться на command topic. |
 | `integrations.scales.esphome_url` | Базовый URL прямого ESPHome Web API, например `http://192.168.1.50`. |
-| `integrations.scales.esphome_weight_sensor_id` | `sensor` id веса для `esphome`. По умолчанию: `weight_live_internal`. Хаб читает `GET /sensor/<id>`. |
+| `integrations.scales.esphome_weight_sensor_id` | `sensor` id веса для `esphome`. По умолчанию: `raw_hx711`. Хаб читает `GET /sensor/<id>`. |
 | `integrations.scales.esphome_bird_present_sensor_id` | Необязательный `binary_sensor` id «птица на платформе» для `esphome`. По умолчанию: `bird_present`. Хаб читает `GET /binary_sensor/<id>`. |
 | `integrations.scales.esphome_tare_button_id` | Необязательный `button` id тары для `esphome`. По умолчанию: `manual_tare`. Хаб шлёт `POST /button/<id>/press`. |
 | `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужен режим `mqtt` и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
