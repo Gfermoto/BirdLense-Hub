@@ -219,10 +219,10 @@ def test_parse_push_subscription_body_ok_and_errors():
 def test_component_status_trigger_display_labels():
     from services.component_status_service import _trigger_display
 
-    assert _trigger_display("opencv", False) == "OpenCV"
-    assert _trigger_display("opencv", True) == "OpenCV + Frigate (MQTT)"
-    assert _trigger_display("mqtt", True) == "MQTT sensor + Frigate (MQTT)"
-    assert _trigger_display("unknown_src", False) == "unknown_src"
+    assert _trigger_display([]) == "OpenCV"
+    assert _trigger_display(["opencv", "frigate"]) == "OpenCV + Frigate"
+    assert _trigger_display(["motion_sensor", "frigate"]) == "Motion sensor + Frigate"
+    assert _trigger_display(["unknown_src"]) == "unknown_src"
 
 
 def test_parse_unresolved_limit_species_registry():

@@ -63,15 +63,7 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
-  const motion = data.motion_source ?? 'opencv';
-  const activeByMotion: Record<string, string[]> = {
-    opencv: ['OpenCV'],
-    frigate: ['Frigate', 'OpenCV'],
-    mqtt: ['MQTT'],
-    esphome: ['ESPHome'],
-  };
-  const active = activeByMotion[motion] ?? activeByMotion.opencv;
-  const activeLabel = active.join(', ');
+  const activeLabel = data.trigger_display ?? data.motion_source ?? 'OpenCV';
   return (
     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
       <StatusDot status={data.processor} component="processor" icon={MemoryOutlined} t={t} />

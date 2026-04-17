@@ -303,6 +303,20 @@ export function IntegrationsSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="integrations.birdnet.mqtt_topic">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? 'birdnet'}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.birdnetTopic')}
+                      placeholder="birdnet"
+                      helperText={t('settings.birdnetTopicHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
             </Grid>
           </ServiceBlock>
         </Box>

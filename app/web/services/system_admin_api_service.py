@@ -8,6 +8,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_birdnet_topic
 from models import Video, db
 from services.processor_logs_service import (
     clamp_processor_log_line_count,
@@ -62,7 +63,7 @@ def compute_system_activity_uptime(session: Any, month: str) -> tuple[Any, int]:
 def _birdnet_configured() -> bool:
     mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
     return bool(
-        mqtt_broker and (app_config.get("mqtt.birdnet_topic") or "").strip(),
+        mqtt_broker and get_birdnet_topic(app_config),
     )
 
 

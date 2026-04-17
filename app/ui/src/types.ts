@@ -138,6 +138,9 @@ export interface Settings {
     token?: string;
   };
   integrations?: {
+    birdnet?: {
+      mqtt_topic?: string;
+    };
     scales?: {
       enabled?: boolean;
       source?: 'mqtt' | 'esphome' | 'homeassistant';
@@ -301,6 +304,31 @@ export interface Settings {
     mqtt_topic?: string;
     esphome_url?: string;
     esphome_sensor_id?: string;
+  };
+  triggers?: {
+    opencv?: {
+      enabled?: boolean;
+      check_every_n_frames?: number;
+      diff_threshold?: number;
+      min_contour_area?: number;
+    };
+    frigate?: {
+      enabled?: boolean;
+      topic?: string;
+    };
+    motion_sensor?: {
+      enabled?: boolean;
+      source?: 'mqtt' | 'esphome';
+      mqtt_topic?: string;
+      esphome_url?: string;
+      esphome_sensor_id?: string;
+    };
+    scales?: {
+      enabled?: boolean;
+      source?: 'mqtt' | 'esphome';
+      motion_trigger_min_delta_kg?: number;
+      motion_trigger_debounce_seconds?: number;
+    };
   };
   detection?: {
     min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
