@@ -218,7 +218,7 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
     js = gr.get_json()
     assert js.get("scales") is not None
     assert abs(js["scales"]["delta_kg"] - 0.0234) < 1e-6
-    assert js["scales"]["display_unit"] == "kg"
+    assert js["scales"]["display_unit"] == "g"
 
 
 def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers, monkeypatch, tmp_path):

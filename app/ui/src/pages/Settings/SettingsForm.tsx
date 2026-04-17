@@ -4,13 +4,13 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import type { Settings } from '../../types';
 import { GeneralSection } from './sections/GeneralSection';
-import { HomeAssistantSection } from './sections/HomeAssistantSection';
-import { VideoSection } from './sections/VideoSection';
+import { ConnectionsSection } from './sections/ConnectionsSection';
+import { CaptureFeederSection } from './sections/CaptureFeederSection';
 import { NotificationsSection } from './sections/NotificationsSection';
-import { EBirdSection } from './sections/EBirdSection';
 import { IntegrationsSection } from './sections/IntegrationsSection';
 import { ProcessorSection } from './sections/ProcessorSection';
 
+/** Настройки: секции по смыслу (подключения → захват/кормушка → уведомления → интеграции → процессор). */
 export const SettingsForm = ({
   currentSettings,
   observedSpecies,
@@ -46,10 +46,9 @@ export const SettingsForm = ({
         yamlSafeExportEnabled={yamlSafeExportEnabled}
         yamlAdminBackupEnabled={yamlAdminBackupEnabled}
       />
-      <HomeAssistantSection form={form} />
-      <VideoSection form={form} />
+      <ConnectionsSection form={form} />
+      <CaptureFeederSection form={form} />
       <NotificationsSection form={form} observedSpecies={observedSpecies} />
-      <EBirdSection form={form} />
       <IntegrationsSection form={form} />
       <ProcessorSection form={form} />
 

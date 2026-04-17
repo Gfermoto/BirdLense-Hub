@@ -29,6 +29,7 @@ if [[ "${1:-}" == "from-local" ]]; then
 fi
 
 echo "Режим: восстановить из .bak на сервере"
+echo "(Также ищите снимки деплоя: ${REMOTE_CFG}.bak.deploy-*)"
 if ssh "$HOST" "test -f $REMOTE_BAK"; then
   ssh "$HOST" "cp $REMOTE_BAK $REMOTE_CFG && echo 'Восстановлено из .bak'"
   echo "Готово. Перезапустите: ssh $HOST 'cd $REMOTE_DIR/app && make stop && make start'"
