@@ -42,6 +42,7 @@ def _fallback_component_status_payload() -> dict[str, str | None]:
         "yolo": "unknown",
         "motion_source": "unknown",
         "trigger_display": "unknown",
+        "scales_feed_enabled": False,
         "birdnet_url": None,
     }
 
@@ -102,6 +103,7 @@ def build_component_status_payload(session) -> dict:
     elif feed_source != "esphome":
         esphome_display = "not_used"
     trigger_display = _trigger_display(active_triggers)
+    scales_feed_enabled = bool(app_config.get("integrations.scales.enabled", False))
     video_display = check_video_reachable()
     yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else "unknown"
     return {
@@ -113,5 +115,6 @@ def build_component_status_payload(session) -> dict:
         "yolo": yolo_display,
         "motion_source": get_legacy_motion_source_label(app_config, mqtt_broker=mqtt_broker),
         "trigger_display": trigger_display,
+        "scales_feed_enabled": scales_feed_enabled,
         "birdnet_url": birdnet_url or None,
     }

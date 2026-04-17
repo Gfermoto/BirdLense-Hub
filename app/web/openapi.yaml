@@ -113,6 +113,9 @@ paths:
                         type: string
                       trigger_display:
                         type: string
+                      scales_feed_enabled:
+                        type: boolean
+                        description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
                       birdnet_url:
                         type: string
                         nullable: true
@@ -188,6 +191,9 @@ paths:
                         type: string
                       trigger_display:
                         type: string
+                      scales_feed_enabled:
+                        type: boolean
+                        description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
                       birdnet_url:
                         type: string
                         nullable: true
@@ -221,6 +227,9 @@ paths:
                     type: string
                   trigger_display:
                     type: string
+                  scales_feed_enabled:
+                    type: boolean
+                    description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
                   birdnet_url:
                     type: string
                     nullable: true

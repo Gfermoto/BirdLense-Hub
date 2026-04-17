@@ -108,6 +108,7 @@ export interface paths {
                                 yolo?: string;
                                 motion_source?: string;
                                 trigger_display?: string;
+                                scales_feed_enabled?: boolean;
                                 birdnet_url?: string | null;
                             };
                         };
@@ -155,6 +156,7 @@ export interface paths {
                                 yolo?: string;
                                 motion_source?: string;
                                 trigger_display?: string;
+                                scales_feed_enabled?: boolean;
                                 birdnet_url?: string | null;
                             };
                         };
@@ -205,6 +207,7 @@ export interface paths {
                             yolo: string;
                             motion_source?: string;
                             trigger_display?: string;
+                            scales_feed_enabled?: boolean;
                             birdnet_url?: string | null;
                         };
                     };

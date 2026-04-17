@@ -390,17 +390,25 @@ export function CaptureFeederSection({ form }: Props) {
                           </Grid>
                           <Grid size={{ xs: 12, sm: 6 }}>
                             <form.Field name="triggers.scales.motion_trigger_min_delta_kg">
-                              {(field) => (
-                                <TextField
-                                  fullWidth
-                                  type="number"
-                                  inputProps={{ min: 0.001, step: 0.001 }}
-                                  value={field.state.value ?? 0.02}
-                                  onChange={(e) => field.handleChange(Number(e.target.value) || 0.02)}
-                                  label={t('settings.scalesMotionMinDelta')}
-                                  helperText={t('settings.scalesMotionMinDeltaHint')}
-                                />
-                              )}
+                              {(field) => {
+                                const kg = field.state.value ?? 0.02;
+                                const grams = Math.round(kg * 1000);
+                                return (
+                                  <TextField
+                                    fullWidth
+                                    type="number"
+                                    inputProps={{ min: 1, max: 500000, step: 1 }}
+                                    value={grams}
+                                    onChange={(e) => {
+                                      const raw = Number(e.target.value);
+                                      const g = Number.isFinite(raw) ? raw : 20;
+                                      field.handleChange(Math.max(0.001, g / 1000));
+                                    }}
+                                    label={t('settings.scalesMotionMinDelta')}
+                                    helperText={t('settings.scalesMotionMinDeltaHint')}
+                                  />
+                                );
+                              }}
                             </form.Field>
                           </Grid>
                           <Grid size={{ xs: 12, sm: 6 }}>
