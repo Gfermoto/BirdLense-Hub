@@ -23,4 +23,18 @@ describe('PageModeToggle', () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('renders custom labels when provided', () => {
+    render(
+      <PageModeToggle
+        value="simple"
+        onChange={vi.fn()}
+        simpleLabel="Overview"
+        advancedLabel="Admin tools"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Admin tools' })).toBeInTheDocument();
+  });
 });
