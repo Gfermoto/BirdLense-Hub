@@ -513,7 +513,7 @@
     "scalesEspTareButtonId": "去皮 button ID",
     "scalesEspTareButtonIdHint": "可选。若填写，按钮会发送 POST /button/<id>/press。",
     "scalesWeightEstimate": "记录卡上的重量估算",
-    "scalesWeightEstimateHint": "存储剪辑窗口的比例增量（需要 MQTT 主题）。仅当剪辑具有帧/轨道检测，而不是仅 BirdNET 时（音频有助于物种 ID，而不是喂食器重量）。默认情况下，需要连续样本之间出现尖峰（见下文）。",
+    "scalesWeightEstimateHint": "存储剪辑窗口内的体重增量（需要 MQTT 体重主题）。仅当剪辑包含画面上的检测或轨迹（确认有目标出现）时保存。不启用自动启动。默认需要在相邻 MQTT 采样之间出现尖峰（见下文）。",
     "scalesEstimateRequireSpike": "需要连续 MQTT 样本之间的权重峰值",
     "scalesEstimateRequireSpikeHint": "关：剪辑上的跨度（最大−最小）就足够了。打开（推荐）：除非某个相邻步骤≥阈值，否则不进行估计——漂移造成的误报更少；空平台皮重保持在接近于零的水平。",
     "scalesMotionTrigger": "从重量开始记录和识别（除了运动和护卫舰）",
