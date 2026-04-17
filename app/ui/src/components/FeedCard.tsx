@@ -97,12 +97,6 @@ export const FeedCard = () => {
   const scaleStale = weightDefined ? isScaleReadingStale(scale?.updated_at) : false;
   const birdPresentDefined = scale && typeof scale.bird_present === 'boolean';
   const tareAvailable = Boolean(feedInfo?.scale_tare_available);
-  const scalesSourceLabelKey =
-    scalesSource === 'homeassistant'
-      ? 'feed.scalesSourceLabelHa'
-      : scalesSource === 'esphome'
-        ? 'feed.scalesSourceLabelEsp'
-          : 'feed.scalesSourceLabelMqtt';
   const scaleNoDataLabelKey =
     scalesSource === 'esphome' ? 'feed.scaleNoDataEsp' : 'feed.scaleNoData';
 
@@ -153,14 +147,9 @@ export const FeedCard = () => {
         {scalesEnabled && (
           <>
             <Divider />
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               {t('feed.scalesSection')}
             </Typography>
-            {scalesSource && (
-              <Typography variant="caption" color="text.secondary">
-                {t(scalesSourceLabelKey)}
-              </Typography>
-            )}
             {!scale && (
               <Typography variant="body2" color="text.secondary">
                 {t(scaleNoDataLabelKey)}
