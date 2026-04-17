@@ -15,18 +15,31 @@ test.describe('Settings page', () => {
 
   test('Settings form loads with all sections', async ({ page }) => {
     await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible();
-    await expect(page.getByText(/1\. (Подключение|Connection)/)).toBeVisible();
+    await expect(page.getByText(/Общее|General/i)).toBeVisible();
+    await expect(page.getByText(/Подключения|Connections/i)).toBeVisible();
   });
 
-  test('Settings form has cameras section', async ({ page }) => {
-    await expect(page.getByText(/2\. (Камеры|Cameras)/)).toBeVisible();
+  test('Settings form has capture and feeder section', async ({ page }) => {
+    await expect(page.getByText(/Захват и кормушка|Capture & Feeder/i)).toBeVisible();
   });
 
   test('Settings form has Save button', async ({ page }) => {
     await expect(page.getByRole('button', { name: /Сохранить|Save/i })).toBeVisible();
   });
 
-  test('Settings form shows feed relay section', async ({ page }) => {
-    await expect(page.getByText(/4\. (Реле подкормки|Feed Relay)/)).toBeVisible();
+  test('Settings form exposes moved controls in expanded sections', async ({ page }) => {
+    await page.getByRole('button', { name: /Общее|General/i }).click();
+    await expect(page.getByText(/MCP/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Подключения|Connections/i }).click();
+    await expect(page.getByLabel(/Home Assistant URL|URL Home Assistant/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Захват и кормушка|Capture & Feeder/i }).click();
+    await expect(page.getByLabel(/Resolution|Разрешение/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Интеграции|Integrations/i }).click();
+    await expect(
+      page.getByLabel(/BirdNET installation URL|Ссылка на BirdNET/i),
+    ).toBeVisible();
   });
 });
