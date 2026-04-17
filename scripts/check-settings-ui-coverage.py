@@ -27,6 +27,12 @@ SETTINGS_UI_DIR = ROOT / "app" / "ui" / "src" / "pages" / "Settings"
 # - reason: current rationale
 # - next_step: when/how to revisit
 ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
+    # Trigger transport mirrors integrations.scales.source; UI exposes a single source selector.
+    "triggers.scales.source": {
+        "category": "derived",
+        "reason": "Processor resolves scales trigger transport from integrations.scales.source when unset; duplicate source pickers were removed from Settings.",
+        "next_step": "Re-expose only if product needs different MQTT/ESPHome paths for live weight vs weight-trigger sampling.",
+    },
     # Processor internals.
     "processor.detection_strategy": {
         "category": "advanced",
