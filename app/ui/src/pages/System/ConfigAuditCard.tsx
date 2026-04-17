@@ -31,6 +31,7 @@ export function ConfigAuditCard({
   const deprecatedKeys = Array.isArray(data.deprecated_keys_present) ? data.deprecated_keys_present : [];
   const unknownKeys = Array.isArray(data.unknown_keys) ? data.unknown_keys : [];
   const configWarnings = Array.isArray(data.config_warnings) ? data.config_warnings : [];
+  const configHints = Array.isArray(data.config_hints) ? data.config_hints : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
   const statusTone =
     configWarnings.length > 0 || deprecatedKeys.length > 0 ? 'warning' : 'success';
@@ -80,6 +81,24 @@ export function ConfigAuditCard({
               {configWarnings.map((w, i) => (
                 <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
                   <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={w} />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
+        )}
+
+        {configHints.length > 0 && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.configAuditHintsTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+              {t('system.configAuditHintsHint')}
+            </Typography>
+            <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
+              {configHints.map((h, i) => (
+                <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
+                  <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={h} />
                 </ListItem>
               ))}
             </List>

@@ -1413,7 +1413,8 @@ export interface paths {
          * Configuration audit (YAML keys, recall tuning, MQTT scales)
          * @description Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
          *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
-         *     and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`).
+         *     strict warnings in `config_warnings` (`recall_warnings` + `scales_warnings`), and optional tuning notes in
+         *     `config_hints` (`recall_hints` + `scales_hints`) that do not indicate a broken integration by themselves.
          *     Requires the same settings/session access as other protected system views when passwords are enabled.
          */
         get: {
@@ -2270,11 +2271,14 @@ export interface components {
                 [key: string]: unknown;
             };
             recall_warnings: string[];
+            recall_hints: string[];
             scales_mqtt: {
                 [key: string]: unknown;
             };
             scales_warnings: string[];
+            scales_hints: string[];
             config_warnings: string[];
+            config_hints: string[];
         };
         FileTestFileEntry: {
             name?: string;

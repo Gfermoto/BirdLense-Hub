@@ -1264,6 +1264,8 @@
     "configAuditNeedsReview": "Needs review",
     "configAuditLoadError": "Failed to load configuration audit",
     "configAuditWarningsTitle": "Warnings",
+    "configAuditHintsTitle": "Tuning notes",
+    "configAuditHintsHint": "These are optional recall or MQTT alignment hints — not errors. Adjust only if you need more sensitivity or weight updates fail.",
     "configAuditScalesSection": "Scales integration",
     "configAuditScalesSource": "Source",
     "configAuditScalesBroker": "MQTT broker in config",
