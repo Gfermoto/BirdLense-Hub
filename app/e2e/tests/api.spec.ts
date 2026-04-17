@@ -20,6 +20,8 @@ test.describe('API endpoints @api', () => {
     expect(body).toHaveProperty('mqtt');
     expect(body).toHaveProperty('esphome');
     expect(body).toHaveProperty('yolo');
+    expect(body).toHaveProperty('active_triggers');
+    expect(Array.isArray(body.active_triggers)).toBeTruthy();
     // mqtt/esphome: ok | error | not_configured | not_used | unknown (timeout)
     const validMqtt = ['ok', 'error', 'not_configured', 'not_used', 'unknown'];
     const validEsp = ['ok', 'error', 'not_configured', 'not_used'];

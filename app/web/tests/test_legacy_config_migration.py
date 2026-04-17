@@ -8,7 +8,12 @@ from app_config.app_config import (
     migrate_legacy_homeassistant_from_weather,
     migrate_legacy_trigger_topics,
 )
-from app_config.trigger_config import get_active_trigger_names, get_birdnet_topic, get_frigate_topic
+from app_config.trigger_config import (
+    get_active_trigger_names,
+    get_birdnet_topic,
+    get_frigate_topic,
+    get_legacy_motion_source_label,
+)
 
 
 def test_migrate_copies_legacy_ha_into_homeassistant():
@@ -128,3 +133,4 @@ def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
         "motion_sensor",
         "scales",
     ]
+    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == "frigate,motion_sensor,scales"

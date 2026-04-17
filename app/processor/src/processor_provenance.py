@@ -7,6 +7,8 @@ import json
 import os
 from typing import Any
 
+from app_config.trigger_config import get_active_trigger_names
+
 _MODEL_DIGEST_CACHE: dict[tuple[str, int, int], str] = {}
 
 _CONFIG_DIGEST_KEYS = (
@@ -114,6 +116,10 @@ def build_pipeline_fingerprint(app_config) -> dict[str, Any]:
     """Build a compact reproducibility snapshot for the active pipeline."""
     processor_version, version_source = resolve_processor_version()
     config_slice = {key: app_config.get(key) for key in _CONFIG_DIGEST_KEYS}
+    _mqtt = str(os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip()
+    config_slice["_resolved_active_triggers"] = ",".join(
+        get_active_trigger_names(app_config, mqtt_broker=_mqtt or None),
+    )
     config_digest = hashlib.sha256(json.dumps(config_slice, sort_keys=True, default=str).encode("utf-8")).hexdigest()
     fusion_model_path = app_config.get("detection.fusion_model_path") or None
     return {

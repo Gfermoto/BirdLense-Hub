@@ -273,17 +273,29 @@ def get_active_trigger_names(
     return active
 
 
+def format_trigger_display_line(active_names: list[str]) -> str:
+    """Строка как в recording_context / API ``trigger_display``: id через `` + ``."""
+    if not active_names:
+        return ""
+    return " + ".join(active_names)
+
+
+def format_motion_source_summary(active_names: list[str]) -> str:
+    """Поле ``motion_source`` в статусе/трейсах: id через запятую или ``none``."""
+    if not active_names:
+        return "none"
+    return ",".join(active_names)
+
+
 def get_legacy_motion_source_label(
     config_or_get: Any,
     *,
     mqtt_broker: str | None = None,
 ) -> str:
-    active = get_active_trigger_names(config_or_get, mqtt_broker=mqtt_broker)
-    if not active:
-        return "opencv"
-    if len(active) == 1:
-        return active[0]
-    return "grouped"
+    """Сводка по эффективным триггерам (без ``motion.source`` из YAML как истины)."""
+    return format_motion_source_summary(
+        get_active_trigger_names(config_or_get, mqtt_broker=mqtt_broker),
+    )
 
 
 def copy_legacy_topic_if_missing(

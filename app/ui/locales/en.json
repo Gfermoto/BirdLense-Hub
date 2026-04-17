@@ -1452,9 +1452,14 @@
   "status": {
     "motion": "Motion",
     "motionActive": "Active channels",
-    "motionTriggersLine": "Clip start (triggers)",
-    "scalesFeed": "weight (data)",
-    "scalesFeedLine": "Feeder scales are enabled for live weight and visit cards. Separate from the «weight spike trigger» toggle in settings.",
+    "triggersNone": "none",
+    "triggersUnknown": "unknown",
+    "triggerNames": {
+      "opencv": "OpenCV",
+      "frigate": "Frigate",
+      "motion_sensor": "motion sensor",
+      "scales": "scales"
+    },
     "motionHint_frigate": "Frigate (MQTT); with a live broker OpenCV may run in parallel as a safety net. BirdNET = merge/thresholds, not a trigger.",
     "motionHint_opencv": "Trigger: camera motion (OpenCV). Frigate not required. BirdNET does not start recording.",
     "motionHint_mqtt": "Trigger: MQTT sensor (and may parallel Frigate when MQTT is configured). BirdNET is not a record trigger.",

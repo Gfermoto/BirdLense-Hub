@@ -108,7 +108,7 @@ export interface paths {
                                 yolo?: string;
                                 motion_source?: string;
                                 trigger_display?: string;
-                                scales_feed_enabled?: boolean;
+                                active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
                             };
                         };
@@ -156,7 +156,7 @@ export interface paths {
                                 yolo?: string;
                                 motion_source?: string;
                                 trigger_display?: string;
-                                scales_feed_enabled?: boolean;
+                                active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
                             };
                         };
@@ -207,7 +207,7 @@ export interface paths {
                             yolo: string;
                             motion_source?: string;
                             trigger_display?: string;
-                            scales_feed_enabled?: boolean;
+                            active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                             birdnet_url?: string | null;
                         };
                     };

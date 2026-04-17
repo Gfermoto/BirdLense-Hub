@@ -111,11 +111,16 @@ paths:
                         type: string
                       motion_source:
                         type: string
+                        description: Comma-separated effective trigger ids, or `none` (same resolver as active_triggers).
                       trigger_display:
                         type: string
-                      scales_feed_enabled:
-                        type: boolean
-                        description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
+                        description: Space-join of trigger ids with ` + ` (matches processor recording_context); empty if none.
+                      active_triggers:
+                        type: array
+                        items:
+                          type: string
+                          enum: [opencv, frigate, motion_sensor, scales]
+                        description: Enabled motion trigger keys from effective config.
                       birdnet_url:
                         type: string
                         nullable: true
@@ -189,11 +194,15 @@ paths:
                         type: string
                       motion_source:
                         type: string
+                        description: Comma-separated effective trigger ids, or `none`.
                       trigger_display:
                         type: string
-                      scales_feed_enabled:
-                        type: boolean
-                        description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
+                        description: Trigger ids joined with ` + `; empty if none enabled.
+                      active_triggers:
+                        type: array
+                        items:
+                          type: string
+                          enum: [opencv, frigate, motion_sensor, scales]
                       birdnet_url:
                         type: string
                         nullable: true
@@ -225,11 +234,15 @@ paths:
                     type: string
                   motion_source:
                     type: string
+                    description: Comma-separated effective trigger ids, or `none`.
                   trigger_display:
                     type: string
-                  scales_feed_enabled:
-                    type: boolean
-                    description: Feeder scales integration enabled (weight in UI/cards); not the same as scales motion trigger.
+                    description: Trigger ids joined with ` + `; empty if none enabled.
+                  active_triggers:
+                    type: array
+                    items:
+                      type: string
+                      enum: [opencv, frigate, motion_sensor, scales]
                   birdnet_url:
                     type: string
                     nullable: true

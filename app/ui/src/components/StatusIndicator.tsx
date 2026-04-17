@@ -9,6 +9,35 @@ import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
 
+const TRIGGER_LINE_KEYS: Record<string, string> = {
+  opencv: 'status.triggerNames.opencv',
+  frigate: 'status.triggerNames.frigate',
+  motion_sensor: 'status.triggerNames.motion_sensor',
+  scales: 'status.triggerNames.scales',
+};
+
+function formatTriggersLine(
+  data: {
+    active_triggers?: string[];
+    trigger_display?: string;
+    motion_source?: string;
+  },
+  t: (key: string) => string,
+): string {
+  const active = data.active_triggers;
+  if (Array.isArray(active)) {
+    if (active.length === 0) {
+      return t('status.triggersNone');
+    }
+    return active
+      .map((name) => t(TRIGGER_LINE_KEYS[name] ?? `status.triggerNames.${name}`))
+      .join(' + ');
+  }
+  const legacy = (data.trigger_display ?? '').trim();
+  if (legacy) return legacy;
+  return data.motion_source ?? t('status.triggersUnknown');
+}
+
 const STATUS_KEYS: Record<string, Record<string, string>> = {
   processor: {
     ok: 'status.processorOk',
@@ -94,19 +123,8 @@ export const StatusIndicator = () => {
     refetchInterval: 10000,
   });
   if (!data) return null;
-  const triggersLabel = data.trigger_display ?? data.motion_source ?? 'OpenCV';
-  const scalesFeed = data.scales_feed_enabled === true;
-  const line =
-    scalesFeed && !triggersLabel.toLowerCase().includes('scales')
-      ? `${triggersLabel} · ${t('status.scalesFeed')}`
-      : triggersLabel;
-  const tooltip = scalesFeed
-    ? [
-        t('status.motionActive'),
-        `${t('status.motionTriggersLine')}: ${triggersLabel}`,
-        t('status.scalesFeedLine'),
-      ].join('\n')
-    : t('status.motionActive');
+  const line = formatTriggersLine(data, t);
+  const tooltip = [t('status.motionActive'), line].join('\n');
   return (
     <Box
       sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}

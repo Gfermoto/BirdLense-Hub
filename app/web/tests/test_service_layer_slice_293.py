@@ -216,13 +216,16 @@ def test_parse_push_subscription_body_ok_and_errors():
         )
 
 
-def test_component_status_trigger_display_labels():
-    from services.component_status_service import _trigger_display
+def test_trigger_format_helpers_match_processor_and_status():
+    from app_config.trigger_config import format_motion_source_summary, format_trigger_display_line
 
-    assert _trigger_display([]) == "OpenCV"
-    assert _trigger_display(["opencv", "frigate"]) == "OpenCV + Frigate"
-    assert _trigger_display(["motion_sensor", "frigate"]) == "Motion sensor + Frigate"
-    assert _trigger_display(["unknown_src"]) == "unknown_src"
+    assert format_trigger_display_line([]) == ""
+    assert format_trigger_display_line(["opencv", "frigate"]) == "opencv + frigate"
+    assert format_trigger_display_line(["motion_sensor", "frigate"]) == "motion_sensor + frigate"
+    assert format_trigger_display_line(["unknown_src"]) == "unknown_src"
+    assert format_motion_source_summary([]) == "none"
+    assert format_motion_source_summary(["opencv"]) == "opencv"
+    assert format_motion_source_summary(["opencv", "scales"]) == "opencv,scales"
 
 
 def test_parse_unresolved_limit_species_registry():

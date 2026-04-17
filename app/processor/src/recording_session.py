@@ -11,7 +11,7 @@ from typing import Any, Callable, Optional
 from argparse import Namespace
 
 from app_config.app_config import app_config
-from app_config.trigger_config import get_active_trigger_names
+from app_config.trigger_config import format_trigger_display_line, get_active_trigger_names
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
@@ -201,6 +201,8 @@ class MotionRecordingSession:
             end_time = datetime.now(timezone.utc)
 
         try:
+            _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
+            _active_names = get_active_trigger_names(app_config, mqtt_broker=_mqtt_b)
             finalize_motion_recording(
                 self.api,
                 self.motion_detector,
@@ -219,7 +221,7 @@ class MotionRecordingSession:
                     "triggered_camera": camera_id,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
-                    "trigger_display": " + ".join(get_active_trigger_names(app_config)),
+                    "trigger_display": format_trigger_display_line(_active_names),
                 },
             )
         except Exception as e:

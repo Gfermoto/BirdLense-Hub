@@ -8,28 +8,18 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
-from app_config.trigger_config import get_active_trigger_names, get_effective_trigger_config, get_legacy_motion_source_label
+from app_config.trigger_config import (
+    format_trigger_display_line,
+    get_active_trigger_names,
+    get_effective_trigger_config,
+    get_legacy_motion_source_label,
+)
 from models import ActivityLog
 from services.feed_service import check_esphome_reachable, check_mqtt_connected
 from services.status_service import check_video_reachable, parse_yolo_status_from_heartbeat
 from util import ensure_utc
 
 logger = logging.getLogger(__name__)
-
-_TRIGGER_LABELS = {
-    "opencv": "OpenCV",
-    "frigate": "Frigate",
-    "motion_sensor": "Motion sensor",
-    "scales": "Scales",
-    "pir": "PIR",
-}
-
-
-def _trigger_display(active_triggers: list[str]) -> str:
-    if not active_triggers:
-        return "OpenCV"
-    return " + ".join(_TRIGGER_LABELS.get(name, name) for name in active_triggers)
-
 
 def _fallback_component_status_payload() -> dict[str, str | None]:
     """Минимальный payload, если основная сборка упала (деплой/verify не должны валить воркер)."""
@@ -42,7 +32,7 @@ def _fallback_component_status_payload() -> dict[str, str | None]:
         "yolo": "unknown",
         "motion_source": "unknown",
         "trigger_display": "unknown",
-        "scales_feed_enabled": False,
+        "active_triggers": [],
         "birdnet_url": None,
     }
 
@@ -102,8 +92,7 @@ def build_component_status_payload(session) -> dict:
         esphome_display = esphome_status
     elif feed_source != "esphome":
         esphome_display = "not_used"
-    trigger_display = _trigger_display(active_triggers)
-    scales_feed_enabled = bool(app_config.get("integrations.scales.enabled", False))
+    trigger_display = format_trigger_display_line(active_triggers)
     video_display = check_video_reachable()
     yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else "unknown"
     return {
@@ -115,6 +104,6 @@ def build_component_status_payload(session) -> dict:
         "yolo": yolo_display,
         "motion_source": get_legacy_motion_source_label(app_config, mqtt_broker=mqtt_broker),
         "trigger_display": trigger_display,
-        "scales_feed_enabled": scales_feed_enabled,
+        "active_triggers": active_triggers,
         "birdnet_url": birdnet_url or None,
     }

@@ -1454,9 +1454,14 @@
   "status": {
     "motion": "Триггер",
     "motionActive": "Активные каналы",
-    "motionTriggersLine": "Старт клипа (триггеры)",
-    "scalesFeed": "вес (данные)",
-    "scalesFeedLine": "Весы для текущего веса и карточек включены. Это не то же самое, что «триггер по весу» — последний отдельно в настройках.",
+    "triggersNone": "нет",
+    "triggersUnknown": "неизвестно",
+    "triggerNames": {
+      "opencv": "OpenCV",
+      "frigate": "Frigate",
+      "motion_sensor": "датчик движения",
+      "scales": "весы"
+    },
     "motionHint_frigate": "Frigate (MQTT); при живом брокере OpenCV может идти параллельно как подстраховка. BirdNET — слияние/пороги, не триггер.",
     "motionHint_opencv": "Триггер: движение с камеры (OpenCV). Frigate не требуется. BirdNET не стартует запись.",
     "motionHint_mqtt": "Триггер: MQTT-датчик (и при настроенном MQTT может параллелить Frigate). BirdNET не стартует запись.",
