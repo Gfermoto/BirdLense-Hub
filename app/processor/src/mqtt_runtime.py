@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from app_config.app_config import app_config
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
+from app_config.trigger_config import get_birdnet_topic, get_effective_trigger_config, get_frigate_topic
 from frigate_scope import frigate_camera_allow_ids, frigate_label_resolve_set
-from mqtt_aggregator import MQTTEventAggregator
 from processor_support import get_data_dir, heartbeat_mqtt_ref
 
 if TYPE_CHECKING:
@@ -25,9 +25,11 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     data_dir = get_data_dir()
     scales_topic_arg: Optional[str] = None
     scales_unit_arg = "g"
+    trigger_cfg = get_effective_trigger_config(app_config)
+    scales_cfg = trigger_cfg.get("scales") or {}
     if app_config.get("integrations.scales.enabled"):
         scales_unit_arg = (app_config.get("integrations.scales.unit") or "g").strip().lower() or "g"
-        src = normalize_scales_source(app_config.get("integrations.scales.source"))
+        src = normalize_scales_source(scales_cfg.get("source") or app_config.get("integrations.scales.source"))
         if scales_source_uses_mqtt(src):
             mq_st = (app_config.get("integrations.scales.mqtt_topic") or "").strip()
             prefix = (app_config.get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
@@ -42,7 +44,8 @@ def scales_mqtt_bird_present_topic() -> Optional[str]:
     """Топик присутствия птицы: явный ``mqtt_bird_present_topic`` или ``{prefix}/bird_present``."""
     if not app_config.get("integrations.scales.enabled"):
         return None
-    if not scales_source_uses_mqtt(app_config.get("integrations.scales.source")):
+    scales_cfg = get_effective_trigger_config(app_config).get("scales") or {}
+    if not scales_source_uses_mqtt(scales_cfg.get("source") or app_config.get("integrations.scales.source")):
         return None
     explicit = (app_config.get("integrations.scales.mqtt_bird_present_topic") or "").strip()
     if explicit:
@@ -105,7 +108,10 @@ def start_mqtt_aggregator_session(
     """Поднимает MQTTEventAggregator и связывает FrigateMotionFromAggregator. Возвращает (aggregator, scale_pending, frigate_detector)."""
     from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator
     from motion_detectors.scale_weight_motion import ScaleWeightMotionPending
+    from mqtt_aggregator import MQTTEventAggregator
 
+    trigger_cfg = get_effective_trigger_config(app_config, mqtt_broker=mqtt_broker)
+    scales_cfg = trigger_cfg.get("scales") or {}
     frigate_detector = FrigateMotionFromAggregator(None, frigate_camera_filter, frigate_label_filter)
     on_frigate_motion = frigate_detector.get_on_frigate_motion_tuple()
 
@@ -125,11 +131,11 @@ def start_mqtt_aggregator_session(
     scale_motion_cb = None
     scale_motion_min = None
     scale_motion_debounce = 1.5
-    if scales_topic_arg and app_config.get("integrations.scales.motion_trigger_enabled", False):
+    if scales_topic_arg and bool(scales_cfg.get("enabled")):
         scale_weight_motion_pending = ScaleWeightMotionPending()
         scale_motion_cb = scale_weight_motion_pending.fire
         try:
-            scale_motion_min = float(app_config.get("integrations.scales.motion_trigger_min_delta_kg") or 0.02)
+            scale_motion_min = float(scales_cfg.get("motion_trigger_min_delta_kg") or 0.02)
         except (TypeError, ValueError):
             scale_motion_min = 0.02
         if scale_motion_min <= 0:
@@ -137,7 +143,7 @@ def start_mqtt_aggregator_session(
             scale_motion_cb = None
             scale_weight_motion_pending = None
         try:
-            scale_motion_debounce = float(app_config.get("integrations.scales.motion_trigger_debounce_seconds") or 1.5)
+            scale_motion_debounce = float(scales_cfg.get("motion_trigger_debounce_seconds") or 1.5)
         except (TypeError, ValueError):
             scale_motion_debounce = 1.5
         if scale_weight_motion_pending:
@@ -153,8 +159,8 @@ def start_mqtt_aggregator_session(
     mqtt_aggregator = MQTTEventAggregator(
         broker=mqtt_broker,
         port=app_config.get("mqtt.port", 1883),
-        frigate_topic=app_config.get("mqtt.frigate_topic", "frigate/events"),
-        birdnet_topic=app_config.get("mqtt.birdnet_topic", "birdnet"),
+        frigate_topic=get_frigate_topic(app_config),
+        birdnet_topic=get_birdnet_topic(app_config),
         publish_topic=app_config.get("mqtt.publish_topic", "birdlense/detections"),
         username=os.environ.get("MQTT_USERNAME") or app_config.get("mqtt.username"),
         password=os.environ.get("MQTT_PASSWORD") or app_config.get("mqtt.password"),

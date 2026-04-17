@@ -304,8 +304,13 @@ def finalize_motion_recording(
     decision_trace["pipeline_fingerprint"] = build_pipeline_fingerprint(app_config)
     clip_duration_seconds = max(0.0, (end_time - start_time).total_seconds())
     review_only_count = sum(1 for item in video_detections if str(item.get("outcome_bucket") or "") == "review_only")
+    trigger_display = (recording_context or {}).get("trigger_display")
+    if not trigger_display:
+        trigger_display = app_config.get("motion.source")
     decision_trace["recording_context"] = {
         "motion_source": app_config.get("motion.source"),
+        "trigger_display": trigger_display,
+        "triggered_by": (recording_context or {}).get("triggered_by"),
         "video_source": app_config.get("video.source"),
         "triggered_camera": (recording_context or {}).get("triggered_camera"),
         "frigate_activity_hold_seconds": (recording_context or {}).get("frigate_activity_hold_seconds"),

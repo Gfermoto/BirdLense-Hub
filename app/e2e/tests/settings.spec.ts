@@ -33,13 +33,22 @@ test.describe('Settings page', () => {
 
     await page.getByRole('button', { name: /Подключения|Connections/i }).click();
     await expect(page.getByLabel(/Home Assistant URL|URL Home Assistant/i)).toBeVisible();
+    await expect(page.getByLabel(/Frigate topic|Frigate топик/i)).toHaveCount(0);
+    await expect(page.getByLabel(/BirdNET topic|BirdNET топик/i)).toHaveCount(0);
 
     await page.getByRole('button', { name: /Захват и кормушка|Capture & Feeder/i }).click();
     await expect(page.getByLabel(/Resolution|Разрешение/i)).toBeVisible();
+    await expect(page.getByText(/OpenCV/i)).toBeVisible();
+    await expect(page.getByText(/Frigate/i)).toBeVisible();
+    await expect(page.getByText(/Датчик движения|Motion sensor/i)).toBeVisible();
+    await expect(page.getByText(/Весы|Scales/i)).toBeVisible();
+    await page.getByRole('checkbox', { name: /Frigate \(MQTT|Frigate/i }).check();
+    await expect(page.getByLabel(/Frigate topic|Frigate топик/i)).toBeVisible();
 
     await page.getByRole('button', { name: /Интеграции|Integrations/i }).click();
     await expect(
       page.getByLabel(/BirdNET installation URL|Ссылка на BirdNET/i),
     ).toBeVisible();
+    await expect(page.getByLabel(/BirdNET topic|BirdNET топик/i)).toBeVisible();
   });
 });

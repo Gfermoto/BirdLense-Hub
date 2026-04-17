@@ -1,7 +1,4 @@
-"""
-OR motion detector: triggers when ANY of the child detectors fires.
-Used for Frigate (always when MQTT) + optional additional (OpenCV, MQTT binary, ESPHome).
-"""
+"""OR motion detector: triggers when ANY child detector fires."""
 
 import logging
 import time
@@ -10,111 +7,92 @@ logger = logging.getLogger(__name__)
 
 
 class OrMotionDetector:
-    """
-    Combines multiple motion detectors with OR logic.
-    detect() returns True when the first of any child fires.
-    """
+    """Combines multiple motion detectors with OR logic."""
 
-    def __init__(self, primary, additional=None, extras=None):
-        """
-        primary: main detector (e.g. Frigate) — must have detect() and optionally check_pending()
-        additional: optional second detector (OpenCV, MQTT binary, ESPHome)
-        extras: optional list of objects with check_pending() (e.g. весы как триггер записи)
-        """
+    def __init__(self, primary=None, additional=None, extras=None, named_detectors=None):
         self._primary = primary
         self._additional = additional
         self._extras = [e for e in (extras or []) if e is not None]
+        if named_detectors is not None:
+            self._detectors = [(name, det) for name, det in named_detectors if det is not None]
+            self._primary = next((det for name, det in self._detectors if name in {"frigate", "primary"}), None)
+            self._additional = next((det for name, det in self._detectors if name == "opencv"), None)
+            self._extras = [det for name, det in self._detectors if name.startswith("extra_") or name == "scales"]
+        else:
+            self._detectors = []
+            if primary is not None:
+                self._detectors.append(("primary", primary))
+            if additional is not None:
+                self._detectors.append(("additional", additional))
+            for i, extra in enumerate(extras or []):
+                if extra is not None:
+                    self._detectors.append((f"extra_{i}", extra))
         self._triggered_by = None
 
-    def _check_primary(self):
-        """Non-blocking check for primary (Frigate). Returns True if pending."""
-        if not self._primary:
-            return False
-        check = getattr(self._primary, "check_pending", None)
-        if check:
-            return check()
-        return False
-
-    def _check_additional(self):
-        """One iteration of additional detector. Returns True if motion."""
-        if not self._additional:
-            return False
-        for name in ("check", "check_pending"):
-            fn = getattr(self._additional, name, None)
+    def _check_detector(self, detector):
+        for fn_name in ("check_pending", "check"):
+            fn = getattr(detector, fn_name, None)
             if fn and callable(fn):
-                return fn()
+                return bool(fn())
         return False
 
-    def _check_extras(self):
-        for i, ex in enumerate(self._extras):
-            fn = getattr(ex, "check_pending", None)
-            if fn and callable(fn) and fn():
-                return i
-        return -1
+    def _resolve_triggered_detector(self):
+        if not self._triggered_by:
+            return None
+        for name, detector in self._detectors:
+            if name == self._triggered_by:
+                return detector
+        return None
 
     def detect(self):
-        """Block until primary OR extras OR additional fires. Returns True."""
+        """Block until any detector fires. Returns True."""
         poll_interval = 0.05
         while True:
-            if self._check_primary():
-                self._triggered_by = "primary"
-                logger.info("Motion: primary (Frigate) trigger")
-                return True
-            xi = self._check_extras()
-            if xi >= 0:
-                self._triggered_by = f"extra_{xi}"
-                logger.info("Motion: extra trigger (index=%s)", xi)
-                return True
-            if self._check_additional():
-                self._triggered_by = "additional"
-                logger.info("Motion: additional trigger")
-                return True
+            for name, detector in self._detectors:
+                if self._check_detector(detector):
+                    self._triggered_by = name
+                    logger.info("Motion: %s trigger", name)
+                    return True
             time.sleep(poll_interval)
 
     def get_triggered_camera(self):
-        """For Frigate: return camera. For scales/extras/additional: None."""
-        if self._triggered_by == "primary" and self._primary:
-            return getattr(self._primary, "get_triggered_camera", lambda: None)()
+        """Return triggered camera when current detector exposes it."""
+        detector = self._resolve_triggered_detector()
+        if detector:
+            return getattr(detector, "get_triggered_camera", lambda: None)()
         return None
 
     def requeue_last_trigger(self):
         """Re-arm the detector that most recently fired when caller delays recording."""
-        target = None
-        if self._triggered_by == "primary":
-            target = self._primary
-        elif self._triggered_by == "additional":
-            target = self._additional
-        elif isinstance(self._triggered_by, str) and self._triggered_by.startswith("extra_"):
-            try:
-                idx = int(self._triggered_by.split("_", 1)[1])
-            except (TypeError, ValueError):
-                idx = -1
-            if 0 <= idx < len(self._extras):
-                target = self._extras[idx]
-        if target is None:
+        detector = self._resolve_triggered_detector()
+        if detector is None:
             return False
-        fn = getattr(target, "mark_pending", None)
+        fn = getattr(detector, "mark_pending", None)
         if callable(fn):
             fn()
             return True
         return False
 
+    def get_triggered_by(self):
+        return self._triggered_by
+
     def has_recent_frigate_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         """Delegate Frigate keepalive checks to primary detector when present."""
-        if not self._primary:
-            return False
-        fn = getattr(self._primary, "has_recent_activity", None)
-        if not callable(fn):
-            return False
-        return bool(
-            fn(
-                camera=camera,
-                max_age_seconds=max_age_seconds,
-                min_confidence=min_confidence,
-            )
-        )
+        for name, detector in self._detectors:
+            if name not in {"frigate", "primary"}:
+                continue
+            fn = getattr(detector, "has_recent_activity", None)
+            if callable(fn):
+                return bool(
+                    fn(
+                        camera=camera,
+                        max_age_seconds=max_age_seconds,
+                        min_confidence=min_confidence,
+                    )
+                )
+        return False
 
     def stop(self):
-        for d in (self._primary, self._additional):
-            if d and hasattr(d, "stop"):
-                d.stop()
+        for _, detector in self._detectors:
+            if detector and hasattr(detector, "stop"):
+                detector.stop()

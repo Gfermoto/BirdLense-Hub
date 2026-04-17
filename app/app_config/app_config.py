@@ -6,6 +6,7 @@ import shutil
 import yaml
 
 from app_config.secret_env import apply_secret_env_overrides
+from app_config.trigger_config import copy_legacy_topic_if_missing
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +52,19 @@ _CONFIG_TOP_LEVEL_MAPPING_KEYS = frozenset({
     'camera',
     'detection',
     'ebird',
+    'feed',
     'general',
     'homeassistant',
+    'integrations',
     'mcp',
     'mqtt',
+    'motion',
     'notifications',
     'performance',
     'processor',
     'secrets',
     'species',
+    'triggers',
     'video',
     'weather',
     'web_push',
@@ -155,6 +160,46 @@ def migrate_legacy_scales_source(user_config: dict) -> bool:
     return changed
 
 
+def migrate_legacy_trigger_topics(user_config: dict) -> bool:
+    """Copy legacy MQTT topic locations into the new domain/grouped sections."""
+    if not isinstance(user_config, dict):
+        return False
+    changed = False
+    mqtt = user_config.get('mqtt')
+    if not isinstance(mqtt, dict):
+        return False
+
+    if str(mqtt.get('frigate_topic') or '').strip():
+        triggers = user_config.get('triggers')
+        if not isinstance(triggers, dict):
+            triggers = {}
+            user_config['triggers'] = triggers
+            changed = True
+        frigate = triggers.get('frigate')
+        if not isinstance(frigate, dict):
+            frigate = {}
+            triggers['frigate'] = frigate
+            changed = True
+        if copy_legacy_topic_if_missing(frigate, 'topic', mqtt, 'frigate_topic'):
+            changed = True
+
+    if str(mqtt.get('birdnet_topic') or '').strip():
+        integrations = user_config.get('integrations')
+        if not isinstance(integrations, dict):
+            integrations = {}
+            user_config['integrations'] = integrations
+            changed = True
+        birdnet = integrations.get('birdnet')
+        if not isinstance(birdnet, dict):
+            birdnet = {}
+            integrations['birdnet'] = birdnet
+            changed = True
+        if copy_legacy_topic_if_missing(birdnet, 'mqtt_topic', mqtt, 'birdnet_topic'):
+            changed = True
+
+    return changed
+
+
 class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
@@ -196,6 +241,17 @@ class AppConfig:
                 except OSError as e:
                     logger.warning(
                         'Could not persist scales source migration: %s', e
+                    )
+            if migrate_legacy_trigger_topics(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated legacy mqtt.frigate_topic / mqtt.birdnet_topic into grouped/domain config in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning(
+                        'Could not persist trigger topic migration: %s', e
                     )
             if migrate_legacy_homeassistant_from_weather(user_config):
                 try:

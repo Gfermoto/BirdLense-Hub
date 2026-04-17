@@ -11,6 +11,7 @@ from typing import Any, Callable, Optional
 from argparse import Namespace
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_active_trigger_names
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
@@ -217,6 +218,8 @@ class MotionRecordingSession:
                 recording_context={
                     "triggered_camera": camera_id,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
+                    "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
+                    "trigger_display": " + ".join(get_active_trigger_names(app_config)),
                 },
             )
         except Exception as e:

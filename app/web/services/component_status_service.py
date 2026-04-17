@@ -8,6 +8,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_active_trigger_names, get_effective_trigger_config, get_legacy_motion_source_label
 from models import ActivityLog
 from services.feed_service import check_esphome_reachable, check_mqtt_connected
 from services.status_service import check_video_reachable, parse_yolo_status_from_heartbeat
@@ -17,22 +18,17 @@ logger = logging.getLogger(__name__)
 
 _TRIGGER_LABELS = {
     "opencv": "OpenCV",
-    "frigate": "Frigate (MQTT)",
-    "mqtt": "MQTT sensor",
-    "esphome": "ESPHome",
+    "frigate": "Frigate",
+    "motion_sensor": "Motion sensor",
+    "scales": "Scales",
     "pir": "PIR",
 }
 
 
-def _trigger_display(motion_source: str, frigate_parallel: bool) -> str:
-    trigger_display = _TRIGGER_LABELS.get(motion_source, motion_source)
-    if motion_source == "opencv" and frigate_parallel:
-        return "OpenCV + Frigate (MQTT)"
-    if motion_source == "mqtt" and frigate_parallel:
-        return "MQTT sensor + Frigate (MQTT)"
-    if motion_source == "esphome" and frigate_parallel:
-        return "ESPHome + Frigate (MQTT)"
-    return trigger_display
+def _trigger_display(active_triggers: list[str]) -> str:
+    if not active_triggers:
+        return "OpenCV"
+    return " + ".join(_TRIGGER_LABELS.get(name, name) for name in active_triggers)
 
 
 def _fallback_component_status_payload() -> dict[str, str | None]:
@@ -83,8 +79,9 @@ def build_component_status_payload(session) -> dict:
     mqtt_status = check_mqtt_connected()
     esphome_status = check_esphome_reachable()
     feed_source = app_config.get("feed.source", "mqtt")
-    motion_source = app_config.get("motion.source", "opencv")
     mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
+    trigger_cfg = get_effective_trigger_config(app_config, mqtt_broker=mqtt_broker)
+    active_triggers = get_active_trigger_names(app_config, mqtt_broker=mqtt_broker)
     if mqtt_broker:
         if processor_ok and isinstance(heartbeat_data, dict) and "mqtt_connected" in heartbeat_data:
             mqtt_display = "ok" if heartbeat_data.get("mqtt_connected") else "error"
@@ -96,8 +93,15 @@ def build_component_status_payload(session) -> dict:
         mqtt_display = "not_used"
     esphome_display = esphome_status if feed_source == "esphome" else "not_used"
     birdnet_url = (app_config.get("general.birdnet_url") or "").strip()
-    frigate_parallel = bool(mqtt_broker and (app_config.get("mqtt.frigate_topic") or "").strip())
-    trigger_display = _trigger_display(motion_source, frigate_parallel)
+    if any(
+        bool((trigger_cfg.get(name) or {}).get("enabled"))
+        and str((trigger_cfg.get(name) or {}).get("source") or "") == "esphome"
+        for name in ("motion_sensor", "scales")
+    ):
+        esphome_display = esphome_status
+    elif feed_source != "esphome":
+        esphome_display = "not_used"
+    trigger_display = _trigger_display(active_triggers)
     video_display = check_video_reachable()
     yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else "unknown"
     return {
@@ -107,7 +111,7 @@ def build_component_status_payload(session) -> dict:
         "mqtt": mqtt_display,
         "esphome": esphome_display,
         "yolo": yolo_display,
-        "motion_source": motion_source,
+        "motion_source": get_legacy_motion_source_label(app_config, mqtt_broker=mqtt_broker),
         "trigger_display": trigger_display,
         "birdnet_url": birdnet_url or None,
     }

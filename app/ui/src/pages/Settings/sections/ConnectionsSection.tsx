@@ -100,34 +100,6 @@ export function ConnectionsSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <form.Field name="mqtt.frigate_topic">
-                  {(field) => (
-                    <TextField
-                      fullWidth
-                      value={field.state.value ?? 'frigate/events'}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      label={t('settings.frigateTopic')}
-                      placeholder="frigate/events"
-                      helperText={t('settings.frigateTopicHint')}
-                    />
-                  )}
-                </form.Field>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <form.Field name="mqtt.birdnet_topic">
-                  {(field) => (
-                    <TextField
-                      fullWidth
-                      value={field.state.value ?? 'birdnet'}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      label={t('settings.birdnetTopic')}
-                      placeholder="birdnet"
-                      helperText={t('settings.birdnetTopicHint')}
-                    />
-                  )}
-                </form.Field>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="mqtt.publish_topic">
                   {(field) => (
                     <TextField
