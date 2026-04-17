@@ -420,11 +420,7 @@ def test_scales_mqtt_audit_detects_explicit_empty_prefix(tmp_path):
     user = tmp_path / "user.yaml"
     # Без PyYAML: в полном web-suite ``yaml`` может быть подменён autouse-фикстурой.
     user.write_text(
-        "integrations:\n"
-        "  scales:\n"
-        "    enabled: true\n"
-        "    source: mqtt\n"
-        "    mqtt_topic_prefix: \"\"\n",
+        'integrations:\n  scales:\n    enabled: true\n    source: mqtt\n    mqtt_topic_prefix: ""\n',
         encoding="utf-8",
     )
     default_f = tmp_path / "default.yaml"

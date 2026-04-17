@@ -21,6 +21,7 @@ from util import ensure_utc
 
 logger = logging.getLogger(__name__)
 
+
 def _fallback_component_status_payload() -> dict[str, str | None]:
     """Минимальный payload, если основная сборка упала (деплой/verify не должны валить воркер)."""
     return {
