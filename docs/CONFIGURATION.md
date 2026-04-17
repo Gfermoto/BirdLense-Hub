@@ -293,43 +293,40 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 ## Integrations (scales)
 
-**Sources and capabilities:** `mqtt` and `esphome_mqtt` are **MQTT-backed** modes: the **processor** subscribes to weight topics, writes `feeder_scale_state.json` / `feeder_scale_history.jsonl`, can **estimate per-clip delta**, and can optionally **start recording** on a weight spike. `esphome_direct` polls the device over the ESPHome Web API and is intended for **live weight / bird_present / tare only**. `homeassistant` uses HA REST for the **current weight in the feeder card only**. The processor does **not** poll direct ESPHome or HA for history, so history / delta / motion-trigger options apply only to **MQTT-backed** sources.
+**Sources and capabilities:** `mqtt` is the **MQTT-backed** mode: the **processor** subscribes to weight topics, writes `feeder_scale_state.json` / `feeder_scale_history.jsonl`, can **estimate per-clip delta**, and can optionally **start recording** on a weight spike. `esphome` polls the device over the ESPHome Web API and is intended for **live weight / bird_present / tare only**. History / delta / motion-trigger options apply only to `mqtt`.
 
 | Key | Description |
 |-----|-------------|
 | `integrations.scales.enabled` | Feeder / smart-scale weight path (default **false**). |
-| `integrations.scales.source` | `mqtt` (default) — manual MQTT topics; `esphome_mqtt` — same MQTT pipeline but UX preset for BirdLense ESPHome firmware; `esphome_direct` — ESPHome Web API (live weight / bird_present / tare only); `homeassistant` — HA REST snapshot in web only. |
+| `integrations.scales.source` | `mqtt` (default) — firmware topics / manual MQTT setup; `esphome` — ESPHome Web API (live weight / bird_present / tare only). |
 | `integrations.scales.mqtt_topic` | Full MQTT topic for **weight** (plain number or JSON with `value` / `weight` / `state`). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/weight`**. |
 | `integrations.scales.mqtt_bird_present_topic` | Optional full topic for **bird on platform** (`ON`/`OFF` or HA-style state). If **empty** and `mqtt_topic_prefix` is set, the processor uses **`{prefix}/bird_present`**. Use when weight is on e.g. `homeassistant/sensor/.../state` but presence is still published on the device prefix (repo ESPHome example: `frigate/bird_present`). |
 | `integrations.scales.mqtt_topic_prefix` | Optional prefix: **`{prefix}/weight`** when `mqtt_topic` is empty; **`{prefix}/bird_present`** when `mqtt_bird_present_topic` is empty; tare publishes to **`{prefix}/command`** unless `mqtt_command_topic` is set. Example: `frigate` (matches `esphome/bird-feeder-scale.yaml`) or `birdlense/scale`. |
 | `integrations.scales.mqtt_command_topic` | Optional full command topic (overrides `{prefix}/command`). Also in Settings → Video (scales). |
 | `integrations.scales.mqtt_tare_payload` | String published for tare (default **`TARE`**). Your device must subscribe on the command topic if you use the Hub button. |
 | `integrations.scales.esphome_url` | Base URL for direct ESPHome Web API mode, e.g. `http://192.168.1.50`. |
-| `integrations.scales.esphome_weight_sensor_id` | ESPHome `sensor` id for weight in `esphome_direct` mode. Hub reads `GET /sensor/<id>`. |
-| `integrations.scales.esphome_bird_present_sensor_id` | Optional ESPHome `binary_sensor` id for bird presence in `esphome_direct` mode. Hub reads `GET /binary_sensor/<id>`. |
-| `integrations.scales.esphome_tare_button_id` | Optional ESPHome `button` id for tare in `esphome_direct` mode. Hub calls `POST /button/<id>/press`. |
-| `integrations.scales.homeassistant_entity_id` | Entity id (e.g. `sensor.smart_scale_weight`) when `source` is `homeassistant` (REST snapshot for UI). |
-| `integrations.scales.unit` | `kg` or `g` for display and stored values (ESP32+HX711 recipes often use **`g`**). |
-| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires an **MQTT-backed** source (`mqtt` / `esphome_mqtt`) and `feeder_scale_history.jsonl` under `DATA_DIR`. The delta is **not** saved when the clip only has BirdNET rows (`source=audio`) with no frame/track: audio helps species ID; it is not tied to feeder weight. |
+| `integrations.scales.esphome_weight_sensor_id` | ESPHome `sensor` id for weight in `esphome` mode. Default: `weight_live_internal`. Hub reads `GET /sensor/<id>`. |
+| `integrations.scales.esphome_bird_present_sensor_id` | Optional ESPHome `binary_sensor` id for bird presence in `esphome` mode. Default: `bird_present`. Hub reads `GET /binary_sensor/<id>`. |
+| `integrations.scales.esphome_tare_button_id` | Optional ESPHome `button` id for tare in `esphome` mode. Default: `manual_tare`. Hub calls `POST /button/<id>/press`. |
+| `integrations.scales.weight_estimate_enabled` | When **true** (default), the processor may store a **weight delta for the recording window** on the video row. **Independent** of `motion_trigger_enabled`: you can estimate weight on clips started by Frigate/motion without auto-start from scales. Requires `mqtt` and `feeder_scale_history.jsonl` under `DATA_DIR`. The delta is **not** saved when the clip only has BirdNET rows (`source=audio`) with no frame/track: audio helps species ID; it is not tied to feeder weight. |
 | `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) for both the **window span** (max−min) and the **spike** between consecutive time-ordered MQTT samples. Default **0.008** (~8 g). |
 | `integrations.scales.estimate_require_consecutive_spike` | **true** (default): persist an estimate only if some **adjacent** sample pair in the clip has \|Δ\| ≥ `min_delta_kg_for_estimate` (reduces slow drift when the platform reads near zero after tare). **false**: legacy span-only check. The stored value remains **max−min** over the window. |
 | `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
-| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as a Frigate trigger (**OR** with Frigate and optional OpenCV). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, an MQTT-backed source (`mqtt` / `esphome_mqtt`), and a weight topic (**`mqtt_topic`** or **`{mqtt_topic_prefix}/weight`**). Not wired when `motion.source: pir` (separate code path). |
+| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as a Frigate trigger (**OR** with Frigate and optional OpenCV). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, `mqtt`, and a weight topic (**`mqtt_topic`** or **`{mqtt_topic_prefix}/weight`**). Not wired when `motion.source: pir` (separate code path). |
 | `integrations.scales.motion_trigger_min_delta_kg` | Minimum absolute weight change (kg) between **two consecutive** MQTT samples to fire the trigger. Default **0.02**. |
 | `integrations.scales.motion_trigger_debounce_seconds` | Minimum seconds between recording starts triggered by scales. Default **1.5**. |
 
 The processor compares min/max scale readings between `start_time` and `end_time`. With **`estimate_require_consecutive_spike: true`** (default), a value is persisted only if some adjacent sample pair in that window has a step ≥ the threshold (see key above), while the stored metric remains the max−min span. When the span meets the threshold, `scales_weight_delta_kg` is saved and the video page shows a compact “Scales (estimate)” block. Notification triggers and auto-tare in HA/ESPHome remain in [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
-**Stack like [ESPHome + Home Assistant smart scale](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, proximity, auto-tare in HA): tare and “object on platform” stay in **ESPHome/HA**. BirdLense can be wired three ways:
-- `mqtt`: subscribe the processor to the same MQTT state topic your integration publishes (often `homeassistant/sensor/<sensor_id>/state`)
-- `esphome_direct`: poll the device over ESPHome Web API for live weight / bird_present / tare
-- `homeassistant`: current weight only in the web UI via HA REST
+**Stack like [ESPHome + Home Assistant smart scale](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, proximity, auto-tare in HA): BirdLense can be wired two ways:
+- `mqtt`: subscribe the processor to the firmware weight topics
+- `esphome`: poll the device over ESPHome Web API for live weight / bird_present / tare
 
-**BirdLense ESPHome MQTT firmware (repo `bird-feeder-scale.yaml`):** use `source: esphome_mqtt`. Usually `mqtt_topic_prefix: frigate` is enough; the hub derives **`frigate/weight`**, **`frigate/bird_present`**, and **`frigate/command`** automatically. If you need a mixed layout, keep `source: esphome_mqtt` but override `mqtt_topic`, `mqtt_bird_present_topic`, or `mqtt_command_topic` explicitly.
+**BirdLense ESPHome MQTT firmware (repo `bird-feeder-scale.yaml`):** use `source: mqtt`. By default, `mqtt_topic_prefix: birdlense/scale` is enough; the hub derives **`birdlense/scale/weight`**, **`birdlense/scale/bird_present`**, and **`birdlense/scale/command`** automatically. If you need a mixed layout, keep `source: mqtt` but override `mqtt_topic`, `mqtt_bird_present_topic`, or `mqtt_command_topic` explicitly.
 
 ### ESPHome / custom firmware (`birdlense/scale/*`)
 
-For a **dedicated topic family** (weight + bird presence + optional command), set **`integrations.scales.mqtt_topic_prefix`** to e.g. **`birdlense/scale`**, leave **`mqtt_topic`** empty, set **`unit: g`** if the device publishes grams, and point the device at the same broker as the Hub.
+For a **dedicated topic family** (weight + bird presence + optional command), set **`integrations.scales.mqtt_topic_prefix`** to e.g. **`birdlense/scale`** (this is already the default), leave **`mqtt_topic`** empty, and point the device at the same broker as the Hub.
 
 | Topic | Payload | Retain (typical) | Hub behavior |
 |-------|---------|------------------|----------------|

@@ -28,7 +28,7 @@ function formatLastDispense(iso: string | null): string | null {
 const SCALE_STALE_MS = 120_000;
 
 function formatScaleValue(weight: number, unit: string, locale: string | undefined): string {
-  const u = (unit || 'kg').toLowerCase();
+  const u = (unit || 'g').toLowerCase();
   const digits = u === 'g' && Math.abs(weight) >= 100 ? 0 : u === 'g' ? 1 : 3;
   const w = new Intl.NumberFormat(locale, {
     maximumFractionDigits: digits,
@@ -91,7 +91,7 @@ export const FeedCard = () => {
   const scale = feedInfo?.scale;
   const weightDefined = scale && typeof scale.weight === 'number';
   const weightStr = weightDefined
-    ? formatScaleValue(scale.weight as number, scale.unit || 'kg', i18n.language)
+    ? formatScaleValue(scale.weight as number, scale.unit || 'g', i18n.language)
     : null;
   const updatedLine = weightDefined ? formatScaleUpdatedLine(scale?.updated_at) : null;
   const scaleStale = weightDefined ? isScaleReadingStale(scale?.updated_at) : false;
@@ -100,10 +100,8 @@ export const FeedCard = () => {
   const scalesSourceLabelKey =
     scalesSource === 'homeassistant'
       ? 'feed.scalesSourceLabelHa'
-      : scalesSource === 'esphome_direct'
-        ? 'feed.scalesSourceLabelEspDirect'
-        : scalesSource === 'esphome_mqtt'
-          ? 'feed.scalesSourceLabelEspMqtt'
+      : scalesSource === 'esphome'
+        ? 'feed.scalesSourceLabelEsp'
           : 'feed.scalesSourceLabelMqtt';
 
   const handleScaleTare = async () => {

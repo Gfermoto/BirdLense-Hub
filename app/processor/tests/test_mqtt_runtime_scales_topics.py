@@ -40,17 +40,17 @@ def test_scales_mqtt_bird_present_from_prefix_when_explicit_empty():
         assert mr.scales_mqtt_bird_present_topic() == "frigate/bird_present"
 
 
-def test_scales_esphome_mqtt_uses_same_bird_present_prefix_logic():
+def test_scales_esphome_alias_uses_same_bird_present_prefix_logic():
     g = _cfg_get(
         {
             "integrations.scales.enabled": True,
-            "integrations.scales.source": "esphome_mqtt",
+            "integrations.scales.source": "mqtt",
             "integrations.scales.mqtt_bird_present_topic": "",
-            "integrations.scales.mqtt_topic_prefix": "frigate",
+            "integrations.scales.mqtt_topic_prefix": "birdlense/scale",
         }
     )
     with patch.object(mr.app_config, "get", side_effect=g):
-        assert mr.scales_mqtt_bird_present_topic() == "frigate/bird_present"
+        assert mr.scales_mqtt_bird_present_topic() == "birdlense/scale/bird_present"
 
 
 def test_scales_mqtt_bird_present_none_without_prefix_and_explicit():
@@ -84,17 +84,17 @@ def test_scales_mqtt_bird_present_not_mqtt_source():
         assert mr.scales_mqtt_bird_present_topic() is None
 
 
-def test_load_scales_mqtt_topic_config_supports_esphome_mqtt_source():
+def test_load_scales_mqtt_topic_config_uses_default_firmware_prefix():
     g = _cfg_get(
         {
             "integrations.scales.enabled": True,
-            "integrations.scales.source": "esphome_mqtt",
+            "integrations.scales.source": "mqtt",
             "integrations.scales.unit": "g",
             "integrations.scales.mqtt_topic": "",
-            "integrations.scales.mqtt_topic_prefix": "frigate",
+            "integrations.scales.mqtt_topic_prefix": "birdlense/scale",
         }
     )
     with patch.object(mr.app_config, "get", side_effect=g), patch.object(
         mr, "get_data_dir", return_value="/tmp/scales"
     ):
-        assert mr.load_scales_mqtt_topic_config() == ("/tmp/scales", "frigate/weight", "g")
+        assert mr.load_scales_mqtt_topic_config() == ("/tmp/scales", "birdlense/scale/weight", "g")

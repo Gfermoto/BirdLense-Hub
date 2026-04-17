@@ -140,7 +140,7 @@ export interface Settings {
   integrations?: {
     scales?: {
       enabled?: boolean;
-      source?: 'mqtt' | 'esphome_mqtt' | 'esphome_direct' | 'homeassistant';
+      source?: 'mqtt' | 'esphome' | 'homeassistant';
       mqtt_topic?: string;
       mqtt_bird_present_topic?: string;
       mqtt_topic_prefix?: string;
