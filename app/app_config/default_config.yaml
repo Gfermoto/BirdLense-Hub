@@ -430,7 +430,7 @@ integrations:
     mqtt_tare_payload: "TARE"
     # ESPHome Web API (прямой HTTP к устройству): сенсор веса, binary_sensor присутствия, button тары
     esphome_url: ""
-    esphome_weight_sensor_id: "raw_hx711"
+    esphome_weight_sensor_id: "weight_live_internal"
     esphome_bird_present_sensor_id: "bird_present"
     esphome_tare_button_id: "manual_tare"
     unit: g
