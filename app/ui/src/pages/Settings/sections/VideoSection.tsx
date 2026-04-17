@@ -26,7 +26,7 @@ type Props = {
 type ScalesSource = NonNullable<NonNullable<Settings['integrations']>['scales']>['source'];
 
 function scalesSourceUsesMqtt(source: ScalesSource | undefined): boolean {
-  return source === 'mqtt' || source === 'esphome_mqtt' || source == null;
+  return source === 'mqtt' || source == null;
 }
 
 export function VideoSection({ form }: Props) {
@@ -438,13 +438,7 @@ export function VideoSection({ form }: Props) {
                                   }
                                 >
                                   <MenuItem value="mqtt">{t('settings.scalesSourceMqtt')}</MenuItem>
-                                  <MenuItem value="esphome_mqtt">
-                                    {t('settings.scalesSourceEspMqtt')}
-                                  </MenuItem>
-                                  <MenuItem value="esphome_direct">
-                                    {t('settings.scalesSourceEspDirect')}
-                                  </MenuItem>
-                                  <MenuItem value="homeassistant">{t('settings.scalesSourceHa')}</MenuItem>
+                                  <MenuItem value="esphome">{t('settings.scalesSourceEsp')}</MenuItem>
                                 </Select>
                                 <FormHelperText>{t('settings.scalesSourceHint')}</FormHelperText>
                               </FormControl>
@@ -460,20 +454,6 @@ export function VideoSection({ form }: Props) {
                                     <Alert severity="info">{t('settings.scalesMqttAlert')}</Alert>
                                   </Grid>
                                   <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.mqtt_topic">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesMqttTopic')}
-                                          placeholder="homeassistant/sensor/feeder_scale_weight/state"
-                                          helperText={t('settings.scalesMqttTopicHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
                                     <form.Field name="integrations.scales.mqtt_topic_prefix">
                                       {(field) => (
                                         <TextField
@@ -481,8 +461,22 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesMqttPrefix')}
-                                          placeholder="frigate"
+                                          placeholder="birdlense/scale"
                                           helperText={t('settings.scalesMqttPrefixHint')}
+                                        />
+                                      )}
+                                    </form.Field>
+                                  </Grid>
+                                  <Grid size={{ xs: 12 }}>
+                                    <form.Field name="integrations.scales.mqtt_topic">
+                                      {(field) => (
+                                        <TextField
+                                          fullWidth
+                                          value={field.state.value ?? ''}
+                                          onChange={(e) => field.handleChange(e.target.value)}
+                                          label={t('settings.scalesMqttTopic')}
+                                          placeholder="birdlense/scale/weight"
+                                          helperText={t('settings.scalesMqttTopicHint')}
                                         />
                                       )}
                                     </form.Field>
@@ -495,7 +489,7 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesMqttBirdPresentTopic')}
-                                          placeholder="frigate/bird_present"
+                                          placeholder="birdlense/scale/bird_present"
                                           helperText={t('settings.scalesMqttBirdPresentTopicHint')}
                                         />
                                       )}
@@ -509,7 +503,7 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesMqttCommandTopic')}
-                                          placeholder="frigate/command"
+                                          placeholder="birdlense/scale/command"
                                           helperText={t('settings.scalesMqttCommandTopicHint')}
                                         />
                                       )}
@@ -517,73 +511,10 @@ export function VideoSection({ form }: Props) {
                                   </Grid>
                                 </>
                               )}
-                              {src === 'esphome_mqtt' && (
+                              {src === 'esphome' && (
                                 <>
                                   <Grid size={{ xs: 12 }}>
-                                    <Alert severity="info">{t('settings.scalesEspMqttAlert')}</Alert>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.mqtt_topic_prefix">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesEspMqttPrefix')}
-                                          placeholder="frigate"
-                                          helperText={t('settings.scalesEspMqttPrefixHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.mqtt_topic">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesEspMqttWeightOverride')}
-                                          placeholder="frigate/weight"
-                                          helperText={t('settings.scalesEspMqttWeightOverrideHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.mqtt_bird_present_topic">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesEspMqttBirdOverride')}
-                                          placeholder="frigate/bird_present"
-                                          helperText={t('settings.scalesEspMqttBirdOverrideHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.mqtt_command_topic">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesEspMqttCommandOverride')}
-                                          placeholder="frigate/command"
-                                          helperText={t('settings.scalesEspMqttCommandOverrideHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                </>
-                              )}
-                              {src === 'esphome_direct' && (
-                                <>
-                                  <Grid size={{ xs: 12 }}>
-                                    <Alert severity="info">{t('settings.scalesEspDirectAlert')}</Alert>
+                                    <Alert severity="info">{t('settings.scalesEspAlert')}</Alert>
                                   </Grid>
                                   <Grid size={{ xs: 12, sm: 6 }}>
                                     <form.Field name="integrations.scales.esphome_url">
@@ -606,7 +537,7 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesEspWeightSensorId')}
-                                          placeholder="feeder_weight"
+                                          placeholder="weight_live_internal"
                                           helperText={t('settings.scalesEspWeightSensorIdHint')}
                                         />
                                       )}
@@ -634,7 +565,7 @@ export function VideoSection({ form }: Props) {
                                           value={field.state.value ?? ''}
                                           onChange={(e) => field.handleChange(e.target.value)}
                                           label={t('settings.scalesEspTareButtonId')}
-                                          placeholder="tare_scale"
+                                          placeholder="manual_tare"
                                           helperText={t('settings.scalesEspTareButtonIdHint')}
                                         />
                                       )}
@@ -642,48 +573,9 @@ export function VideoSection({ form }: Props) {
                                   </Grid>
                                 </>
                               )}
-                              {src === 'homeassistant' && (
-                                <>
-                                  <Grid size={{ xs: 12 }}>
-                                    <form.Field name="integrations.scales.homeassistant_entity_id">
-                                      {(field) => (
-                                        <TextField
-                                          fullWidth
-                                          value={field.state.value ?? ''}
-                                          onChange={(e) => field.handleChange(e.target.value)}
-                                          label={t('settings.scalesHaEntity')}
-                                          placeholder="sensor.smart_scale_weight"
-                                          helperText={t('settings.scalesHaEntityHint')}
-                                        />
-                                      )}
-                                    </form.Field>
-                                  </Grid>
-                                  <Grid size={{ xs: 12 }}>
-                                    <Alert severity="info">{t('settings.scalesHaProcessorHint')}</Alert>
-                                  </Grid>
-                                </>
-                              )}
                             </>
                           )}
                         </form.Subscribe>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <form.Field name="integrations.scales.unit">
-                            {(field) => (
-                              <FormControl fullWidth>
-                                <InputLabel id="settings-scales-unit">{t('settings.scalesUnit')}</InputLabel>
-                                <Select
-                                  labelId="settings-scales-unit"
-                                  value={field.state.value ?? 'kg'}
-                                  label={t('settings.scalesUnit')}
-                                  onChange={(e) => field.handleChange(e.target.value as 'kg' | 'g')}
-                                >
-                                  <MenuItem value="kg">kg</MenuItem>
-                                  <MenuItem value="g">g</MenuItem>
-                                </Select>
-                              </FormControl>
-                            )}
-                          </form.Field>
-                        </Grid>
                         <form.Subscribe selector={(s) => s.values.integrations?.scales?.source}>
                           {(src) =>
                             scalesSourceUsesMqtt(src as ScalesSource | undefined) ? (

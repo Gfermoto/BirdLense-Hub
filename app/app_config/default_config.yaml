@@ -413,31 +413,29 @@ web_push:
 webhook:
   url: ""  # например https://maker.ifttt.com/trigger/bird_detected/with/key/xxx
 
-# Весы у кормушки: обычный MQTT, ESPHome по MQTT, прямой ESPHome Web API или сущность Home Assistant.
-# Совместимо с ESPHome/HA (напр. github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection).
+# Весы у кормушки: MQTT-топики прошивки или прямой ESPHome Web API.
 integrations:
   scales:
     enabled: false
-    source: mqtt  # mqtt | esphome_mqtt | esphome_direct | homeassistant
+    source: mqtt  # mqtt | esphome
     # Топик веса (полный путь). Если пусто, но задан mqtt_topic_prefix — вес: {prefix}/weight
     mqtt_topic: ""
     # Полный топик bird_present (ON/OFF). Если пусто — {mqtt_topic_prefix}/bird_present при непустом префиксе
     mqtt_bird_present_topic: ""
     # Префикс ESPHome/своей прошивки: вес {prefix}/weight, птица {prefix}/bird_present, команда тары {prefix}/command
-    mqtt_topic_prefix: ""
+    mqtt_topic_prefix: "birdlense/scale"
     # Явный топик команды (тара). Пусто = {mqtt_topic_prefix}/command при непустом префиксе
     mqtt_command_topic: ""
     # Payload для POST /api/ui/feed/scale-tare (устройство должно подписаться на command topic)
     mqtt_tare_payload: "TARE"
     # ESPHome Web API (прямой HTTP к устройству): сенсор веса, binary_sensor присутствия, button тары
     esphome_url: ""
-    esphome_weight_sensor_id: ""
-    esphome_bird_present_sensor_id: ""
-    esphome_tare_button_id: ""
-    homeassistant_entity_id: ""  # sensor.smart_scale_weight при source=homeassistant
-    unit: kg  # kg | g — единица для отображения и записи из MQTT (ESPHome birdlense/scale — обычно g)
+    esphome_weight_sensor_id: "weight_live_internal"
+    esphome_bird_present_sensor_id: "bird_present"
+    esphome_tare_button_id: "manual_tare"
+    unit: g
     # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167).
-    # Работает только для mqtt / esphome_mqtt, не для direct ESPHome API / HA REST.
+    # Работает только для mqtt, не для прямого ESPHome API.
     weight_estimate_enabled: true
     min_delta_kg_for_estimate: 0.008  # игнорировать шум меньше ~8 г
     # Оценка на ролик только если между двумя соседними по времени MQTT-точками был скачок >= порога

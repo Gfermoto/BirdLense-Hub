@@ -24,9 +24,9 @@ def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     """
     data_dir = get_data_dir()
     scales_topic_arg: Optional[str] = None
-    scales_unit_arg = "kg"
+    scales_unit_arg = "g"
     if app_config.get("integrations.scales.enabled"):
-        scales_unit_arg = (app_config.get("integrations.scales.unit") or "kg").strip().lower() or "kg"
+        scales_unit_arg = (app_config.get("integrations.scales.unit") or "g").strip().lower() or "g"
         src = normalize_scales_source(app_config.get("integrations.scales.source"))
         if scales_source_uses_mqtt(src):
             mq_st = (app_config.get("integrations.scales.mqtt_topic") or "").strip()

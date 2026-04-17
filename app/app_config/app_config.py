@@ -128,6 +128,26 @@ def migrate_legacy_homeassistant_from_weather(user_config: dict) -> bool:
     return changed
 
 
+def migrate_legacy_scales_source(user_config: dict) -> bool:
+    """Нормализует старые значения `integrations.scales.source`."""
+    if not isinstance(user_config, dict):
+        return False
+    integrations = user_config.get('integrations')
+    if not isinstance(integrations, dict):
+        return False
+    scales = integrations.get('scales')
+    if not isinstance(scales, dict):
+        return False
+    src = str(scales.get('source') or '').strip().lower()
+    if src == 'esphome_mqtt':
+        scales['source'] = 'mqtt'
+        return True
+    if src == 'esphome_direct':
+        scales['source'] = 'esphome'
+        return True
+    return False
+
+
 class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
@@ -159,6 +179,17 @@ class AppConfig:
                     user_config = yaml.safe_load(file) or {}
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
+            if migrate_legacy_scales_source(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated integrations.scales.source legacy values in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning(
+                        'Could not persist scales source migration: %s', e
+                    )
             if migrate_legacy_homeassistant_from_weather(user_config):
                 try:
                     self._persist_raw_user_config(user_config)

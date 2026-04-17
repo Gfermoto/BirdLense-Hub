@@ -12,7 +12,7 @@ import requests
 
 from app_config.app_config import app_config
 from app_config.scales_config import (
-    SCALES_SOURCE_ESPHOME_DIRECT,
+    SCALES_SOURCE_ESPHOME,
     SCALES_SOURCE_HOMEASSISTANT,
     normalize_scales_source,
     scales_source_uses_mqtt,
@@ -94,8 +94,8 @@ def _fetch_ha_scale(entity_id: str) -> dict | None:
     except (ValueError, TypeError):
         return None
     attrs = body.get("attributes") or {}
-    unit = attrs.get("unit_of_measurement") or app_config.get("integrations.scales.unit") or "kg"
-    unit = str(unit).strip().lower()[:8] or "kg"
+    unit = attrs.get("unit_of_measurement") or app_config.get("integrations.scales.unit") or "g"
+    unit = str(unit).strip().lower()[:8] or "g"
     return {
         "weight": val,
         "unit": unit,
@@ -125,9 +125,9 @@ def _fetch_esphome_scale() -> dict | None:
         return None
 
     out: dict = {
-        "unit": str(app_config.get("integrations.scales.unit") or "kg").strip().lower()[:8] or "kg",
+        "unit": str(app_config.get("integrations.scales.unit") or "g").strip().lower()[:8] or "g",
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "source": "esphome_direct",
+        "source": SCALES_SOURCE_ESPHOME,
     }
 
     if weight_sensor_id:
@@ -165,7 +165,7 @@ def video_scales_estimate_payload(video) -> dict | None:
         return None
     if kg < 0 or kg > 50:
         return None
-    unit = (app_config.get("integrations.scales.unit") or "kg").strip().lower() or "kg"
+    unit = (app_config.get("integrations.scales.unit") or "g").strip().lower() or "g"
     if unit == "g":
         return {
             "delta_kg": kg,
@@ -195,7 +195,7 @@ def scale_tare_available() -> bool:
     src = normalize_scales_source(app_config.get("integrations.scales.source"))
     if scales_source_uses_mqtt(src):
         return scale_mqtt_command_topic() is not None
-    if src == SCALES_SOURCE_ESPHOME_DIRECT:
+    if src == SCALES_SOURCE_ESPHOME:
         base_url = (app_config.get("integrations.scales.esphome_url") or "").strip()
         button_id = (app_config.get("integrations.scales.esphome_tare_button_id") or "").strip()
         return bool(base_url and button_id)
@@ -216,7 +216,7 @@ def trigger_scale_tare() -> tuple[bool, str]:
             return False, "no_command_topic"
         payload = (app_config.get("integrations.scales.mqtt_tare_payload") or "TARE").strip() or "TARE"
         return mqtt_publish_once(topic, payload, qos=1)
-    if src == SCALES_SOURCE_ESPHOME_DIRECT:
+    if src == SCALES_SOURCE_ESPHOME:
         base_url = (app_config.get("integrations.scales.esphome_url") or "").strip()
         button_id = (app_config.get("integrations.scales.esphome_tare_button_id") or "").strip()
         if not base_url or not button_id:
@@ -247,7 +247,7 @@ def get_feeder_scale_snapshot() -> dict | None:
     if src == SCALES_SOURCE_HOMEASSISTANT:
         eid = (app_config.get("integrations.scales.homeassistant_entity_id") or "").strip()
         return _fetch_ha_scale(eid)
-    if src == SCALES_SOURCE_ESPHOME_DIRECT:
+    if src == SCALES_SOURCE_ESPHOME:
         return _fetch_esphome_scale()
     raw = _read_scale_file()
     if not raw:
@@ -265,7 +265,7 @@ def get_feeder_scale_snapshot() -> dict | None:
     if weight_f is None and bp_out is None:
         return None
     out: dict = {
-        "unit": str(raw.get("unit") or "kg").lower()[:8],
+        "unit": str(raw.get("unit") or "g").lower()[:8],
         "updated_at": raw.get("updated_at"),
         "source": src,
     }

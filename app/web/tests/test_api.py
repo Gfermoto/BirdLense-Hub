@@ -588,7 +588,7 @@ class TestTimeline:
         sc = row.get("scales")
         assert sc is not None
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
-        assert sc["display_unit"] == "kg"
+        assert sc["display_unit"] == "g"
 
     def test_timeline_includes_video_not_attached_to_any_visit(self, app, client):
         """Ролик за сутки без SpeciesVisit появляется как unlinked_video."""

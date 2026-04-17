@@ -489,7 +489,7 @@ export const fetchFeedInfo = async (): Promise<{
   donate_url: string | null;
   feed_source?: string;
   scales_enabled?: boolean;
-  scales_source?: 'mqtt' | 'esphome_mqtt' | 'esphome_direct' | 'homeassistant' | null;
+  scales_source?: 'mqtt' | 'esphome' | 'homeassistant' | null;
   scale_tare_available?: boolean;
   scale?: {
     weight?: number;
