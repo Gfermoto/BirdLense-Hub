@@ -8,7 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Пока нет записей после релиза **v0.3.5**.
+### Changed
+
+- **Настройки (UI):** удалён неиспользуемый `VideoSection` (дублировал захват/кормушку и старую модель `motion.source`). Поля весов интеграции и кормушки вынесены в `shared/scalesIntegrationFields.tsx` и `shared/feederRelayFields.tsx`. В `check-settings-ui-coverage.py` для legacy `integrations.scales.motion_trigger_*` добавлен явный allowlist (смена на `triggers.scales.*` в форме).
+
+- **Процессор в настройках:** `ProcessorSection.tsx` разбит на восемь блоков в `sections/processor/*.tsx` (пороги, тайминги, мультикамера/BirdNET, расширенные пороги, guardrails, light gate, спектрограмма/датасет, Frigate fusion) — оркестратор ~70 строк.
+
+- **Coverage настроек:** из `AUTO_ALLOWLIST_KEYS` убраны ключи, для которых уже есть `form.Field` в дереве Settings (меньше ложного «planned-ui» для полей с UI).
 
 ---
 
@@ -325,7 +331,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Refactored
 
 - **`util.py` → 3 модуля:** `auth.py` (аутентификация и rate-limit), `notifications.py` (Telegram + Web Push), `weather_service.py` (WeatherFetcher / HAWeatherFetcher / fetch_weather). `util.py` сохраняет re-exports — все существующие импорты работают без изменений. Убраны ~591 строк дублирования.
-- **`SettingsForm.tsx` → секции:** `sections/GeneralSection`, `VideoSection`, `ProcessorSection`, `NotificationsSection`, `EBirdSection`, `IntegrationsSection`; `shared/ServiceBlock`, `CamerasListField`. Главный файл стал оркестратором (< 120 строк).
+- **`SettingsForm.tsx` → секции:** `sections/GeneralSection`, `VideoSection` (позже удалён), `ProcessorSection`, `NotificationsSection`, `EBirdSection`, `IntegrationsSection`; `shared/ServiceBlock`, `CamerasListField`. Главный файл стал оркестратором (< 120 строк).
 - **React Error Boundary:** `components/ErrorBoundary.tsx` + оборачивает `<Routes>` в `App.tsx` — несломанный рендер при runtime-ошибках в дочерних страницах.
 
 ### Fixed

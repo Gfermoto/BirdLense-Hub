@@ -12,6 +12,11 @@ from typing import Any, Optional
 
 from api import API
 from app_config.app_config import app_config
+from app_config.trigger_config import (
+    format_motion_source_summary,
+    format_trigger_display_line,
+    get_active_trigger_names,
+)
 from dataset_saver import save_dataset_crops
 from decision_outcome import compute_outcome_bucket
 from detection_fusion import build_fused_video_detections
@@ -304,8 +309,16 @@ def finalize_motion_recording(
     decision_trace["pipeline_fingerprint"] = build_pipeline_fingerprint(app_config)
     clip_duration_seconds = max(0.0, (end_time - start_time).total_seconds())
     review_only_count = sum(1 for item in video_detections if str(item.get("outcome_bucket") or "") == "review_only")
+    _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
+    active_at_finalize = get_active_trigger_names(app_config, mqtt_broker=_mqtt_b)
+    trigger_display = str((recording_context or {}).get("trigger_display") or "").strip()
+    if not trigger_display:
+        trigger_display = format_trigger_display_line(active_at_finalize)
     decision_trace["recording_context"] = {
-        "motion_source": app_config.get("motion.source"),
+        "motion_source": format_motion_source_summary(active_at_finalize),
+        "active_triggers": list(active_at_finalize),
+        "trigger_display": trigger_display,
+        "triggered_by": (recording_context or {}).get("triggered_by"),
         "video_source": app_config.get("video.source"),
         "triggered_camera": (recording_context or {}).get("triggered_camera"),
         "frigate_activity_hold_seconds": (recording_context or {}).get("frigate_activity_hold_seconds"),

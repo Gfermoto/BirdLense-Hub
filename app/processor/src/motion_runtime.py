@@ -8,6 +8,7 @@ import time
 from typing import Any, Optional
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_active_trigger_names, get_effective_trigger_config
 from motion_detectors.fake import FakeMotionDetector
 
 
@@ -38,14 +39,14 @@ def build_processor_motion_detector(
     if args.mock_mqtt:
         logging.info("Using --mock-mqtt: fake motion for development")
         return FakeMotionDetector(motion=True, wait=5)
-    if app_config.get("motion.source") == "pir":
-        from motion_detectors.pir import PIRMotionDetector
+    trigger_config = get_effective_trigger_config(app_config, mqtt_broker=mqtt_broker)
+    frigate_cfg = trigger_config.get("frigate") or {}
+    motion_sensor_cfg = trigger_config.get("motion_sensor") or {}
+    scales_cfg = trigger_config.get("scales") or {}
 
-        return PIRMotionDetector()
-
-    primary = None
-    if use_frigate_from_aggregator and mqtt_aggregator:
-        primary = frigate_detector
+    active_frigate_detector = None
+    if bool(frigate_cfg.get("enabled")) and use_frigate_from_aggregator and mqtt_aggregator:
+        active_frigate_detector = frigate_detector
         for _ in range(5):
             if mqtt_aggregator.is_mqtt_live():
                 break
@@ -62,62 +63,54 @@ def build_processor_motion_detector(
                 "Frigate MQTT not live yet after startup wait; detector will keep retrying",
             )
 
-    add_source = app_config.get("motion.source", "frigate")
-    check_n = app_config.get("motion.check_every_n_frames", 1)
-    try:
-        oc_thresh = int(app_config.get("motion.opencv_diff_threshold", 25))
-    except (TypeError, ValueError):
-        oc_thresh = 25
-    try:
-        oc_area = int(app_config.get("motion.opencv_min_contour_area", 500))
-    except (TypeError, ValueError):
-        oc_area = 500
-    oc_thresh = max(5, min(oc_thresh, 80))
-    oc_area = max(50, min(oc_area, 20000))
-    esphome_url = (os.environ.get("MOTION_ESPHOME_URL") or app_config.get("motion.esphome_url", "")).strip()
-    esphome_sensor = (os.environ.get("MOTION_ESPHOME_SENSOR") or app_config.get("motion.esphome_sensor_id", "")).strip()
-    or_extras = None
-    if scale_weight_motion_pending and primary:
-        or_extras = [scale_weight_motion_pending]
+    if bool(scales_cfg.get("enabled")) and str(scales_cfg.get("source") or "") == "esphome":
+        scale_weight_motion_pending = _build_esphome_scale_motion_detector(scales_cfg)
+
     motion_detector = build_motion_detector(
-        motion_source=add_source,
+        trigger_config=trigger_config,
         media_source=media_source,
-        primary=primary,
+        frigate_detector=active_frigate_detector,
         mqtt_broker=mqtt_broker,
-        mqtt_topic=app_config.get("motion.mqtt_topic", "").strip(),
         mqtt_port=app_config.get("mqtt.port", 1883),
         mqtt_username=os.environ.get("MQTT_USERNAME") or app_config.get("mqtt.username"),
         mqtt_password=os.environ.get("MQTT_PASSWORD") or app_config.get("mqtt.password"),
-        esphome_url=esphome_url,
-        esphome_sensor=esphome_sensor,
-        check_every_n_frames=check_n,
-        or_extras=or_extras,
-        opencv_threshold=oc_thresh,
-        opencv_min_contour_area=oc_area,
+        scales_detector=scale_weight_motion_pending,
     )
-    if add_source == "frigate":
-        if primary:
-            logging.info(
-                "Motion: Frigate MQTT + OpenCV parallel/fallback (check_every_n_frames=%s)",
-                check_n,
-            )
-        else:
-            logging.warning(
-                "Motion: Frigate selected but MQTT/Frigate client inactive — "
-                "using OpenCV only (check_every_n_frames=%s)",
-                check_n,
-            )
-    elif add_source == "opencv":
-        logging.info(
-            "Motion: OpenCV (check_every_n_frames=%s)",
-            check_n,
-        )
-    elif add_source == "mqtt" and mqtt_broker and (app_config.get("motion.mqtt_topic") or "").strip():
-        logging.info("Motion: + MQTT binary (parallel)")
-    elif add_source == "esphome":
-        if esphome_url and esphome_sensor:
-            logging.info("Motion: + ESPHome (parallel)")
-        else:
-            logging.warning("motion.source=esphome but URL/sensor empty")
+
+    active_names = get_active_trigger_names(app_config, mqtt_broker=mqtt_broker)
+    if active_names:
+        logging.info("Motion grouped triggers active: %s", ", ".join(active_names))
+    if bool(motion_sensor_cfg.get("enabled")) and str(motion_sensor_cfg.get("source") or "") == "esphome":
+        sensor_id = str(motion_sensor_cfg.get("esphome_sensor_id") or "").strip()
+        esphome_url = str(motion_sensor_cfg.get("esphome_url") or "").strip()
+        if not (sensor_id and esphome_url):
+            logging.warning("Grouped motion sensor=esphome but URL/sensor empty")
+    if bool(scales_cfg.get("enabled")) and str(scales_cfg.get("source") or "") == "esphome":
+        scale_url = str(scales_cfg.get("esphome_url") or "").strip()
+        scale_sensor = str(scales_cfg.get("esphome_weight_sensor_id") or "").strip()
+        if not (scale_url and scale_sensor):
+            logging.warning("Grouped scales=esphome but URL/weight sensor empty")
 
     return motion_detector
+
+
+def _build_esphome_scale_motion_detector(scales_cfg: dict[str, Any]) -> Any:
+    from motion_detectors.esphome_scale import ESPHomeScaleMotionDetector
+
+    esphome_url = str(scales_cfg.get("esphome_url") or "").strip()
+    weight_sensor_id = str(scales_cfg.get("esphome_weight_sensor_id") or "").strip()
+    if not (esphome_url and weight_sensor_id):
+        return None
+
+    unit = str(app_config.get("integrations.scales.unit") or "g").strip().lower() or "g"
+    min_delta_kg = float(scales_cfg.get("motion_trigger_min_delta_kg") or 0.02)
+    if unit == "g":
+        min_delta = min_delta_kg * 1000.0
+    else:
+        min_delta = min_delta_kg
+    return ESPHomeScaleMotionDetector(
+        url=esphome_url,
+        sensor_id=weight_sensor_id,
+        min_delta=min_delta,
+        debounce_seconds=float(scales_cfg.get("motion_trigger_debounce_seconds") or 1.5),
+    )

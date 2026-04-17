@@ -588,7 +588,7 @@ class TestTimeline:
         sc = row.get("scales")
         assert sc is not None
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
-        assert sc["display_unit"] == "kg"
+        assert sc["display_unit"] == "g"
 
     def test_timeline_includes_video_not_attached_to_any_visit(self, app, client):
         """Ролик за сутки без SpeciesVisit появляется как unlinked_video."""
@@ -698,6 +698,9 @@ class TestStatus:
         assert data["mqtt"] in ("ok", "error", "not_configured", "not_used", "unknown")
         assert data["esphome"] in ("ok", "error", "not_configured", "not_used")
         assert data["yolo"] in ("ok", "unknown")
+        assert "active_triggers" in data
+        assert isinstance(data["active_triggers"], list)
+        assert all(isinstance(x, str) for x in data["active_triggers"])
 
     def test_status_mqtt_reflects_feed_source(self, client):
         """MQTT status is real when feed.source=mqtt, else not_used."""

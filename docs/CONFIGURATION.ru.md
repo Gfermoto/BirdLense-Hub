@@ -10,6 +10,13 @@
 
 **Приоритет:** `user_config.yaml` накладывается на `default_config.yaml`, затем в рантайме применяются **оверлеи секретов**: если ниже задана непустая переменная `BIRDLENSE_*`, она подставляется в объединённый конфиг (как правка YAML, но без записи на диск). Отдельные ключи вроде `GO2RTC_URL` по-прежнему переопределяют соответствующие поля там, где это описано.
 
+### Merge, пустые строки и сохранение из UI
+
+- **Рекурсивный merge:** значения из `user_config` перекрывают `default_config` по дереву. Отсутствующий в `user_config` ключ **не** трогает дефолт.
+- **Пустая строка — это тоже значение:** запись вида `some_key: ""` в `user_config` **затирает** дефолт пустым значением (это не «вернуться к дефолту»). Типичный сбой: `integrations.scales.mqtt_topic_prefix: ""` — процессор не подписывается на вес, пока не задан явный `mqtt_topic` или не убран ключ из YAML.
+- **Сохранение настроек из веб-UI** записывает в `user_config.yaml` **полное смерженное дерево** (как видит рантайм после merge и env), а не только дифф к дефолту. Поэтому: (1) файл со временем разрастается и «фиксирует» значения; (2) обновление `default_config.yaml` в новой версии хаба **не изменит** уже сохранённые в user-файле ключи; (3) секреты из env, попавшие в память merged-конфига, теоретически могут оказаться в YAML при следующем сохранении из UI — в проде предпочтительно держать секреты в **env** и не сохранять настройки без необходимости, либо использовать только `BIRDLENSE_*` без дублей в YAML.
+- **Ревизия:** System → ревизия конфигурации (`GET /api/ui/system/config-audit`) дополняется проверками MQTT-весов (брокер, префикс, явные `""` в user YAML).
+
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
 **Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины).
@@ -293,33 +300,40 @@
 
 ## Интеграции (весы)
 
-**`source: mqtt` и `homeassistant`:** при **MQTT** **processor** подписывается на `mqtt_topic`, пишет `feeder_scale_state.json` / `feeder_scale_history.jsonl`, может **оценивать дельту за ролик** и по желанию **запускать запись** по скачку веса. При **homeassistant** только **веб** запрашивает HA по REST для **текущего веса** в карточке кормушки; процессор **не** опрашивает HA, поэтому журнал / дельта / триггер — только для **MQTT** (при необходимости укажите тот же топик состояния ESPHome в **MQTT**).
+**Источники и возможности:** `mqtt` — MQTT-backed режим: **processor** подписывается на топик веса, пишет `feeder_scale_state.json` / `feeder_scale_history.jsonl`, может **оценивать дельту за ролик** и по желанию **запускать запись** по скачку веса. `esphome` — прямой опрос устройства по ESPHome Web API, только для **live weight / bird_present / tare**. История / дельта / триггер по весу работают только в `mqtt`.
 
 | Ключ | Описание |
 |------|----------|
 | `integrations.scales.enabled` | Весы у кормушки / умные весы (по умолчанию **false**). |
-| `integrations.scales.source` | `mqtt` (по умолчанию) — processor и файлы состояния/журнала; или `homeassistant` — только REST в вебе для текущего веса (см. абзац выше). |
+| `integrations.scales.source` | `mqtt` (по умолчанию) — топики прошивки / ручная MQTT-настройка; `esphome` — ESPHome Web API (только live weight / bird_present / tare). |
 | `integrations.scales.mqtt_topic` | Полный топик **веса** (число или JSON с `value`/`weight`/`state`). Если **пусто** и задан **`mqtt_topic_prefix`**, процессор слушает **`{prefix}/weight`**. |
-| `integrations.scales.mqtt_topic_prefix` | Префикс для набора топиков: **`{prefix}/weight`**, **`{prefix}/bird_present`** (`ON`/`OFF`, retain). Кнопка «Тара» в UI шлёт **`mqtt_tare_payload`** в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример: `birdlense/scale`. |
-| `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Только YAML, не в форме настроек. |
+| `integrations.scales.mqtt_bird_present_topic` | Полный топик **птица на платформе** (`ON`/`OFF` или state как у HA). Если **пусто** и задан **`mqtt_topic_prefix`** — **`{prefix}/bird_present`**. Нужен, когда вес на `homeassistant/sensor/.../state`, а присутствие на префиксе прошивки (пример репо: `frigate/bird_present`). |
+| `integrations.scales.mqtt_topic_prefix` | Префикс: **`{prefix}/weight`** при пустом `mqtt_topic`; **`{prefix}/bird_present`** при пустом `mqtt_bird_present_topic`; тара в **`{prefix}/command`**, если не задан **`mqtt_command_topic`**. Пример прошивки в репозитории: **`birdlense/scale`** (`esphome/bird-feeder-scale.yaml`). |
+| `integrations.scales.mqtt_command_topic` | Явный топик команд (перекрывает `{prefix}/command`). Дублируется в Настройках → Видео (весы MQTT). |
 | `integrations.scales.mqtt_tare_payload` | Строка для тары (по умолчанию **`TARE`**); прошивка должна подписаться на command topic. |
-| `integrations.scales.homeassistant_entity_id` | Id сущности (например `sensor.smart_scale_weight`) при `source=homeassistant` (снимок для UI). |
-| `integrations.scales.unit` | `kg` или `g` для отображения и записи (рецепты ESP32+HX711 часто в **граммах**). |
-| `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужны **MQTT** (`source: mqtt`, топик веса через **`mqtt_topic`** или **`mqtt_topic_prefix`**) и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
+| `integrations.scales.esphome_url` | Базовый URL прямого ESPHome Web API, например `http://192.168.1.50`. |
+| `integrations.scales.esphome_weight_sensor_id` | `sensor` id веса для `esphome`. По умолчанию: `weight_live_internal`. Хаб читает `GET /sensor/<id>`. |
+| `integrations.scales.esphome_bird_present_sensor_id` | Необязательный `binary_sensor` id «птица на платформе» для `esphome`. По умолчанию: `bird_present`. Хаб читает `GET /binary_sensor/<id>`. |
+| `integrations.scales.esphome_tare_button_id` | Необязательный `button` id тары для `esphome`. По умолчанию: `manual_tare`. Хаб шлёт `POST /button/<id>/press`. |
+| `integrations.scales.weight_estimate_enabled` | Оценка **дельты веса за интервал записи** и сохранение в карточке ролика (по умолчанию **true**). **Независимо** от **`motion_trigger_enabled`**: можно оценивать вес на роликах, запущенных Frigate/движением, без автостарта по весам. Нужен режим `mqtt` и журнал `feeder_scale_history.jsonl` в `DATA_DIR`. Дельта **не** сохраняется, если в ролике есть только детекции из **BirdNET** (`source=audio`) без кадра/трека: звук участвует в распознавании вида, к весам на платформе не привязывается. |
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг): и для **размаха** max−min по окну, и для **скачка** между соседними по времени MQTT-точками (см. ниже). По умолчанию **0.008** (~8 г). |
 | `integrations.scales.estimate_require_consecutive_spike` | **true** (по умолчанию): оценка на ролик сохраняется только если за интервал записи есть хотя бы одна пара **подряд идущих** (по времени) показаний с \|Δ\| ≥ `min_delta_kg_for_estimate`. Так отсекается в основном **медленный дрейф** при почти нулевой платформе после тары. **false** — прежняя логика только по max−min (для отладки). Сохраняемое значение по-прежнему **размах** max−min за клип. |
 | `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
-| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, `source: mqtt` и топик веса (**`mqtt_topic`** или **`{mqtt_topic_prefix}/weight`**). Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
+| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, режим `mqtt` и топик веса (**`mqtt_topic`** или **`{mqtt_topic_prefix}/weight`**). Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
 | `integrations.scales.motion_trigger_min_delta_kg` | Минимум \|Δмассы\| между **двумя последовательными** MQTT-сообщениями (в кг), чтобы считать это триггером. По умолчанию **0.02** (20 г). |
 | `integrations.scales.motion_trigger_debounce_seconds` | Минимум секунд между двумя стартами записи по весам (анти-дребезг). По умолчанию **1.5**. |
 
 Процессор сравнивает min/max веса в окне `[start_time, end_time]` ролика. При **`estimate_require_consecutive_spike: true`** (по умолчанию) оценка в БД сохраняется только если за это окно есть соседняя пара показаний с шагом ≥ порога (см. ключ выше); иначе отсекается дрейф — при этом записываемое значение по-прежнему размах max−min. Если дельта не ниже порога — в БД пишется `scales_weight_delta_kg`, в UI показывается блок «Весы (оценка)». Триггеры уведомлений и auto-tare в HA/ESPHome — по-прежнему в [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167).
 
-**Стек как у [умных весов с ESPHome + HA](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, проксимити, auto-tare в Home Assistant): логика тары и «объект на платформе» остаётся в **ESPHome/HA**. BirdLense не дублирует эти сущности: хаб подписывается на **тот же MQTT-топик состояния веса**, который публикует интеграция (часто `homeassistant/sensor/<имя_датчика>/state` — укажите его в `mqtt_topic`). Тогда и «текущий вес» в UI, и журнал для дельты за клип идут из одного потока, совместимого с вашей прошивкой.
+**Стек как у [умных весов с ESPHome + HA](https://github.com/igiannakas/Homeassistant-scale-with-auto-tare-and-object-detection?tab=readme-ov-file#hardware-setup)** (HX711, ESP32, проксимити, auto-tare в Home Assistant): BirdLense можно подключить двумя способами:
+- `mqtt`: подписать processor на топики прошивки веса
+- `esphome`: опрашивать само устройство по ESPHome Web API для live weight / bird_present / tare
+
+**BirdLense ESPHome MQTT-прошивка (репо `bird-feeder-scale.yaml`):** используйте `source: mqtt`. По умолчанию достаточно `mqtt_topic_prefix: birdlense/scale` — хаб сам возьмёт **`birdlense/scale/weight`**, **`birdlense/scale/bird_present`** и **`birdlense/scale/command`**. Если раскладка смешанная — оставьте `source: mqtt`, но явно переопределите `mqtt_topic`, `mqtt_bird_present_topic` или `mqtt_command_topic`.
 
 ### ESPHome / своя прошивка (`birdlense/scale/*`)
 
-Задайте **`integrations.scales.mqtt_topic_prefix`**: например **`birdlense/scale`**, оставьте **`mqtt_topic`** пустым, при необходимости **`unit: g`**, брокер — тот же, что у процессора.
+Задайте **`integrations.scales.mqtt_topic_prefix`**: например **`birdlense/scale`**; это значение уже стоит по умолчанию. Оставьте **`mqtt_topic`** пустым, брокер — тот же, что у процессора.
 
 | Топик | Данные | Retain (типично) | Хаб |
 |-------|--------|------------------|-----|
@@ -329,7 +343,7 @@
 
 В прошивке публикуйте вес **текстовой десятичной строкой** (в ESPHome — например `str_sprintf` в lambda для `mqtt.publish`). Для тары подпишитесь на command topic (`on_message` в компоненте `mqtt`).
 
-**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
+**Пример в репозитории:** [`esphome/bird-feeder-scale.yaml.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/bird-feeder-scale.yaml.example) (локально скопировать в `bird-feeder-scale.yaml`), [`esphome/README.md`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/esphome/README.md).
 
 ---
 

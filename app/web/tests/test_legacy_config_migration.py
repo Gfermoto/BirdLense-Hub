@@ -4,7 +4,16 @@ import copy
 
 import yaml
 
-from app_config.app_config import migrate_legacy_homeassistant_from_weather
+from app_config.app_config import (
+    migrate_legacy_homeassistant_from_weather,
+    migrate_legacy_trigger_topics,
+)
+from app_config.trigger_config import (
+    get_active_trigger_names,
+    get_birdnet_topic,
+    get_frigate_topic,
+    get_legacy_motion_source_label,
+)
 
 
 def test_migrate_copies_legacy_ha_into_homeassistant():
@@ -87,3 +96,41 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     finally:
         app_config.user_config_file = old_user_config_file
         app_config.reload()
+
+
+def test_migrate_legacy_trigger_topics_copies_into_new_domains():
+    user = {
+        "mqtt": {
+            "frigate_topic": "custom/frigate",
+            "birdnet_topic": "custom/birdnet",
+        }
+    }
+
+    assert migrate_legacy_trigger_topics(user) is True
+    assert user["triggers"]["frigate"]["topic"] == "custom/frigate"
+    assert user["integrations"]["birdnet"]["mqtt_topic"] == "custom/birdnet"
+
+
+def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
+    cfg = {
+        "mqtt": {"broker": "mqtt.local", "frigate_topic": "frigate/events"},
+        "motion": {"source": "esphome", "esphome_url": "http://esp", "esphome_sensor_id": "pir"},
+        "integrations": {"scales": {"motion_trigger_enabled": True, "source": "mqtt"}},
+    }
+
+    def _get(key, default=None):
+        current = cfg
+        for part in key.split("."):
+            if not isinstance(current, dict) or part not in current:
+                return default
+            current = current[part]
+        return current
+
+    assert get_frigate_topic(_get) == "frigate/events"
+    assert get_birdnet_topic(_get) == "birdnet"
+    assert get_active_trigger_names(_get, mqtt_broker="mqtt.local") == [
+        "frigate",
+        "motion_sensor",
+        "scales",
+    ]
+    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == "frigate,motion_sensor,scales"

@@ -25,7 +25,6 @@ import { PasswordField } from '../../../components/PasswordField';
 import { ServiceBlock } from '../shared/ServiceBlock';
 import type { Settings } from '../../../types';
 import {
-  fetchCoordinatesByZip,
   fetchVapidPublicKey,
   refreshTelegramProxy,
   subscribePush,
@@ -194,23 +193,8 @@ type Props = {
 export function NotificationsSection({ form, observedSpecies }: Props) {
   const { t } = useTranslation();
 
-  const handleZipLookup = async () => {
-    const zip = form.getFieldValue('secrets.zip');
-    if (!zip) return;
-    try {
-      const { lat, lon } = await fetchCoordinatesByZip(zip);
-      form.setFieldValue('secrets.latitude', lat);
-      form.setFieldValue('secrets.longitude', lon);
-    } catch (error) {
-      console.log(error);
-      alert(t('settings.zipFetchFailed'));
-    }
-  };
-
   return (
-    <>
-      {/* ========== 4. УВЕДОМЛЕНИЯ ========== */}
-      <Accordion>
+    <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           {t('settings.accordionNotifications')}
         </AccordionSummary>
@@ -757,141 +741,15 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
               </Grid>
             </ServiceBlock>
 
-            <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
-              {(notificationsEnabled) => (
-                <Box sx={{ mt: 2 }}>
+            <ServiceBlock title={t('settings.webPush')}>
+              <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
+                {(notificationsEnabled) => (
                   <WebPushSubscribeButton notificationsEnabled={!!notificationsEnabled} />
-                </Box>
-              )}
-            </form.Subscribe>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* ========== 5. ПОГОДА ========== */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          {t('settings.accordionWeather')}
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
-            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
-              {t('settings.accordionWeather')}
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('settings.accordionWeatherDesc')}
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <form.Field name="weather.source">
-                  {(field) => (
-                    <FormControl fullWidth>
-                      <InputLabel id="settings-weather-source-label">{t('settings.weatherSource')}</InputLabel>
-                      <Select
-                        labelId="settings-weather-source-label"
-                        value={field.state.value ?? 'openweather'}
-                        label={t('settings.weatherSource')}
-                        onChange={(e) => field.handleChange(e.target.value as 'openweather' | 'homeassistant')}
-                      >
-                        <MenuItem value="openweather">{t('settings.weatherOpenWeather')}</MenuItem>
-                        <MenuItem value="homeassistant">{t('settings.weatherHomeAssistant')}</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                </form.Field>
-              </Grid>
-              <form.Subscribe selector={(state) => state.values.weather?.source}>
-                {(source) => (
-                  <>
-                    {source !== 'homeassistant' && (
-                      <>
-                        <Grid size={{ xs: 12 }}>
-                          <form.Field name="secrets.openweather_api_key">
-                            {(field) => (
-                              <PasswordField
-                                value={field.state.value ?? ''}
-                                onChange={(v) => field.handleChange(v)}
-                                label={t('settings.openWeatherApiKey')}
-                                helperText={t('settings.weatherHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <form.Field name="secrets.zip">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                label={t('settings.zip')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Button fullWidth variant="outlined" onClick={handleZipLookup}>
-                            {t('settings.zipLookup')}
-                          </Button>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <form.Field name="secrets.latitude">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
-                                label={t('settings.latitude')}
-                                helperText={t('settings.latitudeHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <form.Field name="secrets.longitude">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange((e.target.value ?? '').replace(',', '.'))}
-                                label={t('settings.longitude')}
-                                helperText={t('settings.longitudeHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                      </>
-                    )}
-                    {source === 'homeassistant' && (
-                      <>
-                        <Grid size={{ xs: 12 }}>
-                          <Alert severity="info" sx={{ mb: 2 }}>
-                            {t('settings.weatherHaAlert')}
-                          </Alert>
-                        </Grid>
-                        <Grid size={{ xs: 12 }}>
-                          <form.Field name="weather.ha_entity_id">
-                            {(field) => (
-                              <TextField
-                                fullWidth
-                                value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                label={t('settings.weatherHaEntity')}
-                                placeholder="weather.home"
-                                helperText={t('settings.weatherHaEntityHint')}
-                              />
-                            )}
-                          </form.Field>
-                        </Grid>
-                      </>
-                    )}
-                  </>
                 )}
               </form.Subscribe>
-            </Grid>
+            </ServiceBlock>
           </Box>
         </AccordionDetails>
-      </Accordion>
-    </>
+    </Accordion>
   );
 }

@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 import yaml
+from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
+from app_config.trigger_config import (
+    format_motion_source_summary,
+    get_active_trigger_names,
+    normalize_transport_source,
+)
+
+# Совпадает с `integrations.scales.mqtt_topic_prefix` в default_config и примером `esphome/bird-feeder-scale.yaml`.
+DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
 
 DEPRECATED_USER_CONFIG_KEYS = (
     "gallery.enabled",
@@ -52,8 +61,9 @@ def _safe_float(value, default: float) -> float:
 
 
 def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
-    motion_source = str(app_config_get("motion.source", "opencv") or "opencv").strip().lower()
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
+    active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
+    motion_source = format_motion_source_summary(active_triggers)
     check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
     opencv_diff_threshold = max(5, min(80, _safe_int(app_config_get("motion.opencv_diff_threshold", 25), 25)))
     opencv_min_contour_area = max(
@@ -74,10 +84,9 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
     min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
 
     warnings: list[str] = []
-    if motion_source == "opencv" and not mqtt_broker:
+    if "frigate" in active_triggers and not mqtt_broker:
         warnings.append(
-            "motion.source=opencv without mqtt.broker means Frigate never becomes a trigger; "
-            "use motion.source=frigate or configure MQTT if Frigate sees more objects."
+            "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
     if check_every_n_frames > 1:
         warnings.append(
@@ -121,6 +130,92 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
         },
         warnings,
     )
+
+
+def _resolve_scales_transport_source(app_config_get) -> str:
+    """Как у `get_effective_trigger_config`: явный `triggers.scales.source` перекрывает integrations."""
+    explicit = _get_from_flat_getter(app_config_get, "triggers.scales.source")
+    if explicit is not None and str(explicit).strip():
+        return normalize_transport_source(str(explicit).strip(), default="mqtt")
+    return normalize_scales_source(app_config_get("integrations.scales.source"))
+
+
+def _get_from_flat_getter(app_config_get, path: str):
+    """Тот же контракт, что у ``app_config.get(path)`` (путь с точками)."""
+    return app_config_get(path)
+
+
+def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str]]:
+    """Проверки MQTT-весов: брокер, префикс/топик, явный '' в user YAML."""
+    warnings: list[str] = []
+    enabled = bool(app_config_get("integrations.scales.enabled"))
+    src = _resolve_scales_transport_source(app_config_get)
+    mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
+    raw_scales = {}
+    if isinstance(user_cfg.get("integrations"), dict):
+        raw_scales = user_cfg.get("integrations", {}).get("scales") or {}
+    if not isinstance(raw_scales, dict):
+        raw_scales = {}
+
+    out: dict[str, object] = {
+        "enabled": enabled,
+        "source": src,
+        "mqtt_broker_configured": bool(mqtt_broker),
+    }
+
+    if not enabled:
+        out["mqtt_weight_topic_resolved"] = None
+        return out, warnings
+
+    if not scales_source_uses_mqtt(src):
+        out["mqtt_weight_topic_resolved"] = None
+        out["mqtt_note"] = "esphome_or_ha"
+        return out, warnings
+
+    prefix = (app_config_get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
+    mq_topic = (app_config_get("integrations.scales.mqtt_topic") or "").strip()
+    effective = mq_topic or (f"{prefix}/weight" if prefix else "")
+
+    out["mqtt_topic_prefix"] = prefix or None
+    out["mqtt_topic_explicit"] = bool(mq_topic)
+    out["mqtt_weight_topic_resolved"] = effective or None
+
+    if raw_scales.get("mqtt_topic_prefix") == "":
+        warnings.append(
+            'user_config: integrations.scales.mqtt_topic_prefix is explicitly empty (""): '
+            "this overrides the default prefix and the processor will not subscribe to "
+            f"{DOCUMENTED_SCALES_MQTT_PREFIX}/weight unless mqtt_topic is set. Remove the key or set a real prefix."
+        )
+    for key in (
+        "mqtt_topic",
+        "mqtt_bird_present_topic",
+        "mqtt_command_topic",
+    ):
+        if raw_scales.get(key) == "":
+            warnings.append(
+                f'user_config: integrations.scales.{key} is explicitly "" — empty string overrides defaults; '
+                "omit the key if you want derived topics from mqtt_topic_prefix."
+            )
+
+    if not mqtt_broker:
+        warnings.append(
+            "integrations.scales use MQTT, but mqtt.broker is empty: the processor cannot subscribe; "
+            "weight and bird_present will not update via MQTT."
+        )
+
+    if not effective:
+        warnings.append(
+            "integrations.scales: both mqtt_topic and mqtt_topic_prefix are empty — no weight MQTT topic to subscribe."
+        )
+
+    if prefix and prefix.replace("\\", "/") != DOCUMENTED_SCALES_MQTT_PREFIX and not mq_topic:
+        warnings.append(
+            f'integrations.scales.mqtt_topic_prefix is "{prefix}"; the stock BirdLense ESPHome example uses '
+            f'"{DOCUMENTED_SCALES_MQTT_PREFIX}" for derived topics. If weight never updates, align this prefix '
+            "with the device publish prefix (or set integrations.scales.mqtt_topic to the full weight topic)."
+        )
+
+    return out, warnings
 
 
 def flatten_config_keys(d: dict, prefix: str = "") -> set[str]:
@@ -178,6 +273,8 @@ def build_system_config_audit_payload(
         and gray_pairs.get("Great Gray Shrike") == "Great Grey Shrike"
     )
     recall_tuning, recall_warnings = _recall_audit(app_config_get)
+    scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
+    combined_warnings = [*recall_warnings, *scales_warnings]
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -187,6 +284,9 @@ def build_system_config_audit_payload(
         },
         "recall_tuning": recall_tuning,
         "recall_warnings": recall_warnings,
+        "scales_mqtt": scales_tuning,
+        "scales_warnings": scales_warnings,
+        "config_warnings": combined_warnings,
         "mapping": {
             "gray_to_grey_ok": gray_to_grey_ok,
             "pairs": gray_pairs,

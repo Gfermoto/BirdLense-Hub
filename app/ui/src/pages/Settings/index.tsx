@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
@@ -50,11 +50,9 @@ export const Settings: React.FC = () => {
   const isLoading = isLoadingSettings || isLoadingObserved;
   const settingsError = !isLoadingSettings && !settings;
   const [formKey, setFormKey] = useState(0);
-  const hasInitializedForm = useRef(false);
   useEffect(() => {
-    if (settings && Object.keys(settings).length > 0 && !hasInitializedForm.current) {
-      hasInitializedForm.current = true;
-      setFormKey(1);
+    if (settings && Object.keys(settings).length > 0) {
+      setFormKey((key) => key + 1);
     }
   }, [settings]);
 

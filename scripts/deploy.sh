@@ -45,6 +45,13 @@ command -v node >/dev/null 2>&1 || { echo "Ошибка: node не найден.
 command -v npm >/dev/null 2>&1 || { echo "Ошибка: npm не найден. Нужен npm 10+ для локальной сборки UI."; exit 1; }
 (cd app/ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
 
+# 0.95 Бэкап user_config на сервере перед rsync (восстановление: scripts/restore-config.sh или .bak.deploy-*)
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  echo "0.95 Бэкап user_config.yaml на сервере (если есть)..."
+  ssh ${SSH_OPTS} "${HOST}" "UC='${REMOTE_DIR}/app/app_config/user_config.yaml'; \
+    if [ -f \"\$UC\" ]; then cp \"\$UC\" \"\${UC}.bak.deploy-\$(date +%Y%m%d%H%M%S)\"; echo '  OK: снимок .bak.deploy-*'; fi" || true
+fi
+
 # 1. Синхронизация кода (rsync устойчивее к обрывам, повтор при сбое)
 echo "1. Синхронизация кода..."
 RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude=.env"
@@ -57,8 +64,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
-# Не удалять на сервере .pt при деплое с машины без весов (модификатор P в rsync, не слово protect).
-RSYNC_FILTER_PROTECT=(--filter "P app/processor/models/detection/weights/*.pt" --filter "P app/processor/models/classification/weights/*.pt")
+# Не удалять на сервере: веса .pt; user_config (exclude + P — двойная страховка от --delete).
+RSYNC_FILTER_PROTECT=(--filter "P app/processor/models/detection/weights/*.pt" --filter "P app/processor/models/classification/weights/*.pt" --filter "P app/app_config/user_config.yaml")
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
@@ -82,21 +89,46 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
   echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
 fi
 if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
-  echo "1.5 Запись секретов в app/.env на сервере..."
-  ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
-    SIZE=\$(stat -c%s ${REMOTE_DIR}/app/.env 2>/dev/null || echo 0); \
-    if [ ! -f ${REMOTE_DIR}/app/.env ] || [ \"\$SIZE\" -gt 1048576 ]; then \
-      cp ${REMOTE_DIR}/app/.env.example ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
-    fi"
-  ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app && \
-    (grep -v -E '^(MCP_TOKEN|PROCESSOR_SECRET|FLASK_SECRET_KEY|BIRDLENSE_ENV|BIRDLENSE_STRICT_API_AUTH|BIRDLENSE_UI_API_KEY)=' ${REMOTE_DIR}/app/.env 2>/dev/null || true; \
-     [ -n \"${MCP_TOKEN:-}\" ] && printf 'MCP_TOKEN=%s\n' \"${MCP_TOKEN:-}\"; \
-     [ -n \"${FLASK_SECRET_KEY:-}\" ] && printf 'FLASK_SECRET_KEY=%s\n' \"${FLASK_SECRET_KEY:-}\"; \
-     [ -n \"${BIRDLENSE_ENV:-}\" ] && printf 'BIRDLENSE_ENV=%s\n' \"${BIRDLENSE_ENV:-}\"; \
-     [ -n \"${BIRDLENSE_STRICT_API_AUTH:-}\" ] && printf 'BIRDLENSE_STRICT_API_AUTH=%s\n' \"${BIRDLENSE_STRICT_API_AUTH:-}\"; \
-     [ -n \"${BIRDLENSE_UI_API_KEY:-}\" ] && printf 'BIRDLENSE_UI_API_KEY=%s\n' \"${BIRDLENSE_UI_API_KEY:-}\"; \
-     printf 'PROCESSOR_SECRET=%s\n' \"${PROCESSOR_SECRET}\") > ${REMOTE_DIR}/app/.env.new && \
-    mv ${REMOTE_DIR}/app/.env.new ${REMOTE_DIR}/app/.env"
+  echo "1.5 Запись секретов в app/.env на сервере (точечная подмена ключей; остальные строки .env сохраняются)..."
+  # shellcheck disable=SC2090
+  ssh ${SSH_OPTS} "${HOST}" \
+    env \
+    "REMOTE_DIR=${REMOTE_DIR}" \
+    "MCP_TOKEN=${MCP_TOKEN:-}" \
+    "PROCESSOR_SECRET=${PROCESSOR_SECRET}" \
+    "FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}" \
+    "BIRDLENSE_ENV=${BIRDLENSE_ENV:-}" \
+    "BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}" \
+    "BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}" \
+    bash -s <<'ENDSSH_MERGE_ENV'
+set -euo pipefail
+F="${REMOTE_DIR}/app/.env"
+mkdir -p "${REMOTE_DIR}/app"
+SIZE=$(stat -c%s "$F" 2>/dev/null || echo 0)
+if [ ! -f "$F" ] || [ "$SIZE" -gt 1048576 ]; then
+  cp "${REMOTE_DIR}/app/.env.example" "$F" 2>/dev/null || touch "$F"
+fi
+# Удаляем из .env только те ключи, которые сейчас задаём с непустым значением (остальное на сервере не трогаем).
+_merge_env_kv() {
+  local key="$1" val="$2"
+  if [ -z "$val" ] || [ ! -f "$F" ]; then
+    return 0
+  fi
+  grep -v -E "^${key}=" "$F" >"${F}.new" || true
+  mv "${F}.new" "$F"
+  printf '%s=%s\n' "$key" "$val" >>"$F"
+}
+_merge_env_kv MCP_TOKEN "${MCP_TOKEN:-}"
+_merge_env_kv FLASK_SECRET_KEY "${FLASK_SECRET_KEY:-}"
+_merge_env_kv BIRDLENSE_ENV "${BIRDLENSE_ENV:-}"
+_merge_env_kv BIRDLENSE_STRICT_API_AUTH "${BIRDLENSE_STRICT_API_AUTH:-}"
+_merge_env_kv BIRDLENSE_UI_API_KEY "${BIRDLENSE_UI_API_KEY:-}"
+if [ -f "$F" ]; then
+  grep -v -E '^PROCESSOR_SECRET=' "$F" >"${F}.new" || true
+  mv "${F}.new" "$F"
+fi
+printf 'PROCESSOR_SECRET=%s\n' "${PROCESSOR_SECRET}" >>"$F"
+ENDSSH_MERGE_ENV
 fi
 
 # 1.6 Идемпотентные значения в app/.env для production (только если строки ещё не заданы).
@@ -146,7 +178,7 @@ echo "  - Shared verify contract:"
 BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 ./scripts/verify-stack.sh
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
-echo "Настройки и записи на сервере не тронуты."
+echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."
 echo ""
 echo "Если API недоступен из браузера: добавьте на сервере в app/.env:"
 echo "  CORS_ORIGINS=${DEPLOY_URL}"
