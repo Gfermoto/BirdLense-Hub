@@ -513,7 +513,7 @@
     "scalesEspTareButtonId": "Tare button ID",
     "scalesEspTareButtonIdHint": "Optional. If set, the tare button sends POST /button/<id>/press.",
     "scalesWeightEstimate": "Weight estimate on recording card",
-    "scalesWeightEstimateHint": "Store scale delta for the clip window (MQTT topic required). Only when the clip has a frame/track detection, not BirdNET-only (audio helps species ID, not feeder weight). By default requires a spike between consecutive samples (see below).",
+    "scalesWeightEstimateHint": "Store scale delta for the clip window (MQTT weight topic required). Only when the clip includes a visual detection or track (confirms presence on camera). Does not enable autostart. By default requires a spike between consecutive MQTT samples (see below).",
     "scalesEstimateRequireSpike": "Require a weight spike between consecutive MQTT samples",
     "scalesEstimateRequireSpikeHint": "Off: span (max−min) over the clip is enough. On (recommended): no estimate unless some adjacent step ≥ threshold — fewer false positives from drift; tared empty platform stays near zero.",
     "scalesMotionTrigger": "Start recording and recognition from weight (in addition to motion and Frigate)",
