@@ -1220,6 +1220,8 @@
     "configAuditHint": "无需 SSH：代理、映射、MQTT 秤、召回警告与已弃用键。",
     "configAuditLoadError": "加载配置审核失败",
     "configAuditWarningsTitle": "警告",
+    "configAuditHintsTitle": "调优说明",
+    "configAuditHintsHint": "这些是可选的召回或 MQTT 对齐提示，不是错误。仅在需要更高灵敏度或重量不更新时调整。",
     "configAuditScalesSection": "秤集成",
     "configAuditScalesSource": "来源",
     "configAuditScalesBroker": "配置中的 MQTT 代理",

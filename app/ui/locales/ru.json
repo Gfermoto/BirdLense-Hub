@@ -1274,6 +1274,8 @@
     "configAuditNeedsReview": "Нужна проверка",
     "configAuditLoadError": "Не удалось загрузить ревизию конфигурации",
     "configAuditWarningsTitle": "Предупреждения",
+    "configAuditHintsTitle": "Заметки по тюнингу",
+    "configAuditHintsHint": "Подсказки по recall и выравниванию MQTT — не ошибки. Меняйте настройки только если нужна большая чувствительность или вес не обновляется.",
     "configAuditScalesSection": "Весы (интеграция)",
     "configAuditScalesSource": "Источник",
     "configAuditScalesBroker": "MQTT-брокер в конфиге",
