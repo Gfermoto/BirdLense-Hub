@@ -437,8 +437,7 @@ export const fetchStatus = async (): Promise<{
   yolo: string;
   motion_source?: string;
   trigger_display?: string;
-  /** Весы для UI/карточки (integrations.scales.enabled), не то же самое, что триггер по весу */
-  scales_feed_enabled?: boolean;
+  active_triggers?: ('opencv' | 'frigate' | 'motion_sensor' | 'scales')[];
   birdnet_url?: string | null;
 }> => {
   const response = await axios.get(`${BASE_API_URL}/status`);
@@ -475,7 +474,7 @@ export type ReadinessPayload = {
     yolo: string;
     motion_source?: string;
     trigger_display?: string;
-    scales_feed_enabled?: boolean;
+    active_triggers?: ('opencv' | 'frigate' | 'motion_sensor' | 'scales')[];
     birdnet_url?: string | null;
   };
 };

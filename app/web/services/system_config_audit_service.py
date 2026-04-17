@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import yaml
-from app_config.trigger_config import get_active_trigger_names
+from app_config.trigger_config import format_motion_source_summary, get_active_trigger_names
 
 DEPRECATED_USER_CONFIG_KEYS = (
     "gallery.enabled",
@@ -55,7 +55,7 @@ def _safe_float(value, default: float) -> float:
 def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
-    motion_source = ",".join(active_triggers) if active_triggers else "opencv"
+    motion_source = format_motion_source_summary(active_triggers)
     check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
     opencv_diff_threshold = max(5, min(80, _safe_int(app_config_get("motion.opencv_diff_threshold", 25), 25)))
     opencv_min_contour_area = max(

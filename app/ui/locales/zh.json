@@ -1452,9 +1452,14 @@
   "status": {
     "motion": "运动",
     "motionActive": "活动通道",
-    "motionTriggersLine": "片段启动（触发器）",
-    "scalesFeed": "体重（数据）",
-    "scalesFeedLine": "已启用喂鸟器秤用于界面与访问卡片。与设置中的「重量跳变触发」不同。",
+    "triggersNone": "无",
+    "triggersUnknown": "未知",
+    "triggerNames": {
+      "opencv": "OpenCV",
+      "frigate": "Frigate",
+      "motion_sensor": "运动传感器",
+      "scales": "秤"
+    },
     "motionHint_frigate": "护卫舰（MQTT）；与现场经纪人 OpenCV 可以作为安全网并行运行。 BirdNET = 合并/阈值，而不是触发器。",
     "motionHint_opencv": "触发：相机运动（OpenCV）。不需要护卫舰。 BirdNET 不开始录制。",
     "motionHint_mqtt": "触发器：MQTT 传感器（配置 MQTT 时可能与 Frigate 并行）。 BirdNET 不是记录触发器。",
