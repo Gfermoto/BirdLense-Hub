@@ -78,9 +78,7 @@ def test_get_feeder_scale_snapshot_esphome_reads_weight_and_bird_present(
             "integrations.scales.source": "esphome",
             "integrations.scales.esphome_url": "http://scale.local",
             "integrations.scales.esphome_weight_sensor_id": "weight_live_internal",
-            "integrations.scales.esphome_bird_present_sensor_id": (
-                "bird_present"
-            ),
+            "integrations.scales.esphome_bird_present_sensor_id": ("bird_present"),
             "integrations.scales.unit": "g",
         }
     )

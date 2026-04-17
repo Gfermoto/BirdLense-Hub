@@ -32,14 +32,8 @@ def test_esphome_default_weight_sensor_id_matches_repo_firmware():
     default_cfg = yaml.safe_load((root / "app_config" / "default_config.yaml").read_text())
     user_cfg = yaml.safe_load((root / "app_config" / "user_config.yaml").read_text())
 
-    assert (
-        default_cfg["integrations"]["scales"]["esphome_weight_sensor_id"]
-        == "weight_live_internal"
-    )
-    assert (
-        user_cfg["integrations"]["scales"]["esphome_weight_sensor_id"]
-        == "weight_live_internal"
-    )
+    assert default_cfg["integrations"]["scales"]["esphome_weight_sensor_id"] == "weight_live_internal"
+    assert user_cfg["integrations"]["scales"]["esphome_weight_sensor_id"] == "weight_live_internal"
 
 
 def test_migrate_legacy_scales_source_fixes_bad_esphome_weight_sensor_default():
@@ -53,7 +47,4 @@ def test_migrate_legacy_scales_source_fixes_bad_esphome_weight_sensor_default():
     }
 
     assert migrate_legacy_scales_source(user) is True
-    assert (
-        user["integrations"]["scales"]["esphome_weight_sensor_id"]
-        == "weight_live_internal"
-    )
+    assert user["integrations"]["scales"]["esphome_weight_sensor_id"] == "weight_live_internal"

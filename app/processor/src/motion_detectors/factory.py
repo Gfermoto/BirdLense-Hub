@@ -71,9 +71,10 @@ def build_motion_detector(
     )
 
     detectors: list[tuple[str, object]] = []
-    if bool(frigate_cfg.get("enabled")) and frigate_detector and (
-        legacy_force_primary
-        or (mqtt_broker and str(frigate_cfg.get("topic") or "").strip())
+    if (
+        bool(frigate_cfg.get("enabled"))
+        and frigate_detector
+        and (legacy_force_primary or (mqtt_broker and str(frigate_cfg.get("topic") or "").strip()))
     ):
         detectors.append(("frigate", frigate_detector))
 
@@ -82,9 +83,7 @@ def build_motion_detector(
 
     if bool(motion_sensor_cfg.get("enabled")):
         source = str(motion_sensor_cfg.get("source") or TRIGGER_SOURCE_MQTT).strip().lower()
-        if source == TRIGGER_SOURCE_MQTT and mqtt_broker and str(
-            motion_sensor_cfg.get("mqtt_topic") or ""
-        ).strip():
+        if source == TRIGGER_SOURCE_MQTT and mqtt_broker and str(motion_sensor_cfg.get("mqtt_topic") or "").strip():
             try:
                 from motion_detectors.mqtt_binary import MQTTBinaryMotionDetector
 
@@ -102,9 +101,11 @@ def build_motion_detector(
                     "MQTT motion detector unavailable, skip grouped motion sensor: %s",
                     exc,
                 )
-        elif source == TRIGGER_SOURCE_ESPHOME and str(motion_sensor_cfg.get("esphome_url") or "").strip() and str(
-            motion_sensor_cfg.get("esphome_sensor_id") or ""
-        ).strip():
+        elif (
+            source == TRIGGER_SOURCE_ESPHOME
+            and str(motion_sensor_cfg.get("esphome_url") or "").strip()
+            and str(motion_sensor_cfg.get("esphome_sensor_id") or "").strip()
+        ):
             try:
                 from motion_detectors.esphome_binary import ESPHomeBinaryMotionDetector
 

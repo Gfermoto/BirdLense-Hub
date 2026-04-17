@@ -15,6 +15,8 @@ from processor_support import get_data_dir, heartbeat_mqtt_ref
 if TYPE_CHECKING:
     from argparse import Namespace
 
+    from mqtt_aggregator import MQTTEventAggregator
+
 
 def load_scales_mqtt_topic_config() -> tuple[str, Optional[str], str]:
     """DATA_DIR, MQTT topic веса (если source MQTT-backed), unit.

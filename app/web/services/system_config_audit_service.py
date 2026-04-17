@@ -182,7 +182,7 @@ def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str]]
 
     if raw_scales.get("mqtt_topic_prefix") == "":
         warnings.append(
-            "user_config: integrations.scales.mqtt_topic_prefix is explicitly empty (\"\"): "
+            'user_config: integrations.scales.mqtt_topic_prefix is explicitly empty (""): '
             "this overrides the default prefix and the processor will not subscribe to "
             f"{DOCUMENTED_SCALES_MQTT_PREFIX}/weight unless mqtt_topic is set. Remove the key or set a real prefix."
         )
@@ -208,11 +208,7 @@ def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str]]
             "integrations.scales: both mqtt_topic and mqtt_topic_prefix are empty — no weight MQTT topic to subscribe."
         )
 
-    if (
-        prefix
-        and prefix.replace("\\", "/") != DOCUMENTED_SCALES_MQTT_PREFIX
-        and not mq_topic
-    ):
+    if prefix and prefix.replace("\\", "/") != DOCUMENTED_SCALES_MQTT_PREFIX and not mq_topic:
         warnings.append(
             f'integrations.scales.mqtt_topic_prefix is "{prefix}"; the stock BirdLense ESPHome example uses '
             f'"{DOCUMENTED_SCALES_MQTT_PREFIX}" for derived topics. If weight never updates, align this prefix '
