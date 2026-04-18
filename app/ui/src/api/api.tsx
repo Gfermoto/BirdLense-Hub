@@ -1213,6 +1213,9 @@ export interface CatalogCoverageMetrics {
 
 export interface CatalogCardsCoverageSnapshot {
   allowlist_total: number;
+  /** Allowlist file lines that resolved to some ``Species`` row (can exceed unique species). */
+  allowlist_lines_matched: number;
+  /** Distinct ``Species`` rows referenced by at least one allowlist line. */
   species_matched: number;
   with_image: number;
   with_description: number;
