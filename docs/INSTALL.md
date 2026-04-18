@@ -65,7 +65,7 @@ make verify
 
 ## Option 4: Image without repo (for users)
 
-No cloning — image and config only (single `birdlense` container; no Redis stack from `docker-compose.yml`):
+No cloning — image and config only (**one** `birdlense` service in `docker-compose.image.yml`). A full **git checkout** uses **`app/docker-compose.yml`**, which also starts **Redis** (`birdlense-redis`) for the default `REDIS_URL`; this minimal recipe does **not**:
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
@@ -107,13 +107,13 @@ cd BirdLense-Hub   # repo root (folder from git clone; rename OK)
 make deploy
 ```
 
-Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST`), Docker on server, **Node.js 22 + npm locally** for the UI build contract.
+Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST` / optional **`DEPLOY_SSH_PORT`**), Docker on server, **Node.js 22 + npm 10+ locally** — `scripts/deploy.sh` runs **`npm ci && npm run build`** in `app/ui` on your machine before rsync (avoids npm timeouts on the server).
 
 **Setup:** copy `scripts/deploy.local.sh.example` to `deploy.local.sh` and set `DEPLOY_HOST`, `DEPLOY_URL`, secrets; optional `DEPLOY_REMOTE_DIR`. File is gitignored.
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container `birdlense`, runs local UI `npm ci && npm run build`, rsync (excludes `app/data`, `app/app_config/user_config.yaml`, `.tools/` for local CodeQL, venvs, `site/`), merges secrets into `app/.env` on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), `make build && make start` in `app/` on the server, then runs the shared verify contract against `DEPLOY_URL`.
+**What it does:** stops/removes container **`birdlense`** (leaves **`birdlense-redis`** if present), runs **local** UI `npm ci && npm run build`, **rsync** with excludes aligned to `scripts/deploy.sh` (among others: **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, `node_modules`, ruff/pytest caches), merges secrets into **`app/.env`** on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), **`make build && make start`** in `app/` on the server, then **`scripts/verify-stack.sh`** against **`DEPLOY_URL`** (health, readiness, status, cameras when reachable).
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 

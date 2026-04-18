@@ -47,7 +47,7 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | Variable | Description |
 |----------|-------------|
 | `DATA_DIR` | Data directory (`/app/data` in Docker) |
-| `REDIS_URL` | **Docker:** set by default in `docker-compose.yml` (`redis://redis:6379/0`, service `birdlense-redis`). Override in `app/.env` for an external Redis. **Local run without Compose:** unset → in-process memory cache. |
+| `REDIS_URL` | **`app/docker-compose.yml`:** defaults to `redis://redis:6379/0` (service `birdlense-redis`). **`docker-compose.image.yml`:** no Redis container — omit or point to an **external** Redis; otherwise the hub uses an **in-process** cache. Override in `app/.env` in any layout. **Host run without Compose:** unset → in-process cache. |
 | `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. |
 | `SQLALCHEMY_POOL_SIZE` | PostgreSQL pool size (default `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | PostgreSQL pool overflow (default `15`) |

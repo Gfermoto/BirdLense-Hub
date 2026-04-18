@@ -36,6 +36,13 @@ make pull
 
 Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
 
+Проверка:
+
+```bash
+cd ..
+make verify
+```
+
 ## Вариант 3: Сборка из исходников
 
 ```bash
@@ -43,9 +50,16 @@ cd BirdLense-Hub/app
 make build && make start
 ```
 
+Проверка из корня репозитория:
+
+```bash
+cd ..
+make verify
+```
+
 ## Вариант 4: Образ без сборки (для пользователей)
 
-Без клонирования репо — только образ и конфиг (один контейнер `birdlense`, без Redis из `docker-compose.yml`):
+Без клонирования репо — только образ и конфиг (**один** сервис `birdlense` в `docker-compose.image.yml`). Полный **git clone** использует **`app/docker-compose.yml`**, где дополнительно поднимается **Redis** (`birdlense-redis`) под дефолтный `REDIS_URL`; в этом минимальном варианте Redis **нет**:
 
 ```bash
 mkdir -p birdlense-app && cd birdlense-app
@@ -79,13 +93,13 @@ cd BirdLense-Hub   # корень клона (имя после git clone; св�
 make deploy
 ```
 
-Требуется: SSH (настройте `~/.ssh/config` или `DEPLOY_HOST`), Docker на сервере, локально Node.js для сборки UI.
+Требуется: SSH (`~/.ssh/config` или `DEPLOY_HOST`, при необходимости **`DEPLOY_SSH_PORT`**), Docker на сервере, локально **Node.js 22 и npm 10+** — `scripts/deploy.sh` выполняет **`npm ci && npm run build`** в `app/ui` на вашей машине до rsync.
 
 **Настройки:** скопируйте `scripts/deploy.local.sh.example` в `deploy.local.sh` и задайте `DEPLOY_HOST`, `DEPLOY_URL`, секреты; при необходимости `DEPLOY_REMOTE_DIR`. Файл в .gitignore.
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер `birdlense`, собирает UI локально, rsync (без `app/data`, без `app/app_config/user_config.yaml`, без `.tools/` — локальный CodeQL, без venv и `site/`), дописывает секреты в `app/.env` на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` запускает **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + метрики GPU), на сервере в `app/` — `make build && make start`.
+**Что делает:** останавливает и удаляет контейнер **`birdlense`** (контейнер **`birdlense-redis`** не трогает), собирает UI **локально**, **rsync** с исключениями как в `scripts/deploy.sh` (в т.ч. **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, кэши ruff/pytest), дописывает секреты в **`app/.env`** на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` — **`bash scripts/docker-compose-intel-override-gen.sh`**, на сервере в `app/` — **`make build && make start`**, затем **`scripts/verify-stack.sh`** для **`DEPLOY_URL`** (health, readiness, status, камеры при доступности).
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
