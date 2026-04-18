@@ -15,7 +15,7 @@ In your local `scripts/deploy.local.sh` (not committed):
 export MCP_TOKEN="your-secret-token-min-16-chars"
 ```
 
-`make deploy` can merge this into `app/.env` on the server (see your deploy script).
+`make deploy` merges this into `app/.env` on the server (`scripts/deploy.sh`).
 
 **Option B — on the server**
 

@@ -60,6 +60,7 @@
 | **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
 | **Предыдущий/следующий ролик** | Тот же календарный день UTC: стрелки и счётчик на странице видео; `GET /api/ui/videos/:id/neighbors` |
 | **Система: ресурсы и посетители** | `/system`: графики CPU/RAM/диск/GPU (история на сервере + живой хвост, окно 6/24/48 ч), уникальные посетители за период; `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.ru.md) |
+| **Библиотека** | `/library` — календарь записей, экспорт датасетов, тест по файлам при **`video.source: file`**; **Система → Сканировать и импортировать** для роликов уже на диске |
 
 ---
 
@@ -91,6 +92,7 @@
 | Метод | Путь | Описание |
 |-------|------|----------|
 | GET | `/api/ui/health` | Health check |
+| GET | `/api/ui/readiness` | Готовность (БД, каталоги, компоненты) |
 | GET | `/api/ui/timeline` | Визиты за период |
 | GET | `/api/ui/timeline/export` | CSV, JSON, eBird |
 | GET | `/api/ui/unknowns` | Низкая confidence (params: start_time, end_time, limit) |

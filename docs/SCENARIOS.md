@@ -76,7 +76,7 @@
 
 ## Scenario 6: Server deployment
 
-See [INSTALL.md](./INSTALL.md) — “Server deployment (`make deploy`)”. **x86_64 / amd64** (Intel or AMD) only; ARM / aarch64 not supported or planned.
+See [INSTALL.md](./INSTALL.md) — “Deploy to server (`make deploy`)” and the operator checklist [DEPLOY_SERVER.md](./DEPLOY_SERVER.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** for post-deploy **`verify-stack`**, optional **`DEPLOY_SSH_PORT`**. After each deploy: `BASE_URL=... make verify` from the repo root. **x86_64 / amd64** (Intel or AMD) only; ARM / aarch64 not supported or planned.
 
 ---
 
