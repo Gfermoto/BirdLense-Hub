@@ -74,7 +74,7 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for details.
 
 ### Maintainer checklist (before release)
 
-See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) § *Maintainer checklist* — `make test` / `make test-web`, `mkdocs build --strict`, optional E2E, post-deploy smoke.
+See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) § *Maintainer checklist* — from repo root **`make ci-local`** (or **`make ci-local-docker`** for image + Playwright smoke), `make test` / `make test-web` in `app/`, `mkdocs build --strict`, optional E2E, post-deploy smoke.
 
 ## Reporting issues
 
