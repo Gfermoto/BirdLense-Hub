@@ -334,6 +334,7 @@ export interface Settings {
     min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
     /** YOLO без треков, но Frigate прислал событие — сохранить визит по Frigate */
     frigate_standalone_when_no_yolo?: boolean;
+    frigate_standalone_when_no_accepted_species?: boolean;
     frigate_standalone_min_score?: number;
     frigate_standalone_missing_score_fallback?: number;
     frigate_standalone_excluded_min_score?: number;
