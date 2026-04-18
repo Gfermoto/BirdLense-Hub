@@ -944,6 +944,8 @@ export type ProcessorWeightsSlotStatus = {
   default_path: string;
   bytes: number | null;
   mtime_unix: number | null;
+  /** First 16 hex chars of SHA256 over file bytes (matches CLI validate report). */
+  fingerprint_sha256_16?: string | null;
 };
 
 export type ProcessorWeightsAllowlistStatus = {
@@ -951,6 +953,7 @@ export type ProcessorWeightsAllowlistStatus = {
   uses_custom_dir: boolean;
   bytes: number | null;
   mtime_unix: number | null;
+  fingerprint_sha256_16?: string | null;
 };
 
 export type ProcessorWeightsStatusResponse = {
@@ -1213,6 +1216,9 @@ export interface CatalogCoverageMetrics {
 
 export interface CatalogCardsCoverageSnapshot {
   allowlist_total: number;
+  /** Allowlist file lines that resolved to some ``Species`` row (can exceed unique species). */
+  allowlist_lines_matched: number;
+  /** Distinct ``Species`` rows referenced by at least one allowlist line. */
   species_matched: number;
   with_image: number;
   with_description: number;
@@ -1244,6 +1250,8 @@ export interface CatalogRepairStatus {
     interval_min: number;
     limit: number;
     next_run_in_sec: number;
+    /** Round-robin offset for low-limit catalog repair (see BIRDLENSE_CATALOG_REPAIR_LIMIT). */
+    priority_rotate?: number;
   };
 }
 
@@ -1282,6 +1290,159 @@ export const startCatalogRepair = async (
   );
   return response.data;
 };
+
+export type SystemJobStatus = {
+  status: string;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  progress?: Record<string, unknown> | null;
+};
+
+export type BirdnetSpeciesFifoRow = {
+  display_label: string;
+  canonical_for_video: string;
+  scientific_name?: string | null;
+  active: number;
+  last_heard_at?: string;
+  seconds_since_heard?: number;
+  event_count: number;
+};
+
+export type BirdnetFifoDialogSnapshot = {
+  queue_len?: number;
+  fifo_cap?: number;
+  fifo_fill_ratio?: number;
+  mqtt_connected?: boolean;
+  processor_pid?: number;
+  species_hearing?: {
+    active_within_hours?: number;
+    by_species?: Record<string, { active?: number }>;
+  };
+  species_fifo_table?: BirdnetSpeciesFifoRow[];
+  species_counts?: Record<string, number>;
+};
+
+export type BirdnetFifoPayload = {
+  available?: boolean;
+  snapshot?: BirdnetFifoDialogSnapshot | null;
+} & Record<string, unknown>;
+
+const postSystemAction = async (
+  path: string,
+  body: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> => {
+  const response = await axios.post(`${BASE_API_URL}${path}`, body, {
+    withCredentials: true,
+  });
+  return response.data as Record<string, unknown>;
+};
+
+export const fetchFusionExportStatus = async (): Promise<SystemJobStatus> => {
+  const response = await axios.get(`${BASE_API_URL}/system/fusion/export/status`, {
+    withCredentials: true,
+  });
+  return response.data as SystemJobStatus;
+};
+
+export const fetchFusionEvalStatus = async (): Promise<SystemJobStatus> => {
+  const response = await axios.get(`${BASE_API_URL}/system/fusion/eval/status`, {
+    withCredentials: true,
+  });
+  return response.data as SystemJobStatus;
+};
+
+export const startFusionExport = async (): Promise<{ message?: string }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/fusion/export`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data as { message?: string };
+};
+
+export const startFusionEval = async (): Promise<{ message?: string }> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/fusion/eval`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data as { message?: string };
+};
+
+export const downloadLatestFusionExport = (): void => {
+  window.open(
+    `${BASE_API_URL}/system/fusion/export/download`,
+    '_blank',
+    'noopener,noreferrer',
+  );
+};
+
+/** Long-form CSV from the last successful fusion eval (section / metric / value). */
+export const downloadLatestFusionEvalReport = (): void => {
+  window.open(
+    `${BASE_API_URL}/system/fusion/eval/download`,
+    '_blank',
+    'noopener,noreferrer',
+  );
+};
+
+export const fetchBirdnetFifoSnapshot = async (): Promise<BirdnetFifoPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
+    withCredentials: true,
+  });
+  return response.data as BirdnetFifoPayload;
+};
+
+export const seedSpeciesRegistry = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/species-registry/seed');
+
+export const backfillSpeciesRegistry = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/species-registry/backfill', { dry_run: false });
+
+export const enrichSpeciesRegistryMetadata = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/species-registry/enrich-metadata/start', {
+    limit: 300,
+    retry_failed_only: false,
+  });
+
+export const materializeSpeciesAllowlist = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/species-registry/materialize-allowlist', {
+    dry_run: false,
+    fill_metadata: true,
+  });
+
+export const mergeDuplicateSpecies = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/merge-duplicate-species');
+
+export const reconcileSpeciesCatalog = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/species-catalog/reconcile', { dry_run: false });
+
+export const previewBrokenVideosPurge = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/diagnostics/broken-videos/purge', {
+    dry_run: true,
+    max_scan: 200_000,
+  });
+
+export const purgeBrokenVideosBatch = async (
+  confirmText: string,
+): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/diagnostics/broken-videos/purge', {
+    dry_run: false,
+    confirm_text: confirmText,
+    limit: 500,
+  });
+
+export const previewNoSpeciesVideosPurge = async (): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/diagnostics/no-species-videos/purge', { dry_run: true });
+
+export const purgeNoSpeciesVideosBatch = async (
+  confirmText: string,
+): Promise<Record<string, unknown>> =>
+  postSystemAction('/system/diagnostics/no-species-videos/purge', {
+    dry_run: false,
+    confirm_text: confirmText,
+    limit: 500,
+  });
 
 /** Lightweight: only species with count > 0 (for Settings exclude list). */
 export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: string; count: number }>> => {

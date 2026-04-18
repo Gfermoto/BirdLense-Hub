@@ -3,6 +3,7 @@ import pytest
 from app_config.app_config import app_config
 import services.species_registry_service as registry_mod
 from services.species_registry_service import (
+    _rotate_need_slice,
     enrich_species_metadata,
     repair_recently_reset_species_metadata,
     resolve_species_name,
@@ -30,6 +31,12 @@ def _disable_settings_passwords_for_registry_tests(client, monkeypatch):
     finally:
         app_config.set("general.settings_password", old_admin)
         app_config.set("general.contributor_password", old_contrib)
+
+
+def test_rotate_need_slice_for_catalog_repair_window():
+    assert _rotate_need_slice([1, 2, 3, 4, 5], 0) == [1, 2, 3, 4, 5]
+    assert _rotate_need_slice([1, 2, 3, 4, 5], 2) == [3, 4, 5, 1, 2]
+    assert _rotate_need_slice([1, 2, 3], 5) == [3, 1, 2]
 
 
 class TestSpeciesRegistryApi:
@@ -193,7 +200,7 @@ class TestSpeciesMetadataRepair:
 
             monkeypatch.setattr(
                 registry_mod,
-                "update_species_info_from_wiki",
+                "enrich_species_card_metadata",
                 fake_update_species_info,
             )
 
@@ -227,7 +234,7 @@ class TestSpeciesMetadataRepair:
 
             monkeypatch.setattr(
                 registry_mod,
-                "update_species_info_from_wiki",
+                "enrich_species_card_metadata",
                 fake_update_species_info,
             )
 
@@ -239,3 +246,38 @@ class TestSpeciesMetadataRepair:
             assert stats["repaired"] == 1
             assert repaired.image_url == "https://example.com/aberts.jpg"
             assert repaired.metadata_source == "inaturalist"
+
+
+def test_catalog_cards_coverage_counts_per_allowlist_line(app, monkeypatch):
+    """Regression: metrics vs allowlist length must be per file line, not deduped species only."""
+    from services.species_registry_service import catalog_cards_coverage_snapshot
+
+    with app.app_context():
+        sp = Species(
+            name="Testus birdus (Test Bird)",
+            description="d",
+            image_url="https://example.com/t.jpg",
+            metadata_source=None,
+            metadata_source_url=None,
+        )
+        db.session.add(sp)
+        db.session.commit()
+
+        monkeypatch.setattr(
+            registry_mod,
+            "load_catalog_allowlist_names",
+            lambda _get: (
+                "Testus birdus (Test Bird)",
+                "Testus birdus (Test Bird)",
+                "No Such Species Xyzabc",
+            ),
+        )
+
+        snap = catalog_cards_coverage_snapshot(app_config.get)
+        assert snap["allowlist_total"] == 3
+        assert snap["allowlist_lines_matched"] == 2
+        assert snap["species_matched"] == 1
+        assert snap["with_image"] == 2
+        assert snap["with_description"] == 2
+        assert snap["complete_cards"] == 2
+        assert snap["completion_percent"] == round((2.0 / 3.0) * 100.0, 2)

@@ -38,6 +38,16 @@ make test-web
 
 UI dependencies use **Node 22** in `app/ui/`. Full details: [LOCAL_DEV](./LOCAL_DEV.md).
 
+### Full CI locally (no GitHub push)
+
+From the **repository root** (Node **≥ 22** required for the UI step):
+
+```bash
+make ci-local
+```
+
+Adds **`.venv-ci`** / **`.venv-docs`** (gitignored). For Docker image tests + Playwright smoke: `make ci-local-docker`. See [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+
 ## 3. Deploy to a server
 
 From the repository root:

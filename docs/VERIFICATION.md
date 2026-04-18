@@ -47,7 +47,7 @@ python3 scripts/eval_fusion_calibration.py --data /tmp/fusion_traces.csv --label
 
 **Manual smoke on hub:** open a clip from Timeline → prev/next → back returns to list; direct URL (no `state`) → stepping still works; browser back follows history.
 
-**Not run here:** weekly Playwright E2E, full `make docs` unless MkDocs changed.
+**Not run here:** scheduled Playwright E2E (daily workflow; see [TESTING](./TESTING.md) §1), full `make docs` unless MkDocs changed.
 
 ## 2026-04-01 — stabilization audit and safety hardening
 

@@ -45,7 +45,7 @@ python3 scripts/eval_fusion_calibration.py --data /tmp/fusion_traces.csv --label
 
 **Рекомендуется вручную на стенде:** открыть ролик с Timeline → шаг prev/next → «Назад» возвращает в список; прямой заход по URL без `state` — навигация между роликами работает, «Назад» в браузере — по истории.
 
-**Вне объёма автопрогона:** weekly E2E Playwright, полный `make docs` при изменении MkDocs.
+**Вне объёма автопрогона:** E2E Playwright по расписанию (ежедневный workflow; см. [TESTING.ru](./TESTING.ru.md) §1), полный `make docs` при изменении MkDocs.
 
 ## 2026-04-01 — аудит стабилизации и hardening
 

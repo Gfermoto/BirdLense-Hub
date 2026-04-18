@@ -4,19 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
 import json
 
-from app_config.app_config import app_config
 from models import Video, Species, VideoSpecies, SpeciesVisit
-from services.species_catalog_allowlist_service import (
-    load_catalog_allowlist_norm_keys,
-    species_matches_allowlist,
-)
-from services.species_registry_service import resolve_species_name
-from species_constants import GENERIC_BIRD_SPECIES
-from util import (
-    get_parent_name_for_species,
-    load_species_canonical_mapping,
-    update_species_info_from_wiki,
-)
+from services.species_identity_service import SpeciesIdentityService
 
 
 def _ensure_utc(dt: datetime) -> datetime:
@@ -29,10 +18,21 @@ def _ensure_utc(dt: datetime) -> datetime:
 class VisitProcessor:
     """Правила склейки визитов по таймауту и привязки детекций к видео."""
 
-    def __init__(self, db, logger, visit_timeout: int = 60):
+    def __init__(
+        self,
+        db,
+        logger,
+        visit_timeout: int = 60,
+        *,
+        update_species_metadata: bool = True,
+        species_identity_service: SpeciesIdentityService | None = None,
+    ):
         self.db = db
         self.logger = logger
         self.visit_timeout = visit_timeout
+        # Kept for backward compatibility. Hot-path metadata enrichment is disabled.
+        self.update_species_metadata = bool(update_species_metadata)
+        self.species_identity = species_identity_service or SpeciesIdentityService(db, logger)
 
     def process_video_detection(
         self,
@@ -51,7 +51,7 @@ class VisitProcessor:
         """
         video_start = _ensure_utc(video.start_time)
         detection_time = video_start + timedelta(seconds=detection_start)
-        visit, _ = self._get_or_create_visit(species, detection_time)
+        visit, _ = self.get_or_create_visit(species, detection_time)
 
         # Extend visit duration
         visit.end_time = max(visit.end_time, video_start + timedelta(seconds=detection_end))
@@ -145,14 +145,10 @@ class VisitProcessor:
         # First pass: Process all detections
         for det in detections:
             visit_eligible = bool(det.get("visit_eligible", True))
-            species = self._get_or_create_species(det["species_name"])
+            species = self.get_or_create_species(det["species_name"])
             if not species:
                 self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue
-
-            # Update species info from Wikipedia
-            if visit_eligible:
-                update_species_info_from_wiki(species)
 
             if det["source"] == "video":
                 if visit_eligible:
@@ -197,11 +193,11 @@ class VisitProcessor:
 
         # Second pass: Update simultaneous counts for affected visits
         for visit_data in visits_to_update.values():
-            self._update_simultaneous_count(visit_data["visit"], visit_data["detections"])
+            self.update_simultaneous_count(visit_data["visit"], visit_data["detections"])
 
         return video_species_records
 
-    def _get_or_create_visit(self, species: Species, detection_time: datetime) -> Tuple[SpeciesVisit, bool]:
+    def get_or_create_visit(self, species: Species, detection_time: datetime) -> Tuple[SpeciesVisit, bool]:
         """
         Gets existing or creates new visit for a species.
         Always creates visits at the detection species level.
@@ -234,97 +230,9 @@ class VisitProcessor:
         self.db.session.add(visit)
         return visit, True
 
-    def _get_or_create_unknown_species(self) -> Optional[Species]:
-        """Перенос мусора / вне allowlist — одна строка «Unknown»."""
-        existing = Species.query.filter_by(name="Unknown").first()
-        if existing:
-            return existing
-        birds = Species.query.filter_by(name="Birds").first()
-        parent_id = birds.id if birds else None
-        row = Species(name="Unknown", parent_id=parent_id, active=False)
-        self.db.session.add(row)
-        self.db.session.flush()
-        self.logger.info('Created species "Unknown" for blocked/off-allowlist ingest')
-        return row
-
-    def _ingest_blocked(
-        self,
-        display_name: str,
-        raw_normalized: str,
-        taxon_common_name: str | None,
-    ) -> bool:
-        """Строгий allowlist: если задан и включён — имена вне списка → Unknown."""
-        canonical_candidates = {
-            str(display_name or "").strip().lower(),
-            str(raw_normalized or "").strip().lower(),
-            str(taxon_common_name or "").strip().lower(),
-        }
-        if GENERIC_BIRD_SPECIES.strip().lower() in canonical_candidates:
-            return False
-        if not bool(app_config.get("species.catalog_strict_ingest")):
-            return False
-        allow = load_catalog_allowlist_norm_keys(app_config.get)
-        if allow is None:
-            self.logger.warning(
-                "Strict catalog ingest is enabled but allowlist is unavailable; "
-                'blocking species "%s" until allowlist is restored.',
-                display_name or raw_normalized or taxon_common_name or "unknown",
-            )
-            return True
-        mapping = load_species_canonical_mapping()
-        ok_display = species_matches_allowlist(display_name or "", allow, mapping)
-        ok_raw = species_matches_allowlist(raw_normalized or "", allow, mapping)
-        return not (ok_display or ok_raw)
-
-    def _get_or_create_species(self, name: str) -> Optional[Species]:
-        """Вид по имени или создание (Frigate/YOLO/BirdNET). bird → Bird."""
-        if not name or not isinstance(name, str):
-            return None
-        normalized = name.strip()
-        if not normalized:
-            return None
-        if normalized.lower() in {"bird", "unknown"}:
-            normalized = GENERIC_BIRD_SPECIES
-        resolution = resolve_species_name(normalized, source="ingest")
-        taxon = resolution.taxon if resolution.found else None
-        taxon_common = taxon.common_name if taxon else None
-        canonical_name = taxon_common if taxon else normalized
-
-        species = Species.query.filter_by(name=canonical_name).first()
-        if species:
-            tx = species.taxon
-            cmn = tx.common_name if tx else None
-            if self._ingest_blocked(species.name or "", normalized, cmn):
-                return self._get_or_create_unknown_species()
-            if resolution.found and taxon and species.taxon_id != taxon.id:
-                species.taxon_id = taxon.id
-            return species
-
-        if self._ingest_blocked(canonical_name, normalized, taxon_common):
-            return self._get_or_create_unknown_species()
-
-        birds = Species.query.filter_by(name="Birds").first()
-        parent_id = birds.id if birds else None
-        parent_name = get_parent_name_for_species(canonical_name)
-        if parent_name:
-            parent_species = Species.query.filter_by(name=parent_name).first()
-            if parent_species:
-                parent_id = parent_species.id
-        species = Species(
-            name=canonical_name,
-            parent_id=parent_id,
-            active=False,
-            taxon_id=taxon.id if taxon else None,
-        )
-        self.db.session.add(species)
-        self.db.session.flush()
-        self.logger.info(
-            'Created species "%s" (parent_id=%s, resolver_method=%s)',
-            canonical_name,
-            parent_id,
-            resolution.method,
-        )
-        return species
+    def get_or_create_species(self, name: str) -> Optional[Species]:
+        """Resolve or create a catalog species via the dedicated identity service."""
+        return self.species_identity.resolve_or_create_species(name, source="ingest")
 
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:
         """Активный визит для аудио: вид или его дочерние."""
@@ -344,7 +252,7 @@ class VisitProcessor:
             .first()
         )
 
-    def _update_simultaneous_count(self, visit: SpeciesVisit, current_detections: List[VideoSpecies]) -> None:
+    def update_simultaneous_count(self, visit: SpeciesVisit, current_detections: List[VideoSpecies]) -> None:
         """max_simultaneous по перекрывающимся детекциям в текущем видео."""
         video_detections = [vs for vs in current_detections if vs.source == "video"]
         if not video_detections:
@@ -360,3 +268,12 @@ class VisitProcessor:
                     break
             max_concurrent = max(max_concurrent, concurrent)
         visit.max_simultaneous = max(visit.max_simultaneous, max_concurrent)
+
+    def _get_or_create_visit(self, species: Species, detection_time: datetime) -> Tuple[SpeciesVisit, bool]:
+        return self.get_or_create_visit(species, detection_time)
+
+    def _get_or_create_species(self, name: str) -> Optional[Species]:
+        return self.get_or_create_species(name)
+
+    def _update_simultaneous_count(self, visit: SpeciesVisit, current_detections: List[VideoSpecies]) -> None:
+        self.update_simultaneous_count(visit, current_detections)

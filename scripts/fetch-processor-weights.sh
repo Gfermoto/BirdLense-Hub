@@ -166,4 +166,5 @@ ensure_two_stage_classifier
 echo "Two-stage weights ready:"
 echo "  detector:   $DETECTOR_DEST"
 echo "  classifier: $CLASSIFIER_DEST"
+echo "Validate rollout artifacts with: make validate-weights"
 echo "Legacy compatibility asset is optional: use --legacy-single-stage for app/yolo11n.pt"

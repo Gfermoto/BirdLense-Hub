@@ -8,7 +8,11 @@ import time
 from api import API
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
-processor_status = {"last_video_ok_at": None, "last_yolo_ok_at": None}
+processor_status = {
+    "last_video_ok_at": None,
+    "last_yolo_ok_at": None,
+    "last_yolo_detection_at": None,
+}
 
 
 def get_data_dir() -> str:
@@ -88,6 +92,8 @@ def heartbeat():
                 data["last_video_ok_at"] = processor_status["last_video_ok_at"]
             if processor_status.get("last_yolo_ok_at"):
                 data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
+            if processor_status.get("last_yolo_detection_at"):
+                data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
             ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
             if ref is not None:
                 try:

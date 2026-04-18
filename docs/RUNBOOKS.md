@@ -68,6 +68,8 @@ Typical fixes:
 
 If `GET /api/ui/system/config-audit` still lists deprecated keys such as `gallery.*` or `general.heimdall_url`, they are coming from **`app/app_config/user_config.yaml`** on the hub (the UI never returns real secrets, so you cannot “copy” them out for cleanup).
 
+The same script also drops `integrations.scales.mqtt_topic`, `mqtt_bird_present_topic`, and `mqtt_command_topic` when they are explicitly set to `""` in YAML, because that overrides topic derivation from `mqtt_topic_prefix` (shows up as warnings in the configuration audit).
+
 On the server (adjust paths to your deploy directory):
 
 ```bash

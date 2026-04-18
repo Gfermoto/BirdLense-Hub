@@ -255,6 +255,74 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['species_name'] == 'Bird'
     assert out[0]['decision_kind'] == 'frigate_standalone'
     assert out[0].get('frigate_standalone') is True
+    assert out[0]['primary_provider'] == 'frigate'
+    assert out[0]['primary_signal'] == 'frigate_standalone'
+    assert out[0]['threshold_path'] == 'frigate_standalone_min_score'
+    assert out[0]['fallback_used'] is True
+    assert out[0]['fallback_reason'] == 'frigate_standalone'
+    assert out[0]['yolo_track_present'] is False
+
+
+def test_frigate_standalone_injects_when_yolo_only_generic():
+    """YOLO accepted only generic Bird — still add Frigate standalone rows (regression guard)."""
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    base_cfg = {
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.34,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_when_no_accepted_species': True,
+        'detection.frigate_standalone_min_score': 0.48,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    }
+    video = [
+        {
+            **_base_detection('Bird'),
+            'confidence': 0.44,
+            'classifier_confidence': None,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'start_time': 0.0,
+            'end_time': 18.0,
+        },
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'label': 'Great Tit',
+            'confidence': 0.88,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+        },
+    ]
+    out_on = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=DummyConfig(base_cfg),
+    )
+    kinds_on = {str(d.get('decision_kind') or '') for d in out_on}
+    assert 'frigate_standalone' in kinds_on or any(
+        str(d.get('species_name') or '') == 'Great Tit' for d in out_on
+    )
+
+    cfg_off = DummyConfig({**base_cfg, 'detection.frigate_standalone_when_no_accepted_species': False})
+    out_off = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg_off,
+    )
+    kinds_off = {str(d.get('decision_kind') or '') for d in out_off}
+    assert 'frigate_standalone' not in kinds_off
 
 
 def test_frigate_standalone_uses_missing_score_fallback():
@@ -821,3 +889,178 @@ def test_arbitration_downgrades_strong_unresolved_conflict_to_review_only():
     assert out[0]['decision_kind'] == 'review_only_generic'
     assert out[0]['decision_reason'] == 'downgraded_to_generic_due_to_strong_conflict'
     assert out[0]['outcome_bucket'] == 'review_only'
+
+
+def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
+    rows = [
+        {
+            **_base_detection('Bird'),
+            'track_id': -2,
+            'species_name': 'Bird',
+            'species': 'Bird',
+            'confidence': 0.76,
+            'start_time': 0.0,
+            'end_time': 48.2,
+            'detection_provider': 'frigate',
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'classifier_confidence': None,
+        },
+        {
+            **_base_detection('Eurasian Jay'),
+            'track_id': -1,
+            'species_name': 'Eurasian Jay',
+            'species': 'Eurasian Jay',
+            'confidence': 0.79,
+            'start_time': 0.0,
+            'end_time': 48.2,
+            'detection_provider': 'frigate',
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'classifier_confidence': None,
+        },
+    ]
+
+    out = apply_hypothesis_arbitration(rows)
+
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Eurasian Jay'
+    assert out[0]['decision_reason'] == 'absorbed_generic_into_frigate_species'
+    assert out[0]['decision_reason_before_arbitration'] == 'frigate_standalone'
+    assert 'absorbed_generic_into_frigate_species' in out[0].get('_fusion_used', '')
+
+
+def test_arbitration_keeps_generic_bird_when_frigate_species_is_weak():
+    rows = [
+        {
+            **_base_detection('Bird'),
+            'track_id': -2,
+            'species_name': 'Bird',
+            'species': 'Bird',
+            'confidence': 0.76,
+            'start_time': 0.0,
+            'end_time': 48.2,
+            'detection_provider': 'frigate',
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'classifier_confidence': None,
+        },
+        {
+            **_base_detection('Eurasian Jay'),
+            'track_id': -1,
+            'species_name': 'Eurasian Jay',
+            'species': 'Eurasian Jay',
+            'confidence': 0.61,
+            'start_time': 0.0,
+            'end_time': 48.2,
+            'detection_provider': 'frigate',
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'classifier_confidence': None,
+        },
+    ]
+
+    out = apply_hypothesis_arbitration(rows)
+
+    assert len(out) == 2
+    assert sorted(row['species_name'] for row in out) == ['Bird', 'Eurasian Jay']
+
+
+def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=48)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_notify': True,
+        'detection.frigate_standalone_min_score': 0.4,
+        'detection.frigate_standalone_missing_score_fallback': 0.68,
+        'processor.multi_camera_groups': [],
+        'video.cameras': [],
+    })
+    mqtt_events = [
+        {
+            'source': 'frigate',
+            'species': 'Eurasian Jay',
+            'confidence': 0.79296875,
+            'timestamp': start.isoformat(),
+        },
+        {
+            'source': 'frigate',
+            'species': 'Bird',
+            'confidence': 0.76171875,
+            'timestamp': start.isoformat(),
+        },
+    ]
+
+    out = build_fused_video_detections(
+        [],
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Eurasian Jay'
+    assert out[0]['decision_reason'] == 'absorbed_generic_into_frigate_species'
+    assert out[0]['decision_reason_before_arbitration'] == 'frigate_standalone'
+    assert out[0]['detection_provider'] == 'frigate'
+
+
+def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separate():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=60)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 10,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    detections = [
+        {
+            **_base_detection('Bird'),
+            'track_id': 1,
+            'confidence': 0.61,
+            'classifier_confidence': 0.17,
+            'start_time': 1.0,
+            'end_time': 3.0,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'frames': [{'t': 1.0}],
+        },
+        {
+            **_base_detection('Bird'),
+            'track_id': 2,
+            'confidence': 0.73,
+            'classifier_confidence': 0.31,
+            'start_time': 31.0,
+            'end_time': 39.0,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'frames': [{'t': 31.0}],
+        },
+    ]
+
+    out = build_fused_video_detections(
+        detections,
+        [],
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert len(out) == 2
+    assert [(row['track_id'], row['start_time'], row['end_time']) for row in out] == [
+        (1, 1.0, 3.0),
+        (2, 31.0, 39.0),
+    ]

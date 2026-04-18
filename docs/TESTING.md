@@ -22,6 +22,8 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, **Settings UI coverage** report (artifact + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **catalog cards audit** script (artifact) |
 
+The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository **default branch** only, in GitHub) and via **`workflow_dispatch`**, running the same jobs without a code push.
+
 **`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
 
 **Policy & thresholds:** [CI_AND_QUALITY](./CI_AND_QUALITY.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TypeScript codegen).
@@ -92,7 +94,9 @@ API-only (no browser): `cd app/e2e && npm test -- --grep @api`
 
 Debug one file / UI mode: `cd app/e2e && npx playwright test tests/migration.spec.ts` or `npx playwright test --debug tests/migration.spec.ts`.
 
-**Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **weekly** and on **workflow_dispatch** — not a required check; use it to catch regressions without running Playwright on every PR.
+**Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **daily** and on **`workflow_dispatch`** — not a required check on every PR.
+
+**Local parity:** from repo root, **`make ci-local`** (and optionally **`make ci-local-docker`**) runs the same layers as CI without opening a PR — see [CI_AND_QUALITY](./CI_AND_QUALITY.md).
 
 **Expanding coverage:** extra journeys (full login, timeline drill-down, species correction flows) are added **incrementally** when a change needs them; track new specs in the PR and in this doc — no standing umbrella issue required.
 

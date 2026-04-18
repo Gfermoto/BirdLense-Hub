@@ -2,8 +2,6 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -12,6 +10,8 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { fetchConfigAudit } from '../../api/api';
+import { localizedConfigAuditWarning } from './configAuditWarningLocale';
+import { SystemCardShell } from './SystemCardShell';
 
 export function ConfigAuditCard({
   simple = false,
@@ -33,17 +33,21 @@ export function ConfigAuditCard({
   const unknownKeys = Array.isArray(data.unknown_keys) ? data.unknown_keys : [];
   const configWarnings = Array.isArray(data.config_warnings) ? data.config_warnings : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
+  const statusTone =
+    configWarnings.length > 0 || deprecatedKeys.length > 0 ? 'warning' : 'success';
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" sx={{ mb: 1.5 }}>
-          {t('system.configAuditTitle')}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('system.configAuditHint')}
-        </Typography>
-
+    <SystemCardShell
+      title={t('system.configAuditTitle')}
+      description={t('system.configAuditHint')}
+      statusLabel={
+        configWarnings.length > 0 || deprecatedKeys.length > 0
+          ? t('system.configAuditNeedsReview')
+          : t('system.readinessReady')
+      }
+      statusTone={statusTone}
+    >
+      <Box>
         {sm?.enabled === true && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -76,7 +80,10 @@ export function ConfigAuditCard({
             <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
               {configWarnings.map((w, i) => (
                 <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
-                  <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={w} />
+                  <ListItemText
+                    primaryTypographyProps={{ variant: 'body2' }}
+                    primary={localizedConfigAuditWarning(w, t)}
+                  />
                 </ListItem>
               ))}
             </List>
@@ -118,7 +125,7 @@ export function ConfigAuditCard({
             {unknownKeys.length > 8 ? ' ...' : ''}
           </Alert>
         )}
-      </CardContent>
-    </Card>
+      </Box>
+    </SystemCardShell>
   );
 }

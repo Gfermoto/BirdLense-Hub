@@ -61,6 +61,12 @@ class FrameProcessor:
         """
         Process frame. frame_time: optional seconds (for video file); else uses elapsed real time.
         """
+        self.last_run_stats = {
+            "yolo_ran": False,
+            "yolo_track_found": False,
+            "light_gate_blocked": False,
+            "result_count": 0,
+        }
         if img is None:
             raise Exception("Frame is missing")
         self.cnt += 1
@@ -74,17 +80,22 @@ class FrameProcessor:
         if now_m < self._low_light_cooldown_until:
             # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
             time.sleep(min(0.02, self._low_light_cooldown_until - now_m))
+            self.last_run_stats["light_gate_blocked"] = True
             return False
 
         if not self.light_detector.has_sufficient_light(img):
             # Throttle dark-frame handling without blocking the recording thread (#224).
             self._low_light_cooldown_until = now_m + 1.0
             time.sleep(0.02)
+            self.last_run_stats["light_gate_blocked"] = True
             return False
 
         st = time.time()
         min_conf = float(app_config.get("processor.min_confidence_binary") or 0.22)
+        self.last_run_stats["yolo_ran"] = True
         results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
+        self.last_run_stats["result_count"] = len(results or [])
+        self.last_run_stats["yolo_track_found"] = bool(results)
 
         if self.save_images and results:
             debug_img = img.copy()
@@ -190,3 +201,9 @@ class FrameProcessor:
         self.start_time = time.time()
         self.cnt = 0
         self._low_light_cooldown_until = 0.0
+        self.last_run_stats = {
+            "yolo_ran": False,
+            "yolo_track_found": False,
+            "light_gate_blocked": False,
+            "result_count": 0,
+        }

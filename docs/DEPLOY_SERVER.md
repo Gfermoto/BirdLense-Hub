@@ -9,9 +9,10 @@ Minimal production deployment checklist. Narrative and context: [INSTALL](./INST
 - Ensure SSH access from your local machine to the server.
 - Create `scripts/deploy.local.sh` in repo root (copy from `scripts/deploy.local.sh.example`).
 - Set at least:
-  - `DEPLOY_HOST` — SSH target
-  - `DEPLOY_URL` — public hub URL
-  - optional `DEPLOY_REMOTE_DIR`
+  - `DEPLOY_HOST` — SSH target (host alias from `~/.ssh/config` is fine)
+  - `DEPLOY_URL` — hub base URL used **after** deploy for `scripts/verify-stack.sh` (e.g. `http://192.168.1.11:8085` or `https://your.domain/`)
+  - optional `DEPLOY_REMOTE_DIR` (default **`/root/BirdLense`** on the server)
+  - optional **`DEPLOY_SSH_PORT`** when SSH is not on port 22
 
 Example:
 
@@ -28,20 +29,25 @@ From repository root:
 make deploy
 ```
 
-The command:
+The command (see `scripts/deploy.sh`):
 
-1. Syncs code to server (excluding `app/data`, `site/`, local helper folders).
-2. Runs local UI `npm ci && npm run build`, then `make stop`, `make build`, `make start` on server.
-3. Runs the shared verify contract against `DEPLOY_URL`.
+1. Stops/removes the **`birdlense`** app container (Redis container is left running if present).
+2. Runs **`npm ci && npm run build`** in **`app/ui` on your local machine** — requires **Node.js 22** and **npm 10+**.
+3. **rsync** repository to the server (excluding `app/data`, `datasets/`, `app/.env`, `user_config.yaml`, `.venv-ci`, `.venv-docs`, `.tools/`, caches, etc.).
+4. On the server: **`make stop`**, **`make build`**, **`make start`** under `app/`.
+5. Runs **`scripts/verify-stack.sh`** with **`BASE_URL=${DEPLOY_URL}`** (health, readiness, status, cameras when reachable).
 
 ## 3) Verify
 
-- Open UI: `http://<server>:8085`
-- Run the shared verify contract:
+- Open UI: your **`DEPLOY_URL`** (port **8085** unless you changed **`BIRDLENSE_PORT`**).
+- From the **repository root** on your laptop, run the same contract **`make deploy`** uses:
 
 ```bash
 BASE_URL=http://<server>:8085 make verify
 ```
+
+(`make verify` wraps **`scripts/verify-stack.sh`**.)
+
 
 - Or check the endpoints manually:
 

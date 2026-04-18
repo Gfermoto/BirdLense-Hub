@@ -25,7 +25,7 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | Secret / variable | Role | Rotation impact |
 |-------------------|------|-----------------|
 | **`FLASK_SECRET_KEY`** | Flask session cookie signing | **All browser sessions invalidated** — operators sign in to Settings again. |
-| **`PROCESSOR_SECRET`** | `X-Processor-Token` for processor → web internal API | If mismatch: processor logs **403**, `processor_secret_configured` / activity issues. Must be **one value** in `.env` (same container reads it for both sides). |
+| **`PROCESSOR_SECRET`** | `X-Processor-Token` for processor → web internal API | If mismatch: processor logs **403**, `processor_secret_configured` / activity issues. Must be **one value** in **`app/.env`** (same container reads it for both sides). |
 
 ### Optional but common
 
@@ -51,7 +51,7 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | `mcp.token` | If not using `MCP_TOKEN` env |
 | `web_push.vapid_private_key` | Web Push |
 
-Env aliases (examples): `XENO_CANTO_API_KEY` in `.env` — see `app/.env.example`.
+Env aliases (examples): `XENO_CANTO_API_KEY` in `app/.env` — see `app/.env.example`.
 
 ---
 
@@ -84,7 +84,7 @@ Env aliases (examples): `XENO_CANTO_API_KEY` in `.env` — see `app/.env.example
 ### `PROCESSOR_SECRET`
 
 - Generate: `openssl rand -hex 16`.
-- **Web and processor share the same `.env`** in the single-container deployment — one key, one restart.
+- **Web and processor share the same `app/.env`** in the single-container deployment — one key, one restart.
 - After rotation, old in-flight nothing to sync; if you use an external processor (unusual), update **both** ends.
 
 ### `FLASK_SECRET_KEY`
@@ -95,7 +95,7 @@ Env aliases (examples): `XENO_CANTO_API_KEY` in `.env` — see `app/.env.example
 ### `MCP_TOKEN`
 
 - Minimum length enforced by app — use a long random string.
-- Update `.env`; if `mcp.token` in YAML is still set, understand precedence ([MCP_SETUP.md](./MCP_SETUP.md)).
+- Update `app/.env`; if `mcp.token` in YAML is still set, understand precedence ([MCP_SETUP.md](./MCP_SETUP.md)).
 
 ### Telegram / MQTT / HA / API keys
 
@@ -104,7 +104,7 @@ Env aliases (examples): `XENO_CANTO_API_KEY` in `.env` — see `app/.env.example
 
 ---
 
-## Deploy script and `.env`
+## Deploy script and `app/.env`
 
 `scripts/deploy.sh` rebuilds server `app/.env` lines for `MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET` from the **local** environment when you run `make deploy`. Keep those exports in **`scripts/deploy.local.sh`** so rotation survives the next deploy.
 

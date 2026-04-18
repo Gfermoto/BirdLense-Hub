@@ -105,7 +105,7 @@ def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, 
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
-    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None)
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -142,7 +142,7 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
-    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None)
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -174,6 +174,48 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
         assert db.session.get(Video, vid) is not None
 
 
+def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client, proc_headers, monkeypatch, tmp_path):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.species_metadata_enrichment_service as meta_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(
+        meta_mod,
+        "enrich_species_metadata",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("metadata must not be called")),
+    )
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest NoMeta {token}",
+            "confidence": 0.95,
+            "start_time": 0,
+            "end_time": 2,
+            "source": "video",
+            "frames": [],
+        }
+    ]
+
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    vid = r.get_json()["video_id"]
+
+    with app.app_context():
+        assert db.session.get(Video, vid) is not None
+
+
 def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
@@ -182,7 +224,7 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
-    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None)
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -229,7 +271,7 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
-    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None)
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",

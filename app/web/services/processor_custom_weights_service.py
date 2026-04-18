@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import logging
 import os
 import tempfile
@@ -81,7 +82,18 @@ def _stat_slot(path: str | None) -> dict[str, Any] | None:
         "path": path,
         "bytes": st.st_size,
         "mtime_unix": int(st.st_mtime),
+        "fingerprint_sha256_16": _sha256_16(path),
     }
+
+
+def _sha256_16(path: str | None) -> str | None:
+    if not path or not os.path.isfile(path):
+        return None
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()[:16]
 
 
 def _is_under_custom_dir(path: str | None) -> bool:
@@ -103,10 +115,12 @@ def _slot_info(effective: str, default_path: str) -> dict[str, Any]:
         "default_path": default_path,
         "bytes": None,
         "mtime_unix": None,
+        "fingerprint_sha256_16": None,
     }
     if st:
         out["bytes"] = st["bytes"]
         out["mtime_unix"] = st["mtime_unix"]
+        out["fingerprint_sha256_16"] = st["fingerprint_sha256_16"]
     return out
 
 
@@ -117,6 +131,7 @@ def _allowlist_slot() -> dict[str, Any]:
         "uses_custom_dir": _is_under_custom_dir(ea),
         "bytes": None,
         "mtime_unix": None,
+        "fingerprint_sha256_16": None,
     }
     if not ea:
         return out
@@ -124,6 +139,7 @@ def _allowlist_slot() -> dict[str, Any]:
     if st:
         out["bytes"] = st["bytes"]
         out["mtime_unix"] = st["mtime_unix"]
+        out["fingerprint_sha256_16"] = st["fingerprint_sha256_16"]
     return out
 
 

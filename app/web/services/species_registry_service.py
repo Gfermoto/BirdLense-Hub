@@ -13,9 +13,11 @@ from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_names,
     species_name_match_norm_keys,
 )
+from services.species_metadata_enrichment_service import (
+    enrich_species_metadata as enrich_species_card_metadata,
+)
 from util import load_species_canonical_mapping
 from util import (
-    update_species_info_from_wiki,
     _extract_wiki_search_title,
     infer_metadata_source_fields,
     get_inaturalist_image_and_description,
@@ -331,7 +333,7 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
         try:
             before_img = _has_metadata_text(sp.image_url)
             before_desc = _has_metadata_text(sp.description)
-            changed = update_species_info_from_wiki(sp)
+            changed = enrich_species_card_metadata(sp)
             if changed and (not before_img or not before_desc):
                 updated += 1
         except Exception:
@@ -376,7 +378,7 @@ def repair_recently_reset_species_metadata(
         processed += 1
         try:
             before_img = bool(sp.image_url)
-            update_species_info_from_wiki(sp)
+            enrich_species_card_metadata(sp)
             if sp.image_url and not before_img:
                 repaired += 1
         except Exception:
@@ -455,7 +457,7 @@ def enrich_species_metadata_with_status(
                 if _has_metadata_text(desc_c) and not _has_metadata_text(sp.description):
                     sp.description = desc_c
 
-            changed = update_species_info_from_wiki(sp)
+            changed = enrich_species_card_metadata(sp)
             sp.metadata_updated_at = now
             if _has_metadata_text(sp.image_url) and _has_metadata_text(sp.description):
                 sp.metadata_status = "ok"
@@ -571,12 +573,23 @@ def species_registry_health() -> dict:
     }
 
 
+def _rotate_need_slice(items: list, rotate_offset: int) -> list:
+    """Circular shift so low-cap catalog repair cycles through all «need work» items."""
+    if not items:
+        return items
+    off = int(rotate_offset) % len(items)
+    if off:
+        return items[off:] + items[:off]
+    return items
+
+
 def ensure_allowlist_species_materialized(
     app_config_get,
     *,
     fill_metadata: bool = True,
     dry_run: bool = True,
     limit: int = 5000,
+    rotate_offset: int = 0,
 ) -> dict:
     """Ensure every allowlist class has a Species row and metadata."""
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
@@ -602,7 +615,32 @@ def ensure_allowlist_species_materialized(
     touched: list[Species] = []
     sci_common = re.compile(r"^(.+?)\s*\(([^)]+)\)\s*$")
     cap = max(1, min(int(limit or 5000), 20000))
-    for raw in allowlist_names[:cap]:
+    # Do not always take allowlist_names[:cap]: with autorun limit=150 the same prefix
+    # would run forever while later names stay unmatched / incomplete (stuck completion %).
+    scored: list[tuple[tuple[int, int, int], str]] = []
+    for raw in allowlist_names:
+        target = None
+        for k in species_name_match_norm_keys(raw):
+            target = by_norm.get(k)
+            if target:
+                break
+        if not target:
+            # Missing Species row — must create before metadata can exist.
+            prio = (0, 0, 0)
+        else:
+            has_img = bool((target.image_url or "").strip())
+            has_desc = bool((target.description or "").strip())
+            if has_img and has_desc:
+                prio = (2, int(target.id or 0), 0)
+            else:
+                prio = (1, int(target.id or 0), 0)
+        scored.append((prio, raw))
+    scored.sort(key=lambda x: x[0])
+    need = [x for x in scored if x[0][0] < 2]
+    done = [x for x in scored if x[0][0] == 2]
+    need = _rotate_need_slice(need, rotate_offset)
+    scored = need + done
+    for _prio, raw in scored[:cap]:
         target = None
         for k in species_name_match_norm_keys(raw):
             target = by_norm.get(k)
@@ -628,7 +666,7 @@ def ensure_allowlist_species_materialized(
             if sp.image_url and sp.description:
                 continue
             try:
-                if update_species_info_from_wiki(sp):
+                if enrich_species_card_metadata(sp):
                     metadata_updated += 1
             except Exception:
                 continue
@@ -702,7 +740,13 @@ def realign_species_images_from_allowlist_science(
     return n
 
 
-def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6000) -> dict:
+def repair_catalog_cards(
+    app_config_get,
+    *,
+    dry_run: bool = True,
+    limit: int = 6000,
+    priority_rotate: int = 0,
+) -> dict:
     """Auto-heal full catalog cards: missing metadata and blocked Wikimedia images."""
     # Ensure full catalog materialization first, otherwise repair runs only on
     # already-existing rows and misses allowlist species absent in DB.
@@ -711,6 +755,7 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
         fill_metadata=True,
         dry_run=dry_run,
         limit=limit,
+        rotate_offset=priority_rotate,
     )
 
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
@@ -757,7 +802,10 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
             wiki_host = 0 if (img and _host_is_wikipedia_family(host)) else 1
             return (missing, wiki_host, int(sp.id or 0))
 
-        targets = sorted(targets, key=_priority_key)[:cap]
+        need = [sp for sp in targets if not ((sp.image_url or "").strip() and (sp.description or "").strip())]
+        ok = [sp for sp in targets if (sp.image_url or "").strip() and (sp.description or "").strip()]
+        need_sorted = _rotate_need_slice(sorted(need, key=_priority_key), priority_rotate)
+        targets = (need_sorted + sorted(ok, key=_priority_key))[:cap]
 
     metadata_fixed = 0
     images_replaced_from_inat = 0
@@ -768,7 +816,7 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
 
         if not before_img or not before_desc:
             try:
-                changed = update_species_info_from_wiki(sp)
+                changed = enrich_species_card_metadata(sp)
                 if changed and (not before_img or not before_desc):
                     metadata_fixed += 1
             except Exception:
@@ -837,11 +885,19 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
 
 
 def catalog_cards_coverage_snapshot(app_config_get) -> dict:
-    """Coverage snapshot for allowlist-backed catalog cards."""
+    """Coverage snapshot for allowlist-backed catalog cards.
+
+    ``allowlist_lines_matched`` / ``with_*`` / ``complete_cards`` / ``completion_percent``
+    are **per line** in the allowlist file (same ``Species`` row may back several lines).
+
+    ``species_matched`` is the count of **distinct** ``Species`` rows hit by at least one line
+    (lower when many file lines collapse onto one DB name).
+    """
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
     if not allowlist_names:
         return {
             "allowlist_total": 0,
+            "allowlist_lines_matched": 0,
             "species_matched": 0,
             "with_image": 0,
             "with_description": 0,
@@ -855,7 +911,7 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
         for k in species_name_match_norm_keys(sp.name or ""):
             by_norm.setdefault(k, sp)
 
-    matched: list[Species] = []
+    matched_per_line: list[Species] = []
     for raw in allowlist_names:
         target = None
         for k in species_name_match_norm_keys(raw):
@@ -863,20 +919,24 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
             if target:
                 break
         if target:
-            matched.append(target)
+            matched_per_line.append(target)
 
-    uniq: dict[int, Species] = {}
-    for sp in matched:
-        uniq.setdefault(int(sp.id), sp)
-    matched = list(uniq.values())
+    allowlist_lines_matched = len(matched_per_line)
+    uniq_ids: dict[int, Species] = {}
+    for sp in matched_per_line:
+        uniq_ids.setdefault(int(sp.id), sp)
+    species_matched = len(uniq_ids)
 
-    with_image = sum(1 for sp in matched if (sp.image_url or "").strip())
-    with_description = sum(1 for sp in matched if (sp.description or "").strip())
-    complete_cards = sum(1 for sp in matched if (sp.image_url or "").strip() and (sp.description or "").strip())
+    with_image = sum(1 for sp in matched_per_line if (sp.image_url or "").strip())
+    with_description = sum(1 for sp in matched_per_line if (sp.description or "").strip())
+    complete_cards = sum(
+        1 for sp in matched_per_line if (sp.image_url or "").strip() and (sp.description or "").strip()
+    )
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
     return {
         "allowlist_total": len(allowlist_names),
-        "species_matched": len(matched),
+        "allowlist_lines_matched": allowlist_lines_matched,
+        "species_matched": species_matched,
         "with_image": with_image,
         "with_description": with_description,
         "complete_cards": complete_cards,

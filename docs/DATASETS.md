@@ -30,6 +30,12 @@ Practical guidance:
 
 In `Library -> Export dataset`, enable **"Train-ready (auto train/val split, no post-script)"**.  
 Optionally enable **"Add test split (~10%)"** to include `test/<class>/...` (hold-out).
+For the official BirdLense retraining loop, use:
+
+- `ready_for_train=1`
+- `strict_quality=1`
+- `only_manually_corrected=1` when you need the cleanest corrective set
+- `dataset_info.json` + `classes.txt` as mandatory rollout evidence artifacts
 
 The ZIP will include:
 - `train/<class>/...`, `val/<class>/...`, and optionally `test/<class>/...`
@@ -37,6 +43,12 @@ The ZIP will include:
 - `dataset_info.json` — export passport (`manifest.schema=birdlense_dataset_export_v2`, filters, `split_seed`, `fingerprint_sha256_16`) and a **`quality`** block: duplicate `(video_id, track_id)` rows and cross-split `video_id` leakage.
 
 API: `GET /api/ui/dataset/export` supports `test_ratio` and `strict_quality=1` (abort on duplicate tracks, cross-split video leakage, or — with **ready_for_train** — any class below `min_images_per_class`).
+
+Before rolling out new weights, validate the export + artifacts together:
+
+```bash
+make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/to/classes.txt
+```
 
 This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yolo.py` step for the basic finetuning path.
 

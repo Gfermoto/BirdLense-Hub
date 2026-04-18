@@ -85,3 +85,40 @@ def summarize_track_regen_detections(detections: list[dict]) -> dict:
         "detections_with_frames": with_frames,
         "tracks_overlay_expected": with_frames > 0,
     }
+
+
+def build_track_regen_policy_snapshot(
+    *,
+    profile: str,
+    match_live_pipeline: bool,
+    strategy: str,
+    frame_step: int,
+    lores_px: int,
+    max_runtime_sec: int,
+    precise_used: bool,
+    precise_params: dict | None,
+    local_species_scope_count: int = 0,
+    species_scope_selected: bool = False,
+) -> dict:
+    if species_scope_selected:
+        scope_strategy = "selected_species_scope"
+    elif match_live_pipeline:
+        scope_strategy = "match_live_pipeline"
+    elif local_species_scope_count > 0:
+        scope_strategy = "historical_db_scope"
+    else:
+        scope_strategy = "global_classifier_scope"
+    return {
+        "mode": "track_regen",
+        "profile": str(profile or "batch_default"),
+        "scope_strategy": scope_strategy,
+        "match_live_pipeline": bool(match_live_pipeline),
+        "local_species_scope_count": int(local_species_scope_count or 0),
+        "species_scope_selected": bool(species_scope_selected),
+        "strategy": str(strategy or "two_stage"),
+        "frame_step": int(frame_step or 1),
+        "lores_px": int(lores_px or 0),
+        "max_runtime_sec": int(max_runtime_sec or 0),
+        "precise_fallback_used": bool(precise_used),
+        "precise_fallback": dict(precise_params or {}),
+    }

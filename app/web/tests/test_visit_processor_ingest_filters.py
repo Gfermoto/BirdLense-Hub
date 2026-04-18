@@ -33,12 +33,12 @@ def test_no_strict_allows_any_name(app, monkeypatch):
 
 def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeypatch):
     """Classifier Unknown placeholder must become generic Bird for manual review."""
-    import services.visit_processor as vp_mod
+    import services.species_identity_service as identity_mod
 
     with app.app_context():
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
-            vp_mod,
+            identity_mod,
             "load_catalog_allowlist_norm_keys",
             lambda _get: frozenset({"parus major (great tit)"}),
         )
@@ -62,12 +62,12 @@ def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeyp
 
 def test_strict_allowlist_fails_closed_when_allowlist_missing(app, monkeypatch):
     """Strict ingest must not create arbitrary species when allowlist is unavailable."""
-    import services.visit_processor as vp_mod
+    import services.species_identity_service as identity_mod
 
     with app.app_context():
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
-            vp_mod,
+            identity_mod,
             "load_catalog_allowlist_norm_keys",
             lambda _get: None,
         )
@@ -91,12 +91,12 @@ def test_strict_allowlist_fails_closed_when_allowlist_missing(app, monkeypatch):
 
 def test_strict_allowlist_still_blocks_real_off_allowlist_species(app, monkeypatch):
     """Real off-allowlist species should still go to Unknown, not generic Bird."""
-    import services.visit_processor as vp_mod
+    import services.species_identity_service as identity_mod
 
     with app.app_context():
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
-            vp_mod,
+            identity_mod,
             "load_catalog_allowlist_norm_keys",
             lambda _get: frozenset({"parus major (great tit)"}),
         )

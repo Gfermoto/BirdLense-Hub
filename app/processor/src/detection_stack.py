@@ -37,6 +37,7 @@ def build_detection_stack(
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
+    from pipeline_policy import build_pipeline_policy_snapshot
 
     _ = warn_two_stage_fallback  # legacy param, no longer used
 
@@ -128,6 +129,14 @@ def build_detection_stack(
         tracker=tracker,
         save_images=save_images,
     )
+    policy_snapshot = build_pipeline_policy_snapshot(
+        app_config,
+        for_track_regen=for_track_regen,
+        strategy_override=strategy_override,
+        regional_species_override=regional_species_override,
+        min_center_dist_override=min_center_dist_override,
+    )
+    frame_processor.pipeline_policy = dict(policy_snapshot)
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
     min_store = app_config.get("detection.min_confidence_to_store")
     try:
@@ -179,4 +188,5 @@ def build_detection_stack(
         generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
         generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
     )
+    decision_maker.pipeline_policy = dict(policy_snapshot)
     return frame_processor, decision_maker, merged_overrides

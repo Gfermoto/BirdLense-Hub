@@ -7,6 +7,7 @@ from flask import current_app, request, send_file
 from routes.http_guards import require_ui_settings_password
 from services.api_json_validation import parse_request_json_object_allow_empty
 from services.system_fusion_telegram_jobs_service import (
+    fusion_eval_download_file_or_error,
     fusion_eval_status_snapshot,
     fusion_export_download_file_or_error,
     fusion_export_status_snapshot,
@@ -62,6 +63,19 @@ def register_ui_system_fusion_routes(app):
     @require_ui_settings_password
     def fusion_eval_status():
         return fusion_eval_status_snapshot(), 200
+
+    @app.route("/api/ui/system/fusion/eval/download", methods=["GET"])
+    @require_ui_settings_password
+    def fusion_eval_download():
+        path, err, code = fusion_eval_download_file_or_error()
+        if err is not None:
+            return err, code
+        return send_file(
+            path,
+            as_attachment=True,
+            download_name=path.name,
+            mimetype="text/csv",
+        )
 
     @app.route("/api/ui/system/telegram-proxy/refresh", methods=["POST"])
     @require_ui_settings_password

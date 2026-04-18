@@ -7,10 +7,21 @@ export type PageMode = 'simple' | 'advanced';
 type PageModeToggleProps = {
   value: PageMode;
   onChange: (value: PageMode) => void;
+  simpleLabel?: string;
+  advancedLabel?: string;
+  ariaLabel?: string;
 };
 
-export function PageModeToggle({ value, onChange }: PageModeToggleProps) {
+export function PageModeToggle({
+  value,
+  onChange,
+  simpleLabel,
+  advancedLabel,
+  ariaLabel,
+}: PageModeToggleProps) {
   const { t } = useTranslation();
+  const resolvedSimpleLabel = simpleLabel ?? t('common.simpleMode');
+  const resolvedAdvancedLabel = advancedLabel ?? t('common.advancedMode');
 
   return (
     <ToggleButtonGroup
@@ -21,13 +32,13 @@ export function PageModeToggle({ value, onChange }: PageModeToggleProps) {
       onChange={(_, next: PageMode | null) => {
         if (next) onChange(next);
       }}
-      aria-label={t('common.viewMode')}
+      aria-label={ariaLabel ?? t('common.viewMode')}
     >
-      <ToggleButton value="simple" aria-label={t('common.simpleMode')}>
-        {t('common.simpleMode')}
+      <ToggleButton value="simple" aria-label={resolvedSimpleLabel}>
+        {resolvedSimpleLabel}
       </ToggleButton>
-      <ToggleButton value="advanced" aria-label={t('common.advancedMode')}>
-        {t('common.advancedMode')}
+      <ToggleButton value="advanced" aria-label={resolvedAdvancedLabel}>
+        {resolvedAdvancedLabel}
       </ToggleButton>
     </ToggleButtonGroup>
   );

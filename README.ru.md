@@ -117,6 +117,9 @@ UI: http://localhost:8085
 | Команда | Описание |
 |---------|----------|
 | `make deploy` | Деплой на сервер (требуется `scripts/deploy.local.sh`) |
+| `make verify` | Проверка `health` + `readiness` + `status` на `BASE_URL` или localhost |
+| `make ci-local` | `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, полный `pytest web/tests/`, версии доков, UI (codegen + Vitest + typecheck + lint + build), покрытие Settings UI, MkDocs strict (см. [docs/CI_AND_QUALITY.ru.md](./docs/CI_AND_QUALITY.ru.md)) |
+| `make ci-local-docker` | То же, плюс тесты в Docker-образе и Playwright smoke (тяжело; нужны веса processor) |
 | `make build` | Сборка образа |
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |

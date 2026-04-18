@@ -87,13 +87,17 @@ def maybe_run_catalog_cards_repair(flask_app) -> None:
             }
         )
     try:
+        with job_state._catalog_cards_lock:
+            rotate = int(job_state._catalog_repair_priority_rotate)
         result = repair_catalog_cards(
             app_config.get,
             dry_run=False,
             limit=CATALOG_REPAIR_LIMIT,
+            priority_rotate=rotate,
         )
         coverage_after = catalog_cards_coverage_snapshot(app_config.get)
         with job_state._catalog_cards_lock:
+            job_state._catalog_repair_priority_rotate = (rotate + CATALOG_REPAIR_LIMIT) % 1_000_003
             job_state._catalog_cards_status.update(
                 {
                     "status": "done",
@@ -125,11 +129,14 @@ def catalog_cards_schedule_state() -> dict:
     next_in = 0
     if job_state._catalog_cards_next_run_ts > now_ts:
         next_in = int(job_state._catalog_cards_next_run_ts - now_ts)
+    with job_state._catalog_cards_lock:
+        rotate = int(job_state._catalog_repair_priority_rotate)
     return {
         "autorun_enabled": CATALOG_REPAIR_AUTORUN_ENABLED,
         "interval_min": CATALOG_REPAIR_INTERVAL_MIN,
         "limit": CATALOG_REPAIR_LIMIT,
         "next_run_in_sec": next_in,
+        "priority_rotate": rotate,
     }
 
 

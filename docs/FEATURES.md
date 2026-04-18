@@ -58,6 +58,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Download video** | Video details — Admin/Contributor after password |
 | **Video prev/next** | Same UTC calendar day: arrows + counter on video details; `GET /api/ui/videos/:id/neighbors` |
 | **System: resources & visitors** | `/system` charts (server history + live tail, window 6/24/48 h), unique visitors over selectable period; tune via `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) |
+| **Library** | `/library` — recordings calendar, dataset exports, file-replay controls when **`video.source: file`**; **System → Scan and import** for clips already on disk |
 
 ---
 
@@ -91,6 +92,7 @@ Full reference: [CONFIGURATION](./CONFIGURATION.md).
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/ui/health` | Health |
+| GET | `/api/ui/readiness` | Readiness (DB, dirs, components) |
 | GET | `/api/ui/timeline` | Visits in range |
 | GET | `/api/ui/timeline/export` | CSV, JSON, eBird |
 | GET | `/api/ui/unknowns` | Low confidence (`start_time`, `end_time`, `limit`) |

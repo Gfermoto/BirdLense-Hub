@@ -34,6 +34,20 @@ python3 -m venv .venv-docs
 
 Каталог `site/` в git не коммитится (см. `.gitignore`).
 
+**Полный локальный CI (как проверки на GitHub):** из **корня репозитория** команда `make ci-local` запускает `scripts/ci-full-local.sh` — безопасность Python + Ruff + полный `pytest web/tests/` в **`.venv-ci`**, сверка версий, UI (дрейф OpenAPI codegen, Vitest, typecheck, lint, build), скрипт покрытия Settings UI, **MkDocs** `--strict` через **`.venv-docs`**. `make ci-local-docker` добавляет тесты в Docker-образ и Playwright `smoke.spec.ts`. Для фазы UI нужен **Node.js ≥ 22**. Подробности: [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md).
+
+### Обслуживание спецификации OpenAPI {#openapi-spec-maintenance}
+
+Большой список путей **`/api/ui/...`** и второй **`servers`** для **`/api/processor`** генерируется скриптом **`scripts/generate_openapi_remaining_paths.py`** и вставляется скриптом **`scripts/merge_openapi_fragments.py`** в **`app/web/openapi.yaml`** (перед `components:`).
+
+Из **корня репозитория**:
+
+```bash
+python3 scripts/merge_openapi_fragments.py
+```
+
+Перед коммитом смотрите **`git diff app/web/openapi.yaml`**: перезаписывается крупный фрагмент файла. Текст в `info.description` и точные схемы ответов при необходимости восстановите вручную после регенерации.
+
 **Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций), `CONSILIUM_AUDIT.ru.md` (исторический аудит; см. [архив на GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), а также `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (внутренний чеклист перед крупными изменениями UI/API — файл в репозитории, не часть операторского руководства) и `LEGACY_CLEANUP.md` (внутренние заметки по инвентарю/legacy).
 
 ### Публикация (CI)
@@ -75,6 +89,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 - [ ] **[ROADMAP.ru](./ROADMAP.ru.md)** § *Текущий стек*: версии React/Vite (и прочие зафиксированные UI-версии) совпадают с `app/ui/package.json` / lock; блок про БД/миграции соответствует `app/web`.
 - [ ] Корневой `mkdocs.yml`: новая страница в английском `nav` и в секции **Русский** (или осознанно только в репозитории).
 - [ ] [SITE_MAP.md](./SITE_MAP.md) и [SITE_MAP.ru.md](./SITE_MAP.ru.md) совпадают с боковым меню.
+- [ ] После массовой регенерации OpenAPI: `python3 scripts/merge_openapi_fragments.py` — проверить diff, `pytest web/tests/test_openapi_contract.py`, `python3 -c "import yaml; yaml.safe_load(open('app/web/openapi.yaml'))"`.
 
 ---
 
@@ -129,6 +144,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 | Локальная разработка | [LOCAL_DEV.md](./LOCAL_DEV.md) |
 | Архитектура | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | API (обзор) | [API.md](./API.md) |
+| OpenAPI YAML (канон) | [project/openapi.md](./project/openapi.md) |
 | Доступ и роли | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | Карта сайта | [SITE_MAP.md](./SITE_MAP.md) |
 | Обучение (Colab) | [TRAINING.md](./TRAINING.md) |

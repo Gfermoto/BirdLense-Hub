@@ -33,6 +33,9 @@ _catalog_cards_status = {
 }
 _catalog_cards_lock = threading.Lock()
 _catalog_cards_next_run_ts = 0.0
+# Сдвиг окна приоритетов для catalog repair (авто/ручной): иначе при limit=150 вечно
+# те же первые неполные строки allowlist и процент «Поля заполнены» замирает.
+_catalog_repair_priority_rotate = 0
 _fusion_export_status = {
     "status": "idle",
     "result": None,

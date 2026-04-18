@@ -9,9 +9,10 @@
 - На локальной машине должен быть доступ к серверу по SSH.
 - В корне репозитория создайте `scripts/deploy.local.sh` (можно копией из `scripts/deploy.local.sh.example`).
 - Минимум нужно задать:
-  - `DEPLOY_HOST` — SSH-адрес сервера
-  - `DEPLOY_URL` — публичный URL хаба
-  - при необходимости `DEPLOY_REMOTE_DIR`
+  - `DEPLOY_HOST` — SSH-цель (удобно alias из `~/.ssh/config`)
+  - `DEPLOY_URL` — базовый URL хаба для **`scripts/verify-stack.sh`** после деплоя (например `http://192.168.1.11:8085` или `https://ваш.домен/`)
+  - при необходимости `DEPLOY_REMOTE_DIR` (на сервере по умолчанию **`/root/BirdLense`**)
+  - при необходимости **`DEPLOY_SSH_PORT`**, если SSH не на порту 22
 
 Пример:
 
@@ -28,26 +29,34 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 make deploy
 ```
 
-Что делает команда:
+Что делает команда (см. `scripts/deploy.sh`):
 
-1. Синхронизирует код на сервер (без `app/data`, `site/`, локальных служебных каталогов).
-2. На сервере выполняет `make stop`, `make build`, `make start`.
-3. Проверяет health и базовую доступность API.
+1. Останавливает и удаляет контейнер **`birdlense`** (если есть **`birdlense-redis`**, его не трогает).
+2. На **вашей машине** выполняет **`npm ci && npm run build`** в **`app/ui`** — нужны **Node.js 22** и **npm 10+**.
+3. **rsync** кода на сервер (без `app/data`, `datasets/`, `app/.env`, `user_config.yaml`, `.venv-ci`, `.venv-docs`, `.tools/`, кэшей и т.д.).
+4. На сервере в `app/`: **`make stop`**, **`make build`**, **`make start`**.
+5. Запускает **`scripts/verify-stack.sh`** с **`BASE_URL=${DEPLOY_URL}`** (health, readiness, status, камеры при доступности).
 
 ## 3) Проверка после деплоя
 
-- Откройте UI: `http://<server>:8085`
-- Проверьте health:
+- Откройте UI по вашему **`DEPLOY_URL`** (порт **8085**, если не меняли **`BIRDLENSE_PORT`**).
+- Из **корня репозитория** на ноутбуке — тот же контракт, что после **`make deploy`**:
+
+```bash
+BASE_URL=http://<server>:8085 make verify
+```
+
+(`make verify` вызывает **`scripts/verify-stack.sh`**.)
+
+- Или вручную:
 
 ```bash
 curl -sS http://<server>:8085/api/ui/health
+curl -sS http://<server>:8085/api/ui/readiness
+curl -sS http://<server>:8085/api/ui/status
 ```
 
-Ожидается:
-
-```json
-{"status":"ok"}
-```
+Для **health** ожидается `{"status":"ok"}`, для **readiness** — `"ready": true`, для **status** — `"web": "ok"`.
 
 ## 4) Важно про данные
 

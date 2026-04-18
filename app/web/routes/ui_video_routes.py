@@ -239,7 +239,7 @@ def register_ui_video_routes(app):
 
         first_start = min(vs.start_time for vs in to_update)
         detection_time = video_start + timedelta(seconds=first_start)
-        new_visit, _ = vp._get_or_create_visit(species, detection_time)
+        new_visit, _ = vp.get_or_create_visit(species, detection_time)
 
         for vs in to_update:
             old_species_name = vs.species.name
@@ -270,7 +270,7 @@ def register_ui_video_routes(app):
 
         new_video_detections = [v for v in new_visit.video_species if v.source == "video"]
         if new_video_detections:
-            vp._update_simultaneous_count(new_visit, new_video_detections)
+            vp.update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
         bust_response_caches()
