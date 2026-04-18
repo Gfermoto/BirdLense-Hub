@@ -376,15 +376,13 @@ def build_fused_video_detections(
     frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
     standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", True))
-    standalone_no_species = bool(
-        app_config.get("detection.frigate_standalone_when_no_accepted_species", True)
-    )
-    want_standalone = standalone_on and bool(frigate_events) and (
-        not prepared
-        or (
-            standalone_no_species
-            and len(prepared) == 1
-            and _prepared_is_single_generic_bird_track(prepared)
+    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", True))
+    want_standalone = (
+        standalone_on
+        and bool(frigate_events)
+        and (
+            not prepared
+            or (standalone_no_species and len(prepared) == 1 and _prepared_is_single_generic_bird_track(prepared))
         )
     )
     if want_standalone:

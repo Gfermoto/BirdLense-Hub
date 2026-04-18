@@ -60,10 +60,7 @@ class ESPHomeScaleMotionDetector:
         delta = abs(value - self._last_value)
         self._last_value = value
         now = time.time()
-        if (
-            delta < self.min_delta
-            or (now - self._last_trigger_at) < self.debounce_seconds
-        ):
+        if delta < self.min_delta or (now - self._last_trigger_at) < self.debounce_seconds:
             return False
         self._last_trigger_at = now
         logger.info(

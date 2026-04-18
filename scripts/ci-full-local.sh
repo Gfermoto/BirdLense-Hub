@@ -15,26 +15,34 @@ CI_FULL_DOCKER="${CI_FULL_DOCKER:-0}"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 
+# PYTHONNOUSERSITE: не подмешивать user-site в pytest.
+# -u PYTHONPATH: если в окружении PYTHONPATH указывает на ~/.local, pip считает зависимости
+#   «уже установленными» и не кладёт их в venv (ломается import под NOUSERSITE).
+pip_ci() { env -u PIP_USER -u PYTHONPATH PYTHONNOUSERSITE=1 "${VENV_CI}/bin/python" -m pip "$@"; }
+pip_docs() { env -u PIP_USER -u PYTHONPATH PYTHONNOUSERSITE=1 "${VENV_DOCS}/bin/python" -m pip "$@"; }
+
 ensure_venv_ci() {
   if [[ ! -x "${VENV_CI}/bin/python" ]]; then
     log "Создание ${VENV_CI}"
     "${PYTHON}" -m venv "${VENV_CI}"
-    env -u PIP_USER "${VENV_CI}/bin/python" -m pip install -U pip
-    env -u PIP_USER "${VENV_CI}/bin/python" -m pip install -U -r app/web/requirements.txt
-    env -u PIP_USER "${VENV_CI}/bin/python" -m pip install \
+    pip_ci install -U pip
+    pip_ci install -U -r app/web/requirements.txt
+    pip_ci install \
       "bandit[toml]==1.8.6" \
       "pip-audit==2.9.0" \
       "ruff==0.9.2" \
       "radon==6.0.1"
   fi
+  # Догоняем зависимости в venv (после старых pip-запусков с «битым» PYTHONPATH).
+  pip_ci install -q -r "${ROOT}/app/web/requirements.txt"
 }
 
 ensure_venv_docs() {
   if [[ ! -x "${VENV_DOCS}/bin/python" ]]; then
     log "Создание ${VENV_DOCS} (MkDocs)"
     "${PYTHON}" -m venv "${VENV_DOCS}"
-    env -u PIP_USER "${VENV_DOCS}/bin/python" -m pip install -U pip
-    env -u PIP_USER "${VENV_DOCS}/bin/python" -m pip install -U -r requirements-docs.txt
+    pip_docs install -U pip
+    pip_docs install -U -r requirements-docs.txt
   fi
 }
 
@@ -55,6 +63,15 @@ log "VERSION / docs version"
 "${PYTHON}" scripts/check-docs-version.py
 
 log "UI: codegen drift + vitest + typecheck + lint + build"
+if ! command -v node >/dev/null 2>&1; then
+  echo "ci-full-local: не найден node. Нужен Node >= 22 (app/ui/package.json engines)." >&2
+  exit 1
+fi
+node_major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)')"
+if [[ "${node_major}" -lt 22 ]]; then
+  echo "ci-full-local: нужен Node.js >= 22 (как в GitHub Actions). Сейчас: $(node -v). Пример: nvm install 22 && nvm use 22" >&2
+  exit 1
+fi
 (
   cd "${ROOT}/app/ui"
   npm ci

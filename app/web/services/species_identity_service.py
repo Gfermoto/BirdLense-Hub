@@ -23,12 +23,12 @@ class SpeciesIdentityService:
         self.logger = logger
 
     def get_or_create_unknown_species(self) -> Optional[Species]:
-        existing = Species.query.filter_by(name='Unknown').first()
+        existing = Species.query.filter_by(name="Unknown").first()
         if existing:
             return existing
-        birds = Species.query.filter_by(name='Birds').first()
+        birds = Species.query.filter_by(name="Birds").first()
         parent_id = birds.id if birds else None
-        row = Species(name='Unknown', parent_id=parent_id, active=False)
+        row = Species(name="Unknown", parent_id=parent_id, active=False)
         self.db.session.add(row)
         self.db.session.flush()
         self.logger.info('Created species "Unknown" for blocked/off-allowlist ingest')
@@ -41,34 +41,34 @@ class SpeciesIdentityService:
         taxon_common_name: str | None,
     ) -> bool:
         canonical_candidates = {
-            str(display_name or '').strip().lower(),
-            str(raw_normalized or '').strip().lower(),
-            str(taxon_common_name or '').strip().lower(),
+            str(display_name or "").strip().lower(),
+            str(raw_normalized or "").strip().lower(),
+            str(taxon_common_name or "").strip().lower(),
         }
         if GENERIC_BIRD_SPECIES.strip().lower() in canonical_candidates:
             return False
-        if not bool(app_config.get('species.catalog_strict_ingest')):
+        if not bool(app_config.get("species.catalog_strict_ingest")):
             return False
         allow = load_catalog_allowlist_norm_keys(app_config.get)
         if allow is None:
             self.logger.warning(
-                'Strict catalog ingest is enabled but allowlist is unavailable; '
+                "Strict catalog ingest is enabled but allowlist is unavailable; "
                 'blocking species "%s" until allowlist is restored.',
-                display_name or raw_normalized or taxon_common_name or 'unknown',
+                display_name or raw_normalized or taxon_common_name or "unknown",
             )
             return True
         mapping = load_species_canonical_mapping()
-        ok_display = species_matches_allowlist(display_name or '', allow, mapping)
-        ok_raw = species_matches_allowlist(raw_normalized or '', allow, mapping)
+        ok_display = species_matches_allowlist(display_name or "", allow, mapping)
+        ok_raw = species_matches_allowlist(raw_normalized or "", allow, mapping)
         return not (ok_display or ok_raw)
 
-    def resolve_or_create_species(self, name: str, *, source: str = 'ingest') -> Optional[Species]:
+    def resolve_or_create_species(self, name: str, *, source: str = "ingest") -> Optional[Species]:
         if not name or not isinstance(name, str):
             return None
         normalized = name.strip()
         if not normalized:
             return None
-        if normalized.lower() in {'bird', 'unknown'}:
+        if normalized.lower() in {"bird", "unknown"}:
             normalized = GENERIC_BIRD_SPECIES
         resolution = resolve_species_name(normalized, source=source)
         taxon = resolution.taxon if resolution.found else None
@@ -78,7 +78,7 @@ class SpeciesIdentityService:
         species = Species.query.filter_by(name=canonical_name).first()
         if species:
             current_common = species.taxon.common_name if species.taxon else None
-            if self.ingest_blocked(species.name or '', normalized, current_common):
+            if self.ingest_blocked(species.name or "", normalized, current_common):
                 return self.get_or_create_unknown_species()
             if resolution.found and taxon and species.taxon_id != taxon.id:
                 species.taxon_id = taxon.id
@@ -87,7 +87,7 @@ class SpeciesIdentityService:
         if self.ingest_blocked(canonical_name, normalized, taxon_common):
             return self.get_or_create_unknown_species()
 
-        birds = Species.query.filter_by(name='Birds').first()
+        birds = Species.query.filter_by(name="Birds").first()
         parent_id = birds.id if birds else None
         parent_name = get_parent_name_for_species(canonical_name)
         if parent_name:

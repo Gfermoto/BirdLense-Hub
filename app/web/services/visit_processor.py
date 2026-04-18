@@ -232,7 +232,7 @@ class VisitProcessor:
 
     def get_or_create_species(self, name: str) -> Optional[Species]:
         """Resolve or create a catalog species via the dedicated identity service."""
-        return self.species_identity.resolve_or_create_species(name, source='ingest')
+        return self.species_identity.resolve_or_create_species(name, source="ingest")
 
     def _find_active_visit_for_audio(self, audio_species: Species, detection_time: datetime) -> Optional[SpeciesVisit]:
         """Активный визит для аудио: вид или его дочерние."""
