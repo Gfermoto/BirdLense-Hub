@@ -17,6 +17,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Liveness |
+| `/readiness` | GET | Hub readiness: DB, writable dirs, component checks — **200** when `"ready": true`, **503** with JSON body when not ready (load balancers / `verify-stack`) |
 | `/status` | GET | Component status: `web`, `processor`, `mqtt`, `esphome`, `yolo` — `ok` \| `error` \| `not_configured` \| `not_used` \| `unknown` |
 | `/cameras` | GET | Camera list |
 | `/weather` | GET | Weather snapshot |

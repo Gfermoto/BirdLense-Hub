@@ -19,6 +19,7 @@
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
 | `/health` | GET | Проверка доступности |
+| `/readiness` | GET | Готовность хаба: БД, каталоги на запись, проверки компонентов — **200** при `"ready": true`, **503** с телом JSON при неготовности (балансировщики / `verify-stack`) |
 | `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo). Значения: ok, error, not_configured, not_used, unknown |
 | `/cameras` | GET | Список камер |
 | `/weather` | GET | Погода |
