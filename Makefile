@@ -1,4 +1,12 @@
-.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights
+.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+
+# Все проверки как в CI (Python security, ruff, pytest web, UI, docs). Без Docker по умолчанию.
+ci-local:
+	@./scripts/ci-full-local.sh
+
+# Плюс сборка образа, make test / test-web и Playwright smoke (как job docker-tests в CI).
+ci-local-docker:
+	@CI_FULL_DOCKER=1 ./scripts/ci-full-local.sh
 
 deploy:
 	@./scripts/deploy.sh

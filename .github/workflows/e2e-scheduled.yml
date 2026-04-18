@@ -5,8 +5,8 @@ name: E2E (Playwright)
 on:
   workflow_dispatch:
   schedule:
-    # Раз в неделю (воскресенье 05:00 UTC); отключите в форке при шуме
-    - cron: "0 5 * * 0"
+    # Ежедневно 06:30 UTC; отключите cron в форке при нехватке минут GitHub Actions
+    - cron: "30 6 * * *"
 
 concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
