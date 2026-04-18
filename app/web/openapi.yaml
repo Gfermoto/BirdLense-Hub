@@ -947,8 +947,7 @@ paths:
       description: |
         Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
         species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
-        strict warnings in `config_warnings` (`recall_warnings` + `scales_warnings`), and optional tuning notes in
-        `config_hints` (`recall_hints` + `scales_hints`) that do not indicate a broken integration by themselves.
+        and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`) for review and fixes.
         Requires the same settings/session access as other protected system views when passwords are enabled.
       responses:
         "200":
@@ -1440,12 +1439,9 @@ components:
         - mapping
         - recall_tuning
         - recall_warnings
-        - recall_hints
         - scales_mqtt
         - scales_warnings
-        - scales_hints
         - config_warnings
-        - config_hints
       properties:
         deprecated_keys_present:
           type: array
@@ -1477,10 +1473,6 @@ components:
           type: array
           items:
             type: string
-        recall_hints:
-          type: array
-          items:
-            type: string
         scales_mqtt:
           type: object
           additionalProperties: true
@@ -1488,15 +1480,7 @@ components:
           type: array
           items:
             type: string
-        scales_hints:
-          type: array
-          items:
-            type: string
         config_warnings:
-          type: array
-          items:
-            type: string
-        config_hints:
           type: array
           items:
             type: string

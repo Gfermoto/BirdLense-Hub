@@ -60,7 +60,7 @@ def _safe_float(value, default: float) -> float:
         return default
 
 
-def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
+def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
     motion_source = format_motion_source_summary(active_triggers)
@@ -84,34 +84,33 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
     min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
 
     warnings: list[str] = []
-    hints: list[str] = []
     if "frigate" in active_triggers and not mqtt_broker:
         warnings.append(
             "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
     if check_every_n_frames > 1:
-        hints.append(
+        warnings.append(
             f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
             "1 is the highest-recall setting."
         )
     if opencv_diff_threshold > 20:
-        hints.append(
+        warnings.append(
             f"motion.opencv_diff_threshold={opencv_diff_threshold} is conservative; lower values are more sensitive."
         )
     if opencv_min_contour_area > 250:
-        hints.append(f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds.")
+        warnings.append(f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds.")
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
-        hints.append(
+        warnings.append(
             "processor.light_gate_* may skip dusk/night frames before YOLO runs; lower them if you need more recall in low light."
         )
     if binary_imgsz < 640:
-        hints.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
+        warnings.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
     if min_center_dist > 0.05:
-        hints.append(
+        warnings.append(
             f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge."
         )
     if min_box_size_px > 64:
-        hints.append(
+        warnings.append(
             f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes."
         )
 
@@ -130,7 +129,6 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
             "min_box_size_px": min_box_size_px,
         },
         warnings,
-        hints,
     )
 
 
@@ -147,10 +145,9 @@ def _get_from_flat_getter(app_config_get, path: str):
     return app_config_get(path)
 
 
-def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str], list[str]]:
+def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str]]:
     """Проверки MQTT-весов: брокер, префикс/топик, явный '' в user YAML."""
     warnings: list[str] = []
-    hints: list[str] = []
     enabled = bool(app_config_get("integrations.scales.enabled"))
     src = _resolve_scales_transport_source(app_config_get)
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
@@ -168,12 +165,12 @@ def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str],
 
     if not enabled:
         out["mqtt_weight_topic_resolved"] = None
-        return out, warnings, hints
+        return out, warnings
 
     if not scales_source_uses_mqtt(src):
         out["mqtt_weight_topic_resolved"] = None
         out["mqtt_note"] = "esphome_or_ha"
-        return out, warnings, hints
+        return out, warnings
 
     prefix = (app_config_get("integrations.scales.mqtt_topic_prefix") or "").strip().strip("/")
     mq_topic = (app_config_get("integrations.scales.mqtt_topic") or "").strip()
@@ -212,13 +209,13 @@ def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str],
         )
 
     if prefix and prefix.replace("\\", "/") != DOCUMENTED_SCALES_MQTT_PREFIX and not mq_topic:
-        hints.append(
+        warnings.append(
             f'integrations.scales.mqtt_topic_prefix is "{prefix}"; the stock BirdLense ESPHome example uses '
             f'"{DOCUMENTED_SCALES_MQTT_PREFIX}" for derived topics. If weight never updates, align this prefix '
             "with the device publish prefix (or set integrations.scales.mqtt_topic to the full weight topic)."
         )
 
-    return out, warnings, hints
+    return out, warnings
 
 
 def flatten_config_keys(d: dict, prefix: str = "") -> set[str]:
@@ -275,10 +272,9 @@ def build_system_config_audit_payload(
         gray_pairs.get("Gray-headed Woodpecker") == "Grey-headed Woodpecker"
         and gray_pairs.get("Great Gray Shrike") == "Great Grey Shrike"
     )
-    recall_tuning, recall_warnings, recall_hints = _recall_audit(app_config_get)
-    scales_tuning, scales_warnings, scales_hints = _scales_mqtt_audit(app_config_get, user_cfg)
+    recall_tuning, recall_warnings = _recall_audit(app_config_get)
+    scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
     combined_warnings = [*recall_warnings, *scales_warnings]
-    combined_hints = [*recall_hints, *scales_hints]
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -288,12 +284,9 @@ def build_system_config_audit_payload(
         },
         "recall_tuning": recall_tuning,
         "recall_warnings": recall_warnings,
-        "recall_hints": recall_hints,
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
-        "scales_hints": scales_hints,
         "config_warnings": combined_warnings,
-        "config_hints": combined_hints,
         "mapping": {
             "gray_to_grey_ok": gray_to_grey_ok,
             "pairs": gray_pairs,

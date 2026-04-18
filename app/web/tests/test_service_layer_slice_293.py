@@ -362,14 +362,11 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["mapping"]["gray_to_grey_ok"] is True
     assert payload["recall_tuning"]["binary_imgsz"] == 512
     assert payload["recall_tuning"]["check_every_n_frames"] == 2
-    assert payload["recall_warnings"] == []
-    assert payload["recall_hints"]
+    assert payload["recall_warnings"]
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []
-    assert payload["scales_hints"] == []
-    assert payload["config_warnings"] == []
-    assert payload["config_hints"] == payload["recall_hints"]
+    assert payload["config_warnings"] == payload["recall_warnings"]
 
 
 def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
@@ -413,8 +410,7 @@ def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
     )
     sw = payload["scales_warnings"]
     assert any("mqtt.broker is empty" in w for w in sw)
-    sh = payload["scales_hints"]
-    assert any("bird-feeder-scale" in w and "birdlense/scale" in w for w in sh)
+    assert any("bird-feeder-scale" in w and "birdlense/scale" in w for w in sw)
     assert payload["scales_mqtt"]["mqtt_weight_topic_resolved"] == "bird-feeder-scale/weight"
 
 
