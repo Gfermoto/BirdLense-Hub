@@ -217,6 +217,96 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             self.assertTrue(os.path.isdir(out_dir))
             self.assertTrue(os.path.isfile(video_path))
 
+    def test_decision_trace_keeps_frigate_generic_absorb_reason(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 11}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        decision_maker.get_decisions.return_value = []
+
+        fused = [{
+            'accepted': True,
+            'species_name': 'Eurasian Jay',
+            'species': 'Eurasian Jay',
+            'start_time': 0.0,
+            'end_time': 4.0,
+            'confidence': 0.79,
+            'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+            'best_frame': frame,
+            'decision_reason': 'absorbed_generic_into_frigate_species',
+            'decision_reason_before_arbitration': 'frigate_standalone',
+            'arbitration_reason': 'absorbed_generic_into_frigate_species',
+            'decision_kind': 'frigate_standalone',
+            'visit_eligible': True,
+            'notification_eligible': True,
+            'detection_provider': 'frigate',
+            '_fusion_used': 'absorbed_generic_into_frigate_species',
+        }]
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.55,
+                'processor.min_confidence_to_process': 0.30,
+                'detection.min_confidence_to_store': 0.05,
+                'processor.dataset_min_confidence': 0.5,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=fused,
+            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/04/08/140000',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/04/08/140000/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        persisted = trace_payload['persisted_tracks']
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]['decision_reason'], 'absorbed_generic_into_frigate_species')
+        self.assertEqual(persisted[0]['decision_reason_before_arbitration'], 'frigate_standalone')
+        self.assertEqual(persisted[0]['arbitration_reason'], 'absorbed_generic_into_frigate_species')
+        self.assertEqual(persisted[0]['_fusion_used'], 'absorbed_generic_into_frigate_species')
+
     def test_decision_trace_includes_pipeline_fingerprint_and_scales_evidence(self):
         api = MagicMock()
         api.create_video.return_value = {'video_id': 11}

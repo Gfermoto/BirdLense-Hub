@@ -13,6 +13,8 @@ ARBITRATION_MIN_SUPPORTS = 2
 ARBITRATION_CONFLICT_OVERLAP_SEC = 3.0
 ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC = 0.1
 ARBITRATION_WEAK_CONFLICT_MAX_SCORE = 0.62
+ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_CONF = 0.72
+ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_RATIO = 0.85
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -45,6 +47,30 @@ def _overlap_seconds(a: dict, b: dict) -> float:
     start = max(_safe_float(a.get("start_time")), _safe_float(b.get("start_time")))
     end = min(_safe_float(a.get("end_time")), _safe_float(b.get("end_time")))
     return end - start
+
+
+def _duration_seconds(row: dict) -> float:
+    return max(0.0, _safe_float(row.get("end_time")) - _safe_float(row.get("start_time")))
+
+
+def _is_frigate_standalone_row(row: dict) -> bool:
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    kind = str(row.get("decision_kind") or "").strip().lower()
+    return provider == "frigate" and kind in {"frigate_standalone", "frigate_standalone_excluded"}
+
+
+def _can_absorb_frigate_standalone_generic(generic: dict, specific: dict) -> bool:
+    if not (_is_generic_bird(generic) and _is_specific_bird(specific)):
+        return False
+    if not (_is_frigate_standalone_row(generic) and _is_frigate_standalone_row(specific)):
+        return False
+    overlap = _overlap_seconds(generic, specific)
+    if overlap < ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC:
+        return False
+    shorter = min(_duration_seconds(generic), _duration_seconds(specific))
+    if shorter > 0 and (overlap / shorter) < ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_RATIO:
+        return False
+    return _safe_float(specific.get("confidence")) >= ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_CONF
 
 
 def _support_count(row: dict) -> int:
@@ -142,6 +168,7 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
         generic_score = _arbitration_score(row)
         winner_idx = None
         winner_score = generic_score
+        winner_reason = "absorbed_generic_into_species"
         for other_index, other in enumerate(kept):
             if index == other_index or other_index in to_drop:
                 continue
@@ -150,12 +177,17 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
             if _overlap_seconds(row, other) < ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC:
                 continue
             other_score = _arbitration_score(other)
+            if _can_absorb_frigate_standalone_generic(row, other) and other_score > winner_score:
+                winner_idx = other_index
+                winner_score = other_score
+                winner_reason = "absorbed_generic_into_frigate_species"
+                continue
             if _support_count(other) >= ARBITRATION_MIN_SUPPORTS and other_score > winner_score:
                 winner_idx = other_index
                 winner_score = other_score
         if winner_idx is not None:
             to_drop.add(index)
-            _tag_row(kept[winner_idx], "absorbed_generic_into_species")
+            _tag_row(kept[winner_idx], winner_reason)
     return [row for idx, row in enumerate(kept) if idx not in to_drop]
 
 
