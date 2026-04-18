@@ -19,11 +19,13 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 **UI:** Most options are editable in the web app (Settings → gear). YAML remains for advanced cases and env-based overrides.
 
-**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms).
+**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
+
+**On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
 
 ---
 
-## Starter YAML profiles (`app/configs/`)
+## Starter YAML profiles (`app/configs/`) {#starter-profiles}
 
 Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and add passwords/tokens via **env** or local YAML only.
 

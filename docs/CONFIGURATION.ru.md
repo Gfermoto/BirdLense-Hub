@@ -19,11 +19,13 @@
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
-**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины).
+**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
+
+**По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
 
 ---
 
-## Стартовые профили YAML (`app/configs/`)
+## Стартовые профили YAML (`app/configs/`) {#starter-profiles}
 
 Примеры **без секретов**; копируйте в `app/app_config/user_config.yaml`, пароли и токены задавайте только в **env** или локально (не коммитьте).
 
@@ -42,7 +44,7 @@
 - В таблицах — **точечные пути**, как в YAML: `video.go2rtc_url` → секция `video:`, поле `go2rtc_url:`.
 - Поведение «пустой пароль = открытый хаб» см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
 
-## Переменные окружения
+## Переменные окружения {#environment-variables}
 
 | Переменная | Описание |
 |------------|----------|
@@ -587,6 +589,6 @@ rule_files:
 
 ---
 
-## См. также
+## См. также {#see-also}
 
 [INSTALL](./INSTALL.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [API](./API.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.ru.md)
