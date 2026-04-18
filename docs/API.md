@@ -78,7 +78,27 @@ Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 | `/api/ui/system/recordings/scan` | POST | Scan & import recordings |
 | `/api/ui/system/logs` | GET | Processor log tail (`?lines=100`) |
 
-More maintenance endpoints exist — see `ui_system_routes.py` and OpenAPI.
+### Species registry (`/api/ui/system/species-registry/*`)
+
+**Admin** (unlocked settings session). Full request/response shapes: **`app/web/openapi.yaml`**.
+
+| Path | Method | Description |
+|------|--------|-------------|
+| `/api/ui/system/species-registry/seed` | POST | Seed registry + aliases from bundled mapping |
+| `/api/ui/system/species-registry/backfill` | POST | Link `Species` rows to taxa; JSON `dry_run` (default true), optional `limit` |
+| `/api/ui/system/species-registry/unresolved` | GET | Top unresolved names (`?limit=`) |
+| `/api/ui/system/species-registry/enrich-metadata/start` | POST | Start async metadata enrichment (`limit`, `retry_failed_only`) → **202** / **409** |
+| `/api/ui/system/species-registry/enrich-metadata/status` | GET | Enrichment job status |
+| `/api/ui/system/species-registry/health` | GET | Rollout / coverage health |
+| `/api/ui/system/species-registry/materialize-allowlist` | POST | Create missing allowlist species (`dry_run`, `fill_metadata`, `limit`) |
+| `/api/ui/system/species-registry/repair-cards/start` | POST | Start card image repair → **202** / **409** |
+| `/api/ui/system/species-registry/repair-cards/status` | GET | Repair job status + coverage |
+| `/api/ui/system/species-registry/data-quality` | GET | Catalog quality report (`?duplicate_limit=`) |
+| `/api/ui/system/species-registry/classifier-dataset-alignment` | GET | Classifier vs DB vs dataset dirs (`?classifier_limit=` …) |
+| `/api/ui/system/species-registry/coverage-metrics` | GET | Coverage segments |
+| `/api/ui/system/species-registry/tuning-targets/export` | GET | Training targets; query `format=json` (default) or `format=csv` |
+
+More maintenance endpoints exist — see `ui_system_*.py` and OpenAPI.
 
 ---
 
