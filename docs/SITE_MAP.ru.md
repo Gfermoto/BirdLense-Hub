@@ -52,6 +52,7 @@
 | Доступность | [A11Y.ru.md](./A11Y.ru.md) · [EN](./A11Y.md) |
 | UX: подсказки и тултипы | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) |
 | Проверка видов: список и видео | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
+| Настройки: триггеры (фаза 2, черновик) | [SETTINGS_TRIGGERS_PHASE2.md](./SETTINGS_TRIGGERS_PHASE2.md) |
 
 ---
 

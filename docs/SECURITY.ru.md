@@ -24,7 +24,7 @@
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
 | ~~**Критический**~~ **Смягчено (opt-in)** | По умолчанию `/api/ui/*` открыты для домашней LAN. | **`BIRDLENSE_STRICT_API_AUTH=1`** при production-рантайме: нужны сессия после `verify-password`, **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` или Bearer) или **MCP Bearer**. Исключения: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. См. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md). |
-| ~~**Критический**~~ **Исправлено** | Пустой `PROCESSOR_SECRET` — открытый Processor API. | В production блокируется; деплой пишет в `.env`. |
+| ~~**Критический**~~ **Исправлено** | Пустой `PROCESSOR_SECRET` — открытый Processor API. | В production блокируется; деплой дописывает в **`app/.env`** на сервере. |
 | **Критический** | MCP без токена, если пусты `mcp.token` и `MCP_TOKEN`. | Задавать `MCP_TOKEN` при `mcp.enabled=true`. |
 | **Высокий** | Пароль настроек опционален — при пустом значении настройки и система не защищены. | Обязательный пароль в production. |
 | ~~**Высокий**~~ **Исправлено** | Сессия `session.permanent = True`, нет idle-таймаута. | `general.session_idle_minutes` (по умолчанию 30; 0 — выкл.), см. [CONFIGURATION](./CONFIGURATION.ru.md). |
@@ -36,7 +36,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| ~~**Критический**~~ **Исправлено** | Дефолтный `FLASK_SECRET_KEY`. | В `BIRDLENSE_ENV=production` без ключа — RuntimeError; деплой пишет в `.env`. |
+| ~~**Критический**~~ **Исправлено** | Дефолтный `FLASK_SECRET_KEY`. | В `BIRDLENSE_ENV=production` без ключа — RuntimeError; деплой дописывает в **`app/.env`** на сервере. |
 | ~~**Критический**~~ **Исправлено** | `GET /api/ui/settings` отдавал полный конфиг с секретами. | Маскирование `***`, placeholder при сохранении не затирает реальное значение. |
 | **Высокий** | `user_config.yaml` в открытом виде: токены Telegram, MQTT, ключи API, пароли. | В проде предпочтительно **оверлеи `BIRDLENSE_*`** ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)) или secret manager; не хранить секреты в YAML. |
 | **Высокий** | OpenAPI описывает чувствительные поля в схеме Settings. | `x-sensitive: true`, не светить в примерах. |

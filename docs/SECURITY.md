@@ -24,7 +24,7 @@
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
 | ~~**Critical**~~ **Mitigated (opt-in)** | `/api/ui/*` open by default for home LAN. | Set **`BIRDLENSE_STRICT_API_AUTH=1`** with production runtime: require session (after `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` or Bearer), or **MCP Bearer**. Bootstrap: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. See [CONFIGURATION](./CONFIGURATION.md). |
-| ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy writes to `.env`. |
+| ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy merges into server **`app/.env`**. |
 | **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
 | **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |
 | ~~**High**~~ **Fixed** | Settings session had no idle timeout. | `general.session_idle_minutes` (default 30; `0` disables). See [CONFIGURATION](./CONFIGURATION.md). |
@@ -36,7 +36,7 @@
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy writes to `.env`. |
+| ~~**Critical**~~ **Fixed** | Default `FLASK_SECRET_KEY`. | In `BIRDLENSE_ENV=production` env is required, else RuntimeError. Deploy merges into server **`app/.env`**. |
 | ~~**Critical**~~ **Fixed** | `GET /api/ui/settings` returned full config with secrets. | Secrets are masked (`***`), placeholder on save does not overwrite real value. |
 | **High** | `user_config.yaml` stores secrets in plain text: `telegram_bot_token`, `mqtt.password`, `secrets.openweather_api_key`, `homeassistant.token`, `settings_password`, `mcp.token`. | Prefer **`BIRDLENSE_*` env overlays** (see [CONFIGURATION](./CONFIGURATION.md)) or a secret manager; avoid persisting secrets in YAML in production. |
 | **High** | OpenAPI describes `telegram_bot_token`, `secrets.openweather_api_key` in Settings schema. | Add `x-sensitive: true`, do not expose in examples. |
