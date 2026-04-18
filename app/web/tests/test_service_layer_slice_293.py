@@ -362,7 +362,10 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["mapping"]["gray_to_grey_ok"] is True
     assert payload["recall_tuning"]["binary_imgsz"] == 512
     assert payload["recall_tuning"]["check_every_n_frames"] == 2
-    assert payload["recall_warnings"]
+    rw = payload["recall_warnings"]
+    assert rw
+    assert any("motion.opencv_diff_threshold=22" in w and "hub default" in w for w in rw)
+    assert any("motion.opencv_min_contour_area=320" in w and "240" in w for w in rw)
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []
