@@ -1292,6 +1292,7 @@
     "catalogRepairRunning": "Polish running",
     "catalogRepairReady": "Ready",
     "catalogRepairCompletion": "Fields filled: {{p}}%",
+    "catalogRepairSpeciesMatched": "Allowlist rows matched in DB: {{n}} / {{total}}",
     "catalogRepairCompleteCards": "Complete cards: {{n}} / {{total}}",
     "catalogRepairWithImage": "With image: {{n}}",
     "catalogRepairWithDescription": "With description: {{n}}",

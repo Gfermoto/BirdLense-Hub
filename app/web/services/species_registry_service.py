@@ -602,7 +602,28 @@ def ensure_allowlist_species_materialized(
     touched: list[Species] = []
     sci_common = re.compile(r"^(.+?)\s*\(([^)]+)\)\s*$")
     cap = max(1, min(int(limit or 5000), 20000))
-    for raw in allowlist_names[:cap]:
+    # Do not always take allowlist_names[:cap]: with autorun limit=150 the same prefix
+    # would run forever while later names stay unmatched / incomplete (stuck completion %).
+    scored: list[tuple[tuple[int, int, int], str]] = []
+    for raw in allowlist_names:
+        target = None
+        for k in species_name_match_norm_keys(raw):
+            target = by_norm.get(k)
+            if target:
+                break
+        if not target:
+            # Missing Species row — must create before metadata can exist.
+            prio = (0, 0, 0)
+        else:
+            has_img = bool((target.image_url or "").strip())
+            has_desc = bool((target.description or "").strip())
+            if has_img and has_desc:
+                prio = (2, int(target.id or 0), 0)
+            else:
+                prio = (1, int(target.id or 0), 0)
+        scored.append((prio, raw))
+    scored.sort(key=lambda x: x[0])
+    for _prio, raw in scored[:cap]:
         target = None
         for k in species_name_match_norm_keys(raw):
             target = by_norm.get(k)
