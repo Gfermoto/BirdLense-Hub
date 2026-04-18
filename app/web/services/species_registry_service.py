@@ -571,12 +571,23 @@ def species_registry_health() -> dict:
     }
 
 
+def _rotate_need_slice(items: list, rotate_offset: int) -> list:
+    """Circular shift so low-cap catalog repair cycles through all «need work» items."""
+    if not items:
+        return items
+    off = int(rotate_offset) % len(items)
+    if off:
+        return items[off:] + items[:off]
+    return items
+
+
 def ensure_allowlist_species_materialized(
     app_config_get,
     *,
     fill_metadata: bool = True,
     dry_run: bool = True,
     limit: int = 5000,
+    rotate_offset: int = 0,
 ) -> dict:
     """Ensure every allowlist class has a Species row and metadata."""
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
@@ -623,6 +634,10 @@ def ensure_allowlist_species_materialized(
                 prio = (1, int(target.id or 0), 0)
         scored.append((prio, raw))
     scored.sort(key=lambda x: x[0])
+    need = [x for x in scored if x[0][0] < 2]
+    done = [x for x in scored if x[0][0] == 2]
+    need = _rotate_need_slice(need, rotate_offset)
+    scored = need + done
     for _prio, raw in scored[:cap]:
         target = None
         for k in species_name_match_norm_keys(raw):
@@ -723,7 +738,13 @@ def realign_species_images_from_allowlist_science(
     return n
 
 
-def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6000) -> dict:
+def repair_catalog_cards(
+    app_config_get,
+    *,
+    dry_run: bool = True,
+    limit: int = 6000,
+    priority_rotate: int = 0,
+) -> dict:
     """Auto-heal full catalog cards: missing metadata and blocked Wikimedia images."""
     # Ensure full catalog materialization first, otherwise repair runs only on
     # already-existing rows and misses allowlist species absent in DB.
@@ -732,6 +753,7 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
         fill_metadata=True,
         dry_run=dry_run,
         limit=limit,
+        rotate_offset=priority_rotate,
     )
 
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
@@ -778,7 +800,10 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
             wiki_host = 0 if (img and _host_is_wikipedia_family(host)) else 1
             return (missing, wiki_host, int(sp.id or 0))
 
-        targets = sorted(targets, key=_priority_key)[:cap]
+        need = [sp for sp in targets if not ((sp.image_url or "").strip() and (sp.description or "").strip())]
+        ok = [sp for sp in targets if (sp.image_url or "").strip() and (sp.description or "").strip()]
+        need_sorted = _rotate_need_slice(sorted(need, key=_priority_key), priority_rotate)
+        targets = (need_sorted + sorted(ok, key=_priority_key))[:cap]
 
     metadata_fixed = 0
     images_replaced_from_inat = 0

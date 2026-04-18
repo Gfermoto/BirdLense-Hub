@@ -1247,6 +1247,8 @@ export interface CatalogRepairStatus {
     interval_min: number;
     limit: number;
     next_run_in_sec: number;
+    /** Round-robin offset for low-limit catalog repair (see BIRDLENSE_CATALOG_REPAIR_LIMIT). */
+    priority_rotate?: number;
   };
 }
 
