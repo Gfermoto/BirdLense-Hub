@@ -1220,6 +1220,8 @@
     "configAuditHint": "无需 SSH：代理、映射、MQTT 秤、recall/MQTT 警告（请在配置中排查修复）、已弃用键。",
     "configAuditLoadError": "加载配置审核失败",
     "configAuditWarningsTitle": "警告",
+    "configAuditWarnOpencvDiff": "motion.opencv_diff_threshold={{current}} 高于 Hub 默认值（{{recommended}}）：阈值越高，对像素变化越不敏感（运动召回更低）。",
+    "configAuditWarnOpencvContour": "motion.opencv_min_contour_area={{current}} 高于默认值（{{recommended}}）：阈值越高，越易忽略较小的运动区域（例如远处的鸟）。",
     "configAuditScalesSection": "秤集成",
     "configAuditScalesSource": "来源",
     "configAuditScalesBroker": "配置中的 MQTT 代理",

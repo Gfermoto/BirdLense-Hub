@@ -10,6 +10,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { fetchConfigAudit } from '../../api/api';
+import { localizedConfigAuditWarning } from './configAuditWarningLocale';
 import { SystemCardShell } from './SystemCardShell';
 
 export function ConfigAuditCard({
@@ -79,7 +80,10 @@ export function ConfigAuditCard({
             <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
               {configWarnings.map((w, i) => (
                 <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
-                  <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={w} />
+                  <ListItemText
+                    primaryTypographyProps={{ variant: 'body2' }}
+                    primary={localizedConfigAuditWarning(w, t)}
+                  />
                 </ListItem>
               ))}
             </List>

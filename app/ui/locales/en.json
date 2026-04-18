@@ -1264,6 +1264,8 @@
     "configAuditNeedsReview": "Needs review",
     "configAuditLoadError": "Failed to load configuration audit",
     "configAuditWarningsTitle": "Warnings",
+    "configAuditWarnOpencvDiff": "motion.opencv_diff_threshold={{current}} is above the hub default ({{recommended}}): higher values react to fewer pixel changes (less motion recall).",
+    "configAuditWarnOpencvContour": "motion.opencv_min_contour_area={{current}} is above the hub default ({{recommended}}): higher values drop smaller motion blobs (e.g. distant birds).",
     "configAuditScalesSection": "Scales integration",
     "configAuditScalesSource": "Source",
     "configAuditScalesBroker": "MQTT broker in config",
