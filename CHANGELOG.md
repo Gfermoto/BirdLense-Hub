@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Документация:** описание **CI** приведено к текущим workflow (ежедневный прогон **`ci-pr.yml`** на ветке по умолчанию, **`workflow_dispatch`**; **E2E (Playwright)** — ежедневно, не «раз в неделю»). Задокументированы **`make ci-local`** / **`make ci-local-docker`** и скрипт `scripts/ci-full-local.sh` (README EN/RU, `docs/CI_AND_QUALITY*`, `docs/TESTING*`, `docs/LOCAL_DEV*`, `docs/QUICKSTART`, `docs/README*`, `docs/Documentation*`, `docs/REPOSITORY_LAYOUT*`, `docs/VERIFICATION*`, `docs/OVERVIEW*`). В **README.ru** в таблицу команд добавлен отсутствовавший **`make verify`**.
+- **Документация (установка/деплой):** `docs/INSTALL*`, `docs/DEPLOY_SERVER*` — выравнивание с **`scripts/deploy.sh`**: локальная сборка UI до rsync, **`DEPLOY_SSH_PORT`**, не удаляется **`birdlense-redis`**, полный **`verify-stack`**, список исключений rsync (в т.ч. **`.venv-ci`**). Вариант 4: явно про **Redis** в полном `docker-compose.yml` vs минимальный **image** compose. В **INSTALL.ru** добавлены шаги **`make verify`** для вариантов 2–3.
+- **Деплой:** в **`scripts/deploy.sh`** rsync-исключение **`.venv-ci`**, чтобы локальный CI-venv не уезжал на сервер.
 
 - **Настройки (UI):** удалён неиспользуемый `VideoSection` (дублировал захват/кормушку и старую модель `motion.source`). Поля весов интеграции и кормушки вынесены в `shared/scalesIntegrationFields.tsx` и `shared/feederRelayFields.tsx`. В `check-settings-ui-coverage.py` для legacy `integrations.scales.motion_trigger_*` добавлен явный allowlist (смена на `triggers.scales.*` в форме).
 

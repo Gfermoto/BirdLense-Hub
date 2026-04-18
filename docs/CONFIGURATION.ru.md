@@ -47,7 +47,7 @@
 | Переменная | Описание |
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
-| `REDIS_URL` | В **Docker** по умолчанию задаётся в `docker-compose.yml`: `redis://redis:6379/0` (контейнер `birdlense-redis`). Для своего Redis — переопределите в `app/.env`. Без URL (локальный запуск без compose) — кэш в памяти процесса. |
+| `REDIS_URL` | **`app/docker-compose.yml`:** по умолчанию `redis://redis:6379/0` (контейнер `birdlense-redis`). **`docker-compose.image.yml`:** отдельного Redis нет — не задавайте или укажите **внешний** Redis; иначе кэш **в процессе**. Переопределение — в `app/.env`. **Запуск на хосте без compose:** пусто — кэш в памяти процесса. |
 | `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. |
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
