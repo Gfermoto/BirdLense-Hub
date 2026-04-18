@@ -54,6 +54,7 @@
 | Список возможностей | [FEATURES](./FEATURES.ru.md) |
 | Проблемы | [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) |
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
+| CI и локальный полный прогон (`make ci-local`) | [CI_AND_QUALITY](./CI_AND_QUALITY.ru.md) |
 | Полный индекс | [docs/README](./README.ru.md) |
 | Карта разделов для сайта | [SITE_MAP](./SITE_MAP.ru.md) |
 

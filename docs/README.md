@@ -59,6 +59,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | Document |
 |-------|----------|
 | **CI jobs** (Bandit, pip-audit, Ruff, pytest slices, UI build, MkDocs, Docker tests, Playwright smoke) | [TESTING](./TESTING.md) (section 1) · [RU](./TESTING.ru.md) |
+| **One-shot local CI** (`make ci-local`, `make ci-local-docker` from repo root) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | **CI policy** (Ruff format, pip-audit ignores, npm audit, OpenAPI→TS roadmap) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |

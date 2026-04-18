@@ -57,6 +57,7 @@
 | Тема | Документ |
 |------|----------|
 | **CI на PR** (Bandit, pip-audit, Ruff, pytest, сборка UI, MkDocs, Docker-тесты, Playwright smoke) | [TESTING.ru.md](./TESTING.ru.md) (раздел 1) |
+| **Локальный полный CI** (`make ci-local`, `make ci-local-docker` из корня репо) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) |
 | **Политика CI** (Ruff format, игноры pip-audit, npm audit, OpenAPI→TS) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) |
 | Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |

@@ -34,6 +34,8 @@ python3 -m venv .venv-docs
 
 Каталог `site/` в git не коммитится (см. `.gitignore`).
 
+**Полный локальный CI (как проверки на GitHub):** из **корня репозитория** команда `make ci-local` запускает `scripts/ci-full-local.sh` — безопасность Python + Ruff + полный `pytest web/tests/` в **`.venv-ci`**, сверка версий, UI (дрейф OpenAPI codegen, Vitest, typecheck, lint, build), скрипт покрытия Settings UI, **MkDocs** `--strict` через **`.venv-docs`**. `make ci-local-docker` добавляет тесты в Docker-образ и Playwright `smoke.spec.ts`. Для фазы UI нужен **Node.js ≥ 22**. Подробности: [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md).
+
 **Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций), `CONSILIUM_AUDIT.ru.md` (исторический аудит; см. [архив на GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), а также `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (внутренний чеклист перед крупными изменениями UI/API — файл в репозитории, не часть операторского руководства) и `LEGACY_CLEANUP.md` (внутренние заметки по инвентарю/legacy).
 
 ### Публикация (CI)

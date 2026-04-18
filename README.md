@@ -119,6 +119,8 @@ From repo root:
 |---------|-------------|
 | `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
 | `make verify` | Check `health` + `readiness` + `status` on `BASE_URL` or localhost |
+| `make ci-local` | Run `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, full `web/tests` pytest, docs version, UI (codegen + Vitest + typecheck + lint + build), Settings UI coverage, MkDocs strict (see [docs/CI_AND_QUALITY.md](./docs/CI_AND_QUALITY.md)) |
+| `make ci-local-docker` | Same as `ci-local`, then Docker image tests + Playwright smoke (heavy; needs processor weights) |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |

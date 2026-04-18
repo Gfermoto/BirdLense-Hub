@@ -34,6 +34,8 @@ python3 -m venv .venv-docs
 
 Build output goes to `site/` (ignored by git).
 
+**Full local CI (mirror of GitHub checks):** from the **repository root**, `make ci-local` runs `scripts/ci-full-local.sh` — Python security + Ruff + full `pytest web/tests/` in **`.venv-ci`**, version sync, UI (OpenAPI codegen drift, Vitest, typecheck, lint, build), Settings UI coverage script, **MkDocs** `--strict` via **`.venv-docs`**. `make ci-local-docker` adds Docker image tests and Playwright `smoke.spec.ts`. Requires **Node.js ≥ 22** for the UI phase. Details: [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+
 **Excluded from the published site** (see root `mkdocs.yml` `exclude_docs`): `docs/archive/**`, `docs/article/**` (publication drafts), `CONSILIUM_AUDIT.ru.md` (historical RU audit; see [archive on GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), and `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (maintainer pre-flight checklist for specific GitHub issues—kept in the repo, not part of the operator manual), and `LEGACY_CLEANUP.md` (internal inventory notes).
 
 ### Publish (CI)
