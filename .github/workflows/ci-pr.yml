@@ -6,6 +6,10 @@ on:
     branches: [main, dev]
   push:
     branches: [main, dev]
+  # Ежедневно на default branch — регрессии без пушей от людей.
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
