@@ -12,6 +12,7 @@ from birdnet_merge_key import birdnet_merge_key, sqlite_path_for_birdnet_merge
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
 from hypothesis_arbitration import apply_hypothesis_arbitration
+from runtime_contract import apply_runtime_contract_rows
 
 logger = logging.getLogger(__name__)
 
@@ -444,5 +445,6 @@ def build_fused_video_detections(
             d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
+    fused = apply_runtime_contract_rows(fused)
     min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
     return [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]

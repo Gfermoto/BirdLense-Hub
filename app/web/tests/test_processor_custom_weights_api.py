@@ -48,6 +48,7 @@ def test_processor_weights_status_ok(client, monkeypatch, isolated_user_config):
     assert "binary" in body and "classifier" in body and "allowlist" in body
     assert "custom_weights_dir" in body
     assert body["binary"].get("path")
+    assert "fingerprint_sha256_16" in body["binary"]
 
 
 def test_processor_weights_upload_binary_and_reset(client, monkeypatch, isolated_user_config):
@@ -63,6 +64,7 @@ def test_processor_weights_upload_binary_and_reset(client, monkeypatch, isolated
     assert j.get("ok") is True
     cw = j.get("status", {}).get("custom_weights_dir")
     assert cw
+    assert j["status"]["binary"]["fingerprint_sha256_16"]
     import os
 
     assert os.path.isfile(os.path.join(cw, "binary.pt"))

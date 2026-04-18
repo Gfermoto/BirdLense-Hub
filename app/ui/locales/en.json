@@ -1205,6 +1205,7 @@
     "processorWeightsRestartProcessor": "Restart processor",
     "processorWeightsDirLabel": "Storage directory",
     "processorWeightsMtime": "Modified: {{ts}}",
+    "processorWeightsFingerprint": "SHA256 (16 chars): {{fp}}",
     "processorWeightsAckClassifier": "I understand the risk: upload classifier without a fresh class_names.txt (allowlist file must exist on the server).",
     "processorWeightsUploadOk": "Upload saved. Processor restart requested.",
     "processorWeightsUploadFailed": "Upload failed",

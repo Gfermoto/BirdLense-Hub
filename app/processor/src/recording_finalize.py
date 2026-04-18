@@ -12,63 +12,13 @@ from typing import Any, Optional
 
 from api import API
 from app_config.app_config import app_config
-from app_config.trigger_config import (
-    format_motion_source_summary,
-    format_trigger_display_line,
-    get_active_trigger_names,
-)
 from dataset_saver import save_dataset_crops
+from decision_trace_builder import build_decision_trace_payload
 from decision_outcome import compute_outcome_bucket
 from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
 from processor_support import get_data_dir
-from processor_provenance import build_pipeline_fingerprint
 from spectrogram import generate_spectrogram
-
-
-_DECISION_TRACE_FIELDS = (
-    "track_id",
-    "accepted",
-    "outcome_bucket",
-    "species_name",
-    "confidence",
-    "arbitration_reason",
-    "decision_reason_before_arbitration",
-    "decision_reason",
-    "decision_kind",
-    "trust_band",
-    "reject_reason_code",
-    "evidence_state",
-    "detector_label",
-    "detector_confidence",
-    "detector_event_count",
-    "classifier_threshold",
-    "classifier_species_name",
-    "classifier_confidence",
-    "classifier_event_count",
-    "classifier_vote_share",
-    "best_frame_score",
-    "key_frame_count",
-    "audio_evidence",
-    "audio_support_count",
-    "audio_support_species",
-    "audio_conflict_species",
-    "audio_conflict_score",
-    "_birdnet_prior",
-    "_birdnet_timestamp_parse_failed",
-    "_multi_camera_count",
-    "_multi_camera_support",
-    "_fusion_used",
-    "_fusion_score",
-    "_fusion_scorer_status",
-    "_fusion_model_path",
-    "audio_top_species",
-    "audio_top_score",
-    "audio_top_support_count",
-    "frigate_standalone",
-    "frigate_merge_suppressed",
-)
-_DECISION_TRACE_LIMIT = 40
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
@@ -93,34 +43,6 @@ def _is_playable_video_file(path: str) -> bool:
             cap.release()
     except Exception:
         return False
-
-
-def _decision_trace_row(item: dict, *, persisted_to_clip: bool) -> dict:
-    row = {}
-    for key in _DECISION_TRACE_FIELDS:
-        if key in item:
-            row[key] = item.get(key)
-    row["accepted"] = bool(item.get("accepted", False))
-    row["persisted_to_clip"] = bool(persisted_to_clip)
-    row["confidence"] = float(item.get("confidence") or 0.0)
-    row["best_frame_score"] = float(item.get("best_frame_score") or 0.0)
-    row["key_frame_count"] = int(item.get("key_frame_count") or 0)
-    row["classifier_vote_share"] = float(item.get("classifier_vote_share") or 0.0)
-    row["detector_event_count"] = int(item.get("detector_event_count") or 0)
-    row["classifier_event_count"] = int(item.get("classifier_event_count") or 0)
-    row["_birdnet_prior"] = float(item.get("_birdnet_prior") or 0.0)
-    row["_multi_camera_count"] = int(item.get("_multi_camera_count") or 0)
-    row["_multi_camera_support"] = bool(item.get("_multi_camera_support") or False)
-    if item.get("audio_evidence") is None:
-        row["audio_evidence"] = "none"
-    return row
-
-
-def _clip_trace_rows(rows: list[dict], limit: int = _DECISION_TRACE_LIMIT) -> tuple[list[dict], int]:
-    rows = list(rows or [])
-    if len(rows) <= limit:
-        return rows, 0
-    return rows[:limit], len(rows) - limit
 
 
 def finalize_motion_recording(
@@ -297,73 +219,17 @@ def finalize_motion_recording(
             "Fusion audio evidence summary: %s",
             dict(sorted(audio_evidence_summary.items())),
         )
-    decision_trace = {
-        "decision_contract_version": "2026-04-polish-v1",
-        "start_time": start_time.isoformat(),
-        "end_time": end_time.isoformat(),
-        "video_path": video_path_for_api,
-        "merge_window_seconds": merge_window,
-        "persisted_tracks": [],
-        "rejected_tracks": [],
-    }
-    decision_trace["pipeline_fingerprint"] = build_pipeline_fingerprint(app_config)
-    clip_duration_seconds = max(0.0, (end_time - start_time).total_seconds())
-    review_only_count = sum(1 for item in video_detections if str(item.get("outcome_bucket") or "") == "review_only")
-    _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
-    active_at_finalize = get_active_trigger_names(app_config, mqtt_broker=_mqtt_b)
-    trigger_display = str((recording_context or {}).get("trigger_display") or "").strip()
-    if not trigger_display:
-        trigger_display = format_trigger_display_line(active_at_finalize)
-    decision_trace["recording_context"] = {
-        "motion_source": format_motion_source_summary(active_at_finalize),
-        "active_triggers": list(active_at_finalize),
-        "trigger_display": trigger_display,
-        "triggered_by": (recording_context or {}).get("triggered_by"),
-        "video_source": app_config.get("video.source"),
-        "triggered_camera": (recording_context or {}).get("triggered_camera"),
-        "frigate_activity_hold_seconds": (recording_context or {}).get("frigate_activity_hold_seconds"),
-        "min_seconds_between_recordings": float(app_config.get("processor.min_seconds_between_recordings") or 0),
-        "clip_duration_seconds": round(clip_duration_seconds, 3),
-    }
-    scales_evidence = {
-        "enabled": bool(app_config.get("integrations.scales.enabled")),
-        "weight_estimate_enabled": bool(app_config.get("integrations.scales.weight_estimate_enabled", True)),
-        "topic_present": bool(scales_topic_arg),
-        "estimated_delta_kg": None,
-        "sample_count": 0,
-        "min_delta_kg": None,
-        "require_consecutive_spike": bool(
-            app_config.get("integrations.scales.estimate_require_consecutive_spike", True)
-        ),
-    }
-    raw_min_delta = app_config.get("integrations.scales.min_delta_kg_for_estimate")
-    if raw_min_delta is not None:
-        try:
-            scales_evidence["min_delta_kg"] = float(raw_min_delta)
-        except (TypeError, ValueError):
-            scales_evidence["min_delta_kg"] = None
-    decision_trace["scales_evidence"] = scales_evidence
-    decision_trace["outcome_summary"] = {
-        "persisted_track_count": len(video_detections),
-        "review_only_count": review_only_count,
-        "rejected_track_count": len(rejected_decisions),
-    }
-    accepted_trace_rows = [_decision_trace_row(item, persisted_to_clip=True) for item in video_detections]
-    rejected_trace_rows = [_decision_trace_row(item, persisted_to_clip=False) for item in rejected_decisions]
-    accepted_trace_rows, accepted_trimmed = _clip_trace_rows(accepted_trace_rows)
-    rejected_trace_rows, rejected_trimmed = _clip_trace_rows(rejected_trace_rows)
-    # persisted_* — строки, попавшие в video_detections (клип / БД); accepted_* — тот же список (legacy).
-    decision_trace["persisted_tracks"] = accepted_trace_rows
-    decision_trace["accepted_tracks"] = decision_trace["persisted_tracks"]
-    decision_trace["rejected_tracks"] = rejected_trace_rows
-    decision_trace["persisted_track_count"] = len(video_detections)
-    decision_trace["accepted_track_count"] = len(video_detections)
-    decision_trace["rejected_track_count"] = len(rejected_decisions)
-    if accepted_trimmed:
-        decision_trace["persisted_tracks_truncated"] = accepted_trimmed
-        decision_trace["accepted_tracks_truncated"] = accepted_trimmed
-    if rejected_trimmed:
-        decision_trace["rejected_tracks_truncated"] = rejected_trimmed
+    decision_trace = build_decision_trace_payload(
+        app_config=app_config,
+        start_time=start_time,
+        end_time=end_time,
+        video_path=video_path_for_api,
+        persisted_tracks=video_detections,
+        rejected_tracks=rejected_decisions,
+        recording_context=recording_context,
+        scales_topic_arg=scales_topic_arg,
+    )
+    scales_evidence = decision_trace["scales_evidence"]
     logging.info(
         "Processing stopped. Video Result: %s; Audio Result: %s",
         video_summary,

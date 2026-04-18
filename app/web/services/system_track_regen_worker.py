@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import os
 import sys
+import json
 from datetime import datetime, timedelta, timezone
 
 import routes.ui_system_jobs_state as job_state
 from app_config.app_config import app_config
 from data_paths import resolve_recording_video_file
-from models import Species, Video, VideoSpecies, db
+from models import ActivityLog, Species, Video, VideoSpecies, db
 from services.http_response_cache import bust_response_caches
+from services.species_identity_service import SpeciesIdentityService
 from services.species_registry_service import resolve_species_name
 from services.track_regen_service import (
+    build_track_regen_policy_snapshot as _build_track_regen_policy_snapshot,
     derive_track_regen_species_scope as _derive_track_regen_species_scope,
     remap_detection_to_local_scope as _remap_detection_to_local_scope,
     run_track_regen_with_precise_fallback as _run_track_regen_with_precise_fallback,
@@ -84,11 +87,15 @@ def run_regenerate_tracks_worker(
                 build_detection_pipeline,
                 process_video_for_tracks,
             )
+            from decision_trace_builder import build_decision_trace_payload
             from detection_fusion import build_fused_video_detections
 
             match_live = bool(
                 app_config.get("processor.track_regen_match_live_pipeline", False),
             )
+            target_video_ids = sorted(set(video_ids or []))
+            single_video_mode = len(target_video_ids) == 1
+            profile = "match_live" if match_live else "batch"
             if match_live:
                 try:
                     lores_px = int(
@@ -111,15 +118,27 @@ def run_regenerate_tracks_worker(
                 or "two_stage"
             )
             max_runtime_sec = int(app_config.get("processor.track_regen_video_timeout_sec") or 300)
+            if single_video_mode and not match_live:
+                inference_lores_px = int(app_config.get("processor.inference_lores_px") or lores_px or 640)
+                inference_lores_px = max(320, min(inference_lores_px, 960))
+                lores_px = max(lores_px, inference_lores_px)
+                lores_size = (lores_px, lores_px)
+                frame_step = min(frame_step, 2)
+                max_runtime_sec = max(
+                    max_runtime_sec,
+                    int(app_config.get("processor.track_regen_precise_timeout_sec") or 420),
+                )
+                profile = "single_video_quality"
+            effective_match_live = bool(match_live or single_video_mode)
             dt_start = None
             dt_end = None
             species_ids_f = sorted(set(species_ids or []))
-            target_video_ids = sorted(set(video_ids or []))
             regen_params = {
                 "frame_step": frame_step,
                 "lores_px": lores_px,
                 "detection_strategy": str(regen_strategy).strip(),
                 "max_runtime_sec": max_runtime_sec,
+                "profile": profile,
             }
             if species_ids_f:
                 regen_params["species_ids"] = species_ids_f
@@ -127,7 +146,7 @@ def run_regenerate_tracks_worker(
             regen_params["ignore_regional_species"] = bool(
                 app_config.get("processor.track_regen_ignore_regional_species", True)
             )
-            regen_params["match_live_pipeline"] = match_live
+            regen_params["match_live_pipeline"] = effective_match_live
             parallel_auto_with_manual = bool(
                 app_config.get(
                     "processor.track_regen_parallel_auto_with_manual",
@@ -202,23 +221,35 @@ def run_regenerate_tracks_worker(
             precise_candidates: list[dict] = []
             regen_species_scope = None
             regen_species_scope_lc: set[str] = set()
-            if app_config.get("processor.track_regen_ignore_regional_species", True) and not match_live:
+            if app_config.get("processor.track_regen_ignore_regional_species", True) and not effective_match_live:
                 regen_species_scope = _derive_track_regen_species_scope(dt_start)
                 if regen_species_scope:
                     regen_species_scope_lc = {
                         str(name).strip().lower() for name in regen_species_scope if str(name).strip()
                     }
                     regen_params["local_species_scope_count"] = len(regen_species_scope)
+            regional_species_override = (
+                list(app_config.get("processor.regional_species") or [])
+                if effective_match_live
+                else None
+            )
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
-            visit_processor = VisitProcessor(db, flask_app.logger, visit_timeout=visit_timeout)
+            visit_processor = VisitProcessor(
+                db,
+                flask_app.logger,
+                visit_timeout=visit_timeout,
+                update_species_metadata=False,
+            )
+            species_identity = SpeciesIdentityService(db, flask_app.logger)
             frame_processor, decision_maker = build_detection_pipeline(
                 app_config,
                 strategy_override=regen_strategy,
                 for_track_regen=True,
+                regional_species_override=regional_species_override,
             )
             precise_lores_px = max(lores_px, 640)
-            precise_frame_step = min(frame_step, 2)
+            precise_frame_step = 1 if single_video_mode else min(frame_step, 2)
             precise_strategy = (
                 app_config.get("processor.track_regen_precise_detection_strategy")
                 or app_config.get("processor.track_regen_detection_strategy")
@@ -226,7 +257,7 @@ def run_regenerate_tracks_worker(
                 or regen_strategy
                 or "two_stage"
             )
-            precise_max_runtime_sec = min(
+            precise_max_runtime_sec = max(
                 max_runtime_sec,
                 int(app_config.get("processor.track_regen_precise_timeout_sec") or 420),
             )
@@ -275,7 +306,7 @@ def run_regenerate_tracks_worker(
                 if not name:
                     return None
                 if name not in species_name_to_id_cache:
-                    sp = visit_processor._get_or_create_species(name)
+                    sp = species_identity.resolve_or_create_species(name, source="ingest")
                     species_name_to_id_cache[name] = sp.id if sp else None
                 return species_name_to_id_cache[name]
 
@@ -366,6 +397,7 @@ def run_regenerate_tracks_worker(
                     continue
 
                 try:
+                    persisted_detections_for_trace: list[dict] = []
                     fast_kwargs = {
                         "lores_size": lores_size,
                         "frame_processor": frame_processor,
@@ -379,7 +411,7 @@ def run_regenerate_tracks_worker(
                         if not precise_params:
                             return None
                         if precise_pipeline is None:
-                            precise_scope_override = regen_species_scope
+                            precise_scope_override = regional_species_override if effective_match_live else regen_species_scope
                             precise_pipeline = build_detection_pipeline(
                                 app_config,
                                 strategy_override=precise_strategy,
@@ -458,6 +490,27 @@ def run_regenerate_tracks_worker(
                             precise_frame_step,
                             precise_lores_px,
                         )
+                    single_video_summary_extra = {
+                        "profile": profile,
+                        "raw_track_fragment_count": len(track_detections),
+                        "post_fusion_track_count": len(detections),
+                    }
+                    precise_policy = {}
+                    if precise_used and precise_pipeline:
+                        precise_policy = dict(getattr(precise_pipeline[0], "pipeline_policy", {}) or {})
+                    regen_policy = _build_track_regen_policy_snapshot(
+                        profile=profile,
+                        match_live_pipeline=effective_match_live,
+                        strategy=regen_strategy,
+                        frame_step=frame_step,
+                        lores_px=lores_px,
+                        max_runtime_sec=max_runtime_sec,
+                        precise_used=precise_used,
+                        precise_params=precise_params,
+                        local_species_scope_count=len(regen_species_scope_lc),
+                        species_scope_selected=bool(species_scope),
+                    )
+                    fast_policy = dict(getattr(frame_processor, "pipeline_policy", {}) or {})
 
                     scoped_detections: list[dict] | None = None
                     if species_scope:
@@ -493,8 +546,6 @@ def run_regenerate_tracks_worker(
 
                     manual_vs = [vs for vs in video.video_species if vs.manually_corrected]
                     if manual_vs:
-                        import json
-
                         used_det_indices = set()
                         manual_frames_rows_updated = 0
                         manuals_ordered = sorted(
@@ -551,12 +602,14 @@ def run_regenerate_tracks_worker(
                             db.session.delete(vs)
                         if unmatched:
                             visit_processor.process_detections(video, unmatched)
+                        persisted_detections_for_trace = list(unmatched)
                         if manual_frames_rows_updated:
                             frames_updated += manual_frames_rows_updated
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 unmatched,
                             )
+                            single_video_regen_summary.update(single_video_summary_extra)
                             single_video_regen_summary["manual_frames_rows_updated"] = int(manual_frames_rows_updated)
                             single_video_regen_summary["manual_tracks_overlay_expected"] = (
                                 manual_frames_rows_updated > 0
@@ -586,19 +639,57 @@ def run_regenerate_tracks_worker(
                                 VideoSpecies.manually_corrected.is_(False),
                             ).delete(synchronize_session=False)
                         visit_processor.process_detections(video, scoped_detections)
+                        persisted_detections_for_trace = list(scoped_detections)
                         generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 scoped_detections,
                             )
+                            single_video_regen_summary.update(single_video_summary_extra)
                     else:
                         VideoSpecies.query.filter_by(video_id=video.id).delete()
                         visit_processor.process_detections(video, detections)
+                        persisted_detections_for_trace = list(detections)
                         generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 detections,
                             )
+                            single_video_regen_summary.update(single_video_summary_extra)
+                    decision_trace = build_decision_trace_payload(
+                        app_config=app_config,
+                        start_time=video.start_time,
+                        end_time=video.end_time,
+                        video_path=str(video.video_path or ""),
+                        persisted_tracks=persisted_detections_for_trace,
+                        rejected_tracks=[],
+                        video_id=video.id,
+                        recording_context={
+                            "triggered_by": "track_regen",
+                            "trigger_display": "Track regen",
+                            "motion_source": "track_regen",
+                            "active_triggers": [],
+                            "video_source": "archive_mp4",
+                            "regen_profile": profile,
+                            "pipeline_policy": {
+                                "fast": fast_policy,
+                                "precise": precise_policy,
+                                "regen": regen_policy,
+                            },
+                            "runtime_signals": {
+                                "frames_seen": None,
+                                "yolo_frames_ran": None,
+                                "yolo_frames_with_tracks": len(track_detections),
+                                "low_light_blocked_frames": 0,
+                                "session_extended_by_frigate_only": 0,
+                                "yolo_ran": True,
+                                "yolo_track_found": bool(track_detections),
+                                "session_extended_by_frigate": False,
+                                "precise_fallback_used": bool(precise_used),
+                            },
+                        },
+                    )
+                    db.session.add(ActivityLog(type="decision_trace", data=json.dumps(decision_trace)))
                     db.session.commit()
                 except Exception as e:
                     db.session.rollback()

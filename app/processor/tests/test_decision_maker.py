@@ -65,6 +65,11 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['species_name'], 'Cardinal')
         self.assertAlmostEqual(results[0]['confidence'], 0.81)
         self.assertEqual(results[0]['decision_reason'], 'accepted_species')
+        self.assertEqual(results[0]['primary_provider'], 'yolo')
+        self.assertEqual(results[0]['primary_signal'], 'species_classifier')
+        self.assertEqual(results[0]['threshold_path'], 'classifier_threshold')
+        self.assertFalse(results[0]['fallback_used'])
+        self.assertTrue(results[0]['yolo_track_present'])
 
     def test_classifier_majority_vote_uses_classifier_subset(self):
         tracks = {
@@ -142,6 +147,10 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertFalse(results[0].get('notification_eligible', True))
         self.assertEqual(results[0]['detector_label'], 'Bird')
         self.assertEqual(len(results[0].get('frames') or []), 1)
+        self.assertTrue(results[0]['fallback_used'])
+        self.assertEqual(results[0]['fallback_reason'], 'review_only_generic_bird')
+        self.assertEqual(results[0]['primary_signal'], 'generic_visual_guard')
+        self.assertEqual(results[0]['threshold_path'], 'classifier_threshold_then_generic_guard')
 
     def test_detector_only_weak_bird_is_review_only(self):
         dm = DecisionMaker(

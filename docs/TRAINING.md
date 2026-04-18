@@ -21,6 +21,44 @@ The `Scientific (Common)` naming matches **Frigate** and **BirdNET**, which simp
 
 **Switching weights:** US → `cp best_US.pt best.pt`. EU → copy your trained file to `best.pt` (or `best_EU.pt` → `best.pt`).
 
+## Rollout contract
+
+BirdLense rollout candidates are considered valid only if you keep these artifacts together:
+
+- `best.pt` for the detector or classifier slot you trained
+- `class_names.txt` for classifier rollouts
+- `dataset_info.json` from a `ready_for_train + strict_quality` export
+- a validation report from `scripts/validate-processor-weights.py`
+
+Recommended local gate before upload:
+
+```bash
+make validate-weights \
+  BINARY=app/processor/models/detection/weights/best.pt \
+  CLASSIFIER=/path/to/new-classifier.pt \
+  CLASS_NAMES=/path/to/classes.txt \
+  DATASET_INFO=/path/to/dataset_info.json \
+  OUTPUT=/tmp/processor-weight-validation.json
+```
+
+Rollback stays simple: in UI `System -> Processor weights`, reset the custom binary/classifier slot (or both) to return to bundled defaults.
+
+For runtime benchmarking on a fixed regression set before rollout:
+
+```bash
+python3 scripts/benchmark-track-regen.py \
+  --video /path/to/video1.mp4 \
+  --video /path/to/video2.mp4
+```
+
+For product-level rates from persisted `decision_trace` logs:
+
+```bash
+python3 scripts/report-yolo-product-metrics.py \
+  --db app/data/db/birdlense.db \
+  --dataset-info /path/to/dataset_info.json
+```
+
 ---
 
 ## Prerequisites

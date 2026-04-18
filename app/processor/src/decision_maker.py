@@ -4,6 +4,7 @@ from collections import Counter
 import re
 
 from decision_outcome import compute_outcome_bucket
+from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
 
@@ -346,32 +347,40 @@ class DecisionMaker:
                     self.min_track_duration,
                 )
                 decisions.append(
-                    {
+                    apply_runtime_contract(
+                        {
                         "track_id": track_id,
                         "accepted": False,
                         "outcome_bucket": "rejected",
                         "decision_reason": "rejected_short_track",
+                        "decision_kind": "rejected",
                         "trust_band": "red",
                         "start_time": track["start_time"],
                         "end_time": track["end_time"],
                         "confidence": 0.0,
+                        "detection_provider": "yolo",
                     }
+                    )
                 )
                 continue
 
             detector_candidate = self._pick_detector_candidate(detector_events)
             if detector_candidate is None:
                 decisions.append(
-                    {
+                    apply_runtime_contract(
+                        {
                         "track_id": track_id,
                         "accepted": False,
                         "outcome_bucket": "rejected",
                         "decision_reason": "rejected_missing_detector_candidate",
+                        "decision_kind": "rejected",
                         "trust_band": "red",
                         "start_time": track["start_time"],
                         "end_time": track["end_time"],
                         "confidence": 0.0,
+                        "detection_provider": "yolo",
                     }
+                    )
                 )
                 continue
             detector_label = detector_candidate["label"]
@@ -528,7 +537,8 @@ class DecisionMaker:
             )
 
             decisions.append(
-                {
+                apply_runtime_contract(
+                    {
                     "track_id": track_id,
                     "accepted": accepted,
                     "outcome_bucket": self._outcome_bucket(
@@ -546,6 +556,7 @@ class DecisionMaker:
                     "best_frame_score": float(track.get("best_frame_score") or 0.0),
                     "key_frame_count": len(track.get("key_frames") or []),
                     "source": "video",
+                    "detection_provider": "yolo",
                     "frames": track.get("frames", []),
                     "decision_reason": decision_reason,
                     "detector_label": detector_label,
@@ -571,6 +582,7 @@ class DecisionMaker:
                         accepted, decision_reason, out_conf, reject_reason_code
                     ),
                 }
+                )
             )
 
         decisions.sort(

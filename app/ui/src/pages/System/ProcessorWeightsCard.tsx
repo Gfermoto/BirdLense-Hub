@@ -66,6 +66,16 @@ function SlotRow(props: {
             : ''}
         </Typography>
       </Stack>
+      {slot.fingerprint_sha256_16 ? (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          component="div"
+          sx={{ mb: 1, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}
+        >
+          {t('system.processorWeightsFingerprint', { fp: slot.fingerprint_sha256_16 })}
+        </Typography>
+      ) : null}
       <Stack direction="row" flexWrap="wrap" gap={1}>
         <input
           ref={fileInputRef}
@@ -278,8 +288,25 @@ export function ProcessorWeightsCard() {
                 />
                 <Typography variant="caption" color="text.secondary">
                   {formatBytes(st.allowlist.bytes)}
+                  {st.allowlist.mtime_unix
+                    ? ` · ${t('system.processorWeightsMtime', {
+                        ts: new Date(st.allowlist.mtime_unix * 1000).toLocaleString(),
+                      })}`
+                    : ''}
                 </Typography>
               </Stack>
+              {st.allowlist.fingerprint_sha256_16 ? (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ mb: 1, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}
+                >
+                  {t('system.processorWeightsFingerprint', {
+                    fp: st.allowlist.fingerprint_sha256_16,
+                  })}
+                </Typography>
+              ) : null}
               <Stack direction="row" flexWrap="wrap" gap={1}>
                 <input ref={allowRef} type="file" accept=".txt,text/plain" hidden onChange={onAllowFile} />
                 <Button
