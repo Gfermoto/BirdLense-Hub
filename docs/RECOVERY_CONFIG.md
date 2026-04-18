@@ -44,7 +44,7 @@ cp app/app_config/user_config.yaml.bak app/app_config/user_config.yaml
 ssh YOUR_SSH_HOST "cp YOUR_REMOTE_DIR/app/app_config/user_config.yaml.bak YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
 ```
 
-Restart or wait for processor reload per your setup.
+Restart the hub: `cd app && docker compose restart birdlense`, or `cd app && make stop && make start`, or wait for processor reload per your setup.
 
 ---
 
