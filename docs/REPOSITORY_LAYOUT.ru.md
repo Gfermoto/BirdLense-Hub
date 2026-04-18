@@ -14,7 +14,7 @@
 | **`docs/`** | Документация для операторов и разработчиков; исходники **MkDocs**. Оглавление: [README.ru](./README.ru.md). |
 | **`scripts/`** | Деплой (`deploy.sh`, `deploy.local.sh.example`), диагностика, датасеты, скрипты GitHub Project, верификация. |
 | **`mkdocs.yml`**, **`overrides/`** | Статический сайт документации (GitHub Pages). Сборка: `make docs-site` или [Documentation.ru](./Documentation.ru.md). |
-| **`Makefile`** (корень) | `deploy`, `docs-site`, Telegram proxy, `restore-config` и т.д. Сборка/запуск приложения — в `app/Makefile`. |
+| **`Makefile`** (корень) | `deploy`, **`ci-local`** / **`ci-local-docker`** (зеркало CI через `scripts/ci-full-local.sh`), `verify`, `docs-site`, Telegram proxy, `restore-config` и т.д. Сборка/запуск приложения — в `app/Makefile`. |
 | **`VERSION`** | Текущая semver-версия хаба (единый источник для проверок версии). |
 | **`examples/`** | Примеры конфигов (например правила Prometheus), приложение их само не подхватывает. |
 | **`wiki-source/`** | Заготовки / автоматизация для GitHub Wiki — см. [WIKI_AUTOMATION.ru](./WIKI_AUTOMATION.ru.md). |

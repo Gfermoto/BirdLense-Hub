@@ -52,7 +52,9 @@ python3 -m venv .venv-docs
 
 ### Чеклист перед релизом (мейнтейнер)
 
+- [ ] Из **корня репозитория:** `make ci-local` (полный паритет с job **CI** на GitHub, кроме тяжёлого Docker-слоя — см. [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md)); по желанию **`make ci-local-docker`** для локальных `make test` / `test-web` + Playwright smoke
 - [ ] `cd app && make test && make test-web` (или зелёный **CI** на PR `dev` → `main`)
+- [ ] `cd app && make verify`
 - [ ] Из корня репо: `mkdocs build --strict` (или команды с `.venv-docs` выше)
 - [ ] По желанию: `cd app && make start`, затем `make test-e2e` — или **Actions → E2E (Playwright) → Run workflow**
 - [ ] После деплоя: смоук `curl`/UI по [TESTING.ru](./TESTING.ru.md) §2

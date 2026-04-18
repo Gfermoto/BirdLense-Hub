@@ -14,7 +14,7 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 | **`docs/`** | Operator and developer documentation (this tree); **MkDocs** source. Index: [README](./README.md). |
 | **`scripts/`** | Deploy (`deploy.sh`, `deploy.local.sh.example`), diagnostics, dataset helpers, GitHub project scripts, verification. |
 | **`mkdocs.yml`**, **`overrides/`** | Static documentation site (GitHub Pages). Build: `make docs-site` or see [Documentation](./Documentation.md). |
-| **`Makefile`** (root) | `deploy`, `docs-site`, Telegram proxy helpers, `restore-config`, etc. Application build/start is under `app/Makefile`. |
+| **`Makefile`** (root) | `deploy`, **`ci-local`** / **`ci-local-docker`** (full CI mirror via `scripts/ci-full-local.sh`), `verify`, `docs-site`, Telegram proxy helpers, `restore-config`, etc. Application build/start is under `app/Makefile`. |
 | **`VERSION`** | Current release semver for the hub (single source of truth for version checks). |
 | **`examples/`** | Reference configs (e.g. Prometheus alert rules), not loaded by the app automatically. |
 | **`wiki-source/`** | Seeds / automation for GitHub Wiki (see [WIKI_AUTOMATION](./WIKI_AUTOMATION.md)). |
