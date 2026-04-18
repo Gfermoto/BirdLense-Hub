@@ -1302,7 +1302,7 @@
     "catalogRepairRunning": "Полировка идёт",
     "catalogRepairReady": "Готово",
     "catalogRepairCompletion": "Поля заполнены: {{p}}%",
-    "catalogRepairSpeciesMatched": "Строк allowlist с записью в БД: {{n}} / {{total}}",
+    "catalogRepairSpeciesMatched": "Allowlist → БД: {{lines}} / {{total}} строк (видов уникально: {{unique}})",
     "catalogRepairCompleteCards": "Полные карточки: {{n}} / {{total}}",
     "catalogRepairWithImage": "С фото: {{n}}",
     "catalogRepairWithDescription": "С описанием: {{n}}",

@@ -40,6 +40,7 @@ export function CatalogRepairCard() {
     completion_percent: 0,
     complete_cards: 0,
     allowlist_total: 0,
+    allowlist_lines_matched: 0,
     species_matched: 0,
     with_image: 0,
     with_description: 0,
@@ -77,8 +78,9 @@ export function CatalogRepairCard() {
             size="small"
             variant="outlined"
             label={t('system.catalogRepairSpeciesMatched', {
-              n: cov.species_matched ?? 0,
+              lines: cov.allowlist_lines_matched ?? cov.species_matched ?? 0,
               total: cov.allowlist_total,
+              unique: cov.species_matched ?? 0,
             })}
           />
           <Chip size="small" variant="outlined" label={t('system.catalogRepairCompleteCards', { n: cov.complete_cards, total: cov.allowlist_total })} />

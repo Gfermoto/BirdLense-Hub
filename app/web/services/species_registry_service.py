@@ -858,11 +858,19 @@ def repair_catalog_cards(app_config_get, *, dry_run: bool = True, limit: int = 6
 
 
 def catalog_cards_coverage_snapshot(app_config_get) -> dict:
-    """Coverage snapshot for allowlist-backed catalog cards."""
+    """Coverage snapshot for allowlist-backed catalog cards.
+
+    ``allowlist_lines_matched`` / ``with_*`` / ``complete_cards`` / ``completion_percent``
+    are **per line** in the allowlist file (same ``Species`` row may back several lines).
+
+    ``species_matched`` is the count of **distinct** ``Species`` rows hit by at least one line
+    (lower when many file lines collapse onto one DB name).
+    """
     allowlist_names = list(load_catalog_allowlist_names(app_config_get) or ())
     if not allowlist_names:
         return {
             "allowlist_total": 0,
+            "allowlist_lines_matched": 0,
             "species_matched": 0,
             "with_image": 0,
             "with_description": 0,
@@ -876,7 +884,7 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
         for k in species_name_match_norm_keys(sp.name or ""):
             by_norm.setdefault(k, sp)
 
-    matched: list[Species] = []
+    matched_per_line: list[Species] = []
     for raw in allowlist_names:
         target = None
         for k in species_name_match_norm_keys(raw):
@@ -884,20 +892,26 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
             if target:
                 break
         if target:
-            matched.append(target)
+            matched_per_line.append(target)
 
-    uniq: dict[int, Species] = {}
-    for sp in matched:
-        uniq.setdefault(int(sp.id), sp)
-    matched = list(uniq.values())
+    allowlist_lines_matched = len(matched_per_line)
+    uniq_ids: dict[int, Species] = {}
+    for sp in matched_per_line:
+        uniq_ids.setdefault(int(sp.id), sp)
+    species_matched = len(uniq_ids)
 
-    with_image = sum(1 for sp in matched if (sp.image_url or "").strip())
-    with_description = sum(1 for sp in matched if (sp.description or "").strip())
-    complete_cards = sum(1 for sp in matched if (sp.image_url or "").strip() and (sp.description or "").strip())
+    with_image = sum(1 for sp in matched_per_line if (sp.image_url or "").strip())
+    with_description = sum(1 for sp in matched_per_line if (sp.description or "").strip())
+    complete_cards = sum(
+        1
+        for sp in matched_per_line
+        if (sp.image_url or "").strip() and (sp.description or "").strip()
+    )
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
     return {
         "allowlist_total": len(allowlist_names),
-        "species_matched": len(matched),
+        "allowlist_lines_matched": allowlist_lines_matched,
+        "species_matched": species_matched,
         "with_image": with_image,
         "with_description": with_description,
         "complete_cards": complete_cards,
