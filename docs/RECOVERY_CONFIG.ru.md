@@ -30,7 +30,7 @@ cp app/app_config/user_config.yaml.bak app/app_config/user_config.yaml
 
 # На сервере
 ssh YOUR_SSH_HOST "cp YOUR_REMOTE_DIR/app/app_config/user_config.yaml.bak YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
-# Затем перезапустить: make restart (или подождать перезапуска процессора)
+# Затем перезапустить контейнер: cd app && docker compose restart birdlense
 ```
 
 ### 2. Проверить user_config на сервере

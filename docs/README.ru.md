@@ -44,8 +44,8 @@
 
 | Тема | Документ |
 |------|----------|
-| Доступ и пароли | [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) |
-| Риски и рекомендации | [SECURITY](./SECURITY.md) |
+| Доступ и пароли | [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) |
+| Риски и рекомендации | [SECURITY.ru](./SECURITY.ru.md) · [EN](./SECURITY.md) |
 | Восстановление конфига | [RECOVERY_CONFIG](./RECOVERY_CONFIG.ru.md) |
 | Не работает | [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) |
 | Runbooks для операторов | [RUNBOOKS.ru.md](./RUNBOOKS.ru.md) |
@@ -56,9 +56,9 @@
 
 | Тема | Документ |
 |------|----------|
-| **CI на PR** (Bandit, pip-audit, Ruff, pytest, сборка UI, MkDocs, Docker-тесты, Playwright smoke) | [TESTING.ru.md](./TESTING.ru.md) (раздел 1) |
-| **Политика CI** (Ruff format, игноры pip-audit, npm audit, OpenAPI→TS) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) |
-| Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
+| **CI на PR** (Bandit, pip-audit, Ruff, pytest, сборка UI, MkDocs, Docker-тесты, Playwright smoke) | [TESTING.ru.md](./TESTING.ru.md) §1 |
+| **Локальный полный CI и политика** (`make ci-local`, `make ci-local-docker`, форматы, аудиты, OpenAPI→TS) | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) · [EN](./CI_AND_QUALITY.md) |
+| **Тесты, E2E, проверки после деплоя** | [TESTING](./TESTING.ru.md) · [EN](./TESTING.md) |
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
 | Проверка доменных инвариантов | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md) |
 | MCP (Model Context Protocol — автоматизация и интеграции) | [MCP_SETUP](./MCP_SETUP.ru.md) |
@@ -104,6 +104,7 @@
 | Общая проверка (smoke) | `make verify` (или `BASE_URL=http://ХОСТ:8085 make verify`) |
 | Web-тесты | `cd app && make test-web` |
 | Telegram proxy autorotate | `make proxy-rotation-install` (статус: `make proxy-rotation-status`) |
+| Регенерация блока путей OpenAPI | `python3 scripts/merge_openapi_fragments.py` из корня репозитория (смотреть diff) — [подробности](./Documentation.ru.md#openapi-spec-maintenance) |
 | Полный индекс | Эта страница |
 | Предпросмотр статического сайта | `pip install -r requirements-docs.txt && mkdocs serve` ([подробности](./Documentation.ru.md)) |
 

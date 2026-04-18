@@ -18,9 +18,11 @@
 |-----|------------|
 | **`python-security`** | **Bandit** для `web/` + `processor/src`; **pip-audit** по `web/requirements.txt` и `processor/requirements.txt` |
 | **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` для `web/` + `processor/src/`; сводка **radon cc**; **`scripts/check-docs-version.py`**; набор **pytest** (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + проверка расхождения `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; production-сборка SPA (`app/ui`) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + проверка расхождения `src/generated/openapi-types.ts`; **Vitest** (`npm run test -- --run`); **`npm run typecheck`**; `npm run lint`; production-сборка SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, отчёт **Settings UI coverage** (артефакт + summary), **MkDocs** `build --strict` |
 | **`docker-tests`** | Docker **Buildx** — загрузка весов процессора, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` на compose, скрипт **аудита карточек каталога** (артефакт) |
+
+Тот же файл **`ci-pr.yml`** дополнительно запускается по **ежедневному cron** (на GitHub только для **ветки по умолчанию**) и через **`workflow_dispatch`** — те же job, что и на push.
 
 Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](./GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
 
@@ -159,7 +161,9 @@ cd app/e2e && npx playwright test tests/migration.spec.ts
 cd app/e2e && npx playwright test --debug tests/migration.spec.ts
 ```
 
-**CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **раз в неделю** и по **workflow_dispatch**; в ruleset **не required** — для отлова регрессий без Playwright на каждом PR.
+**CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **ежедневно** и по **`workflow_dispatch`**; в ruleset **не required** на каждый PR.
+
+**Локально как в CI:** из корня репозитория **`make ci-local`** (и при необходимости **`make ci-local-docker`**) — см. [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md).
 
 **Расширение покрытия:** дополнительные сценарии (полный логин, углубление в таймлайн, коррекция видов) добавляются **по мере необходимости** вместе с фичей; фиксируйте в PR и в этом документе — отдельный «зонтичный» issue не обязателен.
 

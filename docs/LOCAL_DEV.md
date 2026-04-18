@@ -55,6 +55,7 @@ Details: [Documentation](./Documentation.md).
 
 ### Maintainer checklist (before a release)
 
+- [ ] From **repo root:** `make ci-local` (full parity with GitHub **CI** jobs except Docker-heavy layer — see [CI_AND_QUALITY](./CI_AND_QUALITY.md)); optional **`make ci-local-docker`** if you need processor image tests + Playwright smoke locally
 - [ ] `cd app && make test && make test-web` (or green **CI** on `dev` → `main`)
 - [ ] `cd app && make verify`
 - [ ] From repo root: `mkdocs build --strict` (or `.venv-docs` commands above)

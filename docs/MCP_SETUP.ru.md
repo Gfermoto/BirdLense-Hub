@@ -16,7 +16,7 @@
 export MCP_TOKEN="your-secret-token-at-least-16-chars"
 ```
 
-При `make deploy` токен автоматически попадёт в `app/.env` на сервере.
+При `make deploy` токен попадает в `app/.env` на сервере (`scripts/deploy.sh`).
 
 **Вариант Б — вручную на сервере:**
 

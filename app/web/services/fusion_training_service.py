@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 import sys
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,6 +68,99 @@ def latest_fusion_export_path() -> Path | None:
         reverse=True,
     )
     return candidates[0] if candidates else None
+
+
+def latest_fusion_eval_report_path() -> Path | None:
+    """Последний fusion_eval_report_*.csv (отчёт оценки) по mtime."""
+    out_dir = fusion_export_dir()
+    candidates = sorted(
+        out_dir.glob("fusion_eval_report_*.csv"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
+
+
+def flatten_fusion_eval_report_rows(report: Mapping[str, object], source_csv: str) -> list[dict[str, str]]:
+    """Плоские строки для CSV: section / metric / value (удобно открывать в Excel)."""
+    rows: list[dict[str, str]] = []
+
+    def add(section: str, metric: str, value: object) -> None:
+        if value is None:
+            s = ""
+        elif isinstance(value, float):
+            s = f"{value:.10g}".rstrip("0").rstrip(".") if value != 0.0 else "0"
+        else:
+            s = str(value)
+        rows.append({"section": section, "metric": metric, "value": s})
+
+    add("meta", "source_training_csv", source_csv)
+    skip_root = {"thresholds", "bins", "risk_coverage", "slices", "source_csv", "eval_report_csv_path"}
+    for key, val in report.items():
+        if key in skip_root:
+            continue
+        if isinstance(val, (str, int, float, bool)) or val is None:
+            add("summary", key, val)
+
+    th = report.get("thresholds")
+    if isinstance(th, dict):
+        for t_key, t_map in th.items():
+            if not isinstance(t_map, dict):
+                continue
+            for m_key, m_val in t_map.items():
+                add(f"threshold_{t_key}", m_key, m_val)
+
+    for i, bin_row in enumerate(report.get("bins") or []):
+        if not isinstance(bin_row, dict):
+            continue
+        for bk, bv in bin_row.items():
+            add(f"bin_{i}", str(bk), bv)
+
+    for i, rc in enumerate(report.get("risk_coverage") or []):
+        if not isinstance(rc, dict):
+            continue
+        for rk, rv in rc.items():
+            add("risk_coverage", f"{i}.{rk}", rv)
+
+    slices = report.get("slices")
+    if isinstance(slices, dict):
+        for field, by_val in slices.items():
+            if not isinstance(by_val, dict):
+                continue
+            for slice_val, sub in by_val.items():
+                if not isinstance(sub, dict):
+                    continue
+                base = f"slice.{field}.{slice_val}"
+                for key, val in sub.items():
+                    if key in {"thresholds", "bins", "risk_coverage", "slices"}:
+                        continue
+                    if isinstance(val, (str, int, float, bool)) or val is None:
+                        add(base, key, val)
+                st = sub.get("thresholds")
+                if isinstance(st, dict):
+                    for t_key, t_map in st.items():
+                        if not isinstance(t_map, dict):
+                            continue
+                        for m_key, m_val in t_map.items():
+                            add(f"{base}.t{t_key}", m_key, m_val)
+                for j, bin_row in enumerate(sub.get("bins") or []):
+                    if not isinstance(bin_row, dict):
+                        continue
+                    for bk, bv in bin_row.items():
+                        add(f"{base}.bin_{j}", str(bk), bv)
+
+    return rows
+
+
+def write_fusion_eval_report_csv(report: Mapping[str, object], out_path: Path, *, source_csv: str) -> int:
+    """Записать отчёт evaluate_binary_scores в длинный CSV (section, metric, value)."""
+    flat = flatten_fusion_eval_report_rows(report, source_csv)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["section", "metric", "value"])
+        w.writeheader()
+        w.writerows(flat)
+    return len(flat)
 
 
 def fusion_processor_src_dir() -> Path:
@@ -357,4 +451,11 @@ def run_fusion_eval_job(
             for field in slice_fields
             if field
         }
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    eval_csv_path = fusion_export_dir() / f"fusion_eval_report_{ts}.csv"
+    src_resolved = str(csv_path.resolve())
+    n_flat = write_fusion_eval_report_csv(report, eval_csv_path, source_csv=src_resolved)
+    report["source_csv"] = src_resolved
+    report["eval_report_csv_path"] = str(eval_csv_path.resolve())
+    report["eval_report_csv_rows"] = n_flat
     return report

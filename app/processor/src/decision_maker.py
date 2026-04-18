@@ -4,6 +4,7 @@ from collections import Counter
 import re
 
 from decision_outcome import compute_outcome_bucket
+from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
 
@@ -346,32 +347,40 @@ class DecisionMaker:
                     self.min_track_duration,
                 )
                 decisions.append(
-                    {
-                        "track_id": track_id,
-                        "accepted": False,
-                        "outcome_bucket": "rejected",
-                        "decision_reason": "rejected_short_track",
-                        "trust_band": "red",
-                        "start_time": track["start_time"],
-                        "end_time": track["end_time"],
-                        "confidence": 0.0,
-                    }
+                    apply_runtime_contract(
+                        {
+                            "track_id": track_id,
+                            "accepted": False,
+                            "outcome_bucket": "rejected",
+                            "decision_reason": "rejected_short_track",
+                            "decision_kind": "rejected",
+                            "trust_band": "red",
+                            "start_time": track["start_time"],
+                            "end_time": track["end_time"],
+                            "confidence": 0.0,
+                            "detection_provider": "yolo",
+                        }
+                    )
                 )
                 continue
 
             detector_candidate = self._pick_detector_candidate(detector_events)
             if detector_candidate is None:
                 decisions.append(
-                    {
-                        "track_id": track_id,
-                        "accepted": False,
-                        "outcome_bucket": "rejected",
-                        "decision_reason": "rejected_missing_detector_candidate",
-                        "trust_band": "red",
-                        "start_time": track["start_time"],
-                        "end_time": track["end_time"],
-                        "confidence": 0.0,
-                    }
+                    apply_runtime_contract(
+                        {
+                            "track_id": track_id,
+                            "accepted": False,
+                            "outcome_bucket": "rejected",
+                            "decision_reason": "rejected_missing_detector_candidate",
+                            "decision_kind": "rejected",
+                            "trust_band": "red",
+                            "start_time": track["start_time"],
+                            "end_time": track["end_time"],
+                            "confidence": 0.0,
+                            "detection_provider": "yolo",
+                        }
+                    )
                 )
                 continue
             detector_label = detector_candidate["label"]
@@ -528,49 +537,52 @@ class DecisionMaker:
             )
 
             decisions.append(
-                {
-                    "track_id": track_id,
-                    "accepted": accepted,
-                    "outcome_bucket": self._outcome_bucket(
-                        accepted=accepted,
-                        visit_eligible=bool(visit_eligible),
-                        decision_kind=decision_kind,
-                    ),
-                    "visit_eligible": bool(visit_eligible),
-                    "notification_eligible": bool(notification_eligible),
-                    "species_name": out_species,
-                    "start_time": track["start_time"],
-                    "end_time": track["end_time"],
-                    "confidence": out_conf,
-                    "best_frame": track.get("best_frame"),
-                    "best_frame_score": float(track.get("best_frame_score") or 0.0),
-                    "key_frame_count": len(track.get("key_frames") or []),
-                    "source": "video",
-                    "frames": track.get("frames", []),
-                    "decision_reason": decision_reason,
-                    "detector_label": detector_label,
-                    "detector_confidence": detector_conf,
-                    "detector_event_count": detector_candidate["event_count"],
-                    "classifier_threshold": classifier_threshold,
-                    "classifier_species_name": (
-                        classifier_candidate["species_name"] if classifier_candidate is not None else None
-                    ),
-                    "classifier_confidence": (
-                        classifier_candidate["combined_confidence"] if classifier_candidate is not None else None
-                    ),
-                    "classifier_event_count": (
-                        classifier_candidate["event_count"] if classifier_candidate is not None else 0
-                    ),
-                    "classifier_vote_share": (
-                        classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0
-                    ),
-                    "decision_kind": decision_kind,
-                    "reject_reason_code": reject_reason_code,
-                    "evidence_state": evidence_state,
-                    "trust_band": self._trust_band_for_decision(
-                        accepted, decision_reason, out_conf, reject_reason_code
-                    ),
-                }
+                apply_runtime_contract(
+                    {
+                        "track_id": track_id,
+                        "accepted": accepted,
+                        "outcome_bucket": self._outcome_bucket(
+                            accepted=accepted,
+                            visit_eligible=bool(visit_eligible),
+                            decision_kind=decision_kind,
+                        ),
+                        "visit_eligible": bool(visit_eligible),
+                        "notification_eligible": bool(notification_eligible),
+                        "species_name": out_species,
+                        "start_time": track["start_time"],
+                        "end_time": track["end_time"],
+                        "confidence": out_conf,
+                        "best_frame": track.get("best_frame"),
+                        "best_frame_score": float(track.get("best_frame_score") or 0.0),
+                        "key_frame_count": len(track.get("key_frames") or []),
+                        "source": "video",
+                        "detection_provider": "yolo",
+                        "frames": track.get("frames", []),
+                        "decision_reason": decision_reason,
+                        "detector_label": detector_label,
+                        "detector_confidence": detector_conf,
+                        "detector_event_count": detector_candidate["event_count"],
+                        "classifier_threshold": classifier_threshold,
+                        "classifier_species_name": (
+                            classifier_candidate["species_name"] if classifier_candidate is not None else None
+                        ),
+                        "classifier_confidence": (
+                            classifier_candidate["combined_confidence"] if classifier_candidate is not None else None
+                        ),
+                        "classifier_event_count": (
+                            classifier_candidate["event_count"] if classifier_candidate is not None else 0
+                        ),
+                        "classifier_vote_share": (
+                            classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0
+                        ),
+                        "decision_kind": decision_kind,
+                        "reject_reason_code": reject_reason_code,
+                        "evidence_state": evidence_state,
+                        "trust_band": self._trust_band_for_decision(
+                            accepted, decision_reason, out_conf, reject_reason_code
+                        ),
+                    }
+                )
             )
 
         decisions.sort(

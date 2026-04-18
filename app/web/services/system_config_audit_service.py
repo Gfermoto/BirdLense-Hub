@@ -45,6 +45,10 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
     }
 )
 
+# Совпадает с `motion.*` в `default_config.yaml` и fallback в `trigger_config.py`.
+RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
+RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 240
+
 
 def _safe_int(value, default: int) -> int:
     try:
@@ -65,10 +69,25 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
     motion_source = format_motion_source_summary(active_triggers)
     check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
-    opencv_diff_threshold = max(5, min(80, _safe_int(app_config_get("motion.opencv_diff_threshold", 25), 25)))
+    opencv_diff_threshold = max(
+        5,
+        min(
+            80,
+            _safe_int(
+                app_config_get("motion.opencv_diff_threshold", RECOMMENDED_OPENCV_DIFF_THRESHOLD),
+                RECOMMENDED_OPENCV_DIFF_THRESHOLD,
+            ),
+        ),
+    )
     opencv_min_contour_area = max(
         50,
-        min(20000, _safe_int(app_config_get("motion.opencv_min_contour_area", 500), 500)),
+        min(
+            20000,
+            _safe_int(
+                app_config_get("motion.opencv_min_contour_area", RECOMMENDED_OPENCV_MIN_CONTOUR_AREA),
+                RECOMMENDED_OPENCV_MIN_CONTOUR_AREA,
+            ),
+        ),
     )
     light_gate_enabled = bool(app_config_get("processor.light_gate_enabled", True))
     light_gate_min_brightness = max(
@@ -93,12 +112,16 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
             f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
             "1 is the highest-recall setting."
         )
-    if opencv_diff_threshold > 20:
+    if opencv_diff_threshold > RECOMMENDED_OPENCV_DIFF_THRESHOLD:
         warnings.append(
-            f"motion.opencv_diff_threshold={opencv_diff_threshold} is conservative; lower values are more sensitive."
+            f"motion.opencv_diff_threshold={opencv_diff_threshold} is above the hub default "
+            f"({RECOMMENDED_OPENCV_DIFF_THRESHOLD}); higher values react to fewer pixel changes (less motion recall)."
         )
-    if opencv_min_contour_area > 250:
-        warnings.append(f"motion.opencv_min_contour_area={opencv_min_contour_area} can miss small distant birds.")
+    if opencv_min_contour_area > RECOMMENDED_OPENCV_MIN_CONTOUR_AREA:
+        warnings.append(
+            f"motion.opencv_min_contour_area={opencv_min_contour_area} is above the hub default "
+            f"({RECOMMENDED_OPENCV_MIN_CONTOUR_AREA}); higher values drop smaller motion blobs (e.g. distant birds)."
+        )
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
         warnings.append(
             "processor.light_gate_* may skip dusk/night frames before YOLO runs; lower them if you need more recall in low light."

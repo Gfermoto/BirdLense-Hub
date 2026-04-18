@@ -6,6 +6,7 @@ import logging
 import time
 
 import requests
+from requests import exceptions as requests_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,11 @@ class ESPHomeScaleMotionDetector:
         self.poll_interval = max(0.2, float(poll_interval))
         self._last_value: float | None = None
         self._last_trigger_at = 0.0
+        self._http = requests.Session()
 
     def _fetch_value(self) -> float | None:
         try:
-            response = requests.get(
+            response = self._http.get(
                 f"{self.base_url}/sensor/{self.sensor_id}",
                 timeout=3,
             )
@@ -42,7 +44,9 @@ class ESPHomeScaleMotionDetector:
             return float(payload.get("state"))
         except (TypeError, ValueError):
             return None
-        except Exception as exc:
+        except requests_exceptions.JSONDecodeError:
+            return None
+        except requests_exceptions.RequestException as exc:
             logger.debug("ESPHome scale poll failed: %s", exc)
             return None
 
@@ -59,7 +63,10 @@ class ESPHomeScaleMotionDetector:
         if delta < self.min_delta or (now - self._last_trigger_at) < self.debounce_seconds:
             return False
         self._last_trigger_at = now
-        logger.info("Motion: ESPHome scales delta trigger (|Δ|=%s)", round(delta, 4))
+        logger.info(
+            "Motion: ESPHome scales delta trigger (|Δ|=%s)",
+            round(delta, 4),
+        )
         return True
 
     def detect(self) -> bool:

@@ -157,7 +157,7 @@ def apply_detection_species_patch(
     vp = VisitProcessor(db, app_logger, visit_timeout=visit_timeout)
     video_start = ensure_utc(vs.video.start_time)
     detection_time = video_start + timedelta(seconds=vs.start_time)
-    new_visit, _ = vp._get_or_create_visit(species, detection_time)
+    new_visit, _ = vp.get_or_create_visit(species, detection_time)
 
     for v in to_update:
         v.species_id = species_id
@@ -179,7 +179,7 @@ def apply_detection_species_patch(
 
     new_video_detections = [v for v in new_visit.video_species if v.source == "video"]
     if new_video_detections:
-        vp._update_simultaneous_count(new_visit, new_video_detections)
+        vp.update_simultaneous_count(new_visit, new_video_detections)
 
     log_video_id = vs.video_id
     log_track_id = vs.track_id

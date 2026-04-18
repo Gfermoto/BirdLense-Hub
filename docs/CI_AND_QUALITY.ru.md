@@ -16,6 +16,24 @@
 
 Источник: `.github/workflows/ci-pr.yml`.
 
+### Расписание и ручной запуск
+
+- **`ci-pr.yml`** — помимо **PR/push** в `main` и `dev`, тот же workflow крутится по **ежедневному cron** (на GitHub только для **ветки по умолчанию**) и через **`workflow_dispatch`**.
+- **`e2e-scheduled.yml`** — полный **Playwright** против Docker-стека: **ежедневно** по расписанию + **`workflow_dispatch`** (не обязательный gate на каждый PR).
+
+## Полный локальный прогон (как в CI)
+
+Из **корня репозитория** (`scripts/ci-full-local.sh`):
+
+| Команда | Что делает |
+|---------|------------|
+| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (проверка и `format --check`) + весь **`pytest web/tests/`** в отдельном **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, дрейф OpenAPI codegen, **Vitest**, `typecheck`, `lint`, `build`), скрипт **покрытия Settings UI**, **MkDocs** `build --strict` через **`.venv-docs`**, сводка **radon**. |
+| **`make ci-local-docker`** | Всё выше, затем загрузка **весов processor**, **`docker compose build`**, **`make test`** + **`make test-web`** в `app/`, подъём стека, **Playwright** `app/e2e/tests/smoke.spec.ts`, остановка стека. |
+
+**Требования:** **Node.js ≥ 22** для фазы UI (как в CI и `engines` в `app/ui/package.json`). **Docker** — для `ci-local-docker`. Для `pip` включается **`PYTHONNOUSERSITE=1`** и сбрасывается унаследованный **`PYTHONPATH`**, чтобы зависимости ставились в **`.venv-ci`**, а не только в `~/.local` (каталоги **`.venv-ci`** / **`.venv-docs`** в git не коммитятся).
+
+См. [TESTING.ru](./TESTING.ru.md) §1 и [LOCAL_DEV.ru](./LOCAL_DEV.ru.md).
+
 ## Ruff
 
 - **Конфиг:** `app/pyproject.toml` (`[tool.ruff]`, длина строки 120, Python 3.11).

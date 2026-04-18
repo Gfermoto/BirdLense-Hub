@@ -31,7 +31,7 @@ export const Library: React.FC = () => {
 
   return (
     <ProtectedRoute title={t('nav.library')}>
-      <Box display="grid" gap={4}>
+      <Box display="grid" gap={4} sx={{ pb: 5 }}>
         <PageHelp
           {...libraryHelpConfig}
           actions={<PageModeToggle value={mode} onChange={setMode} />}
@@ -77,7 +77,7 @@ export const Library: React.FC = () => {
                 </Button>
               }
             >
-              {t('library.sections.maintenanceDescription')}
+              {t('library.fileReplayAdvancedOnlyHint')}
             </Alert>
           ) : null}
         </Box>

@@ -5,8 +5,6 @@ import { useTranslation } from 'react-i18next';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
@@ -18,6 +16,7 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TableContainer from '@mui/material/TableContainer';
 import Typography from '@mui/material/Typography';
 import {
   fetchFileTestFiles,
@@ -31,7 +30,10 @@ import {
   type FileTestStatusPayload,
 } from '../../api/api';
 import { queryKeys } from '../../api/queryKeys';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { LibraryCardShell } from './LibraryCardShell';
+import { formatBytes } from './libraryShared';
 
 const POLL_MS = 2000;
 
@@ -62,6 +64,8 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
   const loopQuietUntilRef = useRef(0);
   const [modeBanner, setModeBanner] = useState<{ severity: 'success' | 'error'; text: string } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [returnLiveConfirmOpen, setReturnLiveConfirmOpen] = useState(false);
+  const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
 
   const statusQuery = useQuery({
     queryKey: ['file-test-status'],
@@ -244,93 +248,84 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
 
   if (statusQuery.isLoading) {
     return (
-      <Card id={anchorId} sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-            {t('library.sectionFileReplay')}
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            {t('library.fileReplayTitle')}
-          </Typography>
+      <LibraryCardShell
+        id={anchorId}
+        title={t('library.fileReplayTitle')}
+        description={t('library.fileReplayHint')}
+        eyebrow={t('library.sectionFileReplay')}
+      >
           <LinearProgress />
-        </CardContent>
-      </Card>
+      </LibraryCardShell>
     );
   }
 
   if (statusQuery.isError) {
     return (
-      <Card id={anchorId} sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-            {t('library.sectionFileReplay')}
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            {t('library.fileReplayTitle')}
-          </Typography>
+      <LibraryCardShell
+        id={anchorId}
+        title={t('library.fileReplayTitle')}
+        description={t('library.fileReplayHint')}
+        eyebrow={t('library.sectionFileReplay')}
+        statusLabel={t('common.error')}
+        statusTone="error"
+      >
           <Alert severity="error">{t('library.fileReplayLoadError')}</Alert>
-        </CardContent>
-      </Card>
+      </LibraryCardShell>
     );
   }
 
   if (inactive) {
     return (
-      <Card id={anchorId} sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-            {t('library.sectionFileReplay')}
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            {t('library.fileReplayTitle')}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('library.fileReplaySetupIntro')}
-          </Typography>
-          {modeBanner ? (
-            <Alert
-              severity={modeBanner.severity}
-              sx={{ mb: 2 }}
-              onClose={() => setModeBanner(null)}
-            >
-              {modeBanner.text}
-            </Alert>
-          ) : null}
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('library.fileReplaySetupFolderInfo', {
-              path: (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test',
-            })}
-          </Typography>
-          <Box sx={{ width: '100%', mb: 1 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={loopLocal}
-                  onChange={handleLoopChange}
-                  disabled={!isAdmin || enableFileReplayMut.isPending}
-                />
-              }
-              label={t('library.fileReplayLoop')}
-            />
-            <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
-          </Box>
-          <Button
-            variant="contained"
-            disabled={!isAdmin || enableFileReplayMut.isPending}
-            onClick={() => {
-              setModeBanner(null);
-              enableFileReplayMut.mutate();
-            }}
+      <LibraryCardShell
+        id={anchorId}
+        title={t('library.fileReplayTitle')}
+        description={t('library.fileReplaySetupIntro')}
+        eyebrow={t('library.sectionFileReplay')}
+        statusLabel={t('library.fileReplayInactiveStatus')}
+      >
+        {modeBanner ? (
+          <Alert
+            severity={modeBanner.severity}
+            sx={{ mb: 2 }}
+            onClose={() => setModeBanner(null)}
           >
-            {t('library.fileReplayEnableButton')}
-          </Button>
-          {!isAdmin ? (
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-              {t('library.fileReplayAdminOnlyMode')}
-            </Typography>
-          ) : null}
-        </CardContent>
-      </Card>
+            {modeBanner.text}
+          </Alert>
+        ) : null}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('library.fileReplaySetupFolderInfo', {
+            path: (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test',
+          })}
+        </Typography>
+        <Box sx={{ width: '100%', mb: 1 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={loopLocal}
+                onChange={handleLoopChange}
+                disabled={!isAdmin || enableFileReplayMut.isPending}
+              />
+            }
+            label={t('library.fileReplayLoop')}
+          />
+          <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
+        </Box>
+        <Button
+          variant="contained"
+          disabled={!isAdmin || enableFileReplayMut.isPending}
+          onClick={() => {
+            setModeBanner(null);
+            enableFileReplayMut.mutate();
+          }}
+        >
+          {t('library.fileReplayEnableButton')}
+        </Button>
+        {!isAdmin ? (
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            {t('library.fileReplayAdminOnlyMode')}
+          </Typography>
+        ) : null}
+      </LibraryCardShell>
     );
   }
 
@@ -338,15 +333,18 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
   const desired = statusQuery.data?.desired as Record<string, unknown> | undefined;
   const armed = Boolean(desired?.armed);
 
+  const files = filesQuery.data?.files ?? [];
+
   return (
-    <Card id={anchorId} sx={{ mb: 2 }}>
-      <CardContent>
-        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-          {t('library.sectionFileReplay')}
-        </Typography>
-        <Typography variant="h6" gutterBottom>
-          {t('library.fileReplayTitle')}
-        </Typography>
+    <>
+      <LibraryCardShell
+        id={anchorId}
+        title={t('library.fileReplayTitle')}
+        description={t('library.fileReplayHint')}
+        eyebrow={t('library.sectionFileReplay')}
+        statusLabel={armed ? t('library.fileReplayActiveStatus') : t('library.fileReplayIdleStatus')}
+        statusTone={armed ? 'success' : 'default'}
+      >
         {modeBanner ? (
           <Alert
             severity={modeBanner.severity}
@@ -363,15 +361,12 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
             disabled={!isAdmin || returnToLiveMut.isPending}
             onClick={() => {
               setModeBanner(null);
-              if (window.confirm(t('library.fileReplayReturnLiveConfirm'))) returnToLiveMut.mutate();
+              setReturnLiveConfirmOpen(true);
             }}
           >
             {t('library.fileReplayReturnLive')}
           </Button>
         </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {t('library.fileReplayHint')}
-        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('library.fileReplayFolderReadOnly', { path: resolvedDir || '—' })}
         </Typography>
@@ -489,50 +484,86 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
           {t('library.fileReplayFiles')}
         </Typography>
         {filesQuery.isLoading ? (
-          <LinearProgress />
+          <Stack spacing={1}>
+            <LinearProgress />
+            <Typography variant="body2" color="text.secondary">
+              {t('library.fileReplayFilesLoading')}
+            </Typography>
+          </Stack>
+        ) : filesQuery.isError ? (
+          <Alert severity="error">{t('library.fileReplayActionError')}</Alert>
+        ) : files.length === 0 ? (
+          <Alert severity="info">{t('library.fileReplayFilesEmpty')}</Alert>
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('library.fileReplayName')}</TableCell>
-                <TableCell align="right">{t('library.fileReplaySize')}</TableCell>
-                <TableCell align="right">{t('library.fileReplayDuration')}</TableCell>
-                <TableCell align="right" />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(filesQuery.data?.files ?? []).map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell align="right">{row.size}</TableCell>
-                  <TableCell align="right">
-                    {row.duration_sec != null ? Math.round(row.duration_sec * 10) / 10 : '—'}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      color="error"
-                      disabled={!isAdmin || delMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(`${t('library.fileReplayDelete')}? ${row.name}`))
-                          delMut.mutate(row.name);
-                      }}
-                    >
-                      {t('library.fileReplayDelete')}
-                    </Button>
-                  </TableCell>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('library.fileReplayName')}</TableCell>
+                  <TableCell align="right">{t('library.fileReplaySize')}</TableCell>
+                  <TableCell align="right">{t('library.fileReplayDuration')}</TableCell>
+                  <TableCell align="right" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {files.map((row) => (
+                  <TableRow key={row.name} hover>
+                    <TableCell>{row.name}</TableCell>
+                    <TableCell align="right">{formatBytes(row.size)}</TableCell>
+                    <TableCell align="right">
+                      {row.duration_sec != null ? Math.round(row.duration_sec * 10) / 10 : '—'}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        color="error"
+                        disabled={!isAdmin || delMut.isPending}
+                        onClick={() => setPendingDeleteName(row.name)}
+                      >
+                        {t('library.fileReplayDelete')}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
-        {(runMut.isError || stopMut.isError || loopMut.isError || filesQuery.isError) && (
+        {(runMut.isError || stopMut.isError || loopMut.isError) && (
           <Box sx={{ mt: 2 }}>
             <Alert severity="error">{t('library.fileReplayActionError')}</Alert>
           </Box>
         )}
-      </CardContent>
-    </Card>
+      </LibraryCardShell>
+      <ConfirmDialog
+        open={returnLiveConfirmOpen}
+        title={t('library.fileReplayReturnLive')}
+        description={t('library.fileReplayReturnLiveConfirm')}
+        confirmLabel={t('library.fileReplayReturnLive')}
+        cancelLabel={t('common.cancel')}
+        confirmColor="warning"
+        onCancel={() => setReturnLiveConfirmOpen(false)}
+        onConfirm={() => {
+          setReturnLiveConfirmOpen(false);
+          returnToLiveMut.mutate();
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingDeleteName)}
+        title={t('library.fileReplayDeleteTitle')}
+        description={t('library.fileReplayDeleteConfirm', {
+          name: pendingDeleteName ?? '—',
+        })}
+        confirmLabel={t('library.fileReplayDelete')}
+        cancelLabel={t('common.cancel')}
+        confirmColor="error"
+        onCancel={() => setPendingDeleteName(null)}
+        onConfirm={() => {
+          if (pendingDeleteName) delMut.mutate(pendingDeleteName);
+          setPendingDeleteName(null);
+        }}
+      />
+    </>
   );
 }

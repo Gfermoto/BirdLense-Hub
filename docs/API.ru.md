@@ -19,6 +19,7 @@
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|
 | `/health` | GET | Проверка доступности |
+| `/readiness` | GET | Готовность хаба: БД, каталоги на запись, проверки компонентов — **200** при `"ready": true`, **503** с телом JSON при неготовности (балансировщики / `verify-stack`) |
 | `/status` | GET | Статус компонентов (web, processor, mqtt, esphome, yolo). Значения: ok, error, not_configured, not_used, unknown |
 | `/cameras` | GET | Список камер |
 | `/weather` | GET | Погода |
@@ -75,9 +76,33 @@
 | `/system/recordings/scan` | POST | Сканирование и импорт записей |
 | `/system/logs` | GET | Логи процессора (последние N строк, ?lines=100) |
 
+### Реестр видов (`/api/ui/system/species-registry/*`)
+
+**Админ** (разблокированная сессия настроек). Детали тел и ответов — **`app/web/openapi.yaml`**.
+
+| Путь | Метод | Описание |
+|------|-------|----------|
+| `/system/species-registry/seed` | POST | Заполнить реестр и алиасы из встроенного mapping |
+| `/system/species-registry/backfill` | POST | Привязка видов к taxa; JSON `dry_run` (по умолчанию true), опционально `limit` |
+| `/system/species-registry/unresolved` | GET | Топ неразрешённых имён (`?limit=`) |
+| `/system/species-registry/enrich-metadata/start` | POST | Старт async обогащения метаданных → **202** / **409** |
+| `/system/species-registry/enrich-metadata/status` | GET | Статус задачи обогащения |
+| `/system/species-registry/health` | GET | Метрики здоровья / покрытия реестра |
+| `/system/species-registry/materialize-allowlist` | POST | Создать недостающие строки allowlist (`dry_run`, `fill_metadata`, `limit`) |
+| `/system/species-registry/repair-cards/start` | POST | Ремонт карточек видов → **202** / **409** |
+| `/system/species-registry/repair-cards/status` | GET | Статус ремонта + покрытие |
+| `/system/species-registry/data-quality` | GET | Отчёт о качестве каталога (`?duplicate_limit=`) |
+| `/system/species-registry/classifier-dataset-alignment` | GET | Классификатор vs БД vs папки датасета |
+| `/system/species-registry/coverage-metrics` | GET | Сегменты покрытия |
+| `/system/species-registry/tuning-targets/export` | GET | Экспорт tuning targets: `format=json` (по умолчанию) или `format=csv` |
+
+Остальные системные эндпоинты — см. `ui_system_*.py` и OpenAPI.
+
 ### Processor API (`/api/processor/*`)
 
 Внутренний API для processor. Защищён `X-Processor-Token` при заданном `PROCESSOR_SECRET`.
+
+В **`app/web/openapi.yaml`** выберите сервер **`…/api/processor`**; пути ниже — относительно этой базы (не под `/api/ui`).
 
 | Эндпоинт | Метод | Описание |
 |----------|-------|----------|

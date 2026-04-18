@@ -29,6 +29,8 @@ High-level layout of the single-container app, data paths, and integrations. For
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+**Host vs container ports:** nginx listens on **8080** inside the container; Compose maps host **`BIRDLENSE_PORT`** (default **8085**) → **8080**. Flask (gunicorn) serves **`/api`** on **8000** internally; optional MCP on **8001**; processor MJPEG on **8082** — these are not published directly; only nginx’s port is exposed.
+
 ---
 
 ## Data flows

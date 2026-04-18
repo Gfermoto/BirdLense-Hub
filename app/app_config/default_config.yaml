@@ -51,12 +51,14 @@ processor:
   track_regen_precise_detection_strategy: two_stage
   # Для recovery fallback допускаем птиц ближе к краям кадра, иначе feeder-side perches теряются.
   track_regen_precise_min_center_dist: 0.02
-  # При перегенерации не сужать YOLO/классификатор по processor.regional_species
+  # Regen policy scope_strategy=global_classifier_scope:
+  # не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
   # Размер lores для live/file-плейлиста и процессора (640 = прежнее поведение).
   inference_lores_px: 640
-  # Перегенерация треков: как live-пайплайн — тот же lores (inference_lores_px), каждый кадр,
+  # Regen policy scope_strategy=match_live_pipeline:
+  # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
   track_regen_match_live_pipeline: false
   # При ручной коррекции на ролике: не отбрасывать авто-детекции, пересекающиеся по времени
@@ -286,6 +288,9 @@ detection:
   # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
   # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
   frigate_standalone_when_no_yolo: true
+  # Если ровно один accepted_generic «Bird» от YOLO — подменить на Frigate standalone
+  # при событии Frigate (одна строка «Bird» иначе блокировала синтез в merge).
+  frigate_standalone_when_no_accepted_species: true
   # Мин. top_score Frigate для обычных лейблов (птица и т.д.). Ниже — мягче, больше записей в БД.
   frigate_standalone_min_score: 0.48
   # Если score в MQTT = 0 (часто snapshot), подставить для standalone; 0 = не подставлять.

@@ -47,7 +47,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | Document |
 |-------|----------|
 | Access & passwords | [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) |
-| Threats & hardening | [SECURITY](./SECURITY.md) |
+| Threats & hardening | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Recover broken config | [RECOVERY_CONFIG](./RECOVERY_CONFIG.md) · [RU](./RECOVERY_CONFIG.ru.md) |
 | When something fails | [TROUBLESHOOTING](./TROUBLESHOOTING.md) · [RU](./TROUBLESHOOTING.ru.md) |
 | Operator runbooks | [RUNBOOKS](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
@@ -58,9 +58,9 @@ Pick what matches you — you can read the rest as reference.
 
 | Topic | Document |
 |-------|----------|
-| **CI jobs** (Bandit, pip-audit, Ruff, pytest slices, UI build, MkDocs, Docker tests, Playwright smoke) | [TESTING](./TESTING.md) (section 1) · [RU](./TESTING.ru.md) |
-| **CI policy** (Ruff format, pip-audit ignores, npm audit, OpenAPI→TS roadmap) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
-| Unit, API, E2E, post-deploy checks | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
+| **CI on PR** (Bandit, pip-audit, Ruff, pytest slices, UI build, MkDocs, Docker tests, Playwright smoke) | [TESTING](./TESTING.md) §1 · [RU](./TESTING.ru.md) |
+| **Local full CI & policy** (`make ci-local`, `make ci-local-docker`, formats, audits, OpenAPI→TS) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
+| **Tests, E2E, post-deploy checks** | [TESTING](./TESTING.md) · [RU](./TESTING.ru.md) |
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Domain integrity checks | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) |
 | MCP (Model Context Protocol — automation & integrations) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
@@ -106,6 +106,7 @@ Pick what matches you — you can read the rest as reference.
 | Shared smoke contract | `make verify` (or `BASE_URL=http://YOUR_HOST:8085 make verify`) |
 | Web tests | `cd app && make test-web` |
 | Telegram proxy autorotate | `make proxy-rotation-install` (status: `make proxy-rotation-status`) |
+| Regenerate bulk OpenAPI path block | `python3 scripts/merge_openapi_fragments.py` (from repo root; review diff) — [details](./Documentation.md#openapi-spec-maintenance) |
 | Full doc index above | This page |
 | Preview static doc site | `pip install -r requirements-docs.txt && mkdocs serve` ([details](./Documentation.md)) |
 

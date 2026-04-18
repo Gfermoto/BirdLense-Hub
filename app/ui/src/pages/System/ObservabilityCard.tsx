@@ -2,12 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import { fetchObservability } from '../../api/api';
+import { SystemCardShell } from './SystemCardShell';
 
 const PREVIEW_ORDER = ['best_frame', 'bbox_crop', 'full_frame', 'none', 'unknown'] as const;
 const DELIVERY_ORDER = ['photo', 'text_fallback', 'text', 'failed', 'skipped', 'unknown'] as const;
@@ -54,6 +53,12 @@ export function ObservabilityCard({
   const ml7 = data.ml_health?.rolling_7d;
   const ml30 = data.ml_health?.rolling_30d;
   const lineage = data.model_lineage;
+  const deliveryFailures = Number(deliveryCounts.failed ?? 0);
+  const fallbackFailures =
+    Number(fallbackCounts.decode_failed ?? 0) +
+    Number(fallbackCounts.telegram_photo_failed ?? 0) +
+    Number(fallbackCounts.telegram_text_failed ?? 0) +
+    Number(fallbackCounts.unexpected_error ?? 0);
   const lineageFingerprint =
     typeof lineage?.config_fingerprint === 'string'
       ? lineage.config_fingerprint.slice(0, 12)
@@ -68,15 +73,17 @@ export function ObservabilityCard({
   });
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          {t('system.observabilityTitle')}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('system.observabilityHint')}
-        </Typography>
-
+    <SystemCardShell
+      title={t('system.observabilityTitle')}
+      description={t('system.observabilityHint')}
+      statusLabel={
+        deliveryFailures > 0 || fallbackFailures > 0
+          ? t('system.configAuditNeedsReview')
+          : t('system.readinessReady')
+      }
+      statusTone={deliveryFailures > 0 || fallbackFailures > 0 ? 'warning' : 'success'}
+    >
+      <Box>
         {!simple ? (
           <>
             <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
@@ -224,7 +231,7 @@ export function ObservabilityCard({
             </Typography>
           </>
         ) : null}
-      </CardContent>
-    </Card>
+      </Box>
+    </SystemCardShell>
   );
 }

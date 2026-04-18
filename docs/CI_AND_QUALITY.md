@@ -16,6 +16,24 @@ This document describes what runs in GitHub Actions, how to reproduce checks loc
 
 Source: `.github/workflows/ci-pr.yml`.
 
+### Scheduled and manual workflows
+
+- **`ci-pr.yml`** — in addition to **PR/push** to `main` and `dev`, the same workflow runs on a **daily cron** (GitHub: default branch only) and via **`workflow_dispatch`**, so the full job matrix keeps running without new commits.
+- **`e2e-scheduled.yml`** — full **Playwright** suite against a Docker stack: **daily** schedule + **`workflow_dispatch`** (not a required check on every PR).
+
+## Full local check (mirror CI)
+
+From the **repository root** (see `scripts/ci-full-local.sh`):
+
+| Command | What it runs |
+|---------|----------------|
+| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (`check` + `format --check`) + full **`pytest web/tests/`** inside a dedicated **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, OpenAPI codegen drift check, **Vitest**, `typecheck`, `lint`, `build`), **Settings UI coverage** script, **MkDocs** `build --strict` via **`.venv-docs`**, **radon** summary (informational). |
+| **`make ci-local-docker`** | Everything above, then **processor weights** fetch (with retries), **`docker compose build`**, **`make test`** + **`make test-web`** under `app/`, stack **up**, **Playwright** `app/e2e/tests/smoke.spec.ts`, then **down**. |
+
+**Requirements:** **Node.js ≥ 22** for the UI phase (matches CI and `app/ui/package.json` `engines`). **Docker** for `ci-local-docker`. The script uses **`PYTHONNOUSERSITE=1`** and clears inherited **`PYTHONPATH`** for `pip` so dependencies land in **`.venv-ci`**, not only `~/.local` (both venv dirs are **gitignored**).
+
+See [TESTING](./TESTING.md) §1 and [LOCAL_DEV](./LOCAL_DEV.md).
+
 ## Ruff
 
 - **Config:** `app/pyproject.toml` (`[tool.ruff]`, line length 120, target Python 3.11).

@@ -131,6 +131,24 @@ def _collapse_overlapping_generic_bird_detection(
     return out
 
 
+def _is_pure_yolo_generic_bird_fragment(det: dict) -> bool:
+    name = det.get("species_name") or det.get("species") or ""
+    if _canonical_merge_key(name) != "bird":
+        return False
+    provider = str(det.get("detection_provider") or "").strip().lower()
+    if provider != "yolo":
+        return False
+    providers = {str(p).strip().lower() for p in (det.get("contributing_providers") or []) if str(p).strip()}
+    if providers and providers != {"yolo"}:
+        return False
+    reason = str(det.get("decision_reason") or "").strip().lower()
+    return reason in {"fallback_bird", "fallback_detector_generic"}
+
+
+def _should_keep_generic_bird_fragments_separate(group: list[dict]) -> bool:
+    return len(group) > 1 and all(_is_pure_yolo_generic_bird_fragment(det) for det in group)
+
+
 def _event_offset_seconds(ev, video_start):
     """Смещение MQTT-события от начала видео (сек). None если нет timestamp."""
     from datetime import datetime, timezone
@@ -388,13 +406,18 @@ def merge_detections(
 
     # Финальное объединение: один результат на вид (устраняет дубликаты)
     if one_per_species and len(result_list) > 1:
-        by_canonical = {}
+        grouped: dict[str, list[dict]] = {}
         for d in result_list:
-            key = _canonical_key(d.get("species_name", ""))
-            if key not in by_canonical:
-                by_canonical[key] = dict(d)
-            else:
-                existing = by_canonical[key]
+            grouped.setdefault(_canonical_key(d.get("species_name", "")), []).append(dict(d))
+
+        collapsed: list[dict] = []
+        for key, group in grouped.items():
+            if _should_keep_generic_bird_fragments_separate(group):
+                collapsed.extend(sorted(group, key=lambda item: item.get("start_time", 0)))
+                logger.debug("merge: preserved %d fragmented generic bird visits", len(group))
+                continue
+            existing = group[0]
+            for d in group[1:]:
                 _merge_into(
                     existing,
                     d.get("confidence", 0),
@@ -409,7 +432,8 @@ def merge_detections(
                 if d.get("frames") or d.get("best_frame"):
                     existing["species_name"] = d.get("species_name", existing["species_name"])
                     existing["species"] = existing["species_name"]
-        result_list = list(by_canonical.values())
+            collapsed.append(existing)
+        result_list = collapsed
         logger.debug("merge: collapsed to %d species (one per species)", len(result_list))
 
     if absorb_generic_bird:

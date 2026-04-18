@@ -58,7 +58,7 @@ RSYNC_EXCLUDES="--exclude=.git --exclude=node_modules --exclude=__pycache__ --ex
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=datasets --exclude=app/data --exclude=app/.env"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --exclude=scripts/deploy.local.sh"
 # Локальные venv / сборка док — не на сервер
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=site"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 # Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"

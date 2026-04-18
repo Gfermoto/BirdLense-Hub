@@ -12,6 +12,7 @@ from birdnet_merge_key import birdnet_merge_key, sqlite_path_for_birdnet_merge
 from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
 from hypothesis_arbitration import apply_hypothesis_arbitration
+from runtime_contract import apply_runtime_contract_rows
 
 logger = logging.getLogger(__name__)
 
@@ -251,6 +252,17 @@ def _frigate_standalone_prepared_rows(
     return rows
 
 
+def _prepared_is_single_generic_bird_track(prepared: list[dict]) -> bool:
+    """Single accepted_generic row for species Bird — typical useless YOLO fallback."""
+    if len(prepared) != 1:
+        return False
+    row = prepared[0]
+    if str(row.get("decision_kind") or "").strip().lower() != "accepted_generic":
+        return False
+    name = str(row.get("species_name") or row.get("species") or "").strip().lower()
+    return name == "bird"
+
+
 def prepare_track_results_for_fusion(
     track_results: Iterable[dict],
     app_config,
@@ -343,6 +355,9 @@ def build_fused_video_detections(
     biasing before DecisionMaker runs. Frigate usually only promotes/boosts
     existing YOLO rows; ``detection.frigate_standalone_when_no_yolo`` adds Frigate-only
     rows when video tracks are empty (see ``_frigate_standalone_prepared_rows``).
+    When ``detection.frigate_standalone_when_no_accepted_species`` is true (default),
+    synthetic rows are also used when YOLO produced exactly one accepted_generic
+    ``Bird`` row (useless fallback) — merge otherwise keeps Bird and drops Frigate's species.
     Frigate events with ``_frigate_merge_suppressed`` (excluded labels) still feed
     standalone but are kept out of ``merge_detections`` so they do not overwrite YOLO species.
     """
@@ -360,7 +375,18 @@ def build_fused_video_detections(
     ]
     frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
-    if not prepared and frigate_events and bool(app_config.get("detection.frigate_standalone_when_no_yolo", True)):
+    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", True))
+    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", True))
+    want_standalone = (
+        standalone_on
+        and bool(frigate_events)
+        and (
+            not prepared
+            or (standalone_no_species and len(prepared) == 1 and _prepared_is_single_generic_bird_track(prepared))
+        )
+    )
+    if want_standalone:
+        prepared_before = len(prepared)
         synthetic = _frigate_standalone_prepared_rows(
             frigate_events,
             start_time=start_time,
@@ -368,11 +394,14 @@ def build_fused_video_detections(
             app_config=app_config,
         )
         if synthetic:
-            prepared = prepare_track_results_for_fusion(synthetic, app_config)
+            extra = prepare_track_results_for_fusion(synthetic, app_config)
+            if not prepared or _prepared_is_single_generic_bird_track(prepared):
+                prepared = extra
             logger.info(
-                "Fusion: Frigate standalone — %s synthetic row(s), "
-                "YOLO accepted empty (merge uses %s non-suppressed Frigate events)",
+                "Fusion: Frigate standalone — %s synthetic row(s); "
+                "yolo_prepared_rows_before=%s (merge uses %s non-suppressed Frigate events)",
                 len(synthetic),
+                prepared_before,
                 len(frigate_events_for_merge),
             )
     fused = merge_detections(
@@ -444,5 +473,6 @@ def build_fused_video_detections(
             d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
+    fused = apply_runtime_contract_rows(fused)
     min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
     return [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]

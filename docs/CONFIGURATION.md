@@ -19,11 +19,13 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 **UI:** Most options are editable in the web app (Settings → gear). YAML remains for advanced cases and env-based overrides.
 
-**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms).
+**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
+
+**On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
 
 ---
 
-## Starter YAML profiles (`app/configs/`)
+## Starter YAML profiles (`app/configs/`) {#starter-profiles}
 
 Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and add passwords/tokens via **env** or local YAML only.
 
@@ -47,27 +49,36 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | Variable | Description |
 |----------|-------------|
 | `DATA_DIR` | Data directory (`/app/data` in Docker) |
-| `REDIS_URL` | **Docker:** set by default in `docker-compose.yml` (`redis://redis:6379/0`, service `birdlense-redis`). Override in `app/.env` for an external Redis. **Local run without Compose:** unset → in-process memory cache. |
+| `REDIS_URL` | **`app/docker-compose.yml`:** defaults to `redis://redis:6379/0` (service `birdlense-redis`). **`docker-compose.image.yml`:** no Redis container — omit or point to an **external** Redis; otherwise the hub uses an **in-process** cache. Override in `app/.env` in any layout. **Host run without Compose:** unset → in-process cache. |
 | `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. |
 | `SQLALCHEMY_POOL_SIZE` | PostgreSQL pool size (default `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | PostgreSQL pool overflow (default `15`) |
 | `FLASK_SECRET_KEY` | Flask session key (settings protection) |
+| `FLASK_MAX_CONTENT_LENGTH` | Max HTTP body size in **bytes** for Flask/Werkzeug (default ~80 GiB in `web/config.py`). Your reverse proxy still needs its own upload limit (e.g. nginx `client_max_body_size`) for large Library uploads |
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token`) |
 | `MCP_TOKEN` | MCP token (overrides `mcp.token`) |
-| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** рантайме закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY`, или MCP Bearer); см. [SECURITY](./SECURITY.md) |
-| `BIRDLENSE_UI_API_KEY` | Секрет для доступа к UI API при strict-режиме: заголовок **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
+| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — in **production**, require auth for `/api/ui/*` (session after `verify-password`, `BIRDLENSE_UI_API_KEY`, or MCP Bearer); see [SECURITY](./SECURITY.md) |
+| `BIRDLENSE_UI_API_KEY` | Secret for UI API in strict mode: header **`X-Birdlense-Api-Key`** or **`Authorization: Bearer`** (same value). Empty → session and MCP only |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
+| `GUNICORN_THREADS` | Gunicorn `gthread` worker thread count (default **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Local/dev CORS origins (comma-separated): Vite, `birdlense.local`, hub port. Default matches former in-code list; set empty to omit |
 | `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
 | `CORS_ORIGINS` | Extra CORS origins (comma-separated) |
+| `TRUSTED_PROXY` | `1` / `true` — honor `X-Real-IP` / `X-Forwarded-For` for rate limiting behind a **trusted** reverse proxy; see Webhook § and [SECURITY](./SECURITY.md) |
 | `OPENWEATHER_API_KEY` | OpenWeather key |
+| `XENO_CANTO_API_KEY` | Xeno-canto v3 key for species song audio in the UI. `BIRDLENSE_XENO_CANTO_API_KEY` still overrides `secrets.xeno_canto_api_key` after YAML merge |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT if not in config |
-| `HA_TOKEN` | Home Assistant token |
+| `HA_URL`, `HA_TOKEN` | Home Assistant base URL and long-lived token when not only in YAML (`homeassistant.*`) |
 | `GO2RTC_URL` | Go2RTC URL if not in config |
+| `HF_TOKEN` | Optional Hugging Face token for **`huggingface-cli`** / dataset tooling — **not** read by the Hub web process (see `app/.env.example`) |
 | `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA` | `1` — run species→taxon backfill on app startup; default off; otherwise use `POST /api/ui/system/species-registry/backfill` |
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — remove legacy disk-import placeholder detections on startup; default off; recording scan still cleans |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — background metadata/image repair on startup; default off |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — skip Telegram “App is UP!” on startup; default on |
+| `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | System page resource sampler interval (seconds); default `30`; allowed 10–600 — see [§ System page metrics history](#system-page-metrics-history) |
+| `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Keep `system_resource_sample` rows up to this age (hours); default `72`; allowed 6–720 |
+| `DISABLE_SYSTEM_METRICS_SAMPLER` | `1` / `true` — disable the background sampler (tests, CI) |
+| `BIRDLENSE_METRICS_TOKEN` | If set, `GET /metrics`, `/api/metrics`, `/api/metrics/summary` require `Authorization: Bearer` — see [§ Prometheus / Grafana](#prometheus--grafana) |
 | `BIRDLENSE_TELEGRAM_BOT_TOKEN` | Overrides `notifications.telegram_bot_token` |
 | `BIRDLENSE_TELEGRAM_MTPROTO_SECRET` | Overrides `notifications.telegram_mtproto_secret` |
 | `BIRDLENSE_TELEGRAM_API_HASH` | Overrides `notifications.telegram_api_hash` |
@@ -463,7 +474,7 @@ Browser push (addition or alternative to Telegram). Requires HTTPS (or localhost
 
 **Security limits:** only `http`/`https` URLs are allowed. Private / loopback / link-local targets (`127.0.0.1`, `192.168.x.x`, `10.x.x.x`, `localhost`, etc.) are blocked so the webhook cannot be abused as an SSRF bridge into your internal network.
 
-**Trusted proxy:** if Gunicorn is behind a trusted reverse proxy and you want rate limiting to honor `X-Real-IP` / `X-Forwarded-For`, set `TRUSTED_PROXY=1`. Otherwise BirdLense uses only `remote_addr`.
+**Trusted proxy:** if Gunicorn is behind a trusted reverse proxy and you want rate limiting to honor `X-Real-IP` / `X-Forwarded-For`, set `TRUSTED_PROXY=1` (see Environment variables table). Otherwise BirdLense uses only `remote_addr`.
 
 ---
 
@@ -497,7 +508,7 @@ The species filter **Regional** uses the same regional species list (eBird top i
 
 ---
 
-## Prometheus / Grafana
+## Prometheus / Grafana {#prometheus--grafana}
 
 `GET /metrics` and `GET /api/metrics` — Prometheus format.
 
@@ -518,7 +529,7 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, dashboard from metrics.
 
-### System page metrics history
+### System page metrics history {#system-page-metrics-history}
 
 Separate from Prometheus: SQLite table `system_resource_sample`, background sampler stores CPU/RAM/disk/GPU snapshots. The UI calls `GET /api/ui/system/metrics/history`.
 

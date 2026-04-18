@@ -13,6 +13,7 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 | **Hub** | BirdLense Hub — this app: Docker stack with web UI, API, processor, optional MCP. |
 | **Processor** | Background service inside the container: reads camera streams (via Go2RTC), runs detection/tracking, writes recordings, talks to MQTT, calls web API (`/api/processor/*`). |
 | **Web / API** | Flask app behind nginx: `/api/ui/*` for the SPA, system routes, processor ingress. |
+| **Library** | UI at `/library`: recordings calendar, dataset export, file-replay tooling when using **file** video source; entry to disk import lives under **System → Scan and import**. |
 
 ---
 

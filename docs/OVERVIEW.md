@@ -54,6 +54,7 @@ See the diagram and data paths in [ARCHITECTURE](./ARCHITECTURE.md).
 | Feature matrix & API hints | [FEATURES](./FEATURES.md) |
 | Something broke | [TROUBLESHOOTING](./TROUBLESHOOTING.md) |
 | Tests & post-deploy checks | [TESTING](./TESTING.md) |
+| CI policy & local full check (`make ci-local`) | [CI_AND_QUALITY](./CI_AND_QUALITY.md) |
 | Full doc index | [docs/README](./README.md) |
 | Static site section map | [SITE_MAP](./SITE_MAP.md) |
 

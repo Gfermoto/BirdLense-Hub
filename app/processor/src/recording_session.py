@@ -155,6 +155,13 @@ class MotionRecordingSession:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
+            runtime_signals = {
+                "frames_seen": 0,
+                "yolo_frames_ran": 0,
+                "yolo_frames_with_tracks": 0,
+                "low_light_blocked_frames": 0,
+                "session_extended_by_frigate_only": 0,
+            }
             frame_n = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
@@ -164,6 +171,7 @@ class MotionRecordingSession:
                 if frame is None:
                     break
                 frame_n += 1
+                runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:
                     self.file_test_runtime.poll_during_active_session()
                 if file_mode and frame_n % 500 == 0:
@@ -178,13 +186,24 @@ class MotionRecordingSession:
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
                 with self.fps_tracker:
                     has_detections = self.frame_processor.run(frame, frame_time=frame_time)
-                processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
+                run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
+                if run_stats.get("yolo_ran"):
+                    runtime_signals["yolo_frames_ran"] += 1
+                    processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
+                if run_stats.get("yolo_track_found"):
+                    runtime_signals["yolo_frames_with_tracks"] += 1
+                    processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
+                if run_stats.get("light_gate_blocked"):
+                    runtime_signals["low_light_blocked_frames"] += 1
 
+                raw_yolo_detections = bool(has_detections)
                 has_detections = self._has_session_activity(
                     has_detections=has_detections,
                     camera_id=camera_id,
                     frigate_hold_seconds=frigate_hold_seconds,
                 )
+                if has_detections and not raw_yolo_detections:
+                    runtime_signals["session_extended_by_frigate_only"] += 1
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(
@@ -222,6 +241,13 @@ class MotionRecordingSession:
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
                     "trigger_display": format_trigger_display_line(_active_names),
+                    "pipeline_policy": dict(getattr(self.frame_processor, "pipeline_policy", {}) or {}),
+                    "runtime_signals": {
+                        **runtime_signals,
+                        "yolo_ran": runtime_signals["yolo_frames_ran"] > 0,
+                        "yolo_track_found": runtime_signals["yolo_frames_with_tracks"] > 0,
+                        "session_extended_by_frigate": runtime_signals["session_extended_by_frigate_only"] > 0,
+                    },
                 },
             )
         except Exception as e:

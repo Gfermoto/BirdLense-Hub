@@ -76,7 +76,7 @@
 
 ## Сценарий 6: Деплой на сервер
 
-См. [INSTALL.md](./INSTALL.md) — раздел «Деплой на сервер (make deploy)». Только **x86_64 / amd64** (Intel или AMD); ARM / aarch64 не поддерживаются и не планируются.
+См. [INSTALL.md](./INSTALL.ru.md) — «Деплой на сервер (`make deploy`)» и чеклист [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** для **`verify-stack`** после выката, при необходимости **`DEPLOY_SSH_PORT`**. После деплоя: `BASE_URL=... make verify` из корня репозитория. Только **x86_64 / amd64** (Intel или AMD); ARM / aarch64 не поддерживаются и не планируются.
 
 ---
 

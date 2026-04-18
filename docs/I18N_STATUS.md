@@ -52,6 +52,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
 | UX_TOOLTIPS | ✅ EN only | — |
+| SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ EN only | — |
 | UX_UNKNOWN_VIDEO_CORRECTION | ✅ single page | — |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
@@ -80,3 +81,4 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 2. If Russian is required: create/update `DOC.ru.md` (same structure).
 3. Register in [docs/README.md](./README.md) (and [README.ru.md](./README.ru.md)).
 4. Update this table.
+5. If you add or change **HTTP routes** documented in OpenAPI: follow [OpenAPI maintenance](./project/openapi.md) (fragment merge / regen scripts) and run `pytest web/tests/test_openapi_contract.py` when the contract test applies.

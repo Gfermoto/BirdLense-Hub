@@ -355,6 +355,257 @@ class TestTrackRegenFallback:
         assert kept["species_name"] == "Eurasian Jay"
         assert remapped["species_name"] == "Unknown"
 
+    def test_single_video_regen_writes_fresh_decision_trace(self, app, monkeypatch):
+        import json
+        import sys
+        import types
+
+        from models import ActivityLog, Video, db
+        from services import system_track_regen_worker as worker_mod
+
+        with app.app_context():
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
+                video_path="data/recordings/2026/04/18/082131/video.mp4",
+            )
+            db.session.add(video)
+            db.session.flush()
+            db.session.add(
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(
+                        {
+                            "video_id": video.id,
+                            "video_path": video.video_path,
+                            "accepted_tracks": [{"track_id": -1, "species_name": "Eurasian Jay", "accepted": True}],
+                            "rejected_tracks": [],
+                        }
+                    ),
+                )
+            )
+            db.session.commit()
+            video_id = video.id
+
+        monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
+        monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
+        monkeypatch.setattr(
+            worker_mod,
+            "VisitProcessor",
+            lambda *_args, **_kwargs: types.SimpleNamespace(
+                process_detections=lambda *_a, **_k: [],
+                _get_or_create_species=lambda *_a, **_k: None,
+            ),
+        )
+
+        fake_track_regenerator = types.SimpleNamespace(
+            build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
+            process_video_for_tracks=lambda *args, **kwargs: [
+                {
+                    "track_id": 1,
+                    "species_name": "Bird",
+                    "confidence": 0.61,
+                    "start_time": 1.2,
+                    "end_time": 3.0,
+                    "detection_provider": "yolo",
+                    "decision_reason": "fallback_bird",
+                    "decision_kind": "accepted_generic",
+                    "accepted": True,
+                    "frames": [{"t": 1.2, "bbox": [0.1, 0.1, 0.2, 0.2]}],
+                }
+            ],
+        )
+        fake_detection_fusion = types.SimpleNamespace(
+            build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
+        )
+        monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
+        monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
+
+        worker_mod.run_regenerate_tracks_worker(
+            app,
+            force=False,
+            start_date=None,
+            end_date=None,
+            video_ids=[video_id],
+        )
+
+        with app.app_context():
+            logs = (
+                db.session.query(ActivityLog)
+                .filter(ActivityLog.type == "decision_trace")
+                .order_by(ActivityLog.id.asc())
+                .all()
+            )
+            latest = json.loads(logs[-1].data)
+
+        assert len(logs) == 2
+        assert latest["video_id"] == video_id
+        assert latest["persisted_tracks"][0]["track_id"] == 1
+        assert latest["persisted_tracks"][0]["species_name"] == "Bird"
+        assert latest["persisted_tracks"][0]["primary_provider"] == "yolo"
+        assert latest["persisted_tracks"][0]["fallback_used"] is True
+        assert latest["recording_context"]["triggered_by"] == "track_regen"
+        assert latest["recording_context"]["runtime_signals"]["yolo_ran"] is True
+        assert latest["recording_context"]["runtime_signals"]["yolo_track_found"] is True
+        assert latest["recording_context"]["pipeline_policy"]["regen"]["profile"] == "single_video_quality"
+        assert latest["recording_context"]["pipeline_policy"]["regen"]["scope_strategy"] in {
+            "global_classifier_scope",
+            "match_live_pipeline",
+        }
+
+    def test_single_video_regen_uses_quality_profile(self, app, monkeypatch):
+        import sys
+        import types
+
+        from app_config.app_config import app_config
+        from models import Video, db
+        from services import system_track_regen_worker as worker_mod
+        import routes.ui_system_jobs_state as job_state
+
+        with app.app_context():
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
+                video_path="data/recordings/2026/04/18/082131/video.mp4",
+            )
+            db.session.add(video)
+            db.session.commit()
+            video_id = video.id
+
+        monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
+        monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
+        monkeypatch.setattr(
+            worker_mod,
+            "VisitProcessor",
+            lambda *_args, **_kwargs: types.SimpleNamespace(
+                process_detections=lambda *_a, **_k: [],
+                _get_or_create_species=lambda *_a, **_k: None,
+            ),
+        )
+
+        calls = []
+        fake_track_regenerator = types.SimpleNamespace(
+            build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
+            process_video_for_tracks=lambda _video_path, **kwargs: calls.append(
+                (kwargs["lores_size"], kwargs["frame_step"], kwargs["max_runtime_sec"])
+            )
+            or [
+                {
+                    "track_id": 1,
+                    "species_name": "Bird",
+                    "confidence": 0.61,
+                    "start_time": 1.2,
+                    "end_time": 3.0,
+                    "detection_provider": "yolo",
+                    "decision_reason": "fallback_bird",
+                    "decision_kind": "accepted_generic",
+                    "accepted": True,
+                }
+            ],
+        )
+        fake_detection_fusion = types.SimpleNamespace(
+            build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
+        )
+        monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
+        monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
+
+        old_frame_step = app_config.get("processor.track_regen_frame_step")
+        old_lores = app_config.get("processor.track_regen_lores_px")
+        old_live = app_config.get("processor.track_regen_match_live_pipeline")
+        old_inference_lores = app_config.get("processor.inference_lores_px")
+        old_timeout = app_config.get("processor.track_regen_video_timeout_sec")
+        old_precise_timeout = app_config.get("processor.track_regen_precise_timeout_sec")
+        try:
+            app_config.set("processor.track_regen_frame_step", 6)
+            app_config.set("processor.track_regen_lores_px", 512)
+            app_config.set("processor.track_regen_match_live_pipeline", False)
+            app_config.set("processor.inference_lores_px", 640)
+            app_config.set("processor.track_regen_video_timeout_sec", 300)
+            app_config.set("processor.track_regen_precise_timeout_sec", 420)
+
+            worker_mod.run_regenerate_tracks_worker(
+                app,
+                force=False,
+                start_date=None,
+                end_date=None,
+                video_ids=[video_id],
+            )
+        finally:
+            app_config.set("processor.track_regen_frame_step", old_frame_step)
+            app_config.set("processor.track_regen_lores_px", old_lores)
+            app_config.set("processor.track_regen_match_live_pipeline", old_live)
+            app_config.set("processor.inference_lores_px", old_inference_lores)
+            app_config.set("processor.track_regen_video_timeout_sec", old_timeout)
+            app_config.set("processor.track_regen_precise_timeout_sec", old_precise_timeout)
+
+        regen_params = (job_state._regenerate_tracks_status.get("result") or {}).get("regen_params") or {}
+        assert calls == [((640, 640), 2, 420)]
+        assert regen_params["profile"] == "single_video_quality"
+        assert regen_params["frame_step"] == 2
+        assert regen_params["lores_px"] == 640
+        assert regen_params["max_runtime_sec"] == 420
+        assert regen_params["precise_fallback"]["frame_step"] == 1
+
+    def test_single_video_regen_skips_species_wiki_enrichment(self, app, monkeypatch):
+        import sys
+        import types
+
+        from models import Video, db
+        from services import system_track_regen_worker as worker_mod
+        import services.visit_processor as vp_mod
+
+        with app.app_context():
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
+                video_path="data/recordings/2026/04/18/082131/video.mp4",
+            )
+            db.session.add(video)
+            db.session.commit()
+            video_id = video.id
+
+        monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
+        monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
+        monkeypatch.setattr(
+            vp_mod,
+            "update_species_info_from_wiki",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("wiki must not be called")),
+            raising=False,
+        )
+
+        fake_track_regenerator = types.SimpleNamespace(
+            build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
+            process_video_for_tracks=lambda *args, **kwargs: [
+                {
+                    "track_id": 1,
+                    "species_name": "Bird",
+                    "confidence": 0.61,
+                    "start_time": 1.2,
+                    "end_time": 3.0,
+                    "detection_provider": "yolo",
+                    "decision_reason": "fallback_bird",
+                    "decision_kind": "accepted_generic",
+                    "accepted": True,
+                }
+            ],
+        )
+        fake_detection_fusion = types.SimpleNamespace(
+            build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
+        )
+        monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
+        monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
+
+        worker_mod.run_regenerate_tracks_worker(
+            app,
+            force=False,
+            start_date=None,
+            end_date=None,
+            video_ids=[video_id],
+        )
+
 
 class TestTimelineExport:
     """Timeline export CSV/JSON."""
