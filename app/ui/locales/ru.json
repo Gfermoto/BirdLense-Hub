@@ -1274,6 +1274,8 @@
     "configAuditNeedsReview": "Нужна проверка",
     "configAuditLoadError": "Не удалось загрузить ревизию конфигурации",
     "configAuditWarningsTitle": "Предупреждения",
+    "configAuditWarnOpencvDiff": "motion.opencv_diff_threshold={{current}} выше рекомендованного в конфиге хаба ({{recommended}}): больше порог — слабее реакция на изменение пикселей (ниже полнота по движению).",
+    "configAuditWarnOpencvContour": "motion.opencv_min_contour_area={{current}} выше рекомендованного ({{recommended}}): больше порог — отбрасываются меньшие пятна движения (в т.ч. дальние птицы).",
     "configAuditScalesSection": "Весы (интеграция)",
     "configAuditScalesSource": "Источник",
     "configAuditScalesBroker": "MQTT-брокер в конфиге",
