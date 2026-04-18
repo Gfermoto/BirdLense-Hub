@@ -31,9 +31,7 @@ def normalize_provider(provider: str | None) -> str:
 
 def provider_lineage(row: dict) -> list[str]:
     providers = {
-        normalize_provider(item)
-        for item in (row.get("contributing_providers") or [])
-        if normalize_provider(item)
+        normalize_provider(item) for item in (row.get("contributing_providers") or []) if normalize_provider(item)
     }
     provider = normalize_provider(row.get("detection_provider"))
     if provider and provider != "arbitration":
@@ -54,7 +52,8 @@ def choose_primary_provider(row: dict) -> str:
         source == "video"
         or row.get("classifier_species_name") is not None
         or row.get("detector_label") is not None
-        or str(row.get("decision_kind") or "").strip().lower() not in {"frigate_standalone", "frigate_standalone_excluded"}
+        or str(row.get("decision_kind") or "").strip().lower()
+        not in {"frigate_standalone", "frigate_standalone_excluded"}
     ):
         return "yolo"
     return provider or "unknown"
@@ -138,11 +137,7 @@ def infer_threshold_path(row: dict) -> str:
             else "detector_store_floor_then_generic_guard"
         )
     if reason in {"fallback_bird", "fallback_squirrel", "fallback_detector_generic"}:
-        return (
-            "classifier_threshold_then_detector_store_floor"
-            if classifier_present
-            else "detector_store_floor"
-        )
+        return "classifier_threshold_then_detector_store_floor" if classifier_present else "detector_store_floor"
     if reason in {"frigate_standalone", "frigate_standalone_excluded"} or bool(row.get("frigate_standalone")):
         return "frigate_standalone_min_score"
     if reason in _ARBITRATION_REASONS:
@@ -182,12 +177,8 @@ def summarize_runtime_contract(
 ) -> dict:
     persisted = list(persisted_tracks or [])
     rejected = list(rejected_tracks or [])
-    persisted_provider_counts = Counter(
-        str(row.get("primary_provider") or "unknown") for row in persisted
-    )
-    rejected_provider_counts = Counter(
-        str(row.get("primary_provider") or "unknown") for row in rejected
-    )
+    persisted_provider_counts = Counter(str(row.get("primary_provider") or "unknown") for row in persisted)
+    rejected_provider_counts = Counter(str(row.get("primary_provider") or "unknown") for row in rejected)
     return {
         "persisted_primary_provider_counts": dict(sorted(persisted_provider_counts.items())),
         "rejected_primary_provider_counts": dict(sorted(rejected_provider_counts.items())),

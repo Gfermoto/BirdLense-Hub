@@ -174,9 +174,7 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
         assert db.session.get(Video, vid) is not None
 
 
-def test_processor_videos_hot_path_skips_species_metadata_enrichment(
-    app, client, proc_headers, monkeypatch, tmp_path
-):
+def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
     from models import Video, db

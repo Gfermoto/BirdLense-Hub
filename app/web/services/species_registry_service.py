@@ -930,9 +930,7 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
     with_image = sum(1 for sp in matched_per_line if (sp.image_url or "").strip())
     with_description = sum(1 for sp in matched_per_line if (sp.description or "").strip())
     complete_cards = sum(
-        1
-        for sp in matched_per_line
-        if (sp.image_url or "").strip() and (sp.description or "").strip()
+        1 for sp in matched_per_line if (sp.image_url or "").strip() and (sp.description or "").strip()
     )
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
     return {

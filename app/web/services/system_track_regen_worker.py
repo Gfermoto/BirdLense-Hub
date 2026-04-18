@@ -229,9 +229,7 @@ def run_regenerate_tracks_worker(
                     }
                     regen_params["local_species_scope_count"] = len(regen_species_scope)
             regional_species_override = (
-                list(app_config.get("processor.regional_species") or [])
-                if effective_match_live
-                else None
+                list(app_config.get("processor.regional_species") or []) if effective_match_live else None
             )
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
@@ -411,7 +409,9 @@ def run_regenerate_tracks_worker(
                         if not precise_params:
                             return None
                         if precise_pipeline is None:
-                            precise_scope_override = regional_species_override if effective_match_live else regen_species_scope
+                            precise_scope_override = (
+                                regional_species_override if effective_match_live else regen_species_scope
+                            )
                             precise_pipeline = build_detection_pipeline(
                                 app_config,
                                 strategy_override=precise_strategy,

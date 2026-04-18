@@ -21,6 +21,9 @@ app/.pytest_cache/
 
 # Local virtualenv created by developer tooling
 .venv/
+# make ci-local / scripts/ci-full-local.sh
+.venv-ci/
+.venv-docs/
 # Local model weight (do not commit large model blobs)
 app/yolo11n.pt
 # Настройки — не коммитить (только шаблоны в репо)
