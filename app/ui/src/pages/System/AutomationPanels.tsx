@@ -29,6 +29,7 @@ import {
   type BirdnetFifoPayload,
   type SystemJobStatus,
   backfillSpeciesRegistry,
+  downloadLatestFusionEvalReport,
   downloadLatestFusionExport,
   enrichSpeciesRegistryMetadata,
   fetchBirdnetFifoSnapshot,
@@ -135,6 +136,195 @@ function getJobStatusLabel(
 ): string {
   const raw = statusLabel(status);
   return t(`system.jobStatus.${raw}`, { defaultValue: raw });
+}
+
+function fmtNum(v: unknown, digits = 4): string {
+  if (typeof v === 'number' && Number.isFinite(v)) return v.toFixed(digits).replace(/\.?0+$/, '') || '0';
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n.toFixed(digits).replace(/\.?0+$/, '') || '0';
+  }
+  return '—';
+}
+
+function FusionExportResultBlock({ result }: { result: Record<string, unknown> }) {
+  const { t } = useTranslation();
+  const rows = result.rows_written;
+  const path = result.output_path != null ? String(result.output_path) : '';
+  const src = result.source != null ? String(result.source) : '';
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        {t('system.automationFusionExportSummaryTitle')}
+      </Typography>
+      {typeof rows === 'number' ? (
+        <Typography variant="body2">{t('system.automationFusionExportRows', { count: rows })}</Typography>
+      ) : null}
+      {src ? (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+          {src}
+        </Typography>
+      ) : null}
+      {path ? (
+        <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all' }}>
+          {path}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
+type ThresholdRow = { coverage?: unknown; precision?: unknown; recall?: unknown; risk?: unknown; count?: unknown };
+
+function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) {
+  const { t } = useTranslation();
+  const thresholds = result.thresholds;
+  const thEntries =
+    thresholds && typeof thresholds === 'object'
+      ? Object.entries(thresholds as Record<string, ThresholdRow>).sort(([a], [b]) => Number(a) - Number(b))
+      : [];
+  const bins = Array.isArray(result.bins) ? (result.bins as Record<string, unknown>[]) : [];
+  const slices = result.slices && typeof result.slices === 'object' ? (result.slices as Record<string, unknown>) : null;
+  const reportRows = result.eval_report_csv_rows;
+  const nFlat = typeof reportRows === 'number' ? reportRows : null;
+
+  return (
+    <Stack spacing={1.5} sx={{ width: '100%' }}>
+      <Typography variant="subtitle2">{t('system.automationFusionEvalSummaryTitle')}</Typography>
+      <Stack direction="row" flexWrap="wrap" gap={2}>
+        <Typography variant="body2">
+          {t('system.automationFusionEvalColN')}: <strong>{fmtNum(result.n, 0)}</strong>
+        </Typography>
+        <Typography variant="body2">
+          {t('system.automationFusionEvalColPositiveRate')}: <strong>{fmtNum(result.positive_rate)}</strong>
+        </Typography>
+        <Typography variant="body2">
+          {t('system.automationFusionEvalColBrier')}: <strong>{fmtNum(result.brier)}</strong>
+        </Typography>
+        <Typography variant="body2">
+          {t('system.automationFusionEvalColEce')}: <strong>{fmtNum(result.ece)}</strong>
+        </Typography>
+        <Typography variant="body2">
+          {t('system.automationFusionEvalColAcc05')}: <strong>{fmtNum(result.accuracy_at_0_5)}</strong>
+        </Typography>
+      </Stack>
+      {result.source_csv ? (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: 'monospace' }}>
+          {t('system.automationFusionEvalSourceCsv')}: {String(result.source_csv)}
+        </Typography>
+      ) : null}
+      {result.eval_report_csv_path ? (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: 'monospace' }}>
+          {t('system.automationFusionEvalReportCsv')}: {String(result.eval_report_csv_path)}
+          {nFlat != null ? ` · ${t('system.automationFusionEvalReportRows', { count: nFlat })}` : ''}
+        </Typography>
+      ) : null}
+
+      {thEntries.length > 0 ? (
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+            {t('system.automationFusionEvalThresholds')}
+          </Typography>
+          <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('system.automationFusionEvalColThreshold')}</TableCell>
+                  <TableCell align="right">{t('system.automationFusionEvalColCoverage')}</TableCell>
+                  <TableCell align="right">{t('system.automationFusionEvalColPrecision')}</TableCell>
+                  <TableCell align="right">{t('system.automationFusionEvalColRecall')}</TableCell>
+                  <TableCell align="right">{t('system.automationFusionEvalColRisk')}</TableCell>
+                  <TableCell align="right">{t('system.automationFusionEvalColCount')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {thEntries.map(([key, row]) => (
+                  <TableRow key={key}>
+                    <TableCell>{key}</TableCell>
+                    <TableCell align="right">{fmtNum(row?.coverage)}</TableCell>
+                    <TableCell align="right">{fmtNum(row?.precision)}</TableCell>
+                    <TableCell align="right">{fmtNum(row?.recall)}</TableCell>
+                    <TableCell align="right">{fmtNum(row?.risk)}</TableCell>
+                    <TableCell align="right">{fmtNum(row?.count, 0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      ) : null}
+
+      {bins.length > 0 ? (
+        <Accordion variant="outlined" disableGutters>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">{t('system.automationFusionEvalBins')}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('system.automationFusionEvalColBin')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColLo')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColHi')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColCount')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColConf')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColAcc')}</TableCell>
+                    <TableCell align="right">{t('system.automationFusionEvalColGap')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bins.map((b, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{String(b.bin ?? i)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.lo)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.hi)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.count, 0)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.confidence)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.accuracy)}</TableCell>
+                      <TableCell align="right">{fmtNum(b.gap)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
+
+      {slices && Object.keys(slices).length > 0 ? (
+        <Accordion variant="outlined" disableGutters>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">{t('system.automationFusionEvalSlices')}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={2}>
+              {Object.entries(slices).map(([field, byVal]) =>
+                typeof byVal === 'object' && byVal !== null ? (
+                  <Box key={field}>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                      {field}
+                    </Typography>
+                    {Object.entries(byVal as Record<string, Record<string, unknown>>).map(([sliceVal, sub]) => (
+                      <Box key={`${field}:${sliceVal}`} sx={{ mb: 1, pl: 1, borderLeft: '2px solid', borderColor: 'divider' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {sliceVal}
+                        </Typography>
+                        <Typography variant="caption" display="block">
+                          n={fmtNum(sub.n, 0)} · ECE={fmtNum(sub.ece)} · Brier={fmtNum(sub.brier)} · acc@0.5=
+                          {fmtNum(sub.accuracy_at_0_5)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : null,
+              )}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
+    </Stack>
+  );
 }
 
 export function AutomationFusionCard() {
@@ -284,21 +474,28 @@ export function AutomationFusionCard() {
               </Button>
             </span>
           </Tooltip>
+          <Tooltip title={t('system.automationFusionEvalDownloadHint')} describeChild>
+            <span>
+              <Button variant="outlined" onClick={() => downloadLatestFusionEvalReport()}>
+                {t('system.automationFusionEvalDownload')}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
-        {(fusionExportQuery.data?.result || fusionExportQuery.data?.error) && (
-          <Alert severity={fusionExportQuery.data?.error ? 'error' : 'success'}>
-            {fusionExportQuery.data?.error
-              ? fusionExportQuery.data.error
-              : JSON.stringify(fusionExportQuery.data.result)}
+        {fusionExportQuery.data?.error ? (
+          <Alert severity="error">{fusionExportQuery.data.error}</Alert>
+        ) : null}
+        {fusionExportQuery.data?.result && !fusionExportQuery.data?.error ? (
+          <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+            <FusionExportResultBlock result={fusionExportQuery.data.result as Record<string, unknown>} />
           </Alert>
-        )}
-        {(fusionEvalQuery.data?.result || fusionEvalQuery.data?.error) && (
-          <Alert severity={fusionEvalQuery.data?.error ? 'error' : 'success'}>
-            {fusionEvalQuery.data?.error
-              ? fusionEvalQuery.data.error
-              : JSON.stringify(fusionEvalQuery.data.result)}
+        ) : null}
+        {fusionEvalQuery.data?.error ? <Alert severity="error">{fusionEvalQuery.data.error}</Alert> : null}
+        {fusionEvalQuery.data?.result && !fusionEvalQuery.data?.error ? (
+          <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+            <FusionEvalReportBlock result={fusionEvalQuery.data.result as Record<string, unknown>} />
           </Alert>
-        )}
+        ) : null}
       </Stack>
     </SystemCardShell>
   );

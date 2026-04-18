@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import routes.ui_system_jobs_state as job_state
 from services.fusion_training_service import (
+    latest_fusion_eval_report_path,
     latest_fusion_export_path,
     run_fusion_eval_job,
     run_fusion_export_job,
@@ -76,6 +77,13 @@ def fusion_export_download_file_or_error() -> tuple[Path | None, dict | None, in
     latest = latest_fusion_export_path()
     if not latest or not latest.exists():
         return None, {"error": "Fusion export not found"}, 404
+    return latest, None, 200
+
+
+def fusion_eval_download_file_or_error() -> tuple[Path | None, dict | None, int]:
+    latest = latest_fusion_eval_report_path()
+    if not latest or not latest.exists():
+        return None, {"error": "Fusion eval report CSV not found; run Evaluate first."}, 404
     return latest, None, 200
 
 
