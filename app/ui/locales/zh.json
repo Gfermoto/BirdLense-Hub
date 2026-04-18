@@ -1246,6 +1246,7 @@
     "catalogRepairStart": "开始抛光",
     "catalogRepairRunning": "波兰跑步",
     "catalogRepairCompletion": "已填字段：{{p}}%",
+    "catalogRepairSpeciesMatched": "Allowlist 与数据库匹配：{{n}} / {{total}}",
     "catalogRepairCompleteCards": "完整卡片：{{n}} / {{total}}",
     "catalogRepairWithImage": "有图：{{n}}",
     "catalogRepairWithDescription": "附描述：{{n}}",

@@ -40,6 +40,7 @@ export function CatalogRepairCard() {
     completion_percent: 0,
     complete_cards: 0,
     allowlist_total: 0,
+    species_matched: 0,
     with_image: 0,
     with_description: 0,
   };
@@ -72,6 +73,14 @@ export function CatalogRepairCard() {
       <Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
           <Chip size="small" label={t('system.catalogRepairCompletion', { p: cov.completion_percent })} />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={t('system.catalogRepairSpeciesMatched', {
+              n: cov.species_matched ?? 0,
+              total: cov.allowlist_total,
+            })}
+          />
           <Chip size="small" variant="outlined" label={t('system.catalogRepairCompleteCards', { n: cov.complete_cards, total: cov.allowlist_total })} />
           <Chip size="small" variant="outlined" label={t('system.catalogRepairWithImage', { n: cov.with_image })} />
           <Chip size="small" variant="outlined" label={t('system.catalogRepairWithDescription', { n: cov.with_description })} />
