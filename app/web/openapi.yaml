@@ -1354,6 +1354,475 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /system/species-registry/seed:
+    post:
+      summary: Seed species registry from bundled mapping
+      description: |
+        **Settings / admin:** seeds canonical species registry and aliases. Busts related caches on success.
+      responses:
+        "200":
+          description: Seed statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/backfill:
+    post:
+      summary: Backfill Species rows with taxon links
+      description: |
+        **Settings / admin:** links existing `Species` rows to canonical taxa. Default `dry_run: true`.
+        Use `dry_run: false` to apply; optional `limit` caps rows per run.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  default: true
+                limit:
+                  type: integer
+                  nullable: true
+      responses:
+        "200":
+          description: Backfill statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                additionalProperties: true
+        "400":
+          description: Invalid body (e.g. limit not int)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/unresolved:
+    get:
+      summary: Unresolved species names from resolver
+      description: |
+        **Settings / admin:** top unresolved names captured during resolution.
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 5000
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, count]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count:
+                    type: integer
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/enrich-metadata/start:
+    post:
+      summary: Start async species metadata enrichment
+      description: |
+        **Settings / admin:** starts background job. Returns **409** if a run is already active.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  default: 300
+                retry_failed_only:
+                  type: boolean
+                  default: false
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  status:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Enrichment already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/enrich-metadata/status:
+    get:
+      summary: Species metadata enrichment job status
+      description: |
+        **Settings / admin:** live status for async enrichment.
+      responses:
+        "200":
+          description: Status snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/health:
+    get:
+      summary: Species registry rollout health
+      description: |
+        **Settings / admin:** coverage and rollout metrics for the registry.
+      responses:
+        "200":
+          description: Health payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/materialize-allowlist:
+    post:
+      summary: Materialize missing allowlist Species rows
+      description: |
+        **Settings / admin:** creates missing catalog rows for classifier allowlist; optional metadata fill.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  default: false
+                fill_metadata:
+                  type: boolean
+                  default: true
+                limit:
+                  type: integer
+                  default: 5000
+      responses:
+        "200":
+          description: Result body from materialization
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/repair-cards/start:
+    post:
+      summary: Start background species card repair
+      description: |
+        **Settings / admin:** repairs catalog card images/metadata. Returns **409** if already running.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  default: 6000
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  status:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Repair already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/repair-cards/status:
+    get:
+      summary: Species card repair job status
+      description: |
+        **Settings / admin:** includes live coverage counters and scheduler hints.
+      responses:
+        "200":
+          description: Status snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/data-quality:
+    get:
+      summary: Catalog data quality report
+      description: |
+        **Settings / admin:** duplicates and cleanup hints for the species catalog.
+      parameters:
+        - in: query
+          name: duplicate_limit
+          required: false
+          schema:
+            type: integer
+            default: 80
+            minimum: 10
+            maximum: 500
+      responses:
+        "200":
+          description: Report JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/classifier-dataset-alignment:
+    get:
+      summary: Classifier vs catalog vs dataset alignment
+      description: |
+        **Settings / admin:** compares classifier class names, DB catalog, and on-disk dataset folders.
+      parameters:
+        - in: query
+          name: classifier_limit
+          required: false
+          schema:
+            type: integer
+            default: 600
+        - in: query
+          name: catalog_limit
+          required: false
+          schema:
+            type: integer
+            default: 400
+        - in: query
+          name: dataset_limit
+          required: false
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: Alignment report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/coverage-metrics:
+    get:
+      summary: Observed vs dataset vs catalog coverage segments
+      description: |
+        **Settings / admin:** coverage metrics for registry rollout.
+      responses:
+        "200":
+          description: Metrics JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/species-registry/tuning-targets/export:
+    get:
+      summary: Export tuning targets for training
+      description: |
+        **Settings / admin:** `format=json` (default) returns JSON; `format=csv` returns a CSV download.
+      parameters:
+        - in: query
+          name: format
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+      responses:
+        "200":
+          description: JSON list or CSV file
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  targets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+            text/csv:
+              schema:
+                type: string
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /storage/stats:
     get:
       summary: Get storage stats
