@@ -2,7 +2,7 @@
 
 [Русский](./openapi.ru.md)
 
-Browser rendering of **`app/web/openapi.yaml`** via [Redoc](https://github.com/Redocly/redoc). Narrative overview: [API](../API.md).
+Browser rendering of **`app/web/openapi.yaml`** via [Redoc](https://github.com/Redocly/redoc). The spec lists **two servers** (`/api/ui` and `/api/processor`); pick the correct base in Redoc’s server dropdown. Narrative overview: [API](../API.md).
 
 <iframe title="OpenAPI Redoc" src="openapi.html" width="100%" height="920" style="border:1px solid #ccc;border-radius:6px;"></iframe>
 
