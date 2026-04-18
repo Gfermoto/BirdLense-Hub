@@ -5,6 +5,10 @@
 Список ключей совпадает с DEPRECATED_USER_CONFIG_KEYS в system_config_audit_service,
 плюс целиком удаляется верхнеуровневый блок ``gallery``, если остался после точечных удалений.
 
+Дополнительно: в ``integrations.scales`` удаляются явные пустые строки ``mqtt_topic``,
+``mqtt_bird_present_topic``, ``mqtt_command_topic`` — они в YAML перекрывают
+наследование топиков от ``mqtt_topic_prefix`` (см. предупреждения config-audit).
+
 Примеры:
   python3 scripts/prune_deprecated_user_config.py --dry-run
   python3 scripts/prune_deprecated_user_config.py --path /root/BirdLense/app/app_config/user_config.yaml
@@ -58,6 +62,22 @@ def _prune_empty_dicts(node: dict) -> None:
                 del node[k]
 
 
+def _clean_explicit_empty_scale_mqtt_keys(cfg: dict) -> list[str]:
+    """Убрать integrations.scales.* == \"\" для топиков — иначе ломают вывод из mqtt_topic_prefix."""
+    removed: list[str] = []
+    integ = cfg.get("integrations")
+    if not isinstance(integ, dict):
+        return removed
+    scales = integ.get("scales")
+    if not isinstance(scales, dict):
+        return removed
+    for k in ("mqtt_topic", "mqtt_bird_present_topic", "mqtt_command_topic"):
+        if k in scales and scales.get(k) == "":
+            del scales[k]
+            removed.append(f"integrations.scales.{k} (explicit \"\" removed)")
+    return removed
+
+
 def prune_user_config(cfg: dict) -> tuple[int, list[str]]:
     removed: list[str] = []
     for dotted in DEPRECATED_USER_CONFIG_KEYS:
@@ -69,6 +89,7 @@ def prune_user_config(cfg: dict) -> tuple[int, list[str]]:
     elif "gallery" in cfg:
         del cfg["gallery"]
         removed.append("gallery (non-dict removed)")
+    removed.extend(_clean_explicit_empty_scale_mqtt_keys(cfg))
     _prune_empty_dicts(cfg)
     return len(removed), removed
 
@@ -95,7 +116,7 @@ def main() -> int:
     n, keys = prune_user_config(data)
     after = yaml.safe_dump(data, sort_keys=True, allow_unicode=True)
     if n == 0:
-        print("no deprecated keys to remove")
+        print("no changes to apply")
     else:
         print(f"would remove {n} entries:")
         for k in keys:

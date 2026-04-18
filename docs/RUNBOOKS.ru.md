@@ -68,6 +68,8 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 
 Если `GET /api/ui/system/config-audit` всё ещё показывает `gallery.*` или `general.heimdall_url`, они живут в **`app/app_config/user_config.yaml`** на хабе (в API токены/секреты замаскированы, «вытащить» их для чистки нельзя).
 
+Тот же скрипт убирает явные `integrations.scales.mqtt_topic` / `mqtt_bird_present_topic` / `mqtt_command_topic`, если в YAML записаны как `""` — иначе они перекрывают топики, выводимые из `mqtt_topic_prefix` (предупреждения в ревизии конфигурации).
+
 На сервере (путь к деплою подставьте свой):
 
 ```bash
