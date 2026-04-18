@@ -12,6 +12,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmColor?: 'error' | 'warning' | 'primary';
+  confirmAutoFocus?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   confirmLabel = 'OK',
   cancelLabel = 'Cancel',
   confirmColor = 'error',
+  confirmAutoFocus = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -36,7 +38,12 @@ export function ConfirmDialog({
         <Button onClick={onCancel} color="inherit">
           {cancelLabel}
         </Button>
-        <Button onClick={onConfirm} color={confirmColor} variant="contained" autoFocus>
+        <Button
+          onClick={onConfirm}
+          color={confirmColor}
+          variant="contained"
+          autoFocus={confirmAutoFocus}
+        >
           {confirmLabel}
         </Button>
       </DialogActions>

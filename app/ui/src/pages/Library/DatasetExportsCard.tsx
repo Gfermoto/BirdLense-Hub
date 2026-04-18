@@ -8,7 +8,6 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import LinearProgress from '@mui/material/LinearProgress';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -18,31 +17,15 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { BASE_API_URL, exportDataset, retroExportDataset } from '../../api/api';
-
-interface StorageDay {
-  date: string;
-  fileCount: number;
-  totalSize: number;
-}
-
-const formatBytes = (bytes: number): string => {
-  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    sizes.length - 1,
-  );
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-};
+import { LibraryCardShell } from './LibraryCardShell';
+import { formatBytes, getDayjsLocale, type StorageDay } from './libraryShared';
 
 export function DatasetExportsCard({
   simple = false,
 }: {
   simple?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [exportingDataset, setExportingDataset] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
   const [readyForTrain, setReadyForTrain] = useState(true);
@@ -176,18 +159,16 @@ export function DatasetExportsCard({
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Paper sx={{ p: 2.5 }}>
+    <LocalizationProvider
+      dateAdapter={AdapterDayjs}
+      adapterLocale={getDayjsLocale(i18n.language)}
+    >
+      <LibraryCardShell
+        title={t('library.datasetToolsTitle')}
+        description={t('library.datasetToolsSubtitle')}
+        eyebrow={t('library.sectionDataset')}
+      >
         <Stack spacing={2.5}>
-          <div>
-            <Typography variant="h5">
-              {t('library.datasetToolsTitle')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('library.datasetToolsSubtitle')}
-            </Typography>
-          </div>
-
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>
               <AlertTitle>{t('common.error')}</AlertTitle>
@@ -360,7 +341,7 @@ export function DatasetExportsCard({
 
           <Alert severity="info">{t('library.datasetToolsLibraryHint')}</Alert>
         </Stack>
-      </Paper>
+      </LibraryCardShell>
     </LocalizationProvider>
   );
 }

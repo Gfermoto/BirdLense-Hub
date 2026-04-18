@@ -6,10 +6,10 @@ import axios from 'axios';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import { alpha, useTheme } from '@mui/material/styles';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -18,50 +18,60 @@ import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
 import dayjs, { Dayjs } from 'dayjs';
 import { BASE_API_URL } from '../../api/api';
-
-interface StorageDay {
-  date: string;
-  fileCount: number;
-  totalSize: number;
-}
+import { LibraryCardShell } from './LibraryCardShell';
+import { getDayjsLocale, type StorageDay } from './libraryShared';
 
 interface Level {
   minFiles: number;
   color: string;
+  textColor: string;
   label: string;
 }
 
-const defaultColor = '#f5f5f5';
-
 const getLevels = (
   t: (key: string, opts?: Record<string, unknown>) => string,
+  successMain: string,
+  successLight: string,
 ): readonly Level[] => [
-  { minFiles: 16, color: '#2e7d32', label: t('library.recordingsLevelHigh') },
-  { minFiles: 8, color: '#43a047', label: t('library.recordingsLevelMedium') },
-  { minFiles: 1, color: '#81c784', label: t('library.recordingsLevelLow') },
+  {
+    minFiles: 16,
+    color: successMain,
+    textColor: '#fff',
+    label: t('library.recordingsLevelHigh'),
+  },
+  {
+    minFiles: 8,
+    color: alpha(successMain, 0.82),
+    textColor: '#fff',
+    label: t('library.recordingsLevelMedium'),
+  },
+  {
+    minFiles: 1,
+    color: alpha(successLight, 0.72),
+    textColor: 'inherit',
+    label: t('library.recordingsLevelLow'),
+  },
 ];
-
-function getDayColor(fileCount: number, levels: readonly Level[]): string {
-  return (
-    levels.find((level) => fileCount >= level.minFiles)?.color ?? defaultColor
-  );
-}
 
 function CalendarDay({
   day,
   days,
   levels,
+  emptyColor,
   onOpenDay,
   ...other
 }: PickersDayProps<Dayjs> & {
   days: StorageDay[];
   levels: readonly Level[];
+  emptyColor: string;
   onOpenDay: (date: string) => void;
 }) {
   const formattedDate = day.format('YYYY-MM-DD');
   const info = days.find((item) => item.date === formattedDate);
   const fileCount = info?.fileCount ?? 0;
-  const bgColor = getDayColor(fileCount, levels);
+  const level = levels.find((item) => fileCount >= item.minFiles);
+  const bgColor = level?.color ?? emptyColor;
+  const textColor = level?.textColor ?? 'text.primary';
 
   return (
     <PickersDay
@@ -76,23 +86,33 @@ function CalendarDay({
         bgcolor: bgColor,
         '&:hover': { bgcolor: bgColor },
         '&.Mui-selected': {
-          bgcolor: 'grey.700',
-          '&:hover': { bgcolor: 'grey.700' },
+          bgcolor: 'text.primary',
+          color: 'background.paper',
+          '&:hover': { bgcolor: 'text.primary' },
         },
-        color: fileCount >= 8 ? 'white' : 'black',
+        color: textColor,
         fontWeight: fileCount > 0 ? 600 : 400,
+        border: '1px solid',
+        borderColor: fileCount > 0 ? 'transparent' : 'divider',
       }}
     />
   );
 }
 
 export function RecordingsCalendar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() =>
     dayjs().startOf('month'),
   );
-  const levels = getLevels(t);
+  const levels = getLevels(
+    t,
+    theme.palette.success.main,
+    theme.palette.success.light,
+  );
+  const emptyDayColor = alpha(theme.palette.action.hover, 0.35);
+  const calendarLocale = getDayjsLocale(i18n.language);
   const {
     data: storageStats = [],
     isLoading,
@@ -148,7 +168,11 @@ export function RecordingsCalendar() {
 
   return (
     <Stack spacing={2}>
-      <Paper sx={{ p: 2.5 }}>
+      <LibraryCardShell
+        title={t('library.recordingsCalendarTitle')}
+        description={t('library.recordingsCalendarSubtitle')}
+        eyebrow={t('library.sections.archiveTitle')}
+      >
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           alignItems={{ xs: 'flex-start', md: 'center' }}
@@ -156,14 +180,6 @@ export function RecordingsCalendar() {
           spacing={2}
           sx={{ mb: 2 }}
         >
-          <Box>
-            <Typography variant="h5">
-              {t('library.recordingsCalendarTitle')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('library.recordingsCalendarSubtitle')}
-            </Typography>
-          </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
               size="small"
@@ -214,7 +230,7 @@ export function RecordingsCalendar() {
                   variant="body1"
                   sx={{ minWidth: 140, textAlign: 'center' }}
                 >
-                  {selectedMonth.format('MMMM YYYY')}
+                  {selectedMonth.locale(calendarLocale).format('MMMM YYYY')}
                 </Typography>
                 <IconButton
                   size="small"
@@ -231,7 +247,10 @@ export function RecordingsCalendar() {
               </Stack>
             </Box>
 
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <LocalizationProvider
+              dateAdapter={AdapterDayjs}
+              adapterLocale={calendarLocale}
+            >
               <StaticDatePicker
                 value={selectedMonth}
                 onChange={() => {}}
@@ -251,6 +270,7 @@ export function RecordingsCalendar() {
                       {...props}
                       days={validStorageStats}
                       levels={levels}
+                      emptyColor={emptyDayColor}
                       onOpenDay={(date) => navigate(`/timeline?date=${date}`)}
                     />
                   ),
@@ -260,6 +280,7 @@ export function RecordingsCalendar() {
                   toolbar: { hidden: true },
                 }}
                 sx={{
+                  width: '100%',
                   '& .MuiPickersCalendarHeader-root': {
                     display: 'none',
                   },
@@ -279,8 +300,10 @@ export function RecordingsCalendar() {
                   sx={{
                     width: 12,
                     height: 12,
-                    bgcolor: defaultColor,
+                    bgcolor: emptyDayColor,
                     borderRadius: 0.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
                   }}
                 />
                 <Typography variant="caption" color="text.secondary">
@@ -310,7 +333,7 @@ export function RecordingsCalendar() {
             </Stack>
           </>
         )}
-      </Paper>
+      </LibraryCardShell>
 
       <Alert severity="info">{t('library.recordingsOpenDayHint')}</Alert>
     </Stack>
