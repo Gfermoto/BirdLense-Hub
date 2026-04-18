@@ -52,22 +52,31 @@
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |
+| `FLASK_MAX_CONTENT_LENGTH` | Лимит тела HTTP в **байтах** для Flask/Werkzeug (по умолчанию ~80 ГиБ в `web/config.py`). У reverse proxy (nginx и т.д.) нужен свой лимит загрузки для больших файлов в **Библиотеке** |
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
 | `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./SECURITY.ru.md) |
 | `BIRDLENSE_UI_API_KEY` | Секрет для UI API в strict-режиме: **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
+| `GUNICORN_THREADS` | Число потоков воркера Gunicorn (`gthread`; по умолчанию **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
 | `CORS_ORIGINS` | Доп. origins для CORS (через запятую) |
+| `TRUSTED_PROXY` | `1` / `true` — учитывать `X-Real-IP` / `X-Forwarded-For` в rate limit за **доверенным** reverse proxy; см. раздел Webhook и [SECURITY.ru.md](./SECURITY.ru.md) |
 | `OPENWEATHER_API_KEY` | Ключ OpenWeather |
+| `XENO_CANTO_API_KEY` | Ключ API v3 Xeno-canto для воспроизведения песен в UI. После merge YAML по-прежнему можно переопределить через `BIRDLENSE_XENO_CANTO_API_KEY` → `secrets.xeno_canto_api_key` |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT (если не в конфиге) |
-| `HA_TOKEN` | Токен Home Assistant |
+| `HA_URL`, `HA_TOKEN` | Базовый URL Home Assistant и long-lived token, если не только в YAML (`homeassistant.*`) |
 | `GO2RTC_URL` | URL Go2RTC (если не в конфиге) |
+| `HF_TOKEN` | Опционально токен Hugging Face для **`huggingface-cli`** и скриптов с датасетами — **веб-процесс хаба не читает** (см. `app/.env.example`) |
 | `BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA` | `1` — при старте выполнять привязку видов к реестру (`backfill`); по умолчанию выкл.; иначе: `POST /api/ui/system/species-registry/backfill` |
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
+| `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | Интервал сэмплера метрик «Система» (секунды); по умолчанию `30`; допустимо 10–600 — см. [§ История метрик на странице «Система»](#system-page-metrics-history) |
+| `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Хранить строки `system_resource_sample` не старше (часы); по умолчанию `72`; допустимо 6–720 |
+| `DISABLE_SYSTEM_METRICS_SAMPLER` | `1` / `true` — отключить фоновый сэмплер (тесты, CI) |
+| `BIRDLENSE_METRICS_TOKEN` | Если задан — для `GET /metrics`, `/api/metrics`, `/api/metrics/summary` нужен `Authorization: Bearer` — см. [§ Prometheus / Grafana](#prometheus--grafana) |
 | `BIRDLENSE_TELEGRAM_BOT_TOKEN` | Переопределяет `notifications.telegram_bot_token` |
 | `BIRDLENSE_TELEGRAM_MTPROTO_SECRET` | Переопределяет `notifications.telegram_mtproto_secret` |
 | `BIRDLENSE_TELEGRAM_API_HASH` | Переопределяет `notifications.telegram_api_hash` |
@@ -463,7 +472,7 @@ Push-уведомления в браузере (дополнение или а�
 
 **Ограничения безопасности:** разрешены только `http`/`https` URL. Приватные / loopback / link-local адреса (`127.0.0.1`, `192.168.x.x`, `10.x.x.x`, `localhost` и т.п.) блокируются, чтобы webhook не использовался как SSRF-прокси во внутреннюю сеть.
 
-**Trusted proxy:** если Gunicorn стоит за доверенным reverse proxy и нужно учитывать `X-Real-IP` / `X-Forwarded-For` для rate-limit, задайте `TRUSTED_PROXY=1`. Без этого BirdLense берёт IP только из `remote_addr`.
+**Trusted proxy:** если Gunicorn стоит за доверенным reverse proxy и нужно учитывать `X-Real-IP` / `X-Forwarded-For` для rate-limit, задайте `TRUSTED_PROXY=1` (см. таблицу «Переменные окружения»). Без этого BirdLense берёт IP только из `remote_addr`.
 
 ---
 
@@ -497,7 +506,7 @@ Push-уведомления в браузере (дополнение или а�
 
 ---
 
-## Prometheus / Grafana
+## Prometheus / Grafana {#prometheus--grafana}
 
 Эндпоинты `GET /metrics` и `GET /api/metrics` — формат Prometheus.
 
@@ -517,7 +526,7 @@ scrape_configs:
 
 **Grafana** — Prometheus datasource, дашборд по метрикам.
 
-### История метрик на странице «Система»
+### История метрик на странице «Система» {#system-page-metrics-history}
 
 Отдельно от Prometheus: в SQLite таблица `system_resource_sample`, фоновый sampler пишет снимки CPU/RAM/диск/GPU. UI запрашивает `GET /api/ui/system/metrics/history`.
 
