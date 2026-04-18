@@ -2,7 +2,7 @@
 
 [English](./openapi.md)
 
-Отображение **`app/web/openapi.yaml`** в браузере ([Redoc](https://github.com/Redocly/redoc)). Текстовый обзор API: [API](../API.ru.md).
+Отображение **`app/web/openapi.yaml`** в браузере ([Redoc](https://github.com/Redocly/redoc)). В спецификации **два сервера** (`/api/ui` и `/api/processor`) — выберите нужный базовый URL в Redoc. Текстовый обзор API: [API](../API.ru.md).
 
 <iframe title="OpenAPI Redoc" src="openapi.html" width="100%" height="920" style="border:1px solid #ccc;border-radius:6px;"></iframe>
 

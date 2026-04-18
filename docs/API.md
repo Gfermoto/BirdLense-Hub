@@ -106,6 +106,8 @@ More maintenance endpoints exist — see `ui_system_*.py` and OpenAPI.
 
 Internal contract between **processor** and **web**. When `PROCESSOR_SECRET` is set, send header **`X-Processor-Token: <secret>`**.
 
+In **`app/web/openapi.yaml`**, choose the **`…/api/processor`** server entry in your OpenAPI client; paths below are relative to that base (not under `/api/ui`).
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/videos` | POST | Upsert recording + detections |
