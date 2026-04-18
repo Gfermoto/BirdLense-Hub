@@ -89,6 +89,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Issues, board & roadmap | [ROADMAP.md](./ROADMAP.md) (Triage) · [RU](./ROADMAP.ru.md); repo root CONTRIBUTING.md |
 | GitHub via `gh` CLI | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | Wiki & CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
+| OpenAPI bulk path regeneration | [Documentation.md](./Documentation.md#openapi-spec-maintenance) (scripts `merge_openapi_fragments.py` / `generate_openapi_remaining_paths.py`) |
 
 **Implemented generator:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) at repo root (MkDocs Material); Russian pages are a section in the same `nav`.
 

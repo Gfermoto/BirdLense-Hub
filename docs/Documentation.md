@@ -36,6 +36,18 @@ Build output goes to `site/` (ignored by git).
 
 **Full local CI (mirror of GitHub checks):** from the **repository root**, `make ci-local` runs `scripts/ci-full-local.sh` — Python security + Ruff + full `pytest web/tests/` in **`.venv-ci`**, version sync, UI (OpenAPI codegen drift, Vitest, typecheck, lint, build), Settings UI coverage script, **MkDocs** `--strict` via **`.venv-docs`**. `make ci-local-docker` adds Docker image tests and Playwright `smoke.spec.ts`. Requires **Node.js ≥ 22** for the UI phase. Details: [CI_AND_QUALITY](./CI_AND_QUALITY.md).
 
+### OpenAPI spec maintenance {#openapi-spec-maintenance}
+
+The UI API surface is large; **bulk path blocks** (many `/api/ui/...` entries plus the second **`servers`** URL for `/api/processor`) are generated from **`scripts/generate_openapi_remaining_paths.py`** and merged by **`scripts/merge_openapi_fragments.py`** into **`app/web/openapi.yaml`** (inserted before `components:`).
+
+From the **repository root**:
+
+```bash
+python3 scripts/merge_openapi_fragments.py
+```
+
+Always **`git diff app/web/openapi.yaml`** before committing: the merge rewrites a big slice of the file. Hand-edited narrative in `info.description` or fine-tuned operation schemas should be preserved or re-applied if you regenerate.
+
 **Excluded from the published site** (see root `mkdocs.yml` `exclude_docs`): `docs/archive/**`, `docs/article/**` (publication drafts), `CONSILIUM_AUDIT.ru.md` (historical RU audit; see [archive on GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), and `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (maintainer pre-flight checklist for specific GitHub issues—kept in the repo, not part of the operator manual), and `LEGACY_CLEANUP.md` (internal inventory notes).
 
 ### Publish (CI)
@@ -79,6 +91,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 - [ ] **[ROADMAP](./ROADMAP.md)** § *Current stack*: React/Vite (and any pinned UI versions) match `app/ui/package.json` / lockfile; DB/migration notes match `app/web` reality.
 - [ ] [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) — both **English nav** and the **Русский** section list new pages (or an explicit decision to keep them repo-only).
 - [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar.
+- [ ] After bulk OpenAPI regeneration: `python3 scripts/merge_openapi_fragments.py` — confirm diff and run `pytest web/tests/test_openapi_contract.py` plus `python3 -c "import yaml; yaml.safe_load(open('app/web/openapi.yaml'))"`.
 
 ---
 
@@ -133,6 +146,7 @@ Repository norms: [Contributing](./project/contributing.md).
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
 | Architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | API overview | [API.md](./API.md) |
+| OpenAPI YAML (canonical) | [project/openapi.md](./project/openapi.md) |
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | Site nav template | [SITE_MAP.md](./SITE_MAP.md) |
 | Training (Colab) | [TRAINING.md](./TRAINING.md) |
