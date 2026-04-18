@@ -210,13 +210,17 @@ def start_repair_catalog_cards(flask_app: Flask, payload: dict) -> tuple[dict, i
         def _run() -> None:
             try:
                 with flask_app.app_context():
+                    with job_state._catalog_cards_lock:
+                        rotate = int(job_state._catalog_repair_priority_rotate)
                     result = repair_catalog_cards(
                         app_config.get,
                         dry_run=False,
                         limit=limit,
+                        priority_rotate=rotate,
                     )
                     cov_after = catalog_cards_coverage_snapshot(app_config.get)
                 with job_state._catalog_cards_lock:
+                    job_state._catalog_repair_priority_rotate = (rotate + limit) % 1_000_003
                     merged = {**result, "coverage_after": cov_after}
                     job_state._catalog_cards_status.update(
                         {
