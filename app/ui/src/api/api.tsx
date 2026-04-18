@@ -1369,6 +1369,15 @@ export const downloadLatestFusionExport = (): void => {
   );
 };
 
+/** Long-form CSV from the last successful fusion eval (section / metric / value). */
+export const downloadLatestFusionEvalReport = (): void => {
+  window.open(
+    `${BASE_API_URL}/system/fusion/eval/download`,
+    '_blank',
+    'noopener,noreferrer',
+  );
+};
+
 export const fetchBirdnetFifoSnapshot = async (): Promise<BirdnetFifoPayload> => {
   const response = await axios.get(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
     withCredentials: true,

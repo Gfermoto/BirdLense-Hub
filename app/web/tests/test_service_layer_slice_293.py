@@ -503,6 +503,14 @@ def test_fusion_export_download_file_or_error_missing(monkeypatch):
     assert path is None and err and code == 404
 
 
+def test_fusion_eval_download_file_or_error_missing(monkeypatch):
+    from services import system_fusion_telegram_jobs_service as sft
+
+    monkeypatch.setattr(sft, "latest_fusion_eval_report_path", lambda: None)
+    path, err, code = sft.fusion_eval_download_file_or_error()
+    assert path is None and err and code == 404
+
+
 def test_prepare_sqlite_db_backup_rejects_non_sqlite_engine():
     from services.system_sqlite_admin_api_service import (
         prepare_sqlite_db_backup_download,
