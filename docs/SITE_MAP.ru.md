@@ -89,6 +89,7 @@
 | Issues, доска и roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) (Триаж) · [EN](./ROADMAP.md); корень репо CONTRIBUTING.ru.md |
 | Настройка GitHub (`gh`) | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 | Wiki и отчёты CI | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
+| Массовая регенерация путей OpenAPI | [Documentation.ru.md](./Documentation.ru.md#openapi-spec-maintenance) (скрипты `merge_openapi_fragments.py` / `generate_openapi_remaining_paths.py`) |
 
 **Генератор:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) в корне репозитория (MkDocs Material); русские страницы — отдельная секция в `nav`.
 
