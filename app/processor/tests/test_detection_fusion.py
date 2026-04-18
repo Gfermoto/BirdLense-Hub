@@ -255,6 +255,12 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['species_name'] == 'Bird'
     assert out[0]['decision_kind'] == 'frigate_standalone'
     assert out[0].get('frigate_standalone') is True
+    assert out[0]['primary_provider'] == 'frigate'
+    assert out[0]['primary_signal'] == 'frigate_standalone'
+    assert out[0]['threshold_path'] == 'frigate_standalone_min_score'
+    assert out[0]['fallback_used'] is True
+    assert out[0]['fallback_reason'] == 'frigate_standalone'
+    assert out[0]['yolo_track_present'] is False
 
 
 def test_frigate_standalone_uses_missing_score_fallback():
@@ -943,3 +949,56 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
     assert out[0]['decision_reason'] == 'absorbed_generic_into_frigate_species'
     assert out[0]['decision_reason_before_arbitration'] == 'frigate_standalone'
     assert out[0]['detection_provider'] == 'frigate'
+
+
+def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separate():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=60)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 10,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    detections = [
+        {
+            **_base_detection('Bird'),
+            'track_id': 1,
+            'confidence': 0.61,
+            'classifier_confidence': 0.17,
+            'start_time': 1.0,
+            'end_time': 3.0,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'frames': [{'t': 1.0}],
+        },
+        {
+            **_base_detection('Bird'),
+            'track_id': 2,
+            'confidence': 0.73,
+            'classifier_confidence': 0.31,
+            'start_time': 31.0,
+            'end_time': 39.0,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'frames': [{'t': 31.0}],
+        },
+    ]
+
+    out = build_fused_video_detections(
+        detections,
+        [],
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert len(out) == 2
+    assert [(row['track_id'], row['start_time'], row['end_time']) for row in out] == [
+        (1, 1.0, 3.0),
+        (2, 31.0, 39.0),
+    ]

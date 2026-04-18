@@ -200,7 +200,7 @@ class TestSpeciesMetadataRepair:
 
             monkeypatch.setattr(
                 registry_mod,
-                "update_species_info_from_wiki",
+                "enrich_species_card_metadata",
                 fake_update_species_info,
             )
 
@@ -234,7 +234,7 @@ class TestSpeciesMetadataRepair:
 
             monkeypatch.setattr(
                 registry_mod,
-                "update_species_info_from_wiki",
+                "enrich_species_card_metadata",
                 fake_update_species_info,
             )
 

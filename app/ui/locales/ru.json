@@ -1213,6 +1213,7 @@
     "processorWeightsRestartProcessor": "Перезапуск процессора",
     "processorWeightsDirLabel": "Каталог хранения",
     "processorWeightsMtime": "Изменён: {{ts}}",
+    "processorWeightsFingerprint": "SHA256 (16 симв.): {{fp}}",
     "processorWeightsAckClassifier": "Понимаю риск: загрузить классификатор без нового class_names.txt (файл allowlist на сервере должен существовать).",
     "processorWeightsUploadOk": "Файл сохранён. Запрошен перезапуск процессора.",
     "processorWeightsUploadFailed": "Не удалось загрузить",

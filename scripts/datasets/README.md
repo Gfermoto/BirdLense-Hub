@@ -11,6 +11,7 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **merge_classification_datasets.py** — объединить датасеты
 - **download_and_merge_all.sh** — полный пайплайн
 - **dump_classifier_allowlist.py** — имена классов из `best.pt` → `class_names.txt` для `species.catalog_allowlist_file` в Hub ([CONFIGURATION](../../docs/CONFIGURATION.md))
+- **../validate-processor-weights.py** — финальная проверка rollout-кандидата (`best.pt` + `class_names.txt` + `dataset_info.json`)
 
 Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASETS.md](../docs/DATASETS.md).
 

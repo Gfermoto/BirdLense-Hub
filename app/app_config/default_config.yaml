@@ -51,12 +51,14 @@ processor:
   track_regen_precise_detection_strategy: two_stage
   # Для recovery fallback допускаем птиц ближе к краям кадра, иначе feeder-side perches теряются.
   track_regen_precise_min_center_dist: 0.02
-  # При перегенерации не сужать YOLO/классификатор по processor.regional_species
+  # Regen policy scope_strategy=global_classifier_scope:
+  # не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
   # Размер lores для live/file-плейлиста и процессора (640 = прежнее поведение).
   inference_lores_px: 640
-  # Перегенерация треков: как live-пайплайн — тот же lores (inference_lores_px), каждый кадр,
+  # Regen policy scope_strategy=match_live_pipeline:
+  # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
   track_regen_match_live_pipeline: false
   # При ручной коррекции на ролике: не отбрасывать авто-детекции, пересекающиеся по времени

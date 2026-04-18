@@ -944,6 +944,8 @@ export type ProcessorWeightsSlotStatus = {
   default_path: string;
   bytes: number | null;
   mtime_unix: number | null;
+  /** First 16 hex chars of SHA256 over file bytes (matches CLI validate report). */
+  fingerprint_sha256_16?: string | null;
 };
 
 export type ProcessorWeightsAllowlistStatus = {
@@ -951,6 +953,7 @@ export type ProcessorWeightsAllowlistStatus = {
   uses_custom_dir: boolean;
   bytes: number | null;
   mtime_unix: number | null;
+  fingerprint_sha256_16?: string | null;
 };
 
 export type ProcessorWeightsStatusResponse = {

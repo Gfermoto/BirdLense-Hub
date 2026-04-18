@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards
+.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights
 
 deploy:
 	@./scripts/deploy.sh
@@ -47,3 +47,15 @@ proxy-rotation-remove:
 #   BASE_URL=https://birdlense.eyera.info make audit-cards
 audit-cards:
 	@python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
+
+# Валидация rollout-кандидата весов перед загрузкой в Hub/UI.
+# Пример:
+#   make validate-weights DATASET_INFO=app/data/dataset/exports/latest/dataset_info.json
+validate-weights:
+	@python3 scripts/validate-processor-weights.py \
+		--binary "$${BINARY:-app/processor/models/detection/weights/best.pt}" \
+		--classifier "$${CLASSIFIER:-app/processor/models/classification/weights/best.pt}" \
+		--class-names "$${CLASS_NAMES:-app/processor/models/classification/weights/class_names.txt}" \
+		$$(test -n "$${DATASET_INFO:-}" && printf -- '--dataset-info "%s" ' "$${DATASET_INFO}") \
+		$$(test -n "$${FUSION_MODEL:-}" && printf -- '--fusion-model "%s" ' "$${FUSION_MODEL}") \
+		$$(test -n "$${OUTPUT:-}" && printf -- '--output "%s" ' "$${OUTPUT}")

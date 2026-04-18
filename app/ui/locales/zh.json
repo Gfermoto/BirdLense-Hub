@@ -1162,6 +1162,7 @@
     "processorWeightsRestartProcessor": "重新启动处理器",
     "processorWeightsDirLabel": "存储目录",
     "processorWeightsMtime": "修改：{{ts}}",
+    "processorWeightsFingerprint": "SHA256（16 字符）：{{fp}}",
     "processorWeightsAckClassifier": "我了解风险：上传没有新 class_names.txt 的分类器（允许列表文件必须存在于服务器上）。",
     "processorWeightsUploadOk": "已上传保存。请求处理器重新启动。",
     "processorWeightsUploadFailed": "上传失败",

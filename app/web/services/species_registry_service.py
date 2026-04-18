@@ -13,9 +13,11 @@ from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_names,
     species_name_match_norm_keys,
 )
+from services.species_metadata_enrichment_service import (
+    enrich_species_metadata as enrich_species_card_metadata,
+)
 from util import load_species_canonical_mapping
 from util import (
-    update_species_info_from_wiki,
     _extract_wiki_search_title,
     infer_metadata_source_fields,
     get_inaturalist_image_and_description,
@@ -331,7 +333,7 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
         try:
             before_img = _has_metadata_text(sp.image_url)
             before_desc = _has_metadata_text(sp.description)
-            changed = update_species_info_from_wiki(sp)
+            changed = enrich_species_card_metadata(sp)
             if changed and (not before_img or not before_desc):
                 updated += 1
         except Exception:
@@ -376,7 +378,7 @@ def repair_recently_reset_species_metadata(
         processed += 1
         try:
             before_img = bool(sp.image_url)
-            update_species_info_from_wiki(sp)
+            enrich_species_card_metadata(sp)
             if sp.image_url and not before_img:
                 repaired += 1
         except Exception:
@@ -455,7 +457,7 @@ def enrich_species_metadata_with_status(
                 if _has_metadata_text(desc_c) and not _has_metadata_text(sp.description):
                     sp.description = desc_c
 
-            changed = update_species_info_from_wiki(sp)
+            changed = enrich_species_card_metadata(sp)
             sp.metadata_updated_at = now
             if _has_metadata_text(sp.image_url) and _has_metadata_text(sp.description):
                 sp.metadata_status = "ok"
@@ -664,7 +666,7 @@ def ensure_allowlist_species_materialized(
             if sp.image_url and sp.description:
                 continue
             try:
-                if update_species_info_from_wiki(sp):
+                if enrich_species_card_metadata(sp):
                     metadata_updated += 1
             except Exception:
                 continue
@@ -814,7 +816,7 @@ def repair_catalog_cards(
 
         if not before_img or not before_desc:
             try:
-                changed = update_species_info_from_wiki(sp)
+                changed = enrich_species_card_metadata(sp)
                 if changed and (not before_img or not before_desc):
                     metadata_fixed += 1
             except Exception:
