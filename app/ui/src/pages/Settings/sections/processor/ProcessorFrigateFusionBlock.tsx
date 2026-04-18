@@ -132,6 +132,24 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
             {t('settings.frigateStandaloneWhenNoYoloHint')}
           </FormHelperText>
         </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="detection.frigate_standalone_when_no_accepted_species">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.state.value !== false}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.frigateStandaloneWhenNoAcceptedSpecies')}
+              />
+            )}
+          </form.Field>
+          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+            {t('settings.frigateStandaloneWhenNoAcceptedSpeciesHint')}
+          </FormHelperText>
+        </Grid>
         <form.Subscribe
           selector={(state) =>
             state.values.detection?.frigate_standalone_when_no_yolo

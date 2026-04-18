@@ -263,6 +263,68 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['yolo_track_present'] is False
 
 
+def test_frigate_standalone_injects_when_yolo_only_generic():
+    """YOLO accepted only generic Bird — still add Frigate standalone rows (regression guard)."""
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    base_cfg = {
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.34,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_when_no_accepted_species': True,
+        'detection.frigate_standalone_min_score': 0.48,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    }
+    video = [
+        {
+            **_base_detection('Bird'),
+            'confidence': 0.44,
+            'classifier_confidence': None,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'start_time': 0.0,
+            'end_time': 18.0,
+        },
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'label': 'Great Tit',
+            'confidence': 0.88,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+        },
+    ]
+    out_on = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=DummyConfig(base_cfg),
+    )
+    kinds_on = {str(d.get('decision_kind') or '') for d in out_on}
+    assert 'frigate_standalone' in kinds_on or any(
+        str(d.get('species_name') or '') == 'Great Tit' for d in out_on
+    )
+
+    cfg_off = DummyConfig({**base_cfg, 'detection.frigate_standalone_when_no_accepted_species': False})
+    out_off = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg_off,
+    )
+    kinds_off = {str(d.get('decision_kind') or '') for d in out_off}
+    assert 'frigate_standalone' not in kinds_off
+
+
 def test_frigate_standalone_uses_missing_score_fallback():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=15)

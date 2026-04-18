@@ -288,6 +288,8 @@
     "frigateStandaloneHeading": "后备：没有 YOLO 轨迹的护卫舰访问",
     "frigateStandaloneWhenNoYolo": "如果 YOLO 没有轨迹但 Frigate 发送了事件，则创建访问",
     "frigateStandaloneWhenNoYoloHint": "否则，护卫舰触发的剪辑通常会作为零检测被删除。将阈值调低或禁用通知以限制噪音。",
+    "frigateStandaloneWhenNoAcceptedSpecies": "用 Frigate standalone 替换单独的 YOLO generic Bird",
+    "frigateStandaloneWhenNoAcceptedSpeciesHint": "开启且 YOLO 仅一条 accepted_generic Bird 时，若有 Frigate 事件则用其物种替换。多条 YOLO 轨迹：行为不变。",
     "frigateStandaloneMinScore": "后备护卫舰最低得分",
     "frigateStandaloneMinScoreHint": "越低 = 保存的剪辑越多，误报率越高。 0 不推荐。",
     "frigateStandaloneMissingFallback": "当 MQTT 为 0 时的估算分数",

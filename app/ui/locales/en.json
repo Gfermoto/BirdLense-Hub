@@ -288,6 +288,8 @@
     "frigateStandaloneHeading": "Fallback: Frigate visit without YOLO track",
     "frigateStandaloneWhenNoYolo": "Create visit if YOLO had no track but Frigate sent an event",
     "frigateStandaloneWhenNoYoloHint": "Otherwise Frigate-triggered clips are often deleted as zero detections. Tune thresholds below or disable notify to limit noise.",
+    "frigateStandaloneWhenNoAcceptedSpecies": "Replace lone YOLO generic Bird with Frigate standalone",
+    "frigateStandaloneWhenNoAcceptedSpeciesHint": "When on and YOLO yields exactly one accepted_generic Bird row, a Frigate event replaces it with Frigate species. Multiple YOLO tracks: unchanged.",
     "frigateStandaloneMinScore": "Min Frigate top_score for fallback",
     "frigateStandaloneMinScoreHint": "Lower = more clips saved, higher false positives. 0 not recommended.",
     "frigateStandaloneMissingFallback": "Imputed score when MQTT has 0",

@@ -288,6 +288,8 @@
     "frigateStandaloneHeading": "Резерв: визит по Frigate без трека YOLO",
     "frigateStandaloneWhenNoYolo": "Создавать визит, если YOLO не дал трека, а Frigate прислал событие",
     "frigateStandaloneWhenNoYoloHint": "Иначе клип с Frigate-триггером часто удаляется «без детекций». Ложняки Frigate попадут в БД — правьте пороги ниже или отключите уведомления.",
+    "frigateStandaloneWhenNoAcceptedSpecies": "Подменять одиночный YOLO «Bird» на Frigate standalone",
+    "frigateStandaloneWhenNoAcceptedSpeciesHint": "Если вкл. и у YOLO ровно один accepted_generic Bird, при событии Frigate эта строка заменяется на вид из Frigate. Несколько YOLO-треков — без подмены (как раньше).",
     "frigateStandaloneMinScore": "Мин. top_score Frigate для резерва",
     "frigateStandaloneMinScoreHint": "Ниже — больше записей, выше риск мусора. 0 — не рекомендуется.",
     "frigateStandaloneMissingFallback": "Подстановка score, если в MQTT 0",
