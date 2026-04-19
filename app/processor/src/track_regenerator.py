@@ -130,7 +130,11 @@ def process_video_for_tracks(
                     break
                 frame_time_sec = frame_count / fps
                 frame_resized = cv2.resize(frame, lores_size)
-                has_detections = frame_processor.run(frame_resized, frame_time=frame_time_sec)
+                has_detections = frame_processor.run(
+                    frame_resized,
+                    frame_time=frame_time_sec,
+                    skip_light_gate=True,
+                )
                 decision_maker.update_has_detections(has_detections)
             else:
                 ret = cap.grab()
@@ -181,4 +185,12 @@ def process_video_for_tracks(
         frame_count,
         frame_step,
     )
+    if not detections and frame_count > 0:
+        logger.info(
+            "Track regen: 0 accepted tracks after %s frames — если кадры есть, но пусто: "
+            "снизить processor.min_confidence_binary_bird / min_confidence_to_process, "
+            "увеличить track_regen_lores_px (single-video уже подтягивает inference_lores_px), "
+            "или проверить веса детектора/классификатора.",
+            frame_count,
+        )
     return detections

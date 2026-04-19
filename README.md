@@ -29,7 +29,7 @@ Two components: **detector** (bird/squirrel in frame) and **classifier** (bird s
 
 **EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
 
-**Runtime weights:** the active runtime is the two-stage pair at `app/processor/models/detection/weights/best.pt` and `app/processor/models/classification/weights/best.pt`. In `app/processor/models/`, keep only runtime artifacts like `best.pt` and `class_names.txt`; CSVs, `args.yaml`, NCNN exports, and notebook checkpoints are training leftovers and can be removed or regenerated. `app/yolo11n.pt` is legacy compatibility-only and is fetched only with `scripts/fetch-processor-weights.sh --legacy-single-stage`.
+**Runtime weights:** two-stage `app/processor/models/detection/weights/best.pt` (binary from zip in fork [AleksandrRogachev94/BirdLense `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) and `app/processor/models/classification/weights/best.pt` ([`gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu) on Hugging Face). `scripts/fetch-processor-weights.sh` fetches both. Keep `class_names.txt` aligned with the classifier. `app/yolo11n.pt` is legacy-only (`--legacy-single-stage`).
 
 **Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
 

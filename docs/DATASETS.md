@@ -104,10 +104,10 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 | Path | Role |
 |------|------|
-| `classification/weights/best.pt` | EU classifier (YOLO11n-cls, default) |
+| `classification/weights/best.pt` | EU classifier from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (YOLO11n-cls, default) |
 | `classification/weights/best_US.pt` | US backup (optional) |
 | `classification/weights/class_names.txt` | Class allowlist for catalog alignment |
-| `detection/weights/best.pt` | Binary detector (YOLO11n) |
+| `detection/weights/best.pt` | Binary detector (YOLO11n); zip from [AleksandrRogachev94/BirdLense `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor) |
 
 Everything else in `app/processor/models/` is training/export output, not runtime input.
 

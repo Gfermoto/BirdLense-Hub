@@ -94,10 +94,10 @@ API: `GET /api/ui/dataset/export` — параметры `test_ratio`, `strict_q
 
 | Путь | Роль |
 |------|------|
-| `classification/weights/best.pt` | EU-классификатор (YOLO11n-cls, активна) |
+| `classification/weights/best.pt` | EU-классификатор с [HF birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (YOLO11n-cls, активен) |
 | `classification/weights/best_US.pt` | Резерв US (опционально) |
 | `classification/weights/class_names.txt` | Allowlist классов для привязки каталога |
-| `detection/weights/best.pt` | Бинарный детектор (YOLO11n) |
+| `detection/weights/best.pt` | Бинарный детектор (YOLO11n); zip — форк [AleksandrRogachev94/BirdLense → `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor) |
 
 Всё остальное в `app/processor/models/` — это экспорт/тренировка, а не runtime input.
 

@@ -83,6 +83,8 @@ app/.coverage
 app/processor/models/
 # Исключение: текстовые allowlist-файлы — часть конфигурации, не весов
 !app/processor/models/classification/weights/class_names.txt
+# Краткая памятка по бинарному детектору (не веса)
+!app/processor/models/detection/README.md
 
 # Сгенерированная документация (make docs)
 docs/api/

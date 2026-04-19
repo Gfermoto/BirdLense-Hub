@@ -280,7 +280,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Catalog quality:** `app/web/seed/species_suspect_blocklist.txt` lists terms used to hide non-bird / object rows from filtered species pickers (`GET /api/ui/species?exclude_suspects=1` when requested). Full report (suspects, duplicate-name merge candidates): System → “Species catalog data quality” or `GET /api/ui/system/species-registry/data-quality` (settings password). New ingest matching the blocklist does not create a junk species row — it is routed to “Unknown”.
 
-**Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
+**Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` (or other `.pt`) with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
 
 **Classifier output vs DB / manual names:** Automatic labels are only strings that exist in the trained head inside the `.pt` (the merged class list). Adding a row in the SQLite species table or fixing text in the UI does **not** create a new classifier output — for example there is no “chicken” label unless that exact class name was trained in. Use the allowlist file to stay aligned with the model; to add new auto species, retrain or swap weights ([TRAINING](./TRAINING.md)).
 
@@ -298,7 +298,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **contributor or admin session only** (not anonymous viewers).
 
-**EU model:** `best.pt`. US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
+**EU model:** `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (default `processor.models.classifier`). US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
 
 ## Retention
 

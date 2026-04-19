@@ -31,7 +31,7 @@
 
 **Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
-**Модели:** активный runtime — two-stage `detection/weights/best.pt` + `classification/weights/best.pt`. В `app/processor/models/` должны оставаться только runtime-артефакты вроде `best.pt` и `class_names.txt`; CSV, `args.yaml`, NCNN-экспорты и notebook-checkpoints — это мусор обучения/экспорта и их можно удалять или пересоздавать. `app/yolo11n.pt` оставлен только как compatibility-only артефакт; при необходимости его можно скачать через `scripts/fetch-processor-weights.sh --legacy-single-stage`.
+**Модели:** two-stage — `detection/weights/best.pt` (бинарник, zip из форка [AleksandrRogachev94/BirdLense → `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) и `classification/weights/best.pt` (EU, [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu)). Скачивание: `scripts/fetch-processor-weights.sh`. Рядом с классификатором — `class_names.txt`. `app/yolo11n.pt` — legacy (`--legacy-single-stage`).
 
 <details>
 <summary>📷 Скриншоты</summary>

@@ -57,9 +57,12 @@ class FrameProcessor:
         key_frames.sort(key=lambda item: item["score"], reverse=True)
         del key_frames[self.key_frame_limit :]
 
-    def run(self, img, frame_time=None):
+    def run(self, img, frame_time=None, *, skip_light_gate: bool = False):
         """
         Process frame. frame_time: optional seconds (for video file); else uses elapsed real time.
+
+        skip_light_gate: для offline track regen по mp4 — не отсекать ночные кадры до YOLO
+        (Frigate уже записал клип; иначе весь ролик может пройти без detect()).
         """
         self.last_run_stats = {
             "yolo_ran": False,
@@ -76,19 +79,20 @@ class FrameProcessor:
         else:
             frame_time = round(float(frame_time), 2)
 
-        now_m = time.monotonic()
-        if now_m < self._low_light_cooldown_until:
-            # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
-            time.sleep(min(0.02, self._low_light_cooldown_until - now_m))
-            self.last_run_stats["light_gate_blocked"] = True
-            return False
+        if not skip_light_gate:
+            now_m = time.monotonic()
+            if now_m < self._low_light_cooldown_until:
+                # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
+                time.sleep(min(0.02, self._low_light_cooldown_until - now_m))
+                self.last_run_stats["light_gate_blocked"] = True
+                return False
 
-        if not self.light_detector.has_sufficient_light(img):
-            # Throttle dark-frame handling without blocking the recording thread (#224).
-            self._low_light_cooldown_until = now_m + 1.0
-            time.sleep(0.02)
-            self.last_run_stats["light_gate_blocked"] = True
-            return False
+            if not self.light_detector.has_sufficient_light(img):
+                # Throttle dark-frame handling without blocking the recording thread (#224).
+                self._low_light_cooldown_until = now_m + 1.0
+                time.sleep(0.02)
+                self.last_run_stats["light_gate_blocked"] = True
+                return False
 
         st = time.time()
         min_conf = float(app_config.get("processor.min_confidence_binary") or 0.22)

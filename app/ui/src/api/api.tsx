@@ -1458,11 +1458,25 @@ export const fetchTrackRegenSpeciesOptions = async (): Promise<
   return response.data;
 };
 
+/** Поля прогресса из `/system/regenerate-tracks/status` (воркер + single-video pre-queue). */
+export interface TrackRegenProgress {
+  processed?: number;
+  total?: number;
+  generated?: number;
+  failed?: number;
+  skipped?: number;
+  current_video?: string | null;
+  current_video_id?: number | null;
+  active_request_video_id?: number | null;
+  phase?: string | null;
+  regen_params?: Record<string, unknown>;
+}
+
 export interface TrackRegenerationJobStatus {
   status: string;
   result?: unknown;
   error?: string | null;
-  progress?: unknown;
+  progress?: TrackRegenProgress | null;
 }
 
 export const fetchTrackRegenerationStatus =
@@ -1487,11 +1501,23 @@ export const regenerateTracksForSingleVideo = async (
   return response.data;
 };
 
+export interface SpectrogramRegenProgress {
+  processed?: number;
+  total?: number;
+  generated?: number;
+  failed?: number;
+  skipped?: number;
+  current_video?: string | null;
+  current_video_id?: number | null;
+  active_request_video_id?: number | null;
+  phase?: string | null;
+}
+
 export interface SpectrogramRegenerationJobStatus {
   status: string;
   result?: unknown;
   error?: string | null;
-  progress?: unknown;
+  progress?: SpectrogramRegenProgress | null;
 }
 
 export const fetchSpectrogramRegenerationStatus =

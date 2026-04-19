@@ -182,14 +182,28 @@ def finalize_motion_recording(
             }
         )
 
+    fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
+    fusion_yolo = 0
+    fusion_frigate = 0
+    for d in video_detections:
+        prov = str((d or {}).get("detection_provider") or "").strip().lower()
+        if prov == "yolo":
+            fusion_yolo += 1
+        elif prov == "frigate":
+            fusion_frigate += 1
     logging.info(
         "Finalize merge snapshot: bytetrack_rows=%s pre_fusion_accepted=%s "
-        "post_fusion_persisted=%s rejected_decision_rows=%s mqtt_events_in_window=%s",
+        "post_fusion_persisted=%s rejected_decision_rows=%s "
+        "mqtt_events_in_window=%s fusion_frigate_standalone_rows=%s "
+        "fusion_provider_yolo=%s fusion_provider_frigate=%s",
         yolo_tracks_count,
         len(accepted_pre_fusion),
         len(video_detections),
         len(rejected_decisions),
         len(mqtt_events),
+        fusion_fs,
+        fusion_yolo,
+        fusion_frigate,
     )
 
     for i, d in enumerate(video_detections):

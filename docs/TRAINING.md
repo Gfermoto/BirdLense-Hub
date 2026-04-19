@@ -19,7 +19,7 @@ After merging you get ~490 classes that have images in **both** train and val sp
 
 The `Scientific (Common)` naming matches **Frigate** and **BirdNET**, which simplifies merging detections in Hub.
 
-**Switching weights:** US → `cp best_US.pt best.pt`. EU → copy your trained file to `best.pt` (or `best_EU.pt` → `best.pt`).
+**Switching weights:** US → `cp best_US.pt best.pt`. EU → use HF `best.pt` or copy your trained file to `classification/weights/best.pt`.
 
 ## Rollout contract
 
@@ -35,7 +35,7 @@ Recommended local gate before upload:
 ```bash
 make validate-weights \
   BINARY=app/processor/models/detection/weights/best.pt \
-  CLASSIFIER=/path/to/new-classifier.pt \
+  CLASSIFIER=app/processor/models/classification/weights/best.pt \
   CLASS_NAMES=/path/to/classes.txt \
   DATASET_INFO=/path/to/dataset_info.json \
   OUTPUT=/tmp/processor-weight-validation.json
@@ -364,12 +364,12 @@ To resume elsewhere (another Colab session or machine):
 
 ## Part 6 — Install weights in BirdLense Hub
 
-1. Download `best.pt` (Drive, or [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu)).  
+1. Download `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (or Drive).  
 2. Place at:
    ```
    app/processor/models/classification/weights/best.pt
    ```
-   Keep US backup as `best_US.pt`.  
+   Keep US backup as `best_US.pt` if you switch regions.  
 3. If you use **NCNN** (`single_stage`) on **x86/amd64**, export per Ultralytics docs / internal scripts (see [ROADMAP](./ROADMAP.md)). ARM is not a supported target.  
 4. Deploy: `make deploy` (or your pipeline).
 
