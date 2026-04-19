@@ -280,7 +280,7 @@
 
 **Качество каталога:** `app/web/seed/species_suspect_blocklist.txt` — термины для скрытия не-птиц/объектов из фильтрованных списков видов (`GET /api/ui/species?exclude_suspects=1`, когда это явно запрошено). Полный отчёт (подозрительные строки, дубликаты имён для слияния): System → карточка «Качество каталога видов» или `GET /api/ui/system/species-registry/data-quality` (с паролем настроек). Новые детекции по строкам из блоклиста не создают отдельный вид — уходят в «Unknown».
 
-**Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt`: `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
+**Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt` (или другого `.pt`): `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
 
 **Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](./TRAINING.ru.md)).
 
@@ -298,7 +298,7 @@
 
 **Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
-**EU-модель:** `best.pt`. US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
+**EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
 
 ## Retention
 

@@ -10,6 +10,8 @@ LEGACY_DEST="${ROOT}/app/yolo11n.pt"
 DETECTOR_ZIP="${DETECTOR_ZIP:-${ROOT}/app/processor/models/detection/nabirds_yolo11n_binary.zip}"
 DETECTOR_DEST="${ROOT}/app/processor/models/detection/weights/best.pt"
 CLASSIFIER_DEST="${ROOT}/app/processor/models/classification/weights/best.pt"
+# Бинарный zip по умолчанию — из форка AleksandrRogachev94/BirdLense (ветка main).
+BINARY_ZIP_URL="${BINARY_ZIP_URL:-https://raw.githubusercontent.com/AleksandrRogachev94/BirdLense/main/app/processor/models/detection/nabirds_yolo11n_binary.zip}"
 # Пин ревизии HF (не main): иначе при обновлении ветки ломается CHECKSUMS/CI.
 CLASSIFIER_URL="${CLASSIFIER_URL:-https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/c6af5aa595cbb1198a61bcf2f3f9c2adc3772dc9/best.pt}"
 
@@ -23,6 +25,10 @@ Usage:
 Options:
   --legacy-single-stage  Download compatibility-only app/yolo11n.pt from GitHub Release.
   --check-only           Do not download anything; only verify active two-stage paths.
+
+Env:
+  BINARY_ZIP_URL   Override URL for nabirds_yolo11n_binary.zip (default: raw.githubusercontent.com/.../BirdLense/...).
+  CLASSIFIER_URL   Override EU classifier (default: Hugging Face gfermoto/birdlense-birds-eu pinned best.pt).
 EOF
 }
 
@@ -89,16 +95,14 @@ ensure_two_stage_detector() {
     echo "Detector weights already present: $DETECTOR_DEST"
     return
   fi
-  if [[ -s "$DETECTOR_ZIP" ]]; then
-    echo "Extracting detector weights from $DETECTOR_ZIP..."
-    ensure_dir "$DETECTOR_DEST"
-    unzip -j -o "$DETECTOR_ZIP" weights/best.pt -d "$(dirname "$DETECTOR_DEST")"
-    return
+  if [[ ! -s "$DETECTOR_ZIP" ]]; then
+    echo "Downloading binary detector zip (AleksandrRogachev94/BirdLense)..."
+    ensure_dir "$DETECTOR_ZIP"
+    curl -fsSL --retry 4 --retry-connrefused --retry-delay 4 -o "$DETECTOR_ZIP" "$BINARY_ZIP_URL"
   fi
-  echo "ERROR: missing detector weights." >&2
-  echo "Expected: $DETECTOR_DEST" >&2
-  echo "Provide the zip artifact at: $DETECTOR_ZIP" >&2
-  exit 6
+  echo "Extracting detector weights from $DETECTOR_ZIP..."
+  ensure_dir "$DETECTOR_DEST"
+  unzip -j -o "$DETECTOR_ZIP" weights/best.pt -d "$(dirname "$DETECTOR_DEST")"
 }
 
 ensure_two_stage_classifier() {
@@ -106,7 +110,7 @@ ensure_two_stage_classifier() {
     echo "Classifier weights already present: $CLASSIFIER_DEST"
     return
   fi
-  echo "Downloading EU classifier weights..."
+  echo "Downloading EU classifier (gfermoto/birdlense-birds-eu) -> best.pt..."
   ensure_dir "$CLASSIFIER_DEST"
   tmp="$(mktemp)"
   curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 -o "$tmp" "$CLASSIFIER_URL"

@@ -26,11 +26,21 @@ def run_regenerate_spectrograms_worker(
     video_ids: list[int] | None = None,
 ) -> None:
     """Background task: regenerate spectrograms (mutates job_state._regenerate_status)."""
+    ids_sorted = sorted({int(x) for x in (video_ids or []) if x is not None})
+    active_request_video_id = ids_sorted[0] if len(ids_sorted) == 1 else None
     job_state._regenerate_status = {
         "status": "running",
         "result": None,
         "error": None,
-        "progress": {"processed": 0, "total": 0, "generated": 0, "failed": 0, "skipped": 0},
+        "progress": {
+            "processed": 0,
+            "total": 0,
+            "generated": 0,
+            "failed": 0,
+            "skipped": 0,
+            "active_request_video_id": active_request_video_id,
+            "phase": "scanning",
+        },
     }
     try:
         with flask_app.app_context():
@@ -52,9 +62,8 @@ def run_regenerate_spectrograms_worker(
             spectrogram_filename = f"spectrogram_{px_per_sec}.jpg"
 
             query = Video.query
-            if video_ids:
-                ids = sorted({int(x) for x in video_ids if x is not None})
-                query = query.filter(Video.id.in_(ids))
+            if ids_sorted:
+                query = query.filter(Video.id.in_(ids_sorted))
             elif not force:
                 query = query.filter((Video.spectrogram_path.is_(None)) | (Video.spectrogram_path == ""))
             if start_date:
@@ -83,6 +92,11 @@ def run_regenerate_spectrograms_worker(
             skipped = 0
 
             for video in videos:
+                job_state._regenerate_status["progress"].update(
+                    current_video=video.video_path,
+                    current_video_id=video.id,
+                    phase="spectrogram",
+                )
                 if not video.video_path:
                     skipped += 1
                     job_state._regenerate_status["progress"].update(
@@ -129,9 +143,12 @@ def run_regenerate_spectrograms_worker(
                     failed,
                     skipped,
                 )
+                result = {"generated": generated, "failed": failed, "skipped": skipped}
+                if ids_sorted:
+                    result["target_video_ids"] = list(ids_sorted)
                 job_state._regenerate_status = {
                     "status": "done",
-                    "result": {"generated": generated, "failed": failed, "skipped": skipped},
+                    "result": result,
                     "error": None,
                     "progress": None,
                 }

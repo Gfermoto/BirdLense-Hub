@@ -10,7 +10,7 @@
 
 ## Что обучаем и зачем
 
-**Текущая модель** (`best.pt`) — **EU** (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
+**Текущая модель в Hub** — **`classification/weights/best.pt`** (EU, [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu), ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
 **Обучение EU-модели** (для обновления или fine-tune): классификатор на **европейских** видах:
 - **birds-525** (Hugging Face) — 525 видов птиц в формате Scientific (Common)
@@ -20,7 +20,7 @@
 
 Формат имён `Scientific (Common)` совпадает с Frigate и BirdNET — упрощает слияние детекций.
 
-**Резервная копия:** US-модель в `best_US.pt`. Вернуть US: `cp best_US.pt best.pt`. Активировать EU: `cp best_EU.pt best.pt` (или скопировать скачанный файл как `best.pt`).
+**Резервная копия:** US — `best_US.pt`. Активный EU-файл в конфиге — **`processor.models.classifier` → `models/classification/weights/best.pt`** (тот же файл, что на Hugging Face под именем `best.pt`). US: `cp best_US.pt` поверх `best.pt` и выровнять `class_names.txt`.
 
 ---
 
@@ -348,11 +348,11 @@ model.train(
 ## Часть 6: Использование обученной модели в BirdLense
 
 1. Скачайте `best.pt`:
-   - **Google Drive** — из папки BirdLense_Training (или `best_EU.pt` → переименуйте в `best.pt`)
+   - **Google Drive** — из папки BirdLense_Training (файл весов обычно называется `best.pt`)
    - **Hugging Face** — [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) → Files → best.pt → Download
 2. Скопируйте в BirdLense:
    ```
-   best.pt → app/processor/models/classification/weights/best.pt
+   best.pt (с HF/Colab) → `app/processor/models/classification/weights/best.pt`
    ```
    (заменит текущую модель; US — резерв в `best_US.pt`)
 3. Конвертация в NCNN (если на **x86/amd64** используется `single_stage` / NCNN):
@@ -548,7 +548,7 @@ if os.path.exists(best):
 - [ ] ZIP загружен в Google Drive
 - [ ] Colab: Среда выполнения → T4 GPU
 - [ ] Ячейки 1–5 выполнены по порядку
-- [ ] `best.pt` скачан из Drive (или `best_EU.pt` → `best.pt`)
+- [ ] `best.pt` скачан из Drive или Hugging Face
 - [ ] Модель скопирована в `classification/weights/best.pt` и задеплоена
 - [ ] Резерв US: `best_US.pt` в `classification/weights/`
 
