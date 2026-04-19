@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from ultralytics import YOLO
 import cv2
+from processor_runtime_profile import RuntimeProfileConfigOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -152,23 +153,37 @@ class DetectionStrategy(ABC):
         return is_blur, variance
 
     @abstractmethod
-    def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
+    def detect(
+        self,
+        frame: np.ndarray,
+        tracker_config: str,
+        min_confidence: float,
+        profile_overrides: Mapping[str, Any] | None = None,
+    ) -> List[DetectionResult]:
         pass
 
     @abstractmethod
     def reset(self):
         pass
 
-    def is_valid_detection(self, bbox: List[float], conf: float, min_confidence: float) -> bool:
+    def is_valid_detection(
+        self,
+        bbox: List[float],
+        conf: float,
+        min_confidence: float,
+        *,
+        min_center_dist: float | None = None,
+    ) -> bool:
         """Центр не у краёв, confidence >= min."""
         x1, y1, x2, y2 = bbox
         center_x = (x1 + x2) / 2
         center_y = (y1 + y2) / 2
+        center_dist = self.min_center_dist if min_center_dist is None else float(min_center_dist)
         if (
-            center_x < self.min_center_dist
-            or center_x > (1 - self.min_center_dist)
-            or center_y < self.min_center_dist
-            or center_y > (1 - self.min_center_dist)
+            center_x < center_dist
+            or center_x > (1 - center_dist)
+            or center_y < center_dist
+            or center_y > (1 - center_dist)
         ):
             return False
         if conf < min_confidence:
@@ -285,10 +300,17 @@ class TwoStageStrategy(DetectionStrategy):
             -int(box.get("track_id") or 0),
         )
 
-    def detect(self, frame: np.ndarray, tracker_config: str, min_confidence: float) -> List[DetectionResult]:
+    def detect(
+        self,
+        frame: np.ndarray,
+        tracker_config: str,
+        min_confidence: float,
+        profile_overrides: Mapping[str, Any] | None = None,
+    ) -> List[DetectionResult]:
         """Binary detect -> validate -> classify a bounded round-robin slice of tracks."""
         from app_config.app_config import app_config
 
+        runtime_cfg = RuntimeProfileConfigOverlay(app_config, profile_overrides)
         if not hasattr(self, "_frame_index"):
             self._frame_index = 0
         if not hasattr(self, "_track_stats"):
@@ -296,8 +318,23 @@ class TwoStageStrategy(DetectionStrategy):
         if not hasattr(self, "classification_scheduler"):
             self.classification_scheduler = "priority"
         self._frame_index += 1
-        imgsz = getattr(self, "binary_imgsz", 320)
-        track_conf = binary_track_ultralytics_conf_floor(min_confidence, app_config)
+        imgsz = int(runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320)
+        min_center_dist = float(
+            runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
+        )
+        min_box_size_px = int(
+            runtime_cfg.resolve_strategy_field("processor.min_box_size_px", self, "min_box_size_px", 64) or 64
+        )
+        classification_budget_limit = int(
+            runtime_cfg.resolve_strategy_field(
+                "processor.max_classifications_per_frame",
+                self,
+                "max_classifications_per_frame",
+                1,
+            )
+            or 1
+        )
+        track_conf = binary_track_ultralytics_conf_floor(min_confidence, runtime_cfg)
         results = _track_maybe_retry(
             self.binary_model,
             frame,
@@ -330,9 +367,14 @@ class TwoStageStrategy(DetectionStrategy):
             eff_min = per_label_binary_conf_threshold(
                 detector_label,
                 min_confidence,
-                app_config,
+                runtime_cfg,
             )
-            if not self.is_valid_detection(bbox_norm, conf, eff_min):
+            if not self.is_valid_detection(
+                bbox_norm,
+                conf,
+                eff_min,
+                min_center_dist=min_center_dist,
+            ):
                 continue
             if self.detector_scope and detector_label not in self.detector_scope:
                 continue
@@ -345,7 +387,7 @@ class TwoStageStrategy(DetectionStrategy):
                 continue
             box_w = x2 - x1
             box_h = y2 - y1
-            if box_w < self.min_box_size_px or box_h < self.min_box_size_px:
+            if box_w < min_box_size_px or box_h < min_box_size_px:
                 continue
 
             valid_boxes.append(
@@ -364,7 +406,7 @@ class TwoStageStrategy(DetectionStrategy):
             return []
         classification_budget = min(
             len(valid_boxes),
-            max(1, int(getattr(self, "max_classifications_per_frame", 1))),
+            max(1, classification_budget_limit),
         )
         if self.classification_scheduler == "round_robin":
             valid_boxes.sort(key=lambda b: b["track_id"])
@@ -387,7 +429,7 @@ class TwoStageStrategy(DetectionStrategy):
             if should_skip_bird_species_classifier(
                 box["detector_label"],
                 box["box_area_norm"],
-                app_config,
+                runtime_cfg,
             ):
                 continue
             if fallback_box is None:
@@ -431,7 +473,7 @@ class TwoStageStrategy(DetectionStrategy):
             if classified and should_skip_bird_species_classifier(
                 box["detector_label"],
                 box["box_area_norm"],
-                app_config,
+                runtime_cfg,
             ):
                 classified = None
             if classified:

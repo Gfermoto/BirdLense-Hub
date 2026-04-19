@@ -68,9 +68,7 @@ def run_regenerate_tracks_worker(
 ) -> None:
     """Background: run YOLO+ByteTrack; mutates job_state._regenerate_tracks_status."""
     target_video_ids = sorted(set(video_ids or []))
-    active_request_video_id = (
-        target_video_ids[0] if len(target_video_ids) == 1 else None
-    )
+    active_request_video_id = target_video_ids[0] if len(target_video_ids) == 1 else None
     job_state._regenerate_tracks_status = {
         "status": "running",
         "result": None,

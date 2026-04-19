@@ -5,6 +5,8 @@ import cv2
 from light_level_detector import LightLevelDetector
 from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
+from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
+from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 
 
 class _LightGateDisabled:
@@ -14,6 +16,13 @@ class _LightGateDisabled:
 
     def has_sufficient_light(self, frame):
         return True
+
+    def measure(self, frame):
+        return {
+            "brightness": None,
+            "contrast": None,
+            "has_sufficient_light": True,
+        }
 
 
 class FrameProcessor:
@@ -69,6 +78,8 @@ class FrameProcessor:
             "yolo_track_found": False,
             "light_gate_blocked": False,
             "result_count": 0,
+            "runtime_profile": None,
+            "profile_overrides": {},
         }
         if img is None:
             raise Exception("Frame is missing")
@@ -80,6 +91,26 @@ class FrameProcessor:
             frame_time = round(float(frame_time), 2)
 
         if not skip_light_gate:
+            if hasattr(self.light_detector, "measure"):
+                metrics = dict(self.light_detector.measure(img) or {})
+            else:
+                metrics = {}
+            if "has_sufficient_light" not in metrics:
+                metrics["has_sufficient_light"] = self.light_detector.has_sufficient_light(img)
+            profile_name, profile_overrides = resolve_runtime_profile(
+                app_config,
+                brightness=metrics.get("brightness"),
+                contrast=metrics.get("contrast"),
+            )
+            self.last_run_stats["runtime_profile"] = profile_name
+            self.last_run_stats["profile_overrides"] = dict(profile_overrides or {})
+            self.last_run_stats["light_brightness"] = metrics.get("brightness")
+            self.last_run_stats["light_contrast"] = metrics.get("contrast")
+            set_gauge("last_runtime_profile", profile_name or "none")
+            if metrics.get("brightness") is not None:
+                set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
+            if metrics.get("contrast") is not None:
+                set_gauge("light_contrast", round(float(metrics["contrast"]), 3))
             now_m = time.monotonic()
             if now_m < self._low_light_cooldown_until:
                 # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
@@ -87,17 +118,48 @@ class FrameProcessor:
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
 
-            if not self.light_detector.has_sufficient_light(img):
+            if not light_gate_allows_frame(
+                brightness=metrics.get("brightness"),
+                contrast=metrics.get("contrast"),
+                base_has_sufficient_light=bool(metrics.get("has_sufficient_light")),
+                profile_overrides=profile_overrides,
+            ):
                 # Throttle dark-frame handling without blocking the recording thread (#224).
                 self._low_light_cooldown_until = now_m + 1.0
                 time.sleep(0.02)
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
+        else:
+            profile_overrides = {}
+            self.last_run_stats["runtime_profile"] = None
+            self.last_run_stats["profile_overrides"] = {}
 
         st = time.time()
-        min_conf = float(app_config.get("processor.min_confidence_binary") or 0.22)
+        try:
+            min_conf = float(
+                profile_overrides.get("min_confidence_binary", app_config.get("processor.min_confidence_binary"))
+            )
+        except (TypeError, ValueError):
+            min_conf = 0.22
         self.last_run_stats["yolo_ran"] = True
-        results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
+        try:
+            results = self.strategy.detect(
+                img,
+                self.tracker,
+                min_confidence=min_conf,
+                profile_overrides=profile_overrides,
+            )
+        except TypeError:
+            results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
+        detect_ms = (time.time() - st) * 1000.0
+        observe_timing("frame_processor_detect", detect_ms)
+        try:
+            warn_ms = float(app_config.get("processor.frame_processing_warn_ms") or 0.0)
+        except (TypeError, ValueError):
+            warn_ms = 0.0
+        if warn_ms > 0 and detect_ms >= warn_ms:
+            inc_counter("slow_frame_processor_detect_total")
+            self.logger.warning("Slow frame processing: %.1fms >= %.1fms", detect_ms, warn_ms)
         self.last_run_stats["result_count"] = len(results or [])
         self.last_run_stats["yolo_track_found"] = bool(results)
 

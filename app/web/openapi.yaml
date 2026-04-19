@@ -2775,6 +2775,24 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: BirdNET FIFO diagnostics
+  /system/diagnostics/processor-runtime:
+    get:
+      description: Processor runtime counters, gauges and latency snapshot.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+      summary: Processor runtime diagnostics
   /system/diagnostics/broken-videos:
     get:
       description: 'Diagnostics: files failing probe.'

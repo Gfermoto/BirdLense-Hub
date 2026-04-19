@@ -80,6 +80,27 @@ processor:
   light_gate_enabled: true
   light_gate_min_brightness: 14
   light_gate_min_contrast: 10
+  # Adaptive runtime profiles: мягкие override'ы для сложных сцен (сейчас — night/low-light).
+  adaptive_profiles:
+    enabled: false
+    night:
+      # Профиль активируется, если brightness <= max_brightness И/ИЛИ contrast <= max_contrast.
+      max_brightness: 18
+      max_contrast: 12
+      overrides:
+        # Позволить YOLO работать в сумерках/ИК без полного снятия light gate.
+        light_gate_min_brightness: 8
+        light_gate_min_contrast: 6
+        # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
+        min_confidence_binary: 0.24
+        min_confidence_binary_bird: 0.34
+        min_track_duration: 0.7
+        min_confidence_to_process: 0.34
+        min_box_size_px: 40
+        min_center_dist: 0.03
+        max_classifications_per_frame: 4
+  # Предупреждение и счётчик slow_frame_processor_detect_total, если один detect() занимает дольше.
+  frame_processing_warn_ms: 450
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
