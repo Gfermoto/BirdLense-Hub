@@ -47,6 +47,7 @@ COPY app/data/images /app/_bundled_data/images
 # Web + processor + scripts + shared eBird helpers (processor imports without services.*)
 COPY app/ebird_region_core.py ./
 COPY app/web/ ./web/
+COPY app/shared/ ./shared/
 COPY app/processor/ ./processor/
 COPY app/app_config/ ./app_config/
 COPY app/scripts/ ./scripts/
