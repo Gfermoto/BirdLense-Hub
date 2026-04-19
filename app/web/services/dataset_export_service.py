@@ -13,6 +13,7 @@ import struct
 import zipfile
 from datetime import datetime, timezone
 
+from shared.detection_crop_contract import build_detection_crop_request
 from util import data_dir
 
 logger = logging.getLogger(__name__)
@@ -1014,14 +1015,19 @@ def extract_and_save_crop_for_detection(vs, species_name: str, require_bbox: boo
         return False
     from services.detection_crop_service import (
         extract_detection_frame_cropped,
-        _bbox_for_offset,
     )
 
     video = vs.video
     if not video or not video.video_path:
         return False
-    offset = vs.start_time + (vs.end_time - vs.start_time) / 2
-    bbox = _bbox_for_offset(getattr(vs, "frames", None), offset)
+    crop_request = build_detection_crop_request(
+        best_frame=None,
+        frames=getattr(vs, "frames", None),
+        start_time=vs.start_time,
+        end_time=vs.end_time,
+    )
+    offset = float(crop_request.get("offset_sec") or 0.0)
+    bbox = crop_request.get("bbox")
     if require_bbox and not bbox:
         return False  # Не сохраняем полный кадр — только кропы
     jpeg_bytes = extract_detection_frame_cropped(video.video_path, offset, bbox)

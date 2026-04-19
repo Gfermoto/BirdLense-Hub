@@ -5,6 +5,8 @@ import os
 import re
 import subprocess
 
+from shared.detection_crop_contract import bbox_for_offset
+
 logger = logging.getLogger(__name__)
 
 INATURALIST_UPLOAD_URL = "https://www.inaturalist.org/observations/upload"
@@ -72,28 +74,7 @@ def _bbox_for_offset(frames_json: str | None, offset_sec: float) -> list[float] 
     frames: [{t: float, bbox: [x1,y1,x2,y2]}, ...] — bbox normalized 0–1.
     Returns [x1,y1,x2,y2] or None.
     """
-    if not frames_json or not frames_json.strip():
-        return None
-    try:
-        import json
-
-        frames = json.loads(frames_json)
-        if not frames or not isinstance(frames, list):
-            return None
-        # Find frame with t closest to offset_sec
-        best = None
-        best_diff = float("inf")
-        for f in frames:
-            if not isinstance(f, dict) or "bbox" not in f:
-                continue
-            t = f.get("t", 0)
-            diff = abs(t - offset_sec)
-            if diff < best_diff:
-                best_diff = diff
-                best = f.get("bbox")
-        return best if best and len(best) == 4 else None
-    except (json.JSONDecodeError, TypeError):
-        return None
+    return bbox_for_offset(frames_json, offset_sec)
 
 
 def extract_detection_frame_cropped(video_path: str, offset_sec: float, bbox_norm: list[float] | None) -> bytes | None:

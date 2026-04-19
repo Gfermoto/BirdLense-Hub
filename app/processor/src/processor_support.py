@@ -6,6 +6,7 @@ import threading
 import time
 
 from api import API
+from processor_runtime_stats import flush_runtime_stats_snapshot, runtime_stats_snapshot
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
 processor_status = {
@@ -106,6 +107,11 @@ def heartbeat():
                 enc = get_last_encoding_used()
                 if enc:
                     data["encoding_used"] = enc
+            except Exception:
+                pass
+            try:
+                flush_runtime_stats_snapshot()
+                data["runtime_stats"] = runtime_stats_snapshot()
             except Exception:
                 pass
             hb_row_id = api.activity_log(type="heartbeat", data=data, id=hb_row_id)

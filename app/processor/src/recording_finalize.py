@@ -335,6 +335,7 @@ def finalize_motion_recording(
                 video_id,
                 crops_data_dir,
                 min_confidence=min_conf,
+                video_output_path=video_output,
             )
         seen = set()
         for d in video_detections:

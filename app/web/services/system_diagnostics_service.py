@@ -454,6 +454,38 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
     }, 200
 
 
+def build_processor_runtime_snapshot_response() -> tuple[dict, int]:
+    rel = os.path.join("diagnostics", "processor_runtime_stats.json").replace("\\", "/")
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    meta: dict = {
+        "snapshot_relative_path": rel,
+        "file_exists": os.path.isfile(path),
+    }
+    if not meta["file_exists"]:
+        return {
+            **meta,
+            "available": False,
+            "reason": "snapshot_file_missing",
+            "note": "Процессор ещё не создал runtime snapshot.",
+        }, 200
+    try:
+        st = os.stat(path)
+        meta["file_size_bytes"] = st.st_size
+        meta["file_mtime_iso"] = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+        meta["file_age_sec"] = round(max(0.0, time.time() - st.st_mtime), 1)
+        with open(path, encoding="utf-8") as f:
+            snapshot = json.load(f)
+    except OSError as e:
+        return {"error": f"Failed to read runtime snapshot: {e}", **meta}, 500
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid runtime snapshot JSON: {e}", **meta}, 500
+    return {
+        **meta,
+        "available": True,
+        "snapshot": snapshot,
+    }, 200
+
+
 def build_review_only_noise_candidates_response(limit: int) -> dict:
     rows = (
         db.session.query(VideoSpecies, Species, Video)

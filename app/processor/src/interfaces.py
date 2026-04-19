@@ -21,6 +21,7 @@ class DetectionStrategyProtocol(Protocol):
         tracker_config: str,
         *,
         min_confidence: float,
+        profile_overrides: dict[str, Any] | None = None,
     ) -> list[Any]: ...
 
     def reset(self) -> None: ...

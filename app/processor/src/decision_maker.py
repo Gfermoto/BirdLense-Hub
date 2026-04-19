@@ -93,6 +93,10 @@ class DecisionMaker:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
             self.generic_bird_min_best_frame_score = 6.5
+        self._runtime_override_defaults = {
+            "min_track_duration": self.min_track_duration,
+            "min_confidence_to_process": self.min_confidence_to_process,
+        }
         self.reset()
 
     def _trust_band_for_decision(
@@ -219,6 +223,24 @@ class DecisionMaker:
         self.species_decided = False
         self.start_time = time.time()
         self.inactive_start_time = None
+        self.reset_runtime_overrides()
+
+    def apply_runtime_overrides(self, overrides: dict | None):
+        overrides = overrides or {}
+        if "min_track_duration" in overrides:
+            try:
+                self.min_track_duration = float(overrides["min_track_duration"])
+            except (TypeError, ValueError):
+                pass
+        if "min_confidence_to_process" in overrides:
+            try:
+                self.min_confidence_to_process = float(overrides["min_confidence_to_process"])
+            except (TypeError, ValueError):
+                pass
+
+    def reset_runtime_overrides(self):
+        self.min_track_duration = self._runtime_override_defaults["min_track_duration"]
+        self.min_confidence_to_process = self._runtime_override_defaults["min_confidence_to_process"]
 
     def update_has_detections(self, has_detections):
         if not has_detections:
