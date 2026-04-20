@@ -29,6 +29,10 @@ Exact ms depend on CPU, iGPU, driver, and concurrent load. Use this as **relativ
 - **Raise** when warnings are steady but operator accepts latency (avoid “cry wolf” in logs).
 - Pair with **config audit** hints from `processor_runtime_stats.json` (see [RUNBOOKS](./RUNBOOKS.md) slow-frame section).
 
+## System → Configuration audit (UI)
+
+The hub renders **two kinds** of runtime hints when the snapshot has data: **slow-frame count** vs **detector p95** near your warn threshold. Treat **raising `frame_processing_warn_ms`** as fixing *log noise*; treat **lowering `binary_imgsz` / relaxing the light gate** as addressing *actual latency* (with the recall trade-off for very small birds).
+
 ## Code changes
 
 Dynamic throttling / log aggregation for slow frames is **not** implemented here — open a focused issue if product wants it.
