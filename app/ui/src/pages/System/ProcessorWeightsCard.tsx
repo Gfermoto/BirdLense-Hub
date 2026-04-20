@@ -113,8 +113,18 @@ function SlotRow(props: {
   );
 }
 
-export function ProcessorWeightsCard() {
+export type ProcessorWeightsCardPlacement = 'settingsModels' | 'systemWorkspace';
+
+type ProcessorWeightsCardProps = {
+  /** Веса в блоке «Настройки → Процессор» (без оболочки System) или на странице Система (устар.). */
+  placement?: ProcessorWeightsCardPlacement;
+};
+
+export function ProcessorWeightsCard({
+  placement = 'settingsModels',
+}: ProcessorWeightsCardProps) {
   const { t } = useTranslation();
+  const inline = placement === 'settingsModels';
   const qc = useQueryClient();
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -218,39 +228,44 @@ export function ProcessorWeightsCard() {
     if (allowRef.current) allowRef.current.value = '';
   };
 
+  const introKey = inline
+    ? 'settings.processorWeightsIntroInline'
+    : 'system.processorWeightsIntro';
+
+  const errorBody = (
+    <>
+      <Typography variant={inline ? 'subtitle1' : 'h6'} fontWeight={600}>
+        {t('system.processorWeightsTitle')}
+      </Typography>
+      <Alert severity="error" sx={{ mt: 1 }}>
+        {getApiErrorMessage(
+          statusQ.error,
+          t('system.processorWeightsLoadError'),
+        )}
+      </Alert>
+    </>
+  );
+
   if (statusQ.isError) {
-    return (
+    return inline ? (
+      <Box id="processor-weights" sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
+        {errorBody}
+      </Box>
+    ) : (
       <SystemCardShell
         title={t('system.processorWeightsTitle')}
         description={t('system.processorWeightsIntro')}
         statusLabel={t('system.configAuditNeedsReview')}
         statusTone="error"
       >
-        <Typography variant="h6">
-          {t('system.processorWeightsTitle')}
-        </Typography>
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {getApiErrorMessage(
-            statusQ.error,
-            t('system.processorWeightsLoadError'),
-          )}
-        </Alert>
+        {errorBody}
       </SystemCardShell>
     );
   }
 
   const st = statusQ.data;
 
-  return (
-    <SystemCardShell
-      id="processor-weights"
-      title={t('system.processorWeightsTitle')}
-      description={t('system.processorWeightsIntro')}
-      statusLabel={
-        busy ? t('system.catalogRepairRunning') : t('system.readinessReady')
-      }
-      statusTone={busy ? 'warning' : 'default'}
-    >
+  const inner = (
       <Box>
         {info ? (
           <Alert
@@ -405,6 +420,42 @@ export function ProcessorWeightsCard() {
           </Button>
         </Stack>
       </Box>
+  );
+
+  if (inline) {
+    return (
+      <Box id="processor-weights" sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {t('system.processorWeightsTitle')}
+          </Typography>
+          <Chip
+            size="small"
+            color={busy ? 'warning' : 'default'}
+            label={
+              busy ? t('system.catalogRepairRunning') : t('system.readinessReady')
+            }
+          />
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t(introKey)}
+        </Typography>
+        {inner}
+      </Box>
+    );
+  }
+
+  return (
+    <SystemCardShell
+      id="processor-weights"
+      title={t('system.processorWeightsTitle')}
+      description={t(introKey)}
+      statusLabel={
+        busy ? t('system.catalogRepairRunning') : t('system.readinessReady')
+      }
+      statusTone={busy ? 'warning' : 'default'}
+    >
+      {inner}
     </SystemCardShell>
   );
 }

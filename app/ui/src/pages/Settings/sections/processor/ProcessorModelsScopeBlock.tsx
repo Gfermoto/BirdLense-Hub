@@ -11,9 +11,12 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import MuiLink from '@mui/material/Link';
+import Divider from '@mui/material/Divider';
+import Box from '@mui/material/Box';
 import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
+import { ProcessorWeightsCard } from '../../../System/ProcessorWeightsCard';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -23,6 +26,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
   const { t } = useTranslation();
 
   return (
+    <Box id="processor-models" sx={{ minWidth: 0, maxWidth: '100%' }}>
     <ServiceBlock title={t('settings.processorModelsScopeTitle')}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('settings.processorModelsScopeDesc')}
@@ -30,12 +34,12 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
       <Alert severity="info" sx={{ mb: 2 }}>
         <Typography variant="body2" component="div">
           <Trans
-            i18nKey="settings.processorModelsWorkspaceLink"
+            i18nKey="settings.processorModelsCatalogDiagnosticsLink"
             components={{
               syslink: (
                 <MuiLink
                   component={RouterLink}
-                  to="/system#processor-weights"
+                  to="/system#system-integrations"
                 />
               ),
             }}
@@ -130,6 +134,10 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
               />
             )}
           </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <Divider sx={{ my: 1 }} />
+          <ProcessorWeightsCard placement="settingsModels" />
         </Grid>
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.regional_species">
@@ -291,5 +299,6 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
         </Grid>
       </Grid>
     </ServiceBlock>
+    </Box>
   );
 }
