@@ -34,7 +34,7 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
-  # Мин. длительность трека ByteTrack (сек). Короткие визиты (белка) — 0.9–1.0; при шуме поднимите.
+  # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме поднимите.
   min_track_duration: 0.9
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
@@ -65,12 +65,14 @@ processor:
   # с ручными строками (например Bird рядом с исправленной сорокой) — появятся параллельные
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
-  # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
+  # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   min_confidence_binary: 0.28  # Детектор «птица/не птица»; ниже — больше ложных bbox
   # Раздельные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
   # Выше — меньше ложных bbox, ниже — YOLO чаще ловит мелкую/далёкую птицу (0.40 типичный компромисс).
   min_confidence_binary_bird: 0.40
-  min_confidence_binary_squirrel: 0.24
+  min_confidence_binary_rodent: 0.24
+  # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
+  # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
   bird_skip_classifier_max_area_frac: 0
   min_confidence_to_process: 0.38  # Классификатор (combined); запись/БД
@@ -103,7 +105,7 @@ processor:
   frame_processing_warn_ms: 450
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
-  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
+  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для Rodent
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
@@ -153,8 +155,8 @@ processor:
   generate_spectrogram_always: true
   # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
-  # Scope детектора первого уровня. Production path: detector(Bird|Squirrel) -> classifier -> fusion.
-  detector_scope: ["Bird", "Squirrel"]
+  # Scope детектора первого уровня. Production path: detector(Bird|Rodent) -> classifier -> fusion.
+  detector_scope: ["Bird", "Rodent"]
   # Планировщик классификации species внутри кадра: priority | round_robin.
   classification_scheduler: priority
   max_classifications_per_frame: 3
@@ -393,7 +395,7 @@ detection:
     "Grey-headed Woodpecker": "Grey-headed Woodpecker"
     "Great Gray Shrike": "Great Grey Shrike"
     "Great Grey Shrike": "Great Grey Shrike"
-    # Squirrel/rodent: detector class → catalog name
+    # Грызуны / устаревшие подписи детектора → каталог Rodent
     "squirrel": "Rodent"
     "Squirrel": "Rodent"
     "Eastern Gray Squirrel": "Rodent"

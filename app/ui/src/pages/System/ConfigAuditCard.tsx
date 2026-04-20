@@ -33,6 +33,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
   const configWarnings = Array.isArray(data.config_warnings)
     ? data.config_warnings
     : [];
+  const recallHints = Array.isArray(data.recall_warnings) ? data.recall_warnings : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
   const statusTone =
     configWarnings.length > 0 || deprecatedKeys.length > 0
@@ -112,6 +113,31 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             </List>
           </Alert>
         )}
+
+        {!simple && recallHints.length > 0 ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.configAuditRecallHintsTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+              {t('system.configAuditRecallHintsHint')}
+            </Typography>
+            <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
+              {recallHints.map((w, i) => (
+                <ListItem
+                  key={i}
+                  disableGutters
+                  sx={{ display: 'list-item', py: 0.25 }}
+                >
+                  <ListItemText
+                    primaryTypographyProps={{ variant: 'body2' }}
+                    primary={localizedConfigAuditWarning(w, t)}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
+        ) : null}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           <Chip

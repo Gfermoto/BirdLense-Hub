@@ -1457,8 +1457,9 @@ export interface paths {
         /**
          * Configuration audit (YAML keys, recall tuning, MQTT scales)
          * @description Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
-         *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
-         *     and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`) for review and fixes.
+         *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic).
+         *     `config_warnings` lists **blocking** issues only (e.g. Frigate on without `mqtt.broker`, MQTT scales without broker/topic).
+         *     `recall_warnings` holds **non-blocking recall tuning hints** (OpenCV thresholds, frame skipping, etc.) — separate from `config_warnings`.
          *     Requires the same settings/session access as other protected system views when passwords are enabled.
          */
         get: {
@@ -7524,11 +7525,13 @@ export interface components {
             recall_tuning: {
                 [key: string]: unknown;
             };
+            /** @description Optional recall / sensitivity tuning hints (not treated as blocking config errors). Blocking Frigate+MQTT and scales MQTT problems appear in `config_warnings` instead. */
             recall_warnings: string[];
             scales_mqtt: {
                 [key: string]: unknown;
             };
             scales_warnings: string[];
+            /** @description Blocking or misconfiguration warnings (Frigate without MQTT broker when enabled, MQTT scales issues). Does not include soft recall tuning hints from `recall_warnings`. */
             config_warnings: string[];
         };
         FileTestFileEntry: {
@@ -7912,6 +7915,9 @@ export interface components {
                 min_track_duration?: number;
                 min_confidence_binary?: number;
                 min_confidence_binary_bird?: number | null;
+                /** @description Threshold for Rodent boxes from the binary detector (canonical key). */
+                min_confidence_binary_rodent?: number | null;
+                /** @description Deprecated alias for min_confidence_binary_rodent (legacy YAML only). */
                 min_confidence_binary_squirrel?: number | null;
                 bird_skip_classifier_max_area_frac?: number | null;
                 min_confidence_to_process?: number;

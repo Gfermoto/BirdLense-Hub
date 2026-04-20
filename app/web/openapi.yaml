@@ -981,8 +981,9 @@ paths:
       summary: Configuration audit (YAML keys, recall tuning, MQTT scales)
       description: |
         Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
-        species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
-        and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`) for review and fixes.
+        species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic).
+        `config_warnings` lists **blocking** issues only (e.g. Frigate on without `mqtt.broker`, MQTT scales without broker/topic).
+        `recall_warnings` holds **non-blocking recall tuning hints** (OpenCV thresholds, frame skipping, etc.) — separate from `config_warnings`.
         Requires the same settings/session access as other protected system views when passwords are enabled.
       responses:
         "200":
@@ -3895,6 +3896,9 @@ components:
           type: object
           additionalProperties: true
         recall_warnings:
+          description: >-
+            Optional recall / sensitivity tuning hints (not treated as blocking config errors).
+            Blocking Frigate+MQTT and scales MQTT problems appear in `config_warnings` instead.
           type: array
           items:
             type: string
@@ -3906,6 +3910,9 @@ components:
           items:
             type: string
         config_warnings:
+          description: >-
+            Blocking or misconfiguration warnings (Frigate without MQTT broker when enabled,
+            MQTT scales issues). Does not include soft recall tuning hints from `recall_warnings`.
           type: array
           items:
             type: string
@@ -4643,9 +4650,14 @@ components:
             min_confidence_binary_bird:
               type: number
               nullable: true
+            min_confidence_binary_rodent:
+              type: number
+              nullable: true
+              description: Threshold for Rodent boxes from the binary detector (canonical key).
             min_confidence_binary_squirrel:
               type: number
               nullable: true
+              description: Deprecated alias for min_confidence_binary_rodent (legacy YAML only).
             bird_skip_classifier_max_area_frac:
               type: number
               nullable: true

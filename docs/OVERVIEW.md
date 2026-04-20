@@ -1,6 +1,6 @@
 # BirdLense Hub — Overview
 
-**BirdLense Hub** is open-source software for **bird monitoring at feeders, gardens, and field stations**: it detects birds (and squirrels) on video, classifies species with on-device ML, records clips, and ties visits into a structured timeline for operators, ornithology, and citizen science.
+**BirdLense Hub** is open-source software for **bird monitoring at feeders, gardens, and field stations**: it detects birds and rodents on video, classifies species with on-device ML, records clips, and ties visits into a structured timeline for operators, ornithology, and citizen science.
 
 [Русский](./OVERVIEW.ru.md)
 
@@ -37,7 +37,7 @@ See the diagram and data paths in [ARCHITECTURE](./ARCHITECTURE.md).
 
 ## Recognition stack (short)
 
-- **Detector + classifier** (YOLO family): bird/squirrel in frame, then species. Default **EU-oriented** model (~491 species); US (NABirds) weights available — see [TRAINING](./TRAINING.md).
+- **Detector + classifier** (YOLO family): bird/rodent in frame, then species. Default **EU-oriented** model (~491 species); US (NABirds) weights available — see [TRAINING](./TRAINING.md).
 - **Frigate** can supply **Bird Classification** `sub_label`; results merge with video ML.
 - **BirdNET** audio events merge in a time window when MQTT is configured.
 

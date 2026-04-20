@@ -139,13 +139,14 @@ The System page also lists these endpoints under **Notification observability** 
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_seconds_between_recordings` | Minimum pause after a clip ends before a new one may start. Default `8`. Helps suppress near-duplicate clips when the bird stays in frame or Frigate/OpenCV retrigger immediately. `0` disables the cooldown. |
 | `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
-| `min_confidence_binary_bird` | Optional: stricter **Bird-only** threshold after `track()` (Ultralytics uses `min` of all thresholds; per-label filter in Python). Example: **0.48** with `min_confidence_binary_squirrel: 0.22` cuts false “birds” (e.g. mouse→tit) without choking rodents. |
-| `min_confidence_binary_squirrel` | Optional: threshold for Squirrel boxes (rodent/chipmunk names normalize to Squirrel). |
+| `min_confidence_binary_bird` | Optional: stricter **Bird-only** threshold after `track()` (Ultralytics uses `min` of all thresholds; per-label filter in Python). Example: **0.48** with `min_confidence_binary_rodent: 0.22` cuts false “birds” (e.g. mouse→tit) without choking rodents. |
+| `min_confidence_binary_rodent` | Optional: threshold for **Rodent** boxes after the binary head normalizes the rodent class (YOLO weights may still use an internal “Squirrel” class name). |
+| `min_confidence_binary_squirrel` | **Deprecated:** if present after merge, its value is **copied into** `min_confidence_binary_rodent` (so legacy YAML keeps working; remove squirrel once you use rodent only). |
 | `bird_skip_classifier_max_area_frac` | If **> 0**: for **Bird** with bbox area ≤ this fraction of the frame, **skip** species classifier → generic Bird only (reduces bogus species on tiny blobs). Default **0** (off). Try **0.012–0.025**; too high hurts small tits at the feeder. |
 | `min_track_duration` | Min **YOLO/ByteTrack** track length (s) to keep a `video` detection. Applies before fusion. Raise it if you get flicker; lower it if short perch visits disappear. |
 | `min_confidence_to_process` | Species-classifier threshold after detector confirmation. Default **0.40**. Lower = more accepted species, higher = stricter. |
 | `min_confidence_to_notify` | Minimum combined confidence for **Telegram photo alerts** (after the hub accepts the recording). Shipped default **0.46** in `default_config.yaml`; `app_config.CONFIDENCE_FLOORS` enforces a **minimum of 0.30** at load time (values below are raised). Often set **above** `min_confidence_to_process` to reduce chat noise while still persisting visits. Exposed in **Settings → Processor**. After changing YAML thresholds, **restart the processor** so the running process reloads config. |
-| `species_confidence_overrides` | Per-species thresholds: `{"Rodent": 0.28}` for squirrels; `{"Rare Bird": 0.05}` for rare birds |
+| `species_confidence_overrides` | Per-species thresholds: `{"Rodent": 0.28}` for rodents; `{"Rare Bird": 0.05}` for rare birds |
 | `ebird_regional_top_auto_confidence` | If true (default), merge lower thresholds for species in the regional eBird top (needs `secrets.ebird_api_key`, `ebird.*`). Manual `species_confidence_overrides` keys always win. See [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Subtracted from `min_confidence_to_process` for each auto top species (default `0.03`). |
 | `ebird_regional_top_confidence_floor` | Minimum auto threshold (default `0.08`). |
@@ -157,7 +158,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
 | `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
 | `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
-| `detector_scope` | First-stage detector targets. Default: `["Bird", "Squirrel"]`. EU classifier adds one non-bird class **Rodent** (squirrels map here in the species catalog — search «Rodent», not a separate «Squirrel» species row). |
+| `detector_scope` | First-stage detector targets. Default: `["Bird", "Rodent"]`. EU classifier non-bird class **Rodent** is the catalog name; raw detector weights may still label that head “Squirrel”, which the hub maps to **Rodent**. |
 | `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
 | `single_stage_coco_animals_only_auto` | Deprecated compatibility key. Production runtime uses only `two_stage`. |
 | `included_bird_families` | Bird family filter list (e.g. Perching Birds); not related to Rodent |
@@ -267,7 +268,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 ## Detection (shared fusion path)
 
-**Production path:** trigger source -> detector (`Bird | Squirrel`) -> YOLO species classifier -> fusion -> persistence.
+**Production path:** trigger source -> detector (`Bird | Rodent`) -> YOLO species classifier -> fusion -> persistence.
 
 **Source semantics:**
 - YOLO detector/classifier is the primary source of every persisted video detection.
@@ -381,7 +382,7 @@ For a **dedicated topic family** (weight + bird presence + optional command), se
 | `notifications.link_preview_large` | Large link previews (Bot API 9.4). This complements photo delivery; it does not replace `sendPhoto` |
 | `notifications.use_custom_emoji` | `icon_custom_emoji_id` on buttons (bot owner needs Premium) |
 | `notifications.custom_emoji_id_bird` | Custom emoji id for birds (@Stickers) |
-| `notifications.custom_emoji_id_chipmunk` | Chipmunk/squirrel |
+| `notifications.custom_emoji_id_chipmunk` | Rodent / chipmunk emoji (Telegram) |
 | `notifications.custom_emoji_id_open_live` | Open Live button |
 | `notifications.paid_media_view_star_count` | Stars for photo view (0=free, 1–25000). `sendPaidMedia` |
 | `notifications.paid_media_forward_star_count` | Free view: 0=allow forward, >0=block. Paid: forward allowed. |
@@ -433,7 +434,7 @@ The script `scripts/refresh-telegram-proxy.sh` tests proxies from the Hub host, 
 When on, configure:
 
 - `custom_emoji_id_bird` — bird notifications  
-- `custom_emoji_id_chipmunk` — squirrel/mouse  
+- `custom_emoji_id_chipmunk` — rodents / small mammals (chipmunk emoji slot)  
 - `custom_emoji_id_open_live` — Open Live  
 
 If id missing — Unicode fallback.

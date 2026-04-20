@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_MIN_CONFIDENCE = 0.30
 
 
+def _is_rodent_detector_label(detector_label: str) -> bool:
+    """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
+    d = str(detector_label or "").strip().lower()
+    return d in {"rodent", "squirrel"}
+
+
 def _normalized_species_keys(species_name):
     raw = str(species_name or "").strip()
     if not raw:
@@ -406,6 +412,8 @@ class DecisionMaker:
                 )
                 continue
             detector_label = detector_candidate["label"]
+            if _is_rodent_detector_label(detector_label):
+                detector_label = "Rodent"
             detector_conf = float(detector_candidate["max_confidence"] or 0.0)
 
             classifier_events = track.get("classifier_events") or []
@@ -468,10 +476,10 @@ class DecisionMaker:
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
-                        is_squirrel = detector_label.lower() == "squirrel"
+                        is_rodent = _is_rodent_detector_label(detector_label)
                         is_bird = detector_label.lower() == "bird"
-                        if is_squirrel:
-                            decision_reason = "fallback_squirrel"
+                        if is_rodent:
+                            decision_reason = "fallback_rodent"
                             decision_kind = "accepted_generic"
                             evidence_state = (
                                 "conflicting_classifier_votes"
@@ -496,8 +504,8 @@ class DecisionMaker:
                         else:
                             if is_bird:
                                 decision_reason = "fallback_bird"
-                            elif is_squirrel:
-                                decision_reason = "fallback_squirrel"
+                            elif is_rodent:
+                                decision_reason = "fallback_rodent"
                             else:
                                 decision_reason = "fallback_detector_generic"
                             decision_kind = "accepted_generic"
@@ -524,10 +532,10 @@ class DecisionMaker:
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
-                    is_squirrel = detector_label.lower() == "squirrel"
+                    is_rodent = _is_rodent_detector_label(detector_label)
                     is_bird = detector_label.lower() == "bird"
-                    if is_squirrel:
-                        decision_reason = "fallback_squirrel"
+                    if is_rodent:
+                        decision_reason = "fallback_rodent"
                         decision_kind = "accepted_generic"
                         evidence_state = "detector_only"
                     elif is_bird and not self._promotable_generic_bird(
@@ -544,8 +552,8 @@ class DecisionMaker:
                     else:
                         if is_bird:
                             decision_reason = "fallback_bird"
-                        elif is_squirrel:
-                            decision_reason = "fallback_squirrel"
+                        elif is_rodent:
+                            decision_reason = "fallback_rodent"
                         else:
                             decision_reason = "fallback_detector_generic"
                         decision_kind = "accepted_generic"

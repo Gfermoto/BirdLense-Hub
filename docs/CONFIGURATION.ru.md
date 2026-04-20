@@ -139,13 +139,14 @@
 | `post_record_seconds` | Post-roll: добавляется к паузе без детекций перед остановкой записи (сек). Итог = `max_inactive_seconds` + `post_record_seconds`. См. [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_seconds_between_recordings` | Минимальная пауза после завершения клипа до старта следующего. По умолчанию `8`. Срезает near-duplicate клипы, когда птица осталась в кадре или Frigate/OpenCV почти мгновенно триггерят новую сессию. `0` — выключить cooldown. |
 | `min_confidence_binary` | Порог детектора «птица / не птица». По умолчанию **0.30** (`default_config.yaml`) |
-| `min_confidence_binary_bird` | Опционально: отдельный порог **только для боксов Bird** после `track()` (Ultralytics получает `min` всех порогов; отсев по метке в Python). Пример: **0.48** при `min_confidence_binary_squirrel: 0.22` — меньше ложных «птиц» (мышь→синица), белки/грызуны не душатся тем же числом. |
-| `min_confidence_binary_squirrel` | Опционально: порог для боксов Squirrel (нормализация rodent/chipmunk → Squirrel). |
+| `min_confidence_binary_bird` | Опционально: отдельный порог **только для боксов Bird** после `track()` (Ultralytics получает `min` всех порогов; отсев по метке в Python). Пример: **0.48** при `min_confidence_binary_rodent: 0.22` — меньше ложных «птиц» (мышь→синица), грызуны не душатся тем же числом. |
+| `min_confidence_binary_rodent` | Опционально: порог для боксов **Rodent** после нормализации бинарной головы (веса могут по-прежнему называть класс Squirrel внутри модели). |
+| `min_confidence_binary_squirrel` | **Устарело:** при наличии в merge значение **копируется в** `min_confidence_binary_rodent` (совместимость со старым YAML; затем можно удалить squirrel). |
 | `bird_skip_classifier_max_area_frac` | Если **> 0**: для **Bird** с площадью bbox ≤ доли кадра (0…1) **не вызывается** видовой классификатор — остаётся generic Bird (решает ложные виды на мелком объекте). По умолчанию **0** (выкл.). Попробуйте **0.012–0.025**; слишком высокое значение заденет мелких синиц у кормушки. |
 | `min_track_duration` | Мин. длительность трека YOLO/ByteTrack (сек). Применяется до fusion. Поднимайте при мельканиях, опускайте если короткие визиты пропадают. |
 | `min_confidence_to_process` | Порог принятия вида после detector confirmation. По умолчанию **0.40**. Ниже — больше меток, выше — строже. |
 | `min_confidence_to_notify` | Минимум combined confidence для **фото-уведомления в Telegram** (после успешного приёма записи на хабе). В поставке **0.46** в `default_config.yaml`; при загрузке конфига `app_config.CONFIDENCE_FLOORS` задаёт **нижний предел 0.30** (меньшие значения поднимаются). Часто задают **выше**, чем `min_confidence_to_process`, чтобы срезать шум в чате при сохранении визитов в БД. Поле есть в **Настройки → Процессор**. После смены порогов в YAML перезапустите **processor**, иначе в контейнере останется старый конфиг в памяти. |
-| `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для белок; `{"Rare Bird": 0.05}` — редкие птицы |
+| `species_confidence_overrides` | Пороги по видам: `{"Rodent": 0.28}` для грызунов; `{"Rare Bird": 0.05}` — редкие птицы |
 | `ebird_regional_top_auto_confidence` | Если true (по умолчанию), для видов из регионального топа eBird подмешиваются более низкие пороги (нужны `secrets.ebird_api_key`, `ebird.*`). Ручные ключи в `species_confidence_overrides` важнее. См. [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128). |
 | `ebird_regional_top_confidence_delta` | Вычитается из `min_confidence_to_process` для каждого авто-вида из топа (по умолчанию `0.03`). |
 | `ebird_regional_top_confidence_floor` | Нижняя граница авто-порога (по умолчанию `0.08`). |
@@ -157,7 +158,7 @@
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
-| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Squirrel"]`. В EU-классификаторе один не-птица класс **Rodent** (белки в каталоге — ищите «Rodent», отдельной строки «Squirrel» в видах нет). |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. |
 | `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
 | `single_stage_coco_animals_only_auto` | Устаревший compat-ключ. Production runtime использует только `two_stage`. |
 | `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
@@ -267,7 +268,7 @@
 
 ## Detection (общий fusion path)
 
-**Production path:** trigger source -> detector (`Bird | Squirrel`) -> YOLO classifier -> fusion -> persistence.
+**Production path:** trigger source -> detector (`Bird | Rodent`) -> YOLO classifier -> fusion -> persistence.
 
 **Семантика источников:**
 - YOLO detector/classifier — основной источник всех persisted video detections.
@@ -381,7 +382,7 @@
 | `notifications.link_preview_large` | true: большие превью ссылок (Bot API 9.4), ссылка добавляется в текст/подпись. Это дополнение к фото, а не замена `sendPhoto` |
 | `notifications.use_custom_emoji` | true: icon_custom_emoji_id на кнопках (требует Premium у владельца бота) |
 | `notifications.custom_emoji_id_bird` | ID кастомного эмодзи для птиц (из @Stickers) |
-| `notifications.custom_emoji_id_chipmunk` | ID для белок |
+| `notifications.custom_emoji_id_chipmunk` | ID emoji для грызунов / мелких млекопитающих (Telegram) |
 | `notifications.custom_emoji_id_open_live` | ID для кнопки Open Live |
 | `notifications.paid_media_view_star_count` | Stars за просмотр фото (0=бесплатно, 1–25000). sendPaidMedia |
 | `notifications.paid_media_forward_star_count` | При бесплатном просмотре: 0=разрешить пересылку, >0=запретить. При платном — пересылка включена. |
@@ -433,7 +434,7 @@
 При включённом переключателе отображаются поля для ID:
 
 - `custom_emoji_id_bird` — для уведомлений о птицах
-- `custom_emoji_id_chipmunk` — для белок/мышей
+- `custom_emoji_id_chipmunk` — для грызунов / мышей (слот emoji в Telegram)
 - `custom_emoji_id_open_live` — для кнопки «Open Live» (старт приложения, общие сообщения)
 
 Если ID не указан — используется обычный Unicode-эмодзи.

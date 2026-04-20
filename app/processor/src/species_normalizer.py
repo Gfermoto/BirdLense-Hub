@@ -61,9 +61,9 @@ def _to_title_case(s: str) -> str:
     return " ".join(out)
 
 
-def _is_squirrel_or_rodent_name(name: str) -> bool:
+def _is_rodent_taxon_name(name: str) -> bool:
     key = _extract_common_for_merge(name or "")
-    return any(token in key for token in ("squirrel", "chipmunk", "rodent"))
+    return any(token in key for token in ("squirrel", "chipmunk", "rodent", "sciurus", "грызун"))
 
 
 def _canonical_merge_key(species_name: str) -> str:
@@ -92,7 +92,7 @@ def _collapse_overlapping_generic_bird_detection(
         name = det.get("species_name") or det.get("species") or ""
         if not name or _is_generic_bird_row(det):
             return False
-        if _is_squirrel_or_rodent_name(name):
+        if _is_rodent_taxon_name(name):
             return False
         kind = str(det.get("decision_kind") or "").strip().lower()
         if kind == "accepted_species":
@@ -233,21 +233,21 @@ def merge_detections(
             providers.update(p for p in (new_providers or []) if p)
             existing["contributing_providers"] = sorted(providers)
 
-    def _is_squirrel_like(name: str) -> bool:
+    def _is_rodent_like_ev_label(name: str) -> bool:
         key = _extract_common_for_merge(name)
-        return any(token in key for token in ("squirrel", "chipmunk", "rodent"))
+        return any(token in key for token in ("squirrel", "chipmunk", "rodent", "sciurus", "грызун"))
 
     def _can_frigate_promote(det: dict, ev: dict) -> bool:
         reason = str(det.get("decision_reason") or "").strip().lower()
-        if reason not in {"fallback_bird", "fallback_squirrel"}:
+        if reason not in {"fallback_bird", "fallback_rodent", "fallback_squirrel"}:
             return False
         detector_label = str(det.get("detector_label") or det.get("species_name") or "").strip()
         if not detector_label:
             return False
         if detector_label.lower() == "bird":
-            return not _is_squirrel_like(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
+            return not _is_rodent_like_ev_label(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         if detector_label.lower() in {"squirrel", "rodent"}:
-            return _is_squirrel_like(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
+            return _is_rodent_like_ev_label(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         return False
 
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)

@@ -315,6 +315,33 @@ class AppConfig:
         # Убедимся, что detection_strategy по умолчанию two_stage
         if processor.get('detection_strategy') not in ('two_stage', 'single_stage'):
             processor['detection_strategy'] = 'two_stage'
+        # Канон Rodent: явный min_confidence_binary_squirrel в merge (обычно из user YAML) перекрывает rodent
+        sq_thr = processor.get('min_confidence_binary_squirrel')
+        if sq_thr is not None:
+            processor['min_confidence_binary_rodent'] = sq_thr
+        scope = processor.get('detector_scope')
+        if isinstance(scope, list) and scope:
+            seen: set[str] = set()
+            new_scope: list[str] = []
+            for raw in scope:
+                s = str(raw or '').strip()
+                if not s:
+                    continue
+                canon = 'Rodent' if s.lower() == 'squirrel' else s
+                key = canon.lower()
+                if key not in seen:
+                    seen.add(key)
+                    new_scope.append(canon)
+            processor['detector_scope'] = new_scope
+        profiles = processor.get('adaptive_profiles')
+        if isinstance(profiles, dict):
+            night = profiles.get('night')
+            if isinstance(night, dict):
+                overrides = night.get('overrides')
+                if isinstance(overrides, dict):
+                    legacy_r = overrides.get('min_confidence_binary_squirrel')
+                    if legacy_r is not None:
+                        overrides['min_confidence_binary_rodent'] = legacy_r
 
     @classmethod
     def _enforce_confidence_floors(cls, config):

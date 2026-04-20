@@ -18,11 +18,11 @@ Bird monitoring for feeders, gardens, and field setups: computer vision and audi
 
 ### Model info
 
-Two components: **detector** (bird/squirrel in frame) and **classifier** (bird species).
+Two components: **detector** (bird or rodent in frame) and **classifier** (bird species).
 
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
-| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — unchanged in EU training |
+| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/rodent (weights may still name the rodent class “squirrel”; hub maps to Rodent) — unchanged in EU training |
 | **Classifier** | YOLO11n-cls | birds-525 + iNaturalist (≈490) | EU default; US/NABirds is optional backup |
 
 **Current model:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.

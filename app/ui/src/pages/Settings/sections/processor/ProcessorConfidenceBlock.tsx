@@ -125,7 +125,7 @@ export function ProcessorConfidenceBlock({ form }: Props) {
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <form.Field name="processor.min_confidence_binary_squirrel">
+          <form.Field name="processor.min_confidence_binary_rodent">
             {(field) => (
               <TextField
                 fullWidth
@@ -147,8 +147,8 @@ export function ProcessorConfidenceBlock({ form }: Props) {
                     field.handleChange(n);
                   }
                 }}
-                label={t('settings.confidenceBinarySquirrel')}
-                helperText={t('settings.confidenceBinarySquirrelHelp')}
+                label={t('settings.confidenceBinaryRodent')}
+                helperText={t('settings.confidenceBinaryRodentHelp')}
               />
             )}
           </form.Field>

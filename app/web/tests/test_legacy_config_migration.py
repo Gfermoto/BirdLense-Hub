@@ -60,6 +60,45 @@ def test_migrate_drops_empty_legacy_keys():
     assert "ha_token" not in user["weather"]
 
 
+def test_processor_rodent_migration_from_legacy_squirrel_keys(tmp_path, monkeypatch):
+    """В merged-конфиге: порог и scope из устаревших ключей → Rodent."""
+    from app_config.app_config import app_config
+
+    user_cfg = {
+        "processor": {
+            "min_confidence_binary_squirrel": 0.21,
+            "detector_scope": ["Bird", "Squirrel", "bird"],
+            "adaptive_profiles": {
+                "enabled": False,
+                "night": {
+                    "overrides": {
+                        "min_confidence_binary_squirrel": 0.19,
+                    },
+                },
+            },
+        },
+    }
+    user_config = tmp_path / "user_config.yaml"
+    user_config.write_text(yaml.safe_dump(user_cfg), encoding="utf-8")
+    old = app_config.user_config_file
+    monkeypatch.setattr(app_config, "user_config_file", str(user_config))
+    try:
+        app_config.reload()
+        assert float(app_config.get("processor.min_confidence_binary_rodent")) == 0.21
+        scope = app_config.get("processor.detector_scope") or []
+        assert scope == ["Bird", "Rodent"]
+        rod_o = (
+            (app_config.get("processor.adaptive_profiles") or {})
+            .get("night", {})
+            .get("overrides", {})
+            .get("min_confidence_binary_rodent")
+        )
+        assert rod_o is not None and abs(float(rod_o) - 0.19) < 1e-9
+    finally:
+        app_config.user_config_file = old
+        app_config.reload()
+
+
 def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     from app_config.app_config import app_config
 
