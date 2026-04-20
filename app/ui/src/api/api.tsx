@@ -1417,6 +1417,12 @@ export const mergeDuplicateSpecies = async (): Promise<Record<string, unknown>> 
 export const reconcileSpeciesCatalog = async (): Promise<Record<string, unknown>> =>
   postSystemAction('/system/species-catalog/reconcile', { dry_run: false });
 
+/** Sync with `BROKEN_VIDEOS_PURGE_CONFIRMATION` in system_diagnostics_service.py */
+export const PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH = 'purge_all_broken_video_rows';
+
+/** Sync with `NO_SPECIES_VIDEOS_PURGE_CONFIRMATION` in system_diagnostics_service.py */
+export const PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH = 'purge_videos_without_species';
+
 export const previewBrokenVideosPurge = async (): Promise<Record<string, unknown>> =>
   postSystemAction('/system/diagnostics/broken-videos/purge', {
     dry_run: true,

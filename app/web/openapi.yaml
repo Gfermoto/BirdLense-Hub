@@ -4613,6 +4613,10 @@ components:
               type: string
         processor:
           type: object
+          description: >
+            Processor tuning; full shape follows `default_config.yaml` / `user_config.yaml`.
+            Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed.
+          additionalProperties: true
           properties:
             video_width:
               type: integer
@@ -4622,8 +4626,75 @@ components:
               type: string
             max_record_seconds:
               type: integer
+            post_record_seconds:
+              type: number
             max_inactive_seconds:
               type: integer
+            min_seconds_between_recordings:
+              type: number
+            file_max_record_floor_seconds:
+              type: number
+            frigate_activity_hold_seconds:
+              type: number
+            min_track_duration:
+              type: number
+            min_confidence_binary:
+              type: number
+            min_confidence_binary_bird:
+              type: number
+              nullable: true
+            min_confidence_binary_squirrel:
+              type: number
+              nullable: true
+            bird_skip_classifier_max_area_frac:
+              type: number
+              nullable: true
+            min_confidence_to_process:
+              type: number
+            min_confidence_to_notify:
+              type: number
+            min_box_size_px:
+              type: number
+            detector_scope:
+              type: array
+              items:
+                type: string
+            light_gate_enabled:
+              type: boolean
+            light_gate_min_brightness:
+              type: number
+            light_gate_min_contrast:
+              type: number
+            species_confidence_overrides:
+              type: object
+              additionalProperties:
+                type: number
+            ebird_regional_top_auto_confidence:
+              type: boolean
+            ebird_regional_top_confidence_delta:
+              type: number
+            ebird_regional_top_confidence_floor:
+              type: number
+            birdnet_mqtt_auto_confidence:
+              type: boolean
+            birdnet_mqtt_bias_delta:
+              type: number
+            birdnet_mqtt_bias_floor:
+              type: number
+            multi_camera_groups:
+              type: array
+              items:
+                type: array
+                items:
+                  type: string
+            multi_camera_confidence_boost:
+              type: number
+            save_dataset_crops:
+              type: boolean
+            dataset_min_confidence:
+              type: number
+            classifier_fallback_bird:
+              type: boolean
             spectrogram_px_per_sec:
               type: integer
             generate_spectrogram_always:
@@ -4633,7 +4704,97 @@ components:
               type: array
               items:
                 type: string
+            adaptive_profiles:
+              type: object
+              additionalProperties: true
+            frame_processing_warn_ms:
+              type: number
+            inference_lores_px:
+              type: integer
+            binary_imgsz:
+              type: integer
+            classification_scheduler:
+              type: string
+            max_classifications_per_frame:
+              type: integer
+            max_blur_checks:
+              type: integer
+            blur_threshold:
+              type: number
+            min_center_dist:
+              type: number
+            regional_species:
+              type: array
+              items:
+                type: string
+            generic_bird_min_detector_conf:
+              type: number
+            generic_bird_min_frames:
+              type: integer
+            generic_bird_min_area_frac:
+              type: number
+            generic_bird_min_best_frame_score:
+              type: number
+            key_frame_limit:
+              type: integer
+            keep_recording_when_no_detections:
+              type: boolean
+            detection_strategy:
+              type: string
+            models:
+              type: object
+              additionalProperties: true
             save_images:
+              type: boolean
+            single_stage_coco_animals_only_auto:
+              type: boolean
+            birdnet_mqtt_prior_window_hours:
+              type: number
+            birdnet_mqtt_bias_window_seconds:
+              type: number
+            birdnet_mqtt_prior_ttl_hours:
+              type: number
+            birdnet_mqtt_prior_half_life_hours:
+              type: number
+            birdnet_mqtt_prior_min_confidence:
+              type: number
+            birdnet_mqtt_observability_level:
+              type: string
+            birdnet_mqtt_observability_debug:
+              type: boolean
+            birdnet_fifo_snapshot_enabled:
+              type: boolean
+            birdnet_fifo_snapshot_interval_sec:
+              type: integer
+            birdnet_fifo_snapshot_recent_limit:
+              type: integer
+            birdnet_fifo_snapshot_stale_sec:
+              type: integer
+            birdnet_fifo_hearing_active_hours:
+              type: integer
+            birdnet_fifo_persist_enabled:
+              type: boolean
+            birdnet_fifo_sqlite_busy_ms:
+              type: integer
+            track_regen_frame_step:
+              type: integer
+            track_regen_detection_strategy:
+              type: string
+            track_regen_lores_px:
+              type: integer
+            track_regen_video_timeout_sec:
+              type: number
+            track_regen_precise_timeout_sec:
+              type: number
+            track_regen_precise_detection_strategy:
+              type: string
+            track_regen_precise_min_center_dist:
+              type: number
+            track_regen_ignore_regional_species:
+              type: boolean
+            track_regen_match_live_pipeline:
+              type: boolean
+            track_regen_parallel_auto_with_manual:
               type: boolean
         secrets:
           type: object

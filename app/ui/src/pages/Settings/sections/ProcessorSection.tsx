@@ -15,6 +15,11 @@ import { ProcessorFalsePositiveGuardrailsBlock } from './processor/ProcessorFals
 import { ProcessorLightGateBlock } from './processor/ProcessorLightGateBlock';
 import { ProcessorSpectrogramDatasetBlock } from './processor/ProcessorSpectrogramDatasetBlock';
 import { ProcessorFrigateFusionBlock } from './processor/ProcessorFrigateFusionBlock';
+import { ProcessorAdaptiveProfilesBlock } from './processor/ProcessorAdaptiveProfilesBlock';
+import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPipelineBlock';
+import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExtendedBlock';
+import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
+import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -51,11 +56,16 @@ export function ProcessorSection({ form }: Props) {
 
           <ProcessorConfidenceBlock form={form} />
           <ProcessorSessionTimingBlock form={form} />
+          <ProcessorAdaptiveProfilesBlock form={form} />
+          <ProcessorDetectorPipelineBlock form={form} />
           <ProcessorMultiCameraBirdnetBlock form={form} />
+          <ProcessorBirdnetExtendedBlock form={form} />
           <ProcessorConfidenceAdvancedBlock form={form} />
           <ProcessorFalsePositiveGuardrailsBlock form={form} />
           <ProcessorLightGateBlock form={form} />
           <ProcessorSpectrogramDatasetBlock form={form} />
+          <ProcessorModelsScopeBlock form={form} />
+          <ProcessorTrackRegenBlock form={form} />
           <ProcessorFrigateFusionBlock form={form} />
         </Box>
       </AccordionDetails>

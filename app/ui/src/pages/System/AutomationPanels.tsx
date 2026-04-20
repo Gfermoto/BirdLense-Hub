@@ -23,6 +23,7 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
   type BirdnetFifoDialogSnapshot,
@@ -35,10 +36,13 @@ import {
   fetchBirdnetFifoSnapshot,
   fetchFusionEvalStatus,
   fetchFusionExportStatus,
+  getApiErrorMessage,
   materializeSpeciesAllowlist,
   mergeDuplicateSpecies,
   previewBrokenVideosPurge,
   previewNoSpeciesVideosPurge,
+  PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH,
+  PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH,
   purgeBrokenVideosBatch,
   purgeNoSpeciesVideosBatch,
   reconcileSpeciesCatalog,
@@ -73,6 +77,121 @@ type ActionDef = {
   color?: 'warning' | 'error';
 };
 
+function formatByReasonBlock(raw: unknown): string {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '';
+  const o = raw as Record<string, unknown>;
+  const lines = Object.entries(o).map(([k, v]) => `  • ${k}: ${String(v)}`);
+  return lines.join('\n');
+}
+
+/** Человекочитаемый вывод для превью/партий purge и аккуратный JSON для остального. */
+function formatActionRunnerPayload(
+  actionLabel: string,
+  data: Record<string, unknown>,
+  t: TFunction,
+): string {
+  const dry = data.dry_run === true;
+  const phrase =
+    typeof data.confirmation_phrase === 'string' ? data.confirmation_phrase : '';
+
+  if (dry && phrase && 'broken_total' in data) {
+    const scanned = Number(data.scanned) || 0;
+    const broken = Number(data.broken_total) || 0;
+    const samples = Array.isArray(data.sample_video_ids)
+      ? (data.sample_video_ids as unknown[])
+          .filter((x): x is number => typeof x === 'number')
+          .slice(0, 16)
+      : [];
+    const byReason = formatByReasonBlock(data.by_reason);
+    const note = typeof data.note === 'string' ? data.note.trim() : '';
+    const parts = [
+      t('system.automationFmtPurgeDryRunTitle', { label: actionLabel }),
+      '',
+      t('system.automationFmtBrokenSummary', { scanned, broken }),
+    ];
+    if (samples.length) {
+      parts.push(t('system.automationFmtSampleIds', { ids: samples.join(', ') }));
+    }
+    if (byReason) {
+      parts.push('', t('system.automationFmtByReasonHeader'), byReason);
+    }
+    if (note) {
+      parts.push('', t('system.automationFmtServerNote', { note }));
+    }
+    parts.push('', t('system.automationFmtConfirmPhrase', { phrase }));
+    return parts.join('\n');
+  }
+
+  if (dry && phrase && 'without_species_total' in data) {
+    const total = Number(data.without_species_total) || 0;
+    const samples = Array.isArray(data.sample_video_ids)
+      ? (data.sample_video_ids as unknown[])
+          .filter((x): x is number => typeof x === 'number')
+          .slice(0, 16)
+      : [];
+    const note = typeof data.note === 'string' ? data.note.trim() : '';
+    const parts = [
+      t('system.automationFmtPurgeDryRunTitle', { label: actionLabel }),
+      '',
+      t('system.automationFmtNoSpeciesSummary', { total }),
+    ];
+    if (samples.length) {
+      parts.push(t('system.automationFmtSampleIds', { ids: samples.join(', ') }));
+    }
+    if (note) {
+      parts.push('', t('system.automationFmtServerNote', { note }));
+    }
+    parts.push('', t('system.automationFmtConfirmPhrase', { phrase }));
+    return parts.join('\n');
+  }
+
+  if (typeof data.deletedCount === 'number' && data.dry_run !== true) {
+    const deleted = data.deletedCount;
+    const msg = typeof data.message === 'string' ? data.message.trim() : '';
+    const more = data.more_batches_suggested === true;
+    const parts = [
+      t('system.automationFmtPurgeBatchTitle', { label: actionLabel }),
+      t('system.automationFmtDeleted', { n: deleted }),
+    ];
+    if (msg) parts.push(msg);
+    if (more) parts.push('', t('system.automationFmtMoreBatchesHint'));
+    return parts.join('\n');
+  }
+
+  return `${actionLabel}\n\n${JSON.stringify(data, null, 2)}`;
+}
+
+function ActionRunnerInfoAlert({
+  text,
+  onClose,
+}: {
+  text: string;
+  onClose: () => void;
+}) {
+  return (
+    <Alert
+      severity="info"
+      onClose={onClose}
+      sx={{
+        minWidth: 0,
+        '& .MuiAlert-message': { minWidth: 0, width: '100%', overflow: 'hidden' },
+      }}
+    >
+      <Typography
+        variant="body2"
+        component="div"
+        sx={{
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {text}
+      </Typography>
+    </Alert>
+  );
+}
+
 function ActionButton({
   action,
   busy,
@@ -100,23 +219,23 @@ function ActionButton({
   );
 }
 
-function useActionRunner() {
+function useActionRunner(t: TFunction) {
   const [runningLabel, setRunningLabel] = useState<string | null>(null);
   const [lastInfo, setLastInfo] = useState<string | null>(null);
 
   const runAction = async (action: ActionDef) => {
     try {
       setRunningLabel(action.label);
-      setLastInfo(`${action.label}: ...`);
+      setLastInfo(`${action.label}\n…`);
       const data = await action.onRun();
       if (data === null) {
         setLastInfo(null);
         return;
       }
-      setLastInfo(`${action.label}: ${JSON.stringify(data)}`);
+      setLastInfo(formatActionRunnerPayload(action.label, data, t));
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setLastInfo(`${action.label}: ${message}`);
+      const message = getApiErrorMessage(error, 'Request failed');
+      setLastInfo(`${action.label}\n\n${message}`);
     } finally {
       setRunningLabel((current) => (current === action.label ? null : current));
     }
@@ -558,7 +677,7 @@ export function AutomationDiagnosticsCard() {
 
 export function AutomationMaintenanceCard() {
   const { t } = useTranslation();
-  const { runningLabel, lastInfo, clearInfo, runAction } = useActionRunner();
+  const { runningLabel, lastInfo, clearInfo, runAction } = useActionRunner(t);
   const actions = useMemo<ActionDef[]>(
     () => [
       {
@@ -610,11 +729,7 @@ export function AutomationMaintenanceCard() {
     >
       <Stack spacing={2}>
         {runningLabel ? <LinearProgress /> : null}
-        {lastInfo ? (
-          <Alert severity="info" onClose={clearInfo}>
-            {lastInfo}
-          </Alert>
-        ) : null}
+        {lastInfo ? <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} /> : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {actions.map((action) => (
             <ActionButton
@@ -632,7 +747,7 @@ export function AutomationMaintenanceCard() {
 
 export function AutomationDangerZoneCard() {
   const { t } = useTranslation();
-  const { runningLabel, lastInfo, clearInfo, runAction } = useActionRunner();
+  const { runningLabel, lastInfo, clearInfo, runAction } = useActionRunner(t);
   const actions = useMemo<ActionDef[]>(
     () => [
       {
@@ -643,11 +758,15 @@ export function AutomationDangerZoneCard() {
       },
       {
         label: t('system.automationBrokenVideosPurgeBatch'),
-        hint: t('system.automationBrokenVideosPurgeBatchHint'),
+        hint: t('system.automationBrokenVideosPurgeBatchHint', {
+          phrase: PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH,
+        }),
         onRun: () => {
           const phrase = window.prompt(
-            t('system.automationBrokenVideosPurgePrompt'),
-            '',
+            t('system.automationBrokenVideosPurgePrompt', {
+              phrase: PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH,
+            }),
+            PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH,
           );
           if (phrase === null || !phrase.trim()) return Promise.resolve(null);
           return purgeBrokenVideosBatch(phrase.trim());
@@ -662,11 +781,15 @@ export function AutomationDangerZoneCard() {
       },
       {
         label: t('system.automationNoSpeciesVideosPurgeBatch'),
-        hint: t('system.automationNoSpeciesVideosPurgeBatchHint'),
+        hint: t('system.automationNoSpeciesVideosPurgeBatchHint', {
+          phrase: PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH,
+        }),
         onRun: () => {
           const phrase = window.prompt(
-            t('system.automationNoSpeciesVideosPurgePrompt'),
-            '',
+            t('system.automationNoSpeciesVideosPurgePrompt', {
+              phrase: PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH,
+            }),
+            PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH,
           );
           if (phrase === null || !phrase.trim()) return Promise.resolve(null);
           return purgeNoSpeciesVideosBatch(phrase.trim());
@@ -688,11 +811,7 @@ export function AutomationDangerZoneCard() {
       <Stack spacing={2}>
         <Alert severity="warning">{t('system.automationDangerNote')}</Alert>
         {runningLabel ? <LinearProgress /> : null}
-        {lastInfo ? (
-          <Alert severity="info" onClose={clearInfo}>
-            {lastInfo}
-          </Alert>
-        ) : null}
+        {lastInfo ? <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} /> : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {actions.map((action) => (
             <ActionButton
