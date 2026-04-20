@@ -68,6 +68,20 @@ def _safe_float(value, default: float) -> float:
         return default
 
 
+def _bool_config(value, *, default: bool) -> bool:
+    """YAML/формы могут отдать строку; для frigate_standalone важно не считать bool(\"false\") == True."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    if s in ("false", "0", "no", "off", ""):
+        return False
+    if s in ("true", "1", "yes", "on"):
+        return True
+    return default
+
+
 def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
     """Возвращает (recall_tuning, recall_hints, recall_blocking).
 
@@ -118,6 +132,12 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         blocking.append(
             "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
+    frigate_standalone = _bool_config(
+        app_config_get("detection.frigate_standalone_when_no_yolo"),
+        default=True,
+    )
+    if "frigate" in active_triggers and mqtt_broker and not frigate_standalone:
+        hints.append("fusion.FRIGATE_STANDALONE_OFF")
     if check_every_n_frames > 1:
         hints.append(
             f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "

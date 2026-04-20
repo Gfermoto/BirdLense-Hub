@@ -425,6 +425,46 @@ def test_build_system_config_audit_payload_processor_runtime_hints(
     assert any("DETECT_P95" in h and "480.0" in h for h in hints)
 
 
+def test_recall_frigate_standalone_false_emits_fusion_hint(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+    import data_paths
+
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
+
+    user = tmp_path / "user.yaml"
+    user.write_text("x: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("x: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        m = {
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "frigate",
+            "mqtt.broker": "mqtt://localhost",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "detection.frigate_standalone_when_no_yolo": False,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return m.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    assert "fusion.FRIGATE_STANDALONE_OFF" in payload["recall_warnings"]
+    assert payload.get("processor_runtime_hints") == []
+
+
 def test_recall_frigate_blocking_goes_to_config_warnings_not_recall_hints(monkeypatch, tmp_path):
     from services import system_config_audit_service as scas
 

@@ -36,5 +36,8 @@ export function localizedConfigAuditWarning(w: string, t: TFunction): string {
       warnMs: p95[2],
     });
   }
+  if (w === 'fusion.FRIGATE_STANDALONE_OFF') {
+    return t('system.configAuditFrigateStandaloneOff');
+  }
   return w;
 }
