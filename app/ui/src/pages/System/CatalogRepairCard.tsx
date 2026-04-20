@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -24,6 +24,8 @@ export function CatalogRepairCard() {
     staleTime: 5_000,
     refetchInterval: (q) =>
       q.state.data?.status === 'running' ? 4_000 : 20_000,
+    // Иначе во вкладке в фоне таймер «следующий прогон» замирает на десятки минут.
+    refetchIntervalInBackground: true,
   });
 
   const startMutation = useMutation({
@@ -39,12 +41,33 @@ export function CatalogRepairCard() {
     },
   });
 
+  const scheduleNextSec = data?.schedule?.next_run_in_sec;
+  const [nextRunAnchorMs, setNextRunAnchorMs] = useState(() => Date.now());
+  const [nextRunAnchorSec, setNextRunAnchorSec] = useState(0);
+  useLayoutEffect(() => {
+    if (scheduleNextSec == null) return;
+    setNextRunAnchorMs(Date.now());
+    setNextRunAnchorSec(Math.max(0, scheduleNextSec));
+  }, [scheduleNextSec]);
+
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!data?.schedule?.autorun_enabled || scheduleNextSec == null) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [data?.schedule?.autorun_enabled, scheduleNextSec]);
+
   if (isLoading) return <LinearProgress />;
   if (error || !data)
     return (
       <Alert severity="warning">{t('system.catalogRepairLoadError')}</Alert>
     );
 
+  const liveNextSec = Math.max(
+    0,
+    nextRunAnchorSec - Math.floor((Date.now() - nextRunAnchorMs) / 1000),
+  );
+  const nextRunMin = Math.ceil(liveNextSec / 60);
   const running = data.status === 'running';
   const cov = data.coverage_now ?? {
     completion_percent: 0,
@@ -55,8 +78,6 @@ export function CatalogRepairCard() {
     with_image: 0,
     with_description: 0,
   };
-  const nextRunSec = Math.max(0, data.schedule?.next_run_in_sec ?? 0);
-  const nextRunMin = Math.ceil(nextRunSec / 60);
   const hasIssue = Boolean(
     actionError || data.error || data.status === 'error',
   );
@@ -143,15 +164,24 @@ export function CatalogRepairCard() {
           </Alert>
         )}
         {data.result && (
-          <Typography variant="body2" color="text.secondary">
-            {t('system.catalogRepairLastRun', {
-              checked: data.result.checked,
-              fixed: data.result.metadata_fixed,
-              swapped: data.result.images_replaced_from_inat,
-              science: data.result.images_realigned_allowlist_science ?? 0,
-              missing: data.result.still_missing,
-            })}
-          </Typography>
+          <>
+            <Typography variant="body2" color="text.secondary">
+              {t('system.catalogRepairLastRun', {
+                checked: data.result.checked,
+                fixed: data.result.metadata_fixed,
+                swapped: data.result.images_replaced_from_inat,
+                science: data.result.images_realigned_allowlist_science ?? 0,
+                missing: data.result.still_missing,
+              })}
+            </Typography>
+            {Boolean(data.result.enrich_exceptions) ? (
+              <Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
+                {t('system.catalogRepairEnrichErrors', {
+                  n: data.result.enrich_exceptions,
+                })}
+              </Typography>
+            ) : null}
+          </>
         )}
       </Box>
     </SystemCardShell>

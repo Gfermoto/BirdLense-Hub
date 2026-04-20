@@ -305,6 +305,7 @@ export function Navigation() {
                         handleProtectedNav('/settings', e, 'admin')
                       }
                       selected={currentPath === '/settings'}
+                      title={t('nav.settingsHint')}
                     >
                       <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
                       {t('nav.settings')}
@@ -314,6 +315,7 @@ export function Navigation() {
                     <MenuItem
                       onClick={(e) => handleProtectedNav('/system', e, 'admin')}
                       selected={currentPath === '/system'}
+                      title={t('nav.systemHint')}
                     >
                       {t('nav.system')}
                     </MenuItem>
@@ -324,6 +326,7 @@ export function Navigation() {
                         handleProtectedNav('/library', e, 'admin')
                       }
                       selected={currentPath === '/library'}
+                      title={t('nav.libraryHint')}
                     >
                       {t('nav.library')}
                     </MenuItem>
@@ -558,6 +561,7 @@ export function Navigation() {
                     to="/settings"
                     onClick={handleSettingsMenuClose}
                     selected={currentPath === '/settings'}
+                    title={t('nav.settingsHint')}
                   >
                     {t('nav.settings')}
                   </MenuItem>
@@ -568,6 +572,7 @@ export function Navigation() {
                     to="/system"
                     onClick={handleSettingsMenuClose}
                     selected={currentPath === '/system'}
+                    title={t('nav.systemHint')}
                   >
                     {t('nav.system')}
                   </MenuItem>
@@ -578,6 +583,7 @@ export function Navigation() {
                     to="/library"
                     onClick={handleSettingsMenuClose}
                     selected={currentPath === '/library'}
+                    title={t('nav.libraryHint')}
                   >
                     {t('nav.library')}
                   </MenuItem>

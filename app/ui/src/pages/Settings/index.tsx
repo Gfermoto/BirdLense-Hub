@@ -90,7 +90,7 @@ export const Settings: React.FC = () => {
         >
           <PageHeader
             title={t('settings.updateTitle')}
-            description={t('settings.restartInfo')}
+            description={`${t('settings.pageDescription')} ${t('settings.restartInfo')}`}
             titleVariant="h3"
           />
           <Alert severity="success" sx={{ mb: 2 }}>

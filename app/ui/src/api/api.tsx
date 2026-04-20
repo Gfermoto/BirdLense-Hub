@@ -1341,6 +1341,8 @@ export interface CatalogRepairStatus {
     images_replaced_from_inat: number;
     images_realigned_allowlist_science?: number;
     still_missing: number;
+    /** Wikipedia/iNat enrich raised (see web logs). */
+    enrich_exceptions?: number;
     dry_run: boolean;
     auto?: boolean;
     coverage_after?: CatalogCardsCoverageSnapshot;

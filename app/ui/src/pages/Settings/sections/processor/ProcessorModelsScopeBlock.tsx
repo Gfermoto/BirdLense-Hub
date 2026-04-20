@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Grid from '@mui/material/Grid2';
 import Switch from '@mui/material/Switch';
@@ -10,6 +10,8 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
+import MuiLink from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
 
@@ -25,6 +27,21 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('settings.processorModelsScopeDesc')}
       </Typography>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="body2" component="div">
+          <Trans
+            i18nKey="settings.processorModelsWorkspaceLink"
+            components={{
+              syslink: (
+                <MuiLink
+                  component={RouterLink}
+                  to="/system#processor-weights"
+                />
+              ),
+            }}
+          />
+        </Typography>
+      </Alert>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.detection_strategy">
