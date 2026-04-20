@@ -1427,7 +1427,7 @@
     "configAuditTitle": "Configuration audit",
     "configAuditHint": "Quick review without SSH: proxy, mapping, MQTT scales, blocking vs recall hints, deprecated keys, processor runtime snapshot when present.",
     "configAuditRuntimeTitle": "Processor runtime (diagnostics)",
-    "configAuditRuntimeHint": "From data/diagnostics/processor_runtime_stats.json — aligns with VPS logs (e.g. \"Slow frame processing\").",
+    "configAuditRuntimeHint": "From data/diagnostics/processor_runtime_stats.json — same counters as VPS logs (e.g. \"Slow frame processing\"). Bullets below split log noise vs real latency.",
     "configAuditRuntimeSlowFrames": "Slow-frame events in snapshot: {{total}} (warn threshold {{warnMs}} ms). Log spam only — raise processor.frame_processing_warn_ms. Real latency — lower processor.binary_imgsz (faster, may hurt recall of small birds) or relax the light gate.",
     "configAuditRuntimeDetectP95": "Detector p95 latency ≈ {{p95}} ms vs warn threshold {{warnMs}} ms — frames often exceed the slow-frame threshold.",
     "configAuditFrigateStandaloneOff": "Frigate is on and MQTT works, but detection.frigate_standalone_when_no_yolo=false: when YOLO returns zero tracks, Frigate MQTT events do not become final detections (log: \"ByteTrack: 0 YOLO tracks…\"). Enable it under Settings → Processor → Frigate fusion, or tune YOLO/light gate.",

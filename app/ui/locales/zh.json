@@ -1390,7 +1390,7 @@
     "configAuditTitle": "配置审核",
     "configAuditHint": "无需 SSH：代理、映射、MQTT 秤、需处理项与 recall 提示、已弃用键；若有文件则含处理器 runtime 快照。",
     "configAuditRuntimeTitle": "处理器 runtime（诊断）",
-    "configAuditRuntimeHint": "来自 data/diagnostics/processor_runtime_stats.json，与 VPS 日志（如 Slow frame processing）一致。",
+    "configAuditRuntimeHint": "来自 data/diagnostics/processor_runtime_stats.json，与 VPS 日志（如 Slow frame processing）一致。下列条目区分「仅日志刷屏」与「真实延迟」。",
     "configAuditRuntimeSlowFrames": "快照中慢帧：{{total}} 次（阈值 {{warnMs}} ms）。仅日志刷屏 — 提高 processor.frame_processing_warn_ms。确有延迟 — 降低 processor.binary_imgsz（更快，可能影响小鸟召回）或放宽 light gate。",
     "configAuditRuntimeDetectP95": "检测延迟 p95 ≈ {{p95}} ms，对比告警阈值 {{warnMs}} ms — 帧经常超过慢帧阈值。",
     "configAuditFrigateStandaloneOff": "Frigate 已开且 MQTT 可用，但 detection.frigate_standalone_when_no_yolo=false：YOLO 零轨迹时 Frigate MQTT 不会成为最终检测（日志 «ByteTrack: 0 YOLO tracks…»）。在设置 → 处理器 → Frigate fusion 中开启，或调整 YOLO/light gate。",
