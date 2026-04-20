@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Собрать baseline-метрики качества детекции/распознавания из БД Hub."""
+"""Собрать baseline-метрики качества детекции/распознавания из БД Hub.
+
+Запуск «офлайн» от публичного UI: интернет не нужен. Нужен доступ к той же SQLite (или
+DATABASE_URL), что использует Hub: локальный каталог app/data/db или копия БД + DATA_DIR.
+
+Типичный цикл: периодически (например, раз в неделю) сохранять вывод в файл и сравнивать
+с прошлым прогоном; метрики завязаны на decision_trace и Video/VideoSpecies — см. docs/ML_QUALITY_LOOP.ru.md
+и scripts/run-detection-quality-baseline.sh.
+"""
 
 from __future__ import annotations
 

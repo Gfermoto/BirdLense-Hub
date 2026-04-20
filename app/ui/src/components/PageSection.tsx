@@ -40,7 +40,7 @@ export function PageSection({
         </Box>
         {actions ? <Box>{actions}</Box> : null}
       </Stack>
-      <Box display="grid" gap={2}>
+      <Box display="grid" gap={2} sx={{ minWidth: 0, maxWidth: '100%' }}>
         {children}
       </Box>
     </Stack>

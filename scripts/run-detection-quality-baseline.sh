@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Baseline качества детекции по живой БД Hub (SQLite в DATA_DIR/db или DATABASE_URL).
-# Запускать из корня клона репозитория (каталог app/ рядом с scripts/).
+# Baseline качества детекции по БД Hub (SQLite в DATA_DIR/db или DATABASE_URL).
+# Запускать из корня клона (рядом каталог app/). Сеть к birdlense.eyera.info не нужна —
+# поднимается локальный Flask create_app() и читается БД с диска.
+# Дальше: сохранить JSON в артефакт и сравнивать окна (см. docs/ML_QUALITY_LOOP.ru.md).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

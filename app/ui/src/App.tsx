@@ -223,7 +223,7 @@ function App() {
                 tabIndex={-1}
                 sx={{ flexGrow: 1, pb: 4, outline: 'none' }}
               >
-                <Container maxWidth="xl">
+                <Container maxWidth="xl" sx={{ minWidth: 0 }}>
                   <Suspense
                     fallback={
                       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
