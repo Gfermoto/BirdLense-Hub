@@ -174,7 +174,7 @@ export function CatalogRepairCard() {
                 missing: data.result.still_missing,
               })}
             </Typography>
-            {Boolean(data.result.enrich_exceptions) ? (
+            {data.result.enrich_exceptions ? (
               <Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
                 {t('system.catalogRepairEnrichErrors', {
                   n: data.result.enrich_exceptions,

@@ -425,7 +425,8 @@ def notify(
 
         icon = (
             "chipmunk"
-            if tags and any(
+            if tags
+            and any(
                 s in (tags or "").lower()
                 for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка")
             )

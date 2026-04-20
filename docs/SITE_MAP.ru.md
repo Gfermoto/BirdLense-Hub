@@ -28,6 +28,7 @@
 | Возможности | [FEATURES.ru.md](./FEATURES.ru.md) |
 | Доменный контракт | [DOMAIN_CONTRACT.ru.md](./DOMAIN_CONTRACT.ru.md) · [EN](./DOMAIN_CONTRACT.md) |
 | Готовность к релизу | [RELEASE_READINESS.ru.md](./RELEASE_READINESS.ru.md) · [EN](./RELEASE_READINESS.md) |
+| Definition of Done (ворота релиза) | [DEFINITION_OF_DONE.ru.md](./DEFINITION_OF_DONE.ru.md) · [EN](./DEFINITION_OF_DONE.md) |
 | Проблемы | [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md) |
 | Runbooks | [RUNBOOKS.ru.md](./RUNBOOKS.ru.md) · [EN](./RUNBOOKS.md) |
 | Восстановление конфига | [RECOVERY_CONFIG.ru.md](./RECOVERY_CONFIG.ru.md) |

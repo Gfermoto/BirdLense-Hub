@@ -160,13 +160,9 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
     if binary_imgsz < 640:
         hints.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
     if min_center_dist > 0.05:
-        hints.append(
-            f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge."
-        )
+        hints.append(f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge.")
     if min_box_size_px > 64:
-        hints.append(
-            f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes."
-        )
+        hints.append(f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes.")
 
     return (
         {
@@ -327,9 +323,7 @@ def _processor_runtime_hints(app_config_get) -> list[str]:
     except (TypeError, ValueError):
         p95 = None
     if warn_ms > 0 and p95 is not None and p95 >= warn_ms * 0.95:
-        hints.append(
-            f"processor.runtime.DETECT_P95 p95_ms={p95:.1f} warn_ms={int(warn_ms)}"
-        )
+        hints.append(f"processor.runtime.DETECT_P95 p95_ms={p95:.1f} warn_ms={int(warn_ms)}")
     return hints
 
 

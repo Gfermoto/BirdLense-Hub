@@ -120,6 +120,8 @@ UI: http://localhost:8085
 | `make verify` | Проверка `health` + `readiness` + `status` на `BASE_URL` или localhost |
 | `make ci-local` | `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, полный `pytest web/tests/`, версии доков, UI (codegen + Vitest + typecheck + lint + build), покрытие Settings UI, MkDocs strict (см. [docs/CI_AND_QUALITY.ru.md](./docs/CI_AND_QUALITY.ru.md)) |
 | `make ci-local-docker` | То же, плюс тесты в Docker-образе и Playwright smoke (тяжело; нужны веса processor) |
+
+**Ворота релиза (коротко):** [Definition of Done](./docs/DEFINITION_OF_DONE.ru.md) · [EN](./docs/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [RELEASE_READINESS](./docs/RELEASE_READINESS.ru.md).
 | `make build` | Сборка образа |
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |

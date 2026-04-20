@@ -50,6 +50,18 @@ ssh YOUR_SSH_HOST "tail -100 YOUR_REMOTE_DIR/app/data/processor.log"
 
 3. Verify `PROCESSOR_SECRET` is a real value in `app/.env`, not a literal placeholder.
 
+## Slow frame processing in logs (`Slow frame processing: … ms >= … ms`)
+
+Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking longer than `processor.frame_processing_warn_ms` (default **450** ms). High-resolution video + VA-API still has a hard latency budget.
+
+1. **System → Configuration audit** — check **Processor runtime (diagnostics)** for `slow_frame_processor_detect_total` and detect **p95** vs your warn threshold (driven by `data/diagnostics/processor_runtime_stats.json`).
+2. **Settings → Processor → Models & scope** — reduce **`processor.binary_imgsz`** (try **640**, then **512**) so the binary pass is cheaper; re-save settings and watch logs.
+3. If logs are **noisy but UX is fine**, raise **`processor.frame_processing_warn_ms`** (this does **not** speed up inference; it only reduces warning spam).
+4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
+5. **GPU / VA-API on the VPS** — confirm the container actually uses the expected path: `docker logs birdlense` for VA-API / FFmpeg lines; on the host, `intel_gpu_top` / `vainfo` where applicable. If GPU is missing, you are on CPU-only inference — expect slow frames at high resolution.
+
+Related: [CONFIGURATION](./CONFIGURATION.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](./RELEASE_READINESS.md). Release gate: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md).
+
 ## Install or deploy verification fails on readiness
 
 Readiness currently checks:

@@ -374,9 +374,7 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["config_warnings"] == []
 
 
-def test_build_system_config_audit_payload_processor_runtime_hints(
-    monkeypatch, tmp_path
-):
+def test_build_system_config_audit_payload_processor_runtime_hints(monkeypatch, tmp_path):
     from services import system_config_audit_service as scas
     import data_paths
 
@@ -384,8 +382,7 @@ def test_build_system_config_audit_payload_processor_runtime_hints(
     diag.mkdir(parents=True)
     stats = diag / "processor_runtime_stats.json"
     stats.write_text(
-        '{"counters": {"slow_frame_processor_detect_total": 3}, '
-        '"latency_ms": {"frame_processor_detect_p95": 480.0}}',
+        '{"counters": {"slow_frame_processor_detect_total": 3}, "latency_ms": {"frame_processor_detect_p95": 480.0}}',
         encoding="utf-8",
     )
     monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
