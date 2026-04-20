@@ -281,3 +281,39 @@ def test_catalog_cards_coverage_counts_per_allowlist_line(app, monkeypatch):
         assert snap["with_description"] == 2
         assert snap["complete_cards"] == 2
         assert snap["completion_percent"] == round((2.0 / 3.0) * 100.0, 2)
+
+
+def test_update_species_info_from_wiki_whitespace_image_counts_as_empty(
+    app,
+    monkeypatch,
+):
+    """Полировка считает image_url из пробелов пустым; enrich не должен выходить раньше времени."""
+    import species_metadata as sm
+
+    with app.app_context():
+        sp = Species(
+            name="Whitespace Image Finch",
+            description="",
+            image_url=" \t  ",
+            metadata_source=None,
+            metadata_source_url=None,
+        )
+        db.session.add(sp)
+        db.session.commit()
+
+        def fake_wiki(title, *, use_cache=True):
+            return ("https://example.com/w.jpg", "Real description for finch.")
+
+        monkeypatch.setattr(sm, "get_wikipedia_image_and_description", fake_wiki)
+        monkeypatch.setattr(
+            sm,
+            "get_inaturalist_image_and_description",
+            lambda title: (None, None, None),
+        )
+
+        ok = sm.update_species_info_from_wiki(sp)
+        db.session.commit()
+        db.session.refresh(sp)
+        assert ok is True
+        assert "example.com/w.jpg" in (sp.image_url or "")
+        assert "Real description" in (sp.description or "")
