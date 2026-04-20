@@ -420,6 +420,10 @@ export interface Settings {
     dedup_window_seconds?: number;
     one_per_species?: boolean;
     cross_source_confidence_bonus?: number;
+    /** Доп. калибровка confidence после rule-based fusion (FusionScorer). */
+    use_learned_fusion?: boolean;
+    fusion_model_path?: string;
+    fusion_alpha?: number;
     absorb_generic_bird?: boolean;
     absorb_generic_bird_overlap_min_sec?: number;
     absorb_generic_bird_min_classifier_confidence?: number;
