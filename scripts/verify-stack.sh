@@ -8,6 +8,7 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-15}"
 CHECK_CAMERAS="${CHECK_CAMERAS:-0}"
 CHECK_DOMAIN_HEALTH="${CHECK_DOMAIN_HEALTH:-0}"
 UI_API_KEY="${BIRDLENSE_UI_API_KEY:-${UI_API_KEY:-}}"
+MCP_TOKEN="${MCP_TOKEN:-}"
 
 usage() {
   cat <<'EOF'
@@ -21,8 +22,9 @@ Verifies the shared install/deploy contract:
 Optional:
   --check-cameras   Also fetch /api/ui/cameras and print a short preview.
   --check-domain-health   Also require domain-health, species-registry health, and config-audit.
-                            On strict hubs set BIRDLENSE_UI_API_KEY (or UI_API_KEY) so curl can
-                            send X-Birdlense-Api-Key; otherwise those endpoints may 403.
+                            On strict hubs set BIRDLENSE_UI_API_KEY (or UI_API_KEY) for
+                            X-Birdlense-Api-Key, or MCP_TOKEN for Authorization: Bearer (same as MCP);
+                            otherwise those endpoints may 403.
 EOF
 }
 
@@ -87,6 +89,8 @@ fetch_with_retries_auth() {
   local curl_args=()
   if [[ -n "${UI_API_KEY}" ]]; then
     curl_args=(-H "X-Birdlense-Api-Key: ${UI_API_KEY}")
+  elif [[ -n "${MCP_TOKEN}" ]]; then
+    curl_args=(-H "Authorization: Bearer ${MCP_TOKEN}")
   fi
   for attempt in $(seq 1 "${ATTEMPTS}"); do
     if body="$(curl -sS -L --max-time "${TIMEOUT_SEC}" "${curl_args[@]}" "${BASE_URL}${path}")"; then
@@ -142,6 +146,13 @@ if [[ "${CHECK_CAMERAS}" == "1" ]]; then
 fi
 
 if [[ "${CHECK_DOMAIN_HEALTH}" == "1" ]]; then
+  if [[ -n "${UI_API_KEY}" ]]; then
+    echo "verify-stack: domain-health auth=BIRDLENSE_UI_API_KEY (X-Birdlense-Api-Key)"
+  elif [[ -n "${MCP_TOKEN}" ]]; then
+    echo "verify-stack: domain-health auth=MCP_TOKEN (Authorization: Bearer)"
+  else
+    echo "verify-stack: WARN --check-domain-health without BIRDLENSE_UI_API_KEY or MCP_TOKEN (may 403)" >&2
+  fi
   domain_body="$(fetch_with_retries_auth '/api/ui/system/domain-health')" || {
     echo "domain-health: FAIL (${BASE_URL}/api/ui/system/domain-health unreachable)" >&2
     exit 1
@@ -156,8 +167,9 @@ if [[ "${CHECK_DOMAIN_HEALTH}" == "1" ]]; then
     echo "species-registry-health: FAIL (${BASE_URL}/api/ui/system/species-registry/health unreachable)" >&2
     exit 1
   }
-  if ! printf '%s' "${registry_body}" | normalize_json | grep -q '"ok":true'; then
-    echo "species-registry-health: FAIL ${registry_body}" >&2
+  # Health payload is metrics-only (no top-level ok); require core counters.
+  if ! printf '%s' "${registry_body}" | normalize_json | grep -q '"species_total"'; then
+    echo "species-registry-health: FAIL (missing species_total) ${registry_body}" >&2
     exit 1
   fi
   if printf '%s' "${registry_body}" | normalize_json | grep -q '"drift_scan_complete":false'; then
@@ -170,8 +182,8 @@ if [[ "${CHECK_DOMAIN_HEALTH}" == "1" ]]; then
     echo "config-audit: FAIL (${BASE_URL}/api/ui/system/config-audit unreachable)" >&2
     exit 1
   }
-  if ! printf '%s' "${config_body}" | normalize_json | grep -q '"status"'; then
-    echo "config-audit: FAIL ${config_body}" >&2
+  if ! printf '%s' "${config_body}" | normalize_json | grep -q '"config_warnings"'; then
+    echo "config-audit: FAIL (missing config_warnings) ${config_body}" >&2
     exit 1
   fi
   echo "config-audit: OK $(printf '%s' "${config_body}" | head -c 220)..."
