@@ -20,6 +20,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { PasswordField } from '../../../components/PasswordField';
 import { ServiceBlock } from '../shared/ServiceBlock';
+import { SpeciesCatalogSettingsBlock } from './SpeciesCatalogSettingsBlock';
 import type { Settings } from '../../../types';
 import {
   fetchEbirdMappingSuggestions,
@@ -362,6 +363,8 @@ export function IntegrationsSection({ form }: Props) {
               </Grid>
             </Grid>
           </ServiceBlock>
+
+          <SpeciesCatalogSettingsBlock form={form} />
         </Box>
       </AccordionDetails>
     </Accordion>

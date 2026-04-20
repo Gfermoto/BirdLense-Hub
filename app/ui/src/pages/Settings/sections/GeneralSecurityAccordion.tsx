@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Accordion from '@mui/material/Accordion';
@@ -86,6 +88,32 @@ export function GeneralSecurityAccordion({ form }: Props) {
                     label={t('settings.sessionIdleMinutes')}
                     helperText={t('settings.sessionIdleMinutesHint')}
                   />
+                )}
+              </form.Field>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="general.require_auth_for_video_stream">
+                {(field) => (
+                  <>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={Boolean(field.state.value)}
+                          onChange={(e) =>
+                            field.handleChange(e.target.checked)
+                          }
+                        />
+                      }
+                      label={t('settings.requireAuthVideoStream')}
+                    />
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      display="block"
+                    >
+                      {t('settings.requireAuthVideoStreamHint')}
+                    </Typography>
+                  </>
                 )}
               </form.Field>
             </Grid>

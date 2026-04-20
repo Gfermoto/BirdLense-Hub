@@ -18,6 +18,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ServiceBlock } from '../shared/ServiceBlock';
+import { MotionLegacyMirrorBlock } from './MotionLegacyMirrorBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
 import type { Settings } from '../../../types';
@@ -438,6 +439,10 @@ export function CaptureFeederSection({ form }: Props) {
                     }
                   </form.Subscribe>
                 </ServiceBlock>
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <MotionLegacyMirrorBlock form={form} />
               </Grid>
 
               <Grid size={{ xs: 12 }}>

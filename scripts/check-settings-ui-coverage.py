@@ -182,6 +182,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "go2rtc vs file replay; toggled in Library (PATCH), not Settings form.",
         "next_step": "Single entry: Library → file replay.",
     },
+    "video.file_path": {
+        "category": "yaml-only",
+        "reason": "Absolute path to test mp4 is deployment-specific; not edited in Settings (Library / YAML).",
+        "next_step": "Keep out of Settings form.",
+    },
     "video.file_dir": {
         "category": "library-ui",
         "reason": "Test clip folder; edited in Library file replay card.",
@@ -217,6 +222,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Protocol is currently fixed in product flow.",
         "next_step": "Expose when multi-protocol export flow is finalized.",
     },
+    "species.catalog_allowlist_file": {
+        "category": "yaml-only",
+        "reason": "Path to classifier class list is deployment/repo layout; not configured in Settings.",
+        "next_step": "Keep in user_config.yaml or defaults.",
+    },
 }
 
 # Legacy terminal keys that are still config-level (not yet exposed in Settings UI).
@@ -226,55 +236,7 @@ AUTO_ALLOWLIST_META = {
     "reason": "Config-level key is intentionally not exposed in current Settings UI.",
     "next_step": "Expose in Settings UI or move to strict allowlist section with dedicated rationale.",
 }
-AUTO_ALLOWLIST_KEYS: set[str] = {
-    "general.require_auth_for_video_stream",
-    "integrations.scales.history_max_lines",
-    "integrations.scales.homeassistant_entity_id",
-    "integrations.scales.min_delta_kg_for_estimate",
-    "integrations.scales.mqtt_tare_payload",
-    "integrations.scales.unit",
-    "motion.check_every_n_frames",
-    "motion.esphome_sensor_id",
-    "motion.esphome_url",
-    "motion.frigate_min_trigger_score",
-    "motion.mqtt_topic",
-    "motion.opencv_diff_threshold",
-    "motion.opencv_min_contour_area",
-    "motion.source",
-    "processor.binary_imgsz",
-    "processor.birdnet_mqtt_bias_window_seconds",
-    "processor.birdnet_mqtt_prior_half_life_hours",
-    "processor.birdnet_mqtt_prior_min_confidence",
-    "processor.birdnet_mqtt_prior_ttl_hours",
-    "processor.birdnet_mqtt_prior_window_hours",
-    "processor.blur_threshold",
-    "processor.classification_scheduler",
-    "processor.frigate_activity_hold_seconds",
-    "processor.generic_bird_min_area_frac",
-    "processor.generic_bird_min_best_frame_score",
-    "processor.generic_bird_min_detector_conf",
-    "processor.generic_bird_min_frames",
-    "processor.inference_lores_px",
-    "processor.key_frame_limit",
-    "processor.max_blur_checks",
-    "processor.max_classifications_per_frame",
-    "processor.min_center_dist",
-    "processor.min_seconds_between_recordings",
-    "processor.track_regen_detection_strategy",
-    "processor.track_regen_frame_step",
-    "processor.track_regen_ignore_regional_species",
-    "processor.track_regen_lores_px",
-    "processor.track_regen_match_live_pipeline",
-    "processor.track_regen_precise_detection_strategy",
-    "processor.track_regen_precise_min_center_dist",
-    "processor.track_regen_precise_timeout_sec",
-    "processor.track_regen_video_timeout_sec",
-    "species.catalog_allowlist_file",
-    "species.catalog_strict_ingest",
-    "species.tuning_target_species_ids",
-    "video.file_path",
-    "video.file_realtime_simulation",
-}
+AUTO_ALLOWLIST_KEYS: set[str] = set()
 
 TERMINAL_MAP_KEYS = {
     # Mapping dictionaries are edited as one textarea in UI.

@@ -260,6 +260,44 @@ export function ConnectionsSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
+          <ServiceBlock title={t('settings.videoFileReplayTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.videoFileReplayDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="video.file_realtime_simulation">
+                  {(field) => (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(field.state.value)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
+                          />
+                        }
+                        label={t('settings.videoFileRealtimeSimulation')}
+                      />
+                      <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                        {t('settings.videoFileRealtimeSimulationHint')}
+                      </FormHelperText>
+                    </>
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Alert severity="info">
+                  {t('settings.videoFileReplayLibraryHint')}{' '}
+                  <RouterLink to="/library#file-replay">
+                    {t('settings.videoFileModeLibraryLink')}
+                  </RouterLink>
+                </Alert>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
           <ServiceBlock title={t('settings.serviceCameras')}>
             <Grid container spacing={2}>
               <form.Subscribe selector={(state) => state.values.video?.source}>

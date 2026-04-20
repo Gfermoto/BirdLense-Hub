@@ -143,6 +143,8 @@ export interface Settings {
   general: {
     enable_notifications: boolean;
     notification_excluded_species: string[];
+    /** Требовать сессию для прямого MJPEG/потока (см. конфиг). */
+    require_auth_for_video_stream?: boolean;
     settings_password?: string;
     contributor_password?: string;
     /** Minutes without /api/* before login session clears; 0 = off. Default 30. */
@@ -361,6 +363,11 @@ export interface Settings {
     protocol?: string;
     species_mapping?: Record<string, string>; // eBird name -> BirdLense name
   };
+  species?: {
+    catalog_allowlist_file?: string;
+    catalog_strict_ingest?: boolean;
+    tuning_target_species_ids?: number[];
+  };
   feed?: {
     source?: string;
     duration_seconds?: number;
@@ -372,6 +379,9 @@ export interface Settings {
   motion?: {
     source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
     check_every_n_frames?: number;
+    opencv_diff_threshold?: number;
+    opencv_min_contour_area?: number;
+    frigate_min_trigger_score?: number;
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
     frigate_label_exclude?: string[];
