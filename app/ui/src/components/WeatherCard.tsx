@@ -79,7 +79,15 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
   }
 
   return (
-    <Paper sx={{ padding: 1.5, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <Paper
+      sx={{
+        padding: 1.5,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}
+    >
       <Stack spacing={1} sx={{ flex: 1, minHeight: 0 }}>
         <Box>
           <Typography variant="h6">{t('weather.title')}</Typography>
@@ -106,21 +114,35 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
             label={weather.main}
             title={weather.description}
           />
-          <Chip icon={<CloudIcon sx={{ fontSize: 20 }} />} label={`${weather.clouds}%`} />
-          <Chip icon={<TempIcon sx={{ fontSize: 20 }} />} label={`${Math.round(weather.temp)}°C`} />
-          <Chip icon={<HumidityIcon sx={{ fontSize: 20 }} />} label={`${weather.humidity}%`} />
-          <Chip icon={<WindIcon sx={{ fontSize: 20 }} />} label={`${weather.wind_speed} m/s`} />
+          <Chip
+            icon={<CloudIcon sx={{ fontSize: 20 }} />}
+            label={`${weather.clouds}%`}
+          />
+          <Chip
+            icon={<TempIcon sx={{ fontSize: 20 }} />}
+            label={`${Math.round(weather.temp)}°C`}
+          />
+          <Chip
+            icon={<HumidityIcon sx={{ fontSize: 20 }} />}
+            label={`${weather.humidity}%`}
+          />
+          <Chip
+            icon={<WindIcon sx={{ fontSize: 20 }} />}
+            label={`${weather.wind_speed} m/s`}
+          />
         </Box>
         {sunTimes && (
           <Box sx={{ pt: 0.75, borderTop: 1, borderColor: 'divider' }}>
             <SunHorizon
-              sunTimes={{
-                dawn: sunTimes.dawn ?? '',
-                sunrise: sunTimes.sunrise ?? '',
-                noon: sunTimes.noon ?? '',
-                sunset: sunTimes.sunset ?? '',
-                dusk: sunTimes.dusk ?? '',
-              } satisfies SunTimes}
+              sunTimes={
+                {
+                  dawn: sunTimes.dawn ?? '',
+                  sunrise: sunTimes.sunrise ?? '',
+                  noon: sunTimes.noon ?? '',
+                  sunset: sunTimes.sunset ?? '',
+                  dusk: sunTimes.dusk ?? '',
+                } satisfies SunTimes
+              }
             />
           </Box>
         )}

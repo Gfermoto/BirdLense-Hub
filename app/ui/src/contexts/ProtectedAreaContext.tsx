@@ -37,10 +37,16 @@ export function ProtectedAreaProvider({
   children: React.ReactNode;
 }) {
   const [unlockedState, setUnlockedState] = useState(false);
-  const [roleState, setRoleState] = useState<'admin' | 'contributor' | null>(null);
+  const [roleState, setRoleState] = useState<'admin' | 'contributor' | null>(
+    null,
+  );
   const queryClient = useQueryClient();
 
-  const { data: requiresResult, isLoading: isLoadingRequires, isError: requiresError } = useQuery({
+  const {
+    data: requiresResult,
+    isLoading: isLoadingRequires,
+    isError: requiresError,
+  } = useQuery({
     queryKey: queryKeys.settings.requiresPassword,
     queryFn: fetchSettingsRequiresPassword,
     retry: 1,
@@ -49,7 +55,8 @@ export function ProtectedAreaProvider({
   // При ошибке или отсутствии ответа — считаем пароль нужен (показываем диалог)
   const requiresPassword =
     requiresResult?.requires === true ||
-    (!!requiresError || (requiresResult === undefined && !isLoadingRequires));
+    !!requiresError ||
+    (requiresResult === undefined && !isLoadingRequires);
   const hasContributorTier = requiresResult?.has_contributor_tier === true;
 
   const { data: checkResult, isLoading: isLoadingAccess } = useQuery({
@@ -61,12 +68,17 @@ export function ProtectedAreaProvider({
     gcTime: 5 * 60_000,
   });
 
-  const setUnlocked = useCallback((value: boolean, role?: 'admin' | 'contributor') => {
-    setUnlockedState(value);
-    setRoleState(value && role ? role : null);
-    queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
-    queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-  }, [queryClient]);
+  const setUnlocked = useCallback(
+    (value: boolean, role?: 'admin' | 'contributor') => {
+      setUnlockedState(value);
+      setRoleState(value && role ? role : null);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.settings.checkAccess,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+    },
+    [queryClient],
+  );
 
   const logoutAccess = useCallback(async () => {
     try {
@@ -74,21 +86,25 @@ export function ProtectedAreaProvider({
     } finally {
       setUnlockedState(false);
       setRoleState(null);
-      queryClient.invalidateQueries({ queryKey: queryKeys.settings.checkAccess });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.settings.checkAccess,
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
     }
   }, [queryClient]);
 
   const role =
     checkResult?.unlocked && 'role' in checkResult
-      ? (checkResult.role || 'admin')
+      ? checkResult.role || 'admin'
       : roleState;
 
   const unlocked =
     !requiresPassword ||
     (requiresPassword && (checkResult?.unlocked === true || unlockedState));
 
-  const canEdit = unlocked && (role === 'admin' || role === 'contributor' || !hasContributorTier);
+  const canEdit =
+    unlocked &&
+    (role === 'admin' || role === 'contributor' || !hasContributorTier);
   const isAdmin = unlocked && (role === 'admin' || !hasContributorTier);
 
   const accessError =
@@ -103,7 +119,7 @@ export function ProtectedAreaProvider({
       requiresPassword: !!requiresPassword,
       hasContributorTier,
       unlocked,
-      role: unlocked ? (role || 'admin') : null,
+      role: unlocked ? role || 'admin' : null,
       setUnlocked,
       logoutAccess,
       isLoading,
@@ -135,7 +151,9 @@ export function ProtectedAreaProvider({
 export function useProtectedArea() {
   const ctx = useContext(ProtectedAreaContext);
   if (!ctx) {
-    throw new Error('useProtectedArea must be used within ProtectedAreaProvider');
+    throw new Error(
+      'useProtectedArea must be used within ProtectedAreaProvider',
+    );
   }
   return ctx;
 }

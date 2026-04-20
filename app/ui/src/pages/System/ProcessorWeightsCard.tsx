@@ -38,7 +38,8 @@ function SlotRow(props: {
   resetLabel: string;
 }) {
   const { t } = useTranslation();
-  const { title, hint, slot, fileInputRef, onPick, busy, onReset, resetLabel } = props;
+  const { title, hint, slot, fileInputRef, onPick, busy, onReset, resetLabel } =
+    props;
   return (
     <Box sx={{ py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
       <Typography variant="subtitle1" fontWeight={600}>
@@ -47,7 +48,13 @@ function SlotRow(props: {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {hint}
       </Typography>
-      <Stack direction="row" flexWrap="wrap" alignItems="center" gap={1} sx={{ mb: 1 }}>
+      <Stack
+        direction="row"
+        flexWrap="wrap"
+        alignItems="center"
+        gap={1}
+        sx={{ mb: 1 }}
+      >
         <Chip
           size="small"
           color={slot.uses_custom_dir ? 'primary' : 'default'}
@@ -71,9 +78,15 @@ function SlotRow(props: {
           variant="caption"
           color="text.secondary"
           component="div"
-          sx={{ mb: 1, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}
+          sx={{
+            mb: 1,
+            fontFamily: 'ui-monospace, monospace',
+            wordBreak: 'break-all',
+          }}
         >
-          {t('system.processorWeightsFingerprint', { fp: slot.fingerprint_sha256_16 })}
+          {t('system.processorWeightsFingerprint', {
+            fp: slot.fingerprint_sha256_16,
+          })}
         </Typography>
       ) : null}
       <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -84,7 +97,12 @@ function SlotRow(props: {
           hidden
           onChange={onPick}
         />
-        <Button size="small" variant="outlined" disabled={busy} onClick={() => fileInputRef.current?.click()}>
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={busy}
+          onClick={() => fileInputRef.current?.click()}
+        >
           {t('system.processorWeightsUploadPt')}
         </Button>
         <Button size="small" color="warning" disabled={busy} onClick={onReset}>
@@ -140,7 +158,9 @@ export function ProcessorWeightsCard() {
   });
 
   const resetMut = useMutation({
-    mutationFn: async (roles: Array<'binary' | 'classifier' | 'class_names' | 'all'>) => {
+    mutationFn: async (
+      roles: Array<'binary' | 'classifier' | 'class_names' | 'all'>,
+    ) => {
       const r = await resetProcessorWeights(roles);
       if (!r.ok) throw new Error(r.error || 'reset_failed');
       return r;
@@ -206,10 +226,15 @@ export function ProcessorWeightsCard() {
         statusLabel={t('system.configAuditNeedsReview')}
         statusTone="error"
       >
-          <Typography variant="h6">{t('system.processorWeightsTitle')}</Typography>
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {getApiErrorMessage(statusQ.error, t('system.processorWeightsLoadError'))}
-          </Alert>
+        <Typography variant="h6">
+          {t('system.processorWeightsTitle')}
+        </Typography>
+        <Alert severity="error" sx={{ mt: 1 }}>
+          {getApiErrorMessage(
+            statusQ.error,
+            t('system.processorWeightsLoadError'),
+          )}
+        </Alert>
       </SystemCardShell>
     );
   }
@@ -221,12 +246,18 @@ export function ProcessorWeightsCard() {
       id="processor-weights"
       title={t('system.processorWeightsTitle')}
       description={t('system.processorWeightsIntro')}
-      statusLabel={busy ? t('system.catalogRepairRunning') : t('system.readinessReady')}
+      statusLabel={
+        busy ? t('system.catalogRepairRunning') : t('system.readinessReady')
+      }
       statusTone={busy ? 'warning' : 'default'}
     >
       <Box>
         {info ? (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>
+          <Alert
+            severity="success"
+            sx={{ mb: 2 }}
+            onClose={() => setInfo(null)}
+          >
             {info}
           </Alert>
         ) : null}
@@ -276,7 +307,13 @@ export function ProcessorWeightsCard() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {t('system.processorWeightsAllowlistHint')}
               </Typography>
-              <Stack direction="row" flexWrap="wrap" alignItems="center" gap={1} sx={{ mb: 1 }}>
+              <Stack
+                direction="row"
+                flexWrap="wrap"
+                alignItems="center"
+                gap={1}
+                sx={{ mb: 1 }}
+              >
                 <Chip
                   size="small"
                   color={st.allowlist.uses_custom_dir ? 'primary' : 'default'}
@@ -290,7 +327,9 @@ export function ProcessorWeightsCard() {
                   {formatBytes(st.allowlist.bytes)}
                   {st.allowlist.mtime_unix
                     ? ` · ${t('system.processorWeightsMtime', {
-                        ts: new Date(st.allowlist.mtime_unix * 1000).toLocaleString(),
+                        ts: new Date(
+                          st.allowlist.mtime_unix * 1000,
+                        ).toLocaleString(),
                       })}`
                     : ''}
                 </Typography>
@@ -300,7 +339,11 @@ export function ProcessorWeightsCard() {
                   variant="caption"
                   color="text.secondary"
                   component="div"
-                  sx={{ mb: 1, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}
+                  sx={{
+                    mb: 1,
+                    fontFamily: 'ui-monospace, monospace',
+                    wordBreak: 'break-all',
+                  }}
                 >
                   {t('system.processorWeightsFingerprint', {
                     fp: st.allowlist.fingerprint_sha256_16,
@@ -308,7 +351,13 @@ export function ProcessorWeightsCard() {
                 </Typography>
               ) : null}
               <Stack direction="row" flexWrap="wrap" gap={1}>
-                <input ref={allowRef} type="file" accept=".txt,text/plain" hidden onChange={onAllowFile} />
+                <input
+                  ref={allowRef}
+                  type="file"
+                  accept=".txt,text/plain"
+                  hidden
+                  onChange={onAllowFile}
+                />
                 <Button
                   size="small"
                   variant="outlined"
@@ -327,7 +376,12 @@ export function ProcessorWeightsCard() {
                 </Button>
               </Stack>
             </Box>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mt: 1 }}
+            >
               {t('system.processorWeightsDirLabel')}: {st.custom_weights_dir}
             </Typography>
           </>
@@ -342,7 +396,11 @@ export function ProcessorWeightsCard() {
           >
             {t('system.processorWeightsResetAll')}
           </Button>
-          <Button variant="contained" disabled={busy} onClick={() => restartMut.mutate()}>
+          <Button
+            variant="contained"
+            disabled={busy}
+            onClick={() => restartMut.mutate()}
+          >
             {t('system.processorWeightsRestartProcessor')}
           </Button>
         </Stack>

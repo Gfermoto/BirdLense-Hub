@@ -74,7 +74,9 @@ const INaturalistButton = ({
     <>
       <Tooltip
         title={
-          gateDisabled ? t('common.loginRequiredForExport') : t('common.iNaturalist')
+          gateDisabled
+            ? t('common.loginRequiredForExport')
+            : t('common.iNaturalist')
         }
       >
         <span>
@@ -123,7 +125,13 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   });
 
   const correctMutation = useMutation({
-    mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
+    mutationFn: ({
+      detectionId,
+      speciesId,
+    }: {
+      detectionId: number;
+      speciesId: number;
+    }) =>
       // Сервер при source=video без apply_scope снова даёт legacy_fanout; явно передаём для ясности.
       updateDetectionSpecies(detectionId, speciesId, 'video', 'legacy_fanout'),
     onSuccess: (data) => {
@@ -131,7 +139,9 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
       if (data?.message === 'Species unchanged') {
         setCorrectSuccess(t('video.speciesUnchanged'));
       } else if (data?.updated_count && data.updated_count > 1) {
-        setCorrectSuccess(t('video.correctedInVideos', { count: data.updated_count }));
+        setCorrectSuccess(
+          t('video.correctedInVideos', { count: data.updated_count }),
+        );
       } else {
         setCorrectSuccess(t('unknowns.corrected'));
       }
@@ -228,252 +238,318 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 
   return (
     <>
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {t('video.speciesInVideo')}
-      </Typography>
-      {groupedSpecies.length >= 2 && videoId && canEdit && (
-        <Box
-          sx={{
-            mb: 2,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: 'action.hover',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('video.mergeAllHint')}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 200 }} disabled={!canEdit}>
-              <InputLabel id="video-merge-species-label">{t('video.mergeAllToSpecies')}</InputLabel>
-              <Select
-                labelId="video-merge-species-label"
-                value={mergeSpeciesId}
-                label={t('video.mergeAllToSpecies')}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setMergeSpeciesId(v === '' ? '' : Number(v));
-                }}
-              >
-                {speciesList.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              size="small"
-              variant="contained"
-              disabled={mergeSpeciesId === '' || mergeMutation.isPending || !canEdit}
-              onClick={handleMergeAll}
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {t('video.speciesInVideo')}
+        </Typography>
+        {groupedSpecies.length >= 2 && videoId && canEdit && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              borderRadius: 2,
+              bgcolor: 'action.hover',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1 }}
             >
-              {mergeMutation.isPending ? '...' : t('unknowns.apply')}
-            </Button>
-          </Box>
-        </Box>
-      )}
-      <Grid container spacing={2}>
-        {groupedSpecies.map((group) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.species_id} sx={{ minWidth: 0 }}>
-            <Card
+              {t('video.mergeAllHint')}
+            </Typography>
+            <Box
               sx={{
-                height: '100%',
                 display: 'flex',
-                flexDirection: 'column',
-                border: `2px solid ${labelToUniqueHexColor(group.species_name)}`,
-                overflow: 'hidden',
-                minWidth: 0,
+                alignItems: 'center',
+                gap: 1,
+                flexWrap: 'wrap',
               }}
             >
-              <Box
+              <FormControl
+                size="small"
+                sx={{ minWidth: 200 }}
+                disabled={!canEdit}
+              >
+                <InputLabel id="video-merge-species-label">
+                  {t('video.mergeAllToSpecies')}
+                </InputLabel>
+                <Select
+                  labelId="video-merge-species-label"
+                  value={mergeSpeciesId}
+                  label={t('video.mergeAllToSpecies')}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setMergeSpeciesId(v === '' ? '' : Number(v));
+                  }}
+                >
+                  {speciesList.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                size="small"
+                variant="contained"
+                disabled={
+                  mergeSpeciesId === '' || mergeMutation.isPending || !canEdit
+                }
+                onClick={handleMergeAll}
+              >
+                {mergeMutation.isPending ? '...' : t('unknowns.apply')}
+              </Button>
+            </Box>
+          </Box>
+        )}
+        <Grid container spacing={2}>
+          {groupedSpecies.map((group) => (
+            <Grid
+              size={{ xs: 12, sm: 6, md: 4 }}
+              key={group.species_id}
+              sx={{ minWidth: 0 }}
+            >
+              <Card
                 sx={{
-                  aspectRatio: '16/10',
+                  height: '100%',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: 'action.hover',
-                  overflow: 'hidden',
-                }}
-              >
-                {group.image_url ? (
-                  <CardMedia
-                    component="img"
-                    alt={group.species_name}
-                    image={resolveImageUrl(group.image_url)}
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'center top',
-                    }}
-                  />
-                ) : (
-                  <SpeciesIcon speciesName={group.species_name} size={64} />
-                )}
-              </Box>
-              <CardContent sx={{ py: 1.5 }}>
-                <Typography variant="subtitle1" noWrap>
-                  {group.species_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {group.detections.length} {group.detections.length > 1 ? t('video.detections') : t('video.detection')} •{' '}
-                  {Math.max(0, Math.round(group.totalDuration))}s
-                </Typography>
-                {(() => {
-                  const providers = [...new Set(group.detections.map((d) => d.detection_provider).filter(Boolean))];
-                  const providerLabels: Record<string, string> = {
-                    yolo: t('video.detectionProviderYolo'),
-                    frigate: t('video.detectionProviderFrigate'),
-                    birdnet_mqtt: t('video.detectionProviderBirdnetMqtt'),
-                  };
-                  return providers.length > 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {t('video.detectionSource')}:{' '}
-                      {providers
-                        .map((p) => (p ? providerLabels[p] ?? p : ''))
-                        .filter(Boolean)
-                        .join(', ')}
-                    </Typography>
-                  ) : null;
-                })()}
-                <Typography variant="body2" color="text.secondary">
-                  {t('video.confidence')}: {group.confidenceRange}
-                </Typography>
-              </CardContent>
-              <CardActions
-                sx={{
-                  pt: 0,
-                  flexWrap: 'wrap',
-                  gap: 0.5,
-                  alignItems: 'flex-start',
                   flexDirection: 'column',
-                  alignSelf: 'stretch',
-                  px: 2,
-                  pb: 1.5,
+                  border: `2px solid ${labelToUniqueHexColor(group.species_name)}`,
+                  overflow: 'hidden',
+                  minWidth: 0,
                 }}
               >
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: '100%' }}>
-                  <Button
-                    size="small"
-                    component={RouterLink}
-                    to={`/species/${group.species_id}`}
-                  >
-                    {t('video.learnMore')}
-                  </Button>
-                  {(() => {
-                    const bestDet = group.detections
-                      .filter((d) => d.source === 'video' && d.id)
-                      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-                    return bestDet ? (
-                      <INaturalistButton
-                        detectionId={bestDet.id!}
-                        speciesName={group.species_name}
-                        disabled={!canEdit}
-                      />
-                    ) : null;
-                  })()}
-                  {editingGroupKey !== String(group.species_id) && (
-                    <Tooltip title={canEdit ? t('unknowns.correctSpecies') : ''}>
-                      <span>
-                        <Button
-                          size="small"
-                          startIcon={<EditIcon fontSize="small" />}
-                          onClick={() => {
-                            setEditingGroupKey(String(group.species_id));
-                            setSelectedSpeciesId(group.species_id);
-                          }}
-                          disabled={!canEdit}
-                        >
-                          {t('unknowns.correctSpecies')}
-                        </Button>
-                      </span>
-                    </Tooltip>
+                <Box
+                  sx={{
+                    aspectRatio: '16/10',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'action.hover',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {group.image_url ? (
+                    <CardMedia
+                      component="img"
+                      alt={group.species_name}
+                      image={resolveImageUrl(group.image_url)}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center top',
+                      }}
+                    />
+                  ) : (
+                    <SpeciesIcon speciesName={group.species_name} size={64} />
                   )}
                 </Box>
-                {editingGroupKey === String(group.species_id) && (
-                  <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 0.5 }}>
-                    <FormControl fullWidth size="small" disabled={!canEdit} sx={{ minWidth: 0 }}>
-                      <InputLabel id={`video-correct-species-${group.species_id}`}>{t('unknowns.correctSpecies')}</InputLabel>
-                      <Select
-                        labelId={`video-correct-species-${group.species_id}`}
-                        value={selectedSpeciesId}
-                        label={t('unknowns.correctSpecies')}
-                        renderValue={(v: number | string) => {
-                          if (v === '' || v === undefined) return '';
-                          const id = Number(v);
-                          const row = speciesList.find((s) => Number(s.id) === id);
-                          return row?.name ?? `#${id}`;
-                        }}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setSelectedSpeciesId(v === '' ? '' : Number(v));
-                        }}
-                        MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
+                <CardContent sx={{ py: 1.5 }}>
+                  <Typography variant="subtitle1" noWrap>
+                    {group.species_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {group.detections.length}{' '}
+                    {group.detections.length > 1
+                      ? t('video.detections')
+                      : t('video.detection')}{' '}
+                    • {Math.max(0, Math.round(group.totalDuration))}s
+                  </Typography>
+                  {(() => {
+                    const providers = [
+                      ...new Set(
+                        group.detections
+                          .map((d) => d.detection_provider)
+                          .filter(Boolean),
+                      ),
+                    ];
+                    const providerLabels: Record<string, string> = {
+                      yolo: t('video.detectionProviderYolo'),
+                      frigate: t('video.detectionProviderFrigate'),
+                      birdnet_mqtt: t('video.detectionProviderBirdnetMqtt'),
+                    };
+                    return providers.length > 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        {t('video.detectionSource')}:{' '}
+                        {providers
+                          .map((p) => (p ? (providerLabels[p] ?? p) : ''))
+                          .filter(Boolean)
+                          .join(', ')}
+                      </Typography>
+                    ) : null;
+                  })()}
+                  <Typography variant="body2" color="text.secondary">
+                    {t('video.confidence')}: {group.confidenceRange}
+                  </Typography>
+                </CardContent>
+                <CardActions
+                  sx={{
+                    pt: 0,
+                    flexWrap: 'wrap',
+                    gap: 0.5,
+                    alignItems: 'flex-start',
+                    flexDirection: 'column',
+                    alignSelf: 'stretch',
+                    px: 2,
+                    pb: 1.5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                      width: '100%',
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      component={RouterLink}
+                      to={`/species/${group.species_id}`}
+                    >
+                      {t('video.learnMore')}
+                    </Button>
+                    {(() => {
+                      const bestDet = group.detections
+                        .filter((d) => d.source === 'video' && d.id)
+                        .sort(
+                          (a, b) => (b.confidence || 0) - (a.confidence || 0),
+                        )[0];
+                      return bestDet ? (
+                        <INaturalistButton
+                          detectionId={bestDet.id!}
+                          speciesName={group.species_name}
+                          disabled={!canEdit}
+                        />
+                      ) : null;
+                    })()}
+                    {editingGroupKey !== String(group.species_id) && (
+                      <Tooltip
+                        title={canEdit ? t('unknowns.correctSpecies') : ''}
                       >
-                        {speciesList.map((s) => (
-                          <MenuItem key={s.id} value={s.id}>
-                            {s.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: '100%' }}>
-                      <Button
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<EditIcon fontSize="small" />}
+                            onClick={() => {
+                              setEditingGroupKey(String(group.species_id));
+                              setSelectedSpeciesId(group.species_id);
+                            }}
+                            disabled={!canEdit}
+                          >
+                            {t('unknowns.correctSpecies')}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </Box>
+                  {editingGroupKey === String(group.species_id) && (
+                    <Stack
+                      spacing={1}
+                      sx={{ width: '100%', minWidth: 0, mt: 0.5 }}
+                    >
+                      <FormControl
+                        fullWidth
                         size="small"
-                        variant="contained"
-                        disabled={
-                          selectedSpeciesId === '' ||
-                          !Number.isFinite(Number(selectedSpeciesId)) ||
-                          Number(selectedSpeciesId) === Number(group.species_id) ||
-                          correctMutation.isPending ||
-                          !canEdit
-                        }
-                        onClick={() => handleCorrectGroup(group)}
+                        disabled={!canEdit}
+                        sx={{ minWidth: 0 }}
                       >
-                        {correctMutation.isPending ? '...' : t('unknowns.apply')}
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setEditingGroupKey(null);
-                          setSelectedSpeciesId('');
-                        }}
+                        <InputLabel
+                          id={`video-correct-species-${group.species_id}`}
+                        >
+                          {t('unknowns.correctSpecies')}
+                        </InputLabel>
+                        <Select
+                          labelId={`video-correct-species-${group.species_id}`}
+                          value={selectedSpeciesId}
+                          label={t('unknowns.correctSpecies')}
+                          renderValue={(v: number | string) => {
+                            if (v === '' || v === undefined) return '';
+                            const id = Number(v);
+                            const row = speciesList.find(
+                              (s) => Number(s.id) === id,
+                            );
+                            return row?.name ?? `#${id}`;
+                          }}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSelectedSpeciesId(v === '' ? '' : Number(v));
+                          }}
+                          MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
+                        >
+                          {speciesList.map((s) => (
+                            <MenuItem key={s.id} value={s.id}>
+                              {s.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ width: '100%' }}
                       >
-                        {t('common.cancel')}
-                      </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={
+                            selectedSpeciesId === '' ||
+                            !Number.isFinite(Number(selectedSpeciesId)) ||
+                            Number(selectedSpeciesId) ===
+                              Number(group.species_id) ||
+                            correctMutation.isPending ||
+                            !canEdit
+                          }
+                          onClick={() => handleCorrectGroup(group)}
+                        >
+                          {correctMutation.isPending
+                            ? '...'
+                            : t('unknowns.apply')}
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setEditingGroupKey(null);
+                            setSelectedSpeciesId('');
+                          }}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                      </Stack>
                     </Stack>
-                  </Stack>
-                )}
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
-    <Snackbar
-      open={!!correctError}
-      autoHideDuration={6000}
-      onClose={() => setCorrectError(null)}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    >
-      <Alert severity="error" onClose={() => setCorrectError(null)}>
-        {correctError}
-      </Alert>
-    </Snackbar>
-    <Snackbar
-      open={!!correctSuccess}
-      autoHideDuration={4000}
-      onClose={() => setCorrectSuccess(null)}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    >
-      <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
-        {correctSuccess}
-      </Alert>
-    </Snackbar>
+                  )}
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+      <Snackbar
+        open={!!correctError}
+        autoHideDuration={6000}
+        onClose={() => setCorrectError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setCorrectError(null)}>
+          {correctError}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!correctSuccess}
+        autoHideDuration={4000}
+        onClose={() => setCorrectSuccess(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
+          {correctSuccess}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

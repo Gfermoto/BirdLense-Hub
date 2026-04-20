@@ -57,11 +57,21 @@ export function LibraryCardShell({
         >
           <Box sx={{ minWidth: 0 }}>
             {eyebrow ? (
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 0.5 }}
+              >
                 {eyebrow}
               </Typography>
             ) : null}
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <Typography variant="h6">{title}</Typography>
               {statusLabel ? (
                 <Chip
@@ -72,7 +82,11 @@ export function LibraryCardShell({
               ) : null}
             </Stack>
             {description ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.75 }}
+              >
                 {description}
               </Typography>
             ) : null}

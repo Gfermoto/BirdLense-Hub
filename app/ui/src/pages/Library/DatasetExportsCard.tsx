@@ -20,11 +20,7 @@ import { BASE_API_URL, exportDataset, retroExportDataset } from '../../api/api';
 import { LibraryCardShell } from './LibraryCardShell';
 import { formatBytes, getDayjsLocale, type StorageDay } from './libraryShared';
 
-export function DatasetExportsCard({
-  simple = false,
-}: {
-  simple?: boolean;
-}) {
+export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
   const { t, i18n } = useTranslation();
   const [exportingDataset, setExportingDataset] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
@@ -284,7 +280,9 @@ export function DatasetExportsCard({
                   control={
                     <Checkbox
                       checked={readyForTrain}
-                      onChange={(event) => setReadyForTrain(event.target.checked)}
+                      onChange={(event) =>
+                        setReadyForTrain(event.target.checked)
+                      }
                       size="small"
                     />
                   }

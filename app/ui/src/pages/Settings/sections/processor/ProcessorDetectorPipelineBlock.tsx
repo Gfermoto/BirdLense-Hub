@@ -85,9 +85,7 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
                   labelId="proc-class-sched-label"
                   label={t('settings.processorClassificationScheduler')}
                   value={field.state.value ?? 'priority'}
-                  onChange={(e) =>
-                    field.handleChange(String(e.target.value))
-                  }
+                  onChange={(e) => field.handleChange(String(e.target.value))}
                 >
                   <MenuItem value="priority">
                     {t('settings.processorClassificationSchedulerPriority')}
@@ -112,7 +110,9 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 1)
                 }
                 label={t('settings.processorMaxClassificationsPerFrame')}
-                helperText={t('settings.processorMaxClassificationsPerFrameHint')}
+                helperText={t(
+                  'settings.processorMaxClassificationsPerFrameHint',
+                )}
               />
             )}
           </form.Field>

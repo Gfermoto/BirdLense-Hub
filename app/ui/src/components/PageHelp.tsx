@@ -38,7 +38,13 @@ export interface PageHelpConfig {
 }
 
 export const PageHelp = (
-  props: PageHelpProps | (PageHelpConfig & { title?: never; description?: never; details?: never }),
+  props:
+    | PageHelpProps
+    | (PageHelpConfig & {
+        title?: never;
+        description?: never;
+        details?: never;
+      }),
 ) => {
   const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,7 +116,12 @@ export const PageHelp = (
                   >
                     {detail.title}
                   </Typography>
-                  <Typography component="dd" variant="body2" sx={{ m: 0 }} style={{ whiteSpace: 'pre-line' }}>
+                  <Typography
+                    component="dd"
+                    variant="body2"
+                    sx={{ m: 0 }}
+                    style={{ whiteSpace: 'pre-line' }}
+                  >
                     {detail.content}
                   </Typography>
                 </Box>

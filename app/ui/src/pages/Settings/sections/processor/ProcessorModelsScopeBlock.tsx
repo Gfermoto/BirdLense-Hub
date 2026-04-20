@@ -29,7 +29,8 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.detection_strategy">
             {(field) => {
-              const v = String(field.state.value ?? 'two_stage').trim() || 'two_stage';
+              const v =
+                String(field.state.value ?? 'two_stage').trim() || 'two_stage';
               const isTwo = v === 'two_stage';
               return (
                 <Stack spacing={1.5} sx={{ minWidth: 0 }}>
@@ -49,8 +50,18 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                       {t('settings.processorSingleStageWarning')}
                     </Alert>
                   ) : null}
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                    <Typography variant="body2" color="text.secondary" component="span">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      component="span"
+                    >
                       {t('settings.processorDetectionStrategy')}:
                     </Typography>
                     <Chip
@@ -108,7 +119,10 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
             {(field) => {
               const val = field.state.value;
               const str = Array.isArray(val)
-                ? (val as string[]).map((s) => String(s).trim()).filter(Boolean).join('\n')
+                ? (val as string[])
+                    .map((s) => String(s).trim())
+                    .filter(Boolean)
+                    .join('\n')
                 : '';
               return (
                 <TextField

@@ -21,7 +21,10 @@ type SystemHeroProps = {
   advanced: boolean;
 };
 
-function firstNumber(record: Record<string, number> | undefined, keys: string[]): number {
+function firstNumber(
+  record: Record<string, number> | undefined,
+  keys: string[],
+): number {
   if (!record) return 0;
   return keys.reduce((sum, key) => sum + Number(record[key] ?? 0), 0);
 }
@@ -47,7 +50,8 @@ export function SystemHero({ advanced }: SystemHeroProps) {
     queryKey: ['catalog-repair-status'],
     queryFn: fetchCatalogRepairStatus,
     staleTime: 5_000,
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 4_000 : 20_000),
+    refetchInterval: (q) =>
+      q.state.data?.status === 'running' ? 4_000 : 20_000,
   });
 
   const loading =
@@ -57,7 +61,12 @@ export function SystemHero({ advanced }: SystemHeroProps) {
     catalogRepairQ.isLoading;
   if (loading) return <LinearProgress />;
 
-  if (!readinessQ.data || !configAuditQ.data || !observabilityQ.data || !catalogRepairQ.data) {
+  if (
+    !readinessQ.data ||
+    !configAuditQ.data ||
+    !observabilityQ.data ||
+    !catalogRepairQ.data
+  ) {
     return <Alert severity="warning">{t('system.heroLoadError')}</Alert>;
   }
 
@@ -71,14 +80,18 @@ export function SystemHero({ advanced }: SystemHeroProps) {
   const deprecatedKeys = Array.isArray(configAudit.deprecated_keys_present)
     ? configAudit.deprecated_keys_present.length
     : 0;
-  const deliveryFailures = firstNumber(observability.notify_delivery_24h, ['failed']);
+  const deliveryFailures = firstNumber(observability.notify_delivery_24h, [
+    'failed',
+  ]);
   const fallbackEvents = firstNumber(observability.notify_fallback_24h, [
     'decode_failed',
     'telegram_photo_failed',
     'telegram_text_failed',
     'unexpected_error',
   ]);
-  const catalogCompletion = Number(catalogRepair.coverage_now?.completion_percent ?? 0);
+  const catalogCompletion = Number(
+    catalogRepair.coverage_now?.completion_percent ?? 0,
+  );
   const catalogRunning = catalogRepair.status === 'running';
   const needsAttention =
     !readiness.ready ||
@@ -91,13 +104,23 @@ export function SystemHero({ advanced }: SystemHeroProps) {
 
   const issues = [
     !readiness.ready ? t('system.heroIssueReadiness') : null,
-    configWarnings > 0 ? t('system.heroIssueWarnings', { count: configWarnings }) : null,
-    deprecatedKeys > 0 ? t('system.heroIssueDeprecated', { count: deprecatedKeys }) : null,
-    deliveryFailures > 0 ? t('system.heroIssueDelivery', { count: deliveryFailures }) : null,
-    fallbackEvents > 0 ? t('system.heroIssueFallbacks', { count: fallbackEvents }) : null,
+    configWarnings > 0
+      ? t('system.heroIssueWarnings', { count: configWarnings })
+      : null,
+    deprecatedKeys > 0
+      ? t('system.heroIssueDeprecated', { count: deprecatedKeys })
+      : null,
+    deliveryFailures > 0
+      ? t('system.heroIssueDelivery', { count: deliveryFailures })
+      : null,
+    fallbackEvents > 0
+      ? t('system.heroIssueFallbacks', { count: fallbackEvents })
+      : null,
     catalogRunning ? t('system.heroIssueCatalogRunning') : null,
     !catalogRunning && catalogCompletion < 75
-      ? t('system.heroIssueCatalogCoverage', { percent: catalogCompletion.toFixed(0) })
+      ? t('system.heroIssueCatalogCoverage', {
+          percent: catalogCompletion.toFixed(0),
+        })
       : null,
   ].filter(Boolean) as string[];
 
@@ -108,10 +131,9 @@ export function SystemHero({ advanced }: SystemHeroProps) {
         minWidth: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
-        background:
-          needsAttention
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(30, 41, 59, 0.96))'
-            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(30, 41, 59, 0.96))',
+        background: needsAttention
+          ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(30, 41, 59, 0.96))'
+          : 'linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(30, 41, 59, 0.96))',
       }}
     >
       <CardContent sx={{ display: 'grid', gap: 2.5 }}>
@@ -122,7 +144,13 @@ export function SystemHero({ advanced }: SystemHeroProps) {
           alignItems={{ xs: 'flex-start', lg: 'center' }}
         >
           <Box>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <Typography variant="h5">{t('system.heroTitle')}</Typography>
               <Chip
                 color={needsAttention ? 'warning' : 'success'}
@@ -134,13 +162,24 @@ export function SystemHero({ advanced }: SystemHeroProps) {
               />
             </Stack>
             <Typography variant="body1" sx={{ mt: 1 }}>
-              {needsAttention ? t('system.heroSummaryDegraded') : t('system.heroSummaryHealthy')}
+              {needsAttention
+                ? t('system.heroSummaryDegraded')
+                : t('system.heroSummaryHealthy')}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75 }}
+            >
               {t('system.readinessCheckedAt', { at: readiness.checked_at })}
             </Typography>
           </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            useFlexGap
+            flexWrap="wrap"
+          >
             <Button href="#system-overview" variant="contained">
               {t('system.heroActionOverview')}
             </Button>
@@ -148,7 +187,11 @@ export function SystemHero({ advanced }: SystemHeroProps) {
               {t('system.heroActionReview')}
             </Button>
             {advanced ? (
-              <Button href="#system-workspace" variant="outlined" color="warning">
+              <Button
+                href="#system-workspace"
+                variant="outlined"
+                color="warning"
+              >
                 {t('system.heroActionWorkspace')}
               </Button>
             ) : null}
@@ -169,7 +212,11 @@ export function SystemHero({ advanced }: SystemHeroProps) {
         >
           <MetricBlock
             label={t('system.heroMetricHealth')}
-            value={readiness.ready ? t('system.readinessReady') : t('system.readinessDegraded')}
+            value={
+              readiness.ready
+                ? t('system.readinessReady')
+                : t('system.readinessDegraded')
+            }
           />
           <MetricBlock
             label={t('system.heroMetricWarnings')}
@@ -181,13 +228,19 @@ export function SystemHero({ advanced }: SystemHeroProps) {
           />
           <MetricBlock
             label={t('system.heroMetricCatalog')}
-            value={catalogRunning ? t('system.catalogRepairRunning') : `${catalogCompletion.toFixed(0)}%`}
+            value={
+              catalogRunning
+                ? t('system.catalogRepairRunning')
+                : `${catalogCompletion.toFixed(0)}%`
+            }
           />
         </Box>
 
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            {issues.length > 0 ? t('system.heroTopIssues') : t('system.heroNoIssues')}
+            {issues.length > 0
+              ? t('system.heroTopIssues')
+              : t('system.heroNoIssues')}
           </Typography>
           {issues.length > 0 ? (
             <Stack spacing={1}>

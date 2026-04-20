@@ -33,7 +33,11 @@ export function PageSection({
             {title}
           </Typography>
           {description ? (
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 900 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ maxWidth: 900 }}
+            >
               {description}
             </Typography>
           ) : null}

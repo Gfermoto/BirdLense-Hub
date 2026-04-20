@@ -47,7 +47,10 @@ export function GeneralSection({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [yamlMsg, setYamlMsg] = useState<{ sev: 'success' | 'error'; text: string } | null>(null);
+  const [yamlMsg, setYamlMsg] = useState<{
+    sev: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   const handleZipLookup = async () => {
     const zip = form.getFieldValue('secrets.zip');
@@ -68,10 +71,19 @@ export function GeneralSection({
         {t('settings.accordionGeneral')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
           <Box
             component="legend"
-            sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
           >
             {t('settings.accordionGeneral')}
           </Box>
@@ -112,7 +124,9 @@ export function GeneralSection({
                         value={field.state.value ?? 'openweather'}
                         label={t('settings.weatherSource')}
                         onChange={(e) =>
-                          field.handleChange(e.target.value as 'openweather' | 'homeassistant')
+                          field.handleChange(
+                            e.target.value as 'openweather' | 'homeassistant',
+                          )
                         }
                       >
                         <MenuItem value="openweather">
@@ -126,7 +140,9 @@ export function GeneralSection({
                   )}
                 </form.Field>
               </Grid>
-              <form.Subscribe selector={(state) => state.values.weather?.source}>
+              <form.Subscribe
+                selector={(state) => state.values.weather?.source}
+              >
                 {(source) => (
                   <>
                     {source !== 'homeassistant' && (
@@ -149,14 +165,20 @@ export function GeneralSection({
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
                                 label={t('settings.zip')}
                               />
                             )}
                           </form.Field>
                         </Grid>
                         <Grid size={{ xs: 6 }}>
-                          <Button fullWidth variant="outlined" onClick={handleZipLookup}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            onClick={handleZipLookup}
+                          >
                             {t('settings.zipLookup')}
                           </Button>
                         </Grid>
@@ -167,7 +189,9 @@ export function GeneralSection({
                                 fullWidth
                                 value={field.state.value ?? ''}
                                 onChange={(e) =>
-                                  field.handleChange((e.target.value ?? '').replace(',', '.'))
+                                  field.handleChange(
+                                    (e.target.value ?? '').replace(',', '.'),
+                                  )
                                 }
                                 label={t('settings.latitude')}
                                 helperText={t('settings.latitudeHint')}
@@ -182,7 +206,9 @@ export function GeneralSection({
                                 fullWidth
                                 value={field.state.value ?? ''}
                                 onChange={(e) =>
-                                  field.handleChange((e.target.value ?? '').replace(',', '.'))
+                                  field.handleChange(
+                                    (e.target.value ?? '').replace(',', '.'),
+                                  )
                                 }
                                 label={t('settings.longitude')}
                                 helperText={t('settings.longitudeHint')}
@@ -205,7 +231,9 @@ export function GeneralSection({
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
-                                onChange={(e) => field.handleChange(e.target.value)}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
                                 label={t('settings.weatherHaEntity')}
                                 placeholder="weather.home"
                                 helperText={t('settings.weatherHaEntityHint')}
@@ -231,7 +259,9 @@ export function GeneralSection({
                         control={
                           <Switch
                             checked={field.state.value ?? false}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.mcpEnabled')}
@@ -279,14 +309,18 @@ export function GeneralSection({
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <form.Subscribe
-                  selector={(s) => s.values.performance?.redis_url_effective_masked ?? ''}
+                  selector={(s) =>
+                    s.values.performance?.redis_url_effective_masked ?? ''
+                  }
                 >
                   {(effectiveMasked) => (
                     <form.Field name="performance.redis_url">
                       {(field) => {
                         const raw = (field.state.value ?? '').trim();
                         const placeholder =
-                          !raw && effectiveMasked ? effectiveMasked : 'redis://redis:6379/0';
+                          !raw && effectiveMasked
+                            ? effectiveMasked
+                            : 'redis://redis:6379/0';
 
                         return (
                           <TextField
@@ -301,10 +335,17 @@ export function GeneralSection({
                                   {t('settings.performanceRedisUrlHint')}
                                 </Box>
                                 {effectiveMasked ? (
-                                  <Box component="span" display="block" sx={{ mt: 0.5 }}>
-                                    {t('settings.performanceRedisEffectiveNow', {
-                                      url: effectiveMasked,
-                                    })}
+                                  <Box
+                                    component="span"
+                                    display="block"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {t(
+                                      'settings.performanceRedisEffectiveNow',
+                                      {
+                                        url: effectiveMasked,
+                                      },
+                                    )}
                                   </Box>
                                 ) : null}
                               </>
@@ -380,7 +421,11 @@ export function GeneralSection({
                   : t('settings.yamlBackupDescSafeOnly')}
               </Typography>
               {yamlMsg ? (
-                <Alert severity={yamlMsg.sev} sx={{ mb: 2 }} onClose={() => setYamlMsg(null)}>
+                <Alert
+                  severity={yamlMsg.sev}
+                  sx={{ mb: 2 }}
+                  onClose={() => setYamlMsg(null)}
+                >
                   {yamlMsg.text}
                 </Alert>
               ) : null}
@@ -396,7 +441,10 @@ export function GeneralSection({
                       } catch (e) {
                         setYamlMsg({
                           sev: 'error',
-                          text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                          text:
+                            e instanceof Error
+                              ? e.message
+                              : t('settings.yamlImportFailed'),
                         });
                       }
                     }}
@@ -411,21 +459,29 @@ export function GeneralSection({
                       size="small"
                       color="warning"
                       onClick={async () => {
-                        if (!window.confirm(t('settings.yamlFullConfirm'))) return;
+                        if (!window.confirm(t('settings.yamlFullConfirm')))
+                          return;
                         setYamlMsg(null);
                         try {
                           await downloadSettingsYamlFull();
                         } catch (e) {
                           setYamlMsg({
                             sev: 'error',
-                            text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                            text:
+                              e instanceof Error
+                                ? e.message
+                                : t('settings.yamlImportFailed'),
                           });
                         }
                       }}
                     >
                       {t('settings.yamlDownloadFull')}
                     </Button>
-                    <Button variant="outlined" size="small" onClick={() => fileRef.current?.click()}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => fileRef.current?.click()}
+                    >
                       {t('settings.yamlImport')}
                     </Button>
                     <input
@@ -444,7 +500,9 @@ export function GeneralSection({
                             sev: 'success',
                             text: r.message || t('settings.yamlImportOk'),
                           });
-                          await queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+                          await queryClient.invalidateQueries({
+                            queryKey: queryKeys.settings.all,
+                          });
                         } else {
                           setYamlMsg({
                             sev: 'error',

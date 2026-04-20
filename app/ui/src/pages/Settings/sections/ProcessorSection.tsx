@@ -57,7 +57,10 @@ export function ProcessorSection({ form }: Props) {
   const { t } = useTranslation();
 
   return (
-    <Accordion disableGutters sx={{ width: '100%', minWidth: 0, maxWidth: '100%' }}>
+    <Accordion
+      disableGutters
+      sx={{ width: '100%', minWidth: 0, maxWidth: '100%' }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         {t('settings.accordionProcessor')}
       </AccordionSummary>
@@ -90,26 +93,34 @@ export function ProcessorSection({ form }: Props) {
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>{t('settings.processorSectionHeadingScene')}</SectionHeading>
+          <SectionHeading>
+            {t('settings.processorSectionHeadingScene')}
+          </SectionHeading>
           <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>{t('settings.processorSectionHeadingAudio')}</SectionHeading>
+          <SectionHeading>
+            {t('settings.processorSectionHeadingAudio')}
+          </SectionHeading>
           <ProcessorMultiCameraBirdnetBlock form={form} />
           <ProcessorBirdnetExtendedBlock form={form} />
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>{t('settings.processorSectionHeadingQuality')}</SectionHeading>
+          <SectionHeading>
+            {t('settings.processorSectionHeadingQuality')}
+          </SectionHeading>
           <ProcessorConfidenceAdvancedBlock form={form} />
           <ProcessorFalsePositiveGuardrailsBlock form={form} />
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
+          <SectionHeading>
+            {t('settings.processorSectionHeadingData')}
+          </SectionHeading>
           <ProcessorSpectrogramDatasetBlock form={form} />
           <ProcessorModelsScopeBlock form={form} />
           <ProcessorTrackRegenBlock form={form} />

@@ -47,17 +47,23 @@ function summarizeTrackRegenJob(
   if (st.error) {
     return { severity: 'error', message: st.error };
   }
-  const r = st.result as {
-    generated?: number;
-    skipped?: number;
-    failed?: number;
-    frames_updated?: number;
-    precise_rerun_candidates?: Array<{ video_id?: number; reason?: string }>;
-    single_video_regen?: {
-      track_count?: number;
-      decision_reasons?: Record<string, number>;
-    };
-  } | null | undefined;
+  const r = st.result as
+    | {
+        generated?: number;
+        skipped?: number;
+        failed?: number;
+        frames_updated?: number;
+        precise_rerun_candidates?: Array<{
+          video_id?: number;
+          reason?: string;
+        }>;
+        single_video_regen?: {
+          track_count?: number;
+          decision_reasons?: Record<string, number>;
+        };
+      }
+    | null
+    | undefined;
   if (!r && st.status === 'done') {
     return { severity: 'warning', message: t('video.regenDoneNoPayload') };
   }
@@ -157,7 +163,9 @@ export const VideoDetails = () => {
     queryKey: ['video', params.id],
     queryFn: () => fetchVideo(params.id as string),
   });
-  useDocumentTitle(video ? `${t('video.video')} ${params.id}` : t('video.video'));
+  useDocumentTitle(
+    video ? `${t('video.video')} ${params.id}` : t('video.video'),
+  );
 
   const { data: neighbors } = useQuery({
     queryKey: ['video-neighbors', params.id],
@@ -165,7 +173,11 @@ export const VideoDetails = () => {
     enabled: Boolean(params.id),
   });
 
-  const { data: detectionFrames, isPending: detectionFramesPending, error: detectionFramesError } = useQuery({
+  const {
+    data: detectionFrames,
+    isPending: detectionFramesPending,
+    error: detectionFramesError,
+  } = useQuery({
     queryKey: ['video-detection-frames', params.id],
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
     enabled: Boolean(params.id),
@@ -204,8 +216,10 @@ export const VideoDetails = () => {
   const [followSpecRegen, setFollowSpecRegen] = useState<number | null>(null);
   const [trackRegenPollNonce, setTrackRegenPollNonce] = useState(0);
   const [specRegenPollNonce, setSpecRegenPollNonce] = useState(0);
-  const [finishedTrackRegen, setFinishedTrackRegen] = useState<TrackRegenerationJobStatus | null>(null);
-  const [finishedSpecRegen, setFinishedSpecRegen] = useState<SpectrogramRegenerationJobStatus | null>(null);
+  const [finishedTrackRegen, setFinishedTrackRegen] =
+    useState<TrackRegenerationJobStatus | null>(null);
+  const [finishedSpecRegen, setFinishedSpecRegen] =
+    useState<SpectrogramRegenerationJobStatus | null>(null);
 
   const trackRegenStart = useMutation({
     mutationFn: () => regenerateTracksForSingleVideo(videoIdNum),
@@ -264,7 +278,9 @@ export const VideoDetails = () => {
     setFinishedTrackRegen(st);
     setFollowTrackRegen(null);
     void queryClient.invalidateQueries({ queryKey: ['video', params.id] });
-    void queryClient.invalidateQueries({ queryKey: ['video-detection-frames', params.id] });
+    void queryClient.invalidateQueries({
+      queryKey: ['video-detection-frames', params.id],
+    });
     void queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
   }, [followTrackRegen, trackRemoteStatus, queryClient, params.id]);
 
@@ -279,7 +295,8 @@ export const VideoDetails = () => {
   }, [followSpecRegen, specRemoteStatus, queryClient, params.id]);
 
   const trackJobSummary = useMemo(
-    () => summarizeTrackRegenJob(finishedTrackRegen ?? undefined, videoIdNum, t),
+    () =>
+      summarizeTrackRegenJob(finishedTrackRegen ?? undefined, videoIdNum, t),
     [finishedTrackRegen, videoIdNum, t],
   );
 
@@ -288,8 +305,7 @@ export const VideoDetails = () => {
     [finishedSpecRegen, t],
   );
 
-  const trackRegenBusy =
-    trackRegenStart.isPending || followTrackRegen !== null;
+  const trackRegenBusy = trackRegenStart.isPending || followTrackRegen !== null;
   const specRegenBusy = specRegenStart.isPending || followSpecRegen !== null;
 
   const trackProgress = trackRemoteStatus?.progress;
@@ -302,7 +318,11 @@ export const VideoDetails = () => {
   const trackRegenErrorMessage = (() => {
     const err = trackRegenStart.error;
     if (!err) return null;
-    if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.data &&
+      typeof err.response.data === 'object'
+    ) {
       const d = err.response.data as { error?: string };
       if (d.error) return d.error;
     }
@@ -312,7 +332,11 @@ export const VideoDetails = () => {
   const specRegenErrorMessage = (() => {
     const err = specRegenStart.error;
     if (!err) return null;
-    if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.data &&
+      typeof err.response.data === 'object'
+    ) {
       const d = err.response.data as { error?: string };
       if (d.error) return d.error;
     }
@@ -325,7 +349,10 @@ export const VideoDetails = () => {
     typeof specProgress.total === 'number' &&
     specProgress.total > 0 &&
     typeof specProgress.processed === 'number'
-      ? Math.min(100, Math.round((100 * specProgress.processed) / specProgress.total))
+      ? Math.min(
+          100,
+          Math.round((100 * specProgress.processed) / specProgress.total),
+        )
       : null;
   const specIndeterminate =
     !specProgress ||
@@ -338,7 +365,10 @@ export const VideoDetails = () => {
     typeof trackProgress.total === 'number' &&
     trackProgress.total > 0 &&
     typeof trackProgress.processed === 'number'
-      ? Math.min(100, Math.round((100 * trackProgress.processed) / trackProgress.total))
+      ? Math.min(
+          100,
+          Math.round((100 * trackProgress.processed) / trackProgress.total),
+        )
       : null;
   const trackIndeterminate =
     !trackProgress ||
@@ -346,8 +376,7 @@ export const VideoDetails = () => {
     trackProgress.total <= 1 ||
     (trackProgress.total === 1 && (trackProgress.processed ?? 0) < 1);
 
-  if (isLoading)
-    return <PageLoadingState label={t('common.loading')} />;
+  if (isLoading) return <PageLoadingState label={t('common.loading')} />;
   if (error || !video)
     return (
       <PageMessageState
@@ -448,20 +477,25 @@ export const VideoDetails = () => {
           {isAdmin && (
             <Box sx={{ mt: 1 }}>
               {trackRegenErrorMessage && (
-                <Alert severity="error" sx={{ mb: 1 }} onClose={() => trackRegenStart.reset()}>
+                <Alert
+                  severity="error"
+                  sx={{ mb: 1 }}
+                  onClose={() => trackRegenStart.reset()}
+                >
                   {trackRegenErrorMessage}
                 </Alert>
               )}
               {specRegenErrorMessage && (
-                <Alert severity="error" sx={{ mb: 1 }} onClose={() => specRegenStart.reset()}>
+                <Alert
+                  severity="error"
+                  sx={{ mb: 1 }}
+                  onClose={() => specRegenStart.reset()}
+                >
                   {specRegenErrorMessage}
                 </Alert>
               )}
               {showTracksRegenHint && (
-                <Alert
-                  severity="info"
-                  sx={{ mb: 1 }}
-                >
+                <Alert severity="info" sx={{ mb: 1 }}>
                   {t('video.tracksMissingHint')}
                 </Alert>
               )}
@@ -474,52 +508,81 @@ export const VideoDetails = () => {
                     })}
                   </Alert>
                 )}
-              {followTrackRegen !== null && trackRemoteStatus?.status === 'running' && !trackProgressOtherJob && (
-                <Alert severity="info" sx={{ mb: 1 }}>
-                  <LinearProgress
-                    variant={trackIndeterminate ? 'indeterminate' : 'determinate'}
-                    {...(!trackIndeterminate ? { value: trackProgressPct ?? 0 } : {})}
-                    sx={{ mb: 1 }}
-                  />
-                  <Typography variant="body2" component="div">
-                    {trackProgress && trackProgress.total && trackProgress.total > 1
-                      ? t('video.trackRegenProgressBatch', {
-                          processed: trackProgress.processed ?? 0,
-                          total: trackProgress.total,
-                        })
-                      : t('video.trackRegenProgressSingle', {
-                          phase: trackProgress?.phase ?? '…',
+              {followTrackRegen !== null &&
+                trackRemoteStatus?.status === 'running' &&
+                !trackProgressOtherJob && (
+                  <Alert severity="info" sx={{ mb: 1 }}>
+                    <LinearProgress
+                      variant={
+                        trackIndeterminate ? 'indeterminate' : 'determinate'
+                      }
+                      {...(!trackIndeterminate
+                        ? { value: trackProgressPct ?? 0 }
+                        : {})}
+                      sx={{ mb: 1 }}
+                    />
+                    <Typography variant="body2" component="div">
+                      {trackProgress &&
+                      trackProgress.total &&
+                      trackProgress.total > 1
+                        ? t('video.trackRegenProgressBatch', {
+                            processed: trackProgress.processed ?? 0,
+                            total: trackProgress.total,
+                          })
+                        : t('video.trackRegenProgressSingle', {
+                            phase: trackProgress?.phase ?? '…',
+                          })}
+                    </Typography>
+                    {trackProgress?.current_video ? (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ mt: 0.5 }}
+                      >
+                        {t('video.trackRegenProgressFile', {
+                          name: tailPath(trackProgress.current_video),
                         })}
-                  </Typography>
-                  {trackProgress?.current_video ? (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                      {t('video.trackRegenProgressFile', { name: tailPath(trackProgress.current_video) })}
+                      </Typography>
+                    ) : null}
+                  </Alert>
+                )}
+              {followSpecRegen !== null &&
+                specRemoteStatus?.status === 'running' && (
+                  <Alert severity="info" sx={{ mb: 1 }}>
+                    <LinearProgress
+                      variant={
+                        specIndeterminate ? 'indeterminate' : 'determinate'
+                      }
+                      {...(!specIndeterminate
+                        ? { value: specProgressPct ?? 0 }
+                        : {})}
+                      sx={{ mb: 1 }}
+                    />
+                    <Typography variant="body2" component="div">
+                      {specProgress &&
+                      specProgress.total &&
+                      specProgress.total > 1
+                        ? t('video.specRegenProgressBatch', {
+                            processed: specProgress.processed ?? 0,
+                            total: specProgress.total,
+                          })
+                        : t('video.specRegenProgressSingle')}
                     </Typography>
-                  ) : null}
-                </Alert>
-              )}
-              {followSpecRegen !== null && specRemoteStatus?.status === 'running' && (
-                <Alert severity="info" sx={{ mb: 1 }}>
-                  <LinearProgress
-                    variant={specIndeterminate ? 'indeterminate' : 'determinate'}
-                    {...(!specIndeterminate ? { value: specProgressPct ?? 0 } : {})}
-                    sx={{ mb: 1 }}
-                  />
-                  <Typography variant="body2" component="div">
-                    {specProgress && specProgress.total && specProgress.total > 1
-                      ? t('video.specRegenProgressBatch', {
-                          processed: specProgress.processed ?? 0,
-                          total: specProgress.total,
-                        })
-                      : t('video.specRegenProgressSingle')}
-                  </Typography>
-                  {specProgress?.current_video ? (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                      {t('video.specRegenProgressFile', { name: tailPath(specProgress.current_video) })}
-                    </Typography>
-                  ) : null}
-                </Alert>
-              )}
+                    {specProgress?.current_video ? (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ mt: 0.5 }}
+                      >
+                        {t('video.specRegenProgressFile', {
+                          name: tailPath(specProgress.current_video),
+                        })}
+                      </Typography>
+                    ) : null}
+                  </Alert>
+                )}
               {!trackRegenBusy && trackJobSummary && (
                 <Alert
                   severity={trackJobSummary.severity}

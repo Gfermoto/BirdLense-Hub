@@ -75,7 +75,9 @@ export function ProcessorBirdnetExtendedBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 6)
                 }
                 label={t('settings.processorBirdnetPriorHalfLifeHours')}
-                helperText={t('settings.processorBirdnetPriorHalfLifeHoursHint')}
+                helperText={t(
+                  'settings.processorBirdnetPriorHalfLifeHoursHint',
+                )}
               />
             )}
           </form.Field>
@@ -92,7 +94,9 @@ export function ProcessorBirdnetExtendedBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 0)
                 }
                 label={t('settings.processorBirdnetPriorMinConfidence')}
-                helperText={t('settings.processorBirdnetPriorMinConfidenceHint')}
+                helperText={t(
+                  'settings.processorBirdnetPriorMinConfidenceHint',
+                )}
               />
             )}
           </form.Field>
@@ -238,9 +242,7 @@ export function ProcessorBirdnetExtendedBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 30000)
                 }
                 label={t('settings.processorBirdnetFifoSqliteBusyMs')}
-                helperText={t(
-                  'settings.processorBirdnetFifoSqliteBusyMsHint',
-                )}
+                helperText={t('settings.processorBirdnetFifoSqliteBusyMsHint')}
               />
             )}
           </form.Field>
@@ -259,9 +261,7 @@ export function ProcessorBirdnetExtendedBlock({ form }: Props) {
                   labelId="bn-obs-label"
                   label={t('settings.processorBirdnetObservabilityLevel')}
                   value={field.state.value ?? 'info'}
-                  onChange={(e) =>
-                    field.handleChange(String(e.target.value))
-                  }
+                  onChange={(e) => field.handleChange(String(e.target.value))}
                 >
                   <MenuItem value="off">off</MenuItem>
                   <MenuItem value="info">info</MenuItem>

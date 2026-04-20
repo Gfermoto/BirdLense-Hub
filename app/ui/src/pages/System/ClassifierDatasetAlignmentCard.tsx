@@ -27,7 +27,9 @@ export function ClassifierDatasetAlignmentCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data) {
     return (
-      <Alert severity="warning">{t('system.classifierAlignmentLoadError')}</Alert>
+      <Alert severity="warning">
+        {t('system.classifierAlignmentLoadError')}
+      </Alert>
     );
   }
 
@@ -44,7 +46,12 @@ export function ClassifierDatasetAlignmentCard() {
           {t('system.classifierAlignmentHint')}
         </Typography>
 
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ mb: 1 }}
+        >
           {data.classifier_weights_path} → {data.classifier_weights_resolved}
         </Typography>
 
@@ -57,15 +64,21 @@ export function ClassifierDatasetAlignmentCard() {
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           <Chip
             size="small"
-            label={t('system.classifierAlignmentClassCount', { n: data.classifier_class_count })}
+            label={t('system.classifierAlignmentClassCount', {
+              n: data.classifier_class_count,
+            })}
           />
           <Chip
             size="small"
-            label={t('system.classifierAlignmentDatasetFolders', { n: data.dataset_folder_count })}
+            label={t('system.classifierAlignmentDatasetFolders', {
+              n: data.dataset_folder_count,
+            })}
           />
           <Chip
             size="small"
-            label={t('system.classifierAlignmentVideoSpecies', { n: data.species_with_video_detections })}
+            label={t('system.classifierAlignmentVideoSpecies', {
+              n: data.species_with_video_detections,
+            })}
           />
           {canCompare && (
             <Chip
@@ -90,7 +103,9 @@ export function ClassifierDatasetAlignmentCard() {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('system.classifierAlignmentColLabel')}</TableCell>
+                    <TableCell>
+                      {t('system.classifierAlignmentColLabel')}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -108,7 +123,11 @@ export function ClassifierDatasetAlignmentCard() {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
               {t('system.classifierAlignmentCountTotal', {
                 shown: data.in_classifier_not_in_catalog.length,
                 total: data.in_classifier_not_in_catalog_count,
@@ -123,7 +142,9 @@ export function ClassifierDatasetAlignmentCard() {
                 <TableHead>
                   <TableRow>
                     <TableCell>id</TableCell>
-                    <TableCell>{t('system.speciesDataQualityColName')}</TableCell>
+                    <TableCell>
+                      {t('system.speciesDataQualityColName')}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -142,7 +163,11 @@ export function ClassifierDatasetAlignmentCard() {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
               {t('system.classifierAlignmentCountTotal', {
                 shown: data.in_catalog_not_in_classifier.length,
                 total: data.in_catalog_not_in_classifier_count,
@@ -158,7 +183,11 @@ export function ClassifierDatasetAlignmentCard() {
               })}
             </Typography>
             {data.dataset_folders_without_catalog_match.length > 0 && (
-              <Typography variant="body2" component="pre" sx={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap' }}>
+              <Typography
+                variant="body2"
+                component="pre"
+                sx={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap' }}
+              >
                 {data.dataset_folders_without_catalog_match.join(', ')}
               </Typography>
             )}
@@ -170,22 +199,29 @@ export function ClassifierDatasetAlignmentCard() {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('system.classifierAlignmentColFolder')}</TableCell>
-                    <TableCell>{t('system.speciesDataQualityColName')}</TableCell>
+                    <TableCell>
+                      {t('system.classifierAlignmentColFolder')}
+                    </TableCell>
+                    <TableCell>
+                      {t('system.speciesDataQualityColName')}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.dataset_folders_species_not_in_classifier.length === 0 ? (
+                  {data.dataset_folders_species_not_in_classifier.length ===
+                  0 ? (
                     <TableRow>
                       <TableCell colSpan={2}>—</TableCell>
                     </TableRow>
                   ) : (
-                    data.dataset_folders_species_not_in_classifier.map((row) => (
-                      <TableRow key={`${row.folder}-${row.species_id}`}>
-                        <TableCell>{row.folder}</TableCell>
-                        <TableCell>{row.species_name}</TableCell>
-                      </TableRow>
-                    ))
+                    data.dataset_folders_species_not_in_classifier.map(
+                      (row) => (
+                        <TableRow key={`${row.folder}-${row.species_id}`}>
+                          <TableCell>{row.folder}</TableCell>
+                          <TableCell>{row.species_name}</TableCell>
+                        </TableRow>
+                      ),
+                    )
                   )}
                 </TableBody>
               </Table>

@@ -7,7 +7,10 @@ import Snackbar from '@mui/material/Snackbar';
 import { SettingsForm } from './SettingsForm';
 import { updateSettings, restartProcessor } from '../../api/api';
 import { queryKeys } from '../../api/queryKeys';
-import { useObservedSpeciesQuery, useSettingsQuery } from '../../hooks/useSettingsQueries';
+import {
+  useObservedSpeciesQuery,
+  useSettingsQuery,
+} from '../../hooks/useSettingsQueries';
 import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -20,14 +23,19 @@ export const Settings: React.FC = () => {
   useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [restartMessage, setRestartMessage] = useState<{ type: 'success' | 'error'; textKey: string; apiMessage?: string } | null>(null);
+  const [restartMessage, setRestartMessage] = useState<{
+    type: 'success' | 'error';
+    textKey: string;
+    apiMessage?: string;
+  } | null>(null);
   const { requiresPassword, isAdmin, canEdit } = useProtectedArea();
 
   const { data: settings, isLoading: isLoadingSettings } = useSettingsQuery(
     !requiresPassword || canEdit,
   );
 
-  const { data: observedSpecies, isLoading: isLoadingObserved } = useObservedSpeciesQuery();
+  const { data: observedSpecies, isLoading: isLoadingObserved } =
+    useObservedSpeciesQuery();
 
   const updateMutation = useMutation({
     mutationFn: updateSettings,
@@ -38,12 +46,20 @@ export const Settings: React.FC = () => {
       setRestartMessage(
         result.success
           ? { type: 'success', textKey: 'settings.savedRestart' }
-          : { type: 'error', textKey: 'settings.restartFailed', apiMessage: result.message },
+          : {
+              type: 'error',
+              textKey: 'settings.restartFailed',
+              apiMessage: result.message,
+            },
       );
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : t('settings.saveError');
-      setRestartMessage({ type: 'error', textKey: 'settings.saveError', apiMessage: msg });
+      setRestartMessage({
+        type: 'error',
+        textKey: 'settings.saveError',
+        apiMessage: msg,
+      });
     },
   });
 
@@ -67,7 +83,11 @@ export const Settings: React.FC = () => {
           severity="error"
         />
       ) : (
-        <Box display="grid" gap={4} sx={{ pb: 5, minWidth: 0, maxWidth: '100%' }}>
+        <Box
+          display="grid"
+          gap={4}
+          sx={{ pb: 5, minWidth: 0, maxWidth: '100%' }}
+        >
           <PageHeader
             title={t('settings.updateTitle')}
             description={t('settings.restartInfo')}

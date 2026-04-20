@@ -7,7 +7,11 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
-import { fetchCatalogRepairStatus, getApiErrorMessage, startCatalogRepair } from '../../api/api';
+import {
+  fetchCatalogRepairStatus,
+  getApiErrorMessage,
+  startCatalogRepair,
+} from '../../api/api';
 import { SystemCardShell } from './SystemCardShell';
 
 export function CatalogRepairCard() {
@@ -18,7 +22,8 @@ export function CatalogRepairCard() {
     queryKey: ['catalog-repair-status'],
     queryFn: fetchCatalogRepairStatus,
     staleTime: 5_000,
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 4_000 : 20_000),
+    refetchInterval: (q) =>
+      q.state.data?.status === 'running' ? 4_000 : 20_000,
   });
 
   const startMutation = useMutation({
@@ -28,12 +33,17 @@ export function CatalogRepairCard() {
       await qc.invalidateQueries({ queryKey: ['catalog-repair-status'] });
     },
     onError: (mutationError: unknown) => {
-      setActionError(getApiErrorMessage(mutationError, t('system.catalogRepairStartFailed')));
+      setActionError(
+        getApiErrorMessage(mutationError, t('system.catalogRepairStartFailed')),
+      );
     },
   });
 
   if (isLoading) return <LinearProgress />;
-  if (error || !data) return <Alert severity="warning">{t('system.catalogRepairLoadError')}</Alert>;
+  if (error || !data)
+    return (
+      <Alert severity="warning">{t('system.catalogRepairLoadError')}</Alert>
+    );
 
   const running = data.status === 'running';
   const cov = data.coverage_now ?? {
@@ -47,7 +57,9 @@ export function CatalogRepairCard() {
   };
   const nextRunSec = Math.max(0, data.schedule?.next_run_in_sec ?? 0);
   const nextRunMin = Math.ceil(nextRunSec / 60);
-  const hasIssue = Boolean(actionError || data.error || data.status === 'error');
+  const hasIssue = Boolean(
+    actionError || data.error || data.status === 'error',
+  );
   const statusLabel = hasIssue
     ? t('system.jobStatus.error')
     : running
@@ -67,13 +79,20 @@ export function CatalogRepairCard() {
           disabled={running || startMutation.isPending}
           onClick={() => startMutation.mutate(6000)}
         >
-          {running ? t('system.catalogRepairRunning') : t('system.catalogRepairStart')}
+          {running
+            ? t('system.catalogRepairRunning')
+            : t('system.catalogRepairStart')}
         </Button>
       }
     >
       <Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
-          <Chip size="small" label={t('system.catalogRepairCompletion', { p: cov.completion_percent })} />
+          <Chip
+            size="small"
+            label={t('system.catalogRepairCompletion', {
+              p: cov.completion_percent,
+            })}
+          />
           <Chip
             size="small"
             variant="outlined"
@@ -83,9 +102,26 @@ export function CatalogRepairCard() {
               unique: cov.species_matched ?? 0,
             })}
           />
-          <Chip size="small" variant="outlined" label={t('system.catalogRepairCompleteCards', { n: cov.complete_cards, total: cov.allowlist_total })} />
-          <Chip size="small" variant="outlined" label={t('system.catalogRepairWithImage', { n: cov.with_image })} />
-          <Chip size="small" variant="outlined" label={t('system.catalogRepairWithDescription', { n: cov.with_description })} />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={t('system.catalogRepairCompleteCards', {
+              n: cov.complete_cards,
+              total: cov.allowlist_total,
+            })}
+          />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={t('system.catalogRepairWithImage', { n: cov.with_image })}
+          />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={t('system.catalogRepairWithDescription', {
+              n: cov.with_description,
+            })}
+          />
           {data.schedule?.autorun_enabled && (
             <Chip
               size="small"
@@ -96,8 +132,16 @@ export function CatalogRepairCard() {
         </Box>
 
         {running && <LinearProgress sx={{ mb: 1.5 }} />}
-        {actionError ? <Alert severity="error" sx={{ mb: 1.5 }}>{actionError}</Alert> : null}
-        {data.error && <Alert severity="warning" sx={{ mb: 1.5 }}>{data.error}</Alert>}
+        {actionError ? (
+          <Alert severity="error" sx={{ mb: 1.5 }}>
+            {actionError}
+          </Alert>
+        ) : null}
+        {data.error && (
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            {data.error}
+          </Alert>
+        )}
         {data.result && (
           <Typography variant="body2" color="text.secondary">
             {t('system.catalogRepairLastRun', {

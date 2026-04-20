@@ -72,7 +72,11 @@ export const Library: React.FC = () => {
             <Alert
               severity="info"
               action={
-                <Button color="inherit" size="small" onClick={() => setMode('advanced')}>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => setMode('advanced')}
+                >
                   {t('common.advancedMode')}
                 </Button>
               }

@@ -61,6 +61,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Page | Source |
 |------|--------|
 | Training | [TRAINING.md](./TRAINING.md) |
+| ML quality loop (RU) | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
 | Datasets | [DATASETS.md](./DATASETS.md) |
 | Versioning | [VERSIONING.md](./VERSIONING.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |

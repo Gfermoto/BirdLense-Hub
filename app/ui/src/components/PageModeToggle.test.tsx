@@ -34,7 +34,11 @@ describe('PageModeToggle', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Admin tools' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Overview' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Admin tools' }),
+    ).toBeInTheDocument();
   });
 });

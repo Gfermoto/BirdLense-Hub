@@ -27,7 +27,11 @@ function formatLastDispense(iso: string | null): string | null {
 
 const SCALE_STALE_MS = 120_000;
 
-function formatScaleValue(weight: number, unit: string, locale: string | undefined): string {
+function formatScaleValue(
+  weight: number,
+  unit: string,
+  locale: string | undefined,
+): string {
   const u = (unit || 'g').toLowerCase();
   const digits = u === 'g' && Math.abs(weight) >= 100 ? 0 : u === 'g' ? 1 : 3;
   const w = new Intl.NumberFormat(locale, {
@@ -59,14 +63,18 @@ export const FeedCard = () => {
   const queryClient = useQueryClient();
   const { isAdmin, canEdit } = useProtectedArea();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    success: boolean;
+  } | null>(null);
   const [tareLoading, setTareLoading] = useState(false);
 
   const { data: feedInfo } = useQuery({
     queryKey: ['feed-info'],
     queryFn: fetchFeedInfo,
     staleTime: 1000 * 15,
-    refetchInterval: (query) => (query.state.data?.scales_enabled ? 10_000 : false),
+    refetchInterval: (query) =>
+      query.state.data?.scales_enabled ? 10_000 : false,
   });
 
   const handleDispense = async () => {
@@ -76,7 +84,9 @@ export const FeedCard = () => {
     const result = await dispenseFeed();
     setLoading(false);
     setMessage({
-      text: result.success ? t('feed.feedDispensed') : result.message || t('common.error'),
+      text: result.success
+        ? t('feed.feedDispensed')
+        : result.message || t('common.error'),
       success: result.success,
     });
     if (result.success) {
@@ -84,7 +94,9 @@ export const FeedCard = () => {
     }
   };
 
-  const lastDispenseStr = formatLastDispense(feedInfo?.last_dispense_at ?? null);
+  const lastDispenseStr = formatLastDispense(
+    feedInfo?.last_dispense_at ?? null,
+  );
   const feedEnabled = feedInfo?.feed_source !== 'none';
   const scalesEnabled = Boolean(feedInfo?.scales_enabled);
   const scalesSource = feedInfo?.scales_source;
@@ -93,8 +105,12 @@ export const FeedCard = () => {
   const weightStr = weightDefined
     ? formatScaleValue(scale.weight as number, scale.unit || 'g', i18n.language)
     : null;
-  const updatedLine = weightDefined ? formatScaleUpdatedLine(scale?.updated_at) : null;
-  const scaleStale = weightDefined ? isScaleReadingStale(scale?.updated_at) : false;
+  const updatedLine = weightDefined
+    ? formatScaleUpdatedLine(scale?.updated_at)
+    : null;
+  const scaleStale = weightDefined
+    ? isScaleReadingStale(scale?.updated_at)
+    : false;
   const birdPresentDefined = scale && typeof scale.bird_present === 'boolean';
   const tareAvailable = Boolean(feedInfo?.scale_tare_available);
   const scaleNoDataLabelKey =
@@ -107,7 +123,9 @@ export const FeedCard = () => {
     const result = await postScaleTare();
     setTareLoading(false);
     setMessage({
-      text: result.success ? t('feed.scaleTareOk') : result.message || t('feed.scaleTareFail'),
+      text: result.success
+        ? t('feed.scaleTareOk')
+        : result.message || t('feed.scaleTareFail'),
       success: result.success,
     });
     if (result.success) {
@@ -157,16 +175,29 @@ export const FeedCard = () => {
             )}
             {weightDefined && weightStr && (
               <Box>
-                <Typography component="span" variant="h5" fontWeight={600} sx={{ mr: 0.5 }}>
+                <Typography
+                  component="span"
+                  variant="h5"
+                  fontWeight={600}
+                  sx={{ mr: 0.5 }}
+                >
                   {weightStr}
                 </Typography>
                 {updatedLine && (
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
                     {t('feed.scaleUpdatedAt')}: {updatedLine}
                   </Typography>
                 )}
                 {scaleStale && (
-                  <Typography variant="caption" color="warning.main" display="block">
+                  <Typography
+                    variant="caption"
+                    color="warning.main"
+                    display="block"
+                  >
                     {t('feed.scaleStaleHint')}
                   </Typography>
                 )}
@@ -177,7 +208,9 @@ export const FeedCard = () => {
                 size="small"
                 icon={<PetsIcon />}
                 label={
-                  scale!.bird_present ? t('feed.birdPresentOn') : t('feed.birdPresentOff')
+                  scale!.bird_present
+                    ? t('feed.birdPresentOn')
+                    : t('feed.birdPresentOff')
                 }
                 color={scale!.bird_present ? 'success' : 'default'}
                 variant={scale!.bird_present ? 'filled' : 'outlined'}
@@ -197,7 +230,10 @@ export const FeedCard = () => {
           </>
         )}
         {message && (
-          <Typography variant="body2" color={message.success ? 'success.main' : 'error.main'}>
+          <Typography
+            variant="body2"
+            color={message.success ? 'success.main' : 'error.main'}
+          >
             {message.text}
           </Typography>
         )}

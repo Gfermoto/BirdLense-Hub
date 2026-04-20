@@ -51,10 +51,19 @@ export function CaptureFeederSection({ form }: Props) {
         {t('settings.accordionCaptureFeeder')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
           <Box
             component="legend"
-            sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
           >
             {t('settings.accordionCaptureFeeder')}
           </Box>
@@ -78,14 +87,20 @@ export function CaptureFeederSection({ form }: Props) {
                         control={
                           <Checkbox
                             checked={field.state.value ?? true}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.triggerOpencv')}
                       />
                     )}
                   </form.Field>
-                  <form.Subscribe selector={(state) => state.values.triggers?.opencv?.enabled !== false}>
+                  <form.Subscribe
+                    selector={(state) =>
+                      state.values.triggers?.opencv?.enabled !== false
+                    }
+                  >
                     {(enabled) =>
                       enabled ? (
                         <Grid container spacing={2}>
@@ -99,10 +114,16 @@ export function CaptureFeederSection({ form }: Props) {
                                   value={field.state.value ?? 1}
                                   onChange={(e) => {
                                     const v = parseInt(e.target.value, 10);
-                                    field.handleChange(Number.isNaN(v) || v < 1 ? 1 : Math.min(30, v));
+                                    field.handleChange(
+                                      Number.isNaN(v) || v < 1
+                                        ? 1
+                                        : Math.min(30, v),
+                                    );
                                   }}
                                   label={t('settings.motionCheckEveryNFrames')}
-                                  helperText={t('settings.motionCheckEveryNFramesHint')}
+                                  helperText={t(
+                                    'settings.motionCheckEveryNFramesHint',
+                                  )}
                                 />
                               )}
                             </form.Field>
@@ -115,7 +136,11 @@ export function CaptureFeederSection({ form }: Props) {
                                   type="number"
                                   inputProps={{ min: 5, max: 80, step: 1 }}
                                   value={field.state.value ?? 18}
-                                  onChange={(e) => field.handleChange(Number(e.target.value) || 18)}
+                                  onChange={(e) =>
+                                    field.handleChange(
+                                      Number(e.target.value) || 18,
+                                    )
+                                  }
                                   label={t('settings.opencvDiffThreshold')}
                                 />
                               )}
@@ -129,7 +154,11 @@ export function CaptureFeederSection({ form }: Props) {
                                   type="number"
                                   inputProps={{ min: 50, max: 20000, step: 10 }}
                                   value={field.state.value ?? 240}
-                                  onChange={(e) => field.handleChange(Number(e.target.value) || 240)}
+                                  onChange={(e) =>
+                                    field.handleChange(
+                                      Number(e.target.value) || 240,
+                                    )
+                                  }
                                   label={t('settings.opencvMinContourArea')}
                                 />
                               )}
@@ -150,14 +179,20 @@ export function CaptureFeederSection({ form }: Props) {
                         control={
                           <Checkbox
                             checked={field.state.value ?? false}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.triggerFrigate')}
                       />
                     )}
                   </form.Field>
-                  <form.Subscribe selector={(state) => state.values.triggers?.frigate?.enabled === true}>
+                  <form.Subscribe
+                    selector={(state) =>
+                      state.values.triggers?.frigate?.enabled === true
+                    }
+                  >
                     {(enabled) =>
                       enabled ? (
                         <>
@@ -170,8 +205,12 @@ export function CaptureFeederSection({ form }: Props) {
                                 {(field) => (
                                   <TextField
                                     fullWidth
-                                    value={field.state.value ?? 'frigate/events'}
-                                    onChange={(e) => field.handleChange(e.target.value)}
+                                    value={
+                                      field.state.value ?? 'frigate/events'
+                                    }
+                                    onChange={(e) =>
+                                      field.handleChange(e.target.value)
+                                    }
                                     label={t('settings.frigateTopic')}
                                     placeholder="frigate/events"
                                     helperText={t('settings.frigateTopicHint')}
@@ -185,10 +224,16 @@ export function CaptureFeederSection({ form }: Props) {
                                   <TextField
                                     fullWidth
                                     value={(field.state.value || []).join(', ')}
-                                    onChange={(e) => field.handleChange(splitCsv(e.target.value))}
+                                    onChange={(e) =>
+                                      field.handleChange(
+                                        splitCsv(e.target.value),
+                                      )
+                                    }
                                     label={t('settings.frigateCameraFilter')}
                                     placeholder="BirdCam, Patio"
-                                    helperText={t('settings.frigateCameraFilterHint')}
+                                    helperText={t(
+                                      'settings.frigateCameraFilterHint',
+                                    )}
                                   />
                                 )}
                               </form.Field>
@@ -199,10 +244,16 @@ export function CaptureFeederSection({ form }: Props) {
                                   <TextField
                                     fullWidth
                                     value={(field.state.value || []).join(', ')}
-                                    onChange={(e) => field.handleChange(splitCsv(e.target.value))}
+                                    onChange={(e) =>
+                                      field.handleChange(
+                                        splitCsv(e.target.value),
+                                      )
+                                    }
                                     label={t('settings.frigateLabelFilter')}
                                     placeholder="bird, squirrel"
-                                    helperText={t('settings.frigateLabelFilterHint')}
+                                    helperText={t(
+                                      'settings.frigateLabelFilterHint',
+                                    )}
                                   />
                                 )}
                               </form.Field>
@@ -213,10 +264,16 @@ export function CaptureFeederSection({ form }: Props) {
                                   <TextField
                                     fullWidth
                                     value={(field.state.value || []).join(', ')}
-                                    onChange={(e) => field.handleChange(splitCsv(e.target.value))}
+                                    onChange={(e) =>
+                                      field.handleChange(
+                                        splitCsv(e.target.value),
+                                      )
+                                    }
                                     label={t('settings.frigateLabelExclude')}
                                     placeholder="cat, dog"
-                                    helperText={t('settings.frigateLabelExcludeHint')}
+                                    helperText={t(
+                                      'settings.frigateLabelExcludeHint',
+                                    )}
                                   />
                                 )}
                               </form.Field>
@@ -229,12 +286,20 @@ export function CaptureFeederSection({ form }: Props) {
                                       control={
                                         <Switch
                                           checked={field.state.value !== false}
-                                          onChange={(e) => field.handleChange(e.target.checked)}
+                                          onChange={(e) =>
+                                            field.handleChange(e.target.checked)
+                                          }
                                         />
                                       }
-                                      label={t('settings.frigateTriggerOnGeometry')}
+                                      label={t(
+                                        'settings.frigateTriggerOnGeometry',
+                                      )}
                                     />
-                                    <FormHelperText>{t('settings.frigateTriggerOnGeometryHint')}</FormHelperText>
+                                    <FormHelperText>
+                                      {t(
+                                        'settings.frigateTriggerOnGeometryHint',
+                                      )}
+                                    </FormHelperText>
                                   </FormControl>
                                 )}
                               </form.Field>
@@ -255,7 +320,9 @@ export function CaptureFeederSection({ form }: Props) {
                         control={
                           <Checkbox
                             checked={field.state.value ?? false}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.triggerMotionSensor')}
@@ -264,8 +331,10 @@ export function CaptureFeederSection({ form }: Props) {
                   </form.Field>
                   <form.Subscribe
                     selector={(state) => ({
-                      enabled: state.values.triggers?.motion_sensor?.enabled === true,
-                      source: (state.values.triggers?.motion_sensor?.source ?? 'mqtt') as TriggerTransportSource,
+                      enabled:
+                        state.values.triggers?.motion_sensor?.enabled === true,
+                      source: (state.values.triggers?.motion_sensor?.source ??
+                        'mqtt') as TriggerTransportSource,
                     })}
                   >
                     {({ enabled, source }) =>
@@ -283,11 +352,18 @@ export function CaptureFeederSection({ form }: Props) {
                                     value={field.state.value ?? 'mqtt'}
                                     label={t('settings.triggerSource')}
                                     onChange={(e) =>
-                                      field.handleChange(e.target.value as TriggerTransportSource)
+                                      field.handleChange(
+                                        e.target
+                                          .value as TriggerTransportSource,
+                                      )
                                     }
                                   >
-                                    <MenuItem value="mqtt">{t('settings.triggerMqtt')}</MenuItem>
-                                    <MenuItem value="esphome">{t('settings.triggerEsp')}</MenuItem>
+                                    <MenuItem value="mqtt">
+                                      {t('settings.triggerMqtt')}
+                                    </MenuItem>
+                                    <MenuItem value="esphome">
+                                      {t('settings.triggerEsp')}
+                                    </MenuItem>
                                   </Select>
                                 </FormControl>
                               )}
@@ -296,7 +372,9 @@ export function CaptureFeederSection({ form }: Props) {
                           {source === 'mqtt' ? (
                             <>
                               <Grid size={{ xs: 12 }}>
-                                <Alert severity="info">{t('settings.mqttSensorAlert')}</Alert>
+                                <Alert severity="info">
+                                  {t('settings.mqttSensorAlert')}
+                                </Alert>
                               </Grid>
                               <Grid size={{ xs: 12 }}>
                                 <form.Field name="triggers.motion_sensor.mqtt_topic">
@@ -304,7 +382,9 @@ export function CaptureFeederSection({ form }: Props) {
                                     <TextField
                                       fullWidth
                                       value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
+                                      onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                      }
                                       label={t('settings.mqttTopic')}
                                       placeholder="stat/bird_pir/STATE"
                                       helperText={t('settings.mqttTopicHint')}
@@ -316,7 +396,9 @@ export function CaptureFeederSection({ form }: Props) {
                           ) : (
                             <>
                               <Grid size={{ xs: 12 }}>
-                                <Alert severity="info">{t('settings.esphomeAlert')}</Alert>
+                                <Alert severity="info">
+                                  {t('settings.esphomeAlert')}
+                                </Alert>
                               </Grid>
                               <Grid size={{ xs: 12, sm: 6 }}>
                                 <form.Field name="triggers.motion_sensor.esphome_url">
@@ -324,7 +406,9 @@ export function CaptureFeederSection({ form }: Props) {
                                     <TextField
                                       fullWidth
                                       value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
+                                      onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                      }
                                       label={t('settings.esphomeUrl')}
                                       placeholder="http://192.168.1.50"
                                     />
@@ -337,7 +421,9 @@ export function CaptureFeederSection({ form }: Props) {
                                     <TextField
                                       fullWidth
                                       value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
+                                      onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                      }
                                       label={t('settings.sensorId')}
                                       placeholder="bird_pir"
                                       helperText={t('settings.sensorIdHint')}
@@ -356,7 +442,11 @@ export function CaptureFeederSection({ form }: Props) {
 
               <Grid size={{ xs: 12 }}>
                 <ServiceBlock title={t('settings.serviceScales')}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     {t('settings.serviceScalesDesc')}
                   </Typography>
                   <ScalesIntegrationFields form={form} />
@@ -371,22 +461,34 @@ export function CaptureFeederSection({ form }: Props) {
                         control={
                           <Checkbox
                             checked={field.state.value ?? false}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.triggerScales')}
                       />
                     )}
                   </form.Field>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     {t('settings.triggerScalesHint')}
                   </Typography>
-                  <form.Subscribe selector={(state) => state.values.triggers?.scales?.enabled === true}>
+                  <form.Subscribe
+                    selector={(state) =>
+                      state.values.triggers?.scales?.enabled === true
+                    }
+                  >
                     {(triggerOn) =>
                       triggerOn ? (
                         <Grid container spacing={2}>
                           <Grid size={{ xs: 12 }}>
-                            <Alert severity="info">{t('settings.triggerScalesPipelineHint')}</Alert>
+                            <Alert severity="info">
+                              {t('settings.triggerScalesPipelineHint')}
+                            </Alert>
                           </Grid>
                           <Grid size={{ xs: 12, sm: 6 }}>
                             <form.Field name="triggers.scales.motion_trigger_min_delta_kg">
@@ -397,15 +499,23 @@ export function CaptureFeederSection({ form }: Props) {
                                   <TextField
                                     fullWidth
                                     type="number"
-                                    inputProps={{ min: 1, max: 500000, step: 1 }}
+                                    inputProps={{
+                                      min: 1,
+                                      max: 500000,
+                                      step: 1,
+                                    }}
                                     value={grams}
                                     onChange={(e) => {
                                       const raw = Number(e.target.value);
                                       const g = Number.isFinite(raw) ? raw : 20;
-                                      field.handleChange(Math.max(0.001, g / 1000));
+                                      field.handleChange(
+                                        Math.max(0.001, g / 1000),
+                                      );
                                     }}
                                     label={t('settings.scalesMotionMinDelta')}
-                                    helperText={t('settings.scalesMotionMinDeltaHint')}
+                                    helperText={t(
+                                      'settings.scalesMotionMinDeltaHint',
+                                    )}
                                   />
                                 );
                               }}
@@ -419,7 +529,11 @@ export function CaptureFeederSection({ form }: Props) {
                                   type="number"
                                   inputProps={{ min: 0.2, step: 0.1 }}
                                   value={field.state.value ?? 1.5}
-                                  onChange={(e) => field.handleChange(Number(e.target.value) || 1.5)}
+                                  onChange={(e) =>
+                                    field.handleChange(
+                                      Number(e.target.value) || 1.5,
+                                    )
+                                  }
                                   label={t('settings.scalesMotionDebounce')}
                                 />
                               )}
@@ -446,7 +560,9 @@ export function CaptureFeederSection({ form }: Props) {
                       {(heightField) => {
                         const w = widthField.state.value;
                         const h = heightField.state.value;
-                        const sel = resolutions.find((r) => r.width === w && r.height === h);
+                        const sel = resolutions.find(
+                          (r) => r.width === w && r.height === h,
+                        );
 
                         return (
                           <FormControl fullWidth>
@@ -458,18 +574,25 @@ export function CaptureFeederSection({ form }: Props) {
                               value={sel ? `${sel.width}x${sel.height}` : ''}
                               label={t('settings.resolution')}
                               onChange={(e) => {
-                                const [a, b] = (e.target.value as string).split('x').map(Number);
+                                const [a, b] = (e.target.value as string)
+                                  .split('x')
+                                  .map(Number);
                                 widthField.handleChange(a);
                                 heightField.handleChange(b);
                               }}
                             >
                               {resolutions.map((r) => (
-                                <MenuItem key={r.label} value={`${r.width}x${r.height}`}>
+                                <MenuItem
+                                  key={r.label}
+                                  value={`${r.width}x${r.height}`}
+                                >
                                   {r.label}
                                 </MenuItem>
                               ))}
                             </Select>
-                            <FormHelperText>{t('settings.resolutionHint')}</FormHelperText>
+                            <FormHelperText>
+                              {t('settings.resolutionHint')}
+                            </FormHelperText>
                           </FormControl>
                         );
                       }}
@@ -481,7 +604,6 @@ export function CaptureFeederSection({ form }: Props) {
           </ServiceBlock>
 
           <FeederRelayFields form={form} />
-
         </Box>
       </AccordionDetails>
     </Accordion>

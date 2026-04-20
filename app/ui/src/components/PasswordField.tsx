@@ -55,7 +55,9 @@ export function PasswordField({
           <InputAdornment position="end">
             <IconButton
               aria-label={
-                showPassword ? t('common.hidePassword') : t('common.showPassword')
+                showPassword
+                  ? t('common.hidePassword')
+                  : t('common.showPassword')
               }
               onClick={() => setShowPassword((s) => !s)}
               edge="end"

@@ -22,7 +22,11 @@ export function ServiceBlock({
         '&:last-of-type': { mb: 0 },
       }}
     >
-      <Typography variant="subtitle2" color="primary" sx={{ mb: 1.5, fontWeight: 600 }}>
+      <Typography
+        variant="subtitle2"
+        color="primary"
+        sx={{ mb: 1.5, fontWeight: 600 }}
+      >
         {title}
       </Typography>
       {children}

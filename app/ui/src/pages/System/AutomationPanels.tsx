@@ -60,10 +60,16 @@ function statusLabel(status?: SystemJobStatus | null): string {
   return status.status || 'idle';
 }
 
-function formatAgoCompact(seconds: number, t: (key: string, options?: Record<string, unknown>) => string): string {
+function formatAgoCompact(
+  seconds: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const s = Math.max(0, Math.floor(seconds));
   if (s < 60) return t('system.automationBirdnetFifoAgoSeconds', { n: s });
-  if (s < 3600) return t('system.automationBirdnetFifoAgoMinutes', { n: Math.floor(s / 60) });
+  if (s < 3600)
+    return t('system.automationBirdnetFifoAgoMinutes', {
+      n: Math.floor(s / 60),
+    });
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   if (m <= 0) return t('system.automationBirdnetFifoAgoHoursOnly', { n: h });
@@ -92,7 +98,9 @@ function formatActionRunnerPayload(
 ): string {
   const dry = data.dry_run === true;
   const phrase =
-    typeof data.confirmation_phrase === 'string' ? data.confirmation_phrase : '';
+    typeof data.confirmation_phrase === 'string'
+      ? data.confirmation_phrase
+      : '';
 
   if (dry && phrase && 'broken_total' in data) {
     const scanned = Number(data.scanned) || 0;
@@ -110,7 +118,9 @@ function formatActionRunnerPayload(
       t('system.automationFmtBrokenSummary', { scanned, broken }),
     ];
     if (samples.length) {
-      parts.push(t('system.automationFmtSampleIds', { ids: samples.join(', ') }));
+      parts.push(
+        t('system.automationFmtSampleIds', { ids: samples.join(', ') }),
+      );
     }
     if (byReason) {
       parts.push('', t('system.automationFmtByReasonHeader'), byReason);
@@ -136,7 +146,9 @@ function formatActionRunnerPayload(
       t('system.automationFmtNoSpeciesSummary', { total }),
     ];
     if (samples.length) {
-      parts.push(t('system.automationFmtSampleIds', { ids: samples.join(', ') }));
+      parts.push(
+        t('system.automationFmtSampleIds', { ids: samples.join(', ') }),
+      );
     }
     if (note) {
       parts.push('', t('system.automationFmtServerNote', { note }));
@@ -174,7 +186,11 @@ function ActionRunnerInfoAlert({
       onClose={onClose}
       sx={{
         minWidth: 0,
-        '& .MuiAlert-message': { minWidth: 0, width: '100%', overflow: 'hidden' },
+        '& .MuiAlert-message': {
+          minWidth: 0,
+          width: '100%',
+          overflow: 'hidden',
+        },
       }}
     >
       <Typography
@@ -258,15 +274,21 @@ function getJobStatusLabel(
 }
 
 function fmtNum(v: unknown, digits = 4): string {
-  if (typeof v === 'number' && Number.isFinite(v)) return v.toFixed(digits).replace(/\.?0+$/, '') || '0';
+  if (typeof v === 'number' && Number.isFinite(v))
+    return v.toFixed(digits).replace(/\.?0+$/, '') || '0';
   if (typeof v === 'string' && v.trim() !== '') {
     const n = Number(v);
-    if (Number.isFinite(n)) return n.toFixed(digits).replace(/\.?0+$/, '') || '0';
+    if (Number.isFinite(n))
+      return n.toFixed(digits).replace(/\.?0+$/, '') || '0';
   }
   return '—';
 }
 
-function FusionExportResultBlock({ result }: { result: Record<string, unknown> }) {
+function FusionExportResultBlock({
+  result,
+}: {
+  result: Record<string, unknown>;
+}) {
   const { t } = useTranslation();
   const rows = result.rows_written;
   const path = result.output_path != null ? String(result.output_path) : '';
@@ -277,15 +299,30 @@ function FusionExportResultBlock({ result }: { result: Record<string, unknown> }
         {t('system.automationFusionExportSummaryTitle')}
       </Typography>
       {typeof rows === 'number' ? (
-        <Typography variant="body2">{t('system.automationFusionExportRows', { count: rows })}</Typography>
+        <Typography variant="body2">
+          {t('system.automationFusionExportRows', { count: rows })}
+        </Typography>
       ) : null}
       {src ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ mt: 0.5 }}
+        >
           {src}
         </Typography>
       ) : null}
       {path ? (
-        <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all' }}>
+        <Typography
+          variant="body2"
+          sx={{
+            mt: 0.5,
+            fontFamily: 'monospace',
+            fontSize: '0.8rem',
+            wordBreak: 'break-all',
+          }}
+        >
           {path}
         </Typography>
       ) : null}
@@ -293,49 +330,87 @@ function FusionExportResultBlock({ result }: { result: Record<string, unknown> }
   );
 }
 
-type ThresholdRow = { coverage?: unknown; precision?: unknown; recall?: unknown; risk?: unknown; count?: unknown };
+type ThresholdRow = {
+  coverage?: unknown;
+  precision?: unknown;
+  recall?: unknown;
+  risk?: unknown;
+  count?: unknown;
+};
 
-function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) {
+function FusionEvalReportBlock({
+  result,
+}: {
+  result: Record<string, unknown>;
+}) {
   const { t } = useTranslation();
   const thresholds = result.thresholds;
   const thEntries =
     thresholds && typeof thresholds === 'object'
-      ? Object.entries(thresholds as Record<string, ThresholdRow>).sort(([a], [b]) => Number(a) - Number(b))
+      ? Object.entries(thresholds as Record<string, ThresholdRow>).sort(
+          ([a], [b]) => Number(a) - Number(b),
+        )
       : [];
-  const bins = Array.isArray(result.bins) ? (result.bins as Record<string, unknown>[]) : [];
-  const slices = result.slices && typeof result.slices === 'object' ? (result.slices as Record<string, unknown>) : null;
+  const bins = Array.isArray(result.bins)
+    ? (result.bins as Record<string, unknown>[])
+    : [];
+  const slices =
+    result.slices && typeof result.slices === 'object'
+      ? (result.slices as Record<string, unknown>)
+      : null;
   const reportRows = result.eval_report_csv_rows;
   const nFlat = typeof reportRows === 'number' ? reportRows : null;
 
   return (
     <Stack spacing={1.5} sx={{ width: '100%' }}>
-      <Typography variant="subtitle2">{t('system.automationFusionEvalSummaryTitle')}</Typography>
+      <Typography variant="subtitle2">
+        {t('system.automationFusionEvalSummaryTitle')}
+      </Typography>
       <Stack direction="row" flexWrap="wrap" gap={2}>
         <Typography variant="body2">
-          {t('system.automationFusionEvalColN')}: <strong>{fmtNum(result.n, 0)}</strong>
+          {t('system.automationFusionEvalColN')}:{' '}
+          <strong>{fmtNum(result.n, 0)}</strong>
         </Typography>
         <Typography variant="body2">
-          {t('system.automationFusionEvalColPositiveRate')}: <strong>{fmtNum(result.positive_rate)}</strong>
+          {t('system.automationFusionEvalColPositiveRate')}:{' '}
+          <strong>{fmtNum(result.positive_rate)}</strong>
         </Typography>
         <Typography variant="body2">
-          {t('system.automationFusionEvalColBrier')}: <strong>{fmtNum(result.brier)}</strong>
+          {t('system.automationFusionEvalColBrier')}:{' '}
+          <strong>{fmtNum(result.brier)}</strong>
         </Typography>
         <Typography variant="body2">
-          {t('system.automationFusionEvalColEce')}: <strong>{fmtNum(result.ece)}</strong>
+          {t('system.automationFusionEvalColEce')}:{' '}
+          <strong>{fmtNum(result.ece)}</strong>
         </Typography>
         <Typography variant="body2">
-          {t('system.automationFusionEvalColAcc05')}: <strong>{fmtNum(result.accuracy_at_0_5)}</strong>
+          {t('system.automationFusionEvalColAcc05')}:{' '}
+          <strong>{fmtNum(result.accuracy_at_0_5)}</strong>
         </Typography>
       </Stack>
       {result.source_csv ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: 'monospace' }}>
-          {t('system.automationFusionEvalSourceCsv')}: {String(result.source_csv)}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontFamily: 'monospace' }}
+        >
+          {t('system.automationFusionEvalSourceCsv')}:{' '}
+          {String(result.source_csv)}
         </Typography>
       ) : null}
       {result.eval_report_csv_path ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: 'monospace' }}>
-          {t('system.automationFusionEvalReportCsv')}: {String(result.eval_report_csv_path)}
-          {nFlat != null ? ` · ${t('system.automationFusionEvalReportRows', { count: nFlat })}` : ''}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontFamily: 'monospace' }}
+        >
+          {t('system.automationFusionEvalReportCsv')}:{' '}
+          {String(result.eval_report_csv_path)}
+          {nFlat != null
+            ? ` · ${t('system.automationFusionEvalReportRows', { count: nFlat })}`
+            : ''}
         </Typography>
       ) : null}
 
@@ -344,16 +419,32 @@ function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) 
           <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
             {t('system.automationFusionEvalThresholds')}
           </Typography>
-          <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%' }}>
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{ maxWidth: '100%' }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>{t('system.automationFusionEvalColThreshold')}</TableCell>
-                  <TableCell align="right">{t('system.automationFusionEvalColCoverage')}</TableCell>
-                  <TableCell align="right">{t('system.automationFusionEvalColPrecision')}</TableCell>
-                  <TableCell align="right">{t('system.automationFusionEvalColRecall')}</TableCell>
-                  <TableCell align="right">{t('system.automationFusionEvalColRisk')}</TableCell>
-                  <TableCell align="right">{t('system.automationFusionEvalColCount')}</TableCell>
+                  <TableCell>
+                    {t('system.automationFusionEvalColThreshold')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('system.automationFusionEvalColCoverage')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('system.automationFusionEvalColPrecision')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('system.automationFusionEvalColRecall')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('system.automationFusionEvalColRisk')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('system.automationFusionEvalColCount')}
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -361,7 +452,9 @@ function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) 
                   <TableRow key={key}>
                     <TableCell>{key}</TableCell>
                     <TableCell align="right">{fmtNum(row?.coverage)}</TableCell>
-                    <TableCell align="right">{fmtNum(row?.precision)}</TableCell>
+                    <TableCell align="right">
+                      {fmtNum(row?.precision)}
+                    </TableCell>
                     <TableCell align="right">{fmtNum(row?.recall)}</TableCell>
                     <TableCell align="right">{fmtNum(row?.risk)}</TableCell>
                     <TableCell align="right">{fmtNum(row?.count, 0)}</TableCell>
@@ -376,20 +469,36 @@ function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) 
       {bins.length > 0 ? (
         <Accordion variant="outlined" disableGutters>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2">{t('system.automationFusionEvalBins')}</Typography>
+            <Typography variant="subtitle2">
+              {t('system.automationFusionEvalBins')}
+            </Typography>
           </AccordionSummary>
           <AccordionDetails>
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('system.automationFusionEvalColBin')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColLo')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColHi')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColCount')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColConf')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColAcc')}</TableCell>
-                    <TableCell align="right">{t('system.automationFusionEvalColGap')}</TableCell>
+                    <TableCell>
+                      {t('system.automationFusionEvalColBin')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColLo')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColHi')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColCount')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColConf')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColAcc')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {t('system.automationFusionEvalColGap')}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -399,7 +508,9 @@ function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) 
                       <TableCell align="right">{fmtNum(b.lo)}</TableCell>
                       <TableCell align="right">{fmtNum(b.hi)}</TableCell>
                       <TableCell align="right">{fmtNum(b.count, 0)}</TableCell>
-                      <TableCell align="right">{fmtNum(b.confidence)}</TableCell>
+                      <TableCell align="right">
+                        {fmtNum(b.confidence)}
+                      </TableCell>
                       <TableCell align="right">{fmtNum(b.accuracy)}</TableCell>
                       <TableCell align="right">{fmtNum(b.gap)}</TableCell>
                     </TableRow>
@@ -414,23 +525,41 @@ function FusionEvalReportBlock({ result }: { result: Record<string, unknown> }) 
       {slices && Object.keys(slices).length > 0 ? (
         <Accordion variant="outlined" disableGutters>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2">{t('system.automationFusionEvalSlices')}</Typography>
+            <Typography variant="subtitle2">
+              {t('system.automationFusionEvalSlices')}
+            </Typography>
           </AccordionSummary>
           <AccordionDetails>
             <Stack spacing={2}>
               {Object.entries(slices).map(([field, byVal]) =>
                 typeof byVal === 'object' && byVal !== null ? (
                   <Box key={field}>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                      sx={{ mb: 0.5 }}
+                    >
                       {field}
                     </Typography>
-                    {Object.entries(byVal as Record<string, Record<string, unknown>>).map(([sliceVal, sub]) => (
-                      <Box key={`${field}:${sliceVal}`} sx={{ mb: 1, pl: 1, borderLeft: '2px solid', borderColor: 'divider' }}>
+                    {Object.entries(
+                      byVal as Record<string, Record<string, unknown>>,
+                    ).map(([sliceVal, sub]) => (
+                      <Box
+                        key={`${field}:${sliceVal}`}
+                        sx={{
+                          mb: 1,
+                          pl: 1,
+                          borderLeft: '2px solid',
+                          borderColor: 'divider',
+                        }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {sliceVal}
                         </Typography>
                         <Typography variant="caption" display="block">
-                          n={fmtNum(sub.n, 0)} · ECE={fmtNum(sub.ece)} · Brier={fmtNum(sub.brier)} · acc@0.5=
+                          n={fmtNum(sub.n, 0)} · ECE={fmtNum(sub.ece)} · Brier=
+                          {fmtNum(sub.brier)} · acc@0.5=
                           {fmtNum(sub.accuracy_at_0_5)}
                         </Typography>
                       </Box>
@@ -475,7 +604,9 @@ export function AutomationFusionCard() {
     },
     onError: (error: unknown) => {
       setLastInfo(
-        error instanceof Error ? error.message : t('system.automationFusionExportFailed'),
+        error instanceof Error
+          ? error.message
+          : t('system.automationFusionExportFailed'),
       );
     },
   });
@@ -487,7 +618,9 @@ export function AutomationFusionCard() {
     },
     onError: (error: unknown) => {
       setLastInfo(
-        error instanceof Error ? error.message : t('system.automationFusionEvalFailed'),
+        error instanceof Error
+          ? error.message
+          : t('system.automationFusionEvalFailed'),
       );
     },
   });
@@ -497,7 +630,10 @@ export function AutomationFusionCard() {
       setFusionExportPolling(false);
       return;
     }
-    if (fusionExportQuery.data?.status && fusionExportQuery.data.status !== 'running') {
+    if (
+      fusionExportQuery.data?.status &&
+      fusionExportQuery.data.status !== 'running'
+    ) {
       setFusionExportPolling(false);
     }
   }, [fusionExportQuery.data?.status, fusionExportQuery.isError]);
@@ -507,7 +643,10 @@ export function AutomationFusionCard() {
       setFusionEvalPolling(false);
       return;
     }
-    if (fusionEvalQuery.data?.status && fusionEvalQuery.data.status !== 'running') {
+    if (
+      fusionEvalQuery.data?.status &&
+      fusionEvalQuery.data.status !== 'running'
+    ) {
       setFusionEvalPolling(false);
     }
   }, [fusionEvalQuery.data?.status, fusionEvalQuery.isError]);
@@ -519,13 +658,13 @@ export function AutomationFusionCard() {
     fusionEvalQuery.data?.status === 'running';
   const hasError = Boolean(
     fusionExportMutation.isError ||
-      fusionEvalMutation.isError ||
-      fusionExportQuery.isError ||
-      fusionEvalQuery.isError ||
-      fusionExportQuery.data?.error ||
-      fusionEvalQuery.data?.error ||
-      fusionExportQuery.data?.status === 'error' ||
-      fusionEvalQuery.data?.status === 'error',
+    fusionEvalMutation.isError ||
+    fusionExportQuery.isError ||
+    fusionEvalQuery.isError ||
+    fusionExportQuery.data?.error ||
+    fusionEvalQuery.data?.error ||
+    fusionExportQuery.data?.status === 'error' ||
+    fusionEvalQuery.data?.status === 'error',
   );
   const statusLabelText = hasError
     ? t('system.jobStatus.error')
@@ -558,10 +697,14 @@ export function AutomationFusionCard() {
           </Alert>
         ) : null}
         {fusionExportQuery.isError ? (
-          <Alert severity="error">{t('system.automationFusionExportFailed')}</Alert>
+          <Alert severity="error">
+            {t('system.automationFusionExportFailed')}
+          </Alert>
         ) : null}
         {fusionEvalQuery.isError ? (
-          <Alert severity="error">{t('system.automationFusionEvalFailed')}</Alert>
+          <Alert severity="error">
+            {t('system.automationFusionEvalFailed')}
+          </Alert>
         ) : null}
         <Stack direction="row" flexWrap="wrap" gap={1}>
           <Tooltip title={t('system.automationFusionExportHint')} describeChild>
@@ -569,13 +712,19 @@ export function AutomationFusionCard() {
               <Button
                 variant="contained"
                 onClick={() => fusionExportMutation.mutate()}
-                disabled={fusionExportMutation.isPending || fusionExportQuery.data?.status === 'running'}
+                disabled={
+                  fusionExportMutation.isPending ||
+                  fusionExportQuery.data?.status === 'running'
+                }
               >
                 {t('system.automationFusionExport')}
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={t('system.automationFusionExportDownloadHint')} describeChild>
+          <Tooltip
+            title={t('system.automationFusionExportDownloadHint')}
+            describeChild
+          >
             <span>
               <Button variant="outlined" onClick={downloadLatestFusionExport}>
                 {t('system.automationFusionExportDownload')}
@@ -587,15 +736,24 @@ export function AutomationFusionCard() {
               <Button
                 variant="contained"
                 onClick={() => fusionEvalMutation.mutate()}
-                disabled={fusionEvalMutation.isPending || fusionEvalQuery.data?.status === 'running'}
+                disabled={
+                  fusionEvalMutation.isPending ||
+                  fusionEvalQuery.data?.status === 'running'
+                }
               >
                 {t('system.automationFusionEval')}
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={t('system.automationFusionEvalDownloadHint')} describeChild>
+          <Tooltip
+            title={t('system.automationFusionEvalDownloadHint')}
+            describeChild
+          >
             <span>
-              <Button variant="outlined" onClick={() => downloadLatestFusionEvalReport()}>
+              <Button
+                variant="outlined"
+                onClick={() => downloadLatestFusionEvalReport()}
+              >
                 {t('system.automationFusionEvalDownload')}
               </Button>
             </span>
@@ -605,14 +763,26 @@ export function AutomationFusionCard() {
           <Alert severity="error">{fusionExportQuery.data.error}</Alert>
         ) : null}
         {fusionExportQuery.data?.result && !fusionExportQuery.data?.error ? (
-          <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
-            <FusionExportResultBlock result={fusionExportQuery.data.result as Record<string, unknown>} />
+          <Alert
+            severity="success"
+            sx={{ '& .MuiAlert-message': { width: '100%' } }}
+          >
+            <FusionExportResultBlock
+              result={fusionExportQuery.data.result as Record<string, unknown>}
+            />
           </Alert>
         ) : null}
-        {fusionEvalQuery.data?.error ? <Alert severity="error">{fusionEvalQuery.data.error}</Alert> : null}
+        {fusionEvalQuery.data?.error ? (
+          <Alert severity="error">{fusionEvalQuery.data.error}</Alert>
+        ) : null}
         {fusionEvalQuery.data?.result && !fusionEvalQuery.data?.error ? (
-          <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
-            <FusionEvalReportBlock result={fusionEvalQuery.data.result as Record<string, unknown>} />
+          <Alert
+            severity="success"
+            sx={{ '& .MuiAlert-message': { width: '100%' } }}
+          >
+            <FusionEvalReportBlock
+              result={fusionEvalQuery.data.result as Record<string, unknown>}
+            />
           </Alert>
         ) : null}
       </Stack>
@@ -623,7 +793,8 @@ export function AutomationFusionCard() {
 export function AutomationDiagnosticsCard() {
   const { t } = useTranslation();
   const [birdnetFifoOpen, setBirdnetFifoOpen] = useState(false);
-  const [birdnetFifoRaw, setBirdnetFifoRaw] = useState<BirdnetFifoPayload | null>(null);
+  const [birdnetFifoRaw, setBirdnetFifoRaw] =
+    useState<BirdnetFifoPayload | null>(null);
   const [birdnetFifoError, setBirdnetFifoError] = useState<string | null>(null);
   const [birdnetFifoLoading, setBirdnetFifoLoading] = useState(false);
 
@@ -635,7 +806,9 @@ export function AutomationDiagnosticsCard() {
     try {
       setBirdnetFifoRaw(await fetchBirdnetFifoSnapshot());
     } catch (error) {
-      setBirdnetFifoError(error instanceof Error ? error.message : String(error));
+      setBirdnetFifoError(
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       setBirdnetFifoLoading(false);
     }
@@ -724,12 +897,18 @@ export function AutomationMaintenanceCard() {
     <SystemCardShell
       title={t('system.automationMaintenancePanelTitle')}
       description={t('system.automationAdminMaintenanceHint')}
-      statusLabel={runningLabel ? t('system.catalogRepairRunning') : t('system.heroActionReview')}
+      statusLabel={
+        runningLabel
+          ? t('system.catalogRepairRunning')
+          : t('system.heroActionReview')
+      }
       statusTone={runningLabel ? 'warning' : 'default'}
     >
       <Stack spacing={2}>
         {runningLabel ? <LinearProgress /> : null}
-        {lastInfo ? <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} /> : null}
+        {lastInfo ? (
+          <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} />
+        ) : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {actions.map((action) => (
             <ActionButton
@@ -811,7 +990,9 @@ export function AutomationDangerZoneCard() {
       <Stack spacing={2}>
         <Alert severity="warning">{t('system.automationDangerNote')}</Alert>
         {runningLabel ? <LinearProgress /> : null}
-        {lastInfo ? <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} /> : null}
+        {lastInfo ? (
+          <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} />
+        ) : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {actions.map((action) => (
             <ActionButton
@@ -884,7 +1065,9 @@ function BirdnetFifoDialog({
         ) : null}
         {!loading && error ? <Alert severity="error">{error}</Alert> : null}
         {!loading && !error && data && !data.available ? (
-          <Alert severity="warning">{t('system.automationBirdnetFifoUnavailable')}</Alert>
+          <Alert severity="warning">
+            {t('system.automationBirdnetFifoUnavailable')}
+          </Alert>
         ) : null}
         {!loading && !error && snapshot ? (
           <Stack spacing={2.5}>
@@ -906,29 +1089,51 @@ function BirdnetFifoDialog({
               </Typography>
             </Paper>
             <Box>
-              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{ fontWeight: 600 }}
+              >
                 {t('system.automationBirdnetFifoTableSectionTitle', {
                   hours:
                     snapshot.species_hearing?.active_within_hours != null
-                      ? Math.round(Number(snapshot.species_hearing.active_within_hours))
+                      ? Math.round(
+                          Number(snapshot.species_hearing.active_within_hours),
+                        )
                       : 24,
                 })}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 1.5 }}
+              >
                 {t('system.automationBirdnetFifoTableSectionHint')}
               </Typography>
               {(snapshot.species_fifo_table || []).length > 0 ? (
-                <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 420 }}>
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ maxHeight: 420 }}
+                >
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <HeaderCell>{t('system.automationBirdnetFifoTableColMqtt')}</HeaderCell>
-                        <HeaderCell>{t('system.automationBirdnetFifoTableColVideo')}</HeaderCell>
+                        <HeaderCell>
+                          {t('system.automationBirdnetFifoTableColMqtt')}
+                        </HeaderCell>
+                        <HeaderCell>
+                          {t('system.automationBirdnetFifoTableColVideo')}
+                        </HeaderCell>
                         <HeaderCell align="right">
                           {t('system.automationBirdnetFifoTableColCount')}
                         </HeaderCell>
-                        <HeaderCell>{t('system.automationBirdnetFifoTableColSci')}</HeaderCell>
-                        <HeaderCell>{t('system.automationBirdnetFifoTableColLast')}</HeaderCell>
+                        <HeaderCell>
+                          {t('system.automationBirdnetFifoTableColSci')}
+                        </HeaderCell>
+                        <HeaderCell>
+                          {t('system.automationBirdnetFifoTableColLast')}
+                        </HeaderCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -939,15 +1144,26 @@ function BirdnetFifoDialog({
                             key={row.display_label}
                             hover
                             sx={{
-                              '&:nth-of-type(even)': { bgcolor: 'action.hover' },
+                              '&:nth-of-type(even)': {
+                                bgcolor: 'action.hover',
+                              },
                               ...(active
-                                ? { boxShadow: (theme) => `inset 3px 0 0 ${theme.palette.success.main}` }
+                                ? {
+                                    boxShadow: (theme) =>
+                                      `inset 3px 0 0 ${theme.palette.success.main}`,
+                                  }
                                 : {}),
                             }}
                           >
-                            <TableCell sx={{ maxWidth: 200 }}>{row.display_label}</TableCell>
-                            <TableCell sx={{ maxWidth: 200 }}>{row.canonical_for_video}</TableCell>
-                            <TableCell align="right">{row.event_count}</TableCell>
+                            <TableCell sx={{ maxWidth: 200 }}>
+                              {row.display_label}
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 200 }}>
+                              {row.canonical_for_video}
+                            </TableCell>
+                            <TableCell align="right">
+                              {row.event_count}
+                            </TableCell>
                             <TableCell
                               sx={{
                                 maxWidth: 160,
@@ -957,8 +1173,16 @@ function BirdnetFifoDialog({
                             >
                               {row.scientific_name || '—'}
                             </TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
-                              {formatAgoCompact(row.seconds_since_heard ?? 0, t)}
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
+                              {formatAgoCompact(
+                                row.seconds_since_heard ?? 0,
+                                t,
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -990,11 +1214,19 @@ function BirdnetFifoDialog({
                 >
                   {t('system.automationBirdnetFifoCopyJson')}
                 </Button>
-                <Typography variant="caption" color="text.secondary" display="block">
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                >
                   {t('system.automationBirdnetFifoHearingExplain', {
                     hours:
                       snapshot.species_hearing?.active_within_hours != null
-                        ? Math.round(Number(snapshot.species_hearing.active_within_hours))
+                        ? Math.round(
+                            Number(
+                              snapshot.species_hearing.active_within_hours,
+                            ),
+                          )
                         : 24,
                   })}
                 </Typography>
@@ -1004,7 +1236,9 @@ function BirdnetFifoDialog({
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>{t('system.automationBirdnetFifoDialogClose')}</Button>
+        <Button onClick={onClose}>
+          {t('system.automationBirdnetFifoDialogClose')}
+        </Button>
       </DialogActions>
     </Dialog>
   );

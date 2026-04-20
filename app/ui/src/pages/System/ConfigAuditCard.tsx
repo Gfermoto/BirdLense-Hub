@@ -13,11 +13,7 @@ import { fetchConfigAudit } from '../../api/api';
 import { localizedConfigAuditWarning } from './configAuditWarningLocale';
 import { SystemCardShell } from './SystemCardShell';
 
-export function ConfigAuditCard({
-  simple = false,
-}: {
-  simple?: boolean;
-}) {
+export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
     queryKey: ['config-audit'],
@@ -26,15 +22,22 @@ export function ConfigAuditCard({
   });
 
   if (isLoading) return <LinearProgress />;
-  if (error || !data) return <Alert severity="warning">{t('system.configAuditLoadError')}</Alert>;
+  if (error || !data)
+    return <Alert severity="warning">{t('system.configAuditLoadError')}</Alert>;
   const mappingOk = data.mapping?.gray_to_grey_ok ?? false;
   const telegramPhoto = data.telegram?.send_photo ?? false;
-  const deprecatedKeys = Array.isArray(data.deprecated_keys_present) ? data.deprecated_keys_present : [];
+  const deprecatedKeys = Array.isArray(data.deprecated_keys_present)
+    ? data.deprecated_keys_present
+    : [];
   const unknownKeys = Array.isArray(data.unknown_keys) ? data.unknown_keys : [];
-  const configWarnings = Array.isArray(data.config_warnings) ? data.config_warnings : [];
+  const configWarnings = Array.isArray(data.config_warnings)
+    ? data.config_warnings
+    : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
   const statusTone =
-    configWarnings.length > 0 || deprecatedKeys.length > 0 ? 'warning' : 'success';
+    configWarnings.length > 0 || deprecatedKeys.length > 0
+      ? 'warning'
+      : 'success';
 
   return (
     <SystemCardShell
@@ -53,19 +56,35 @@ export function ConfigAuditCard({
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('system.configAuditScalesSection')}
             </Typography>
-            <Typography variant="body2" component="div" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+            <Typography
+              variant="body2"
+              component="div"
+              sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
+            >
               {t('system.configAuditScalesSource')}: {String(sm.source ?? '—')}
               {' · '}
               {t('system.configAuditScalesBroker')}:{' '}
-              {sm.mqtt_broker_configured === true ? t('system.configAuditYes') : t('system.configAuditNo')}
+              {sm.mqtt_broker_configured === true
+                ? t('system.configAuditYes')
+                : t('system.configAuditNo')}
             </Typography>
-            {typeof sm.mqtt_weight_topic_resolved === 'string' && sm.mqtt_weight_topic_resolved ? (
-              <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                {t('system.configAuditScalesWeightTopic')}: {sm.mqtt_weight_topic_resolved}
+            {typeof sm.mqtt_weight_topic_resolved === 'string' &&
+            sm.mqtt_weight_topic_resolved ? (
+              <Typography
+                variant="body2"
+                sx={{ mt: 0.5, fontFamily: 'monospace', fontSize: '0.8rem' }}
+              >
+                {t('system.configAuditScalesWeightTopic')}:{' '}
+                {sm.mqtt_weight_topic_resolved}
               </Typography>
             ) : null}
             {sm.mqtt_note === 'esphome_or_ha' ? (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5 }}
+              >
                 {t('system.configAuditScalesNotMqtt')}
               </Typography>
             ) : null}
@@ -79,7 +98,11 @@ export function ConfigAuditCard({
             </Typography>
             <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
               {configWarnings.map((w, i) => (
-                <ListItem key={i} disableGutters sx={{ display: 'list-item', py: 0.25 }}>
+                <ListItem
+                  key={i}
+                  disableGutters
+                  sx={{ display: 'list-item', py: 0.25 }}
+                >
                   <ListItemText
                     primaryTypographyProps={{ variant: 'body2' }}
                     primary={localizedConfigAuditWarning(w, t)}
@@ -94,12 +117,18 @@ export function ConfigAuditCard({
           <Chip
             size="small"
             color={mappingOk ? 'success' : 'warning'}
-            label={mappingOk ? t('system.mappingOk') : t('system.mappingNeedsFix')}
+            label={
+              mappingOk ? t('system.mappingOk') : t('system.mappingNeedsFix')
+            }
           />
           <Chip
             size="small"
             color={telegramPhoto ? 'success' : 'warning'}
-            label={telegramPhoto ? t('system.telegramPhotoOn') : t('system.telegramPhotoOff')}
+            label={
+              telegramPhoto
+                ? t('system.telegramPhotoOn')
+                : t('system.telegramPhotoOff')
+            }
           />
         </Box>
 
@@ -107,7 +136,8 @@ export function ConfigAuditCard({
         {!simple ? (
           <>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>{t('system.telegramProxyType')}:</strong> {data.telegram?.proxy_type || '—'}
+              <strong>{t('system.telegramProxyType')}:</strong>{' '}
+              {data.telegram?.proxy_type || '—'}
             </Typography>
           </>
         ) : null}
