@@ -251,9 +251,8 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    models?: { binary?: string; classifier?: string; single_stage?: string };
+    models?: { binary?: string; classifier?: string };
     save_images?: boolean;
-    single_stage_coco_animals_only_auto?: boolean;
     birdnet_mqtt_prior_window_hours?: number;
     birdnet_mqtt_bias_window_seconds?: number;
     birdnet_mqtt_prior_ttl_hours?: number;
