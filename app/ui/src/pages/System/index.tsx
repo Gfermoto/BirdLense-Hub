@@ -104,7 +104,10 @@ export const System: React.FC = () => {
                 display: 'grid',
                 gap: 2,
                 minWidth: 0,
-                gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.9fr) minmax(320px, 0.9fr)' },
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  xl: isAdvanced ? 'minmax(0, 0.9fr) minmax(320px, 0.9fr)' : '1fr',
+                },
                 alignItems: 'start',
               }}
             >

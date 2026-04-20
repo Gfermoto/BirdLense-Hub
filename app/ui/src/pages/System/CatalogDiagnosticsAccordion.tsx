@@ -15,7 +15,7 @@ export function CatalogDiagnosticsAccordion() {
   const { t } = useTranslation();
 
   return (
-    <Accordion defaultExpanded={false} disableGutters>
+    <Accordion defaultExpanded={false} disableGutters sx={{ minWidth: 0, maxWidth: '100%' }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box>
           <Typography variant="subtitle1">{t('system.catalogDiagnosticsTitle')}</Typography>

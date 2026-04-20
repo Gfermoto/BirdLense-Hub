@@ -104,6 +104,10 @@ export function SystemHero({ advanced }: SystemHeroProps) {
   return (
     <Card
       sx={{
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         background:
           needsAttention
             ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(30, 41, 59, 0.96))'
@@ -155,7 +159,12 @@ export function SystemHero({ advanced }: SystemHeroProps) {
           sx={{
             display: 'grid',
             gap: 1,
-            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' },
+            minWidth: 0,
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              md: 'repeat(4, minmax(0, 1fr))',
+            },
           }}
         >
           <MetricBlock
