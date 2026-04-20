@@ -1430,6 +1430,7 @@
     "configAuditRuntimeHint": "From data/diagnostics/processor_runtime_stats.json — aligns with VPS logs (e.g. \"Slow frame processing\").",
     "configAuditRuntimeSlowFrames": "Slow-frame events in snapshot: {{total}} (warn threshold {{warnMs}} ms). If logs spam, raise processor.frame_processing_warn_ms, reduce processor.binary_imgsz, or ease the light gate.",
     "configAuditRuntimeDetectP95": "Detector p95 latency ≈ {{p95}} ms vs warn threshold {{warnMs}} ms — frames often exceed the slow-frame threshold.",
+    "configAuditFrigateStandaloneOff": "Frigate is on and MQTT works, but detection.frigate_standalone_when_no_yolo=false: when YOLO returns zero tracks, Frigate MQTT events do not become final detections (log: \"ByteTrack: 0 YOLO tracks…\"). Enable it under Settings → Processor → Frigate fusion, or tune YOLO/light gate.",
     "configAuditNeedsReview": "Needs review",
     "configAuditLoadError": "Failed to load configuration audit",
     "configAuditWarningsTitle": "Warnings",

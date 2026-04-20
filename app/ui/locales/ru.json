@@ -1440,6 +1440,7 @@
     "configAuditRuntimeHint": "Из data/diagnostics/processor_runtime_stats.json — те же счётчики, что в логах VPS (например «Slow frame processing»).",
     "configAuditRuntimeSlowFrames": "В снимке зафиксированы события медленного кадра: {{total}} (порог {{warnMs}} мс). Если лог заспамлен — поднимите processor.frame_processing_warn_ms, уменьшите processor.binary_imgsz или ослабьте light gate.",
     "configAuditRuntimeDetectP95": "Задержка детектора p95 ≈ {{p95}} мс при пороге предупреждения {{warnMs}} мс — кадры часто пересекают порог медленной обработки.",
+    "configAuditFrigateStandaloneOff": "Frigate включён и MQTT настроен, но detection.frigate_standalone_when_no_yolo=false: при нуле треков YOLO события Frigate не попадают в финальные детекции (в логах «ByteTrack: 0 YOLO tracks…»). Включите опцию в Настройки → Процессор → Frigate fusion или подстройте YOLO/light gate.",
     "configAuditNeedsReview": "Нужна проверка",
     "configAuditLoadError": "Не удалось загрузить ревизию конфигурации",
     "configAuditWarningsTitle": "Предупреждения",
