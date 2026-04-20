@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import os
 import yaml
+
+import data_paths
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 from app_config.trigger_config import (
     format_motion_source_summary,
@@ -275,6 +279,40 @@ def load_yaml_mapping(path: str) -> dict:
         return {}
 
 
+def _processor_runtime_hints(app_config_get) -> list[str]:
+    """Подсказки из data/diagnostics/processor_runtime_stats.json (совпадает с логами VPS)."""
+    hints: list[str] = []
+    warn_ms = max(0.0, _safe_float(app_config_get("processor.frame_processing_warn_ms", 450), 450))
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    if not os.path.isfile(path):
+        return hints
+    try:
+        with open(path, encoding="utf-8") as f:
+            snap = json.load(f)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return hints
+    if not isinstance(snap, dict):
+        return hints
+    counters = snap.get("counters") if isinstance(snap.get("counters"), dict) else {}
+    try:
+        slow = int(counters.get("slow_frame_processor_detect_total") or 0)
+    except (TypeError, ValueError):
+        slow = 0
+    if slow > 0 and warn_ms > 0:
+        hints.append(f"processor.runtime.SLOW_FRAMES total={slow} warn_ms={int(warn_ms)}")
+    lat = snap.get("latency_ms") if isinstance(snap.get("latency_ms"), dict) else {}
+    p95_raw = lat.get("frame_processor_detect_p95")
+    try:
+        p95 = float(p95_raw) if p95_raw is not None else None
+    except (TypeError, ValueError):
+        p95 = None
+    if warn_ms > 0 and p95 is not None and p95 >= warn_ms * 0.95:
+        hints.append(
+            f"processor.runtime.DETECT_P95 p95_ms={p95:.1f} warn_ms={int(warn_ms)}"
+        )
+    return hints
+
+
 def build_system_config_audit_payload(
     *,
     user_config_file: str,
@@ -309,6 +347,7 @@ def build_system_config_audit_payload(
     recall_tuning, recall_hints, recall_blocking = _recall_audit(app_config_get)
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
     combined_warnings = [*recall_blocking, *scales_warnings]
+    processor_runtime_hints = _processor_runtime_hints(app_config_get)
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -318,6 +357,7 @@ def build_system_config_audit_payload(
         },
         "recall_tuning": recall_tuning,
         "recall_warnings": recall_hints,
+        "processor_runtime_hints": processor_runtime_hints,
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
         "config_warnings": combined_warnings,

@@ -369,8 +369,60 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []
+    assert payload.get("processor_runtime_hints") == []
     # Подсказки recall не смешиваем с блокирующими предупреждениями (Frigate/MQTT-весы).
     assert payload["config_warnings"] == []
+
+
+def test_build_system_config_audit_payload_processor_runtime_hints(
+    monkeypatch, tmp_path
+):
+    from services import system_config_audit_service as scas
+    import data_paths
+
+    diag = tmp_path / "diagnostics"
+    diag.mkdir(parents=True)
+    stats = diag / "processor_runtime_stats.json"
+    stats.write_text(
+        '{"counters": {"slow_frame_processor_detect_total": 3}, '
+        '"latency_ms": {"frame_processor_detect_p95": 480.0}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
+
+    user = tmp_path / "user.yaml"
+    user.write_text("known: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        mapping = {
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "mqtt.broker": "",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "processor.frame_processing_warn_ms": 450,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return mapping.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    hints = payload["processor_runtime_hints"]
+    assert any("SLOW_FRAMES total=3 warn_ms=450" in h for h in hints)
+    assert any("DETECT_P95" in h and "480.0" in h for h in hints)
 
 
 def test_recall_frigate_blocking_goes_to_config_warnings_not_recall_hints(monkeypatch, tmp_path):

@@ -34,9 +34,14 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
     ? data.config_warnings
     : [];
   const recallHints = Array.isArray(data.recall_warnings) ? data.recall_warnings : [];
+  const processorRuntimeHints = Array.isArray(data.processor_runtime_hints)
+    ? data.processor_runtime_hints
+    : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
   const statusTone =
-    configWarnings.length > 0 || deprecatedKeys.length > 0
+    configWarnings.length > 0 ||
+    deprecatedKeys.length > 0 ||
+    processorRuntimeHints.length > 0
       ? 'warning'
       : 'success';
 
@@ -45,7 +50,9 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
       title={t('system.configAuditTitle')}
       description={t('system.configAuditHint')}
       statusLabel={
-        configWarnings.length > 0 || deprecatedKeys.length > 0
+        configWarnings.length > 0 ||
+        deprecatedKeys.length > 0 ||
+        processorRuntimeHints.length > 0
           ? t('system.configAuditNeedsReview')
           : t('system.readinessReady')
       }
@@ -90,6 +97,31 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
               </Typography>
             ) : null}
           </Box>
+        )}
+
+        {processorRuntimeHints.length > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('system.configAuditRuntimeTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+              {t('system.configAuditRuntimeHint')}
+            </Typography>
+            <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
+              {processorRuntimeHints.map((w, i) => (
+                <ListItem
+                  key={`rt-${i}`}
+                  disableGutters
+                  sx={{ display: 'list-item', py: 0.25 }}
+                >
+                  <ListItemText
+                    primaryTypographyProps={{ variant: 'body2' }}
+                    primary={localizedConfigAuditWarning(w, t)}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
         )}
 
         {configWarnings.length > 0 && (

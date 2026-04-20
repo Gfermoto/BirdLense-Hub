@@ -1460,6 +1460,7 @@ export interface paths {
          *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic).
          *     `config_warnings` lists **blocking** issues only (e.g. Frigate on without `mqtt.broker`, MQTT scales without broker/topic).
          *     `recall_warnings` holds **non-blocking recall tuning hints** (OpenCV thresholds, frame skipping, etc.) — separate from `config_warnings`.
+         *     `processor_runtime_hints` reads `data/diagnostics/processor_runtime_stats.json` when present (same counters as log lines such as **Slow frame processing** on the VPS).
          *     Requires the same settings/session access as other protected system views when passwords are enabled.
          */
         get: {
@@ -7527,6 +7528,8 @@ export interface components {
             };
             /** @description Optional recall / sensitivity tuning hints (not treated as blocking config errors). Blocking Frigate+MQTT and scales MQTT problems appear in `config_warnings` instead. */
             recall_warnings: string[];
+            /** @description Optional hints derived from processor runtime snapshot JSON (slow-frame counter, detect p95 vs warn_ms). Empty when the snapshot file is missing or counters are zero. */
+            processor_runtime_hints: string[];
             scales_mqtt: {
                 [key: string]: unknown;
             };
