@@ -28,6 +28,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Features | [FEATURES.md](./FEATURES.md) |
 | Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
 | Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
+| Definition of Done (short gate) | [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md) · [RU](./DEFINITION_OF_DONE.ru.md) |
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
 | Runbooks | [RUNBOOKS.md](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
 | Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
