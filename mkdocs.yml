@@ -62,6 +62,9 @@ nav:
       - "Domain contract": DOMAIN_CONTRACT.md
       - "Release readiness": RELEASE_READINESS.md
       - "Definition of Done (short gate)": DEFINITION_OF_DONE.md
+      - "UI settings map": UI_SETTINGS_MAP.md
+      - "Processor performance notes": PROCESSOR_PERFORMANCE.md
+      - "Config triggers inventory": CONFIGURATION_TRIGGERS_INVENTORY.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Runbooks: RUNBOOKS.md
       - Recover config: RECOVERY_CONFIG.md
@@ -70,6 +73,7 @@ nav:
   - "Develop & integrate":
       - Architecture: ARCHITECTURE.md
       - HTTP API: API.md
+      - "API errors & security baseline": API_ERRORS.md
       - OpenAPI (Redoc): reference/openapi.md
       - Access control: ACCESS_CONTROL.md
       - MCP setup: MCP_SETUP.md
@@ -87,6 +91,7 @@ nav:
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
   - Meta:
+      - "Hub epics (GitHub tracker)": HUB_EPICS_TRACKER.md
       - Repository layout: REPOSITORY_LAYOUT.md
       - Verification log: VERIFICATION.md
       - Doc conventions: Documentation.md
@@ -116,6 +121,9 @@ nav:
       - "Доменный контракт": DOMAIN_CONTRACT.ru.md
       - "Готовность к релизу": RELEASE_READINESS.ru.md
       - "Definition of Done (короткие ворота)": DEFINITION_OF_DONE.ru.md
+      - "Карта настроек UI": UI_SETTINGS_MAP.ru.md
+      - "Производительность процессора": PROCESSOR_PERFORMANCE.ru.md
+      - "Инвентаризация триггеров конфига": CONFIGURATION_TRIGGERS_INVENTORY.ru.md
       - Решение проблем: TROUBLESHOOTING.ru.md
       - Runbooks: RUNBOOKS.ru.md
       - Восстановление конфига: RECOVERY_CONFIG.ru.md
@@ -123,6 +131,7 @@ nav:
       - "Heimdall (плитки)": HEIMDALL.ru.md
       - Архитектура: ARCHITECTURE.ru.md
       - API: API.ru.md
+      - "Ошибки API и security baseline": API_ERRORS.ru.md
       - OpenAPI (Redoc): reference/openapi.ru.md
       - Доступ: ACCESS_CONTROL.ru.md
       - MCP: MCP_SETUP.ru.md
@@ -140,6 +149,7 @@ nav:
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md
       - Структура репозитория: REPOSITORY_LAYOUT.ru.md
+      - "Трекер эпиков Hub (GitHub)": HUB_EPICS_TRACKER.ru.md
       - Верификация релизов: VERIFICATION.ru.md
       - О документации: Documentation.ru.md
       - Карта сайта: SITE_MAP.ru.md

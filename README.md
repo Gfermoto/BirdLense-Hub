@@ -95,6 +95,18 @@ For a one-step Docker bootstrap, run `./install.sh` from the repository root. It
 - **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
 - **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+### First-time contributor CI (same as Actions)
+
+1. **Node.js ≥ 22** (see `app/ui/package.json` `engines` and `app/ui/.nvmrc`).
+2. From repo root run **`make ci-local`** — it creates **`.venv-ci`** if missing and executes [`scripts/ci-full-local.sh`](./scripts/ci-full-local.sh) (single source of truth for [`.github/workflows/ci-pr.yml`](./.github/workflows/ci-pr.yml)).
+3. Web pytest only (matches CI `PYTHONPATH`):
+
+```bash
+cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
+```
+
+**UI map (where to click):** [docs/UI_SETTINGS_MAP.md](./docs/UI_SETTINGS_MAP.md) · [RU](./docs/UI_SETTINGS_MAP.ru.md)
 - **Weights workflow:** `scripts/fetch-processor-weights.sh` prefers the two-stage detector/classifier paths; use `--legacy-single-stage` only if you explicitly need the compatibility `app/yolo11n.pt` asset from GitHub Release `weights/v1`.
 
 ## Requirements
@@ -121,12 +133,12 @@ From repo root:
 | `make verify` | Check `health` + `readiness` + `status` on `BASE_URL` or localhost |
 | `make ci-local` | Run `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, full `web/tests` pytest, docs version, UI (codegen + Vitest + typecheck + lint + build), Settings UI coverage, MkDocs strict (see [docs/CI_AND_QUALITY.md](./docs/CI_AND_QUALITY.md)) |
 | `make ci-local-docker` | Same as `ci-local`, then Docker image tests + Playwright smoke (heavy; needs processor weights) |
-
-**Release gate (short):** [Definition of Done](./docs/DEFINITION_OF_DONE.md) · [RU](./docs/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [RELEASE_READINESS](./docs/RELEASE_READINESS.md).
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |
 | `make logs` | View logs |
+
+**Release gate (short):** [Definition of Done](./docs/DEFINITION_OF_DONE.md) · [RU](./docs/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [RELEASE_READINESS](./docs/RELEASE_READINESS.md).
 
 From `app/`:
 

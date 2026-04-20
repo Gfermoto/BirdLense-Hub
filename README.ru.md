@@ -96,6 +96,18 @@ UI: http://localhost:8085
 - **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `make test`, `make test-web`, E2E; тесты процессора требовательны к RAM.
 - **Участие:** [CONTRIBUTING.ru.md](./CONTRIBUTING.ru.md).
 
+### Первый прогон CI (как в Actions)
+
+1. **Node.js ≥ 22** (`app/ui/package.json` → `engines`, `app/ui/.nvmrc`).
+2. Из корня: **`make ci-local`** — при необходимости создаёт **`.venv-ci`** и запускает [`scripts/ci-full-local.sh`](./scripts/ci-full-local.sh) (тот же сценарий, что и [`.github/workflows/ci-pr.yml`](./.github/workflows/ci-pr.yml)).
+3. Только web pytest (как в CI, `PYTHONPATH`):
+
+```bash
+cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
+```
+
+**Карта экранов настроек:** [docs/UI_SETTINGS_MAP.ru.md](./docs/UI_SETTINGS_MAP.ru.md) · [EN](./docs/UI_SETTINGS_MAP.md)
+
 ## Требования
 
 - **Docker** — x86/amd64
@@ -120,12 +132,12 @@ UI: http://localhost:8085
 | `make verify` | Проверка `health` + `readiness` + `status` на `BASE_URL` или localhost |
 | `make ci-local` | `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, полный `pytest web/tests/`, версии доков, UI (codegen + Vitest + typecheck + lint + build), покрытие Settings UI, MkDocs strict (см. [docs/CI_AND_QUALITY.ru.md](./docs/CI_AND_QUALITY.ru.md)) |
 | `make ci-local-docker` | То же, плюс тесты в Docker-образе и Playwright smoke (тяжело; нужны веса processor) |
-
-**Ворота релиза (коротко):** [Definition of Done](./docs/DEFINITION_OF_DONE.ru.md) · [EN](./docs/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [RELEASE_READINESS](./docs/RELEASE_READINESS.ru.md).
 | `make build` | Сборка образа |
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |
 | `make logs` | Логи |
+
+**Ворота релиза (коротко):** [Definition of Done](./docs/DEFINITION_OF_DONE.ru.md) · [EN](./docs/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [RELEASE_READINESS](./docs/RELEASE_READINESS.ru.md).
 
 Из `app/`:
 

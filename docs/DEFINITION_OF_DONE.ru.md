@@ -4,6 +4,8 @@
 
 Одна страница **перед** тегом релиза, merge стабилизации или заявлением «хаб в продакшене». Расширенный чеклист (domain health, registry, секреты CI): [RELEASE_READINESS](./RELEASE_READINESS.ru.md).
 
+**Где в UI что настраивается:** [карта настроек](./UI_SETTINGS_MAP.ru.md) · [EN](./UI_SETTINGS_MAP.md).
+
 ---
 
 ## Обязательно (автоматика)

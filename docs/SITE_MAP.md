@@ -29,6 +29,9 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
 | Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Definition of Done (short gate) | [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md) · [RU](./DEFINITION_OF_DONE.ru.md) |
+| UI settings map | [UI_SETTINGS_MAP.md](./UI_SETTINGS_MAP.md) · [RU](./UI_SETTINGS_MAP.ru.md) |
+| Processor performance notes | [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) · [RU](./PROCESSOR_PERFORMANCE.ru.md) |
+| Config triggers inventory | [CONFIGURATION_TRIGGERS_INVENTORY.md](./CONFIGURATION_TRIGGERS_INVENTORY.md) · [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
 | Runbooks | [RUNBOOKS.md](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
 | Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
@@ -43,6 +46,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 |------|--------|
 | Architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | HTTP API | [API.md](./API.md) + OpenAPI import |
+| API errors & security baseline | [API_ERRORS.md](./API_ERRORS.md) · [RU](./API_ERRORS.ru.md) |
 | OpenAPI (Redoc) | [reference/openapi.md](./reference/openapi.md) · [RU](./reference/openapi.ru.md) |
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | MCP | [MCP_SETUP.md](./MCP_SETUP.md) |
@@ -80,6 +84,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
 | Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
 | Repository layout | [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
+| Hub epics tracker (GitHub) | [HUB_EPICS_TRACKER.md](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
 | Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Pre-implementation checklist (repo only; not in MkDocs) | [EN on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) |
 | Doc conventions | [Documentation.md](./Documentation.md) |
