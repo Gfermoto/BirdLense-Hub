@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -25,18 +27,44 @@ type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
 };
 
+function SectionHeading({
+  children,
+  first,
+}: {
+  children: ReactNode;
+  /** Первый подзаголовок сразу после вводного текста — меньше отступ сверху */
+  first?: boolean;
+}) {
+  return (
+    <Typography
+      variant="overline"
+      component="h3"
+      sx={{
+        display: 'block',
+        letterSpacing: 0.08,
+        color: 'text.secondary',
+        mt: first ? 0.5 : 2.5,
+        mb: 1,
+        fontWeight: 700,
+      }}
+    >
+      {children}
+    </Typography>
+  );
+}
+
 export function ProcessorSection({ form }: Props) {
   const { t } = useTranslation();
 
   return (
-    <Accordion>
+    <Accordion disableGutters sx={{ width: '100%', minWidth: 0, maxWidth: '100%' }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         {t('settings.accordionProcessor')}
       </AccordionSummary>
-      <AccordionDetails>
+      <AccordionDetails sx={{ minWidth: 0, maxWidth: '100%' }}>
         <Box
           component="fieldset"
-          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0, maxWidth: '100%' }}
         >
           <Box
             component="legend"
@@ -54,15 +82,34 @@ export function ProcessorSection({ form }: Props) {
             {t('settings.accordionProcessorDesc')}
           </Typography>
 
+          <SectionHeading first>
+            {t('settings.processorSectionHeadingDetection')}
+          </SectionHeading>
           <ProcessorConfidenceBlock form={form} />
           <ProcessorSessionTimingBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>{t('settings.processorSectionHeadingScene')}</SectionHeading>
+          <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>{t('settings.processorSectionHeadingAudio')}</SectionHeading>
           <ProcessorMultiCameraBirdnetBlock form={form} />
           <ProcessorBirdnetExtendedBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>{t('settings.processorSectionHeadingQuality')}</SectionHeading>
           <ProcessorConfidenceAdvancedBlock form={form} />
           <ProcessorFalsePositiveGuardrailsBlock form={form} />
-          <ProcessorLightGateBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
           <ProcessorSpectrogramDatasetBlock form={form} />
           <ProcessorModelsScopeBlock form={form} />
           <ProcessorTrackRegenBlock form={form} />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import Stack from '@mui/material/Stack';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
@@ -18,6 +19,9 @@ import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageSection } from '../../components/PageSection';
 import { PageHeader } from '../../components/PageHeader';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+
+/** Одна колонка карточек: стабильная вёрстка на любых ширинах (без «ломаного» двухколоночного грида). */
+const systemStackSx = { minWidth: 0, maxWidth: '100%', width: '100%' } as const;
 
 export const System: React.FC = () => {
   const { t } = useTranslation();
@@ -49,7 +53,7 @@ export const System: React.FC = () => {
 
   return (
     <ProtectedRoute title={t('nav.system')}>
-      <Box display="grid" gap={4} sx={{ minWidth: 0 }}>
+      <Stack spacing={4} sx={{ ...systemStackSx, pb: 1 }}>
         <PageHeader
           title={t('nav.system')}
           description={t('system.pageDescription')}
@@ -72,24 +76,12 @@ export const System: React.FC = () => {
             title={t('system.sections.overviewTitle')}
             description={t('system.sections.overviewDescription')}
           >
-            <Box
-              sx={{
-                display: 'grid',
-                gap: 2,
-                minWidth: 0,
-                gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.95fr) minmax(320px, 0.75fr)' },
-                alignItems: 'start',
-              }}
-            >
-              <Box display="grid" gap={2}>
-                <SystemReadinessCard />
-                <SystemMonitor showVisitors={isAdvanced} />
-              </Box>
-              <Box display="grid" gap={2}>
-                <ConfigAuditCard simple={!isAdvanced} />
-                <ObservabilityCard simple={!isAdvanced} />
-              </Box>
-            </Box>
+            <Stack spacing={2} sx={systemStackSx}>
+              <SystemReadinessCard />
+              <SystemMonitor showVisitors={isAdvanced} />
+              <ConfigAuditCard simple={!isAdvanced} />
+              <ObservabilityCard simple={!isAdvanced} />
+            </Stack>
           </PageSection>
         </Box>
 
@@ -99,21 +91,10 @@ export const System: React.FC = () => {
             description={t('system.sections.catalogDescription')}
             dividerTop
           >
-            <Box
-              sx={{
-                display: 'grid',
-                gap: 2,
-                minWidth: 0,
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  xl: isAdvanced ? 'minmax(0, 0.9fr) minmax(320px, 0.9fr)' : '1fr',
-                },
-                alignItems: 'start',
-              }}
-            >
+            <Stack spacing={2} sx={systemStackSx}>
               <CatalogRepairCard />
               {isAdvanced ? <CatalogDiagnosticsAccordion /> : null}
-            </Box>
+            </Stack>
           </PageSection>
         </Box>
 
@@ -124,18 +105,10 @@ export const System: React.FC = () => {
               description={t('system.sections.workspaceDescription')}
               dividerTop
             >
-              <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  minWidth: 0,
-                  gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.9fr) minmax(0, 1.1fr)' },
-                  alignItems: 'start',
-                }}
-              >
+              <Stack spacing={2} sx={systemStackSx}>
                 <ProcessorWeightsCard />
                 <AutomationCard />
-              </Box>
+              </Stack>
             </PageSection>
           </Box>
         ) : null}
@@ -163,7 +136,7 @@ export const System: React.FC = () => {
             </PageSection>
           </Box>
         ) : null}
-      </Box>
+      </Stack>
     </ProtectedRoute>
   );
 };

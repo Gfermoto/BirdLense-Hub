@@ -6,10 +6,10 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
 
@@ -26,28 +26,56 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
         {t('settings.processorModelsScopeDesc')}
       </Typography>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12 }}>
           <form.Field name="processor.detection_strategy">
-            {(field) => (
-              <FormControl fullWidth>
-                <InputLabel id="det-strat-label">
-                  {t('settings.processorDetectionStrategy')}
-                </InputLabel>
-                <Select
-                  labelId="det-strat-label"
-                  label={t('settings.processorDetectionStrategy')}
-                  value={field.state.value ?? 'two_stage'}
-                  onChange={(e) =>
-                    field.handleChange(String(e.target.value))
-                  }
-                >
-                  <MenuItem value="two_stage">two_stage</MenuItem>
-                  <MenuItem value="single_stage">single_stage (legacy)</MenuItem>
-                </Select>
-              </FormControl>
-            )}
+            {(field) => {
+              const v = String(field.state.value ?? 'two_stage').trim() || 'two_stage';
+              const isTwo = v === 'two_stage';
+              return (
+                <Stack spacing={1.5} sx={{ minWidth: 0 }}>
+                  {!isTwo ? (
+                    <Alert
+                      severity="warning"
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={() => field.handleChange('two_stage')}
+                        >
+                          {t('settings.processorCoerceTwoStage')}
+                        </Button>
+                      }
+                    >
+                      {t('settings.processorSingleStageWarning')}
+                    </Alert>
+                  ) : null}
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="body2" color="text.secondary" component="span">
+                      {t('settings.processorDetectionStrategy')}:
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={isTwo ? 'success' : 'warning'}
+                      label={v}
+                      variant="outlined"
+                    />
+                    {!isTwo ? (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => field.handleChange('two_stage')}
+                      >
+                        {t('settings.processorCoerceTwoStage')}
+                      </Button>
+                    ) : null}
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('settings.processorDetectionStrategyTwoStageDesc')}
+                  </Typography>
+                </Stack>
+              );
+            }}
           </form.Field>
-          <FormHelperText>{t('settings.processorDetectionStrategyHint')}</FormHelperText>
         </Grid>
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.models.binary">
@@ -71,19 +99,6 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                 onChange={(e) => field.handleChange(e.target.value)}
                 label={t('settings.processorModelClassifierPath')}
                 helperText={t('settings.processorModelClassifierPathHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.models.single_stage">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.processorModelSingleStagePath')}
-                helperText={t('settings.processorModelSingleStagePathHint')}
               />
             )}
           </form.Field>
@@ -131,24 +146,6 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
           </form.Field>
           <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
             {t('settings.processorSaveImagesHint')}
-          </FormHelperText>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.single_stage_coco_animals_only_auto">
-            {(field) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.state.value !== false}
-                    onChange={(e) => field.handleChange(e.target.checked)}
-                  />
-                }
-                label={t('settings.processorSingleStageCocoAuto')}
-              />
-            )}
-          </form.Field>
-          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
-            {t('settings.processorSingleStageCocoAutoHint')}
           </FormHelperText>
         </Grid>
         <Typography variant="subtitle2" sx={{ width: '100%', px: 1, mt: 1 }}>
