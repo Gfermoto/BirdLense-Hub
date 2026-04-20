@@ -49,7 +49,7 @@ export const System: React.FC = () => {
 
   return (
     <ProtectedRoute title={t('nav.system')}>
-      <Box display="grid" gap={4}>
+      <Box display="grid" gap={4} sx={{ minWidth: 0 }}>
         <PageHeader
           title={t('nav.system')}
           description={t('system.pageDescription')}
@@ -76,6 +76,7 @@ export const System: React.FC = () => {
               sx={{
                 display: 'grid',
                 gap: 2,
+                minWidth: 0,
                 gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.95fr) minmax(320px, 0.75fr)' },
                 alignItems: 'start',
               }}
@@ -102,7 +103,9 @@ export const System: React.FC = () => {
               sx={{
                 display: 'grid',
                 gap: 2,
+                minWidth: 0,
                 gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.9fr) minmax(320px, 0.9fr)' },
+                alignItems: 'start',
               }}
             >
               <CatalogRepairCard />
@@ -122,6 +125,7 @@ export const System: React.FC = () => {
                 sx={{
                   display: 'grid',
                   gap: 2,
+                  minWidth: 0,
                   gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 0.9fr) minmax(0, 1.1fr)' },
                   alignItems: 'start',
                 }}

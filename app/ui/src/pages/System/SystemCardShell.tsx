@@ -36,7 +36,9 @@ export function SystemCardShell({
     <Card
       id={id}
       sx={{
-        height: '100%',
+        width: '100%',
+        minWidth: 0,
+        alignSelf: 'start',
         minHeight,
         borderColor:
           statusTone === 'warning'

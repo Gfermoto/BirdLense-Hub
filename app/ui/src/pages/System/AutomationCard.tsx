@@ -3,7 +3,7 @@ import { AutomationDiagnosticsCard, AutomationFusionCard, AutomationMaintenanceC
 
 export function AutomationCard() {
   return (
-    <Box display="grid" gap={2}>
+    <Box display="grid" gap={2} sx={{ minWidth: 0 }}>
       <AutomationFusionCard />
       <AutomationDiagnosticsCard />
       <AutomationMaintenanceCard />
