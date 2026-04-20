@@ -38,15 +38,23 @@ def current_model_lineage_snapshot() -> dict:
             "enabled_region": app_config.get("ebird.region_code"),
         },
     }
+    # Пути как у процессора / processor_provenance: processor.models.binary|classifier.
+    # Старые ключи processor.*_model_path оставлены как fallback для старых user_config.
+    binary_rel = (
+        app_config.get("processor.models.binary")
+        or app_config.get("processor.detector_model_path")
+        or app_config.get("detection.detector_model_path")
+        or "models/detection/weights/best.pt"
+    )
+    classifier_rel = (
+        app_config.get("processor.models.classifier")
+        or app_config.get("processor.classifier_model_path")
+        or app_config.get("classification.model_path")
+        or "models/classification/weights/best.pt"
+    )
     artifacts = {
-        "detector": resolve_artifact_path(
-            app_config.get("processor.detector_model_path")
-            or app_config.get("detection.detector_model_path")
-            or "app/yolo11n.pt"
-        ),
-        "classifier": resolve_artifact_path(
-            app_config.get("processor.classifier_model_path") or app_config.get("classification.model_path")
-        ),
+        "detector": resolve_artifact_path(binary_rel),
+        "classifier": resolve_artifact_path(classifier_rel),
         "fusion": resolve_artifact_path(app_config.get("detection.fusion_model_path")),
         "allowlist": resolve_artifact_path(
             app_config.get("species.catalog_allowlist_file") or app_config.get("species.allowlist_file")
