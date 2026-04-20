@@ -309,7 +309,9 @@ class AppConfig:
             return
         # Удаляем legacy-ключи, которые больше не должны редактироваться в UI
         processor.pop('single_stage_coco_animals_only_auto', None)
-        processor.pop('models.single_stage', None)
+        models = processor.get('models')
+        if isinstance(models, dict):
+            models.pop('single_stage', None)
         # Убедимся, что detection_strategy по умолчанию two_stage
         if processor.get('detection_strategy') not in ('two_stage', 'single_stage'):
             processor['detection_strategy'] = 'two_stage'
