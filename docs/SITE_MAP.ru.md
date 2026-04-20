@@ -29,6 +29,9 @@
 | Доменный контракт | [DOMAIN_CONTRACT.ru.md](./DOMAIN_CONTRACT.ru.md) · [EN](./DOMAIN_CONTRACT.md) |
 | Готовность к релизу | [RELEASE_READINESS.ru.md](./RELEASE_READINESS.ru.md) · [EN](./RELEASE_READINESS.md) |
 | Definition of Done (ворота релиза) | [DEFINITION_OF_DONE.ru.md](./DEFINITION_OF_DONE.ru.md) · [EN](./DEFINITION_OF_DONE.md) |
+| Карта настроек UI | [UI_SETTINGS_MAP.ru.md](./UI_SETTINGS_MAP.ru.md) · [EN](./UI_SETTINGS_MAP.md) |
+| Производительность процессора | [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md) · [EN](./PROCESSOR_PERFORMANCE.md) |
+| Инвентаризация триггеров | [CONFIGURATION_TRIGGERS_INVENTORY.ru.md](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) · [EN](./CONFIGURATION_TRIGGERS_INVENTORY.md) |
 | Проблемы | [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md) |
 | Runbooks | [RUNBOOKS.ru.md](./RUNBOOKS.ru.md) · [EN](./RUNBOOKS.md) |
 | Восстановление конфига | [RECOVERY_CONFIG.ru.md](./RECOVERY_CONFIG.ru.md) |
@@ -43,6 +46,7 @@
 |----------|----------|
 | Архитектура | [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md) |
 | HTTP API | [API.ru.md](./API.ru.md) + OpenAPI |
+| Ошибки API и security baseline | [API_ERRORS.ru.md](./API_ERRORS.ru.md) · [EN](./API_ERRORS.md) |
 | OpenAPI (Redoc) | [reference/openapi.ru.md](./reference/openapi.ru.md) · [EN](./reference/openapi.md) |
 | Доступ и роли | [ACCESS_CONTROL.ru.md](./ACCESS_CONTROL.ru.md) |
 | MCP | [MCP_SETUP.ru.md](./MCP_SETUP.ru.md) |
@@ -80,6 +84,7 @@
 | OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
 | Корневой README | [project/root-readme.md](./project/root-readme.md) |
 | Структура репозитория | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
+| Трекер эпиков Hub (GitHub) | [HUB_EPICS_TRACKER.ru.md](./HUB_EPICS_TRACKER.ru.md) · [EN](./HUB_EPICS_TRACKER.md) |
 | Журнал верификации релизов | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
 | Чеклист до реализации (только в репо, не в MkDocs) | [RU на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) · [EN на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) |
 | Правила доков | [Documentation.ru.md](./Documentation.ru.md) |

@@ -60,7 +60,7 @@ Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking lon
 4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
 5. **GPU / VA-API on the VPS** — confirm the container actually uses the expected path: `docker logs birdlense` for VA-API / FFmpeg lines; on the host, `intel_gpu_top` / `vainfo` where applicable. If GPU is missing, you are on CPU-only inference — expect slow frames at high resolution.
 
-Related: [CONFIGURATION](./CONFIGURATION.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](./RELEASE_READINESS.md). Release gate: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md).
+Related: [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./CONFIGURATION.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](./RELEASE_READINESS.md). Release gate: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md).
 
 ## Install or deploy verification fails on readiness
 

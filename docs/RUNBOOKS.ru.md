@@ -60,7 +60,7 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 4. **Свет / ночь** — если YOLO часто не вызывается из‑за light gate, см. `processor.light_gate_*` и ночные оверрайды (recall vs нагрузка).
 5. **GPU / VA-API на VPS** — убедитесь, что контейнер реально использует ожидаемый путь: `docker logs birdlense` (строки VA-API / FFmpeg); на хосте при необходимости `intel_gpu_top`, `vainfo`. Без GPU остаётся CPU — на высоком разрешении slow frame ожидаемы.
 
-См. также [CONFIGURATION](./CONFIGURATION.ru.md), [RELEASE_READINESS](./RELEASE_READINESS.ru.md). Ворота релиза: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.ru.md).
+См. также [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md), [RELEASE_READINESS](./RELEASE_READINESS.ru.md). Ворота релиза: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.ru.md).
 
 ## Падает readiness при установке или после деплоя
 

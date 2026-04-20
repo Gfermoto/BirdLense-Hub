@@ -58,6 +58,16 @@ test.describe('API endpoints @api', () => {
     expect(body).toBeDefined();
   });
 
+  test('GET /api/ui/system/config-audit returns JSON audit payload', async ({ request }) => {
+    const res = await request.get('/api/ui/system/config-audit');
+    expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    expect(body).toBeDefined();
+    expect(typeof body).toBe('object');
+    expect(body).toHaveProperty('unknown_keys');
+    expect(body).toHaveProperty('deprecated_keys_present');
+  });
+
   test('POST /api/ui/feed/dispense returns 200 or 500 (not 404)', async ({ request }) => {
     const res = await request.post('/api/ui/feed/dispense');
     expect(res.status()).toBeLessThan(600);

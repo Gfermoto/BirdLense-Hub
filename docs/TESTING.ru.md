@@ -143,9 +143,9 @@ E2E проверяют UI и API на работающем экземпляре.
 
 **Что проверяют E2E:**
 
-- **smoke.spec.ts**: загрузка главной, навигация, Settings, Live
-- **api.spec.ts**: `/api/ui/health`, `/api/ui/status`, `/api/ui/settings`, `/api/ui/cameras`, `/api/ui/weather`, `/api/ui/feed/dispense`
-- **settings.spec.ts**: форма настроек, секции Video/MQTT, Feed
+- **smoke.spec.ts**: главная, навигация, Settings, Live, **System** (readiness)
+- **api.spec.ts**: `/api/ui/health`, `/api/ui/status`, `/api/ui/settings`, `/api/ui/cameras`, `/api/ui/weather`, `/api/ui/feed/dispense`, **`GET /api/ui/system/config-audit`**
+- **settings.spec.ts**: форма, секции Video/MQTT/Feed, **Processor** — круг сохранения «Max recording seconds» (при админе и при необходимости `E2E_SETTINGS_PASSWORD`)
 - **migration.spec.ts**: фильтр «С года» / From year на странице Migration (и сброс на «Все годы»); при пустой БД без таблицы миграции тесты помечаются **skip**
 
 **Только API-тесты (без браузера):**

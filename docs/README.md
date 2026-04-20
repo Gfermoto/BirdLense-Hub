@@ -39,6 +39,11 @@ Pick what matches you — you can read the rest as reference.
 | **Server deploy checklist** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
 | **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Definition of Done (short gate)** | [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md) | [RU](./DEFINITION_OF_DONE.ru.md) |
+| **UI settings map** | [UI_SETTINGS_MAP](./UI_SETTINGS_MAP.md) | [RU](./UI_SETTINGS_MAP.ru.md) |
+| **Processor performance notes** | [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) | [RU](./PROCESSOR_PERFORMANCE.ru.md) |
+| **Config triggers inventory** | [CONFIGURATION_TRIGGERS_INVENTORY](./CONFIGURATION_TRIGGERS_INVENTORY.md) | [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
+| **API errors & security baseline** | [API_ERRORS](./API_ERRORS.md) | [RU](./API_ERRORS.ru.md) |
+| **Hub epics tracker (GitHub)** | [HUB_EPICS_TRACKER](./HUB_EPICS_TRACKER.md) | [RU](./HUB_EPICS_TRACKER.ru.md) |
 | **Heimdall dashboard tiles** | [HEIMDALL](./HEIMDALL.md) | [RU](./HEIMDALL.ru.md) |
 
 ---
