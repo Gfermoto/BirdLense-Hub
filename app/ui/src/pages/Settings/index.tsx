@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -20,6 +21,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const Settings: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -71,6 +73,15 @@ export const Settings: React.FC = () => {
       setFormKey((key) => key + 1);
     }
   }, [settings]);
+
+  useEffect(() => {
+    const h = location.hash.replace(/^#/, '');
+    if (h !== 'processor-weights' && h !== 'processor-models') return;
+    const id = h === 'processor-models' ? 'processor-models' : 'processor-weights';
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash, isLoading, settings]);
 
   return (
     <ProtectedRoute title={t('settings.updateTitle')} requireAdmin>

@@ -10,7 +10,6 @@ import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
 import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
-import { ProcessorWeightsCard } from './ProcessorWeightsCard';
 import { SystemReadinessCard } from './SystemReadinessCard';
 import { SystemHero } from './SystemHero';
 import Box from '@mui/material/Box';
@@ -33,6 +32,7 @@ export const System: React.FC = () => {
   React.useEffect(() => {
     if (
       location.hash === '#system-workspace' ||
+      location.hash === '#system-integrations' ||
       location.hash === '#system-diagnostics' ||
       location.hash === '#system-danger' ||
       location.hash === '#system-danger-zone'
@@ -106,7 +106,6 @@ export const System: React.FC = () => {
               dividerTop
             >
               <Stack spacing={2} sx={systemStackSx}>
-                <ProcessorWeightsCard />
                 <AutomationCard />
               </Stack>
             </PageSection>

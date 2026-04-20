@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -55,9 +56,14 @@ function SectionHeading({
 
 export function ProcessorSection({ form }: Props) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const expandProcessor =
+    location.hash === '#processor-weights' ||
+    location.hash === '#processor-models';
 
   return (
     <Accordion
+      defaultExpanded={expandProcessor}
       disableGutters
       sx={{ width: '100%', minWidth: 0, maxWidth: '100%' }}
     >
