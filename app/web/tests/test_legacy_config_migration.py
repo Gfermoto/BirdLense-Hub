@@ -7,6 +7,7 @@ import yaml
 from app_config.app_config import (
     migrate_legacy_homeassistant_from_weather,
     migrate_legacy_trigger_topics,
+    migrate_processor_classifier_best_eu_path,
 )
 from app_config.trigger_config import (
     get_active_trigger_names,
@@ -173,3 +174,38 @@ def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
         "scales",
     ]
     assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == "frigate,motion_sensor,scales"
+
+
+def test_migrate_processor_classifier_best_eu_relative_path():
+    user = {
+        "processor": {
+            "models": {"classifier": "models/classification/weights/best_EU.pt"},
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/weights/best.pt"
+    )
+
+
+def test_migrate_processor_classifier_best_eu_absolute_path():
+    user = {
+        "processor": {
+            "models": {
+                "classifier": "/app/processor/models/classification/weights/best_EU.pt",
+            },
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/weights/best.pt"
+    )
+
+
+def test_migrate_processor_classifier_unchanged_for_canonical():
+    user = {
+        "processor": {
+            "models": {"classifier": "models/classification/weights/best.pt"},
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is False

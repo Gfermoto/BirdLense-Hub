@@ -107,6 +107,7 @@
     "datasetToolsSubtitle": "Подготовка датасета и обслуживание архива теперь собраны прямо в Библиотеке, чтобы workflow был в одном месте.",
     "datasetToolsLibraryHint": "Ниже на этой же странице доступны сканирование архива, обслуживание БД, backup/restore и обзор хранилища.",
     "datasetExportStarted": "Архив датасета подготовлен, загрузка началась.",
+    "datasetExportCompositionHint": "ZIP собирается из файлов в data/dataset/train/ (при сплите — и val): класс = имя папки, это не полный перечень видов из каталога. Период дат отсекает кадры по дате записи видео; пресет «7 дней» часто даёт неполный набор — расширьте интервал или «За всё время». «Только вручную исправленные», train-ready и минимум картинок на класс меняют состав. Старые папки после смены названия вида дают лишние классы; при необходимости очистите датасет.",
     "maintenanceMovedToSystem": "Операции по архиву, датасету и базе собраны на странице «Библиотека», чтобы не разрывать рабочий поток.",
     "openSystem": "Открыть Систему",
     "sections": {
@@ -587,7 +588,7 @@
     "processorModelBinaryPath": "Путь к весам бинарного детектора",
     "processorModelBinaryPathHint": "Относительно рабочей директории процессора. Имя best.pt — обычное соглашение Ultralytics для последнего экспортированного чекпойнта (здесь бинарный детектор «птица/объект vs фон»).",
     "processorModelClassifierPath": "Путь к весам классификатора видов",
-    "processorModelClassifierPathHint": "Относительный путь к .pt классификатора видов. По умолчанию поставляется EU-голова (~491 вид) с Hugging Face gfermoto/birdlense-birds-eu; файл часто называется best.pt по конвенции обучения. Свой чекпойнт вроде best_EU.pt — нормально: положите в models/classification/weights и укажите путь. Для Северной Америки (NABirds) — best_US.pt или свой экспорт; держите class_names.txt в соответствии.",
+    "processorModelClassifierPathHint": "Относительно корня процессора. В образе и в default_config путь: models/classification/weights/best.pt (EU, ~491 вид, Hugging Face gfermoto/birdlense-birds-eu). Свой .pt — положите в models/classification/weights и укажите путь; class_names.txt должен совпадать с моделью. NABirds: см. best_US.pt в документации.",
     "processorRegionalSpecies": "Региональный фильтр видов (строка на вид)",
     "processorRegionalSpeciesHint": "Пусто — все классы. Иначе сужает scope YOLO/классификатора.",
     "processorSaveImages": "Сохранять отладочные изображения детекций",

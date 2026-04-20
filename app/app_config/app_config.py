@@ -200,6 +200,37 @@ def migrate_legacy_trigger_topics(user_config: dict) -> bool:
     return changed
 
 
+def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
+    """Заменяет ошибочный путь best_EU.pt на канонический best.pt.
+
+    В образе и в HF EU-веса лежат как models/classification/weights/best.pt.
+    Старые подсказки UI упоминали best_EU.pt как «пример» — часть user_config
+    могла сохраниться с этим именем.
+    """
+    if not isinstance(user_config, dict):
+        return False
+    processor = user_config.get('processor')
+    if not isinstance(processor, dict):
+        return False
+    models = processor.get('models')
+    if not isinstance(models, dict):
+        return False
+    cur = models.get('classifier')
+    if not isinstance(cur, str):
+        return False
+    s = cur.strip()
+    if not s:
+        return False
+    canon = 'models/classification/weights/best.pt'
+    if s == 'models/classification/weights/best_EU.pt':
+        models['classifier'] = canon
+        return True
+    if s.replace('\\', '/').endswith('/models/classification/weights/best_EU.pt'):
+        models['classifier'] = canon
+        return True
+    return False
+
+
 class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
@@ -262,6 +293,17 @@ class AppConfig:
                     )
                 except OSError as e:
                     logger.warning('Could not persist HA legacy key migration: %s', e)
+            if migrate_processor_classifier_best_eu_path(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated processor.models.classifier best_EU.pt → best.pt in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning(
+                        'Could not persist classifier path migration: %s', e
+                    )
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
