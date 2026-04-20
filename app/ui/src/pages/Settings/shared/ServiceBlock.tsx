@@ -15,6 +15,9 @@ export function ServiceBlock({
       sx={{
         p: 2,
         mb: 2,
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         bgcolor: 'action.hover',
         '&:last-of-type': { mb: 0 },
       }}

@@ -67,7 +67,7 @@ export const Settings: React.FC = () => {
           severity="error"
         />
       ) : (
-        <Box display="grid" gap={4} sx={{ pb: 5 }}>
+        <Box display="grid" gap={4} sx={{ pb: 5, minWidth: 0, maxWidth: '100%' }}>
           <PageHeader
             title={t('settings.updateTitle')}
             description={t('settings.restartInfo')}

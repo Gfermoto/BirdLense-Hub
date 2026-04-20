@@ -48,7 +48,7 @@ export function SystemCardShell({
               : 'divider',
       }}
     >
-      <CardContent sx={{ display: 'grid', gap: 2.25 }}>
+      <CardContent sx={{ display: 'grid', gap: 2.25, minWidth: 0, maxWidth: '100%' }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
@@ -75,7 +75,7 @@ export function SystemCardShell({
           {actions ? <Box sx={{ flexShrink: 0 }}>{actions}</Box> : null}
         </Stack>
 
-        <Box>{children}</Box>
+        <Box sx={{ minWidth: 0, maxWidth: '100%' }}>{children}</Box>
 
         {footer ? (
           <>
