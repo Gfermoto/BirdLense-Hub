@@ -107,6 +107,7 @@
     "datasetToolsSubtitle": "Dataset preparation and archive maintenance now live directly in Library so the whole workflow stays in one place.",
     "datasetToolsLibraryHint": "Scan/import, DB maintenance, backup/restore, and storage overview are available below on this same page.",
     "datasetExportStarted": "Dataset archive is ready and the download has started.",
+    "datasetExportCompositionHint": "The ZIP is built from files under data/dataset/train/ (and val when splitting): class names come from folder names, not from the full species catalog. The date range filters crops by each video’s recording date; the default “last 7 days” preset often yields a subset — widen the range or use “All time”. “Manually corrected only”, train-ready, and minimum images per class also change membership. Leftover folders after renaming a species can appear as extra classes; use dataset cleanup if needed.",
     "maintenanceMovedToSystem": "Archive, dataset, and database operations are grouped on the Library page so the operator workflow stays consistent.",
     "openSystem": "Open System",
     "sections": {
@@ -587,7 +588,7 @@
     "processorModelBinaryPath": "Binary detector weights path",
     "processorModelBinaryPathHint": "Relative to the processor working directory. The default name best.pt is the usual Ultralytics export for the latest trained checkpoint (binary bird/object vs background here).",
     "processorModelClassifierPath": "Classifier weights path",
-    "processorModelClassifierPathHint": "Relative path to the species classifier .pt. Shipped default is the EU head (~491 species) from Hugging Face gfermoto/birdlense-birds-eu; the file is often named best.pt by training convention. A custom checkpoint name like best_EU.pt is fine—place it under models/classification/weights and set the path. For North America (NABirds) use best_US.pt or your own export; keep class_names.txt in sync.",
+    "processorModelClassifierPathHint": "Relative to the processor root. Shipped path: models/classification/weights/best.pt (EU ~491 species, Hugging Face gfermoto/birdlense-birds-eu). For a custom .pt, put it under models/classification/weights and set the path; keep class_names.txt aligned with the model. NABirds: see best_US.pt in docs.",
     "processorRegionalSpecies": "Regional species filter (one per line)",
     "processorRegionalSpeciesHint": "Empty = all classifier classes. Non-empty narrows YOLO/classifier scope.",
     "processorSaveImages": "Save debug detection images",

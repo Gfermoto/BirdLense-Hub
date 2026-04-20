@@ -179,6 +179,10 @@ export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
             </Alert>
           )}
 
+          <Alert severity="info" variant="outlined">
+            {t('library.datasetExportCompositionHint')}
+          </Alert>
+
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Button
               size="small"

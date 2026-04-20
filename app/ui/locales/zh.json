@@ -107,6 +107,7 @@
     "datasetToolsSubtitle": "数据集准备和存档维护现在直接位于库中，因此整个工作流程都集中在一个地方。",
     "datasetToolsLibraryHint": "扫描/导入、数据库维护、备份/恢复和存储概述位于同一页面下方。",
     "datasetExportStarted": "数据集压缩包已准备好，下载已开始。",
+    "datasetExportCompositionHint": "ZIP 由 data/dataset/train/ 下的文件（划分验证集时还包括 val）打包而成：类别名来自文件夹名，并非物种目录的完整列表。日期范围按每条录像的录制日期过滤裁剪图；默认「最近 7 天」往往只包含一部分数据——请扩大范围或使用「全部时间」。「仅人工校正」、train-ready、以及每类最少图片数也会改变导出内容。重命名物种后遗留的旧文件夹会表现为多余类别；必要时请执行数据集清理。",
     "maintenanceMovedToSystem": "归档、数据集和数据库操作现在都集中在“资料库”页面，便于按一个流程完成。",
     "openSystem": "打开系统",
     "sections": {
@@ -587,7 +588,7 @@
     "processorModelBinaryPath": "Binary weights path",
     "processorModelBinaryPathHint": "相对处理器工作目录。默认名 best.pt 是 Ultralytics 常见导出名（此处为二分类检测器）。",
     "processorModelClassifierPath": "Classifier weights path",
-    "processorModelClassifierPathHint": "物种分类器 .pt 的相对路径。默认 EU 头（约 491 类）来自 Hugging Face gfermoto/birdlense-birds-eu，常见文件名为 best.pt。自定义名称如 best_EU.pt 亦可：放在 models/classification/weights 并填写路径。北美（NABirds）用 best_US.pt 或自训；保持 class_names.txt 一致。",
+    "processorModelClassifierPathHint": "相对处理器根目录。镜像与默认配置路径：models/classification/weights/best.pt（EU，约 491 类，HF gfermoto/birdlense-birds-eu）。自定义 .pt 放在 models/classification/weights 并填写路径；class_names.txt 需与模型一致。北美见文档 best_US.pt。",
     "processorRegionalSpecies": "Regional species (one per line)",
     "processorRegionalSpeciesHint": "Empty = all.",
     "processorSaveImages": "Save debug images",
