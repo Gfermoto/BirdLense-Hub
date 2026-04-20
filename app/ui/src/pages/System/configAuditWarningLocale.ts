@@ -22,5 +22,19 @@ export function localizedConfigAuditWarning(w: string, t: TFunction): string {
       recommended: area[2],
     });
   }
+  const slow = /^processor\.runtime\.SLOW_FRAMES total=(\d+) warn_ms=(\d+)/.exec(w);
+  if (slow) {
+    return t('system.configAuditRuntimeSlowFrames', {
+      total: slow[1],
+      warnMs: slow[2],
+    });
+  }
+  const p95 = /^processor\.runtime\.DETECT_P95 p95_ms=([\d.]+) warn_ms=(\d+)/.exec(w);
+  if (p95) {
+    return t('system.configAuditRuntimeDetectP95', {
+      p95: p95[1],
+      warnMs: p95[2],
+    });
+  }
   return w;
 }
