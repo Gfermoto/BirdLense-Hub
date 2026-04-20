@@ -53,10 +53,7 @@ function SparkMetricCard({
   currentText: string;
   yMax?: number;
 }) {
-  const times = useMemo(
-    () => chartPoints.map((p) => p.at),
-    [chartPoints],
-  );
+  const times = useMemo(() => chartPoints.map((p) => p.at), [chartPoints]);
   const seriesData = useMemo(
     () =>
       chartPoints.map((p) => {
@@ -83,8 +80,7 @@ function SparkMetricCard({
                 {
                   data: times,
                   scaleType: 'time',
-                  valueFormatter: (d: Date) =>
-                    formatLocalTime(d),
+                  valueFormatter: (d: Date) => formatLocalTime(d),
                   tickLabelStyle: { fontSize: 10 },
                 },
               ]}
@@ -108,7 +104,11 @@ function SparkMetricCard({
                 justifyContent: 'center',
               }}
             >
-              <Typography variant="body2" color="text.secondary" textAlign="center">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                textAlign="center"
+              >
                 {collectingLabel}
               </Typography>
             </Box>
@@ -154,9 +154,7 @@ export const SystemMonitor = ({
           gpu: live.gpu_percent,
         },
       ];
-      return next.length > LIVE_TAIL_MAX
-        ? next.slice(-LIVE_TAIL_MAX)
-        : next;
+      return next.length > LIVE_TAIL_MAX ? next.slice(-LIVE_TAIL_MAX) : next;
     });
   }, [liveQuery.dataUpdatedAt, liveQuery.data]);
 
@@ -186,8 +184,7 @@ export const SystemMonitor = ({
 
   if (!live) return null;
 
-  const showGpuCard =
-    live.encoding === 'intel' || live.gpu_percent != null;
+  const showGpuCard = live.encoding === 'intel' || live.gpu_percent != null;
   const cpuPercent = live.cpu?.percent ?? null;
   const memoryPercent = live.memory?.percent ?? null;
   const diskPercent = live.disk?.percent ?? null;
@@ -340,9 +337,15 @@ export const SystemMonitor = ({
                 label={t('system.uniqueVisitorsPeriod')}
                 onChange={(e) => setVisitorsDays(Number(e.target.value))}
               >
-                <MenuItem value={1}>{t('system.lastDays', { count: 1 })}</MenuItem>
-                <MenuItem value={7}>{t('system.lastDays', { count: 7 })}</MenuItem>
-                <MenuItem value={30}>{t('system.lastDays', { count: 30 })}</MenuItem>
+                <MenuItem value={1}>
+                  {t('system.lastDays', { count: 1 })}
+                </MenuItem>
+                <MenuItem value={7}>
+                  {t('system.lastDays', { count: 7 })}
+                </MenuItem>
+                <MenuItem value={30}>
+                  {t('system.lastDays', { count: 30 })}
+                </MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -350,14 +353,21 @@ export const SystemMonitor = ({
           {visitorsQuery.isLoading ? (
             <LinearProgress />
           ) : visitorsQuery.error ? (
-            <Typography color="error">{t('system.errorLoadVisitors')}</Typography>
+            <Typography color="error">
+              {t('system.errorLoadVisitors')}
+            </Typography>
           ) : visitors ? (
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ minHeight: 140 }}>
                   <CardContent>
                     <Box
-                      sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 2,
+                      }}
                     >
                       <GroupsIcon color="action" />
                       <Typography variant="h6">

@@ -24,13 +24,23 @@ const VideoDetails = lazy(() =>
 const FoodManagement = lazy(() =>
   import('./pages/FoodManagement').then((m) => ({ default: m.FoodManagement })),
 );
-const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.LivePage })));
-const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const LivePage = lazy(() =>
+  import('./pages/Live').then((m) => ({ default: m.LivePage })),
+);
+const Settings = lazy(() =>
+  import('./pages/Settings').then((m) => ({ default: m.Settings })),
+);
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
-const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
-const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
+const System = lazy(() =>
+  import('./pages/System').then((m) => ({ default: m.System })),
+);
+const Library = lazy(() =>
+  import('./pages/Library').then((m) => ({ default: m.Library })),
+);
 const MigrationCalendar = lazy(() =>
-  import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
+  import('./pages/MigrationCalendar').then((m) => ({
+    default: m.MigrationCalendar,
+  })),
 );
 const NotFoundPage = lazy(() => import('./pages/NotFound'));
 
@@ -205,7 +215,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <ProtectedAreaProvider>
             <Box
               sx={{
@@ -226,7 +238,13 @@ function App() {
                 <Container maxWidth="xl" sx={{ minWidth: 0 }}>
                   <Suspense
                     fallback={
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          py: 8,
+                        }}
+                      >
                         <CircularProgress />
                       </Box>
                     }
@@ -235,16 +253,24 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Overview />} />
                         <Route path="/timeline" element={<TimelinePage />} />
-                        <Route path="/migration-calendar" element={<MigrationCalendar />} />
+                        <Route
+                          path="/migration-calendar"
+                          element={<MigrationCalendar />}
+                        />
                         <Route path="/videos/:id" element={<VideoDetails />} />
                         <Route path="/food" element={<FoodManagement />} />
                         <Route
                           path="/species"
-                          element={<Navigate to="/migration-calendar" replace />}
+                          element={
+                            <Navigate to="/migration-calendar" replace />
+                          }
                         />
                         <Route path="/live" element={<LivePage />} />
                         <Route path="/settings" element={<Settings />} />
-                        <Route path="/species/:id" element={<SpeciesSummary />} />
+                        <Route
+                          path="/species/:id"
+                          element={<SpeciesSummary />}
+                        />
                         <Route
                           path="/unknowns"
                           element={<Navigate to="/timeline?review=1" replace />}

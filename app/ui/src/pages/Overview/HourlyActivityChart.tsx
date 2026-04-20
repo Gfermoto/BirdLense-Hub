@@ -88,12 +88,14 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
               tickLabelStyle: { angle: 45, textAnchor: 'start', fontSize: 10 },
             },
           ]}
-          yAxis={[{
-            id: 'detections',
-            scaleType: 'linear' as const,
-            width: 42,
-            valueFormatter: (value: number) => `${value}`,
-          }]}
+          yAxis={[
+            {
+              id: 'detections',
+              scaleType: 'linear' as const,
+              width: 42,
+              valueFormatter: (value: number) => `${value}`,
+            },
+          ]}
           series={series}
           height={220}
           margin={{

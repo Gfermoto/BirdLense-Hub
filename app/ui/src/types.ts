@@ -354,7 +354,7 @@ export interface Settings {
     state?: string;
     location_name?: string;
     protocol?: string;
-    species_mapping?: Record<string, string>;  // eBird name -> BirdLense name
+    species_mapping?: Record<string, string>; // eBird name -> BirdLense name
   };
   feed?: {
     source?: string;
@@ -402,7 +402,7 @@ export interface Settings {
     };
   };
   detection?: {
-    min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
+    min_confidence_to_store?: number; // 0–1; детекции ниже не сохраняются (6% → 0.20)
     /** YOLO без треков, но Frigate прислал событие — сохранить визит по Frigate */
     frigate_standalone_when_no_yolo?: boolean;
     frigate_standalone_when_no_accepted_species?: boolean;
@@ -425,10 +425,10 @@ export interface Settings {
     api_url?: string;
   };
   webhook?: {
-    url?: string;  // POST при детекции (IFTTT, Zapier)
+    url?: string; // POST при детекции (IFTTT, Zapier)
   };
   ui?: {
-    unknown_confidence_threshold?: number;  // 0–1; детекции ниже попадают в «Неизвестные»
+    unknown_confidence_threshold?: number; // 0–1; детекции ниже попадают в «Неизвестные»
   };
 }
 

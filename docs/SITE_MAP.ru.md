@@ -61,6 +61,7 @@
 | Страница | Источник |
 |----------|----------|
 | Обучение | [TRAINING.ru.md](./TRAINING.ru.md) |
+| Цикл качества ML | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
 | Датасеты | [DATASETS.ru.md](./DATASETS.ru.md) |
 | Версионирование | [VERSIONING.ru.md](./VERSIONING.ru.md) |
 | Roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) |

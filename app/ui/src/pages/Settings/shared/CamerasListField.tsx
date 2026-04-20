@@ -11,15 +11,20 @@ export function CamerasListField({
   value,
   onChange,
 }: {
-  value: Array<{ id?: string; stream_name?: string; name?: string }> | undefined;
-  onChange: (v: Array<{ id?: string; stream_name?: string; name?: string }>) => void;
+  value:
+    | Array<{ id?: string; stream_name?: string; name?: string }>
+    | undefined;
+  onChange: (
+    v: Array<{ id?: string; stream_name?: string; name?: string }>,
+  ) => void;
 }) {
-  const rows: CameraRow[] = Array.isArray(value) && value.length > 0
-    ? value.map((c) => ({
-        stream_name: c.stream_name ?? c.id ?? '',
-        name: c.name ?? c.id ?? c.stream_name ?? '',
-      }))
-    : [{ stream_name: '', name: '' }];
+  const rows: CameraRow[] =
+    Array.isArray(value) && value.length > 0
+      ? value.map((c) => ({
+          stream_name: c.stream_name ?? c.id ?? '',
+          name: c.name ?? c.id ?? c.stream_name ?? '',
+        }))
+      : [{ stream_name: '', name: '' }];
 
   const sync = (newRows: CameraRow[]) => {
     const arr = newRows.map((r) => ({

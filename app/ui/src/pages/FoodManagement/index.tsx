@@ -80,7 +80,10 @@ export const FoodManagement = () => {
                         src={resolveImageUrl(food.image_url)}
                         alt={food.name}
                         onError={() =>
-                          setBrokenImages((prev) => ({ ...prev, [food.id]: true }))
+                          setBrokenImages((prev) => ({
+                            ...prev,
+                            [food.id]: true,
+                          }))
                         }
                         sx={{
                           width: 64,

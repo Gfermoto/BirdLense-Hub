@@ -5,7 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
+const pkg = JSON.parse(
+  readFileSync(resolve(__dirname, 'package.json'), 'utf-8'),
+);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,9 +20,14 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'public',
       filename: 'sw.js',
-      registerType: 'prompt',  // prompt = спросить пользователя; autoUpdate = авто-перезагрузка при деплое
-      injectRegister: null,   // регистрация в main.tsx с onNeedRefresh
-      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'web-app-manifest-*.png'],
+      registerType: 'prompt', // prompt = спросить пользователя; autoUpdate = авто-перезагрузка при деплое
+      injectRegister: null, // регистрация в main.tsx с onNeedRefresh
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'apple-touch-icon.png',
+        'web-app-manifest-*.png',
+      ],
       manifest: {
         name: 'BirdLense Hub',
         short_name: 'BirdLense Hub',
@@ -28,8 +35,18 @@ export default defineConfig({
         background_color: '#0F172A',
         display: 'standalone',
         icons: [
-          { src: '/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: '/web-app-manifest-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          {
+            src: '/web-app-manifest-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+          {
+            src: '/web-app-manifest-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
         ],
       },
       workbox: {
@@ -53,7 +70,11 @@ export default defineConfig({
             '@emotion/styled',
           ],
           'vendor-query': ['@tanstack/react-query'],
-          'vendor-datetime': ['dayjs', '@mui/x-date-pickers', '@mui/x-date-pickers/AdapterDayjs'],
+          'vendor-datetime': [
+            'dayjs',
+            '@mui/x-date-pickers',
+            '@mui/x-date-pickers/AdapterDayjs',
+          ],
         },
       },
     },

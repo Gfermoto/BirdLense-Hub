@@ -132,15 +132,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                 slotProps={{ popper: { sx: { pointerEvents: 'none' } } }}
                 title={
                   <>
-                    {detection.species.species_name} ({formatTimeMmSs(
-                      detection.species.start_time,
-                    )} – {formatTimeMmSs(detection.species.end_time)})
+                    {detection.species.species_name} (
+                    {formatTimeMmSs(detection.species.start_time)} –{' '}
+                    {formatTimeMmSs(detection.species.end_time)})
                     {detection.species.detection_provider && (
                       <>
                         <br />
                         {t('video.detectionSource')}:{' '}
-                        {t(providerToKey[detection.species.detection_provider]) ||
-                          detection.species.detection_provider}
+                        {t(
+                          providerToKey[detection.species.detection_provider],
+                        ) || detection.species.detection_provider}
                       </>
                     )}
                   </>

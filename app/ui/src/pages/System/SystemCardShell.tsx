@@ -48,7 +48,9 @@ export function SystemCardShell({
               : 'divider',
       }}
     >
-      <CardContent sx={{ display: 'grid', gap: 2.25, minWidth: 0, maxWidth: '100%' }}>
+      <CardContent
+        sx={{ display: 'grid', gap: 2.25, minWidth: 0, maxWidth: '100%' }}
+      >
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
@@ -56,7 +58,13 @@ export function SystemCardShell({
           alignItems={{ xs: 'flex-start', sm: 'flex-start' }}
         >
           <Box sx={{ minWidth: 0 }}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <Typography variant="h6">{title}</Typography>
               {statusLabel ? (
                 <Chip
@@ -67,7 +75,11 @@ export function SystemCardShell({
               ) : null}
             </Stack>
             {description ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.75 }}
+              >
                 {description}
               </Typography>
             ) : null}

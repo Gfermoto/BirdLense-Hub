@@ -102,7 +102,9 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 8)
                 }
                 label={t('settings.processorOverrideLightGateBrightness')}
-                helperText={t('settings.processorOverrideLightGateBrightnessHint')}
+                helperText={t(
+                  'settings.processorOverrideLightGateBrightnessHint',
+                )}
               />
             )}
           </form.Field>
@@ -119,7 +121,9 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 6)
                 }
                 label={t('settings.processorOverrideLightGateContrast')}
-                helperText={t('settings.processorOverrideLightGateContrastHint')}
+                helperText={t(
+                  'settings.processorOverrideLightGateContrastHint',
+                )}
               />
             )}
           </form.Field>
@@ -136,7 +140,9 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 0.24)
                 }
                 label={t('settings.processorOverrideMinConfidenceBinary')}
-                helperText={t('settings.processorOverrideMinConfidenceBinaryHint')}
+                helperText={t(
+                  'settings.processorOverrideMinConfidenceBinaryHint',
+                )}
               />
             )}
           </form.Field>
@@ -153,7 +159,9 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 0.34)
                 }
                 label={t('settings.processorOverrideMinConfidenceBinaryBird')}
-                helperText={t('settings.processorOverrideMinConfidenceBinaryBirdHint')}
+                helperText={t(
+                  'settings.processorOverrideMinConfidenceBinaryBirdHint',
+                )}
               />
             )}
           </form.Field>
@@ -187,7 +195,9 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                   field.handleChange(Number(e.target.value) || 0.34)
                 }
                 label={t('settings.processorOverrideMinConfidenceToProcess')}
-                helperText={t('settings.processorOverrideMinConfidenceToProcessHint')}
+                helperText={t(
+                  'settings.processorOverrideMinConfidenceToProcessHint',
+                )}
               />
             )}
           </form.Field>
@@ -237,8 +247,12 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
                 onChange={(e) =>
                   field.handleChange(Number(e.target.value) || 4)
                 }
-                label={t('settings.processorOverrideMaxClassificationsPerFrame')}
-                helperText={t('settings.processorOverrideMaxClassificationsPerFrameHint')}
+                label={t(
+                  'settings.processorOverrideMaxClassificationsPerFrame',
+                )}
+                helperText={t(
+                  'settings.processorOverrideMaxClassificationsPerFrameHint',
+                )}
               />
             )}
           </form.Field>

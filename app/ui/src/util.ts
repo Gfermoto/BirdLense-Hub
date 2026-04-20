@@ -75,7 +75,7 @@ export const formatLocalDateTime = (
 export const isSquirrelLike = (speciesName: string): boolean => {
   if (!speciesName || typeof speciesName !== 'string') return false;
   const lower = speciesName.toLowerCase();
-  return ['squirrel', 'chipmunk', 'mouse', 'мышь', 'белка', 'мышка'].some(
-    (s) => lower.includes(s)
+  return ['squirrel', 'chipmunk', 'mouse', 'мышь', 'белка', 'мышка'].some((s) =>
+    lower.includes(s),
   );
 };

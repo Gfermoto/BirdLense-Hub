@@ -40,9 +40,7 @@ import ListItemText from '@mui/material/ListItemText';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
-import {
-  type TimeOfDay,
-} from '../../utils/timeUtils';
+import { type TimeOfDay } from '../../utils/timeUtils';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
@@ -90,17 +88,19 @@ function parseHourFromSearchParams(
 
 export function TimelinePage() {
   const { t } = useTranslation();
-  const { canEdit, role, requiresPassword, isLoading: accessContextLoading } =
-    useProtectedArea();
+  const {
+    canEdit,
+    role,
+    requiresPassword,
+    isLoading: accessContextLoading,
+  } = useProtectedArea();
   /** Пока контекст доступа грузится — не прячем чип (избегаем мигания у вошедших по cookie). */
   const showReviewModeEntry = canEdit || accessContextLoading;
   /** Только админ: оператор не ходит в Библиотеку — подсказка про скан диска ему не нужна. */
   const showLibraryDiskScanHint = canEdit && role === 'admin';
   /** Только после входа админа или оператора, если включён пароль (не гостю с улицы). */
   const showReportsAndSharingHint =
-    requiresPassword &&
-    canEdit &&
-    (role === 'admin' || role === 'contributor');
+    requiresPassword && canEdit && (role === 'admin' || role === 'contributor');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isReviewMode = searchParams.get('review') === '1';
@@ -110,9 +110,7 @@ export function TimelinePage() {
     navigate('/timeline', { replace: true });
   }, [accessContextLoading, canEdit, isReviewMode, navigate]);
 
-  useDocumentTitle(
-    isReviewMode ? t('timeline.modeReview') : t('nav.timeline'),
-  );
+  useDocumentTitle(isReviewMode ? t('timeline.modeReview') : t('nav.timeline'));
   const filterHour = useMemo(
     () => parseHourFromSearchParams(searchParams),
     [searchParams],
@@ -124,7 +122,9 @@ export function TimelinePage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const selectedDate = useMemo(() => {
     const paramDate = searchParams.get('date');
-    const parsed = paramDate ? dayjs(paramDate).startOf('date') : dayjs().startOf('date');
+    const parsed = paramDate
+      ? dayjs(paramDate).startOf('date')
+      : dayjs().startOf('date');
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
   const { data: observerOverview } = useQuery({
@@ -172,9 +172,7 @@ export function TimelinePage() {
       if (!selectedDate) return [];
       return fetchTimelineForObserverDate(
         selectedDate.format('YYYY-MM-DD'),
-        filterHour !== null
-          ? { hour: filterHour }
-          : { timeOfDay },
+        filterHour !== null ? { hour: filterHour } : { timeOfDay },
       );
     },
     enabled: !isReviewMode,
@@ -222,19 +220,22 @@ export function TimelinePage() {
     }
   }, [searchParams, visits]);
 
-  const updateSelectedDate = useCallback((nextDate: Dayjs | null) => {
-    if (!nextDate) {
-      return;
-    }
-    const normalizedDate = nextDate.startOf('day');
-    const formattedDate = normalizedDate.format('YYYY-MM-DD');
-    if (searchParams.get('date') === formattedDate) {
-      return;
-    }
-    const next = new URLSearchParams(searchParams);
-    next.set('date', formattedDate);
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  const updateSelectedDate = useCallback(
+    (nextDate: Dayjs | null) => {
+      if (!nextDate) {
+        return;
+      }
+      const normalizedDate = nextDate.startOf('day');
+      const formattedDate = normalizedDate.format('YYYY-MM-DD');
+      if (searchParams.get('date') === formattedDate) {
+        return;
+      }
+      const next = new URLSearchParams(searchParams);
+      next.set('date', formattedDate);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const jumpToNearestRecordingDay = useCallback(
     async (direction: 'prev' | 'next') => {
@@ -274,15 +275,11 @@ export function TimelinePage() {
       await exportTimelineForObserverDate(
         selectedDate.format('YYYY-MM-DD'),
         format,
-        filterHour !== null
-          ? { hour: filterHour }
-          : { timeOfDay },
+        filterHour !== null ? { hour: filterHour } : { timeOfDay },
       );
     } catch (err) {
       console.error('Export failed:', err);
-      setExportError(
-        getApiErrorMessage(err, t('timeline.exportFailed')),
-      );
+      setExportError(getApiErrorMessage(err, t('timeline.exportFailed')));
     } finally {
       setExporting(false);
     }
@@ -442,9 +439,7 @@ export function TimelinePage() {
               <span>
                 <IconButton
                   aria-label={t('timeline.nextDay')}
-                  disabled={
-                    !selectedDate.isBefore(observerToday, 'day')
-                  }
+                  disabled={!selectedDate.isBefore(observerToday, 'day')}
                   onClick={() => void jumpToNearestRecordingDay('next')}
                 >
                   <ChevronRightIcon />

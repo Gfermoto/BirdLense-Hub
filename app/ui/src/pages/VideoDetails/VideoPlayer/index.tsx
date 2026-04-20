@@ -41,42 +41,42 @@ interface VideoPlayerProps {
 const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
   const { t } = useTranslation();
   return (
-  <Box
-    sx={{
-      position: 'absolute',
-      top: 16,
-      left: 16,
-      zIndex: 10,
-      bgcolor: 'rgba(0, 0, 0, 0.6)',
-      borderRadius: 1,
-      backdropFilter: 'blur(4px)',
-    }}
-  >
-    <Tabs
-      value={view}
-      onChange={(_, newView) => onChange(newView)}
+    <Box
       sx={{
-        minHeight: 'auto',
-        '& .MuiTab-root': {
-          minHeight: 32,
-          color: 'rgba(255, 255, 255, 0.7)',
-          '&.Mui-selected': {
-            color: 'white',
-          },
-        },
-        '& .MuiTabs-indicator': {
-          backgroundColor: 'primary.main',
-        },
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        zIndex: 10,
+        bgcolor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: 1,
+        backdropFilter: 'blur(4px)',
       }}
     >
-      <Tab label={t('video.video')} value="video" sx={{ py: 0.5, px: 2 }} />
-      <Tab
-        label={t('video.spectrogram')}
-        value="audio"
-        sx={{ py: 0.5, px: 2 }}
-      />
-    </Tabs>
-  </Box>
+      <Tabs
+        value={view}
+        onChange={(_, newView) => onChange(newView)}
+        sx={{
+          minHeight: 'auto',
+          '& .MuiTab-root': {
+            minHeight: 32,
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&.Mui-selected': {
+              color: 'white',
+            },
+          },
+          '& .MuiTabs-indicator': {
+            backgroundColor: 'primary.main',
+          },
+        }}
+      >
+        <Tab label={t('video.video')} value="video" sx={{ py: 0.5, px: 2 }} />
+        <Tab
+          label={t('video.spectrogram')}
+          value="audio"
+          sx={{ py: 0.5, px: 2 }}
+        />
+      </Tabs>
+    </Box>
   );
 };
 
@@ -120,7 +120,11 @@ const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
               py: 0.75,
             }}
           >
-            <SpeciesIcon speciesName={s.species_name} imageUrl={s.image_url} size={24} />
+            <SpeciesIcon
+              speciesName={s.species_name}
+              imageUrl={s.image_url}
+              size={24}
+            />
             <Typography
               variant="body2"
               noWrap
@@ -157,7 +161,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const { t } = useTranslation();
   const { isAdmin } = useProtectedArea();
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const timeoutRef = useRef<number | undefined>(undefined);
   const [view, setView] = useState<'video' | 'audio'>('video');
   const [error, setError] = useState<string | null>(null);
 
@@ -275,7 +279,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       try {
         v.webkitEnterFullscreen();
       } catch (err) {
-        console.warn('webkitEnterFullscreen failed, trying native controls:', err);
+        console.warn(
+          'webkitEnterFullscreen failed, trying native controls:',
+          err,
+        );
         video.controls = true;
       }
       return;
@@ -315,7 +322,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      video.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+      video.removeEventListener(
+        'webkitendfullscreen',
+        handleWebkitEndFullscreen,
+      );
     };
   }, []);
 
@@ -480,12 +490,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   fontSize: '0.75rem',
                   fontWeight: playbackRate === speed ? 600 : 400,
                   color: 'white',
-                  bgcolor: playbackRate === speed ? 'rgba(16, 185, 129, 0.5)' : 'rgba(0,0,0,0.3)',
+                  bgcolor:
+                    playbackRate === speed
+                      ? 'rgba(16, 185, 129, 0.5)'
+                      : 'rgba(0,0,0,0.3)',
                   border: 'none',
                   borderRadius: 1,
                   cursor: 'pointer',
                   '&:hover': {
-                    bgcolor: playbackRate === speed ? 'rgba(16, 185, 129, 0.6)' : 'rgba(0,0,0,0.5)',
+                    bgcolor:
+                      playbackRate === speed
+                        ? 'rgba(16, 185, 129, 0.6)'
+                        : 'rgba(0,0,0,0.5)',
                   },
                 }}
               >
@@ -569,12 +585,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       </Box>
 
       {filteredDetections.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 1 }}
+        >
           {t('video.timelineHint')}
         </Typography>
       )}
       {showTracksRegenHint && isAdmin && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 0.5 }}
+        >
           {t('video.noTrackFramesHint')}
         </Typography>
       )}

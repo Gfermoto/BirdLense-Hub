@@ -42,7 +42,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
-function ErrorFallback({ error, onReset }: { error: Error | null; onReset: () => void }) {
+function ErrorFallback({
+  error,
+  onReset,
+}: {
+  error: Error | null;
+  onReset: () => void;
+}) {
   const { t } = useTranslation();
   return (
     <Box sx={{ p: 4, textAlign: 'center' }}>

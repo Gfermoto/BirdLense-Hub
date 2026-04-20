@@ -123,8 +123,7 @@ export function Navigation() {
     React.useState<null | HTMLElement>(null);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     React.useState<null | HTMLElement>(null);
-  const [showPasswordDialog, setShowPasswordDialog] =
-    React.useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = React.useState(false);
   const [pendingAction, setPendingAction] =
     React.useState<PendingAction | null>(null);
 
@@ -302,7 +301,9 @@ export function Navigation() {
                   <Divider />
                   {showSettingsLink ? (
                     <MenuItem
-                      onClick={(e) => handleProtectedNav('/settings', e, 'admin')}
+                      onClick={(e) =>
+                        handleProtectedNav('/settings', e, 'admin')
+                      }
                       selected={currentPath === '/settings'}
                     >
                       <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
@@ -319,7 +320,9 @@ export function Navigation() {
                   ) : null}
                   {showAdminOnlyLinks ? (
                     <MenuItem
-                      onClick={(e) => handleProtectedNav('/library', e, 'admin')}
+                      onClick={(e) =>
+                        handleProtectedNav('/library', e, 'admin')
+                      }
                       selected={currentPath === '/library'}
                     >
                       {t('nav.library')}
@@ -339,7 +342,16 @@ export function Navigation() {
 
               {/* Mobile: Status + Language */}
               <Divider />
-              <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
                 <StatusIndicator />
                 <LanguageSwitcher />
               </Box>
@@ -362,7 +374,13 @@ export function Navigation() {
                 component="img"
                 src={logoUrl}
                 alt="BirdLense Hub Logo"
-                sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5, flexShrink: 0 }}
+                sx={{
+                  mr: 1,
+                  height: 32,
+                  width: 32,
+                  borderRadius: 0.5,
+                  flexShrink: 0,
+                }}
               />
               <Typography variant="h6" noWrap>
                 {t('common.appName')}

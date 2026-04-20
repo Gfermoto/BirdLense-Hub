@@ -42,8 +42,9 @@ ensure_venv_docs() {
     log "Создание ${VENV_DOCS} (MkDocs)"
     "${PYTHON}" -m venv "${VENV_DOCS}"
     pip_docs install -U pip
-    pip_docs install -U -r requirements-docs.txt
   fi
+  # Догоняем зависимости (частично созданный venv без mkdocs иначе ломает шаг навсегда).
+  pip_docs install -q -U -r "${ROOT}/requirements-docs.txt"
 }
 
 log "Python: security + ruff + pytest (app/web/tests)"
@@ -158,7 +159,13 @@ log "Docker: build + processor unittest + web pytest + E2E smoke"
   curl -sf "${BASE}/api/ui/health" >/dev/null
   cd e2e
   npm ci
-  npx playwright install --with-deps chromium
+  # По умолчанию только браузер (как в app/Makefile e2e). --with-deps тянет sudo и ломает
+  # локальный прогон без passwordless TTY. Нужны системные пакеты: PLAYWRIGHT_INSTALL_DEPS=1 .
+  if [[ "${PLAYWRIGHT_INSTALL_DEPS:-0}" == "1" ]]; then
+    npx playwright install --with-deps chromium
+  else
+    npx playwright install chromium
+  fi
   BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
 )
 

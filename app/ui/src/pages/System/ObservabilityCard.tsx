@@ -8,8 +8,21 @@ import Typography from '@mui/material/Typography';
 import { fetchObservability } from '../../api/api';
 import { SystemCardShell } from './SystemCardShell';
 
-const PREVIEW_ORDER = ['best_frame', 'bbox_crop', 'full_frame', 'none', 'unknown'] as const;
-const DELIVERY_ORDER = ['photo', 'text_fallback', 'text', 'failed', 'skipped', 'unknown'] as const;
+const PREVIEW_ORDER = [
+  'best_frame',
+  'bbox_crop',
+  'full_frame',
+  'none',
+  'unknown',
+] as const;
+const DELIVERY_ORDER = [
+  'photo',
+  'text_fallback',
+  'text',
+  'failed',
+  'skipped',
+  'unknown',
+] as const;
 const FALLBACK_ORDER = [
   'none',
   'no_preview',
@@ -25,11 +38,7 @@ const FALLBACK_ORDER = [
   'unknown',
 ] as const;
 
-export function ObservabilityCard({
-  simple = false,
-}: {
-  simple?: boolean;
-}) {
+export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
     queryKey: ['system-observability'],
@@ -44,7 +53,10 @@ export function ObservabilityCard({
   };
 
   if (isLoading) return <LinearProgress />;
-  if (error || !data) return <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>;
+  if (error || !data)
+    return (
+      <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>
+    );
 
   const generatedCounts = data.notify_preview_generated_24h || {};
   const counts = data.notify_preview_24h || {};
@@ -81,7 +93,9 @@ export function ObservabilityCard({
           ? t('system.configAuditNeedsReview')
           : t('system.readinessReady')
       }
-      statusTone={deliveryFailures > 0 || fallbackFailures > 0 ? 'warning' : 'success'}
+      statusTone={
+        deliveryFailures > 0 || fallbackFailures > 0 ? 'warning' : 'success'
+      }
     >
       <Box>
         {!simple ? (
@@ -153,7 +167,9 @@ export function ObservabilityCard({
               <Chip
                 size="small"
                 variant="outlined"
-                label={t('system.mlHealthCorrections7d', { n: ml7.corrections_logged })}
+                label={t('system.mlHealthCorrections7d', {
+                  n: ml7.corrections_logged,
+                })}
               />
               <Chip
                 size="small"
@@ -193,7 +209,8 @@ export function ObservabilityCard({
               {t('system.modelLineageTitle')}
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              {t('system.modelLineageFingerprint')}: <code>{lineageFingerprint}</code>
+              {t('system.modelLineageFingerprint')}:{' '}
+              <code>{lineageFingerprint}</code>
             </Typography>
             {artifactEntries.length > 0 ? (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
@@ -220,11 +237,21 @@ export function ObservabilityCard({
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('system.hubMetricsForHeimdall')}
             </Typography>
-            <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
-              <strong>{t('system.hubMetricsPrometheus')}:</strong> {abs(data.hub_metrics.prometheus_text)}
+            <Typography
+              variant="body2"
+              component="div"
+              sx={{ wordBreak: 'break-all', mb: 0.5 }}
+            >
+              <strong>{t('system.hubMetricsPrometheus')}:</strong>{' '}
+              {abs(data.hub_metrics.prometheus_text)}
             </Typography>
-            <Typography variant="body2" component="div" sx={{ wordBreak: 'break-all', mb: 0.5 }}>
-              <strong>{t('system.hubMetricsJson')}:</strong> {abs(data.hub_metrics.json_summary)}
+            <Typography
+              variant="body2"
+              component="div"
+              sx={{ wordBreak: 'break-all', mb: 0.5 }}
+            >
+              <strong>{t('system.hubMetricsJson')}:</strong>{' '}
+              {abs(data.hub_metrics.json_summary)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {t('system.hubMetricsHeimdallNote')}

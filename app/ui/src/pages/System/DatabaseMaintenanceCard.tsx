@@ -37,15 +37,22 @@ export function DatabaseMaintenanceCard() {
   const qc = useQueryClient();
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [cleanPreview, setCleanPreview] = useState<MaintenancePreview | null>(null);
-  const [realignPreview, setRealignPreview] = useState<MaintenancePreview | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState<null | 'clean' | 'realign'>(null);
+  const [cleanPreview, setCleanPreview] = useState<MaintenancePreview | null>(
+    null,
+  );
+  const [realignPreview, setRealignPreview] =
+    useState<MaintenancePreview | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState<null | 'clean' | 'realign'>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState<string | null>(null);
 
   const scanMutation = useMutation<ScanResult, Error, void>({
     mutationFn: async () => {
-      const { data } = await axios.post<ScanResult>(`${BASE_API_URL}/system/recordings/scan`);
+      const { data } = await axios.post<ScanResult>(
+        `${BASE_API_URL}/system/recordings/scan`,
+      );
       return data;
     },
     onSuccess: (data) => {
@@ -193,9 +200,16 @@ export function DatabaseMaintenanceCard() {
         <Stack spacing={2}>
           {/* 1. Scan recordings */}
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.5 }}
+            >
               <Box>
-                <Typography variant="subtitle2">{t('system.dbScanRecordingsTitle')}</Typography>
+                <Typography variant="subtitle2">
+                  {t('system.dbScanRecordingsTitle')}
+                </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {t('system.dbScanRecordingsDesc')}
                 </Typography>
@@ -220,7 +234,9 @@ export function DatabaseMaintenanceCard() {
                 {typeof scanResult?.imported === 'number' && (
                   <Chip
                     size="small"
-                    label={t('system.dbScanImported', { n: scanResult.imported })}
+                    label={t('system.dbScanImported', {
+                      n: scanResult.imported,
+                    })}
                     sx={{ ml: 1 }}
                   />
                 )}
@@ -232,9 +248,16 @@ export function DatabaseMaintenanceCard() {
 
           {/* 2. Clean orphaned visits */}
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.5 }}
+            >
               <Box>
-                <Typography variant="subtitle2">{t('system.dbCleanOrphanedTitle')}</Typography>
+                <Typography variant="subtitle2">
+                  {t('system.dbCleanOrphanedTitle')}
+                </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {t('system.dbCleanOrphanedDesc')}
                 </Typography>
@@ -286,9 +309,16 @@ export function DatabaseMaintenanceCard() {
 
           {/* 3. Realign visit times */}
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.5 }}
+            >
               <Box>
-                <Typography variant="subtitle2">{t('system.dbRealignTitle')}</Typography>
+                <Typography variant="subtitle2">
+                  {t('system.dbRealignTitle')}
+                </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {t('system.dbRealignDesc')}
                 </Typography>

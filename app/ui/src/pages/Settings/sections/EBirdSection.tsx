@@ -34,8 +34,11 @@ export function EBirdSection({ form }: Props) {
   const { t } = useTranslation();
 
   const [ebirdSuggestLoading, setEbirdSuggestLoading] = useState(false);
-  const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(null);
-  const [ebirdSuggestData, setEbirdSuggestData] = useState<EbirdMappingSuggestionsResponse | null>(null);
+  const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(
+    null,
+  );
+  const [ebirdSuggestData, setEbirdSuggestData] =
+    useState<EbirdMappingSuggestionsResponse | null>(null);
 
   const loadEbirdMappingSuggestions = async () => {
     setEbirdSuggestLoading(true);
@@ -56,12 +59,13 @@ export function EBirdSection({ form }: Props) {
     }
   };
 
-  const applyEbirdMappingSuggestion = (ebirdName: string, birdlenseName: string) => {
+  const applyEbirdMappingSuggestion = (
+    ebirdName: string,
+    birdlenseName: string,
+  ) => {
     const cur = form.getFieldValue('ebird.species_mapping');
     const base =
-      cur && typeof cur === 'object' && !Array.isArray(cur)
-        ? { ...cur }
-        : {};
+      cur && typeof cur === 'object' && !Array.isArray(cur) ? { ...cur } : {};
     base[ebirdName] = birdlenseName;
     form.setFieldValue('ebird.species_mapping', base);
   };
@@ -72,8 +76,20 @@ export function EBirdSection({ form }: Props) {
         {t('settings.accordionEbird')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
-          <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
+          <Box
+            component="legend"
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
+          >
             {t('settings.accordionEbird')}
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -95,7 +111,11 @@ export function EBirdSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
                   {t('settings.ebirdSection')}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -157,7 +177,9 @@ export function EBirdSection({ form }: Props) {
                         minRows={2}
                         value={str}
                         onChange={(e) => {
-                          const lines = e.target.value.split('\n').filter(Boolean);
+                          const lines = e.target.value
+                            .split('\n')
+                            .filter(Boolean);
                           const obj: Record<string, string> = {};
                           for (const line of lines) {
                             const idx = line.indexOf(':');
@@ -167,7 +189,9 @@ export function EBirdSection({ form }: Props) {
                               if (k && v) obj[k] = v;
                             }
                           }
-                          field.handleChange(Object.keys(obj).length ? obj : {});
+                          field.handleChange(
+                            Object.keys(obj).length ? obj : {},
+                          );
                         }}
                         label={t('settings.ebirdSpeciesMapping')}
                         placeholder="Gray-headed Woodpecker: Grey-headed Woodpecker"
@@ -176,7 +200,15 @@ export function EBirdSection({ form }: Props) {
                     );
                   }}
                 </form.Field>
-                <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <Button
                     type="button"
                     variant="outlined"
@@ -184,19 +216,22 @@ export function EBirdSection({ form }: Props) {
                     disabled={ebirdSuggestLoading}
                     onClick={loadEbirdMappingSuggestions}
                     startIcon={
-                      ebirdSuggestLoading ? <CircularProgress size={14} color="inherit" /> : undefined
+                      ebirdSuggestLoading ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : undefined
                     }
                   >
                     {t('settings.ebirdMappingSuggestLoad')}
                   </Button>
-                  {ebirdSuggestData && ebirdSuggestData.ebird_api_configured && (
-                    <Typography variant="caption" color="text.secondary">
-                      {t('settings.ebirdMappingSuggestRegion', {
-                        region: ebirdSuggestData.region_code,
-                        count: ebirdSuggestData.top_count,
-                      })}
-                    </Typography>
-                  )}
+                  {ebirdSuggestData &&
+                    ebirdSuggestData.ebird_api_configured && (
+                      <Typography variant="caption" color="text.secondary">
+                        {t('settings.ebirdMappingSuggestRegion', {
+                          region: ebirdSuggestData.region_code,
+                          count: ebirdSuggestData.top_count,
+                        })}
+                      </Typography>
+                    )}
                 </Box>
                 {ebirdSuggestError && (
                   <Alert severity="error" sx={{ mt: 1 }}>
@@ -214,9 +249,15 @@ export function EBirdSection({ form }: Props) {
                     <Table size="small" sx={{ mt: 1.5 }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell>{t('settings.ebirdMappingColEbird')}</TableCell>
-                          <TableCell>{t('settings.ebirdMappingColBirdlense')}</TableCell>
-                          <TableCell align="right">{t('settings.ebirdMappingColAction')}</TableCell>
+                          <TableCell>
+                            {t('settings.ebirdMappingColEbird')}
+                          </TableCell>
+                          <TableCell>
+                            {t('settings.ebirdMappingColBirdlense')}
+                          </TableCell>
+                          <TableCell align="right">
+                            {t('settings.ebirdMappingColAction')}
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -242,7 +283,10 @@ export function EBirdSection({ form }: Props) {
                                   type="button"
                                   size="small"
                                   onClick={() =>
-                                    applyEbirdMappingSuggestion(row.ebird_name, row.birdlense_name as string)
+                                    applyEbirdMappingSuggestion(
+                                      row.ebird_name,
+                                      row.birdlense_name as string,
+                                    )
                                   }
                                 >
                                   {t('settings.ebirdMappingApply')}
@@ -257,7 +301,11 @@ export function EBirdSection({ form }: Props) {
                 {ebirdSuggestData &&
                   ebirdSuggestData.ebird_api_configured &&
                   ebirdSuggestData.suggestions.length === 0 && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
                       {t('settings.ebirdMappingSuggestEmpty')}
                     </Typography>
                   )}

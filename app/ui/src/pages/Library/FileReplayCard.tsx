@@ -37,14 +37,18 @@ import { formatBytes } from './libraryShared';
 
 const POLL_MS = 2000;
 
-function statusPollInterval(query: Query<FileTestStatusPayload, Error>): number | false {
+function statusPollInterval(
+  query: Query<FileTestStatusPayload, Error>,
+): number | false {
   if (query.state.status === 'error') return false;
   const d = query.state.data;
   if (!d || d.video_source !== 'file') return false;
   return POLL_MS;
 }
 
-function filesPollInterval(query: Query<Awaited<ReturnType<typeof fetchFileTestFiles>>, Error>): number | false {
+function filesPollInterval(
+  query: Query<Awaited<ReturnType<typeof fetchFileTestFiles>>, Error>,
+): number | false {
   return query.state.status === 'error' ? false : POLL_MS;
 }
 
@@ -53,7 +57,9 @@ type FileReplayCardProps = {
   anchorId?: string;
 };
 
-export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps = {}) {
+export function FileReplayCard({
+  anchorId = 'file-replay',
+}: FileReplayCardProps = {}) {
   const { t } = useTranslation();
   const { isAdmin } = useProtectedArea();
   const qc = useQueryClient();
@@ -62,10 +68,15 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
   const inactiveSeeded = useRef(false);
   /** Не перезаписывать switch из poll сразу после клика (убирает «дёргание» desired vs processor). */
   const loopQuietUntilRef = useRef(0);
-  const [modeBanner, setModeBanner] = useState<{ severity: 'success' | 'error'; text: string } | null>(null);
+  const [modeBanner, setModeBanner] = useState<{
+    severity: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [returnLiveConfirmOpen, setReturnLiveConfirmOpen] = useState(false);
-  const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
+  const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(
+    null,
+  );
 
   const statusQuery = useQuery({
     queryKey: ['file-test-status'],
@@ -74,7 +85,8 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
     retry: false,
   });
 
-  const fileMode = statusQuery.isSuccess && statusQuery.data?.video_source === 'file';
+  const fileMode =
+    statusQuery.isSuccess && statusQuery.data?.video_source === 'file';
 
   const filesQuery = useQuery({
     queryKey: ['file-test-files'],
@@ -84,7 +96,10 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
     retry: false,
   });
 
-  const inactive = statusQuery.isSuccess && statusQuery.data && statusQuery.data.video_source !== 'file';
+  const inactive =
+    statusQuery.isSuccess &&
+    statusQuery.data &&
+    statusQuery.data.video_source !== 'file';
 
   useEffect(() => {
     if (!inactive) {
@@ -105,7 +120,8 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
 
   const enableFileReplayMut = useMutation({
     mutationFn: async () => {
-      const dir = (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test';
+      const dir =
+        (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test';
       await patchSettings({
         video: {
           source: 'file',
@@ -121,11 +137,17 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
       setModeBanner(
         r.success
           ? { severity: 'success', text: t('library.fileReplayRestartOk') }
-          : { severity: 'error', text: r.message || t('library.fileReplayRestartFail') },
+          : {
+              severity: 'error',
+              text: r.message || t('library.fileReplayRestartFail'),
+            },
       );
     },
     onError: () => {
-      setModeBanner({ severity: 'error', text: t('library.fileReplayConfigSaveFail') });
+      setModeBanner({
+        severity: 'error',
+        text: t('library.fileReplayConfigSaveFail'),
+      });
     },
   });
 
@@ -139,11 +161,17 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
       setModeBanner(
         r.success
           ? { severity: 'success', text: t('library.fileReplayRestartOk') }
-          : { severity: 'error', text: r.message || t('library.fileReplayRestartFail') },
+          : {
+              severity: 'error',
+              text: r.message || t('library.fileReplayRestartFail'),
+            },
       );
     },
     onError: () => {
-      setModeBanner({ severity: 'error', text: t('library.fileReplayConfigSaveFail') });
+      setModeBanner({
+        severity: 'error',
+        text: t('library.fileReplayConfigSaveFail'),
+      });
     },
   });
 
@@ -215,7 +243,10 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
       const st = ax.response?.status;
       const rawData = ax.response?.data;
       const apiErr =
-        rawData && typeof rawData === 'object' && rawData !== null && 'error' in rawData
+        rawData &&
+        typeof rawData === 'object' &&
+        rawData !== null &&
+        'error' in rawData
           ? String((rawData as { error?: string }).error || '')
           : '';
       const ct = ax.response?.headers?.['content-type'] ?? '';
@@ -237,7 +268,9 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
   });
 
   const resolvedDir = statusQuery.data?.file_dir ?? '';
-  const desiredForLoop = statusQuery.data?.desired as Record<string, unknown> | undefined;
+  const desiredForLoop = statusQuery.data?.desired as
+    | Record<string, unknown>
+    | undefined;
   const replayArmed = Boolean(desiredForLoop?.armed);
 
   const handleLoopChange = (_: unknown, v: boolean) => {
@@ -254,7 +287,7 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
         description={t('library.fileReplayHint')}
         eyebrow={t('library.sectionFileReplay')}
       >
-          <LinearProgress />
+        <LinearProgress />
       </LibraryCardShell>
     );
   }
@@ -269,7 +302,7 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
         statusLabel={t('common.error')}
         statusTone="error"
       >
-          <Alert severity="error">{t('library.fileReplayLoadError')}</Alert>
+        <Alert severity="error">{t('library.fileReplayLoadError')}</Alert>
       </LibraryCardShell>
     );
   }
@@ -294,7 +327,9 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
         ) : null}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('library.fileReplaySetupFolderInfo', {
-            path: (statusQuery.data?.file_dir || '').trim() || '/app/data/file_test',
+            path:
+              (statusQuery.data?.file_dir || '').trim() ||
+              '/app/data/file_test',
           })}
         </Typography>
         <Box sx={{ width: '100%', mb: 1 }}>
@@ -308,7 +343,9 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
             }
             label={t('library.fileReplayLoop')}
           />
-          <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
+          <FormHelperText sx={{ ml: 0 }}>
+            {t('library.fileReplayLoopHint')}
+          </FormHelperText>
         </Box>
         <Button
           variant="contained"
@@ -321,7 +358,12 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
           {t('library.fileReplayEnableButton')}
         </Button>
         {!isAdmin ? (
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: 1 }}
+          >
             {t('library.fileReplayAdminOnlyMode')}
           </Typography>
         ) : null}
@@ -329,8 +371,13 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
     );
   }
 
-  const proc = statusQuery.data?.processor as Record<string, unknown> | null | undefined;
-  const desired = statusQuery.data?.desired as Record<string, unknown> | undefined;
+  const proc = statusQuery.data?.processor as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const desired = statusQuery.data?.desired as
+    | Record<string, unknown>
+    | undefined;
   const armed = Boolean(desired?.armed);
 
   const files = filesQuery.data?.files ?? [];
@@ -342,7 +389,11 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
         title={t('library.fileReplayTitle')}
         description={t('library.fileReplayHint')}
         eyebrow={t('library.sectionFileReplay')}
-        statusLabel={armed ? t('library.fileReplayActiveStatus') : t('library.fileReplayIdleStatus')}
+        statusLabel={
+          armed
+            ? t('library.fileReplayActiveStatus')
+            : t('library.fileReplayIdleStatus')
+        }
         statusTone={armed ? 'success' : 'default'}
       >
         {modeBanner ? (
@@ -354,7 +405,13 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
             {modeBanner.text}
           </Alert>
         ) : null}
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }} alignItems="center">
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mb: 2 }}
+          alignItems="center"
+        >
           <Button
             variant="outlined"
             color="secondary"
@@ -382,10 +439,18 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
             }
             label={t('library.fileReplayLoop')}
           />
-          <FormHelperText sx={{ ml: 0 }}>{t('library.fileReplayLoopHint')}</FormHelperText>
+          <FormHelperText sx={{ ml: 0 }}>
+            {t('library.fileReplayLoopHint')}
+          </FormHelperText>
         </Box>
 
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }} alignItems="center">
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mb: 2 }}
+          alignItems="center"
+        >
           <Button
             variant="contained"
             color="primary"
@@ -430,11 +495,17 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
         </Button>
         <FormHelperText sx={{ display: 'block', maxWidth: 560 }}>
           {statusQuery.data?.file_test_max_upload_mb != null
-            ? t('library.fileReplayUploadLimitHint', { max: statusQuery.data.file_test_max_upload_mb })
+            ? t('library.fileReplayUploadLimitHint', {
+                max: statusQuery.data.file_test_max_upload_mb,
+              })
             : t('library.fileReplayUploadLimitHintGeneric')}
         </FormHelperText>
         {uploadError ? (
-          <Alert severity="error" sx={{ mt: 1, mb: 1 }} onClose={() => setUploadError(null)}>
+          <Alert
+            severity="error"
+            sx={{ mt: 1, mb: 1 }}
+            onClose={() => setUploadError(null)}
+          >
             {uploadError}
           </Alert>
         ) : null}
@@ -457,15 +528,22 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
               {t('library.fileReplayPhase')}: {String(proc.phase ?? '—')}
             </Typography>
             <Typography variant="body2">
-              {t('library.fileReplayCurrent')}: {String(proc.current_file ?? '—')}
+              {t('library.fileReplayCurrent')}:{' '}
+              {String(proc.current_file ?? '—')}
             </Typography>
             <Typography variant="body2">
-              {t('library.fileReplayIndex')}: {String(proc.index ?? '—')} / {String(proc.total ?? '—')}
+              {t('library.fileReplayIndex')}: {String(proc.index ?? '—')} /{' '}
+              {String(proc.total ?? '—')}
             </Typography>
             <Typography variant="body2">
-              {t('library.fileReplayFrames')}: {String(proc.frame_in_clip ?? '—')}
+              {t('library.fileReplayFrames')}:{' '}
+              {String(proc.frame_in_clip ?? '—')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
               {t('library.fileReplayFramesHint')}
             </Typography>
             {proc.last_error ? (
@@ -500,8 +578,12 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
               <TableHead>
                 <TableRow>
                   <TableCell>{t('library.fileReplayName')}</TableCell>
-                  <TableCell align="right">{t('library.fileReplaySize')}</TableCell>
-                  <TableCell align="right">{t('library.fileReplayDuration')}</TableCell>
+                  <TableCell align="right">
+                    {t('library.fileReplaySize')}
+                  </TableCell>
+                  <TableCell align="right">
+                    {t('library.fileReplayDuration')}
+                  </TableCell>
                   <TableCell align="right" />
                 </TableRow>
               </TableHead>
@@ -511,7 +593,9 @@ export function FileReplayCard({ anchorId = 'file-replay' }: FileReplayCardProps
                     <TableCell>{row.name}</TableCell>
                     <TableCell align="right">{formatBytes(row.size)}</TableCell>
                     <TableCell align="right">
-                      {row.duration_sec != null ? Math.round(row.duration_sec * 10) / 10 : '—'}
+                      {row.duration_sec != null
+                        ? Math.round(row.duration_sec * 10) / 10
+                        : '—'}
                     </TableCell>
                     <TableCell align="right">
                       <Button

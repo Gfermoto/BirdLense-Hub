@@ -133,6 +133,7 @@ nav:
       - "Проверка видов: список и видео": UX_UNKNOWN_VIDEO_CORRECTION.md
       - "Настройки: триггеры (фаза 2, черновик)": SETTINGS_TRIGGERS_PHASE2.md
       - Обучение: TRAINING.ru.md
+      - "Цикл качества ML": ML_QUALITY_LOOP.ru.md
       - Датасеты: DATASETS.ru.md
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md

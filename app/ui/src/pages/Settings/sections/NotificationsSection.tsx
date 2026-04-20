@@ -41,19 +41,33 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return arr;
 }
 
-function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+function WebPushSubscribeButton({
+  notificationsEnabled,
+}: {
+  notificationsEnabled: boolean;
+}) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<'idle' | 'loading' | 'subscribed' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'subscribed' | 'error'
+  >('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const handleSubscribe = async () => {
     if (!notificationsEnabled) return;
-    if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
+    if (
+      !('Notification' in window) ||
+      !('PushManager' in window) ||
+      !('serviceWorker' in navigator)
+    ) {
       setErrorMsg(t('settings.webPushUnsupported'));
       setStatus('error');
       return;
     }
-    if (typeof window !== 'undefined' && !window.isSecureContext && !window.location.hostname.includes('localhost')) {
+    if (
+      typeof window !== 'undefined' &&
+      !window.isSecureContext &&
+      !window.location.hostname.includes('localhost')
+    ) {
       setErrorMsg(t('settings.webPushUnsupported'));
       setStatus('error');
       return;
@@ -77,15 +91,26 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
       await subscribePush(sub);
       setStatus('subscribed');
     } catch (e) {
-      const err = e as { message?: string; response?: { data?: { error?: string } } };
-      const msg = err.response?.data?.error || (err instanceof Error ? err.message : 'Failed');
+      const err = e as {
+        message?: string;
+        response?: { data?: { error?: string } };
+      };
+      const msg =
+        err.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Failed');
       setErrorMsg(msg);
       setStatus('error');
     }
   };
 
-  const supported = typeof window !== 'undefined' && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator;
-  const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost');
+  const supported =
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'PushManager' in window &&
+    'serviceWorker' in navigator;
+  const isSecure =
+    typeof window !== 'undefined' &&
+    (window.isSecureContext || window.location.hostname === 'localhost');
 
   if (!supported || !isSecure) {
     return (
@@ -105,7 +130,11 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
         onClick={handleSubscribe}
         disabled={!notificationsEnabled || status === 'loading'}
       >
-        {status === 'loading' ? '...' : status === 'subscribed' ? t('settings.webPushSubscribed') : t('settings.webPushSubscribe')}
+        {status === 'loading'
+          ? '...'
+          : status === 'subscribed'
+            ? t('settings.webPushSubscribed')
+            : t('settings.webPushSubscribe')}
       </Button>
       {errorMsg && (
         <Typography variant="body2" color="error" sx={{ mt: 1 }}>
@@ -116,9 +145,15 @@ function WebPushSubscribeButton({ notificationsEnabled }: { notificationsEnabled
   );
 }
 
-function TestTelegramButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+function TestTelegramButton({
+  notificationsEnabled,
+}: {
+  notificationsEnabled: boolean;
+}) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
   const [msg, setMsg] = useState<string>('');
 
   const handleTest = async () => {
@@ -141,7 +176,11 @@ function TestTelegramButton({ notificationsEnabled }: { notificationsEnabled: bo
         {status === 'loading' ? '...' : t('settings.testTelegram')}
       </Button>
       {msg && (
-        <Typography variant="body2" color={status === 'success' ? 'text.secondary' : 'error'} sx={{ mt: 0.5, ml: 1, display: 'inline' }}>
+        <Typography
+          variant="body2"
+          color={status === 'success' ? 'text.secondary' : 'error'}
+          sx={{ mt: 0.5, ml: 1, display: 'inline' }}
+        >
           {msg}
         </Typography>
       )}
@@ -149,9 +188,15 @@ function TestTelegramButton({ notificationsEnabled }: { notificationsEnabled: bo
   );
 }
 
-function RefreshTelegramProxyButton({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+function RefreshTelegramProxyButton({
+  notificationsEnabled,
+}: {
+  notificationsEnabled: boolean;
+}) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
   const [msg, setMsg] = useState<string>('');
 
   const handleRefresh = async () => {
@@ -177,7 +222,11 @@ function RefreshTelegramProxyButton({ notificationsEnabled }: { notificationsEna
         {t('settings.refreshTelegramProxyHint')}
       </Typography>
       {msg && (
-        <Typography variant="body2" color={status === 'success' ? 'text.secondary' : 'error'} sx={{ mt: 0.5, ml: 1, display: 'inline' }}>
+        <Typography
+          variant="body2"
+          color={status === 'success' ? 'text.secondary' : 'error'}
+          sx={{ mt: 0.5, ml: 1, display: 'inline' }}
+        >
           {msg}
         </Typography>
       )}
@@ -195,561 +244,704 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
 
   return (
     <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          {t('settings.accordionNotifications')}
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
-            <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
-              {t('settings.accordionNotifications')}
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('settings.accordionNotificationsDesc')}
-            </Typography>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        {t('settings.accordionNotifications')}
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
+          <Box
+            component="legend"
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
+          >
+            {t('settings.accordionNotifications')}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionNotificationsDesc')}
+          </Typography>
 
-            <ServiceBlock title={t('settings.serviceTelegram')}>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12 }}>
-                  <form.Field name="general.enable_notifications">
-                    {(field) => (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+          <ServiceBlock title={t('settings.serviceTelegram')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="general.enable_notifications">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.notifications')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <form.Subscribe
+                selector={(state) => [
+                  state.values.general?.enable_notifications,
+                ]}
+              >
+                {([notificationsEnabled]) => (
+                  <>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="notifications.telegram_bot_token">
+                        {(field) => (
+                          <PasswordField
+                            value={field.state.value ?? ''}
+                            onChange={(v) => field.handleChange(v)}
+                            label={t('settings.telegramBotToken')}
+                            helperText={t('settings.telegramBotTokenHint')}
+                            disabled={!notificationsEnabled}
                           />
-                        }
-                        label={t('settings.notifications')}
-                      />
-                    )}
-                  </form.Field>
-                </Grid>
-                <form.Subscribe selector={(state) => [state.values.general?.enable_notifications]}>
-                  {([notificationsEnabled]) => (
-                    <>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.telegram_bot_token">
-                          {(field) => (
-                            <PasswordField
-                              value={field.state.value ?? ''}
-                              onChange={(v) => field.handleChange(v)}
-                              label={t('settings.telegramBotToken')}
-                              helperText={t('settings.telegramBotTokenHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.telegram_chat_id">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              label={t('settings.telegramChatId')}
-                              helperText={t('settings.telegramChatIdHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="flex-start">
-                    <TestTelegramButton notificationsEnabled={!!notificationsEnabled} />
-                    <RefreshTelegramProxyButton notificationsEnabled={!!notificationsEnabled} />
-                  </Stack>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.base_url">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              label={t('settings.notificationsBaseUrl')}
-                              helperText={t('settings.notificationsBaseUrlHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <Typography variant="subtitle2" sx={{ mt: 0.5 }}>
-                          {t('settings.telegramNetworkTitle')}
-                        </Typography>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.telegram_proxy_type">
-                          {(field) => (
-                            <FormControl fullWidth disabled={!notificationsEnabled}>
-                              <InputLabel id="tg-proxy-type-label">
-                                {t('settings.telegramProxyType')}
-                              </InputLabel>
-                              <Select
-                                labelId="tg-proxy-type-label"
-                                label={t('settings.telegramProxyType')}
-                                value={field.state.value ?? 'socks_http'}
-                                onChange={(e) => field.handleChange(e.target.value as string)}
-                              >
-                                <MenuItem value="none">{t('settings.telegramProxyTypeNone')}</MenuItem>
-                                <MenuItem value="socks_http">
-                                  {t('settings.telegramProxyTypeSocksHttp')}
-                                </MenuItem>
-                                <MenuItem value="mtproto">
-                                  {t('settings.telegramProxyTypeMtproto')}
-                                </MenuItem>
-                              </Select>
-                              <FormHelperText>{t('settings.telegramProxyTypeHint')}</FormHelperText>
-                            </FormControl>
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <form.Subscribe
-                        selector={(s) => s.values.notifications?.telegram_proxy_type ?? 'socks_http'}
-                      >
-                        {(proxyType) => (
-                          <>
-                            {(proxyType === 'socks_http' || !proxyType) && (
-                              <Grid size={{ xs: 12 }}>
-                                <form.Field name="notifications.telegram_proxy_url">
-                                  {(field) => (
-                                    <TextField
-                                      fullWidth
-                                      value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
-                                      label={t('settings.telegramProxyUrl')}
-                                      placeholder="socks5h://127.0.0.1:9050"
-                                      helperText={t('settings.telegramProxyUrlHint')}
-                                      disabled={!notificationsEnabled}
-                                    />
-                                  )}
-                                </form.Field>
-                              </Grid>
-                            )}
-                            {proxyType === 'mtproto' && (
-                              <>
-                                <Grid size={{ xs: 12 }}>
-                                  <Alert severity="info" sx={{ py: 1 }}>
-                                    {t('settings.telegramMtprotoApiHint')}
-                                  </Alert>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 8 }}>
-                                  <form.Field name="notifications.telegram_mtproto_host">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        value={field.state.value ?? ''}
-                                        onChange={(e) => field.handleChange(e.target.value)}
-                                        label={t('settings.telegramMtprotoHost')}
-                                        placeholder="proxy.example.com"
-                                        disabled={!notificationsEnabled}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 4 }}>
-                                  <form.Field name="notifications.telegram_mtproto_port">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 1, max: 65535 }}
-                                        value={field.state.value ?? 443}
-                                        onChange={(e) =>
-                                          field.handleChange(
-                                            Math.max(
-                                              1,
-                                              Math.min(65535, Number(e.target.value) || 443),
-                                            ),
-                                          )
-                                        }
-                                        label={t('settings.telegramMtprotoPort')}
-                                        disabled={!notificationsEnabled}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                  <form.Field name="notifications.telegram_mtproto_secret">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        multiline
-                                        minRows={2}
-                                        value={field.state.value ?? ''}
-                                        onChange={(e) => field.handleChange(e.target.value)}
-                                        label={t('settings.telegramMtprotoSecret')}
-                                        placeholder="ee… / dd…"
-                                        helperText={t('settings.telegramMtprotoSecretHint')}
-                                        disabled={!notificationsEnabled}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                  <form.Field name="notifications.telegram_api_id">
-                                    {(field) => (
-                                      <TextField
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0, step: 1 }}
-                                        value={field.state.value ?? 0}
-                                        onChange={(e) =>
-                                          field.handleChange(Math.max(0, Number(e.target.value) || 0))
-                                        }
-                                        label={t('settings.telegramApiId')}
-                                        helperText={t('settings.telegramApiIdHint')}
-                                        disabled={!notificationsEnabled}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                  <form.Field name="notifications.telegram_api_hash">
-                                    {(field) => (
-                                      <PasswordField
-                                        value={field.state.value ?? ''}
-                                        onChange={(v) => field.handleChange(v)}
-                                        label={t('settings.telegramApiHash')}
-                                        helperText={t('settings.telegramApiHashHint')}
-                                        disabled={!notificationsEnabled}
-                                      />
-                                    )}
-                                  </form.Field>
-                                </Grid>
-                              </>
-                            )}
-                          </>
                         )}
-                      </form.Subscribe>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="notifications.telegram_api_base">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              label={t('settings.telegramApiBase')}
-                              helperText={t('settings.telegramApiBaseHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.telegram_timeout">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 30, max: 600, step: 10 }}
-                              value={field.state.value ?? 300}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="notifications.telegram_chat_id">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label={t('settings.telegramChatId')}
+                            helperText={t('settings.telegramChatIdHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        flexWrap="wrap"
+                        alignItems="flex-start"
+                      >
+                        <TestTelegramButton
+                          notificationsEnabled={!!notificationsEnabled}
+                        />
+                        <RefreshTelegramProxyButton
+                          notificationsEnabled={!!notificationsEnabled}
+                        />
+                      </Stack>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="notifications.base_url">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label={t('settings.notificationsBaseUrl')}
+                            helperText={t('settings.notificationsBaseUrlHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant="subtitle2" sx={{ mt: 0.5 }}>
+                        {t('settings.telegramNetworkTitle')}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="notifications.telegram_proxy_type">
+                        {(field) => (
+                          <FormControl
+                            fullWidth
+                            disabled={!notificationsEnabled}
+                          >
+                            <InputLabel id="tg-proxy-type-label">
+                              {t('settings.telegramProxyType')}
+                            </InputLabel>
+                            <Select
+                              labelId="tg-proxy-type-label"
+                              label={t('settings.telegramProxyType')}
+                              value={field.state.value ?? 'socks_http'}
                               onChange={(e) =>
-                                field.handleChange(Math.max(30, Math.min(600, Number(e.target.value) || 300)))
+                                field.handleChange(e.target.value as string)
                               }
-                              label={t('settings.telegramTimeout')}
-                              helperText={t('settings.telegramTimeoutHint')}
-                              disabled={!notificationsEnabled}
-                            />
+                            >
+                              <MenuItem value="none">
+                                {t('settings.telegramProxyTypeNone')}
+                              </MenuItem>
+                              <MenuItem value="socks_http">
+                                {t('settings.telegramProxyTypeSocksHttp')}
+                              </MenuItem>
+                              <MenuItem value="mtproto">
+                                {t('settings.telegramProxyTypeMtproto')}
+                              </MenuItem>
+                            </Select>
+                            <FormHelperText>
+                              {t('settings.telegramProxyTypeHint')}
+                            </FormHelperText>
+                          </FormControl>
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <form.Subscribe
+                      selector={(s) =>
+                        s.values.notifications?.telegram_proxy_type ??
+                        'socks_http'
+                      }
+                    >
+                      {(proxyType) => (
+                        <>
+                          {(proxyType === 'socks_http' || !proxyType) && (
+                            <Grid size={{ xs: 12 }}>
+                              <form.Field name="notifications.telegram_proxy_url">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={field.state.value ?? ''}
+                                    onChange={(e) =>
+                                      field.handleChange(e.target.value)
+                                    }
+                                    label={t('settings.telegramProxyUrl')}
+                                    placeholder="socks5h://127.0.0.1:9050"
+                                    helperText={t(
+                                      'settings.telegramProxyUrlHint',
+                                    )}
+                                    disabled={!notificationsEnabled}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
                           )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.telegram_retries">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 1, max: 5, step: 1 }}
-                              value={field.state.value ?? 5}
-                              onChange={(e) =>
-                                field.handleChange(Math.max(1, Math.min(5, Number(e.target.value) || 5)))
-                              }
-                              label={t('settings.telegramRetries')}
-                              helperText={t('settings.telegramRetriesHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.compress_photo_over_kb">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 0, max: 10000, step: 50 }}
-                              value={field.state.value ?? 400}
-                              onChange={(e) =>
-                                field.handleChange(Math.max(0, Math.min(10000, Number(e.target.value) || 0)))
-                              }
-                              label={t('settings.telegramCompressOverKb')}
-                              helperText={t('settings.telegramCompressOverKbHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.telegram_max_side_px">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 0, max: 4096, step: 64 }}
-                              value={field.state.value ?? 1024}
-                              onChange={(e) =>
-                                field.handleChange(Math.max(0, Math.min(4096, Number(e.target.value) || 0)))
-                              }
-                              label={t('settings.telegramMaxSidePx')}
-                              helperText={t('settings.telegramMaxSidePxHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.message_thread_id">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              label={t('settings.telegramThreadId')}
-                              helperText={t('settings.telegramThreadIdHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.disable_notification">
-                          {(field) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={field.state.value ?? false}
-                                  onChange={(e) => field.handleChange(e.target.checked)}
-                                  disabled={!notificationsEnabled}
-                                />
-                              }
-                              label={t('settings.telegramSilent')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.protect_content">
-                          {(field) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={field.state.value ?? false}
-                                  onChange={(e) => field.handleChange(e.target.checked)}
-                                  disabled={!notificationsEnabled}
-                                />
-                              }
-                              label={t('settings.telegramProtect')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.link_preview_large">
-                          {(field) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={field.state.value ?? false}
-                                  onChange={(e) => field.handleChange(e.target.checked)}
-                                  disabled={!notificationsEnabled}
-                                />
-                              }
-                              label={t('settings.telegramLinkPreviewLarge')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.send_photo">
-                          {(field) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={field.state.value ?? true}
-                                  onChange={(e) => field.handleChange(e.target.checked)}
-                                  disabled={!notificationsEnabled}
-                                />
-                              }
-                              label={t('settings.telegramSendPhoto')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.use_custom_emoji">
-                          {(field) => (
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={field.state.value ?? false}
-                                  onChange={(e) => field.handleChange(e.target.checked)}
-                                  disabled={!notificationsEnabled}
-                                />
-                              }
-                              label={t('settings.telegramUseCustomEmoji')}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <form.Subscribe selector={(state) => state.values.notifications?.use_custom_emoji}>
-                        {(useCustomEmoji) =>
-                          useCustomEmoji ? (
+                          {proxyType === 'mtproto' && (
                             <>
-                              <Grid size={{ xs: 12, sm: 4 }}>
-                                <form.Field name="notifications.custom_emoji_id_bird">
+                              <Grid size={{ xs: 12 }}>
+                                <Alert severity="info" sx={{ py: 1 }}>
+                                  {t('settings.telegramMtprotoApiHint')}
+                                </Alert>
+                              </Grid>
+                              <Grid size={{ xs: 12, sm: 8 }}>
+                                <form.Field name="notifications.telegram_mtproto_host">
                                   {(field) => (
                                     <TextField
                                       fullWidth
                                       value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
-                                      label={t('settings.telegramCustomEmojiBird')}
-                                      helperText={t('settings.telegramCustomEmojiHint')}
+                                      onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                      }
+                                      label={t('settings.telegramMtprotoHost')}
+                                      placeholder="proxy.example.com"
                                       disabled={!notificationsEnabled}
                                     />
                                   )}
                                 </form.Field>
                               </Grid>
                               <Grid size={{ xs: 12, sm: 4 }}>
-                                <form.Field name="notifications.custom_emoji_id_chipmunk">
+                                <form.Field name="notifications.telegram_mtproto_port">
                                   {(field) => (
                                     <TextField
                                       fullWidth
-                                      value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
-                                      label={t('settings.telegramCustomEmojiChipmunk')}
-                                      helperText={t('settings.telegramCustomEmojiHint')}
+                                      type="number"
+                                      inputProps={{ min: 1, max: 65535 }}
+                                      value={field.state.value ?? 443}
+                                      onChange={(e) =>
+                                        field.handleChange(
+                                          Math.max(
+                                            1,
+                                            Math.min(
+                                              65535,
+                                              Number(e.target.value) || 443,
+                                            ),
+                                          ),
+                                        )
+                                      }
+                                      label={t('settings.telegramMtprotoPort')}
                                       disabled={!notificationsEnabled}
                                     />
                                   )}
                                 </form.Field>
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 4 }}>
-                                <form.Field name="notifications.custom_emoji_id_open_live">
+                              <Grid size={{ xs: 12 }}>
+                                <form.Field name="notifications.telegram_mtproto_secret">
                                   {(field) => (
                                     <TextField
                                       fullWidth
+                                      multiline
+                                      minRows={2}
                                       value={field.state.value ?? ''}
-                                      onChange={(e) => field.handleChange(e.target.value)}
-                                      label={t('settings.telegramCustomEmojiOpenLive')}
-                                      helperText={t('settings.telegramCustomEmojiHint')}
+                                      onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                      }
+                                      label={t(
+                                        'settings.telegramMtprotoSecret',
+                                      )}
+                                      placeholder="ee… / dd…"
+                                      helperText={t(
+                                        'settings.telegramMtprotoSecretHint',
+                                      )}
+                                      disabled={!notificationsEnabled}
+                                    />
+                                  )}
+                                </form.Field>
+                              </Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}>
+                                <form.Field name="notifications.telegram_api_id">
+                                  {(field) => (
+                                    <TextField
+                                      fullWidth
+                                      type="number"
+                                      inputProps={{ min: 0, step: 1 }}
+                                      value={field.state.value ?? 0}
+                                      onChange={(e) =>
+                                        field.handleChange(
+                                          Math.max(
+                                            0,
+                                            Number(e.target.value) || 0,
+                                          ),
+                                        )
+                                      }
+                                      label={t('settings.telegramApiId')}
+                                      helperText={t(
+                                        'settings.telegramApiIdHint',
+                                      )}
+                                      disabled={!notificationsEnabled}
+                                    />
+                                  )}
+                                </form.Field>
+                              </Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}>
+                                <form.Field name="notifications.telegram_api_hash">
+                                  {(field) => (
+                                    <PasswordField
+                                      value={field.state.value ?? ''}
+                                      onChange={(v) => field.handleChange(v)}
+                                      label={t('settings.telegramApiHash')}
+                                      helperText={t(
+                                        'settings.telegramApiHashHint',
+                                      )}
                                       disabled={!notificationsEnabled}
                                     />
                                   )}
                                 </form.Field>
                               </Grid>
                             </>
-                          ) : null
-                        }
-                      </form.Subscribe>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.paid_media_view_star_count">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 0, max: 25000 }}
-                              value={field.state.value ?? 0}
+                          )}
+                        </>
+                      )}
+                    </form.Subscribe>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="notifications.telegram_api_base">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label={t('settings.telegramApiBase')}
+                            helperText={t('settings.telegramApiBaseHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.telegram_timeout">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 30, max: 600, step: 10 }}
+                            value={field.state.value ?? 300}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  30,
+                                  Math.min(600, Number(e.target.value) || 300),
+                                ),
+                              )
+                            }
+                            label={t('settings.telegramTimeout')}
+                            helperText={t('settings.telegramTimeoutHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.telegram_retries">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 1, max: 5, step: 1 }}
+                            value={field.state.value ?? 5}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  1,
+                                  Math.min(5, Number(e.target.value) || 5),
+                                ),
+                              )
+                            }
+                            label={t('settings.telegramRetries')}
+                            helperText={t('settings.telegramRetriesHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.compress_photo_over_kb">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0, max: 10000, step: 50 }}
+                            value={field.state.value ?? 400}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  0,
+                                  Math.min(10000, Number(e.target.value) || 0),
+                                ),
+                              )
+                            }
+                            label={t('settings.telegramCompressOverKb')}
+                            helperText={t(
+                              'settings.telegramCompressOverKbHint',
+                            )}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.telegram_max_side_px">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0, max: 4096, step: 64 }}
+                            value={field.state.value ?? 1024}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  0,
+                                  Math.min(4096, Number(e.target.value) || 0),
+                                ),
+                              )
+                            }
+                            label={t('settings.telegramMaxSidePx')}
+                            helperText={t('settings.telegramMaxSidePxHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.message_thread_id">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label={t('settings.telegramThreadId')}
+                            helperText={t('settings.telegramThreadIdHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.disable_notification">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.state.value ?? false}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.checked)
+                                }
+                                disabled={!notificationsEnabled}
+                              />
+                            }
+                            label={t('settings.telegramSilent')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.protect_content">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.state.value ?? false}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.checked)
+                                }
+                                disabled={!notificationsEnabled}
+                              />
+                            }
+                            label={t('settings.telegramProtect')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.link_preview_large">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.state.value ?? false}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.checked)
+                                }
+                                disabled={!notificationsEnabled}
+                              />
+                            }
+                            label={t('settings.telegramLinkPreviewLarge')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.send_photo">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.state.value ?? true}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.checked)
+                                }
+                                disabled={!notificationsEnabled}
+                              />
+                            }
+                            label={t('settings.telegramSendPhoto')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.use_custom_emoji">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.state.value ?? false}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.checked)
+                                }
+                                disabled={!notificationsEnabled}
+                              />
+                            }
+                            label={t('settings.telegramUseCustomEmoji')}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <form.Subscribe
+                      selector={(state) =>
+                        state.values.notifications?.use_custom_emoji
+                      }
+                    >
+                      {(useCustomEmoji) =>
+                        useCustomEmoji ? (
+                          <>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                              <form.Field name="notifications.custom_emoji_id_bird">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={field.state.value ?? ''}
+                                    onChange={(e) =>
+                                      field.handleChange(e.target.value)
+                                    }
+                                    label={t(
+                                      'settings.telegramCustomEmojiBird',
+                                    )}
+                                    helperText={t(
+                                      'settings.telegramCustomEmojiHint',
+                                    )}
+                                    disabled={!notificationsEnabled}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                              <form.Field name="notifications.custom_emoji_id_chipmunk">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={field.state.value ?? ''}
+                                    onChange={(e) =>
+                                      field.handleChange(e.target.value)
+                                    }
+                                    label={t(
+                                      'settings.telegramCustomEmojiChipmunk',
+                                    )}
+                                    helperText={t(
+                                      'settings.telegramCustomEmojiHint',
+                                    )}
+                                    disabled={!notificationsEnabled}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                              <form.Field name="notifications.custom_emoji_id_open_live">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={field.state.value ?? ''}
+                                    onChange={(e) =>
+                                      field.handleChange(e.target.value)
+                                    }
+                                    label={t(
+                                      'settings.telegramCustomEmojiOpenLive',
+                                    )}
+                                    helperText={t(
+                                      'settings.telegramCustomEmojiHint',
+                                    )}
+                                    disabled={!notificationsEnabled}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
+                          </>
+                        ) : null
+                      }
+                    </form.Subscribe>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.paid_media_view_star_count">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0, max: 25000 }}
+                            value={field.state.value ?? 0}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  0,
+                                  Math.min(25000, Number(e.target.value) || 0),
+                                ),
+                              )
+                            }
+                            label={t('settings.paidMediaViewStars')}
+                            helperText={t('settings.paidMediaViewStarsHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <form.Field name="notifications.paid_media_forward_star_count">
+                        {(field) => (
+                          <TextField
+                            fullWidth
+                            type="number"
+                            inputProps={{ min: 0, max: 25000 }}
+                            value={field.state.value ?? 0}
+                            onChange={(e) =>
+                              field.handleChange(
+                                Math.max(
+                                  0,
+                                  Math.min(25000, Number(e.target.value) || 0),
+                                ),
+                              )
+                            }
+                            label={t('settings.paidMediaForwardStars')}
+                            helperText={t('settings.paidMediaForwardStarsHint')}
+                            disabled={!notificationsEnabled}
+                          />
+                        )}
+                      </form.Field>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="general.notification_excluded_species">
+                        {(field) => (
+                          <FormControl
+                            fullWidth
+                            disabled={!notificationsEnabled}
+                          >
+                            <InputLabel id="settings-exclude-species-label">
+                              {t('settings.excludeSpecies')}
+                            </InputLabel>
+                            <Select
+                              labelId="settings-exclude-species-label"
+                              multiple
+                              value={field.state.value || []}
                               onChange={(e) =>
-                                field.handleChange(Math.max(0, Math.min(25000, Number(e.target.value) || 0)))
+                                field.handleChange(e.target.value as string[])
                               }
-                              label={t('settings.paidMediaViewStars')}
-                              helperText={t('settings.paidMediaViewStarsHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <form.Field name="notifications.paid_media_forward_star_count">
-                          {(field) => (
-                            <TextField
-                              fullWidth
-                              type="number"
-                              inputProps={{ min: 0, max: 25000 }}
-                              value={field.state.value ?? 0}
-                              onChange={(e) =>
-                                field.handleChange(Math.max(0, Math.min(25000, Number(e.target.value) || 0)))
-                              }
-                              label={t('settings.paidMediaForwardStars')}
-                              helperText={t('settings.paidMediaForwardStarsHint')}
-                              disabled={!notificationsEnabled}
-                            />
-                          )}
-                        </form.Field>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <form.Field name="general.notification_excluded_species">
-                          {(field) => (
-                            <FormControl fullWidth disabled={!notificationsEnabled}>
-                              <InputLabel id="settings-exclude-species-label">{t('settings.excludeSpecies')}</InputLabel>
-                              <Select
-                                labelId="settings-exclude-species-label"
-                                multiple
-                                value={field.state.value || []}
-                                onChange={(e) => field.handleChange(e.target.value as string[])}
-                                label={t('settings.excludeSpecies')}
-                                renderValue={(selected) => selected.join(', ')}
-                              >
-                                {(observedSpecies ?? []).map((species) => (
-                                  <MenuItem key={species.id} value={species.name}>
-                                    <Checkbox checked={(field.state.value || []).includes(species.name)} />
-                                    <ListItemText
-                                      primary={species.name}
-                                      secondary={t('settings.foundCount', { count: species.count })}
-                                    />
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          )}
-                        </form.Field>
-                      </Grid>
-                    </>
-                  )}
-                </form.Subscribe>
-              </Grid>
-            </ServiceBlock>
-
-            <ServiceBlock title={t('settings.serviceWebhook')}>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12 }}>
-                  <form.Field name="webhook.url">
-                    {(field) => (
-                      <TextField
-                        fullWidth
-                        value={field.state.value ?? ''}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        label={t('settings.webhookUrl')}
-                        helperText={t('settings.webhookUrlHint')}
-                        placeholder="https://maker.ifttt.com/trigger/bird_detected/with/key/xxx"
-                      />
-                    )}
-                  </form.Field>
-                </Grid>
-              </Grid>
-            </ServiceBlock>
-
-            <ServiceBlock title={t('settings.webPush')}>
-              <form.Subscribe selector={(state) => state.values.general?.enable_notifications}>
-                {(notificationsEnabled) => (
-                  <WebPushSubscribeButton notificationsEnabled={!!notificationsEnabled} />
+                              label={t('settings.excludeSpecies')}
+                              renderValue={(selected) => selected.join(', ')}
+                            >
+                              {(observedSpecies ?? []).map((species) => (
+                                <MenuItem key={species.id} value={species.name}>
+                                  <Checkbox
+                                    checked={(field.state.value || []).includes(
+                                      species.name,
+                                    )}
+                                  />
+                                  <ListItemText
+                                    primary={species.name}
+                                    secondary={t('settings.foundCount', {
+                                      count: species.count,
+                                    })}
+                                  />
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
+                      </form.Field>
+                    </Grid>
+                  </>
                 )}
               </form.Subscribe>
-            </ServiceBlock>
-          </Box>
-        </AccordionDetails>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.serviceWebhook')}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="webhook.url">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.webhookUrl')}
+                      helperText={t('settings.webhookUrlHint')}
+                      placeholder="https://maker.ifttt.com/trigger/bird_detected/with/key/xxx"
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
+          <ServiceBlock title={t('settings.webPush')}>
+            <form.Subscribe
+              selector={(state) => state.values.general?.enable_notifications}
+            >
+              {(notificationsEnabled) => (
+                <WebPushSubscribeButton
+                  notificationsEnabled={!!notificationsEnabled}
+                />
+              )}
+            </form.Subscribe>
+          </ServiceBlock>
+        </Box>
+      </AccordionDetails>
     </Accordion>
   );
 }

@@ -8,7 +8,13 @@ import { VisitCard } from '../../components/VisitCard';
 import { formatLocalTime } from '../../util';
 
 /** Вертикальная линия и точка между элементами (замена @mui/lab Timeline без @mui/base). */
-function TimelineRail({ isFirst, isLast }: { isFirst: boolean; isLast: boolean }) {
+function TimelineRail({
+  isFirst,
+  isLast,
+}: {
+  isFirst: boolean;
+  isLast: boolean;
+}) {
   return (
     <Box
       sx={{
@@ -51,7 +57,11 @@ function TimelineRail({ isFirst, isLast }: { isFirst: boolean; isLast: boolean }
   );
 }
 
-export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisit[] }) {
+export const Timeline = memo(function Timeline({
+  visits,
+}: {
+  visits: SpeciesVisit[];
+}) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -82,7 +92,12 @@ export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisi
             <Box
               key={visit.id}
               component="li"
-              sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 1 }}
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                alignItems: 'flex-start',
+                mb: 1,
+              }}
             >
               <TimelineRail isFirst={isFirst} isLast={isLast} />
               <Box sx={{ flex: 1, minWidth: 0 }}>{card}</Box>
@@ -131,11 +146,22 @@ export const Timeline = memo(function Timeline({ visits }: { visits: SpeciesVisi
               <>
                 {timeCell}
                 <TimelineRail isFirst={isFirst} isLast={isLast} />
-                <Box sx={{ flex: 1, pl: 2, py: 1, minWidth: 0 }}>{cardCell}</Box>
+                <Box sx={{ flex: 1, pl: 2, py: 1, minWidth: 0 }}>
+                  {cardCell}
+                </Box>
               </>
             ) : (
               <>
-                <Box sx={{ flex: 1, pr: 2, py: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    pr: 2,
+                    py: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                  }}
+                >
                   {cardCell}
                 </Box>
                 <TimelineRail isFirst={isFirst} isLast={isLast} />

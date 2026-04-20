@@ -116,7 +116,9 @@ export function ProcessorTrackRegenBlock({ form }: Props) {
                 fullWidth
                 value={field.state.value ?? 'two_stage'}
                 onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.processorTrackRegenPreciseDetectionStrategy')}
+                label={t(
+                  'settings.processorTrackRegenPreciseDetectionStrategy',
+                )}
                 helperText={t(
                   'settings.processorTrackRegenPreciseDetectionStrategyHint',
                 )}
