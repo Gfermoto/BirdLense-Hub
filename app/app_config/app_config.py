@@ -266,6 +266,7 @@ class AppConfig:
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
         self._enforce_confidence_floors(merged)
+        self._cleanup_legacy_processor_keys(merged)
         apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
         for msg in config_issues:
@@ -297,6 +298,21 @@ class AppConfig:
             return float(value)
         except (TypeError, ValueError):
             return float(fallback)
+
+    @staticmethod
+    def _cleanup_legacy_processor_keys(config):
+        """Удаляет устаревшие ключи процессора (single_stage), если они остались в user_config."""
+        if not isinstance(config, dict):
+            return
+        processor = config.get('processor')
+        if not isinstance(processor, dict):
+            return
+        # Удаляем legacy-ключи, которые больше не должны редактироваться в UI
+        processor.pop('single_stage_coco_animals_only_auto', None)
+        processor.pop('models.single_stage', None)
+        # Убедимся, что detection_strategy по умолчанию two_stage
+        if processor.get('detection_strategy') not in ('two_stage', 'single_stage'):
+            processor['detection_strategy'] = 'two_stage'
 
     @classmethod
     def _enforce_confidence_floors(cls, config):
