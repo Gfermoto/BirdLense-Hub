@@ -227,9 +227,6 @@ AUTO_ALLOWLIST_META = {
     "next_step": "Expose in Settings UI or move to strict allowlist section with dedicated rationale.",
 }
 AUTO_ALLOWLIST_KEYS: set[str] = {
-    "detection.fusion_alpha",
-    "detection.fusion_model_path",
-    "detection.use_learned_fusion",
     "general.require_auth_for_video_stream",
     "integrations.scales.history_max_lines",
     "integrations.scales.homeassistant_entity_id",

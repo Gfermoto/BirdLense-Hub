@@ -110,6 +110,73 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12 }}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>
+            {t('settings.learnedFusionHeading')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {t('settings.learnedFusionIntro')}
+          </Typography>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="detection.use_learned_fusion">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(field.state.value)}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.learnedFusionEnable')}
+              />
+            )}
+          </form.Field>
+          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+            {t('settings.learnedFusionEnableHint')}
+          </FormHelperText>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="detection.fusion_model_path">
+            {(field) => (
+              <TextField
+                fullWidth
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.learnedFusionModelPath')}
+                helperText={t('settings.learnedFusionModelPathHint')}
+                placeholder="models/fusion/fusion_state.pt"
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="detection.fusion_alpha">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 0, max: 1, step: 0.05 }}
+                value={
+                  field.state.value === undefined || field.state.value === null
+                    ? 0.6
+                    : field.state.value
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    field.handleChange(undefined);
+                    return;
+                  }
+                  const n = Number(raw);
+                  field.handleChange(Number.isNaN(n) ? undefined : n);
+                }}
+                label={t('settings.learnedFusionAlpha')}
+                helperText={t('settings.learnedFusionAlphaHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
           <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>
             {t('settings.frigateStandaloneHeading')}
           </Typography>
