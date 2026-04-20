@@ -250,7 +250,7 @@ export function CaptureFeederSection({ form }: Props) {
                                       )
                                     }
                                     label={t('settings.frigateLabelFilter')}
-                                    placeholder="bird, squirrel"
+                                    placeholder="bird, squirrel (Frigate)"
                                     helperText={t(
                                       'settings.frigateLabelFilterHint',
                                     )}

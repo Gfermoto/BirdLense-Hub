@@ -167,6 +167,25 @@ export function ProcessorAdaptiveProfilesBlock({ form }: Props) {
           </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.adaptive_profiles.night.overrides.min_confidence_binary_rodent">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 0.05, max: 0.9, step: 0.02 }}
+                value={field.state.value ?? 0.24}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 0.24)
+                }
+                label={t('settings.processorOverrideMinConfidenceBinaryRodent')}
+                helperText={t(
+                  'settings.processorOverrideMinConfidenceBinaryRodentHint',
+                )}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.adaptive_profiles.night.overrides.min_track_duration">
             {(field) => (
               <TextField

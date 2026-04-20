@@ -71,11 +71,11 @@ export const formatLocalDateTime = (
   });
 };
 
-/** Squirrel, chipmunk, mouse — show SquirrelIcon instead of BirdIcon */
-export const isSquirrelLike = (speciesName: string): boolean => {
+/** Rodent и совместимые подписи — RodentIcon вместо BirdIcon */
+export const isRodentLike = (speciesName: string): boolean => {
   if (!speciesName || typeof speciesName !== 'string') return false;
   const lower = speciesName.toLowerCase();
-  return ['squirrel', 'chipmunk', 'mouse', 'мышь', 'белка', 'мышка'].some((s) =>
+  return ['rodent', 'грызун', 'squirrel', 'chipmunk', 'mouse', 'мышь', 'белка', 'мышка'].some((s) =>
     lower.includes(s),
   );
 };

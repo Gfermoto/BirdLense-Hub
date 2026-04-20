@@ -96,7 +96,7 @@ def build_detection_stack(
         and not match_live_regen
     ):
         regional_species = []
-    detector_scope = app_config.get("processor.detector_scope") or ["Bird", "Squirrel"]
+    detector_scope = app_config.get("processor.detector_scope") or ["Bird", "Rodent"]
     max_classifications_per_frame = app_config.get(
         "processor.max_classifications_per_frame",
         2,

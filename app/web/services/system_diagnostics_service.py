@@ -30,7 +30,8 @@ _log = logging.getLogger(__name__)
 BROKEN_VIDEOS_DELETE_CONFIRMATION = "delete_broken_video_rows"
 BROKEN_VIDEOS_PURGE_CONFIRMATION = "purge_all_broken_video_rows"
 NO_SPECIES_VIDEOS_PURGE_CONFIRMATION = "purge_videos_without_species"
-REVIEW_ONLY_NOISE_SPECIES = ("Bird", "Squirrel", "Rodent")
+# Squirrel — устаревшее имя в БД до канона Rodent
+REVIEW_ONLY_NOISE_SPECIES = ("Bird", "Rodent", "Squirrel")
 
 
 def parse_broken_videos_list_params(args) -> tuple[int, int, int]:

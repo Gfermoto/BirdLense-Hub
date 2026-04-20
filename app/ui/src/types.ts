@@ -120,6 +120,9 @@ export type ProcessorNightProfileOverrides = {
   light_gate_min_contrast?: number;
   min_confidence_binary?: number;
   min_confidence_binary_bird?: number;
+  min_confidence_binary_rodent?: number;
+  /** @deprecated см. min_confidence_binary_rodent */
+  min_confidence_binary_squirrel?: number;
   min_track_duration?: number;
   min_confidence_to_process?: number;
   min_box_size_px?: number;
@@ -202,7 +205,9 @@ export interface Settings {
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
     min_confidence_binary_bird?: number | null;
-    /** Мягче для Squirrel/rodent. null → как min_confidence_binary. */
+    /** Мягче для Rodent (грызуны). null → как min_confidence_binary. */
+    min_confidence_binary_rodent?: number | null;
+    /** @deprecated Используйте min_confidence_binary_rodent; читается из YAML для совместимости */
     min_confidence_binary_squirrel?: number | null;
     /** Bird с площадью bbox ≤ доли кадра — без species classifier; null/0 = выкл. */
     bird_skip_classifier_max_area_frac?: number | null;
@@ -210,7 +215,7 @@ export interface Settings {
     /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
     min_confidence_to_notify?: number;
     min_box_size_px?: number; // Minimum bbox width/height in pixels for detector candidates
-    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Squirrel"]
+    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Rodent"]
     /** If false, run YOLO on every frame (ignore brightness/contrast gate). */
     light_gate_enabled?: boolean;
     light_gate_min_brightness?: number;

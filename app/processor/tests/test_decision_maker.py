@@ -221,7 +221,7 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(decisions[0]['reject_reason_code'], 'low_confidence')
         self.assertEqual(decisions[0]['trust_band'], 'red')
 
-    def test_detector_only_squirrel_fallback(self):
+    def test_detector_only_rodent_fallback(self):
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_store=0.20,
@@ -235,8 +235,9 @@ class TestDecisionMaker(unittest.TestCase):
         }
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['species_name'], 'Squirrel')
-        self.assertEqual(results[0]['decision_reason'], 'fallback_squirrel')
+        self.assertEqual(results[0]['species_name'], 'Rodent')
+        self.assertEqual(results[0]['decision_reason'], 'fallback_rodent')
+        self.assertEqual(results[0]['detector_label'], 'Rodent')
 
     def test_species_confidence_overrides_match_scientific_common_labels(self):
         dm = DecisionMaker(
@@ -344,7 +345,7 @@ class TestDecisionMaker(unittest.TestCase):
         )
         rodent = {
             1: _make_track(
-                detector_label='Squirrel',
+                detector_label='Rodent',
                 detector_confidences=[0.6] * 4,
                 classifier_events=[('Rodent', 0.9, 0.5)] * 4,
             )

@@ -10,22 +10,30 @@ from processor_runtime_profile import RuntimeProfileConfigOverlay
 logger = logging.getLogger(__name__)
 
 
+def _rodent_binary_threshold_raw(app_config: Mapping[str, Any]) -> Any:
+    """Новый ключ ``min_confidence_binary_rodent``; ``min_confidence_binary_squirrel`` — только совместимость со старым YAML."""
+    raw = app_config.get("processor.min_confidence_binary_rodent")
+    if raw is not None:
+        return raw
+    return app_config.get("processor.min_confidence_binary_squirrel")
+
+
 def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str, Any]) -> float:
     """
     Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
 
-    Если заданы отдельные пороги Bird/Squirrel, берётся min(...) с базовым — иначе жёсткий
-    порог на птицу отбросил бы белок/мышей на этапе движка.
+    Если заданы отдельные пороги Bird/Rodent, берётся min(...) с базовым — иначе жёсткий
+    порог на птицу отбросил бы грызунов на этапе движка.
     """
     try:
         base = float(base_min)
     except (TypeError, ValueError):
         base = 0.22
     b_raw = app_config.get("processor.min_confidence_binary_bird")
-    s_raw = app_config.get("processor.min_confidence_binary_squirrel")
+    s_raw = _rodent_binary_threshold_raw(app_config)
     bird_m = float(b_raw) if b_raw is not None else base
-    squ_m = float(s_raw) if s_raw is not None else base
-    return min(base, bird_m, squ_m)
+    rod_m = float(s_raw) if s_raw is not None else base
+    return min(base, bird_m, rod_m)
 
 
 def per_label_binary_conf_threshold(
@@ -33,19 +41,19 @@ def per_label_binary_conf_threshold(
     base_min: float,
     app_config: Mapping[str, Any],
 ) -> float:
-    """Порог confidence бинарника после нормализации метки (Bird / Squirrel)."""
+    """Порог confidence бинарника после нормализации метки (Bird / Rodent)."""
     try:
         base = float(base_min)
     except (TypeError, ValueError):
         base = 0.22
     b_raw = app_config.get("processor.min_confidence_binary_bird")
-    s_raw = app_config.get("processor.min_confidence_binary_squirrel")
+    s_raw = _rodent_binary_threshold_raw(app_config)
     bird_m = float(b_raw) if b_raw is not None else base
-    squ_m = float(s_raw) if s_raw is not None else base
+    rod_m = float(s_raw) if s_raw is not None else base
     if detector_label == "Bird":
         return bird_m
-    if detector_label == "Squirrel":
-        return squ_m
+    if detector_label in {"Rodent", "Squirrel"}:
+        return rod_m
     return base
 
 
@@ -213,7 +221,7 @@ class TwoStageStrategy(DetectionStrategy):
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
-        raw_scope = detector_scope or ["Bird", "Squirrel"]
+        raw_scope = detector_scope or ["Bird", "Rodent"]
         self.detector_scope = {self._normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
         self.binary_model = YOLO(binary_model_path, task="detect")
@@ -254,8 +262,8 @@ class TwoStageStrategy(DetectionStrategy):
         key = " ".join(raw.lower().split())
         if not key:
             return "Unknown"
-        if any(token in key for token in ("squirrel", "chipmunk", "rodent")):
-            return "Squirrel"
+        if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун")):
+            return "Rodent"
         if any(token in key for token in ("bird", "avian")):
             return "Bird"
         return " ".join(part.capitalize() for part in raw.split())

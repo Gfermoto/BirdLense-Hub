@@ -40,7 +40,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 1. **Go2RTC** (external) — RTSP / WebRTC / HLS into the hub.
 2. **Processor** reads frames from Go2RTC.
 3. **Motion** (OpenCV, Frigate MQTT, plain MQTT, or ESPHome) starts a recording segment.
-4. **Detector** — first-stage target confirmation (`Bird | Squirrel`).
+4. **Detector** — first-stage target confirmation (`Bird | Rodent`).
 5. **YOLO classifier** — species classification for detector-confirmed tracks.
 6. **ByteTrack** — multi-object tracking and per-frame boxes.
 7. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters.

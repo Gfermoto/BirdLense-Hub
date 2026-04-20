@@ -365,7 +365,9 @@ def register_routes(app):
         excluded_species = app_config.get("general.notification_excluded_species", [])
         if detection not in excluded_species:
             lower = detection.lower()
-            icon = "chipmunk" if any(s in lower for s in ("squirrel", "chipmunk", "mouse", "мышь", "белка")) else "bird"
+            icon = "chipmunk" if any(
+                s in lower for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка")
+            ) else "bird"
             notify_result = (
                 notify(
                     f"{detection} Detected",

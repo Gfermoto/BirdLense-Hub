@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Avatar from '@mui/material/Avatar';
 import { BirdIcon } from './icons/BirdIcon';
-import { SquirrelIcon } from './icons/SquirrelIcon';
-import { isSquirrelLike } from '../util';
+import { RodentIcon } from './icons/RodentIcon';
+import { isRodentLike } from '../util';
 import { resolveImageUrl } from '../api/api';
 
 interface SpeciesIconProps {
@@ -18,7 +18,7 @@ export const SpeciesIcon: React.FC<SpeciesIconProps> = ({
   size = 48,
   sx = {},
 }) => {
-  const Icon = isSquirrelLike(speciesName) ? SquirrelIcon : BirdIcon;
+  const Icon = isRodentLike(speciesName) ? RodentIcon : BirdIcon;
   const [imageFailed, setImageFailed] = useState(false);
   const src = imageFailed ? undefined : resolveImageUrl(imageUrl);
 

@@ -425,7 +425,10 @@ def notify(
 
         icon = (
             "chipmunk"
-            if tags and any(s in (tags or "").lower() for s in ("squirrel", "chipmunk", "mouse", "мышь", "белка"))
+            if tags and any(
+                s in (tags or "").lower()
+                for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка")
+            )
             else "bird"
         )
         send_web_push(message, link=link, tag=icon)

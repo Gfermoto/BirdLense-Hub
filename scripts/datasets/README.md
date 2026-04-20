@@ -31,9 +31,9 @@ Similar to `convert_nabirds_to_yolo.py`, but groups gender-specific classes into
 
 Converts NABirds' `hierarchy.txt` from `child_id:parent_id` format to `child_name:parent_name` format. The result is used in BirdLense Hub for species categorization.
 
-## convert_oidv4_squirrel_to_yolo.py
+## convert_oidv4_rodent_to_yolo.py
 
-Converts OIDv4 dataset (with squirrel class extracted using [OIDv4 Toolkit](https://github.com/EscVM/OIDv4_ToolKit)) to YOLO format. The result is manually merged with NABirds dataset to add squirrel detection.
+Converts OIDv4 dataset (Open Images **/m/071qp** — upstream export folders `train/Squirrel`, `validation/Squirrel` from [OIDv4 Toolkit](https://github.com/EscVM/OIDv4_ToolKit)) to YOLO layout under **`./rodent_yolo/`** with `dataset.yaml` class name **Rodent** (index `1011` unchanged for compatibility with existing NABirds merge recipes). Исторически скрипт назывался `convert_oidv4_squirrel_to_yolo.py`, выход — `squirrel_yolo/`; при обновлении локальных заметок замените на этот файл и **`rodent_yolo/`**.
 
 ## download_coco_birds.py
 
