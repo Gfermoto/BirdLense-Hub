@@ -16,7 +16,9 @@ BirdLense Hub — bird feeder monitoring: video and audio detection, recordings,
 
 ---
 
-## Option 1: One-step Docker install
+## Option 1: One-step Docker install (recommended)
+
+From the **repository root** — **no `make` required** for bootstrap:
 
 ```bash
 git clone https://github.com/Gfermoto/BirdLense-Hub.git
@@ -24,30 +26,28 @@ cd BirdLense-Hub
 ./install.sh
 ```
 
-The script checks Docker, installs it if needed, creates `app/.env`, and starts the stack.
+The script checks Docker, installs it if needed, runs `app/scripts/setup-env.sh` (creates `app/.env` with secrets), builds and starts the stack, then runs **`scripts/verify-stack.sh`** (health, readiness, status).
 
-Verify:
-
-```bash
-make verify
-```
-
-## Option 2: Pre-built image (recommended)
+**Pre-built image** (skip local `docker compose build`):
 
 ```bash
-git clone https://github.com/Gfermoto/BirdLense-Hub.git
-cd BirdLense-Hub/app
-make pull
+./install.sh --pull
 ```
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
+Same as `make install` / `make install-pull` from the repo root.
 
-Verify:
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: `http://127.0.0.1:8085` (or `BIRDLENSE_PORT`).
+
+## Option 2: Make-only (same as Option 1)
 
 ```bash
-cd ..
-make verify
+cd BirdLense-Hub
+make install          # build locally
+# or
+make install-pull     # ghcr image
 ```
+
+Equivalent to `./install.sh` / `./install.sh --pull`.
 
 ## Option 3: Build from source
 
@@ -93,7 +93,7 @@ curl -s http://127.0.0.1:8085/api/ui/status
 
 **Docker volumes and uid:** container processes run as **`birdlense` (uid 1000)**. The entrypoint briefly runs as root to `chown` bind-mounted `./data` and `./app_config`. If `chown` is not allowed on your filesystem, from the host under `app/`: `chown -R 1000:1000 data app_config`.
 
-1. **Secrets** — `make setup` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Runs on `make start`/`make pull`, and from `./install.sh`.
+1. **Secrets** — `app/scripts/setup-env.sh` creates `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). `./install.sh` calls it directly; `make setup` / `make start` / `make pull` also use it.
 2. **Config** — `app/app_config/user_config.yaml`. Example from the repo **`app/`** directory: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Settings → Video: URL (`http://IP:1984`).
 4. **Cameras** — Settings → Cameras: stream names from Go2RTC.

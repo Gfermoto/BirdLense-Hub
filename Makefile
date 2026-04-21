@@ -1,4 +1,11 @@
-.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+
+# Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
+install:
+	@./install.sh
+
+install-pull:
+	@./install.sh --pull
 
 # Все проверки как в CI (Python security, ruff, pytest web, UI, docs). Без Docker по умолчанию.
 ci-local:
