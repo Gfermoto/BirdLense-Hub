@@ -88,7 +88,7 @@ UI: http://localhost:8085
 
 **Quickstart:** [docs/QUICKSTART.md](./docs/QUICKSTART.md) | **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-For a one-step Docker bootstrap, run `./install.sh` from the repository root. It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract.
+For a one-step Docker bootstrap, run **`./install.sh`** from the repository root (or **`make install`**). It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract. Pre-built image: **`./install.sh --pull`** or **`make install-pull`**.
 
 ## Developers
 
