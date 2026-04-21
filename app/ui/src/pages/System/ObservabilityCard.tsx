@@ -213,17 +213,27 @@ export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
               <code>{lineageFingerprint}</code>
             </Typography>
             {artifactEntries.length > 0 ? (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {artifactEntries.map(([key, value]) => (
-                  <Chip
-                    key={key}
-                    size="small"
-                    color={value.exists ? 'success' : 'default'}
-                    variant="outlined"
-                    label={`${key}: ${value.exists ? t('system.statusPresent') : t('system.statusMissing')}`}
-                  />
-                ))}
-              </Box>
+              <>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                  {artifactEntries.map(([key, value]) => (
+                    <Chip
+                      key={key}
+                      size="small"
+                      color={value.exists ? 'success' : 'default'}
+                      variant="outlined"
+                      label={`${key}: ${value.exists ? t('system.statusPresent') : t('system.statusMissing')}`}
+                    />
+                  ))}
+                </Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mb: 2 }}
+                >
+                  {t('system.modelLineageArtifactsHint')}
+                </Typography>
+              </>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t('system.modelLineageNoArtifacts')}

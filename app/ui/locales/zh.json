@@ -1684,6 +1684,7 @@
     "modelLineageTitle": "模型谱系",
     "modelLineageFingerprint": "配置指纹",
     "modelLineageNoArtifacts": "没有可显示的模型产物详情。",
+    "modelLineageArtifactsHint": "芯片仅反映**磁盘上的文件**（检测器/分类器权重、allowlist、可选 fusion_state.pt）。在设置中开启 learned fusion 仍显示「fusion: 缺失」是正常的：未配置 fusion_model_path 或文件不存在时，处理器使用**内置启发式**评分。若要此处显示「fusion: 存在」，需存在真实的 fusion_state.pt 并填写 detection.fusion_model_path。",
     "statusPresent": "存在",
     "statusMissing": "缺失",
     "hubMetricsForHeimdall": "集线器指标导出（适用于 Heimdall 小部件）",

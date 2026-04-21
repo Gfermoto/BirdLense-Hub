@@ -1731,6 +1731,7 @@
     "modelLineageTitle": "Model lineage",
     "modelLineageFingerprint": "Config fingerprint",
     "modelLineageNoArtifacts": "No model artifact details available.",
+    "modelLineageArtifactsHint": "Chips only reflect **files on disk** (detector/classifier weights, allowlist, optional fusion_state.pt). «fusion: missing» with learned fusion enabled in Settings is expected when fusion_model_path is empty or the file is absent — the processor falls back to the **built-in heuristic** scorer. For «fusion: present» here, configure a real fusion_state.pt and detection.fusion_model_path.",
     "statusPresent": "present",
     "statusMissing": "missing",
     "hubMetricsForHeimdall": "Hub metric export (for Heimdall widgets)",
