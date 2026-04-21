@@ -38,6 +38,7 @@
 | **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Definition of Done (ворота релиза)** | [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md) | [RU](./DEFINITION_OF_DONE.ru.md) |
 | **Карта настроек UI** | [UI_SETTINGS_MAP](./UI_SETTINGS_MAP.md) | [RU](./UI_SETTINGS_MAP.ru.md) |
+| **Каноническая UX-карта** (роли, маршруты, сценарии) | [UX_CANONICAL_MAP](./UX_CANONICAL_MAP.md) | [RU](./UX_CANONICAL_MAP.ru.md) |
 | **Производительность процессора** | [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) | [RU](./PROCESSOR_PERFORMANCE.ru.md) |
 | **Инвентаризация триггеров / Frigate** | [CONFIGURATION_TRIGGERS_INVENTORY](./CONFIGURATION_TRIGGERS_INVENTORY.md) | [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
 | **Ошибки API и security baseline** | [API_ERRORS](./API_ERRORS.md) | [RU](./API_ERRORS.ru.md) |

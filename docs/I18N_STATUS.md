@@ -61,6 +61,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | ACCESS_CONTROL | ✅ | ✅ |
 | RECOVERY_CONFIG | ✅ | ✅ |
 | SITE_MAP (sections ↔ files, MkDocs `nav`) | ✅ | ✅ |
+| UX_CANONICAL_MAP (roles / routes / journeys) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
