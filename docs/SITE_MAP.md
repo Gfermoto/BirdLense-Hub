@@ -20,7 +20,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
-| Quickstart | [QUICKSTART.md](./QUICKSTART.md) (EN only; см. [I18N_STATUS](./I18N_STATUS.md)) |
+| Quickstart | [QUICKSTART.md](./QUICKSTART.md) · [RU](./QUICKSTART.ru.md) |
 | Install | [INSTALL.md](./INSTALL.md) · [RU](./INSTALL.ru.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
 | Scenarios | [SCENARIOS.md](./SCENARIOS.md) · [RU](./SCENARIOS.ru.md) |

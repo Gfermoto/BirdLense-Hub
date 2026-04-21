@@ -40,6 +40,7 @@
 | SECURITY | ✅ | ✅ |
 | **docs/** | | |
 | README (хаб) | ✅ | ✅ |
+| QUICKSTART | ✅ | ✅ |
 | REPOSITORY_LAYOUT | ✅ | ✅ |
 | OVERVIEW (история / лендинг) | ✅ | ✅ |
 | INSTALL | ✅ | ✅ |

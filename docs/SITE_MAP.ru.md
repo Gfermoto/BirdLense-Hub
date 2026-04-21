@@ -20,7 +20,7 @@
 
 | Страница | Источник |
 |----------|----------|
-| Быстрый старт | [QUICKSTART.md](./QUICKSTART.md) (только EN; см. [I18N_STATUS](./I18N_STATUS.md)) |
+| Быстрый старт | [QUICKSTART.ru.md](./QUICKSTART.ru.md) · [EN](./QUICKSTART.md) |
 | Установка | [INSTALL.ru.md](./INSTALL.ru.md) · [EN](./INSTALL.md) |
 | Чеклист деплоя на сервер | [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md) · [EN](./DEPLOY_SERVER.md) |
 | Сценарии | [SCENARIOS.ru.md](./SCENARIOS.ru.md) · [EN](./SCENARIOS.md) |
