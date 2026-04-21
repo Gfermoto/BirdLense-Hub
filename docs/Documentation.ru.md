@@ -28,6 +28,8 @@
 
 В корне репозитория лежит **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)**: тема **Material**, каталог исходников — `docs/`, `nav` сверяют с [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) (блоки **Мета** и **Репозиторий (канонические файлы)** — в том же порядке, что две группы в боковом меню). Файлы политики и метаданных в корне репозитория (contributing, security policy, changelog, OpenAPI) на сайте открываются через короткие страницы в [docs/project/](./project/contributing.md), чтобы ссылки из `docs/` не уходили в `../` (так ломается публикация на GitHub Pages).
 
+**Проверка в CI:** `python3 scripts/check_site_map_meta_paths.py` (нужен PyYAML из `requirements-docs.txt`) убеждается, что каждый путь из **Meta** и **Repository (canonical files)** в `mkdocs.yml` по-прежнему встречается в соответствующих отрывках `docs/SITE_MAP.md` до `mkdocs build --strict`.
+
 ### Сборка локально
 
 ```bash

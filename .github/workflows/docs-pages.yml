@@ -11,6 +11,7 @@ on:
       - "VERSION"
       - "requirements-docs.txt"
       - "scripts/check-docs-version.py"
+      - "scripts/check_site_map_meta_paths.py"
       - ".github/workflows/docs-pages.yml"
   workflow_dispatch:
 
@@ -40,6 +41,9 @@ jobs:
 
       - name: Check docs version vs VERSION file
         run: python3 scripts/check-docs-version.py
+
+      - name: Check SITE_MAP vs mkdocs Meta/Repository
+        run: python3 scripts/check_site_map_meta_paths.py
 
       - name: Build site
         run: mkdocs build --strict
