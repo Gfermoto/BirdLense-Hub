@@ -29,12 +29,7 @@ def _norm_key(name: str) -> str:
         return ""
     s = name.strip().lower()
     # Типографский апостроф / модификатор буквы → ASCII (имена в БД vs YOLO)
-    s = (
-        s.replace("\u2019", "'")
-        .replace("\u2018", "'")
-        .replace("\u02bc", "'")
-        .replace("`", "'")
-    )
+    s = s.replace("\u2019", "'").replace("\u2018", "'").replace("\u02bc", "'").replace("`", "'")
     s = s.replace("_", " ").replace("-", " ")
     s = re.sub(r"\s+", " ", s)
     return s

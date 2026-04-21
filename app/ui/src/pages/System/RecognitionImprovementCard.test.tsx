@@ -14,7 +14,11 @@ const fetchRecognitionImprovementSummary = vi.hoisted(() =>
       unique_species: 3,
       ready_for_training: false,
       examples_until_ready: 6,
-      thresholds: { corrected_examples: 10, unique_videos: 5, unique_species: 3 },
+      thresholds: {
+        corrected_examples: 10,
+        unique_videos: 5,
+        unique_species: 3,
+      },
       latest_feedback_at: '2026-04-21T00:00:00Z',
     },
     model: {
@@ -74,7 +78,11 @@ describe('RecognitionImprovementCard', () => {
         unique_species: 3,
         ready_for_training: false,
         examples_until_ready: 6,
-        thresholds: { corrected_examples: 10, unique_videos: 5, unique_species: 3 },
+        thresholds: {
+          corrected_examples: 10,
+          unique_videos: 5,
+          unique_species: 3,
+        },
         latest_feedback_at: '2026-04-21T00:00:00Z',
       },
       model: {
@@ -93,7 +101,9 @@ describe('RecognitionImprovementCard', () => {
 
     expect(await screen.findAllByText(/built-in heuristic/i)).toHaveLength(2);
     expect(screen.getByText(/4 examples/i)).toBeInTheDocument();
-    expect(screen.getByText(/need 6 more corrected examples/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/need 6 more corrected examples/i),
+    ).toBeInTheDocument();
   });
 
   it('starts training from the primary action', async () => {
@@ -107,7 +117,11 @@ describe('RecognitionImprovementCard', () => {
         unique_species: 4,
         ready_for_training: true,
         examples_until_ready: 0,
-        thresholds: { corrected_examples: 10, unique_videos: 5, unique_species: 3 },
+        thresholds: {
+          corrected_examples: 10,
+          unique_videos: 5,
+          unique_species: 3,
+        },
         latest_feedback_at: '2026-04-21T00:00:00Z',
       },
       model: {

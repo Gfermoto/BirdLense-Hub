@@ -487,164 +487,166 @@ export const VideoDetails = () => {
               </AccordionSummary>
               <AccordionDetails sx={{ px: 0, pb: 0 }}>
                 <Box>
-              {trackRegenErrorMessage && (
-                <Alert
-                  severity="error"
-                  sx={{ mb: 1 }}
-                  onClose={() => trackRegenStart.reset()}
-                >
-                  {trackRegenErrorMessage}
-                </Alert>
-              )}
-              {specRegenErrorMessage && (
-                <Alert
-                  severity="error"
-                  sx={{ mb: 1 }}
-                  onClose={() => specRegenStart.reset()}
-                >
-                  {specRegenErrorMessage}
-                </Alert>
-              )}
-              {showTracksRegenHint && (
-                <Alert severity="info" sx={{ mb: 1 }}>
-                  {t('video.tracksMissingHint')}
-                </Alert>
-              )}
-              {followTrackRegen !== null &&
-                trackRemoteStatus?.status === 'running' &&
-                trackProgressOtherJob && (
-                  <Alert severity="warning" sx={{ mb: 1 }}>
-                    {t('video.trackRegenOtherVideo', {
-                      id: trackProgress?.active_request_video_id ?? '?',
-                    })}
-                  </Alert>
-                )}
-              {followTrackRegen !== null &&
-                trackRemoteStatus?.status === 'running' &&
-                !trackProgressOtherJob && (
-                  <Alert severity="info" sx={{ mb: 1 }}>
-                    <LinearProgress
-                      variant={
-                        trackIndeterminate ? 'indeterminate' : 'determinate'
-                      }
-                      {...(!trackIndeterminate
-                        ? { value: trackProgressPct ?? 0 }
-                        : {})}
+                  {trackRegenErrorMessage && (
+                    <Alert
+                      severity="error"
                       sx={{ mb: 1 }}
-                    />
-                    <Typography variant="body2" component="div">
-                      {trackProgress &&
-                      trackProgress.total &&
-                      trackProgress.total > 1
-                        ? t('video.trackRegenProgressBatch', {
-                            processed: trackProgress.processed ?? 0,
-                            total: trackProgress.total,
-                          })
-                        : t('video.trackRegenProgressSingle', {
-                            phase: trackProgress?.phase ?? '…',
-                          })}
-                    </Typography>
-                    {trackProgress?.current_video ? (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        sx={{ mt: 0.5 }}
-                      >
-                        {t('video.trackRegenProgressFile', {
-                          name: tailPath(trackProgress.current_video),
-                        })}
-                      </Typography>
-                    ) : null}
-                  </Alert>
-                )}
-              {followSpecRegen !== null &&
-                specRemoteStatus?.status === 'running' && (
-                  <Alert severity="info" sx={{ mb: 1 }}>
-                    <LinearProgress
-                      variant={
-                        specIndeterminate ? 'indeterminate' : 'determinate'
-                      }
-                      {...(!specIndeterminate
-                        ? { value: specProgressPct ?? 0 }
-                        : {})}
-                      sx={{ mb: 1 }}
-                    />
-                    <Typography variant="body2" component="div">
-                      {specProgress &&
-                      specProgress.total &&
-                      specProgress.total > 1
-                        ? t('video.specRegenProgressBatch', {
-                            processed: specProgress.processed ?? 0,
-                            total: specProgress.total,
-                          })
-                        : t('video.specRegenProgressSingle')}
-                    </Typography>
-                    {specProgress?.current_video ? (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        sx={{ mt: 0.5 }}
-                      >
-                        {t('video.specRegenProgressFile', {
-                          name: tailPath(specProgress.current_video),
-                        })}
-                      </Typography>
-                    ) : null}
-                  </Alert>
-                )}
-              {!trackRegenBusy && trackJobSummary && (
-                <Alert
-                  severity={trackJobSummary.severity}
-                  sx={{ mb: 1 }}
-                  onClose={() => setFinishedTrackRegen(null)}
-                >
-                  {trackJobSummary.message}
-                </Alert>
-              )}
-              {!specRegenBusy && specJobSummary && (
-                <Alert
-                  severity={specJobSummary.severity}
-                  sx={{ mb: 1 }}
-                  onClose={() => setFinishedSpecRegen(null)}
-                >
-                  {specJobSummary.message}
-                </Alert>
-              )}
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {canRegenTracks && (
-                  <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
-                    <span>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => trackRegenStart.mutate()}
-                        disabled={trackRegenBusy || specRegenBusy}
-                      >
-                        {trackRegenBusy
-                          ? t('video.regenerateTracksThisVideoRunning')
-                          : t('video.regenerateTracksThisVideo')}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                )}
-                <Tooltip title={t('video.regenerateSpectrogramThisVideoHelp')}>
-                  <span>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      disabled={trackRegenBusy || specRegenBusy}
-                      startIcon={<GraphicEqIcon fontSize="small" />}
-                      onClick={() => specRegenStart.mutate()}
+                      onClose={() => trackRegenStart.reset()}
                     >
-                      {specRegenBusy
-                        ? t('video.regenerateSpectrogramThisVideoRunning')
-                        : t('video.regenerateSpectrogramThisVideo')}
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Stack>
+                      {trackRegenErrorMessage}
+                    </Alert>
+                  )}
+                  {specRegenErrorMessage && (
+                    <Alert
+                      severity="error"
+                      sx={{ mb: 1 }}
+                      onClose={() => specRegenStart.reset()}
+                    >
+                      {specRegenErrorMessage}
+                    </Alert>
+                  )}
+                  {showTracksRegenHint && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      {t('video.tracksMissingHint')}
+                    </Alert>
+                  )}
+                  {followTrackRegen !== null &&
+                    trackRemoteStatus?.status === 'running' &&
+                    trackProgressOtherJob && (
+                      <Alert severity="warning" sx={{ mb: 1 }}>
+                        {t('video.trackRegenOtherVideo', {
+                          id: trackProgress?.active_request_video_id ?? '?',
+                        })}
+                      </Alert>
+                    )}
+                  {followTrackRegen !== null &&
+                    trackRemoteStatus?.status === 'running' &&
+                    !trackProgressOtherJob && (
+                      <Alert severity="info" sx={{ mb: 1 }}>
+                        <LinearProgress
+                          variant={
+                            trackIndeterminate ? 'indeterminate' : 'determinate'
+                          }
+                          {...(!trackIndeterminate
+                            ? { value: trackProgressPct ?? 0 }
+                            : {})}
+                          sx={{ mb: 1 }}
+                        />
+                        <Typography variant="body2" component="div">
+                          {trackProgress &&
+                          trackProgress.total &&
+                          trackProgress.total > 1
+                            ? t('video.trackRegenProgressBatch', {
+                                processed: trackProgress.processed ?? 0,
+                                total: trackProgress.total,
+                              })
+                            : t('video.trackRegenProgressSingle', {
+                                phase: trackProgress?.phase ?? '…',
+                              })}
+                        </Typography>
+                        {trackProgress?.current_video ? (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {t('video.trackRegenProgressFile', {
+                              name: tailPath(trackProgress.current_video),
+                            })}
+                          </Typography>
+                        ) : null}
+                      </Alert>
+                    )}
+                  {followSpecRegen !== null &&
+                    specRemoteStatus?.status === 'running' && (
+                      <Alert severity="info" sx={{ mb: 1 }}>
+                        <LinearProgress
+                          variant={
+                            specIndeterminate ? 'indeterminate' : 'determinate'
+                          }
+                          {...(!specIndeterminate
+                            ? { value: specProgressPct ?? 0 }
+                            : {})}
+                          sx={{ mb: 1 }}
+                        />
+                        <Typography variant="body2" component="div">
+                          {specProgress &&
+                          specProgress.total &&
+                          specProgress.total > 1
+                            ? t('video.specRegenProgressBatch', {
+                                processed: specProgress.processed ?? 0,
+                                total: specProgress.total,
+                              })
+                            : t('video.specRegenProgressSingle')}
+                        </Typography>
+                        {specProgress?.current_video ? (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {t('video.specRegenProgressFile', {
+                              name: tailPath(specProgress.current_video),
+                            })}
+                          </Typography>
+                        ) : null}
+                      </Alert>
+                    )}
+                  {!trackRegenBusy && trackJobSummary && (
+                    <Alert
+                      severity={trackJobSummary.severity}
+                      sx={{ mb: 1 }}
+                      onClose={() => setFinishedTrackRegen(null)}
+                    >
+                      {trackJobSummary.message}
+                    </Alert>
+                  )}
+                  {!specRegenBusy && specJobSummary && (
+                    <Alert
+                      severity={specJobSummary.severity}
+                      sx={{ mb: 1 }}
+                      onClose={() => setFinishedSpecRegen(null)}
+                    >
+                      {specJobSummary.message}
+                    </Alert>
+                  )}
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {canRegenTracks && (
+                      <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => trackRegenStart.mutate()}
+                            disabled={trackRegenBusy || specRegenBusy}
+                          >
+                            {trackRegenBusy
+                              ? t('video.regenerateTracksThisVideoRunning')
+                              : t('video.regenerateTracksThisVideo')}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                    <Tooltip
+                      title={t('video.regenerateSpectrogramThisVideoHelp')}
+                    >
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          disabled={trackRegenBusy || specRegenBusy}
+                          startIcon={<GraphicEqIcon fontSize="small" />}
+                          onClick={() => specRegenStart.mutate()}
+                        >
+                          {specRegenBusy
+                            ? t('video.regenerateSpectrogramThisVideoRunning')
+                            : t('video.regenerateSpectrogramThisVideo')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Stack>
                 </Box>
               </AccordionDetails>
             </Accordion>

@@ -97,7 +97,9 @@ export function ScalesIntegrationFields({ form }: Props) {
                           field.handleChange(e.target.value as ScalesUnit)
                         }
                       >
-                        <MenuItem value="g">{t('settings.scalesUnitG')}</MenuItem>
+                        <MenuItem value="g">
+                          {t('settings.scalesUnitG')}
+                        </MenuItem>
                         <MenuItem value="kg">
                           {t('settings.scalesUnitKg')}
                         </MenuItem>

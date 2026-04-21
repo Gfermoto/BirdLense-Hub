@@ -161,7 +161,8 @@ export function Navigation() {
 
   const needsPassword = isLoading || (requiresPassword && !unlocked);
   const isReviewRoute =
-    currentPath === '/timeline' && /(?:^|[?&])review=1(?:&|$)/.test(location.search);
+    currentPath === '/timeline' &&
+    /(?:^|[?&])review=1(?:&|$)/.test(location.search);
 
   const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (needsPassword) {

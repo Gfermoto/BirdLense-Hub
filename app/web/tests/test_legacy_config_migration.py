@@ -183,9 +183,7 @@ def test_migrate_processor_classifier_best_eu_relative_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == (
-        "models/classification/weights/best.pt"
-    )
+    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
 
 
 def test_migrate_processor_classifier_best_eu_absolute_path():
@@ -197,9 +195,7 @@ def test_migrate_processor_classifier_best_eu_absolute_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == (
-        "models/classification/weights/best.pt"
-    )
+    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
 
 
 def test_migrate_processor_classifier_unchanged_for_canonical():
