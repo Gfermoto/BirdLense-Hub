@@ -21,6 +21,10 @@ Removed from `archive/`: ROLLBACK_LOST_FEATURES, SYSTEM_UI_AND_FRIGATE_REFERENCE
 
 Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` / `[English](./DOC.md)`.
 
+## Published site (`mkdocs.yml`)
+
+When you add, remove, or rename a **published** page under `docs/`: update root **`mkdocs.yml`** `nav`, mirror the **Meta** and **Repository (canonical files)** order in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), refresh [README.md](./README.md) meta tables if operators should discover the page from the doc home, then extend the status table below.
+
 ## Status
 
 | Document | EN | RU |
