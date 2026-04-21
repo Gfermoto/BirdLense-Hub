@@ -20,7 +20,7 @@
 | **Frigate** | Bird Classification sub_label в слиянии |
 | **Timeline** | Визиты по дате, воспроизведение видео, спектрограммы |
 | **Overview** | Статистика, графики активности |
-| **Species** | Основной вход через таблицу Migration (`/migration-calendar`) + сводка по виду (`/species/:id`) |
+| **Species** | Таблица сезонности: **`/species`** (тот же UI, что **`/migration-calendar`**) + карточный каталог **`/species-directory`** + сводка по виду **`/species/:id`** |
 | **Погода** | OpenWeather, Home Assistant |
 | **Telegram** | Уведомления при детекции, превью best frame в фото |
 | **Кормушка** | Реле (MQTT/ESPHome) при детекции |
@@ -53,7 +53,7 @@
 | **Виджет «Последняя птица»** | На Overview |
 | **PWA** | Install prompt, offline cache |
 | **Источник детекции** | YOLO / Frigate / BirdNET в карточках |
-| **Календарь миграций** | `/migration-calendar` — таблица визитов по виду и месяцу (Jan–Dec), интенсивность по данным |
+| **Календарь миграций / таблица Species** | **`/species`** и **`/migration-calendar`** — одна и та же сетка сезонности (визиты × вид × месяц); **`/species-directory`** — карточный браузер |
 | **Xeno-canto** | Песни птиц на странице вида |
 | **Confidence по виду** | `processor.species_confidence_overrides` |
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |

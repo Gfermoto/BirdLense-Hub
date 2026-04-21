@@ -125,7 +125,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 **Progress update (Mar 2026):**
 - [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](./A11Y.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — shipped and closed: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + counter), OpenAPI + API tests + smoke redirect coverage.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: Catalog menu entry removed, legacy `/species` redirects to `/migration-calendar`, species deep links (`/species/:id`) preserved.
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: catalog nav reshaped toward the seasonality table; **current UI (v0.3.6+):** nav **Species** → `/species` (same grid as `/migration-calendar`, which remains an alias URL); card directory → `/species-directory`; deep links `/species/:id` preserved. (Issue text described an intermediate redirect-only `/species` — no longer accurate.)
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
@@ -141,7 +141,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | ✅ Lower classifier thresholds for species in recent BirdNET MQTT: `birdnet_mqtt_auto_confidence` + delta/floor; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
-| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | **Remove catalog from nav**; migration table primary path to species; clicks → `/species/:id`; in-page tabs = table modes |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | Historical: nav toward seasonality table; **now** `/species` + `/migration-calendar` (same UI), `/species-directory` (cards), `/species/:id` |
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | ✅ Bird Directory «Regional» = eBird regional top + `birdnet_mqtt` detections; `regional_scope` on `GET /species`; [CONFIGURATION.md](./CONFIGURATION.md) |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
