@@ -27,7 +27,7 @@ Pick what matches you — you can read the rest as reference.
 | **Short description** (GitHub About, press) | [SHORT_DESCRIPTION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
 | **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
-| **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | — |
+| **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | [RU](./QUICKSTART.ru.md) |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |

@@ -38,6 +38,7 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | SECURITY | ✅ | ✅ |
 | **docs/** | | |
 | README (hub) | ✅ | ✅ |
+| QUICKSTART | ✅ | ✅ |
 | REPOSITORY_LAYOUT | ✅ | ✅ |
 | OVERVIEW (story / landing source) | ✅ | ✅ |
 | INSTALL | ✅ | ✅ |

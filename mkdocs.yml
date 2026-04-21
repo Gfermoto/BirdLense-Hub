@@ -115,6 +115,7 @@ nav:
   - "Русский":
       - Обзор: OVERVIEW.ru.md
       - Оглавление: README.ru.md
+      - Быстрый старт: QUICKSTART.ru.md
       - Установка: INSTALL.ru.md
       - Чеклист деплоя на сервер: DEPLOY_SERVER.ru.md
       - Сценарии: SCENARIOS.ru.md

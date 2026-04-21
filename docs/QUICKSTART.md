@@ -1,5 +1,7 @@
 # Quickstart — BirdLense Hub
 
+[Русский](./QUICKSTART.ru.md)
+
 Fastest paths for the three common jobs: run the hub, develop locally, or verify a deploy.
 
 ## 1. Run on one machine
