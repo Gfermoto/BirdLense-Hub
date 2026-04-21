@@ -83,7 +83,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Doc conventions | [Documentation.md](./Documentation.md) · [RU](./Documentation.ru.md) |
 | Site map (generator) | [SITE_MAP.md](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
-| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) (EN only by policy) |
+| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) · [RU](./I18N_STATUS.ru.md) (matrix; EN file is canonical column headers) |
 | Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Security analysis | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source prep | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |

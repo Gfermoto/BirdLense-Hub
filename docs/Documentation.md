@@ -18,7 +18,7 @@ How this project structures docs for contributors and readers.
 
 ### Adding a published page
 
-When a page is added to the static site: update root **`mkdocs.yml`** `nav`, the **Meta** and **Repository (canonical files)** sections in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), [README.md](./README.md) meta tables if the page should be discoverable from the doc home, and a row in [I18N_STATUS.md](./I18N_STATUS.md) (see **Published site** there).
+When a page is added to the static site: update root **`mkdocs.yml`** `nav`, the **Meta** and **Repository (canonical files)** sections in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), [README.md](./README.md) meta tables if the page should be discoverable from the doc home, and a row in [I18N_STATUS.md](./I18N_STATUS.md) / [I18N_STATUS.ru.md](./I18N_STATUS.ru.md) (see **Published site** there).
 
 ---
 
@@ -93,7 +93,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 - [ ] Placeholders only (`YOUR_HOST`, not real IPs).
 - [ ] Cross-links point to the **same language** where a pair exists (or intentionally to EN for API-only pages).
 - [ ] Long how-tos (e.g. Colab): code cells still run; print strings and comments aligned with the doc language.
-- [ ] [docs/README.md](./README.md) + [I18N_STATUS.md](./I18N_STATUS.md) updated when adding a new page (full flow: **Adding a published page** above and **Published site** in I18N_STATUS).
+- [ ] [docs/README.md](./README.md) + [I18N_STATUS.md](./I18N_STATUS.md) / [I18N_STATUS.ru.md](./I18N_STATUS.ru.md) updated when adding a new page (full flow: **Adding a published page** above and **Published site** in both i18n files).
 - [ ] **[ROADMAP](./ROADMAP.md)** § *Current stack*: React/Vite (and any pinned UI versions) match `app/ui/package.json` / lockfile; DB/migration notes match `app/web` reality.
 - [ ] [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) — both **English nav** and the **Русский** section list new pages (or an explicit decision to keep them repo-only).
 - [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar (**Meta** and **Repository (canonical files)** blocks follow the same order as the two groups in root `mkdocs.yml`); where both `DOC.md` and `DOC.ru.md` exist, **source** cells link to **both** (EN · RU or RU · EN) so the map stays a bilingual index, not a dead end.

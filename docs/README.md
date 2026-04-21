@@ -99,7 +99,7 @@ The static site sidebar comes from root `mkdocs.yml`. For a **line-up with filen
 | **Verification log** (releases) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
 | **Site map** (generator; keep `nav` aligned) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
-| Translation status | [I18N_STATUS](./I18N_STATUS.md) |
+| Translation status | [I18N_STATUS](./I18N_STATUS.md) · [RU](./I18N_STATUS.ru.md) |
 | **Secrets rotation (production ops)** | [SECRETS_ROTATION](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
