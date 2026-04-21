@@ -59,8 +59,8 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
 | UX_TOOLTIPS | ✅ | ✅ |
-| SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ EN only | — |
-| UX_UNKNOWN_VIDEO_CORRECTION | ✅ single page | — |
+| SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ | ✅ |
+| UX_UNKNOWN_VIDEO_CORRECTION | ✅ | ✅ |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
 | reference/openapi (Redoc embed) | ✅ | ✅ |

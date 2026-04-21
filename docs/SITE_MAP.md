@@ -57,8 +57,8 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Accessibility | [A11Y.md](./A11Y.md) · [RU](./A11Y.ru.md) |
 | UX: Tooltips & inline hints | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) · [RU](./UX_TOOLTIPS.ru.md) |
-| Review mode & video corrections | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) |
-| Settings: composable triggers (phase 2 draft) | [SETTINGS_TRIGGERS_PHASE2.md](./SETTINGS_TRIGGERS_PHASE2.md) |
+| Review mode & video corrections | [UX_UNKNOWN_VIDEO_CORRECTION.md](./UX_UNKNOWN_VIDEO_CORRECTION.md) · [RU](./UX_UNKNOWN_VIDEO_CORRECTION.ru.md) |
+| Settings: composable triggers (phase 2 draft) | [SETTINGS_TRIGGERS_PHASE2.md](./SETTINGS_TRIGGERS_PHASE2.md) · [RU](./SETTINGS_TRIGGERS_PHASE2.ru.md) |
 
 ---
 

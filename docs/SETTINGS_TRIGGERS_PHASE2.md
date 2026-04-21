@@ -1,5 +1,7 @@
 # Settings Phase 2: Composable Triggers
 
+[Русский](./SETTINGS_TRIGGERS_PHASE2.ru.md)
+
 ## Goal
 Separate trigger configuration from processing configuration and replace the current single `motion.source` model with independently enabled trigger modules.
 

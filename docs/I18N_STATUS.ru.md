@@ -61,8 +61,8 @@
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
 | UX_TOOLTIPS | ✅ | ✅ |
-| SETTINGS_TRIGGERS_PHASE2 (черновик) | ✅ только EN | — |
-| UX_UNKNOWN_VIDEO_CORRECTION | ✅ одна страница | — |
+| SETTINGS_TRIGGERS_PHASE2 (черновик) | ✅ | ✅ |
+| UX_UNKNOWN_VIDEO_CORRECTION | ✅ | ✅ |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
 | reference/openapi (врезка Redoc) | ✅ | ✅ |
