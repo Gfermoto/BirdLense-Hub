@@ -850,7 +850,7 @@
     "resolutionVGA": "VGA (640x480)",
     "updateTitle": "Station settings",
     "restartInfo": "After saving, the processor restarts automatically to apply changes.",
-    "pageDescription": "Set up the station step by step: connect cameras, choose notifications, tune recognition, and save when you are ready.",
+    "pageDescription": "Options are grouped by topic: general station, connections and video, capture and feeder, notifications, integrations, and recognition. Open the section you need and use the hints next to each field.",
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
     "savedRestarting": "Settings saved. Processor is restarting.",

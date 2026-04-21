@@ -112,7 +112,6 @@ export function Navigation() {
     logoutAccess,
     isLoading,
     isAdmin,
-    canEdit,
   } = useProtectedArea();
   /** Настройки: только гость (вход) или админ. Оператор (contributor) — без пункта «Настройки». */
   const showSettingsLink = !requiresPassword || !unlocked || isAdmin;

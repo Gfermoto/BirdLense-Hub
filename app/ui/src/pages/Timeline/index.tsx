@@ -37,7 +37,6 @@ import {
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
-import Stack from '@mui/material/Stack';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
@@ -47,7 +46,6 @@ import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import Snackbar from '@mui/material/Snackbar';
-import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 
 function useSpeciesList(visits: SpeciesVisit[] | undefined) {
   return visits
@@ -355,70 +353,14 @@ export function TimelinePage() {
     </Box>
   );
 
-  const timelineGuide = (
-    <ActionChecklistCard
-      title={t('timeline.guideTitle')}
-      intro={t('timeline.guideIntro')}
-      steps={[
-        t('timeline.guideStep1'),
-        t('timeline.guideStep2'),
-        t('timeline.guideStep3'),
-      ]}
-      actions={
-        <Stack direction="row" flexWrap="wrap" gap={1}>
-          <Button component={Link} to="/species" size="small" variant="outlined">
-            {t('timeline.openSpeciesDirectory')}
-          </Button>
-          {showReviewModeEntry ? (
-            <Button
-              component={Link}
-              to="/timeline?review=1"
-              size="small"
-              variant="outlined"
-            >
-              {t('timeline.openReview')}
-            </Button>
-          ) : null}
-        </Stack>
-      }
-    />
-  );
-
-  const reviewGuide = (
-    <ActionChecklistCard
-      title={t('timeline.reviewGuideTitle')}
-      intro={t('timeline.reviewGuideIntro')}
-      steps={[
-        t('timeline.reviewGuideStep1'),
-        t('timeline.reviewGuideStep2'),
-        t('timeline.reviewGuideStep3'),
-      ]}
-      actions={
-        <Stack direction="row" flexWrap="wrap" gap={1}>
-          <Button component={Link} to="/system" size="small" variant="outlined">
-            {t('timeline.openRecognitionImprovement')}
-          </Button>
-        </Stack>
-      }
-    />
-  );
-
   return (
     <>
       {isReviewMode ? (
-        <UnknownsPage
-          afterTitleSlot={
-            <>
-              {timelineModeSwitcher}
-              {reviewGuide}
-            </>
-          }
-        />
+        <UnknownsPage afterTitleSlot={timelineModeSwitcher} />
       ) : (
         <>
           <PageHelp {...timelineHelpConfig} />
           {timelineModeSwitcher}
-          {timelineGuide}
           <Typography
             variant="body2"
             color="text.secondary"

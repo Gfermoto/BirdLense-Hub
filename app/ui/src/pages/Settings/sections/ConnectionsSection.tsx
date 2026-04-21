@@ -30,7 +30,7 @@ export function ConnectionsSection({ form }: Props) {
   const { t } = useTranslation();
 
   return (
-    <Accordion defaultExpanded={false}>
+    <Accordion>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         {t('settings.accordionConnections')}
       </AccordionSummary>
