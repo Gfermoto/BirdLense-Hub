@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
@@ -12,12 +13,14 @@ import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
 import { SystemReadinessCard } from './SystemReadinessCard';
 import { SystemHero } from './SystemHero';
+import { RecognitionImprovementCard } from './RecognitionImprovementCard';
 import Box from '@mui/material/Box';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageSection } from '../../components/PageSection';
 import { PageHeader } from '../../components/PageHeader';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 
 /** Одна колонка карточек: стабильная вёрстка на любых ширинах (без «ломаного» двухколоночного грида). */
 const systemStackSx = { minWidth: 0, maxWidth: '100%', width: '100%' } as const;
@@ -70,6 +73,30 @@ export const System: React.FC = () => {
         />
 
         <SystemHero advanced={isAdvanced} />
+        <ActionChecklistCard
+          title={t('system.guideTitle')}
+          intro={t('system.guideIntro')}
+          steps={[
+            t('system.guideStep1'),
+            t('system.guideStep2'),
+            t('system.guideStep3'),
+          ]}
+          actions={
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              <Button href="#system-overview" variant="outlined" size="small">
+                {t('system.openHealth')}
+              </Button>
+              <Button href="#system-integrations" variant="outlined" size="small">
+                {t('system.openCatalog')}
+              </Button>
+              {isAdvanced ? (
+                <Button href="#system-workspace" variant="outlined" size="small">
+                  {t('system.openWorkspace')}
+                </Button>
+              ) : null}
+            </Stack>
+          }
+        />
 
         <Box id="system-overview">
           <PageSection
@@ -79,6 +106,7 @@ export const System: React.FC = () => {
             <Stack spacing={2} sx={systemStackSx}>
               <SystemReadinessCard />
               <SystemMonitor showVisitors={isAdvanced} />
+              <RecognitionImprovementCard />
               <ConfigAuditCard simple={!isAdvanced} />
               <ObservabilityCard simple={!isAdvanced} />
             </Stack>

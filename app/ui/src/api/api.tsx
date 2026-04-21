@@ -1414,6 +1414,35 @@ export type SystemJobStatus = {
   progress?: Record<string, unknown> | null;
 };
 
+export type RecognitionImprovementSummary = {
+  active_mode: 'disabled' | 'heuristic' | 'trained' | string;
+  settings: {
+    enabled: boolean;
+    alpha: number;
+  };
+  feedback: {
+    corrected_examples: number;
+    unique_videos: number;
+    unique_species: number;
+    ready_for_training: boolean;
+    examples_until_ready: number;
+    latest_feedback_at?: string | null;
+    thresholds?: {
+      corrected_examples?: number;
+      unique_videos?: number;
+      unique_species?: number;
+    };
+  };
+  model: {
+    label: string;
+    active_model_id?: string | null;
+    configured_path?: string;
+    trained_model_count: number;
+    last_trained_at?: string | null;
+    can_roll_back: boolean;
+  };
+};
+
 export type BirdnetSpeciesFifoRow = {
   display_label: string;
   canonical_for_video: string;
@@ -1472,6 +1501,47 @@ export const fetchFusionEvalStatus = async (): Promise<SystemJobStatus> => {
   );
   return response.data as SystemJobStatus;
 };
+
+export const fetchRecognitionImprovementSummary =
+  async (): Promise<RecognitionImprovementSummary> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/recognition-improvement`,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data as RecognitionImprovementSummary;
+  };
+
+export const startRecognitionImprovementTrain = async (): Promise<{
+  message?: string;
+}> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/recognition-improvement/train`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data as { message?: string };
+};
+
+export const fetchRecognitionImprovementTrainStatus =
+  async (): Promise<SystemJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/recognition-improvement/train/status`,
+      { withCredentials: true },
+    );
+    return response.data as SystemJobStatus;
+  };
+
+export const rollbackRecognitionImprovement =
+  async (): Promise<RecognitionImprovementSummary> => {
+    const response = await axios.post(
+      `${BASE_API_URL}/system/recognition-improvement/rollback`,
+      {},
+      { withCredentials: true },
+    );
+    return response.data as RecognitionImprovementSummary;
+  };
 
 export const startFusionExport = async (): Promise<{ message?: string }> => {
   const response = await axios.post(

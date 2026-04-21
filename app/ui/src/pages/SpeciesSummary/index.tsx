@@ -201,7 +201,7 @@ const SpeciesSummaryPage = () => {
         <Button
           variant="contained"
           component={RouterLink}
-          to="/migration-calendar"
+          to="/species"
         >
           {t('speciesSummary.openDirectory')}
         </Button>
@@ -226,7 +226,7 @@ const SpeciesSummaryPage = () => {
         <Button
           variant="contained"
           component={RouterLink}
-          to="/migration-calendar"
+          to="/species"
         >
           {t('speciesSummary.openDirectory')}
         </Button>

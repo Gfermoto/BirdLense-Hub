@@ -11,12 +11,10 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import MuiLink from '@mui/material/Link';
-import Divider from '@mui/material/Divider';
 import Box from '@mui/material/Box';
 import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
-import { ProcessorWeightsCard } from '../../../System/ProcessorWeightsCard';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -34,12 +32,12 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
       <Alert severity="info" sx={{ mb: 2 }}>
         <Typography variant="body2" component="div">
           <Trans
-            i18nKey="settings.processorModelsCatalogDiagnosticsLink"
+            i18nKey="settings.processorModelsSupportLink"
             components={{
               syslink: (
                 <MuiLink
                   component={RouterLink}
-                  to="/system#system-integrations"
+                  to="/system#system-workspace"
                 />
               ),
             }}
@@ -108,36 +106,6 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
               );
             }}
           </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.models.binary">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.processorModelBinaryPath')}
-                helperText={t('settings.processorModelBinaryPathHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.models.classifier">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.processorModelClassifierPath')}
-                helperText={t('settings.processorModelClassifierPathHint')}
-              />
-            )}
-          </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <Divider sx={{ my: 1 }} />
-          <ProcessorWeightsCard placement="settingsModels" />
         </Grid>
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.regional_species">

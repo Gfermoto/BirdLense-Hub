@@ -50,6 +50,13 @@ _fusion_eval_status = {
     "progress": None,
 }
 _fusion_eval_lock = threading.Lock()
+_recognition_training_status = {
+    "status": "idle",
+    "result": None,
+    "error": None,
+    "progress": None,
+}
+_recognition_training_lock = threading.Lock()
 _telegram_proxy_refresh_status = {
     "status": "idle",
     "result": None,

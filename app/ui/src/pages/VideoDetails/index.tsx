@@ -23,7 +23,11 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import LinearProgress from '@mui/material/LinearProgress';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
@@ -32,6 +36,7 @@ import { VideoInfo } from './VideoInfo';
 import { VideoPlayer } from './VideoPlayer';
 import { DetectedSpecies } from './DetectedSpecies';
 import { PageHelp } from '../../components/PageHelp';
+import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { videoDetailsHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -474,8 +479,24 @@ export const VideoDetails = () => {
             video={(displayVideo ?? video) as Video}
             showTracksRegenHint={showTracksRegenHint}
           />
+          <ActionChecklistCard
+            title={t('video.guideTitle')}
+            intro={t('video.guideIntro')}
+            steps={[
+              t('video.guideStep1'),
+              t('video.guideStep2'),
+              t('video.guideStep3'),
+            ]}
+          />
           {isAdmin && (
-            <Box sx={{ mt: 1 }}>
+            <Accordion sx={{ mt: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">
+                  {t('video.serviceToolsTitle')}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pb: 0 }}>
+                <Box>
               {trackRegenErrorMessage && (
                 <Alert
                   severity="error"
@@ -634,7 +655,9 @@ export const VideoDetails = () => {
                   </span>
                 </Tooltip>
               </Stack>
-            </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           )}
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}

@@ -1,24 +1,25 @@
 {
   "protected": {
-    "passwordRequired": "Enter admin password to access this section."
+    "passwordRequired": "This section is part of station or service setup. Enter the admin password to continue."
   },
   "nav": {
-    "dashboard": "Dashboard",
-    "timeline": "Timeline",
-    "migrationCalendar": "Migration",
+    "dashboard": "Home",
+    "timeline": "Recordings",
+    "migrationCalendar": "Seasonality",
     "unknowns": "Unknowns",
-    "food": "Food",
+    "food": "Feeder",
     "species": "Species",
     "live": "Live",
     "liveView": "Live View",
-    "settings": "Settings",
-    "settingsHint": "Hub configuration (YAML): networks, processor paths, integrations — not file uploads.",
-    "system": "System",
-    "systemHint": "Live status, species catalog, YOLO files on disk, logs, maintenance — not YAML editing.",
-    "library": "Library",
-    "libraryHint": "Recordings archive, dataset exports for training, disk and database housekeeping.",
+    "settings": "Station",
+    "settingsHint": "Daily station setup: cameras, alerts, recognition, and integrations.",
+    "system": "Service",
+    "systemHint": "Health, diagnostics, recognition improvement, and support tools.",
+    "library": "Data",
+    "libraryHint": "Archive, exports, storage, and archive maintenance.",
     "supportProject": "Support",
-    "logout": "Log out"
+    "logout": "Log out",
+    "review": "Review"
   },
   "library": {
     "activity": "Recording Activity",
@@ -119,7 +120,17 @@
       "storageDescription": "Disk usage, recording volume, and database maintenance for the archive. Processor weights and species catalog tools are under System, not here.",
       "maintenanceTitle": "Maintenance and debugging",
       "maintenanceDescription": "Rare admin actions live here: file replay, re-scan, cleanup, restore, and other operational tools."
-    }
+    },
+    "modeOverview": "Overview",
+    "modeService": "Service",
+    "serviceNotice": "This page is for archive and storage servicing. Everyday browsing of clips happens on Recordings.",
+    "guideTitle": "How to work with archive data",
+    "guideIntro": "Use this page when you need to check the archive itself, export data, or maintain storage.",
+    "guideStep1": "Start with the archive calendar to confirm that files really exist for the day you need.",
+    "guideStep2": "Export datasets or inspect storage only after you confirm the archive contains the right recordings.",
+    "guideStep3": "Use maintenance tools only in Service mode and only when routine browsing is not enough.",
+    "openArchive": "Open archive",
+    "openMaintenance": "Open maintenance"
   },
   "overview": {
     "lastBird": "Last bird today",
@@ -307,6 +318,18 @@
     "learnedFusionModelPathHint": "Usually leave the hub default. Change only if support gave you a different model file name to enter (no need to hunt paths on the server).",
     "learnedFusionAlpha": "Learned blend weight (alpha)",
     "learnedFusionAlphaHint": "final = alpha × learned + (1 − alpha) × rule-based confidence. Try 0.3–0.6; lower is more conservative.",
+    "recognitionImprovementHeading": "Recognition improvement",
+    "recognitionImprovementIntro": "When enabled, the hub uses built-in confidence improvement and can switch to a trained model after enough manual fixes are collected. File paths and maintenance actions are kept out of the main user flow.",
+    "recognitionImprovementEnable": "Improve recognition",
+    "recognitionImprovementEnableHint": "Turn this off if you want the hub to rely only on the base rule set.",
+    "recognitionImprovementSensitivity": "Improvement sensitivity",
+    "recognitionImprovementSensitivityHint": "How strongly the extra improvement influences final confidence. Lower is more conservative.",
+    "recognitionImprovementCurrentModeLabel": "Current mode",
+    "recognitionImprovementExamplesLabel": "Corrected examples: {{count}}",
+    "recognitionImprovementOpenSystem": "Open recognition improvement card",
+    "recognitionImprovementStatusDisabled": "improvement disabled",
+    "recognitionImprovementStatusHeuristic": "built-in improvement",
+    "recognitionImprovementStatusTrained": "trained model",
     "frigateStandaloneHeading": "Fallback: Frigate visit without YOLO track",
     "frigateStandaloneWhenNoYolo": "Create visit if YOLO had no track but Frigate sent an event",
     "frigateStandaloneWhenNoYoloHint": "Otherwise Frigate-triggered clips are often deleted as zero detections. Tune thresholds below or disable notify to limit noise.",
@@ -616,8 +639,9 @@
     "processorSectionHeadingQuality": "Thresholds & false-positive guardrails",
     "processorSectionHeadingData": "Recording data & integrations",
     "processorModelsScopeTitle": "Models, regional scope & generic Bird",
-    "processorModelsScopeDesc": "Paths to .pt files and the allowlist are relative to the processor working directory. In the same section below: upload to data/custom_weights, fingerprints, reset, and restart.",
+    "processorModelsScopeDesc": "Keep everyday recognition behaviour here: regional species, generic Bird tuning, and recording behaviour. Model file management and maintenance live in service mode.",
     "processorModelsCatalogDiagnosticsLink": "Compare model classes vs catalog and dataset folders: <syslink>System → Catalog → Catalog diagnostics</syslink> (advanced mode turns on when you follow this link).",
+    "processorModelsSupportLink": "Weight uploads, fingerprints, and maintenance actions now live in <syslink>System → Service mode</syslink>.",
     "processorWeightsIntroInline": "File status for the paths above: built-in image assets or copies after upload. Upload/reset updates user_config and requests a processor restart.",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyTwoStageDesc": "This Hub uses binary detector → species classifier (two_stage).",
@@ -824,13 +848,23 @@
     "resolutionFullHD": "FullHD (1920x1080)",
     "resolutionHD": "HD (1280x720)",
     "resolutionVGA": "VGA (640x480)",
-    "updateTitle": "Update Settings",
+    "updateTitle": "Station settings",
     "restartInfo": "After saving, the processor restarts automatically to apply changes.",
-    "pageDescription": "This page edits hub configuration (YAML-backed fields): networks, processor parameters, integrations. Saving applies changes and requests a processor restart. YOLO file uploads, checksums on disk, species catalog polish, and logs live under System (admin workspace). Recordings archive, dataset exports, and disk/DB tools live under Library.",
+    "pageDescription": "Set up the station step by step: connect cameras, choose notifications, tune recognition, and save when you are ready.",
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
     "savedRestarting": "Settings saved. Processor is restarting.",
-    "saveError": "Failed to save settings. Check your connection or try again."
+    "saveError": "Failed to save settings. Check your connection or try again.",
+    "guideTitle": "How to set up the station",
+    "guideIntro": "Use this page as a short checklist instead of editing everything at once.",
+    "guideStep1": "Connect cameras and recording sources first so BirdLense can actually see visits.",
+    "guideStep2": "Choose notifications and integrations only after the camera flow is stable.",
+    "guideStep3": "Tune recognition last: thresholds, review queue, and recognition improvement.",
+    "guideStep4": "Save changes, wait for the processor restart, then confirm status on the Service page.",
+    "openConnections": "Open connections",
+    "openNotifications": "Open notifications",
+    "openRecognition": "Open recognition",
+    "openService": "Open service status"
   },
   "live": {
     "title": "Live — all cameras",
@@ -842,7 +876,7 @@
     "modeMjpeg": "MJPEG"
   },
   "timeline": {
-    "intro": "Camera recordings: select date and time to view videos with bird detections.",
+    "intro": "Choose a day, open a recording, and move from the recording to species details or review.",
     "reportsAndSharingHint": "eBird, CSV, and JSON export: open the menu from the download icon to the right of the species filter. iNaturalist: Share icon on a video detection row (visit card or recording detail). Monthly PDF report: Overview (home), next to the date picker.",
     "modeTimeline": "Timeline",
     "modeReview": "Review",
@@ -869,7 +903,20 @@
     "timeEvening": "Evening (18–22)",
     "hourFilterChip": "Hour: {{from}}–{{to}}",
     "expandVisitDetails": "Expand visit details",
-    "collapseVisitDetails": "Collapse visit details"
+    "collapseVisitDetails": "Collapse visit details",
+    "guideTitle": "How to work with recordings",
+    "guideIntro": "This is the main day-by-day path for ordinary users and ornithologists.",
+    "guideStep1": "Pick a day with recordings and narrow the list by time or species if needed.",
+    "guideStep2": "Open a visit card to watch the clip, confirm what happened, and inspect detections.",
+    "guideStep3": "From the clip, either open the species page or switch to Review if recognition needs correction.",
+    "openSpeciesDirectory": "Open species directory",
+    "openReview": "Open review queue",
+    "reviewGuideTitle": "How to review uncertain detections",
+    "reviewGuideIntro": "Use Review when the system is unsure or when you know the detected species is wrong.",
+    "reviewGuideStep1": "Open the clip and verify the bird before changing anything.",
+    "reviewGuideStep2": "Confirm the current species or choose the correct one and apply the fix.",
+    "reviewGuideStep3": "After enough fixes, go to Service → Recognition improvement to refresh the trained model.",
+    "openRecognitionImprovement": "Open recognition improvement"
   },
   "pwa": {
     "installPrompt": "Add BirdLense Hub to your home screen",
@@ -1173,7 +1220,13 @@
     "noPreviousRecording": "No earlier recording",
     "noNextRecording": "No later recording",
     "neighborsDayHint": "Local calendar day; can continue past midnight. Prev/next steps through all clips for that calendar day.",
-    "localDayLabel": "Local day"
+    "localDayLabel": "Local day",
+    "guideTitle": "How to read this recording",
+    "guideIntro": "Use the clip as the source of truth before correcting a species or drawing conclusions.",
+    "guideStep1": "Watch the recording and compare the timeline markers with what is visible or audible.",
+    "guideStep2": "Check the detected species list and open the species page if you want context about this bird.",
+    "guideStep3": "If recognition is wrong, correct it here or from Review so the next model update uses the fix.",
+    "serviceToolsTitle": "Service tools for this recording"
   },
   "feed": {
     "feederControl": "Feeder Control",
@@ -1341,9 +1394,9 @@
     "noon": "Noon"
   },
   "system": {
-    "pageDescription": "Operational hub: health and resources, integrations, species catalog quality, then (admin workspace) YOLO files on disk and automation, diagnostics logs, and the danger zone. YAML path editing stays under Settings.",
+    "pageDescription": "Check whether the station is healthy, see what needs attention, and open support tools only when the normal user path is not enough.",
     "modeOverview": "Overview",
-    "modeWorkspace": "Admin tools",
+    "modeWorkspace": "Service",
     "modeAria": "System page mode",
     "storage": "Storage",
     "sections": {
@@ -1355,8 +1408,8 @@
       "integrationsDescription": "Keep the simple view focused on whether key integrations and notifications are healthy. Raw URLs and deep telemetry belong to Advanced.",
       "catalogTitle": "Species catalog",
       "catalogDescription": "Catalog quality and repair belong together. The simple view shows the main maintenance path; deeper diagnostics stay folded away.",
-      "workspaceTitle": "Admin workspace",
-      "workspaceDescription": "YOLO checkpoints on disk (upload/reset/fingerprints), fusion workflows, and related maintenance — separate from Settings where you only edit paths in YAML.",
+      "workspaceTitle": "Service mode",
+      "workspaceDescription": "Support tools live here: weight upload/reset, raw fusion workflows, diagnostics, and maintenance that ordinary users should not need every day.",
       "processingTitle": "Processing and models",
       "processingDescription": "Weights, fusion workflows, and processor-level operations are powerful, but too technical for the default view.",
       "diagnosticsTitle": "Technical diagnostics",
@@ -1365,6 +1418,26 @@
       "dangerDescription": "Destructive cleanup and irreversible maintenance are isolated from the rest of the page on purpose."
     },
     "heroTitle": "System command center",
+    "recognitionImprovementTitle": "Recognition improvement",
+    "recognitionImprovementDescription": "Manual fixes from video pages are collected automatically. Once there are enough examples, you can refresh the trained model without touching files or scripts.",
+    "recognitionImprovementLoadError": "Could not load recognition improvement status",
+    "recognitionImprovementModeDisabled": "Improvement disabled",
+    "recognitionImprovementModeHeuristic": "Built-in heuristic",
+    "recognitionImprovementModeTrained": "Trained model active",
+    "recognitionImprovementExamplesChip": "{{count}} examples",
+    "recognitionImprovementVideosChip": "{{count}} videos",
+    "recognitionImprovementSpeciesChip": "{{count}} species",
+    "recognitionImprovementCurrentMode": "Current mode",
+    "recognitionImprovementReadyText": "There are enough corrected examples to train and activate a new model.",
+    "recognitionImprovementNeedMoreText": "Need {{count}} more corrected examples before the next training is recommended.",
+    "recognitionImprovementLastTraining": "Last training",
+    "recognitionImprovementLastFeedback": "Last manual fix",
+    "recognitionImprovementUpdateModel": "Update model",
+    "recognitionImprovementRollback": "Roll back",
+    "recognitionImprovementTrainStarted": "Recognition improvement started",
+    "recognitionImprovementTrainFailed": "Could not start recognition improvement",
+    "recognitionImprovementRollbackDone": "Returned to the previous recognition mode",
+    "recognitionImprovementRollbackFailed": "Could not roll back recognition mode",
     "heroLoadError": "Could not assemble system summary",
     "heroHealthy": "Healthy",
     "heroNeedsAttention": "Needs attention",
@@ -1766,7 +1839,15 @@
       "telegram_text_failed": "text fallback failed",
       "unexpected_error": "unexpected error",
       "unknown": "unknown"
-    }
+    },
+    "guideTitle": "How to use the service page",
+    "guideIntro": "Start with status and only move deeper if the summary tells you to.",
+    "guideStep1": "Confirm that the station is healthy and notifications are working.",
+    "guideStep2": "Review recognition improvement and species catalog issues that affect everyday results.",
+    "guideStep3": "Open Service mode only for support, diagnostics, recovery, or maintenance.",
+    "openHealth": "Open health",
+    "openCatalog": "Open catalog tasks",
+    "openWorkspace": "Open service tools"
   },
   "food": {
     "food": "Food",
@@ -1895,8 +1976,8 @@
       ]
     },
     "library": {
-      "title": "Library",
-      "description": "Review the real recordings archive, open the needed days, maintain the database, and prepare datasets from one place. Library now combines archive visibility, dataset flow, backup/restore, and dry-run maintenance actions.",
+      "title": "Data and archive",
+      "description": "Use this page to verify the archive itself, export datasets, and run archive maintenance. Everyday viewing of clips happens on Recordings.",
       "details": [
         {
           "title": "What the calendar means",
@@ -1921,8 +2002,8 @@
       ]
     },
     "timeline": {
-      "title": "Timeline",
-      "description": "View chronological history of bird visits to your feeder. Each visit shows detailed information about detected birds, including both video and audio observations.",
+      "title": "Recordings",
+      "description": "Open a day, inspect recordings, and move from a clip to species details or review when you need to correct recognition.",
       "details": [
         {
           "title": "Visit Controls",
@@ -1955,8 +2036,8 @@
       ]
     },
     "unknowns": {
-      "title": "Unknowns",
-      "description": "Review and correct low-confidence detections. Detections with confidence below the threshold (configurable in Settings) appear here for manual verification.",
+      "title": "Review queue",
+      "description": "Review low-confidence or generic detections, confirm the bird, and feed corrections back into recognition improvement.",
       "details": [
         {
           "title": "Purpose",
@@ -2003,8 +2084,8 @@
       ]
     },
     "videoDetails": {
-      "title": "Video Details",
-      "description": "View detailed information about recorded bird visits, including video footage, audio spectrograms, and detection results from both visual and audio analysis.",
+      "title": "Recording details",
+      "description": "Use the recording as the evidence page: watch the clip, inspect detections, and correct species if needed.",
       "details": [
         {
           "title": "Media Player",
@@ -2032,5 +2113,27 @@
         }
       ]
     }
+  },
+  "speciesDirectory": {
+    "title": "Species",
+    "description": "Browse the birds known to this station, open a species card, and jump back to recordings for evidence.",
+    "guideTitle": "How to use species pages",
+    "guideIntro": "Start here when you know the bird you are looking for, or when you want to compare what the station has already seen.",
+    "guideStep1": "Search for a species by name or scan the most frequently recorded birds first.",
+    "guideStep2": "Open the species card to see trends, recent visits, and supporting context.",
+    "guideStep3": "Jump back to Recordings when you need the original clip that supports the observation.",
+    "search": "Search species",
+    "searchPlaceholder": "Type a species name or note",
+    "loadError": "Could not load the species directory",
+    "totalCount": "{{count}} species in directory",
+    "filteredCount": "{{count}} shown",
+    "empty": "No species match this search yet.",
+    "activeNow": "Seen recently",
+    "inHistory": "In archive",
+    "recordsCount": "{{count}} recordings",
+    "openSpecies": "Open species card",
+    "openRecordingsForSpecies": "Open recordings",
+    "openRecordings": "Open recordings",
+    "openSeasonality": "Open seasonality"
   }
 }

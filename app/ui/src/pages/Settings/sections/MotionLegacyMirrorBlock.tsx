@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid2';
 import InputLabel from '@mui/material/InputLabel';
