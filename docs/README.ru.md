@@ -86,19 +86,46 @@
 
 ## Мета
 
+Боковое меню статического сайта задаётся корневым `mkdocs.yml`. Сопоставление **файл ↔ пункт меню** (порядок как **Мета** и **Репозиторий (канонические файлы)**) — [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md).
+
+### Мета (в `nav` → Meta)
+
 | Тема | Документ |
 |------|----------|
-| **Структура репозитория** (онбординг) | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
-| Как вести документацию | [Documentation](./Documentation.ru.md) |
-| Анализ безопасности (`docs/`) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| **Трекер эпиков Hub (GitHub)** | [HUB_EPICS_TRACKER.ru.md](./HUB_EPICS_TRACKER.ru.md) · [EN](./HUB_EPICS_TRACKER.md) |
+| **Структура репозитория** (онбординг) | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
+| **Журнал верификации релизов** | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
+| Как вести документацию | [Documentation.ru.md](./Documentation.ru.md) · [EN](./Documentation.md) |
+| **Карта сайта** (сверка с `nav`) | [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) |
+| Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
 | **Ротация секретов (прод)** | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
-| Чеклист open-source | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
+| Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) · [EN](./SECURITY.md) |
+| Чеклист open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) · [EN](./OPEN_SOURCE_PREP.md) |
 | Управление и внешний наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
-| **Issues, доска и процесс** | [ROADMAP.ru.md](./ROADMAP.ru.md) (*Триаж*) · [EN](./ROADMAP.md); корневой [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md) |
 | **Настройка GitHub через gh** | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
 | **Wiki и отчёты CI** | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
-| Статус переводов | [I18N_STATUS](./I18N_STATUS.md) |
-| **Разделы ↔ файлы** (сверка с `mkdocs.yml`) | [SITE_MAP](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) |
+
+### Связанный процесс (не отдельные строки меню)
+
+| Тема | Документ |
+|------|----------|
+| **Issues, доска и roadmap** | [ROADMAP.ru.md](./ROADMAP.ru.md) (*Триаж*) · [EN](./ROADMAP.md); корневой [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md) |
+
+### Репозиторий (заглушки `docs/project/`)
+
+| Тема | Документ |
+|------|----------|
+| Contributing | [project/contributing.md](./project/contributing.md) → корневой **CONTRIBUTING** на GitHub |
+| Политика безопасности | [project/security-policy.md](./project/security-policy.md) → корневой **SECURITY** |
+| Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → корень репозитория |
+| Changelog | [project/changelog.md](./project/changelog.md) → корневой **CHANGELOG** |
+| OpenAPI (YAML) | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Корневой README | [project/root-readme.md](./project/root-readme.md) → корневой **README** |
+
+### Публикация и архив
+
+| Тема | Документ |
+|------|----------|
 | **MkDocs и GitHub Pages** | [Documentation.ru.md](./Documentation.ru.md) (*Статический сайт*) |
 | Архив | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (в репозитории; не входит в сборку MkDocs) |
 
