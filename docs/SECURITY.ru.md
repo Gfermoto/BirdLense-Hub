@@ -118,6 +118,12 @@
 
 Текущая база (март 2026): полный проход истории git завершён, **утечек не найдено**.
 
+## 8.2 Удаление хоста / IP из всей истории git
+
+Если **домен или IP** попали в коммит и на GitHub, правки только в текущем дереве **не стирают** их из **старых коммитов**.
+
+- Скрипт maintainer’а (интерактивно, [git-filter-repo](https://github.com/newren/git-filter-repo)): [`scripts/redact-git-history-leaks.sh`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/redact-git-history-leaks.sh) — передайте утечку аргументами или `--from-file` со строками `старое==>новое` (как у `git filter-repo --replace-text`). Переписывает **содержимое файлов и сообщения коммитов**; затем нужны **`git push --force-with-lease --all`** и **`--tags`**. Предупредите всех, у кого есть клон.
+
 ---
 
 ## 9. Docker
