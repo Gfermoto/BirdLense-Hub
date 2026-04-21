@@ -77,6 +77,7 @@
 | Тема | English | Русский |
 |------|---------|---------|
 | Обучение моделей | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
+| Цикл качества ML (операторы) | — | [только RU](./ML_QUALITY_LOOP.ru.md) |
 | Датасеты и скрипты | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
 | Версионирование | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Roadmap | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
