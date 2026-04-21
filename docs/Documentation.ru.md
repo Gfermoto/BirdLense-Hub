@@ -90,7 +90,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 - [ ] Обновлены [README.md](./README.md) и [I18N_STATUS.md](./I18N_STATUS.md) при новой странице.
 - [ ] **[ROADMAP.ru](./ROADMAP.ru.md)** § *Текущий стек*: версии React/Vite (и прочие зафиксированные UI-версии) совпадают с `app/ui/package.json` / lock; блок про БД/миграции соответствует `app/web`.
 - [ ] Корневой `mkdocs.yml`: новая страница в английском `nav` и в секции **Русский** (или осознанно только в репозитории).
-- [ ] [SITE_MAP.md](./SITE_MAP.md) и [SITE_MAP.ru.md](./SITE_MAP.ru.md) совпадают с боковым меню; если есть пара `DOC.md` / `DOC.ru.md`, в колонке **источник** даны ссылки **на оба** (EN · RU или RU · EN), чтобы карта была двуязычным указателем.
+- [ ] [SITE_MAP.md](./SITE_MAP.md) и [SITE_MAP.ru.md](./SITE_MAP.ru.md) совпадают с боковым меню (блоки **Мета** и **Репозиторий (канонические файлы)** — в том же порядке, что две группы в корневом `mkdocs.yml`); если есть пара `DOC.md` / `DOC.ru.md`, в колонке **источник** даны ссылки **на оба** (EN · RU или RU · EN), чтобы карта была двуязычным указателем.
 - [ ] После массовой регенерации OpenAPI: `python3 scripts/merge_openapi_fragments.py` — проверить diff, `pytest web/tests/test_openapi_contract.py`, `python3 -c "import yaml; yaml.safe_load(open('app/web/openapi.yaml'))"`.
 
 ---
