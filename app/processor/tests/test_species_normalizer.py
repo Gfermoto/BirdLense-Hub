@@ -194,15 +194,15 @@ class TestMergeDetections(unittest.TestCase):
             ['birdnet_mqtt', 'frigate', 'yolo'],
         )
 
-    def test_squirrel_fallback_is_not_promoted_by_bird_frigate_event(self):
+    def test_rodent_fallback_is_not_promoted_by_bird_frigate_event(self):
         yolo = [{
-            'species_name': 'Squirrel',
+            'species_name': 'Rodent',
             'confidence': 0.7,
             'start_time': 0,
             'end_time': 5,
             'detection_provider': 'yolo',
-            'decision_reason': 'fallback_squirrel',
-            'detector_label': 'Squirrel',
+            'decision_reason': 'fallback_rodent',
+            'detector_label': 'Rodent',
         }]
         mqtt = [{
             'species': 'Great Tit',
@@ -213,4 +213,4 @@ class TestMergeDetections(unittest.TestCase):
         }]
         result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['species_name'], 'Squirrel')
+        self.assertEqual(result[0]['species_name'], 'Rodent')

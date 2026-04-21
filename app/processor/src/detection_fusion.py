@@ -223,32 +223,42 @@ def _frigate_standalone_prepared_rows(
         suppressed = bool(pack.get("_standalone_suppressed"))
         kind = "frigate_standalone_excluded" if suppressed else "frigate_standalone"
         reason = "frigate_standalone_excluded_label" if suppressed else "frigate_standalone"
-        rows.append(
-            {
-                "track_id": -(i + 1),
-                "accepted": True,
-                "visit_eligible": True,
-                "species_name": species,
-                "species": species,
-                "confidence": conf,
-                "start_time": 0.0,
-                "end_time": video_duration,
-                "detection_provider": "frigate",
-                "detector_confidence": raw_c,
-                "classifier_confidence": None,
-                "decision_reason": reason,
-                "decision_kind": kind,
-                "outcome_bucket": compute_outcome_bucket(
-                    accepted=True,
-                    visit_eligible=True,
-                    decision_kind=kind,
-                ),
-                "notification_eligible": (not suppressed) and notify_standalone,
-                "source": "video",
-                "frigate_standalone": True,
-                "frigate_merge_suppressed": suppressed,
-            }
-        )
+        bbox_norm = pack.get("frigate_bbox_norm")
+        frames = None
+        if (
+            isinstance(bbox_norm, (list, tuple))
+            and len(bbox_norm) >= 4
+            and all(isinstance(x, (int, float)) for x in bbox_norm[:4])
+        ):
+            t_mid = video_duration * 0.5 if video_duration > 0 else 0.0
+            frames = [{"t": float(t_mid), "bbox": [float(x) for x in bbox_norm[:4]]}]
+        row = {
+            "track_id": -(i + 1),
+            "accepted": True,
+            "visit_eligible": True,
+            "species_name": species,
+            "species": species,
+            "confidence": conf,
+            "start_time": 0.0,
+            "end_time": video_duration,
+            "detection_provider": "frigate",
+            "detector_confidence": raw_c,
+            "classifier_confidence": None,
+            "decision_reason": reason,
+            "decision_kind": kind,
+            "outcome_bucket": compute_outcome_bucket(
+                accepted=True,
+                visit_eligible=True,
+                decision_kind=kind,
+            ),
+            "notification_eligible": (not suppressed) and notify_standalone,
+            "source": "video",
+            "frigate_standalone": True,
+            "frigate_merge_suppressed": suppressed,
+        }
+        if frames:
+            row["frames"] = frames
+        rows.append(row)
     return rows
 
 

@@ -35,10 +35,19 @@ export function ConnectionsSection({ form }: Props) {
         {t('settings.accordionConnections')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
           <Box
             component="legend"
-            sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
           >
             {t('settings.accordionConnections')}
           </Box>
@@ -70,7 +79,9 @@ export function ConnectionsSection({ form }: Props) {
                       fullWidth
                       type="number"
                       value={field.state.value ?? 1883}
-                      onChange={(e) => field.handleChange(Number(e.target.value) || 1883)}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || 1883)
+                      }
                       label={t('settings.mqttPort')}
                     />
                   )}
@@ -121,7 +132,9 @@ export function ConnectionsSection({ form }: Props) {
                       type="number"
                       inputProps={{ min: 1, max: 3600, step: 1 }}
                       value={field.state.value ?? 5}
-                      onChange={(e) => field.handleChange(Number(e.target.value) || 5)}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || 5)
+                      }
                       label={t('settings.mqttReconnectMinDelay')}
                       helperText={t('settings.mqttReconnectMinDelayHint')}
                     />
@@ -136,7 +149,9 @@ export function ConnectionsSection({ form }: Props) {
                       type="number"
                       inputProps={{ min: 1, max: 3600, step: 1 }}
                       value={field.state.value ?? 300}
-                      onChange={(e) => field.handleChange(Number(e.target.value) || 300)}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || 300)
+                      }
                       label={t('settings.mqttReconnectMaxDelay')}
                       helperText={t('settings.mqttReconnectMaxDelayHint')}
                     />
@@ -151,12 +166,16 @@ export function ConnectionsSection({ form }: Props) {
                         control={
                           <Switch
                             checked={field.state.value ?? true}
-                            onChange={(e) => field.handleChange(e.target.checked)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
                           />
                         }
                         label={t('settings.mqttHaDiscovery')}
                       />
-                      <FormHelperText>{t('settings.mqttHaDiscoveryHint')}</FormHelperText>
+                      <FormHelperText>
+                        {t('settings.mqttHaDiscoveryHint')}
+                      </FormHelperText>
                     </>
                   )}
                 </form.Field>
@@ -165,7 +184,7 @@ export function ConnectionsSection({ form }: Props) {
           </ServiceBlock>
 
           <ServiceBlock title={t('settings.accordionHomeAssistant')}>
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
               {t('settings.haEnvOverrideHint')}
             </Alert>
             <Grid container spacing={2}>
@@ -241,13 +260,51 @@ export function ConnectionsSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
+          <ServiceBlock title={t('settings.videoFileReplayTitle')}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('settings.videoFileReplayDesc')}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <form.Field name="video.file_realtime_simulation">
+                  {(field) => (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(field.state.value)}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
+                          />
+                        }
+                        label={t('settings.videoFileRealtimeSimulation')}
+                      />
+                      <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                        {t('settings.videoFileRealtimeSimulationHint')}
+                      </FormHelperText>
+                    </>
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Alert severity="info" variant="outlined">
+                  {t('settings.videoFileReplayLibraryHint')}{' '}
+                  <RouterLink to="/library#file-replay">
+                    {t('settings.videoFileModeLibraryLink')}
+                  </RouterLink>
+                </Alert>
+              </Grid>
+            </Grid>
+          </ServiceBlock>
+
           <ServiceBlock title={t('settings.serviceCameras')}>
             <Grid container spacing={2}>
               <form.Subscribe selector={(state) => state.values.video?.source}>
                 {(videoSource) =>
                   (videoSource ?? 'go2rtc').toLowerCase() === 'file' ? (
                     <Grid size={{ xs: 12 }}>
-                      <Alert severity="info" sx={{ mb: 1 }}>
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                         {t('settings.videoFileModeActiveHint')}{' '}
                         <RouterLink to="/library#file-replay">
                           {t('settings.videoFileModeLibraryLink')}
@@ -260,7 +317,10 @@ export function ConnectionsSection({ form }: Props) {
               <Grid size={{ xs: 12 }}>
                 <form.Field name="video.cameras">
                   {(field) => (
-                    <CamerasListField value={field.state.value} onChange={field.handleChange} />
+                    <CamerasListField
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                    />
                   )}
                 </form.Field>
               </Grid>
@@ -282,10 +342,16 @@ export function ConnectionsSection({ form }: Props) {
                         label={t('settings.encodingLabel')}
                         onChange={(e) => field.handleChange(e.target.value)}
                       >
-                        <MenuItem value="cpu">{t('settings.encodingCpu')}</MenuItem>
-                        <MenuItem value="intel">{t('settings.encodingIntel')}</MenuItem>
+                        <MenuItem value="cpu">
+                          {t('settings.encodingCpu')}
+                        </MenuItem>
+                        <MenuItem value="intel">
+                          {t('settings.encodingIntel')}
+                        </MenuItem>
                       </Select>
-                      <FormHelperText>{t('settings.encodingHint')}</FormHelperText>
+                      <FormHelperText>
+                        {t('settings.encodingHint')}
+                      </FormHelperText>
                     </FormControl>
                   )}
                 </form.Field>
@@ -301,12 +367,20 @@ export function ConnectionsSection({ form }: Props) {
                         labelId="settings-record-codec-label"
                         value={(field.state.value ?? 'h264').toLowerCase()}
                         label={t('settings.recordStreamCodecLabel')}
-                        onChange={(e) => field.handleChange(e.target.value as 'h264' | 'copy')}
+                        onChange={(e) =>
+                          field.handleChange(e.target.value as 'h264' | 'copy')
+                        }
                       >
-                        <MenuItem value="h264">{t('settings.recordStreamCodecH264')}</MenuItem>
-                        <MenuItem value="copy">{t('settings.recordStreamCodecCopy')}</MenuItem>
+                        <MenuItem value="h264">
+                          {t('settings.recordStreamCodecH264')}
+                        </MenuItem>
+                        <MenuItem value="copy">
+                          {t('settings.recordStreamCodecCopy')}
+                        </MenuItem>
                       </Select>
-                      <FormHelperText>{t('settings.recordStreamCodecHint')}</FormHelperText>
+                      <FormHelperText>
+                        {t('settings.recordStreamCodecHint')}
+                      </FormHelperText>
                     </FormControl>
                   )}
                 </form.Field>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +23,11 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import LinearProgress from '@mui/material/LinearProgress';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
@@ -46,17 +51,23 @@ function summarizeTrackRegenJob(
   if (st.error) {
     return { severity: 'error', message: st.error };
   }
-  const r = st.result as {
-    generated?: number;
-    skipped?: number;
-    failed?: number;
-    frames_updated?: number;
-    precise_rerun_candidates?: Array<{ video_id?: number; reason?: string }>;
-    single_video_regen?: {
-      track_count?: number;
-      decision_reasons?: Record<string, number>;
-    };
-  } | null | undefined;
+  const r = st.result as
+    | {
+        generated?: number;
+        skipped?: number;
+        failed?: number;
+        frames_updated?: number;
+        precise_rerun_candidates?: Array<{
+          video_id?: number;
+          reason?: string;
+        }>;
+        single_video_regen?: {
+          track_count?: number;
+          decision_reasons?: Record<string, number>;
+        };
+      }
+    | null
+    | undefined;
   if (!r && st.status === 'done') {
     return { severity: 'warning', message: t('video.regenDoneNoPayload') };
   }
@@ -97,6 +108,13 @@ function summarizeTrackRegenJob(
   const severity: 'success' | 'warning' =
     fail > 0 || (gen === 0 && skip > 0) ? 'warning' : 'success';
   return { severity, message };
+}
+
+function tailPath(p: string | null | undefined): string {
+  if (!p) return '';
+  const s = String(p).replace(/\\/g, '/');
+  const i = s.lastIndexOf('/');
+  return i >= 0 ? s.slice(i + 1) : s;
 }
 
 function summarizeSpecRegenJob(
@@ -149,7 +167,9 @@ export const VideoDetails = () => {
     queryKey: ['video', params.id],
     queryFn: () => fetchVideo(params.id as string),
   });
-  useDocumentTitle(video ? `${t('video.video')} ${params.id}` : t('video.video'));
+  useDocumentTitle(
+    video ? `${t('video.video')} ${params.id}` : t('video.video'),
+  );
 
   const { data: neighbors } = useQuery({
     queryKey: ['video-neighbors', params.id],
@@ -157,7 +177,11 @@ export const VideoDetails = () => {
     enabled: Boolean(params.id),
   });
 
-  const { data: detectionFrames, isPending: detectionFramesPending, error: detectionFramesError } = useQuery({
+  const {
+    data: detectionFrames,
+    isPending: detectionFramesPending,
+    error: detectionFramesError,
+  } = useQuery({
     queryKey: ['video-detection-frames', params.id],
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
     enabled: Boolean(params.id),
@@ -192,67 +216,117 @@ export const VideoDetails = () => {
 
   const videoIdNum = Number(params.id);
 
-  const trackRegenMutation = useMutation({
-    mutationFn: async (): Promise<TrackRegenerationJobStatus> => {
-      await regenerateTracksForSingleVideo(videoIdNum);
-      let last: TrackRegenerationJobStatus = { status: 'running' };
-      for (let i = 0; i < 90; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        last = await fetchTrackRegenerationStatus();
-        if (last.status !== 'running') {
-          return last;
-        }
-      }
-      return last;
-    },
+  const [followTrackRegen, setFollowTrackRegen] = useState<number | null>(null);
+  const [followSpecRegen, setFollowSpecRegen] = useState<number | null>(null);
+  const [trackRegenPollNonce, setTrackRegenPollNonce] = useState(0);
+  const [specRegenPollNonce, setSpecRegenPollNonce] = useState(0);
+  const [finishedTrackRegen, setFinishedTrackRegen] =
+    useState<TrackRegenerationJobStatus | null>(null);
+  const [finishedSpecRegen, setFinishedSpecRegen] =
+    useState<SpectrogramRegenerationJobStatus | null>(null);
+
+  const trackRegenStart = useMutation({
+    mutationFn: () => regenerateTracksForSingleVideo(videoIdNum),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video', params.id] });
-      queryClient.invalidateQueries({ queryKey: ['video-detection-frames', params.id] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      setFinishedTrackRegen(null);
+      setTrackRegenPollNonce((n) => n + 1);
+      setFollowTrackRegen(videoIdNum);
     },
   });
 
-  const specRegenMutation = useMutation({
-    mutationFn: async (): Promise<SpectrogramRegenerationJobStatus> => {
-      await regenerateSpectrogramForSingleVideo(videoIdNum);
-      let last: SpectrogramRegenerationJobStatus = { status: 'running' };
-      for (let i = 0; i < 90; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        last = await fetchSpectrogramRegenerationStatus();
-        if (last.status !== 'running') {
-          return last;
-        }
-      }
-      return last;
-    },
+  const specRegenStart = useMutation({
+    mutationFn: () => regenerateSpectrogramForSingleVideo(videoIdNum),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video', params.id] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+      setFinishedSpecRegen(null);
+      setSpecRegenPollNonce((n) => n + 1);
+      setFollowSpecRegen(videoIdNum);
     },
+  });
+
+  const { data: trackRemoteStatus } = useQuery({
+    queryKey: ['track-regen-status-ui', followTrackRegen, trackRegenPollNonce],
+    queryFn: fetchTrackRegenerationStatus,
+    enabled: followTrackRegen !== null,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: (q) => (q.state.data?.status === 'running' ? 1000 : false),
+  });
+
+  const { data: specRemoteStatus } = useQuery({
+    queryKey: ['spec-regen-status-ui', followSpecRegen, specRegenPollNonce],
+    queryFn: fetchSpectrogramRegenerationStatus,
+    enabled: followSpecRegen !== null,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: (q) => (q.state.data?.status === 'running' ? 1000 : false),
   });
 
   useEffect(() => {
-    trackRegenMutation.reset();
-    specRegenMutation.reset();
+    trackRegenStart.reset();
+    specRegenStart.reset();
+    setFollowTrackRegen(null);
+    setFollowSpecRegen(null);
+    setTrackRegenPollNonce(0);
+    setSpecRegenPollNonce(0);
+    setFinishedTrackRegen(null);
+    setFinishedSpecRegen(null);
     // Только смена ролика. Объекты useMutation() нестабильны по ссылке — если перечислить их
     // в deps, эффект крутится на каждом кадре (reset → ререндер → новый объект → снова effect).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- намеренно только params.id
   }, [params.id]);
 
+  useEffect(() => {
+    if (followTrackRegen === null) return;
+    const st = trackRemoteStatus;
+    if (!st || st.status === 'running') return;
+    setFinishedTrackRegen(st);
+    setFollowTrackRegen(null);
+    void queryClient.invalidateQueries({ queryKey: ['video', params.id] });
+    void queryClient.invalidateQueries({
+      queryKey: ['video-detection-frames', params.id],
+    });
+    void queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+  }, [followTrackRegen, trackRemoteStatus, queryClient, params.id]);
+
+  useEffect(() => {
+    if (followSpecRegen === null) return;
+    const st = specRemoteStatus;
+    if (!st || st.status === 'running') return;
+    setFinishedSpecRegen(st);
+    setFollowSpecRegen(null);
+    void queryClient.invalidateQueries({ queryKey: ['video', params.id] });
+    void queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+  }, [followSpecRegen, specRemoteStatus, queryClient, params.id]);
+
   const trackJobSummary = useMemo(
-    () => summarizeTrackRegenJob(trackRegenMutation.data, videoIdNum, t),
-    [trackRegenMutation.data, videoIdNum, t],
+    () =>
+      summarizeTrackRegenJob(finishedTrackRegen ?? undefined, videoIdNum, t),
+    [finishedTrackRegen, videoIdNum, t],
   );
 
   const specJobSummary = useMemo(
-    () => summarizeSpecRegenJob(specRegenMutation.data, t),
-    [specRegenMutation.data, t],
+    () => summarizeSpecRegenJob(finishedSpecRegen ?? undefined, t),
+    [finishedSpecRegen, t],
   );
 
+  const trackRegenBusy = trackRegenStart.isPending || followTrackRegen !== null;
+  const specRegenBusy = specRegenStart.isPending || followSpecRegen !== null;
+
+  const trackProgress = trackRemoteStatus?.progress;
+  const trackProgressOtherJob =
+    followTrackRegen !== null &&
+    trackRemoteStatus?.status === 'running' &&
+    trackProgress?.active_request_video_id != null &&
+    trackProgress.active_request_video_id !== videoIdNum;
+
   const trackRegenErrorMessage = (() => {
-    const err = trackRegenMutation.error;
+    const err = trackRegenStart.error;
     if (!err) return null;
-    if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.data &&
+      typeof err.response.data === 'object'
+    ) {
       const d = err.response.data as { error?: string };
       if (d.error) return d.error;
     }
@@ -260,17 +334,53 @@ export const VideoDetails = () => {
   })();
 
   const specRegenErrorMessage = (() => {
-    const err = specRegenMutation.error;
+    const err = specRegenStart.error;
     if (!err) return null;
-    if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+    if (
+      axios.isAxiosError(err) &&
+      err.response?.data &&
+      typeof err.response.data === 'object'
+    ) {
       const d = err.response.data as { error?: string };
       if (d.error) return d.error;
     }
     return t('video.regenerateSpectrogramThisVideoFailed');
   })();
 
-  if (isLoading)
-    return <PageLoadingState label={t('common.loading')} />;
+  const specProgress = specRemoteStatus?.progress;
+  const specProgressPct =
+    specProgress &&
+    typeof specProgress.total === 'number' &&
+    specProgress.total > 0 &&
+    typeof specProgress.processed === 'number'
+      ? Math.min(
+          100,
+          Math.round((100 * specProgress.processed) / specProgress.total),
+        )
+      : null;
+  const specIndeterminate =
+    !specProgress ||
+    !specProgress.total ||
+    specProgress.total <= 1 ||
+    (specProgress.total === 1 && (specProgress.processed ?? 0) < 1);
+
+  const trackProgressPct =
+    trackProgress &&
+    typeof trackProgress.total === 'number' &&
+    trackProgress.total > 0 &&
+    typeof trackProgress.processed === 'number'
+      ? Math.min(
+          100,
+          Math.round((100 * trackProgress.processed) / trackProgress.total),
+        )
+      : null;
+  const trackIndeterminate =
+    !trackProgress ||
+    !trackProgress.total ||
+    trackProgress.total <= 1 ||
+    (trackProgress.total === 1 && (trackProgress.processed ?? 0) < 1);
+
+  if (isLoading) return <PageLoadingState label={t('common.loading')} />;
   if (error || !video)
     return (
       <PageMessageState
@@ -369,77 +479,181 @@ export const VideoDetails = () => {
             showTracksRegenHint={showTracksRegenHint}
           />
           {isAdmin && (
-            <Box sx={{ mt: 1 }}>
-              {trackRegenErrorMessage && (
-                <Alert severity="error" sx={{ mb: 1 }} onClose={() => trackRegenMutation.reset()}>
-                  {trackRegenErrorMessage}
-                </Alert>
-              )}
-              {specRegenErrorMessage && (
-                <Alert severity="error" sx={{ mb: 1 }} onClose={() => specRegenMutation.reset()}>
-                  {specRegenErrorMessage}
-                </Alert>
-              )}
-              {showTracksRegenHint && (
-                <Alert
-                  severity="info"
-                  sx={{ mb: 1 }}
-                >
-                  {t('video.tracksMissingHint')}
-                </Alert>
-              )}
-              {!trackRegenMutation.isPending && trackJobSummary && (
-                <Alert
-                  severity={trackJobSummary.severity}
-                  sx={{ mb: 1 }}
-                  onClose={() => trackRegenMutation.reset()}
-                >
-                  {trackJobSummary.message}
-                </Alert>
-              )}
-              {!specRegenMutation.isPending && specJobSummary && (
-                <Alert
-                  severity={specJobSummary.severity}
-                  sx={{ mb: 1 }}
-                  onClose={() => specRegenMutation.reset()}
-                >
-                  {specJobSummary.message}
-                </Alert>
-              )}
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {canRegenTracks && (
-                  <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
-                    <span>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => trackRegenMutation.mutate()}
-                        disabled={trackRegenMutation.isPending || specRegenMutation.isPending}
-                      >
-                        {trackRegenMutation.isPending
-                          ? t('video.regenerateTracksThisVideoRunning')
-                          : t('video.regenerateTracksThisVideo')}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                )}
-                <Tooltip title={t('video.regenerateSpectrogramThisVideoHelp')}>
-                  <span>
-                    <Button
+            <Accordion sx={{ mt: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">
+                  {t('video.serviceToolsTitle')}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pb: 0 }}>
+                <Box>
+                  {trackRegenErrorMessage && (
+                    <Alert
+                      severity="error"
                       variant="outlined"
-                      size="small"
-                      disabled={trackRegenMutation.isPending || specRegenMutation.isPending}
-                      startIcon={<GraphicEqIcon fontSize="small" />}
-                      onClick={() => specRegenMutation.mutate()}
+                      sx={{ mb: 1 }}
+                      onClose={() => trackRegenStart.reset()}
                     >
-                      {specRegenMutation.isPending
-                        ? t('video.regenerateSpectrogramThisVideoRunning')
-                        : t('video.regenerateSpectrogramThisVideo')}
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Stack>
-            </Box>
+                      {trackRegenErrorMessage}
+                    </Alert>
+                  )}
+                  {specRegenErrorMessage && (
+                    <Alert
+                      severity="error"
+                      variant="outlined"
+                      sx={{ mb: 1 }}
+                      onClose={() => specRegenStart.reset()}
+                    >
+                      {specRegenErrorMessage}
+                    </Alert>
+                  )}
+                  {showTracksRegenHint && (
+                    <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+                      {t('video.tracksMissingHint')}
+                    </Alert>
+                  )}
+                  {followTrackRegen !== null &&
+                    trackRemoteStatus?.status === 'running' &&
+                    trackProgressOtherJob && (
+                      <Alert severity="warning" variant="outlined" sx={{ mb: 1 }}>
+                        {t('video.trackRegenOtherVideo', {
+                          id: trackProgress?.active_request_video_id ?? '?',
+                        })}
+                      </Alert>
+                    )}
+                  {followTrackRegen !== null &&
+                    trackRemoteStatus?.status === 'running' &&
+                    !trackProgressOtherJob && (
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+                        <LinearProgress
+                          variant={
+                            trackIndeterminate ? 'indeterminate' : 'determinate'
+                          }
+                          {...(!trackIndeterminate
+                            ? { value: trackProgressPct ?? 0 }
+                            : {})}
+                          sx={{ mb: 1 }}
+                        />
+                        <Typography variant="body2" component="div">
+                          {trackProgress &&
+                          trackProgress.total &&
+                          trackProgress.total > 1
+                            ? t('video.trackRegenProgressBatch', {
+                                processed: trackProgress.processed ?? 0,
+                                total: trackProgress.total,
+                              })
+                            : t('video.trackRegenProgressSingle', {
+                                phase: trackProgress?.phase ?? '…',
+                              })}
+                        </Typography>
+                        {trackProgress?.current_video ? (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {t('video.trackRegenProgressFile', {
+                              name: tailPath(trackProgress.current_video),
+                            })}
+                          </Typography>
+                        ) : null}
+                      </Alert>
+                    )}
+                  {followSpecRegen !== null &&
+                    specRemoteStatus?.status === 'running' && (
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+                        <LinearProgress
+                          variant={
+                            specIndeterminate ? 'indeterminate' : 'determinate'
+                          }
+                          {...(!specIndeterminate
+                            ? { value: specProgressPct ?? 0 }
+                            : {})}
+                          sx={{ mb: 1 }}
+                        />
+                        <Typography variant="body2" component="div">
+                          {specProgress &&
+                          specProgress.total &&
+                          specProgress.total > 1
+                            ? t('video.specRegenProgressBatch', {
+                                processed: specProgress.processed ?? 0,
+                                total: specProgress.total,
+                              })
+                            : t('video.specRegenProgressSingle')}
+                        </Typography>
+                        {specProgress?.current_video ? (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {t('video.specRegenProgressFile', {
+                              name: tailPath(specProgress.current_video),
+                            })}
+                          </Typography>
+                        ) : null}
+                      </Alert>
+                    )}
+                  {!trackRegenBusy && trackJobSummary && (
+                    <Alert
+                      severity={trackJobSummary.severity}
+                      variant="outlined"
+                      sx={{ mb: 1 }}
+                      onClose={() => setFinishedTrackRegen(null)}
+                    >
+                      {trackJobSummary.message}
+                    </Alert>
+                  )}
+                  {!specRegenBusy && specJobSummary && (
+                    <Alert
+                      severity={specJobSummary.severity}
+                      variant="outlined"
+                      sx={{ mb: 1 }}
+                      onClose={() => setFinishedSpecRegen(null)}
+                    >
+                      {specJobSummary.message}
+                    </Alert>
+                  )}
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {canRegenTracks && (
+                      <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => trackRegenStart.mutate()}
+                            disabled={trackRegenBusy || specRegenBusy}
+                          >
+                            {trackRegenBusy
+                              ? t('video.regenerateTracksThisVideoRunning')
+                              : t('video.regenerateTracksThisVideo')}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                    <Tooltip
+                      title={t('video.regenerateSpectrogramThisVideoHelp')}
+                    >
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          disabled={trackRegenBusy || specRegenBusy}
+                          startIcon={<GraphicEqIcon fontSize="small" />}
+                          onClick={() => specRegenStart.mutate()}
+                        >
+                          {specRegenBusy
+                            ? t('video.regenerateSpectrogramThisVideoRunning')
+                            : t('video.regenerateSpectrogramThisVideo')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           )}
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}

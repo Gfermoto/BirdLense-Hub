@@ -369,7 +369,130 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []
-    assert payload["config_warnings"] == payload["recall_warnings"]
+    assert payload.get("processor_runtime_hints") == []
+    # Подсказки recall не смешиваем с блокирующими предупреждениями (Frigate/MQTT-весы).
+    assert payload["config_warnings"] == []
+
+
+def test_build_system_config_audit_payload_processor_runtime_hints(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+    import data_paths
+
+    diag = tmp_path / "diagnostics"
+    diag.mkdir(parents=True)
+    stats = diag / "processor_runtime_stats.json"
+    stats.write_text(
+        '{"counters": {"slow_frame_processor_detect_total": 3}, "latency_ms": {"frame_processor_detect_p95": 480.0}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
+
+    user = tmp_path / "user.yaml"
+    user.write_text("known: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        mapping = {
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "mqtt.broker": "",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "processor.frame_processing_warn_ms": 450,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return mapping.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    hints = payload["processor_runtime_hints"]
+    assert any("SLOW_FRAMES total=3 warn_ms=450" in h for h in hints)
+    assert any("DETECT_P95" in h and "480.0" in h for h in hints)
+
+
+def test_recall_frigate_standalone_false_emits_fusion_hint(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+    import data_paths
+
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
+
+    user = tmp_path / "user.yaml"
+    user.write_text("x: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("x: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        m = {
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "frigate",
+            "mqtt.broker": "mqtt://localhost",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "detection.frigate_standalone_when_no_yolo": False,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return m.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    assert "fusion.FRIGATE_STANDALONE_OFF" in payload["recall_warnings"]
+    assert payload.get("processor_runtime_hints") == []
+
+
+def test_recall_frigate_blocking_goes_to_config_warnings_not_recall_hints(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+
+    user = tmp_path / "user.yaml"
+    user.write_text("triggers:\n  frigate:\n    enabled: true\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    nested = {
+        "mqtt": {"broker": ""},
+        "motion": {"source": "opencv"},
+        "triggers": {"frigate": {"enabled": True}},
+    }
+
+    def _get(key, default=None):
+        cur: object = nested
+        for part in str(key).split("."):
+            if not isinstance(cur, dict):
+                return default
+            if part not in cur:
+                return default
+            cur = cur[part]
+        return cur
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    assert any("Frigate trigger is enabled" in w for w in payload["config_warnings"])
+    assert not any("Frigate trigger is enabled" in w for w in payload["recall_warnings"])
 
 
 def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
@@ -415,6 +538,57 @@ def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
     assert any("mqtt.broker is empty" in w for w in sw)
     assert any("bird-feeder-scale" in w and "birdlense/scale" in w for w in sw)
     assert payload["scales_mqtt"]["mqtt_weight_topic_resolved"] == "bird-feeder-scale/weight"
+
+
+def test_scales_mqtt_audit_no_warn_explicit_empty_topics_when_prefix_set(tmp_path):
+    """Explicit '' for topic keys with a non-empty prefix matches omitting keys — no audit spam."""
+    from services import system_config_audit_service as scas
+
+    user = tmp_path / "user.yaml"
+    user.write_text(
+        "integrations:\n  scales:\n    enabled: true\n    source: mqtt\n"
+        '    mqtt_topic_prefix: "birdlense/scale"\n'
+        '    mqtt_topic: ""\n'
+        '    mqtt_bird_present_topic: ""\n'
+        '    mqtt_command_topic: ""\n',
+        encoding="utf-8",
+    )
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        m = {
+            "integrations.scales.enabled": True,
+            "integrations.scales.source": "mqtt",
+            "integrations.scales.mqtt_topic_prefix": "birdlense/scale",
+            "integrations.scales.mqtt_topic": "",
+            "integrations.scales.mqtt_bird_present_topic": "",
+            "integrations.scales.mqtt_command_topic": "",
+            "mqtt.broker": "192.168.1.10",
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 20,
+            "processor.light_gate_min_contrast": 15,
+            "processor.binary_imgsz": 640,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return m.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    sw = payload["scales_warnings"]
+    assert not any("empty string overrides defaults" in w for w in sw)
+    assert payload["scales_mqtt"]["mqtt_weight_topic_resolved"] == "birdlense/scale/weight"
 
 
 def test_scales_mqtt_audit_detects_explicit_empty_prefix(tmp_path):

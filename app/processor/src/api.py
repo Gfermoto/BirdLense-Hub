@@ -3,6 +3,7 @@ import os
 import time
 
 import requests
+from processor_runtime_stats import inc_counter, observe_timing
 from processor_provenance import resolve_processor_version
 
 
@@ -29,6 +30,7 @@ class API:
         max_retries = 3
         last_exc = None
         for attempt in range(max_retries):
+            st = time.time()
             try:
                 response = requests.request(
                     method,
@@ -38,15 +40,21 @@ class API:
                     timeout=timeout,
                 )
                 response.raise_for_status()
+                observe_timing("api_request", (time.time() - st) * 1000.0)
+                if attempt > 0:
+                    inc_counter("api_request_retries_total", attempt)
                 return response
             except requests.exceptions.RequestException as e:
+                observe_timing("api_request", (time.time() - st) * 1000.0)
                 last_exc = e
                 self.logger.warning(f"API request failed for {url} (attempt {attempt + 1}/{max_retries}): {e}")
                 resp = getattr(e, "response", None)
                 if resp is not None and 400 <= resp.status_code < 500:
+                    inc_counter("api_request_client_errors_total")
                     break
                 if attempt < max_retries - 1:
                     time.sleep(2**attempt)
+        inc_counter("api_request_failures_total")
         self.logger.error(f"API request failed for {url}: {last_exc}")
         raise last_exc
 

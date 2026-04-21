@@ -22,7 +22,8 @@ export function SystemReadinessCard() {
   const { data, isLoading, error } = useSystemReadinessQuery();
 
   if (isLoading) return <LinearProgress />;
-  if (error || !data) return <Alert severity="warning">{t('system.readinessLoadError')}</Alert>;
+  if (error || !data)
+    return <Alert severity="warning" variant="outlined">{t('system.readinessLoadError')}</Alert>;
 
   const checks = [
     ['database', normalizeCheckStatus(data.checks.database.status)],
@@ -35,7 +36,9 @@ export function SystemReadinessCard() {
     <SystemCardShell
       title={t('system.readinessTitle')}
       description={t('system.readinessHint')}
-      statusLabel={data.ready ? t('system.readinessReady') : t('system.readinessDegraded')}
+      statusLabel={
+        data.ready ? t('system.readinessReady') : t('system.readinessDegraded')
+      }
       statusTone={data.ready ? 'success' : 'warning'}
       footer={
         <Typography variant="body2" color="text.secondary">
@@ -62,12 +65,20 @@ export function SystemReadinessCard() {
                 borderColor: status === 'ok' ? 'success.dark' : 'error.dark',
               }}
             >
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+              >
                 {t(`system.readinessCheck.${key}`)}
               </Typography>
               <Typography
                 variant="subtitle2"
-                color={statusColor(status) === 'success' ? 'success.main' : 'error.main'}
+                color={
+                  statusColor(status) === 'success'
+                    ? 'success.main'
+                    : 'error.main'
+                }
                 sx={{ mt: 0.5 }}
               >
                 {t(`system.readinessState.${status}`)}
@@ -76,8 +87,10 @@ export function SystemReadinessCard() {
           ))}
         </Box>
 
-        <Alert severity={data.ready ? 'success' : 'warning'}>
-          {data.ready ? t('system.readinessVerifyPass') : t('system.readinessVerifyFail')}
+        <Alert severity={data.ready ? 'success' : 'warning'} variant="outlined">
+          {data.ready
+            ? t('system.readinessVerifyPass')
+            : t('system.readinessVerifyFail')}
         </Alert>
       </Stack>
     </SystemCardShell>

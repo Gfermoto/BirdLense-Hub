@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_MIN_CONFIDENCE = 0.30
 
 
+def _is_rodent_detector_label(detector_label: str) -> bool:
+    """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
+    d = str(detector_label or "").strip().lower()
+    return d in {"rodent", "squirrel"}
+
+
 def _normalized_species_keys(species_name):
     raw = str(species_name or "").strip()
     if not raw:
@@ -93,6 +99,10 @@ class DecisionMaker:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
             self.generic_bird_min_best_frame_score = 6.5
+        self._runtime_override_defaults = {
+            "min_track_duration": self.min_track_duration,
+            "min_confidence_to_process": self.min_confidence_to_process,
+        }
         self.reset()
 
     def _trust_band_for_decision(
@@ -219,6 +229,24 @@ class DecisionMaker:
         self.species_decided = False
         self.start_time = time.time()
         self.inactive_start_time = None
+        self.reset_runtime_overrides()
+
+    def apply_runtime_overrides(self, overrides: dict | None):
+        overrides = overrides or {}
+        if "min_track_duration" in overrides:
+            try:
+                self.min_track_duration = float(overrides["min_track_duration"])
+            except (TypeError, ValueError):
+                pass
+        if "min_confidence_to_process" in overrides:
+            try:
+                self.min_confidence_to_process = float(overrides["min_confidence_to_process"])
+            except (TypeError, ValueError):
+                pass
+
+    def reset_runtime_overrides(self):
+        self.min_track_duration = self._runtime_override_defaults["min_track_duration"]
+        self.min_confidence_to_process = self._runtime_override_defaults["min_confidence_to_process"]
 
     def update_has_detections(self, has_detections):
         if not has_detections:
@@ -384,6 +412,8 @@ class DecisionMaker:
                 )
                 continue
             detector_label = detector_candidate["label"]
+            if _is_rodent_detector_label(detector_label):
+                detector_label = "Rodent"
             detector_conf = float(detector_candidate["max_confidence"] or 0.0)
 
             classifier_events = track.get("classifier_events") or []
@@ -446,10 +476,10 @@ class DecisionMaker:
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
-                        is_squirrel = detector_label.lower() == "squirrel"
+                        is_rodent = _is_rodent_detector_label(detector_label)
                         is_bird = detector_label.lower() == "bird"
-                        if is_squirrel:
-                            decision_reason = "fallback_squirrel"
+                        if is_rodent:
+                            decision_reason = "fallback_rodent"
                             decision_kind = "accepted_generic"
                             evidence_state = (
                                 "conflicting_classifier_votes"
@@ -474,8 +504,8 @@ class DecisionMaker:
                         else:
                             if is_bird:
                                 decision_reason = "fallback_bird"
-                            elif is_squirrel:
-                                decision_reason = "fallback_squirrel"
+                            elif is_rodent:
+                                decision_reason = "fallback_rodent"
                             else:
                                 decision_reason = "fallback_detector_generic"
                             decision_kind = "accepted_generic"
@@ -502,10 +532,10 @@ class DecisionMaker:
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
-                    is_squirrel = detector_label.lower() == "squirrel"
+                    is_rodent = _is_rodent_detector_label(detector_label)
                     is_bird = detector_label.lower() == "bird"
-                    if is_squirrel:
-                        decision_reason = "fallback_squirrel"
+                    if is_rodent:
+                        decision_reason = "fallback_rodent"
                         decision_kind = "accepted_generic"
                         evidence_state = "detector_only"
                     elif is_bird and not self._promotable_generic_bird(
@@ -522,8 +552,8 @@ class DecisionMaker:
                     else:
                         if is_bird:
                             decision_reason = "fallback_bird"
-                        elif is_squirrel:
-                            decision_reason = "fallback_squirrel"
+                        elif is_rodent:
+                            decision_reason = "fallback_rodent"
                         else:
                             decision_reason = "fallback_detector_generic"
                         decision_kind = "accepted_generic"

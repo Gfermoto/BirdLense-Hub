@@ -49,7 +49,12 @@ const DetectionItem = ({
 
   const handleINaturalist = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!inaturalistShareEnabled || !detection.id || detection.source !== 'video') return;
+    if (
+      !inaturalistShareEnabled ||
+      !detection.id ||
+      detection.source !== 'video'
+    )
+      return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -140,7 +145,7 @@ const DetectionItem = ({
         onClose={() => setErrorMsg(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setErrorMsg(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setErrorMsg(null)}>
           {errorMsg}
         </Alert>
       </Snackbar>
@@ -236,7 +241,9 @@ export const VisitCard = memo(function VisitCard({
                 sx={{ mt: -0.5 }}
                 aria-expanded={expanded}
                 aria-label={
-                  expanded ? t('timeline.collapseVisitDetails') : t('timeline.expandVisitDetails')
+                  expanded
+                    ? t('timeline.collapseVisitDetails')
+                    : t('timeline.expandVisitDetails')
                 }
               >
                 {expanded ? <ExpandLess /> : <ExpandMore />}
@@ -244,16 +251,16 @@ export const VisitCard = memo(function VisitCard({
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
               {visit.timeline_kind !== 'unlinked_video' ? (
-              <Chip
-                icon={
-                  <Box display="flex" alignItems="center">
-                    <Groups sx={{ fontSize: 18 }} />
-                  </Box>
-                }
-                label={visit.max_simultaneous}
-                size="small"
-                sx={{ height: 28 }}
-              />
+                <Chip
+                  icon={
+                    <Box display="flex" alignItems="center">
+                      <Groups sx={{ fontSize: 18 }} />
+                    </Box>
+                  }
+                  label={visit.max_simultaneous}
+                  size="small"
+                  sx={{ height: 28 }}
+                />
               ) : (
                 <Chip
                   label={t('visitCard.recordingWithoutVisit')}
@@ -265,7 +272,8 @@ export const VisitCard = memo(function VisitCard({
               )}
               {(() => {
                 const sec =
-                  visit.video_duration_seconds != null && visit.video_duration_seconds > 0
+                  visit.video_duration_seconds != null &&
+                  visit.video_duration_seconds > 0
                     ? visit.video_duration_seconds
                     : visit.total_recording_seconds;
                 return sec != null && sec > 0 ? (

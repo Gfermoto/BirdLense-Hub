@@ -28,9 +28,10 @@ export function GeneralYamlBackupAccordion({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [yamlMsg, setYamlMsg] = useState<{ sev: 'success' | 'error'; text: string } | null>(
-    null,
-  );
+  const [yamlMsg, setYamlMsg] = useState<{
+    sev: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   return (
     <Accordion>
@@ -44,7 +45,12 @@ export function GeneralYamlBackupAccordion({
             : t('settings.yamlBackupDescSafeOnly')}
         </Typography>
         {yamlMsg ? (
-          <Alert severity={yamlMsg.sev} sx={{ mb: 2 }} onClose={() => setYamlMsg(null)}>
+          <Alert
+            severity={yamlMsg.sev}
+            variant="outlined"
+            sx={{ mb: 2 }}
+            onClose={() => setYamlMsg(null)}
+          >
             {yamlMsg.text}
           </Alert>
         ) : null}
@@ -60,7 +66,10 @@ export function GeneralYamlBackupAccordion({
                 } catch (e) {
                   setYamlMsg({
                     sev: 'error',
-                    text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                    text:
+                      e instanceof Error
+                        ? e.message
+                        : t('settings.yamlImportFailed'),
                   });
                 }
               }}
@@ -82,14 +91,21 @@ export function GeneralYamlBackupAccordion({
                   } catch (e) {
                     setYamlMsg({
                       sev: 'error',
-                      text: e instanceof Error ? e.message : t('settings.yamlImportFailed'),
+                      text:
+                        e instanceof Error
+                          ? e.message
+                          : t('settings.yamlImportFailed'),
                     });
                   }
                 }}
               >
                 {t('settings.yamlDownloadFull')}
               </Button>
-              <Button variant="outlined" size="small" onClick={() => fileRef.current?.click()}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => fileRef.current?.click()}
+              >
                 {t('settings.yamlImport')}
               </Button>
               <input
@@ -104,8 +120,13 @@ export function GeneralYamlBackupAccordion({
                   setYamlMsg(null);
                   const r = await importSettingsYaml(f);
                   if (r.ok) {
-                    setYamlMsg({ sev: 'success', text: r.message || t('settings.yamlImportOk') });
-                    await queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+                    setYamlMsg({
+                      sev: 'success',
+                      text: r.message || t('settings.yamlImportOk'),
+                    });
+                    await queryClient.invalidateQueries({
+                      queryKey: queryKeys.settings.all,
+                    });
                   } else {
                     setYamlMsg({
                       sev: 'error',

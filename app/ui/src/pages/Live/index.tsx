@@ -29,7 +29,9 @@ const CameraStream = ({
   const useMjpeg = mode === 'mjpeg' && streamUrlMjpeg;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
-      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{name}</Typography>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        {name}
+      </Typography>
       {useMjpeg ? (
         <Box
           component="img"
@@ -65,7 +67,12 @@ export const LivePage = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.liveView'));
   const [streamMode, setStreamMode] = useState<StreamMode>('go2rtc');
-  const { data: cameras, isLoading, error, refetch } = useQuery({
+  const {
+    data: cameras,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['cameras'],
     queryFn: fetchCameras,
   });
@@ -93,7 +100,8 @@ export const LivePage = () => {
   const hasMjpeg = cams.some((c) => c.stream_url_mjpeg);
 
   // Адаптивная сетка: 1 камера — на всю ширину, 2 — в 2 колонки, 3–4 — в 4, 5+ — в 6
-  const numCols = cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
+  const numCols =
+    cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
   const gridSize = 12 / numCols;
 
   return (
@@ -106,8 +114,14 @@ export const LivePage = () => {
             <ToggleButtonGroup
               value={streamMode}
               exclusive
-              onChange={(_, v: StreamMode | null) => v != null && setStreamMode(v)}
-              size="small"
+              onChange={(_, v: StreamMode | null) =>
+                v != null && setStreamMode(v)
+              }
+              size="medium"
+              aria-label={t('live.streamModeAria')}
+              sx={{
+                '& .MuiToggleButton-root': { minHeight: 40, px: 1.75 },
+              }}
             >
               <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
               <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>
@@ -119,18 +133,18 @@ export const LivePage = () => {
       {cams.length === 0 ? (
         <PageMessageState message={t('live.noCameras')} />
       ) : (
-      <Grid container spacing={2}>
-        {cams.map((cam) => (
-          <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
-            <CameraStream
-              streamUrl={cam.stream_url}
-              streamUrlMjpeg={cam.stream_url_mjpeg}
-              name={cam.name}
-              mode={streamMode}
-            />
-          </Grid>
-        ))}
-      </Grid>
+        <Grid container spacing={2}>
+          {cams.map((cam) => (
+            <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
+              <CameraStream
+                streamUrl={cam.stream_url}
+                streamUrlMjpeg={cam.stream_url_mjpeg}
+                name={cam.name}
+                mode={streamMode}
+              />
+            </Grid>
+          ))}
+        </Grid>
       )}
     </Box>
   );

@@ -34,15 +34,15 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
-  # Мин. длительность трека ByteTrack (сек). Короткие визиты (белка) — 0.9–1.0; при шуме поднимите.
+  # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме поднимите.
   min_track_duration: 0.9
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
   # Отдельная стратегия детекции для batch-перегенерации треков (только two_stage: binary .pt + classifier .pt).
   track_regen_detection_strategy: two_stage
-  # Размер кадра для batch-перегенерации треков (px). Меньше = быстрее, но грубее bbox.
-  track_regen_lores_px: 512
+  # Размер кадра для batch-перегенерации треков (px). Держите ≥ inference_lores_px — иначе YOLO на архиве слабее чем в live.
+  track_regen_lores_px: 640
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 300
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
@@ -65,22 +65,47 @@ processor:
   # с ручными строками (например Bird рядом с исправленной сорокой) — появятся параллельные
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
-  # Дефолты: строже по мусору в TG, мягче по белкам (Rodent override ниже).
+  # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   min_confidence_binary: 0.28  # Детектор «птица/не птица»; ниже — больше ложных bbox
   # Раздельные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
-  min_confidence_binary_bird: 0.46
-  min_confidence_binary_squirrel: 0.24
-  # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 — выкл.
-  bird_skip_classifier_max_area_frac: 0.018
+  # Выше — меньше ложных bbox, ниже — YOLO чаще ловит мелкую/далёкую птицу (0.40 типичный компромисс).
+  min_confidence_binary_bird: 0.40
+  min_confidence_binary_rodent: 0.24
+  # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
+  # min_confidence_binary_squirrel: 0.24
+  # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
+  bird_skip_classifier_max_area_frac: 0
   min_confidence_to_process: 0.38  # Классификатор (combined); запись/БД
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
-  # Перед YOLO: отсечь совсем тёмные кадры. На ИК/сумерках контраст часто < 20 — YOLO не зовётся.
+  # Перед YOLO: отсечь совсем тёмные кадры. ИК/сумерки: слишком жёсткие пороги = YOLO почти не работает.
   light_gate_enabled: true
-  light_gate_min_brightness: 20
-  light_gate_min_contrast: 14
+  light_gate_min_brightness: 14
+  light_gate_min_contrast: 10
+  # Adaptive runtime profiles: мягкие override'ы для сложных сцен (сейчас — night/low-light).
+  adaptive_profiles:
+    enabled: false
+    night:
+      # Профиль активируется, если brightness <= max_brightness И/ИЛИ contrast <= max_contrast.
+      max_brightness: 18
+      max_contrast: 12
+      overrides:
+        # Позволить YOLO работать в сумерках/ИК без полного снятия light gate.
+        light_gate_min_brightness: 8
+        light_gate_min_contrast: 6
+        # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
+        min_confidence_binary: 0.24
+        min_confidence_binary_bird: 0.34
+        min_track_duration: 0.7
+        min_confidence_to_process: 0.34
+        min_box_size_px: 40
+        min_center_dist: 0.03
+        max_classifications_per_frame: 4
+  # Предупреждение и счётчик slow_frame_processor_detect_total, если один detect() занимает дольше.
+  frame_processing_warn_ms: 450
+  # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
-  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для белок
+  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для Rodent
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
@@ -130,16 +155,16 @@ processor:
   generate_spectrogram_always: true
   # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
-  # Scope детектора первого уровня. Production path: detector(Bird|Squirrel) -> classifier -> fusion.
-  detector_scope: ["Bird", "Squirrel"]
+  # Scope детектора первого уровня. Production path: detector(Bird|Rodent) -> classifier -> fusion.
+  detector_scope: ["Bird", "Rodent"]
   # Планировщик классификации species внутри кадра: priority | round_robin.
   classification_scheduler: priority
   max_classifications_per_frame: 3
   max_blur_checks: 3
   blur_threshold: 100.0
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
-  # Для мелких птиц у кромки кормушки снижайте до 0.03-0.05.
-  min_center_dist: 0.04
+  # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
+  min_center_dist: 0.035
   # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
   binary_imgsz: 640
   # Small boxes on feeder scenes are often debris or motion noise.
@@ -169,7 +194,10 @@ processor:
   models:
     # Production: только binary + classifier (.pt). single_stage в коде не подключается.
     single_stage: "yolo11n.pt"
+    # Бинарный детектор: артефакты из форка (zip в дереве processor/models/detection).
+    # Источник: https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor
     binary: "models/detection/weights/best.pt"
+    # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
 
 # Video source: go2rtc | file
@@ -288,6 +316,8 @@ detection:
   # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
   # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
   frigate_standalone_when_no_yolo: true
+  # Не отключать standalone ради «чистого» YOLO — иначе пустые клипы. Качество Frigate:
+  # motion.frigate_min_trigger_score, frigate_standalone_min_score; проверка весов/CUDA: scripts/verify-eu-model.sh
   # Если ровно один accepted_generic «Bird» от YOLO — подменить на Frigate standalone
   # при событии Frigate (одна строка «Bird» иначе блокировала синтез в merge).
   frigate_standalone_when_no_accepted_species: true
@@ -365,7 +395,7 @@ detection:
     "Grey-headed Woodpecker": "Grey-headed Woodpecker"
     "Great Gray Shrike": "Great Grey Shrike"
     "Great Grey Shrike": "Great Grey Shrike"
-    # Squirrel/rodent: detector class → catalog name
+    # Грызуны / устаревшие подписи детектора → каталог Rodent
     "squirrel": "Rodent"
     "Squirrel": "Rodent"
     "Eastern Gray Squirrel": "Rodent"
@@ -505,8 +535,8 @@ ebird:
   # Гармонизация Gray/Grey и «Scientific (Common)» → общее имя уже в detection.species_mapping.
   species_mapping: {}
 
-# Каталог видов: строго соответствует классам EU классификатора (best_EU.pt) + Rodent.
-# class_names.txt сгенерирован из best_EU.pt через scripts/datasets/dump_classifier_allowlist.py.
+# Каталог видов: строго соответствует классам EU классификатора (best.pt, HF birdlense-birds-eu) + Rodent.
+# class_names.txt сгенерирован из best.pt через scripts/datasets/dump_classifier_allowlist.py.
 species:
   # Список классов EU классификатора (491 птица + Rodent). Единственный источник истины для каталога.
   catalog_allowlist_file: "models/classification/weights/class_names.txt"

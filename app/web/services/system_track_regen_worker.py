@@ -67,6 +67,8 @@ def run_regenerate_tracks_worker(
     species_ids: list[int] | None = None,
 ) -> None:
     """Background: run YOLO+ByteTrack; mutates job_state._regenerate_tracks_status."""
+    target_video_ids = sorted(set(video_ids or []))
+    active_request_video_id = target_video_ids[0] if len(target_video_ids) == 1 else None
     job_state._regenerate_tracks_status = {
         "status": "running",
         "result": None,
@@ -78,6 +80,9 @@ def run_regenerate_tracks_worker(
             "failed": 0,
             "skipped": 0,
             "current_video": None,
+            "current_video_id": None,
+            "active_request_video_id": active_request_video_id,
+            "phase": "initializing",
         },
     }
     try:
@@ -93,7 +98,6 @@ def run_regenerate_tracks_worker(
             match_live = bool(
                 app_config.get("processor.track_regen_match_live_pipeline", False),
             )
-            target_video_ids = sorted(set(video_ids or []))
             single_video_mode = len(target_video_ids) == 1
             profile = "match_live" if match_live else "batch"
             if match_live:
@@ -359,7 +363,11 @@ def run_regenerate_tracks_worker(
 
             for video in videos:
                 species_name_to_id_cache.clear()
-                job_state._regenerate_tracks_status["progress"]["current_video"] = video.video_path or None
+                job_state._regenerate_tracks_status["progress"].update(
+                    current_video=video.video_path or None,
+                    current_video_id=video.id,
+                    phase="yolo_decode",
+                )
                 if not video.video_path:
                     skipped += 1
                     precise_candidates.append(
@@ -736,6 +744,8 @@ def run_regenerate_tracks_worker(
                     dedup[(item["video_id"], item["reason"])] = item
                 result["precise_rerun_candidates"] = list(dedup.values())[:500]
                 result["precise_rerun_candidate_count"] = len(dedup)
+            if target_video_ids:
+                result["target_video_ids"] = list(target_video_ids)
             job_state._regenerate_tracks_status = {
                 "status": "done",
                 "result": result,

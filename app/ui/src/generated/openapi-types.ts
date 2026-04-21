@@ -1457,8 +1457,10 @@ export interface paths {
         /**
          * Configuration audit (YAML keys, recall tuning, MQTT scales)
          * @description Operator-facing snapshot: deprecated/unknown keys in raw `user_config.yaml`, Telegram proxy hints,
-         *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic),
-         *     and merged warning strings (`recall_warnings` + `scales_warnings` in `config_warnings`) for review and fixes.
+         *     species mapping sanity, motion/recall tuning fields, **MQTT feeder scales** status (broker, resolved weight topic).
+         *     `config_warnings` lists **blocking** issues only (e.g. Frigate on without `mqtt.broker`, MQTT scales without broker/topic).
+         *     `recall_warnings` holds **non-blocking recall tuning hints** (OpenCV thresholds, frame skipping, etc.) — separate from `config_warnings`.
+         *     `processor_runtime_hints` reads `data/diagnostics/processor_runtime_stats.json` when present (same counters as log lines such as **Slow frame processing** on the VPS).
          *     Requires the same settings/session access as other protected system views when passwords are enabled.
          */
         get: {
@@ -5124,6 +5126,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/diagnostics/processor-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processor runtime diagnostics
+         * @description Processor runtime counters, gauges and latency snapshot.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/diagnostics/broken-videos": {
         parameters: {
             query?: never;
@@ -7474,11 +7526,15 @@ export interface components {
             recall_tuning: {
                 [key: string]: unknown;
             };
+            /** @description Optional recall / sensitivity tuning hints (not treated as blocking config errors). Blocking Frigate+MQTT and scales MQTT problems appear in `config_warnings` instead. */
             recall_warnings: string[];
+            /** @description Optional hints derived from processor runtime snapshot JSON (slow-frame counter, detect p95 vs warn_ms). Empty when the snapshot file is missing or counters are zero. */
+            processor_runtime_hints: string[];
             scales_mqtt: {
                 [key: string]: unknown;
             };
             scales_warnings: string[];
+            /** @description Blocking or misconfiguration warnings (Frigate without MQTT broker when enabled, MQTT scales issues). Does not include soft recall tuning hints from `recall_warnings`. */
             config_warnings: string[];
         };
         FileTestFileEntry: {
@@ -7848,17 +7904,100 @@ export interface components {
                 custom_emoji_id_chipmunk?: string;
                 custom_emoji_id_open_live?: string;
             };
+            /** @description Processor tuning; full shape follows `default_config.yaml` / `user_config.yaml`. Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed. */
             processor?: {
                 video_width?: number;
                 video_height?: number;
                 tracker?: string;
                 max_record_seconds?: number;
+                post_record_seconds?: number;
                 max_inactive_seconds?: number;
+                min_seconds_between_recordings?: number;
+                file_max_record_floor_seconds?: number;
+                frigate_activity_hold_seconds?: number;
+                min_track_duration?: number;
+                min_confidence_binary?: number;
+                min_confidence_binary_bird?: number | null;
+                /** @description Threshold for Rodent boxes from the binary detector (canonical key). */
+                min_confidence_binary_rodent?: number | null;
+                /** @description Deprecated alias for min_confidence_binary_rodent (legacy YAML only). */
+                min_confidence_binary_squirrel?: number | null;
+                bird_skip_classifier_max_area_frac?: number | null;
+                min_confidence_to_process?: number;
+                min_confidence_to_notify?: number;
+                min_box_size_px?: number;
+                detector_scope?: string[];
+                light_gate_enabled?: boolean;
+                light_gate_min_brightness?: number;
+                light_gate_min_contrast?: number;
+                species_confidence_overrides?: {
+                    [key: string]: number;
+                };
+                ebird_regional_top_auto_confidence?: boolean;
+                ebird_regional_top_confidence_delta?: number;
+                ebird_regional_top_confidence_floor?: number;
+                birdnet_mqtt_auto_confidence?: boolean;
+                birdnet_mqtt_bias_delta?: number;
+                birdnet_mqtt_bias_floor?: number;
+                multi_camera_groups?: string[][];
+                multi_camera_confidence_boost?: number;
+                save_dataset_crops?: boolean;
+                dataset_min_confidence?: number;
+                classifier_fallback_bird?: boolean;
                 spectrogram_px_per_sec?: number;
                 /** @description If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window */
                 generate_spectrogram_always?: boolean;
                 included_bird_families?: string[];
+                adaptive_profiles?: {
+                    [key: string]: unknown;
+                };
+                frame_processing_warn_ms?: number;
+                inference_lores_px?: number;
+                binary_imgsz?: number;
+                classification_scheduler?: string;
+                max_classifications_per_frame?: number;
+                max_blur_checks?: number;
+                blur_threshold?: number;
+                min_center_dist?: number;
+                regional_species?: string[];
+                generic_bird_min_detector_conf?: number;
+                generic_bird_min_frames?: number;
+                generic_bird_min_area_frac?: number;
+                generic_bird_min_best_frame_score?: number;
+                key_frame_limit?: number;
+                keep_recording_when_no_detections?: boolean;
+                detection_strategy?: string;
+                models?: {
+                    [key: string]: unknown;
+                };
                 save_images?: boolean;
+                single_stage_coco_animals_only_auto?: boolean;
+                birdnet_mqtt_prior_window_hours?: number;
+                birdnet_mqtt_bias_window_seconds?: number;
+                birdnet_mqtt_prior_ttl_hours?: number;
+                birdnet_mqtt_prior_half_life_hours?: number;
+                birdnet_mqtt_prior_min_confidence?: number;
+                birdnet_mqtt_observability_level?: string;
+                birdnet_mqtt_observability_debug?: boolean;
+                birdnet_fifo_snapshot_enabled?: boolean;
+                birdnet_fifo_snapshot_interval_sec?: number;
+                birdnet_fifo_snapshot_recent_limit?: number;
+                birdnet_fifo_snapshot_stale_sec?: number;
+                birdnet_fifo_hearing_active_hours?: number;
+                birdnet_fifo_persist_enabled?: boolean;
+                birdnet_fifo_sqlite_busy_ms?: number;
+                track_regen_frame_step?: number;
+                track_regen_detection_strategy?: string;
+                track_regen_lores_px?: number;
+                track_regen_video_timeout_sec?: number;
+                track_regen_precise_timeout_sec?: number;
+                track_regen_precise_detection_strategy?: string;
+                track_regen_precise_min_center_dist?: number;
+                track_regen_ignore_regional_species?: boolean;
+                track_regen_match_live_pipeline?: boolean;
+                track_regen_parallel_auto_with_manual?: boolean;
+            } & {
+                [key: string]: unknown;
             };
             secrets?: {
                 openweather_api_key?: string;

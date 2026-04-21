@@ -296,7 +296,7 @@ flowchart TD
 ### Диагноз по текущему коду (факты)
 
 1. **Light gate** ([`light_level_detector.py`](../app/processor/src/light_level_detector.py), [`frame_processor.py`](../app/processor/src/frame_processor.py)): даунсэмпл кадра → средняя яркость + **std как контраст**; при провале кадр **не идёт в YOLO** (cooldown 1 с). Это фильтр *до* бинарного детектора, одинаковый для всех классов.
-2. **Один порог на бинарный проход:** `min_confidence_binary` применяется ко **всем** боксам ([`frame_processor.py`](../app/processor/src/frame_processor.py) L83–84); в [`detection_strategy.py`](../app/processor/src/detection_strategy.py) `is_valid_detection` не различает Bird vs Squirrel.
+2. **Один порог на бинарный проход:** `min_confidence_binary` применяется ко **всем** боксам ([`frame_processor.py`](../app/processor/src/frame_processor.py) L83–84); в [`detection_strategy.py`](../app/processor/src/detection_strategy.py) `is_valid_detection` не различает Bird vs Rodent на уровне геометрии (per-label пороги — отдельно).
 3. **После детектора** [`decision_maker.py`](../app/processor/src/decision_maker.py) уже **асимметричен**: для видов с `rodent|squirrel|chipmunk|sciurus` в имени — **более мягкий** порог классификатора (`_get_threshold_for_species`); для голого **Bird** — жёстче (`_promotable_generic_bird`: площадь bbox, число кадров, `best_frame_score`). То есть «не резать мышь глобальным порогом» частично уже заложено на **уровне решения по виду**, но не на **уровне появления ложной рамки «птица»** и не на **тонкой таксономии** (ложный «дрозд» при шуме).
 4. **Классификатор (EU/US)** на ИК-кадрах объективно смещён: мало данных ночного домена → рост ложных fine-grained меток при том же detector conf.
 
@@ -315,10 +315,10 @@ flowchart TD
 1. **Сцена + класс детектора в decision layer (рекомендовано как ядро)**  
    Пробрасывать в трек/решение **скаляры качества сцены** (хотя бы `mean_brightness`, `contrast_std` с того же пути, что light gate, или флаг «прошёл порог с запасом / на грани»). При **низком контрасте**:
    - для итоговой **тонкой таксономии птиц** — повышать требуемый `combined` или переводить в **`review_only` / Unknown** с сохранением визита для датасета;
-   - для **Squirrel/Rodent**, подтверждённых бинарником, — **не ужесточать** тот же множитель (уже отделены пороги в `_get_threshold_for_species` и fallback-ветки).  
+   - для **Rodent**, подтверждённого бинарником, — **не ужесточать** тот же множитель (уже отделены пороги в `_get_threshold_for_species` и fallback-ветки).  
    Это **не костыль «один слайдер»**, а явная модель: *достоверность вида зависит от условий съёмки*.
 
-2. **Раздельные пороги бинарного детектора Bird vs Squirrel/Rodent**  
+2. **Раздельные пороги бинарного детектора Bird vs Rodent**  
    Расширение конфига и [`detection_strategy.py`](../app/processor/src/detection_strategy.py): разные `min_conf` в зависимости от `detector_label` после первого прохода (или два порога на фильтрацию до трекера). Позволяет **резать ночной шум именно в классе Bird**, оставляя чувствительность на грызунов. Требует аккуратной валидации на ваших весах.
 
 3. **Стабилизация вида по треку (temporal voting)**  

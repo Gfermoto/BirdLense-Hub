@@ -199,9 +199,13 @@ export function RecordingsCalendar() {
             {t('library.recordingsLoading')}
           </Typography>
         ) : isError ? (
-          <Alert severity="error">{t('library.recordingsLoadFailed')}</Alert>
+          <Alert severity="error" variant="outlined">
+            {t('library.recordingsLoadFailed')}
+          </Alert>
         ) : validStorageStats.length === 0 ? (
-          <Alert severity="info">{t('library.recordingsEmptyHint')}</Alert>
+          <Alert severity="info" variant="outlined">
+            {t('library.recordingsEmptyHint')}
+          </Alert>
         ) : (
           <>
             <Box
@@ -335,7 +339,9 @@ export function RecordingsCalendar() {
         )}
       </LibraryCardShell>
 
-      <Alert severity="info">{t('library.recordingsOpenDayHint')}</Alert>
+      <Alert severity="info" variant="outlined">
+        {t('library.recordingsOpenDayHint')}
+      </Alert>
     </Stack>
   );
 }

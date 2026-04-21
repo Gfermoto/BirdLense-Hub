@@ -46,7 +46,9 @@ export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;
  * - Relative path (data/images/...) → BASE_URL + path
  * Species: Wikipedia returns full URLs. Bird food: relative paths from seed.
  */
-export const resolveImageUrl = (url: string | null | undefined): string | undefined => {
+export const resolveImageUrl = (
+  url: string | null | undefined,
+): string | undefined => {
   if (!url) return undefined;
   if (url.startsWith('http://') || url.startsWith('https://')) {
     // Do not proxy Wikimedia: server-side proxy can be rate-limited by shared IP.
@@ -112,7 +114,8 @@ export const exportTimeline = async (
   }
   const blob = await res.blob();
   const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename = format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
+  const filename =
+    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -140,7 +143,8 @@ export const exportTimelineForObserverDate = async (
   }
   const blob = await res.blob();
   const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename = format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
+  const filename =
+    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -154,7 +158,9 @@ export const fetchWeather = async () => {
 };
 
 /** Sunrise, sunset, dawn, dusk for date at configured location. date: YYYY-MM-DD. Returns ISO strings (UTC). */
-export const fetchSunTimes = async (date: string): Promise<{
+export const fetchSunTimes = async (
+  date: string,
+): Promise<{
   dawn?: string;
   sunrise?: string;
   noon?: string;
@@ -208,7 +214,9 @@ export const fetchVideo = async (id: string) => {
 
 /** Покадровые bbox — отдельно от GET /videos/:id (лёгкая первая отрисовка страницы). */
 export const fetchVideoDetectionFrames = async (id: string) => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/detection-frames`);
+  const response = await axios.get(
+    `${BASE_API_URL}/videos/${id}/detection-frames`,
+  );
   return response.data as {
     tracks: Array<{
       id: number | null;
@@ -232,7 +240,9 @@ export type VideoNeighbors = {
   total: number;
 };
 
-export const fetchVideoNeighbors = async (id: string): Promise<VideoNeighbors> => {
+export const fetchVideoNeighbors = async (
+  id: string,
+): Promise<VideoNeighbors> => {
   const tzOffset = new Date().getTimezoneOffset();
   const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`, {
     params: {
@@ -263,20 +273,32 @@ export type FusionTracePayload = {
   tracks?: FusionTraceTrack[];
 };
 
-export const fetchVideoFusionTrace = async (id: number): Promise<FusionTracePayload> => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/fusion-trace`, {
-    withCredentials: true,
-  });
+export const fetchVideoFusionTrace = async (
+  id: number,
+): Promise<FusionTracePayload> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/videos/${id}/fusion-trace`,
+    {
+      withCredentials: true,
+    },
+  );
   return response.data;
 };
 
 export const fetchNearestRecordingDay = async (
   date: string,
   direction: 'prev' | 'next',
-): Promise<{ date: string | null; direction: 'prev' | 'next'; found: boolean }> => {
-  const response = await axios.get(`${BASE_API_URL}/storage/nearest-recording-day`, {
-    params: { date, direction },
-  });
+): Promise<{
+  date: string | null;
+  direction: 'prev' | 'next';
+  found: boolean;
+}> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/storage/nearest-recording-day`,
+    {
+      params: { date, direction },
+    },
+  );
   return response.data;
 };
 
@@ -404,7 +426,11 @@ export const downloadDetectionCropForINaturalist = async (
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  window.open('https://www.inaturalist.org/observations/upload', '_blank', 'noopener');
+  window.open(
+    'https://www.inaturalist.org/observations/upload',
+    '_blank',
+    'noopener',
+  );
 };
 
 export const fetchBirdFood = async (): Promise<BirdFood[]> => {
@@ -506,7 +532,10 @@ export const fetchFeedInfo = async (): Promise<{
   return response.data;
 };
 
-export const postScaleTare = async (): Promise<{ success: boolean; message?: string }> => {
+export const postScaleTare = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
   try {
     const response = await axios.post(
       `${BASE_API_URL}/feed/scale-tare`,
@@ -523,11 +552,18 @@ export const postScaleTare = async (): Promise<{ success: boolean; message?: str
   }
 };
 
-export const dispenseFeed = async (): Promise<{ success: boolean; message?: string }> => {
+export const dispenseFeed = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
   try {
-    const response = await axios.post(`${BASE_API_URL}/feed/dispense`, {}, {
-      withCredentials: true,
-    });
+    const response = await axios.post(
+      `${BASE_API_URL}/feed/dispense`,
+      {},
+      {
+        withCredentials: true,
+      },
+    );
     return { success: true, message: response.data?.message };
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } };
@@ -543,15 +579,19 @@ export type RequiresPasswordResult = {
   has_contributor_tier?: boolean;
 };
 
-export const fetchSettingsRequiresPassword = async (): Promise<RequiresPasswordResult> => {
-  const response = await axios.get(`${BASE_API_URL}/settings/requires-password`, {
-    withCredentials: true,
-  });
-  return {
-    requires: response.data?.requires === true,
-    has_contributor_tier: response.data?.has_contributor_tier === true,
+export const fetchSettingsRequiresPassword =
+  async (): Promise<RequiresPasswordResult> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/settings/requires-password`,
+      {
+        withCredentials: true,
+      },
+    );
+    return {
+      requires: response.data?.requires === true,
+      has_contributor_tier: response.data?.has_contributor_tier === true,
+    };
   };
-};
 
 /** Ответ `GET /system/config-audit` (см. OpenAPI `ConfigAuditResponse`). */
 export type ConfigAudit = components['schemas']['ConfigAuditResponse'];
@@ -668,7 +708,11 @@ export const verifySettingsPassword = async (
 };
 
 export const logoutSettingsSession = async (): Promise<void> => {
-  await axios.post(`${BASE_API_URL}/settings/logout`, {}, { withCredentials: true });
+  await axios.post(
+    `${BASE_API_URL}/settings/logout`,
+    {},
+    { withCredentials: true },
+  );
 };
 
 export const fetchSettings = async () => {
@@ -702,7 +746,10 @@ export const fetchEbirdMappingSuggestions =
   };
 
 export const updateSettings = async (settings: Settings) => {
-  const payload = JSON.parse(JSON.stringify(settings)) as Record<string, unknown>;
+  const payload = JSON.parse(JSON.stringify(settings)) as Record<
+    string,
+    unknown
+  >;
   const perf = payload.performance as Record<string, unknown> | undefined;
   if (perf && typeof perf === 'object') {
     delete perf.redis_url_effective_masked;
@@ -769,7 +816,9 @@ export const fetchSystemMetricsHistory = async (
   return response.data;
 };
 
-export const fetchSystemVisitors = async (days: number): Promise<SystemVisitorStats> => {
+export const fetchSystemVisitors = async (
+  days: number,
+): Promise<SystemVisitorStats> => {
   const response = await axios.get(`${BASE_API_URL}/system/visitors`, {
     params: { days },
   });
@@ -781,7 +830,9 @@ export type ProcessorLogsResponse = {
   path?: string;
 };
 
-export const fetchProcessorLogs = async (lines: number): Promise<ProcessorLogsResponse> => {
+export const fetchProcessorLogs = async (
+  lines: number,
+): Promise<ProcessorLogsResponse> => {
   const response = await axios.get(`${BASE_API_URL}/system/logs`, {
     params: { lines },
     withCredentials: true,
@@ -825,30 +876,48 @@ export const fetchFileTestStatus = async (): Promise<FileTestStatusPayload> => {
   return response.data;
 };
 
-export const fileTestRun = async (body: { armed?: boolean; loop?: boolean }) => {
-  const response = await axios.post(`${BASE_API_URL}/system/file-test/run`, body, {
-    withCredentials: true,
-  });
+export const fileTestRun = async (body: {
+  armed?: boolean;
+  loop?: boolean;
+}) => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/file-test/run`,
+    body,
+    {
+      withCredentials: true,
+    },
+  );
   return response.data;
 };
 
 export const fileTestStop = async () => {
-  const response = await axios.post(`${BASE_API_URL}/system/file-test/stop`, {}, { withCredentials: true });
+  const response = await axios.post(
+    `${BASE_API_URL}/system/file-test/stop`,
+    {},
+    { withCredentials: true },
+  );
   return response.data;
 };
 
 export const fileTestDeleteFile = async (name: string) => {
-  await axios.delete(`${BASE_API_URL}/system/file-test/files/${encodeURIComponent(name)}`, {
-    withCredentials: true,
-  });
+  await axios.delete(
+    `${BASE_API_URL}/system/file-test/files/${encodeURIComponent(name)}`,
+    {
+      withCredentials: true,
+    },
+  );
 };
 
 export const fileTestUpload = async (file: File) => {
   const fd = new FormData();
   fd.append('file', file);
-  const response = await axios.post(`${BASE_API_URL}/system/file-test/upload`, fd, {
-    withCredentials: true,
-  });
+  const response = await axios.post(
+    `${BASE_API_URL}/system/file-test/upload`,
+    fd,
+    {
+      withCredentials: true,
+    },
+  );
   return response.data as { ok: boolean; name?: string };
 };
 
@@ -866,7 +935,9 @@ export const fetchVapidPublicKey = async (): Promise<string> => {
 };
 
 /** Web Push: register subscription with server. */
-export const subscribePush = async (subscription: globalThis.PushSubscription): Promise<void> => {
+export const subscribePush = async (
+  subscription: globalThis.PushSubscription,
+): Promise<void> => {
   const sub = subscription.toJSON();
   const keys = sub.keys;
   if (!keys) throw new Error('Invalid subscription');
@@ -887,11 +958,18 @@ export const subscribePush = async (subscription: globalThis.PushSubscription): 
   }
 };
 
-export const sendTestNotification = async (): Promise<{ success: boolean; message?: string }> => {
+export const sendTestNotification = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
   try {
-    const response = await axios.post(`${BASE_API_URL}/notify/test`, {}, {
-      withCredentials: true,
-    });
+    const response = await axios.post(
+      `${BASE_API_URL}/notify/test`,
+      {},
+      {
+        withCredentials: true,
+      },
+    );
     return {
       success: true,
       message: response.data?.message || 'Sent',
@@ -905,11 +983,18 @@ export const sendTestNotification = async (): Promise<{ success: boolean; messag
   }
 };
 
-export const refreshTelegramProxy = async (): Promise<{ success: boolean; message?: string }> => {
+export const refreshTelegramProxy = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
   try {
-    const response = await axios.post(`${BASE_API_URL}/system/telegram-proxy/refresh`, {}, {
-      withCredentials: true,
-    });
+    const response = await axios.post(
+      `${BASE_API_URL}/system/telegram-proxy/refresh`,
+      {},
+      {
+        withCredentials: true,
+      },
+    );
     return {
       success: true,
       message: response.data?.message || 'Started',
@@ -923,11 +1008,18 @@ export const refreshTelegramProxy = async (): Promise<{ success: boolean; messag
   }
 };
 
-export const restartProcessor = async (): Promise<{ success: boolean; message?: string }> => {
+export const restartProcessor = async (): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
   try {
-    const response = await axios.post(`${BASE_API_URL}/restart-processor`, {}, {
-      withCredentials: true,
-    });
+    const response = await axios.post(
+      `${BASE_API_URL}/restart-processor`,
+      {},
+      {
+        withCredentials: true,
+      },
+    );
     return { success: true, message: response.data?.message };
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } };
@@ -963,12 +1055,16 @@ export type ProcessorWeightsStatusResponse = {
   allowlist: ProcessorWeightsAllowlistStatus;
 };
 
-export const fetchProcessorWeightsStatus = async (): Promise<ProcessorWeightsStatusResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/processor-weights/status`, {
-    withCredentials: true,
-  });
-  return response.data as ProcessorWeightsStatusResponse;
-};
+export const fetchProcessorWeightsStatus =
+  async (): Promise<ProcessorWeightsStatusResponse> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/processor-weights/status`,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data as ProcessorWeightsStatusResponse;
+  };
 
 const _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS = 3_600_000; // 1 h
 
@@ -976,7 +1072,11 @@ export const uploadProcessorWeight = async (
   role: 'binary' | 'classifier' | 'class_names',
   file: File,
   options?: { acknowledgeClassifierOnly?: boolean },
-): Promise<{ ok: boolean; error?: string; status?: ProcessorWeightsStatusResponse }> => {
+): Promise<{
+  ok: boolean;
+  error?: string;
+  status?: ProcessorWeightsStatusResponse;
+}> => {
   const form = new FormData();
   form.append('file', file);
   const params: Record<string, string> = { role };
@@ -1006,7 +1106,11 @@ export const uploadProcessorWeight = async (
 
 export const resetProcessorWeights = async (
   roles: Array<'binary' | 'classifier' | 'class_names' | 'all'>,
-): Promise<{ ok: boolean; error?: string; status?: ProcessorWeightsStatusResponse }> => {
+): Promise<{
+  ok: boolean;
+  error?: string;
+  status?: ProcessorWeightsStatusResponse;
+}> => {
   try {
     const response = await axios.post(
       `${BASE_API_URL}/system/processor-weights/reset`,
@@ -1032,8 +1136,7 @@ const _downloadYamlResponse = async (url: string, fallbackName: string) => {
   }
   const blob = await res.blob();
   const cd = res.headers.get('Content-Disposition');
-  const filename =
-    cd?.match(/filename="?([^";\n]+)"?/)?.[1] || fallbackName;
+  const filename = cd?.match(/filename="?([^";\n]+)"?/)?.[1] || fallbackName;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -1168,12 +1271,16 @@ export interface SpeciesDataQualityReport {
   hints: Record<string, string>;
 }
 
-export const fetchSpeciesDataQuality = async (): Promise<SpeciesDataQualityReport> => {
-  const response = await axios.get(`${BASE_API_URL}/system/species-registry/data-quality`, {
-    params: { suspect_limit: 500, duplicate_limit: 100 },
-  });
-  return response.data;
-};
+export const fetchSpeciesDataQuality =
+  async (): Promise<SpeciesDataQualityReport> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/data-quality`,
+      {
+        params: { suspect_limit: 500, duplicate_limit: 100 },
+      },
+    );
+    return response.data;
+  };
 
 export interface ClassifierDatasetAlignmentReport {
   classifier_weights_path: string;
@@ -1234,6 +1341,8 @@ export interface CatalogRepairStatus {
     images_replaced_from_inat: number;
     images_realigned_allowlist_science?: number;
     still_missing: number;
+    /** Wikipedia/iNat enrich raised (see web logs). */
+    enrich_exceptions?: number;
     dry_run: boolean;
     auto?: boolean;
     coverage_after?: CatalogCardsCoverageSnapshot;
@@ -1259,7 +1368,13 @@ export const fetchClassifierDatasetAlignment =
   async (): Promise<ClassifierDatasetAlignmentReport> => {
     const response = await axios.get(
       `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment`,
-      { params: { classifier_limit: 400, catalog_limit: 300, dataset_limit: 150 } },
+      {
+        params: {
+          classifier_limit: 400,
+          catalog_limit: 300,
+          dataset_limit: 150,
+        },
+      },
     );
     return response.data;
   };
@@ -1272,13 +1387,14 @@ export const fetchCatalogCoverageMetrics =
     return response.data;
   };
 
-export const fetchCatalogRepairStatus = async (): Promise<CatalogRepairStatus> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/system/species-registry/repair-cards/status`,
-    { withCredentials: true },
-  );
-  return response.data;
-};
+export const fetchCatalogRepairStatus =
+  async (): Promise<CatalogRepairStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/species-registry/repair-cards/status`,
+      { withCredentials: true },
+    );
+    return response.data;
+  };
 
 export const startCatalogRepair = async (
   limit = 6000,
@@ -1296,6 +1412,35 @@ export type SystemJobStatus = {
   result?: Record<string, unknown> | null;
   error?: string | null;
   progress?: Record<string, unknown> | null;
+};
+
+export type RecognitionImprovementSummary = {
+  active_mode: 'disabled' | 'heuristic' | 'trained' | string;
+  settings: {
+    enabled: boolean;
+    alpha: number;
+  };
+  feedback: {
+    corrected_examples: number;
+    unique_videos: number;
+    unique_species: number;
+    ready_for_training: boolean;
+    examples_until_ready: number;
+    latest_feedback_at?: string | null;
+    thresholds?: {
+      corrected_examples?: number;
+      unique_videos?: number;
+      unique_species?: number;
+    };
+  };
+  model: {
+    label: string;
+    active_model_id?: string | null;
+    configured_path?: string;
+    trained_model_count: number;
+    last_trained_at?: string | null;
+    can_roll_back: boolean;
+  };
 };
 
 export type BirdnetSpeciesFifoRow = {
@@ -1338,18 +1483,65 @@ const postSystemAction = async (
 };
 
 export const fetchFusionExportStatus = async (): Promise<SystemJobStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/fusion/export/status`, {
-    withCredentials: true,
-  });
+  const response = await axios.get(
+    `${BASE_API_URL}/system/fusion/export/status`,
+    {
+      withCredentials: true,
+    },
+  );
   return response.data as SystemJobStatus;
 };
 
 export const fetchFusionEvalStatus = async (): Promise<SystemJobStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/fusion/eval/status`, {
-    withCredentials: true,
-  });
+  const response = await axios.get(
+    `${BASE_API_URL}/system/fusion/eval/status`,
+    {
+      withCredentials: true,
+    },
+  );
   return response.data as SystemJobStatus;
 };
+
+export const fetchRecognitionImprovementSummary =
+  async (): Promise<RecognitionImprovementSummary> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/recognition-improvement`,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data as RecognitionImprovementSummary;
+  };
+
+export const startRecognitionImprovementTrain = async (): Promise<{
+  message?: string;
+}> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/recognition-improvement/train`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data as { message?: string };
+};
+
+export const fetchRecognitionImprovementTrainStatus =
+  async (): Promise<SystemJobStatus> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/recognition-improvement/train/status`,
+      { withCredentials: true },
+    );
+    return response.data as SystemJobStatus;
+  };
+
+export const rollbackRecognitionImprovement =
+  async (): Promise<RecognitionImprovementSummary> => {
+    const response = await axios.post(
+      `${BASE_API_URL}/system/recognition-improvement/rollback`,
+      {},
+      { withCredentials: true },
+    );
+    return response.data as RecognitionImprovementSummary;
+  };
 
 export const startFusionExport = async (): Promise<{ message?: string }> => {
   const response = await axios.post(
@@ -1386,38 +1578,59 @@ export const downloadLatestFusionEvalReport = (): void => {
   );
 };
 
-export const fetchBirdnetFifoSnapshot = async (): Promise<BirdnetFifoPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`, {
-    withCredentials: true,
-  });
-  return response.data as BirdnetFifoPayload;
-};
+export const fetchBirdnetFifoSnapshot =
+  async (): Promise<BirdnetFifoPayload> => {
+    const response = await axios.get(
+      `${BASE_API_URL}/system/diagnostics/birdnet-fifo`,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data as BirdnetFifoPayload;
+  };
 
 export const seedSpeciesRegistry = async (): Promise<Record<string, unknown>> =>
   postSystemAction('/system/species-registry/seed');
 
-export const backfillSpeciesRegistry = async (): Promise<Record<string, unknown>> =>
-  postSystemAction('/system/species-registry/backfill', { dry_run: false });
+export const backfillSpeciesRegistry = async (): Promise<
+  Record<string, unknown>
+> => postSystemAction('/system/species-registry/backfill', { dry_run: false });
 
-export const enrichSpeciesRegistryMetadata = async (): Promise<Record<string, unknown>> =>
+export const enrichSpeciesRegistryMetadata = async (): Promise<
+  Record<string, unknown>
+> =>
   postSystemAction('/system/species-registry/enrich-metadata/start', {
     limit: 300,
     retry_failed_only: false,
   });
 
-export const materializeSpeciesAllowlist = async (): Promise<Record<string, unknown>> =>
+export const materializeSpeciesAllowlist = async (): Promise<
+  Record<string, unknown>
+> =>
   postSystemAction('/system/species-registry/materialize-allowlist', {
     dry_run: false,
     fill_metadata: true,
   });
 
-export const mergeDuplicateSpecies = async (): Promise<Record<string, unknown>> =>
-  postSystemAction('/system/merge-duplicate-species');
+export const mergeDuplicateSpecies = async (): Promise<
+  Record<string, unknown>
+> => postSystemAction('/system/merge-duplicate-species');
 
-export const reconcileSpeciesCatalog = async (): Promise<Record<string, unknown>> =>
-  postSystemAction('/system/species-catalog/reconcile', { dry_run: false });
+export const reconcileSpeciesCatalog = async (): Promise<
+  Record<string, unknown>
+> => postSystemAction('/system/species-catalog/reconcile', { dry_run: false });
 
-export const previewBrokenVideosPurge = async (): Promise<Record<string, unknown>> =>
+/** Sync with `BROKEN_VIDEOS_PURGE_CONFIRMATION` in system_diagnostics_service.py */
+export const PURGE_CONFIRM_PHRASE_BROKEN_VIDEOS_BATCH =
+  'purge_all_broken_video_rows';
+
+/** Sync with `NO_SPECIES_VIDEOS_PURGE_CONFIRMATION` in system_diagnostics_service.py */
+export const PURGE_CONFIRM_PHRASE_NO_SPECIES_VIDEOS_BATCH =
+  'purge_videos_without_species';
+
+export const previewBrokenVideosPurge = async (): Promise<
+  Record<string, unknown>
+> =>
   postSystemAction('/system/diagnostics/broken-videos/purge', {
     dry_run: true,
     max_scan: 200_000,
@@ -1432,8 +1645,12 @@ export const purgeBrokenVideosBatch = async (
     limit: 500,
   });
 
-export const previewNoSpeciesVideosPurge = async (): Promise<Record<string, unknown>> =>
-  postSystemAction('/system/diagnostics/no-species-videos/purge', { dry_run: true });
+export const previewNoSpeciesVideosPurge = async (): Promise<
+  Record<string, unknown>
+> =>
+  postSystemAction('/system/diagnostics/no-species-videos/purge', {
+    dry_run: true,
+  });
 
 export const purgeNoSpeciesVideosBatch = async (
   confirmText: string,
@@ -1445,7 +1662,9 @@ export const purgeNoSpeciesVideosBatch = async (
   });
 
 /** Lightweight: only species with count > 0 (for Settings exclude list). */
-export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: string; count: number }>> => {
+export const fetchObservedSpecies = async (): Promise<
+  Array<{ id: number; name: string; count: number }>
+> => {
   const response = await axios.get(`${BASE_API_URL}/species/observed`);
   return response.data;
 };
@@ -1454,15 +1673,31 @@ export const fetchObservedSpecies = async (): Promise<Array<{ id: number; name: 
 export const fetchTrackRegenSpeciesOptions = async (): Promise<
   Array<{ id: number; name: string; count: number }>
 > => {
-  const response = await axios.get(`${BASE_API_URL}/species/track-regen-options`);
+  const response = await axios.get(
+    `${BASE_API_URL}/species/track-regen-options`,
+  );
   return response.data;
 };
+
+/** Поля прогресса из `/system/regenerate-tracks/status` (воркер + single-video pre-queue). */
+export interface TrackRegenProgress {
+  processed?: number;
+  total?: number;
+  generated?: number;
+  failed?: number;
+  skipped?: number;
+  current_video?: string | null;
+  current_video_id?: number | null;
+  active_request_video_id?: number | null;
+  phase?: string | null;
+  regen_params?: Record<string, unknown>;
+}
 
 export interface TrackRegenerationJobStatus {
   status: string;
   result?: unknown;
   error?: string | null;
-  progress?: unknown;
+  progress?: TrackRegenProgress | null;
 }
 
 export const fetchTrackRegenerationStatus =
@@ -1487,11 +1722,23 @@ export const regenerateTracksForSingleVideo = async (
   return response.data;
 };
 
+export interface SpectrogramRegenProgress {
+  processed?: number;
+  total?: number;
+  generated?: number;
+  failed?: number;
+  skipped?: number;
+  current_video?: string | null;
+  current_video_id?: number | null;
+  active_request_video_id?: number | null;
+  phase?: string | null;
+}
+
 export interface SpectrogramRegenerationJobStatus {
   status: string;
   result?: unknown;
   error?: string | null;
-  progress?: unknown;
+  progress?: SpectrogramRegenProgress | null;
 }
 
 export const fetchSpectrogramRegenerationStatus =
@@ -1605,7 +1852,12 @@ export const fetchTuningTargets = async (): Promise<TuningTargetsResponse> => {
 export const setSpeciesTuningTarget = async (
   speciesId: number,
   enabled: boolean,
-): Promise<{ ok: boolean; species_id: number; enabled: boolean; tuning_target_species_ids: number[] }> => {
+): Promise<{
+  ok: boolean;
+  species_id: number;
+  enabled: boolean;
+  tuning_target_species_ids: number[];
+}> => {
   const response = await axios.post(
     `${BASE_API_URL}/species/${speciesId}/tuning-target`,
     { enabled },
@@ -1776,12 +2028,15 @@ export const previewReviewQueueDelete = async (params: {
   hour?: number | null;
   unknownIds: number[];
 }): Promise<ReviewQueueDeletePreview> => {
-  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete-preview`, {
-    date: params.date,
-    time_of_day: params.timeOfDay,
-    ...(params.hour != null ? { hour: params.hour } : {}),
-    unknown_ids: params.unknownIds,
-  });
+  const response = await axios.post(
+    `${BASE_API_URL}/system/review-queue/delete-preview`,
+    {
+      date: params.date,
+      time_of_day: params.timeOfDay,
+      ...(params.hour != null ? { hour: params.hour } : {}),
+      unknown_ids: params.unknownIds,
+    },
+  );
   return response.data;
 };
 
@@ -1800,13 +2055,16 @@ export const deleteReviewQueueVideos = async (params: {
   deletedSize: number;
   confirmation_phrase: string;
 }> => {
-  const response = await axios.post(`${BASE_API_URL}/system/review-queue/delete`, {
-    date: params.date,
-    time_of_day: params.timeOfDay,
-    ...(params.hour != null ? { hour: params.hour } : {}),
-    unknown_ids: params.unknownIds,
-    confirm_text: params.confirmText,
-  });
+  const response = await axios.post(
+    `${BASE_API_URL}/system/review-queue/delete`,
+    {
+      date: params.date,
+      time_of_day: params.timeOfDay,
+      ...(params.hour != null ? { hour: params.hour } : {}),
+      unknown_ids: params.unknownIds,
+      confirm_text: params.confirmText,
+    },
+  );
   return response.data;
 };
 
@@ -1821,7 +2079,9 @@ export type CorrectionHistoryEntry = {
   updated_count?: number;
 };
 
-export const fetchRecentCorrections = async (limit = 10): Promise<CorrectionHistoryEntry[]> => {
+export const fetchRecentCorrections = async (
+  limit = 10,
+): Promise<CorrectionHistoryEntry[]> => {
   const response = await axios.get(`${BASE_API_URL}/corrections/recent`, {
     params: { limit },
     withCredentials: true,

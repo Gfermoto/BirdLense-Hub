@@ -50,11 +50,7 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-export const StorageOverview = ({
-  simple = false,
-}: {
-  simple?: boolean;
-}) => {
+export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { isAdmin } = useProtectedArea();
@@ -63,7 +59,9 @@ export const StorageOverview = ({
   const [dbError, setDbError] = useState<string>('');
   const [isDownloadingDb, setIsDownloadingDb] = useState(false);
   const [isRestoringDb, setIsRestoringDb] = useState(false);
-  const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
+  const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(
+    null,
+  );
   const [purgeMode, setPurgeMode] = useState<PurgeMode>('before');
   const [purgeBeforeDate, setPurgeBeforeDate] = useState<Dayjs | null>(() =>
     dayjs().subtract(30, 'day').startOf('day'),
@@ -91,7 +89,9 @@ export const StorageOverview = ({
   if (isLoading) {
     return <Typography>{t('storage.loadingStats')}</Typography>;
   }
-  const validStorageStats = (Array.isArray(storageStats) ? storageStats : []).filter(
+  const validStorageStats = (
+    Array.isArray(storageStats) ? storageStats : []
+  ).filter(
     (stat): stat is StorageStats =>
       typeof stat?.date === 'string' &&
       typeof stat?.fileCount === 'number' &&
@@ -100,11 +100,10 @@ export const StorageOverview = ({
       Number.isFinite(stat.totalSize),
   );
 
-  const chartData: ChartDataPoint[] =
-    validStorageStats.map((stat) => ({
-      date: dayjs(stat.date).format('MM/DD'),
-      size: Number((stat.totalSize / (1024 * 1024)).toFixed(2)),
-    }));
+  const chartData: ChartDataPoint[] = validStorageStats.map((stat) => ({
+    date: dayjs(stat.date).format('MM/DD'),
+    size: Number((stat.totalSize / (1024 * 1024)).toFixed(2)),
+  }));
   const totalSize =
     validStorageStats.reduce((acc, stat) => acc + stat.totalSize, 0) || 0;
   const totalFiles =
@@ -161,9 +160,7 @@ export const StorageOverview = ({
     (purgeRangeFrom.isBefore(purgeRangeTo, 'day') ||
       purgeRangeFrom.isSame(purgeRangeTo, 'day'));
   const canStartPurgeDialog =
-    purgeMode === 'before'
-      ? !!purgeBeforeDate
-      : purgeRangeValid;
+    purgeMode === 'before' ? !!purgeBeforeDate : purgeRangeValid;
 
   const handlePurgeConfirmed = async () => {
     setPurgeError(null);
@@ -193,8 +190,13 @@ export const StorageOverview = ({
       );
       await queryClient.invalidateQueries({ queryKey: ['storageStats'] });
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } }; message?: string };
-      setPurgeError(err.response?.data?.error || err.message || t('storage.purgeFailed'));
+      const err = e as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      setPurgeError(
+        err.response?.data?.error || err.message || t('storage.purgeFailed'),
+      );
     } finally {
       setPurgeRunning(false);
     }
@@ -261,7 +263,9 @@ export const StorageOverview = ({
                 onClick={handleDownloadDb}
                 disabled={isDownloadingDb || isRestoringDb}
               >
-                {isDownloadingDb ? t('storage.dbBackingUp') : t('storage.dbBackupAction')}
+                {isDownloadingDb
+                  ? t('storage.dbBackingUp')
+                  : t('storage.dbBackupAction')}
               </Button>
               <Button
                 color="warning"
@@ -269,7 +273,9 @@ export const StorageOverview = ({
                 onClick={handleRestorePick}
                 disabled={isDownloadingDb || isRestoringDb}
               >
-                {isRestoringDb ? t('storage.dbRestoring') : t('storage.dbRestoreAction')}
+                {isRestoringDb
+                  ? t('storage.dbRestoring')
+                  : t('storage.dbRestoreAction')}
               </Button>
               <input
                 ref={restoreInputRef}
@@ -279,8 +285,16 @@ export const StorageOverview = ({
                 onChange={handleRestoreFile}
               />
             </Stack>
-            {dbMessage && <Alert severity="success" sx={{ mt: 2 }}>{dbMessage}</Alert>}
-            {dbError && <Alert severity="error" sx={{ mt: 2 }}>{dbError}</Alert>}
+            {dbMessage && (
+              <Alert severity="success" variant="outlined" sx={{ mt: 2 }}>
+                {dbMessage}
+              </Alert>
+            )}
+            {dbError && (
+              <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
+                {dbError}
+              </Alert>
+            )}
           </Paper>
 
           {isAdmin && (
@@ -300,8 +314,12 @@ export const StorageOverview = ({
                 size="small"
                 sx={{ mb: 2 }}
               >
-                <ToggleButton value="before">{t('storage.purgeModeBefore')}</ToggleButton>
-                <ToggleButton value="range">{t('storage.purgeModeRange')}</ToggleButton>
+                <ToggleButton value="before">
+                  {t('storage.purgeModeBefore')}
+                </ToggleButton>
+                <ToggleButton value="range">
+                  {t('storage.purgeModeRange')}
+                </ToggleButton>
               </ToggleButtonGroup>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <Stack
@@ -350,8 +368,16 @@ export const StorageOverview = ({
               >
                 {t('storage.purge')}
               </Button>
-              {purgeMessage && <Alert severity="success" sx={{ mt: 2 }}>{purgeMessage}</Alert>}
-              {purgeError && <Alert severity="error" sx={{ mt: 2 }}>{purgeError}</Alert>}
+              {purgeMessage && (
+                <Alert severity="success" variant="outlined" sx={{ mt: 2 }}>
+                  {purgeMessage}
+                </Alert>
+              )}
+              {purgeError && (
+                <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
+                  {purgeError}
+                </Alert>
+              )}
             </Paper>
           )}
         </>
@@ -362,7 +388,9 @@ export const StorageOverview = ({
           <ConfirmDialog
             open={pendingRestoreFile !== null}
             title={t('storage.dbRestoreTitle')}
-            description={t('storage.dbRestoreConfirm', { name: pendingRestoreFile?.name ?? '' })}
+            description={t('storage.dbRestoreConfirm', {
+              name: pendingRestoreFile?.name ?? '',
+            })}
             confirmLabel={t('storage.dbRestoreAction')}
             cancelLabel={t('common.cancel')}
             confirmColor="error"
@@ -375,7 +403,9 @@ export const StorageOverview = ({
             title={t('storage.purgeOld')}
             description={
               purgeMode === 'before' && purgeBeforeDate
-                ? t('storage.purgeConfirm', { date: purgeBeforeDate.format('YYYY-MM-DD') })
+                ? t('storage.purgeConfirm', {
+                    date: purgeBeforeDate.format('YYYY-MM-DD'),
+                  })
                 : purgeRangeFrom && purgeRangeTo
                   ? t('storage.purgeConfirmRange', {
                       start: purgeRangeFrom.format('YYYY-MM-DD'),

@@ -7,6 +7,7 @@ import yaml
 from app_config.app_config import (
     migrate_legacy_homeassistant_from_weather,
     migrate_legacy_trigger_topics,
+    migrate_processor_classifier_best_eu_path,
 )
 from app_config.trigger_config import (
     get_active_trigger_names,
@@ -58,6 +59,45 @@ def test_migrate_drops_empty_legacy_keys():
     assert migrate_legacy_homeassistant_from_weather(user) is True
     assert "ha_url" not in user["weather"]
     assert "ha_token" not in user["weather"]
+
+
+def test_processor_rodent_migration_from_legacy_squirrel_keys(tmp_path, monkeypatch):
+    """В merged-конфиге: порог и scope из устаревших ключей → Rodent."""
+    from app_config.app_config import app_config
+
+    user_cfg = {
+        "processor": {
+            "min_confidence_binary_squirrel": 0.21,
+            "detector_scope": ["Bird", "Squirrel", "bird"],
+            "adaptive_profiles": {
+                "enabled": False,
+                "night": {
+                    "overrides": {
+                        "min_confidence_binary_squirrel": 0.19,
+                    },
+                },
+            },
+        },
+    }
+    user_config = tmp_path / "user_config.yaml"
+    user_config.write_text(yaml.safe_dump(user_cfg), encoding="utf-8")
+    old = app_config.user_config_file
+    monkeypatch.setattr(app_config, "user_config_file", str(user_config))
+    try:
+        app_config.reload()
+        assert float(app_config.get("processor.min_confidence_binary_rodent")) == 0.21
+        scope = app_config.get("processor.detector_scope") or []
+        assert scope == ["Bird", "Rodent"]
+        rod_o = (
+            (app_config.get("processor.adaptive_profiles") or {})
+            .get("night", {})
+            .get("overrides", {})
+            .get("min_confidence_binary_rodent")
+        )
+        assert rod_o is not None and abs(float(rod_o) - 0.19) < 1e-9
+    finally:
+        app_config.user_config_file = old
+        app_config.reload()
 
 
 def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
@@ -134,3 +174,34 @@ def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
         "scales",
     ]
     assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == "frigate,motion_sensor,scales"
+
+
+def test_migrate_processor_classifier_best_eu_relative_path():
+    user = {
+        "processor": {
+            "models": {"classifier": "models/classification/weights/best_EU.pt"},
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+
+
+def test_migrate_processor_classifier_best_eu_absolute_path():
+    user = {
+        "processor": {
+            "models": {
+                "classifier": "/app/processor/models/classification/weights/best_EU.pt",
+            },
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+
+
+def test_migrate_processor_classifier_unchanged_for_canonical():
+    user = {
+        "processor": {
+            "models": {"classifier": "models/classification/weights/best.pt"},
+        },
+    }
+    assert migrate_processor_classifier_best_eu_path(user) is False

@@ -30,7 +30,8 @@ _log = logging.getLogger(__name__)
 BROKEN_VIDEOS_DELETE_CONFIRMATION = "delete_broken_video_rows"
 BROKEN_VIDEOS_PURGE_CONFIRMATION = "purge_all_broken_video_rows"
 NO_SPECIES_VIDEOS_PURGE_CONFIRMATION = "purge_videos_without_species"
-REVIEW_ONLY_NOISE_SPECIES = ("Bird", "Squirrel", "Rodent")
+# Squirrel — устаревшее имя в БД до канона Rodent
+REVIEW_ONLY_NOISE_SPECIES = ("Bird", "Rodent", "Squirrel")
 
 
 def parse_broken_videos_list_params(args) -> tuple[int, int, int]:
@@ -447,6 +448,38 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         return {"error": f"Failed to read snapshot: {e}", **meta}, 500
     except json.JSONDecodeError as e:
         return {"error": f"Invalid snapshot JSON: {e}", **meta}, 500
+    return {
+        **meta,
+        "available": True,
+        "snapshot": snapshot,
+    }, 200
+
+
+def build_processor_runtime_snapshot_response() -> tuple[dict, int]:
+    rel = os.path.join("diagnostics", "processor_runtime_stats.json").replace("\\", "/")
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    meta: dict = {
+        "snapshot_relative_path": rel,
+        "file_exists": os.path.isfile(path),
+    }
+    if not meta["file_exists"]:
+        return {
+            **meta,
+            "available": False,
+            "reason": "snapshot_file_missing",
+            "note": "Процессор ещё не создал runtime snapshot.",
+        }, 200
+    try:
+        st = os.stat(path)
+        meta["file_size_bytes"] = st.st_size
+        meta["file_mtime_iso"] = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+        meta["file_age_sec"] = round(max(0.0, time.time() - st.st_mtime), 1)
+        with open(path, encoding="utf-8") as f:
+            snapshot = json.load(f)
+    except OSError as e:
+        return {"error": f"Failed to read runtime snapshot: {e}", **meta}, 500
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid runtime snapshot JSON: {e}", **meta}, 500
     return {
         **meta,
         "available": True,

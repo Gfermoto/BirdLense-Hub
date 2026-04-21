@@ -45,9 +45,11 @@ test.describe('Smoke tests', () => {
 
   test('Settings page loads', async ({ page }) => {
     await gotoReady(page, '/settings');
-    await expect(page.getByText(/Update Settings|Обновить настройки|更新设置/i)).toBeVisible({
-      timeout: 15000,
-    });
+    await expect(
+      page.getByRole('heading', {
+        name: /Station settings|Настройки станции|站点设置/i,
+      }),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('Live page loads', async ({ page }) => {
@@ -119,10 +121,17 @@ test.describe('Smoke tests', () => {
     });
   });
 
-  test('Species legacy URL redirects to migration page', async ({ page }) => {
+  test('Species catalog URL shows migration calendar', async ({ page }) => {
     await gotoReady(page, '/species');
-    await expect(page).toHaveURL(/\/migration-calendar/);
-    await expect(page.getByText(/Migration|Мигра|迁移/i).first()).toBeVisible({ timeout: 15000 });
+    await waitMainSpinnerGone(page);
+    await expect(page).toHaveURL(/\/species/);
+    await expect(
+      page
+        .getByText(
+          /Monthly grid|Таблица по месяцам|按月统计|By years|По годам|按年份|Species scope|Каталог видов|品种范围/i,
+        )
+        .first(),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('System page loads', async ({ page }) => {

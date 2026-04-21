@@ -146,7 +146,7 @@ class TestDetectionStrategy(unittest.TestCase):
         self.logger.info("--- Testing TwoStageStrategy Integration ---")
 
         # Без regional_species: список из теста US/NABirds почти не пересекается с EU-классификатором
-        # и оставляет один класс вроде Squirrel — ломает смысл интеграции.
+        # и оставляет один класс вроде Rodent — ломает смысл интеграции.
         strategy = TwoStageStrategy(
             self.binary_model_path,
             self.classifier_model_path,
@@ -300,7 +300,7 @@ class TestDetectionStrategy(unittest.TestCase):
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = self.logger
-        strategy.detector_scope = {"Bird", "Squirrel"}
+        strategy.detector_scope = {"Bird", "Rodent"}
         strategy.min_center_dist = 0.0
         strategy.min_box_size_px = 1
         strategy.blur_threshold = 100.0
@@ -367,7 +367,7 @@ class TestDetectionStrategy(unittest.TestCase):
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = self.logger
-        strategy.detector_scope = {"Bird", "Squirrel"}
+        strategy.detector_scope = {"Bird", "Rodent"}
         strategy.min_center_dist = 0.0
         strategy.min_box_size_px = 1
         strategy.blur_threshold = 100.0
@@ -468,7 +468,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = logging.getLogger("test")
-        strategy.detector_scope = {"Bird", "Squirrel"}
+        strategy.detector_scope = {"Bird", "Rodent"}
         strategy.min_center_dist = 0.0
         strategy.min_box_size_px = 1
         strategy.blur_threshold = 0.0
@@ -487,6 +487,15 @@ class TestBinaryConfHelpers(unittest.TestCase):
             self.skipTest("detection_strategy import failed")
         cfg = {
             "processor.min_confidence_binary_bird": 0.55,
+            "processor.min_confidence_binary_rodent": 0.22,
+        }
+        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg), 0.22)
+
+    def test_conf_floor_reads_legacy_min_confidence_binary_squirrel_key(self):
+        if binary_track_ultralytics_conf_floor is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.min_confidence_binary_bird": 0.55,
             "processor.min_confidence_binary_squirrel": 0.22,
         }
         self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg), 0.22)
@@ -496,9 +505,10 @@ class TestBinaryConfHelpers(unittest.TestCase):
             self.skipTest("detection_strategy import failed")
         cfg = {
             "processor.min_confidence_binary_bird": 0.5,
-            "processor.min_confidence_binary_squirrel": 0.2,
+            "processor.min_confidence_binary_rodent": 0.2,
         }
         self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg), 0.5)
+        self.assertAlmostEqual(per_label_binary_conf_threshold("Rodent", 0.3, cfg), 0.2)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Squirrel", 0.3, cfg), 0.2)
 
     def test_bird_skip_classifier_area(self):
@@ -507,7 +517,7 @@ class TestBinaryConfHelpers(unittest.TestCase):
         cfg = {"processor.bird_skip_classifier_max_area_frac": 0.02}
         self.assertTrue(should_skip_bird_species_classifier("Bird", 0.01, cfg))
         self.assertFalse(should_skip_bird_species_classifier("Bird", 0.05, cfg))
-        self.assertFalse(should_skip_bird_species_classifier("Squirrel", 0.01, cfg))
+        self.assertFalse(should_skip_bird_species_classifier("Rodent", 0.01, cfg))
         self.assertIsNone(bird_skip_classifier_area_limit({}))
 
 
@@ -547,7 +557,7 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = logging.getLogger("test")
-        strategy.detector_scope = {"Bird", "Squirrel"}
+        strategy.detector_scope = {"Bird", "Rodent"}
         strategy.min_center_dist = 0.0
         strategy.min_box_size_px = 1
         strategy.blur_threshold = 0.0

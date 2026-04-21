@@ -29,7 +29,9 @@ export function FeederRelayFields({ form }: Props) {
           <form.Field name="feed.source">
             {(field) => (
               <FormControl fullWidth>
-                <InputLabel id="settings-feed-type-label">{t('settings.feedType')}</InputLabel>
+                <InputLabel id="settings-feed-type-label">
+                  {t('settings.feedType')}
+                </InputLabel>
                 <Select
                   labelId="settings-feed-type-label"
                   value={field.state.value ?? 'none'}
@@ -50,7 +52,7 @@ export function FeederRelayFields({ form }: Props) {
               {source === 'mqtt' && (
                 <>
                   <Grid size={{ xs: 12 }}>
-                    <Alert severity="info" sx={{ mb: 2 }}>
+                    <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                       {t('settings.feedMqttHint')}
                     </Alert>
                   </Grid>
@@ -73,7 +75,7 @@ export function FeederRelayFields({ form }: Props) {
               {source === 'esphome' && (
                 <>
                   <Grid size={{ xs: 12 }}>
-                    <Alert severity="info" sx={{ mb: 2 }}>
+                    <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                       {t('settings.esphomeFeedHint')}
                     </Alert>
                   </Grid>
@@ -81,15 +83,25 @@ export function FeederRelayFields({ form }: Props) {
                     <form.Field name="feed.esphome_type">
                       {(field) => (
                         <FormControl fullWidth>
-                          <InputLabel id="settings-switch-type-label">{t('settings.switchType')}</InputLabel>
+                          <InputLabel id="settings-switch-type-label">
+                            {t('settings.switchType')}
+                          </InputLabel>
                           <Select
                             labelId="settings-switch-type-label"
                             value={field.state.value ?? 'switch'}
                             label={t('settings.switchType')}
-                            onChange={(e) => field.handleChange(e.target.value as 'switch' | 'button')}
+                            onChange={(e) =>
+                              field.handleChange(
+                                e.target.value as 'switch' | 'button',
+                              )
+                            }
                           >
-                            <MenuItem value="switch">{t('settings.switchTypeSwitch')}</MenuItem>
-                            <MenuItem value="button">{t('settings.switchTypeButton')}</MenuItem>
+                            <MenuItem value="switch">
+                              {t('settings.switchTypeSwitch')}
+                            </MenuItem>
+                            <MenuItem value="button">
+                              {t('settings.switchTypeButton')}
+                            </MenuItem>
                           </Select>
                         </FormControl>
                       )}
@@ -133,7 +145,9 @@ export function FeederRelayFields({ form }: Props) {
                         type="number"
                         inputProps={{ min: 1, max: 30 }}
                         value={field.state.value ?? 3}
-                        onChange={(e) => field.handleChange(Number(e.target.value) || 3)}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value) || 3)
+                        }
                         label={t('settings.relaySeconds')}
                         helperText={t('settings.relaySecondsHint')}
                       />

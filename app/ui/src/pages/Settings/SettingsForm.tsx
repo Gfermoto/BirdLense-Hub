@@ -41,16 +41,28 @@ export const SettingsForm = ({
         form.handleSubmit();
       }}
     >
-      <GeneralSection
-        form={form}
-        yamlSafeExportEnabled={yamlSafeExportEnabled}
-        yamlAdminBackupEnabled={yamlAdminBackupEnabled}
-      />
-      <ConnectionsSection form={form} />
-      <CaptureFeederSection form={form} />
-      <NotificationsSection form={form} observedSpecies={observedSpecies} />
-      <IntegrationsSection form={form} />
-      <ProcessorSection form={form} />
+      <Box id="settings-general">
+        <GeneralSection
+          form={form}
+          yamlSafeExportEnabled={yamlSafeExportEnabled}
+          yamlAdminBackupEnabled={yamlAdminBackupEnabled}
+        />
+      </Box>
+      <Box id="settings-connections">
+        <ConnectionsSection form={form} />
+      </Box>
+      <Box id="settings-capture">
+        <CaptureFeederSection form={form} />
+      </Box>
+      <Box id="settings-notifications">
+        <NotificationsSection form={form} observedSpecies={observedSpecies} />
+      </Box>
+      <Box id="settings-integrations">
+        <IntegrationsSection form={form} />
+      </Box>
+      <Box id="settings-recognition">
+        <ProcessorSection form={form} />
+      </Box>
 
       <Button variant="contained" fullWidth type="submit" sx={{ mt: 4 }}>
         {t('settings.save')}

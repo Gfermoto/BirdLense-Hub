@@ -25,7 +25,12 @@ export const SpeciesDistributionChart: React.FC<
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const desktopSize = propSize ?? 450;
-  const chartSize = isMobile ? Math.min(typeof window !== 'undefined' ? window.innerWidth * 0.8 : 280, 400) : desktopSize;
+  const chartSize = isMobile
+    ? Math.min(
+        typeof window !== 'undefined' ? window.innerWidth * 0.8 : 280,
+        400,
+      )
+    : desktopSize;
   const scale = chartSize / 400;
   const outerRadius = isMobile ? 104 : Math.round(150 * scale);
   const innerRadius = isMobile ? 34 : Math.round(50 * scale);
@@ -84,29 +89,29 @@ export const SpeciesDistributionChart: React.FC<
           flexShrink: 0,
         }}
       >
-      <PieChart
-        hideLegend
-        series={[
-          {
-            data: pieData,
-            highlightScope: { fade: 'global', highlight: 'item' },
-            faded: { innerRadius: 24, additionalRadius: -18, color: 'gray' },
-            innerRadius,
-            outerRadius,
-            paddingAngle: 2,
-            cornerRadius: 4,
-          },
-        ]}
-        width={chartSize}
-        height={chartSize}
-        onItemClick={(_, item) => {
-          if (typeof item.dataIndex !== 'number') return;
-          const selected = pieData[item.dataIndex];
-          if (!selected) return;
-          navigateToTimelineForSpecies(Number(selected.id));
-        }}
-        margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      />
+        <PieChart
+          hideLegend
+          series={[
+            {
+              data: pieData,
+              highlightScope: { fade: 'global', highlight: 'item' },
+              faded: { innerRadius: 24, additionalRadius: -18, color: 'gray' },
+              innerRadius,
+              outerRadius,
+              paddingAngle: 2,
+              cornerRadius: 4,
+            },
+          ]}
+          width={chartSize}
+          height={chartSize}
+          onItemClick={(_, item) => {
+            if (typeof item.dataIndex !== 'number') return;
+            const selected = pieData[item.dataIndex];
+            if (!selected) return;
+            navigateToTimelineForSpecies(Number(selected.id));
+          }}
+          margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        />
       </Box>
       <Box
         sx={{

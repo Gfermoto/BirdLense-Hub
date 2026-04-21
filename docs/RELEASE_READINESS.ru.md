@@ -2,6 +2,8 @@
 
 [English](./RELEASE_READINESS.md)
 
+**Короткие ворота релиза:** [Definition of Done](./DEFINITION_OF_DONE.ru.md) (`make ci-local` + `verify-stack` + ручной смоук ~5 минут).
+
 ---
 
 Чеклист перед релизом, деплоем или заявлением «починили / стабилизировали».

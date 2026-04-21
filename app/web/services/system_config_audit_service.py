@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import os
 import yaml
+
+import data_paths
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 from app_config.trigger_config import (
     format_motion_source_summary,
@@ -64,7 +68,27 @@ def _safe_float(value, default: float) -> float:
         return default
 
 
-def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
+def _bool_config(value, *, default: bool) -> bool:
+    """YAML/формы могут отдать строку; для frigate_standalone важно не считать bool(\"false\") == True."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    if s in ("false", "0", "no", "off", ""):
+        return False
+    if s in ("true", "1", "yes", "on"):
+        return True
+    return default
+
+
+def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
+    """Возвращает (recall_tuning, recall_hints, recall_blocking).
+
+    ``recall_hints`` — мягкие подсказки по чувствительности (не ошибки конфига).
+    ``recall_blocking`` — только сочетания, которые реально ломают поток событий
+    (сейчас: Frigate включён без ``mqtt.broker``); попадают в ``config_warnings``.
+    """
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
     motion_source = format_motion_source_summary(active_triggers)
@@ -102,40 +126,43 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
     min_center_dist = max(0.0, min(1.0, _safe_float(app_config_get("processor.min_center_dist", 0.06), 0.06)))
     min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
 
-    warnings: list[str] = []
+    blocking: list[str] = []
+    hints: list[str] = []
     if "frigate" in active_triggers and not mqtt_broker:
-        warnings.append(
+        blocking.append(
             "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
+    frigate_standalone = _bool_config(
+        app_config_get("detection.frigate_standalone_when_no_yolo"),
+        default=True,
+    )
+    if "frigate" in active_triggers and mqtt_broker and not frigate_standalone:
+        hints.append("fusion.FRIGATE_STANDALONE_OFF")
     if check_every_n_frames > 1:
-        warnings.append(
+        hints.append(
             f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
             "1 is the highest-recall setting."
         )
     if opencv_diff_threshold > RECOMMENDED_OPENCV_DIFF_THRESHOLD:
-        warnings.append(
+        hints.append(
             f"motion.opencv_diff_threshold={opencv_diff_threshold} is above the hub default "
             f"({RECOMMENDED_OPENCV_DIFF_THRESHOLD}); higher values react to fewer pixel changes (less motion recall)."
         )
     if opencv_min_contour_area > RECOMMENDED_OPENCV_MIN_CONTOUR_AREA:
-        warnings.append(
+        hints.append(
             f"motion.opencv_min_contour_area={opencv_min_contour_area} is above the hub default "
             f"({RECOMMENDED_OPENCV_MIN_CONTOUR_AREA}); higher values drop smaller motion blobs (e.g. distant birds)."
         )
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
-        warnings.append(
+        hints.append(
             "processor.light_gate_* may skip dusk/night frames before YOLO runs; lower them if you need more recall in low light."
         )
     if binary_imgsz < 640:
-        warnings.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
+        hints.append(f"processor.binary_imgsz={binary_imgsz} is below 640; small feeder birds are easier to miss.")
     if min_center_dist > 0.05:
-        warnings.append(
-            f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge."
-        )
+        hints.append(f"processor.min_center_dist={min_center_dist:.2f} can suppress birds perched near the frame edge.")
     if min_box_size_px > 64:
-        warnings.append(
-            f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes."
-        )
+        hints.append(f"processor.min_box_size_px={min_box_size_px} can drop small tracks; lower it for feeder scenes.")
 
     return (
         {
@@ -151,7 +178,8 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str]]:
             "min_center_dist": min_center_dist,
             "min_box_size_px": min_box_size_px,
         },
-        warnings,
+        hints,
+        blocking,
     )
 
 
@@ -209,16 +237,19 @@ def _scales_mqtt_audit(app_config_get, user_cfg: dict) -> tuple[dict, list[str]]
             "this overrides the default prefix and the processor will not subscribe to "
             f"{DOCUMENTED_SCALES_MQTT_PREFIX}/weight unless mqtt_topic is set. Remove the key or set a real prefix."
         )
-    for key in (
-        "mqtt_topic",
-        "mqtt_bird_present_topic",
-        "mqtt_command_topic",
-    ):
-        if raw_scales.get(key) == "":
-            warnings.append(
-                f'user_config: integrations.scales.{key} is explicitly "" — empty string overrides defaults; '
-                "omit the key if you want derived topics from mqtt_topic_prefix."
-            )
+    # При непустом mqtt_topic_prefix явные "" для этих ключей в user YAML эквивалентны
+    # отсутствию ключа: рантайм всё равно выводит {prefix}/weight|bird_present|command.
+    if not prefix:
+        for key in (
+            "mqtt_topic",
+            "mqtt_bird_present_topic",
+            "mqtt_command_topic",
+        ):
+            if raw_scales.get(key) == "":
+                warnings.append(
+                    f'user_config: integrations.scales.{key} is explicitly "" — empty string overrides defaults; '
+                    "omit the key if you want derived topics from mqtt_topic_prefix."
+                )
 
     if not mqtt_broker:
         warnings.append(
@@ -264,6 +295,38 @@ def load_yaml_mapping(path: str) -> dict:
         return {}
 
 
+def _processor_runtime_hints(app_config_get) -> list[str]:
+    """Подсказки из data/diagnostics/processor_runtime_stats.json (совпадает с логами VPS)."""
+    hints: list[str] = []
+    warn_ms = max(0.0, _safe_float(app_config_get("processor.frame_processing_warn_ms", 450), 450))
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    if not os.path.isfile(path):
+        return hints
+    try:
+        with open(path, encoding="utf-8") as f:
+            snap = json.load(f)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return hints
+    if not isinstance(snap, dict):
+        return hints
+    counters = snap.get("counters") if isinstance(snap.get("counters"), dict) else {}
+    try:
+        slow = int(counters.get("slow_frame_processor_detect_total") or 0)
+    except (TypeError, ValueError):
+        slow = 0
+    if slow > 0 and warn_ms > 0:
+        hints.append(f"processor.runtime.SLOW_FRAMES total={slow} warn_ms={int(warn_ms)}")
+    lat = snap.get("latency_ms") if isinstance(snap.get("latency_ms"), dict) else {}
+    p95_raw = lat.get("frame_processor_detect_p95")
+    try:
+        p95 = float(p95_raw) if p95_raw is not None else None
+    except (TypeError, ValueError):
+        p95 = None
+    if warn_ms > 0 and p95 is not None and p95 >= warn_ms * 0.95:
+        hints.append(f"processor.runtime.DETECT_P95 p95_ms={p95:.1f} warn_ms={int(warn_ms)}")
+    return hints
+
+
 def build_system_config_audit_payload(
     *,
     user_config_file: str,
@@ -295,9 +358,10 @@ def build_system_config_audit_payload(
         gray_pairs.get("Gray-headed Woodpecker") == "Grey-headed Woodpecker"
         and gray_pairs.get("Great Gray Shrike") == "Great Grey Shrike"
     )
-    recall_tuning, recall_warnings = _recall_audit(app_config_get)
+    recall_tuning, recall_hints, recall_blocking = _recall_audit(app_config_get)
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
-    combined_warnings = [*recall_warnings, *scales_warnings]
+    combined_warnings = [*recall_blocking, *scales_warnings]
+    processor_runtime_hints = _processor_runtime_hints(app_config_get)
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -306,7 +370,8 @@ def build_system_config_audit_payload(
             "send_photo": bool(notif.get("send_photo")),
         },
         "recall_tuning": recall_tuning,
-        "recall_warnings": recall_warnings,
+        "recall_warnings": recall_hints,
+        "processor_runtime_hints": processor_runtime_hints,
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
         "config_warnings": combined_warnings,

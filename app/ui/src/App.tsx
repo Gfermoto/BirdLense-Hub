@@ -6,6 +6,8 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import CssBaseline from '@mui/material/CssBaseline';
+import Typography from '@mui/material/Typography';
+import { i18n } from './i18n';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
@@ -24,13 +26,24 @@ const VideoDetails = lazy(() =>
 const FoodManagement = lazy(() =>
   import('./pages/FoodManagement').then((m) => ({ default: m.FoodManagement })),
 );
-const LivePage = lazy(() => import('./pages/Live').then((m) => ({ default: m.LivePage })));
-const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const LivePage = lazy(() =>
+  import('./pages/Live').then((m) => ({ default: m.LivePage })),
+);
+const Settings = lazy(() =>
+  import('./pages/Settings').then((m) => ({ default: m.Settings })),
+);
+const SpeciesDirectoryPage = lazy(() => import('./pages/SpeciesDirectory'));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
-const System = lazy(() => import('./pages/System').then((m) => ({ default: m.System })));
-const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
+const System = lazy(() =>
+  import('./pages/System').then((m) => ({ default: m.System })),
+);
+const Library = lazy(() =>
+  import('./pages/Library').then((m) => ({ default: m.Library })),
+);
 const MigrationCalendar = lazy(() =>
-  import('./pages/MigrationCalendar').then((m) => ({ default: m.MigrationCalendar })),
+  import('./pages/MigrationCalendar').then((m) => ({
+    default: m.MigrationCalendar,
+  })),
 );
 const NotFoundPage = lazy(() => import('./pages/NotFound'));
 
@@ -205,7 +218,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <ProtectedAreaProvider>
             <Box
               sx={{
@@ -223,11 +238,29 @@ function App() {
                 tabIndex={-1}
                 sx={{ flexGrow: 1, pb: 4, outline: 'none' }}
               >
-                <Container maxWidth="xl">
+                <Container maxWidth="xl" sx={{ minWidth: 0 }}>
                   <Suspense
                     fallback={
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                        <CircularProgress />
+                      <Box
+                        role="status"
+                        aria-live="polite"
+                        aria-busy="true"
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 2,
+                          py: 8,
+                        }}
+                      >
+                        <CircularProgress
+                          aria-label={i18n.t('common.loading')}
+                          size={44}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {i18n.t('common.pageLoading')}
+                        </Typography>
                       </Box>
                     }
                   >
@@ -235,16 +268,23 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Overview />} />
                         <Route path="/timeline" element={<TimelinePage />} />
-                        <Route path="/migration-calendar" element={<MigrationCalendar />} />
+                        <Route
+                          path="/migration-calendar"
+                          element={<MigrationCalendar />}
+                        />
                         <Route path="/videos/:id" element={<VideoDetails />} />
                         <Route path="/food" element={<FoodManagement />} />
+                        <Route path="/species" element={<MigrationCalendar />} />
                         <Route
-                          path="/species"
-                          element={<Navigate to="/migration-calendar" replace />}
+                          path="/species-directory"
+                          element={<SpeciesDirectoryPage />}
                         />
                         <Route path="/live" element={<LivePage />} />
                         <Route path="/settings" element={<Settings />} />
-                        <Route path="/species/:id" element={<SpeciesSummary />} />
+                        <Route
+                          path="/species/:id"
+                          element={<SpeciesSummary />}
+                        />
                         <Route
                           path="/unknowns"
                           element={<Navigate to="/timeline?review=1" replace />}
@@ -263,7 +303,9 @@ function App() {
             </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>
-        <ReactQueryDevtools initialIsOpen={false} />
+        {import.meta.env.DEV ? (
+          <ReactQueryDevtools initialIsOpen={false} />
+        ) : null}
       </ThemeProvider>
     </QueryClientProvider>
   );

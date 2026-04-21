@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.3.5-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.3.6-blue.svg)](./CHANGELOG.md) [Русский](./README.ru.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 ### Short description
 
@@ -18,18 +18,18 @@ Bird monitoring for feeders, gardens, and field setups: computer vision and audi
 
 ### Model info
 
-Two components: **detector** (bird/squirrel in frame) and **classifier** (bird species).
+Two components: **detector** (bird or rodent in frame) and **classifier** (bird species).
 
 | Component | Version | Trained on | Note |
 |-----------|---------|------------|------|
-| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/squirrel — unchanged in EU training |
+| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Binary bird/rodent (weights may still name the rodent class “squirrel”; hub maps to Rodent) — unchanged in EU training |
 | **Classifier** | YOLO11n-cls | birds-525 + iNaturalist (≈490) | EU default; US/NABirds is optional backup |
 
 **Current model:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
 
 **EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
 
-**Runtime weights:** the active runtime is the two-stage pair at `app/processor/models/detection/weights/best.pt` and `app/processor/models/classification/weights/best.pt`. In `app/processor/models/`, keep only runtime artifacts like `best.pt` and `class_names.txt`; CSVs, `args.yaml`, NCNN exports, and notebook checkpoints are training leftovers and can be removed or regenerated. `app/yolo11n.pt` is legacy compatibility-only and is fetched only with `scripts/fetch-processor-weights.sh --legacy-single-stage`.
+**Runtime weights:** two-stage `app/processor/models/detection/weights/best.pt` (binary from zip in fork [AleksandrRogachev94/BirdLense `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) and `app/processor/models/classification/weights/best.pt` ([`gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu) on Hugging Face). `scripts/fetch-processor-weights.sh` fetches both. Keep `class_names.txt` aligned with the classifier. `app/yolo11n.pt` is legacy-only (`--legacy-single-stage`).
 
 **Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
 
@@ -95,6 +95,18 @@ For a one-step Docker bootstrap, run `./install.sh` from the repository root. It
 - **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
 - **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+### First-time contributor CI (same as Actions)
+
+1. **Node.js ≥ 22** (see `app/ui/package.json` `engines` and `app/ui/.nvmrc`).
+2. From repo root run **`make ci-local`** — it creates **`.venv-ci`** if missing and executes [`scripts/ci-full-local.sh`](./scripts/ci-full-local.sh) (single source of truth for [`.github/workflows/ci-pr.yml`](./.github/workflows/ci-pr.yml)).
+3. Web pytest only (matches CI `PYTHONPATH`):
+
+```bash
+cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
+```
+
+**UI map (where to click):** [docs/UI_SETTINGS_MAP.md](./docs/UI_SETTINGS_MAP.md) · [RU](./docs/UI_SETTINGS_MAP.ru.md)
 - **Weights workflow:** `scripts/fetch-processor-weights.sh` prefers the two-stage detector/classifier paths; use `--legacy-single-stage` only if you explicitly need the compatibility `app/yolo11n.pt` asset from GitHub Release `weights/v1`.
 
 ## Requirements
@@ -125,6 +137,8 @@ From repo root:
 | `make start` | Start container |
 | `make stop` | Stop container |
 | `make logs` | View logs |
+
+**Release gate (short):** [Definition of Done](./docs/DEFINITION_OF_DONE.md) · [RU](./docs/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [RELEASE_READINESS](./docs/RELEASE_READINESS.md).
 
 From `app/`:
 

@@ -8,7 +8,11 @@ import { SpeciesVisit } from '../../types';
 import { StatCard } from '../../components/StatCard';
 import { formatDuration } from '../../utils/timeUtils';
 
-export const TimelineStats = memo(function TimelineStats({ visits }: { visits: SpeciesVisit[] }) {
+export const TimelineStats = memo(function TimelineStats({
+  visits,
+}: {
+  visits: SpeciesVisit[];
+}) {
   const { t } = useTranslation();
   const uniqueSpecies = new Set(visits.map((visit) => visit.species.id)).size;
   const totalVisits = visits.length;

@@ -1,0 +1,23 @@
+# Стартовый фрагмент для включения ночного adaptive-профиля процессора.
+# Не подменяет весь user_config: скопируйте блок `processor.adaptive_profiles` в свой
+# app/app_config/user_config.yaml или смержьте вручную (хаб перечитывает конфиг при старте).
+#
+# Профиль `night` включается при низкой яркости и/или контрасте кадра (см. default_config).
+# После включения смотрите метрики и при необходимости подкрутите overrides.
+
+processor:
+  adaptive_profiles:
+    enabled: true
+    night:
+      max_brightness: 18
+      max_contrast: 12
+      overrides:
+        light_gate_min_brightness: 8
+        light_gate_min_contrast: 6
+        min_confidence_binary: 0.24
+        min_confidence_binary_bird: 0.34
+        min_track_duration: 0.7
+        min_confidence_to_process: 0.34
+        min_box_size_px: 40
+        min_center_dist: 0.03
+        max_classifications_per_frame: 4

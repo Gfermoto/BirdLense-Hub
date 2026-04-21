@@ -20,11 +20,7 @@ import { BASE_API_URL, exportDataset, retroExportDataset } from '../../api/api';
 import { LibraryCardShell } from './LibraryCardShell';
 import { formatBytes, getDayjsLocale, type StorageDay } from './libraryShared';
 
-export function DatasetExportsCard({
-  simple = false,
-}: {
-  simple?: boolean;
-}) {
+export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
   const { t, i18n } = useTranslation();
   const [exportingDataset, setExportingDataset] = useState(false);
   const [retroExporting, setRetroExporting] = useState(false);
@@ -170,18 +166,22 @@ export function DatasetExportsCard({
       >
         <Stack spacing={2.5}>
           {error && (
-            <Alert severity="error" onClose={() => setError(null)}>
+            <Alert severity="error" variant="outlined" onClose={() => setError(null)}>
               <AlertTitle>{t('common.error')}</AlertTitle>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" onClose={() => setSuccess(null)}>
+            <Alert severity="success" variant="outlined" onClose={() => setSuccess(null)}>
               <AlertTitle>{t('common.success')}</AlertTitle>
               {success}
             </Alert>
           )}
+
+          <Alert severity="info" variant="outlined">
+            {t('library.datasetExportCompositionHint')}
+          </Alert>
 
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Button
@@ -284,7 +284,9 @@ export function DatasetExportsCard({
                   control={
                     <Checkbox
                       checked={readyForTrain}
-                      onChange={(event) => setReadyForTrain(event.target.checked)}
+                      onChange={(event) =>
+                        setReadyForTrain(event.target.checked)
+                      }
                       size="small"
                     />
                   }
@@ -339,7 +341,9 @@ export function DatasetExportsCard({
             </Stack>
           ) : null}
 
-          <Alert severity="info">{t('library.datasetToolsLibraryHint')}</Alert>
+          <Alert severity="info" variant="outlined">
+            {t('library.datasetToolsLibraryHint')}
+          </Alert>
         </Stack>
       </LibraryCardShell>
     </LocalizationProvider>

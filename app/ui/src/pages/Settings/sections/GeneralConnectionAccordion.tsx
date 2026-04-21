@@ -256,7 +256,7 @@ export function GeneralConnectionAccordion({ form }: Props) {
                 {(videoSource) =>
                   (videoSource ?? 'go2rtc').toLowerCase() === 'file' ? (
                     <Grid size={{ xs: 12 }}>
-                      <Alert severity="info" sx={{ mb: 1 }}>
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                         {t('settings.videoFileModeActiveHint')}{' '}
                         <RouterLink to="/library#file-replay">
                           {t('settings.videoFileModeLibraryLink')}

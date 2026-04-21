@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from collections import Counter
 from typing import Any, Callable, Optional
 
 from argparse import Namespace
@@ -15,6 +16,7 @@ from app_config.trigger_config import format_trigger_display_line, get_active_tr
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
+from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from recording_finalize import finalize_motion_recording
 
 logger = logging.getLogger(__name__)
@@ -150,6 +152,7 @@ class MotionRecordingSession:
             self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
+            inc_counter("recording_session_total")
             file_mode = (app_config.get("video.source") or "").strip().lower() == "file"
             try:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
@@ -162,6 +165,8 @@ class MotionRecordingSession:
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
             }
+            runtime_profile_counts: Counter[str] = Counter()
+            runtime_profile_overrides: dict[str, dict] = {}
             frame_n = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
@@ -195,6 +200,12 @@ class MotionRecordingSession:
                     processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
                 if run_stats.get("light_gate_blocked"):
                     runtime_signals["low_light_blocked_frames"] += 1
+                runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
+                if runtime_profile:
+                    runtime_profile_counts[runtime_profile] += 1
+                    overrides = run_stats.get("profile_overrides") or {}
+                    if isinstance(overrides, dict) and overrides:
+                        runtime_profile_overrides[runtime_profile] = dict(overrides)
 
                 raw_yolo_detections = bool(has_detections)
                 has_detections = self._has_session_activity(
@@ -222,6 +233,18 @@ class MotionRecordingSession:
         try:
             _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
             _active_names = get_active_trigger_names(app_config, mqtt_broker=_mqtt_b)
+            dominant_runtime_profile = None
+            dominant_runtime_overrides = {}
+            if runtime_profile_counts:
+                dominant_runtime_profile = runtime_profile_counts.most_common(1)[0][0]
+                dominant_runtime_overrides = dict(runtime_profile_overrides.get(dominant_runtime_profile) or {})
+                self.decision_maker.apply_runtime_overrides(dominant_runtime_overrides)
+            session_duration_ms = max(0.0, (end_time - start_time).total_seconds() * 1000.0)
+            observe_timing("recording_session_duration", session_duration_ms)
+            set_gauge("last_session_frames_seen", runtime_signals["frames_seen"])
+            set_gauge("last_session_low_light_blocked_frames", runtime_signals["low_light_blocked_frames"])
+            if dominant_runtime_profile:
+                set_gauge("last_session_runtime_profile", dominant_runtime_profile)
             finalize_motion_recording(
                 self.api,
                 self.motion_detector,
@@ -247,10 +270,13 @@ class MotionRecordingSession:
                         "yolo_ran": runtime_signals["yolo_frames_ran"] > 0,
                         "yolo_track_found": runtime_signals["yolo_frames_with_tracks"] > 0,
                         "session_extended_by_frigate": runtime_signals["session_extended_by_frigate_only"] > 0,
+                        "runtime_profile": dominant_runtime_profile,
+                        "runtime_profile_frames": dict(runtime_profile_counts),
                     },
                 },
             )
         except Exception as e:
+            inc_counter("recording_finalize_failures_total")
             logger.error(e)
 
         return bool(self.args.input)

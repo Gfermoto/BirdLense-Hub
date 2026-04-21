@@ -36,10 +36,19 @@ export const SunHorizon = ({ sunTimes }: SunHorizonProps) => {
       }}
     >
       <Box>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontSize: '0.75rem' }}
+        >
           {t('weather.dawn')} {dawn}
         </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.8rem' }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontSize: '0.8rem' }}
+        >
           {t('weather.sunrise')}
         </Typography>
         <Typography variant="body2" fontWeight={600}>
@@ -47,7 +56,12 @@ export const SunHorizon = ({ sunTimes }: SunHorizonProps) => {
         </Typography>
       </Box>
       <Box>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.8rem' }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontSize: '0.8rem' }}
+        >
           {t('weather.noon')}
         </Typography>
         <Typography variant="body2" fontWeight={600}>
@@ -55,10 +69,19 @@ export const SunHorizon = ({ sunTimes }: SunHorizonProps) => {
         </Typography>
       </Box>
       <Box>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontSize: '0.75rem' }}
+        >
           {t('weather.dusk')} {dusk}
         </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.8rem' }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontSize: '0.8rem' }}
+        >
           {t('weather.sunset')}
         </Typography>
         <Typography variant="body2" fontWeight={600}>

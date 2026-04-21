@@ -25,17 +25,26 @@ export function HomeAssistantSection({ form }: Props) {
         {t('settings.accordionHomeAssistant')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
           <Box
             component="legend"
-            sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
           >
             {t('settings.accordionHomeAssistant')}
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {t('settings.accordionHomeAssistantDesc')}
           </Typography>
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
             {t('settings.haEnvOverrideHint')}
           </Alert>
           <Grid container spacing={2}>

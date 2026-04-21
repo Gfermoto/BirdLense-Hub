@@ -11,10 +11,13 @@ export const useVideoControl = (
     setProgress(seconds);
   }, []);
 
-  const handleSeek = useCallback((time: number) => {
-    if (videoRef.current) videoRef.current.currentTime = time;
-    setProgress(time);
-  }, [videoRef]);
+  const handleSeek = useCallback(
+    (time: number) => {
+      if (videoRef.current) videoRef.current.currentTime = time;
+      setProgress(time);
+    },
+    [videoRef],
+  );
 
   const togglePlayPause = useCallback(() => {
     setPlaying((prev) => !prev);

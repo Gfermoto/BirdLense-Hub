@@ -25,6 +25,8 @@ import paho.mqtt.client as mqtt
 
 from app_config.app_config import app_config
 from birdnet_merge_key import birdnet_merge_key
+from frigate_bbox import frigate_after_to_normalized_xyxy
+from processor_runtime_stats import inc_counter, set_gauge
 from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -688,12 +690,14 @@ class MQTTEventAggregator:
         if reason_code == 0:
             self._connected = True
             self._last_connected_at = time.time()
+            set_gauge("mqtt_connected", 1)
             logger.info("MQTT aggregator connected")
             if self.ha_discovery:
                 time.sleep(0.3)
                 self._publish_ha_discovery()
         else:
             self._connected = False
+            set_gauge("mqtt_connected", 0)
             logger.warning(f"MQTT aggregator connect failed: {reason_code}")
 
     def _publish_ha_discovery(self):
@@ -841,6 +845,7 @@ class MQTTEventAggregator:
 
     def _on_disconnect(self, client, userdata, *args):
         self._connected = False
+        set_gauge("mqtt_connected", 0)
         reason = args[0] if args else "unknown"
         logger.warning(f"MQTT aggregator disconnected: {reason}")
 
@@ -850,13 +855,16 @@ class MQTTEventAggregator:
                 self._publish_queue.get_nowait()
             except queue.Empty:
                 break
+        set_gauge("mqtt_outbound_queue_depth", 0)
 
     def _enqueue_publish(self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False) -> None:
         if self._stopped:
             return
         try:
             self._publish_queue.put_nowait((topic, payload, qos, retain))
+            set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
         except queue.Full:
+            inc_counter("mqtt_outbound_drops_total")
             logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
 
     def _drain_publish_queue(self, max_items: int = 500) -> None:
@@ -871,7 +879,9 @@ class MQTTEventAggregator:
             try:
                 self._client.publish(topic, payload, qos=qos, retain=retain)
             except Exception as e:
+                inc_counter("mqtt_outbound_publish_errors_total")
                 logger.warning("MQTT publish failed (drain): %s", e)
+        set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
 
     def _on_message(self, client, userdata, msg):
         ev = None
@@ -891,6 +901,10 @@ class MQTTEventAggregator:
                     plen,
                 )
             if ev:
+                if isinstance(after, dict):
+                    bbox_norm = frigate_after_to_normalized_xyxy(after)
+                    if bbox_norm:
+                        ev["frigate_bbox_norm"] = bbox_norm
                 label = ev.get("label", "")
                 sub_label = ev.get("sub_label", "")
                 species = ev.get("species", "")

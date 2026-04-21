@@ -200,6 +200,37 @@ def migrate_legacy_trigger_topics(user_config: dict) -> bool:
     return changed
 
 
+def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
+    """Заменяет ошибочный путь best_EU.pt на канонический best.pt.
+
+    В образе и в HF EU-веса лежат как models/classification/weights/best.pt.
+    Старые подсказки UI упоминали best_EU.pt как «пример» — часть user_config
+    могла сохраниться с этим именем.
+    """
+    if not isinstance(user_config, dict):
+        return False
+    processor = user_config.get('processor')
+    if not isinstance(processor, dict):
+        return False
+    models = processor.get('models')
+    if not isinstance(models, dict):
+        return False
+    cur = models.get('classifier')
+    if not isinstance(cur, str):
+        return False
+    s = cur.strip()
+    if not s:
+        return False
+    canon = 'models/classification/weights/best.pt'
+    if s == 'models/classification/weights/best_EU.pt':
+        models['classifier'] = canon
+        return True
+    if s.replace('\\', '/').endswith('/models/classification/weights/best_EU.pt'):
+        models['classifier'] = canon
+        return True
+    return False
+
+
 class AppConfig:
     def __init__(self, user_config='user_config.yaml', default_config='default_config.yaml'):
         self.user_config_file = f"{os.path.dirname(__file__)}/{user_config}"
@@ -262,10 +293,22 @@ class AppConfig:
                     )
                 except OSError as e:
                     logger.warning('Could not persist HA legacy key migration: %s', e)
+            if migrate_processor_classifier_best_eu_path(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated processor.models.classifier best_EU.pt → best.pt in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning(
+                        'Could not persist classifier path migration: %s', e
+                    )
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
         self._enforce_confidence_floors(merged)
+        self._cleanup_legacy_processor_keys(merged)
         apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
         for msg in config_issues:
@@ -297,6 +340,50 @@ class AppConfig:
             return float(value)
         except (TypeError, ValueError):
             return float(fallback)
+
+    @staticmethod
+    def _cleanup_legacy_processor_keys(config):
+        """Удаляет устаревшие ключи процессора (single_stage), если они остались в user_config."""
+        if not isinstance(config, dict):
+            return
+        processor = config.get('processor')
+        if not isinstance(processor, dict):
+            return
+        # Удаляем legacy-ключи, которые больше не должны редактироваться в UI
+        processor.pop('single_stage_coco_animals_only_auto', None)
+        models = processor.get('models')
+        if isinstance(models, dict):
+            models.pop('single_stage', None)
+        # Убедимся, что detection_strategy по умолчанию two_stage
+        if processor.get('detection_strategy') not in ('two_stage', 'single_stage'):
+            processor['detection_strategy'] = 'two_stage'
+        # Канон Rodent: явный min_confidence_binary_squirrel в merge (обычно из user YAML) перекрывает rodent
+        sq_thr = processor.get('min_confidence_binary_squirrel')
+        if sq_thr is not None:
+            processor['min_confidence_binary_rodent'] = sq_thr
+        scope = processor.get('detector_scope')
+        if isinstance(scope, list) and scope:
+            seen: set[str] = set()
+            new_scope: list[str] = []
+            for raw in scope:
+                s = str(raw or '').strip()
+                if not s:
+                    continue
+                canon = 'Rodent' if s.lower() == 'squirrel' else s
+                key = canon.lower()
+                if key not in seen:
+                    seen.add(key)
+                    new_scope.append(canon)
+            processor['detector_scope'] = new_scope
+        profiles = processor.get('adaptive_profiles')
+        if isinstance(profiles, dict):
+            night = profiles.get('night')
+            if isinstance(night, dict):
+                overrides = night.get('overrides')
+                if isinstance(overrides, dict):
+                    legacy_r = overrides.get('min_confidence_binary_squirrel')
+                    if legacy_r is not None:
+                        overrides['min_confidence_binary_rodent'] = legacy_r
 
     @classmethod
     def _enforce_confidence_floors(cls, config):

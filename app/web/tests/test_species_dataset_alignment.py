@@ -280,6 +280,179 @@ def test_alignment_does_not_treat_allowlist_only_species_as_classifier_match(app
     assert duck_name in names
 
 
+def test_alignment_hint_when_allowlist_and_classifier_counts_differ(app, monkeypatch):
+    import services.species_dataset_alignment_service as mod
+
+    monkeypatch.setattr(
+        mod,
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
+    )
+    monkeypatch.setattr(
+        mod,
+        "load_catalog_allowlist_names",
+        lambda _get: ["Parus major (Great Tit)", "Extra allowlist row"],
+    )
+    with app.app_context():
+        if not Species.query.filter_by(name="Parus major (Great Tit)").first():
+            db.session.add(Species(name="Parus major (Great Tit)"))
+            db.session.commit()
+        rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
+    hint = rpt.get("hints", {}).get("allowlist_vs_classifier_count", "")
+    assert "allowlist lines=2" in hint
+    assert "classifier classes=1" in hint
+    assert "dump_classifier_allowlist" in hint
+
+
+def test_alignment_ignores_birds_parent_not_in_classifier(app, monkeypatch):
+    """Родитель каталога «Birds» не сравнивается с классами YOLO."""
+    import services.species_dataset_alignment_service as mod
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr(
+        mod,
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
+    )
+
+    with app.app_context():
+        birds = Species.query.filter_by(name="Birds").first()
+        created = False
+        if not birds:
+            birds = Species(name="Birds")
+            db.session.add(birds)
+            db.session.flush()
+            created = True
+        video = Video(
+            processor_version="t",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            video_path="align-test/birds-parent.mp4",
+        )
+        db.session.add(video)
+        db.session.flush()
+        db.session.add(
+            VideoSpecies(
+                video_id=video.id,
+                species_id=birds.id,
+                start_time=0.0,
+                end_time=1.0,
+                confidence=0.8,
+                source="video",
+            ),
+        )
+        db.session.commit()
+        try:
+            rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
+        finally:
+            VideoSpecies.query.filter_by(video_id=video.id).delete()
+            Video.query.filter_by(id=video.id).delete()
+            if created:
+                Species.query.filter_by(id=birds.id).delete()
+            db.session.commit()
+
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
+    assert "Birds" not in names
+
+
+def test_alignment_generic_bird_flagged_when_not_in_classifier(app, monkeypatch):
+    """Вид «Bird» участвует в сравнении: без класса в модели — в рассогласовании."""
+    import services.species_dataset_alignment_service as mod
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr(
+        mod,
+        "load_classifier_labels_or_error",
+        lambda _path: (["Parus_major_(Great_Tit)"], None),
+    )
+
+    with app.app_context():
+        b = Species.query.filter_by(name="Bird").first()
+        created = False
+        if not b:
+            b = Species(name="Bird")
+            db.session.add(b)
+            db.session.flush()
+            created = True
+        video = Video(
+            processor_version="t",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            video_path="align-test/generic-bird.mp4",
+        )
+        db.session.add(video)
+        db.session.flush()
+        db.session.add(
+            VideoSpecies(
+                video_id=video.id,
+                species_id=b.id,
+                start_time=0.0,
+                end_time=1.0,
+                confidence=0.8,
+                source="video",
+            ),
+        )
+        db.session.commit()
+        try:
+            rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
+        finally:
+            VideoSpecies.query.filter_by(video_id=video.id).delete()
+            Video.query.filter_by(id=video.id).delete()
+            if created:
+                Species.query.filter_by(id=b.id).delete()
+            db.session.commit()
+
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
+    assert "Bird" in names
+
+
+def test_alignment_apostrophe_variants_match_classifier(app, monkeypatch):
+    """БД с ASCII apostrophe, метка YOLO с типографским U+2019 — один ключ."""
+    import services.species_dataset_alignment_service as mod
+    from datetime import datetime, timezone
+
+    label = "Abert\u2019s_Towhee_ALIGN_APOST"  # RIGHT SINGLE QUOTATION MARK
+    catalog_name = "Abert's Towhee ALIGN APOST"
+    monkeypatch.setattr(
+        mod,
+        "load_classifier_labels_or_error",
+        lambda _path: ([label], None),
+    )
+
+    with app.app_context():
+        sp = Species(name=catalog_name)
+        db.session.add(sp)
+        db.session.flush()
+        v = Video(
+            processor_version="t",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            video_path="align-test/apost.mp4",
+        )
+        db.session.add(v)
+        db.session.flush()
+        vs = VideoSpecies(
+            video_id=v.id,
+            species_id=sp.id,
+            start_time=0.0,
+            end_time=1.0,
+            confidence=0.9,
+            source="video",
+        )
+        db.session.add(vs)
+        db.session.commit()
+        try:
+            rpt = mod.build_classifier_dataset_alignment_report(db.session, app_config.get)
+        finally:
+            VideoSpecies.query.filter_by(id=vs.id).delete()
+            Video.query.filter_by(id=v.id).delete()
+            Species.query.filter_by(id=sp.id).delete()
+            db.session.commit()
+
+    names = {row["name"] for row in rpt["in_catalog_not_in_classifier"]}
+    assert catalog_name not in names
+
+
 def test_alignment_ignores_service_species_not_in_classifier(app, monkeypatch):
     import services.species_dataset_alignment_service as mod
     from datetime import datetime, timezone
@@ -341,7 +514,7 @@ def test_alignment_ignores_service_dataset_folders(app, monkeypatch):
     monkeypatch.setattr(
         mod,
         "_dataset_split_class_names",
-        lambda _get: {"Rodent", "Unknown"},
+        lambda _get: {"Rodent", "Unknown", "Birds"},
     )
 
     with app.app_context():

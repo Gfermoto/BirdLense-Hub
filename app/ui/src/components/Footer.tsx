@@ -54,10 +54,15 @@ export function Footer() {
         borderTop: 1,
         borderColor: 'divider',
         bgcolor: (theme) =>
-          theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+          theme.palette.mode === 'dark'
+            ? 'rgba(255,255,255,0.02)'
+            : 'rgba(0,0,0,0.02)',
       }}
     >
-      <Container maxWidth="xl" sx={{ py: { xs: 1.25, sm: 1.5 }, px: { xs: 2, sm: 3 } }}>
+      <Container
+        maxWidth="xl"
+        sx={{ py: { xs: 1.25, sm: 1.5 }, px: { xs: 2, sm: 3 } }}
+      >
         <Box
           sx={{
             display: 'flex',

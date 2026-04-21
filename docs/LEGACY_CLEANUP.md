@@ -23,7 +23,7 @@ Current inventory
 |------|--------|-------|
 | `app/yolo11n.pt` | keep-for-now | Compatibility-only asset. Use `scripts/fetch-processor-weights.sh --legacy-single-stage` when needed. |
 | `app/processor/models/detection/weights/best.pt` | active | Runtime detector weight for the two-stage pipeline. |
-| `app/processor/models/classification/weights/best.pt` | active | Runtime classifier weight for the two-stage pipeline. |
+| `app/processor/models/classification/weights/best.pt` | active | EU runtime classifier ([HF birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu)). |
 | `app/processor/models/**/results.csv`, `args.yaml`, NCNN exports | removed | Training/export leftovers cleaned from the tree. |
 | `datasets/birdlense_export/` | keep-for-now | Generated export directory. Leave until a dedicated data-retention decision is made. |
 | `datasets/birdlense_ready_flat.zip` | keep-for-now | Regenerable artifact; do not delete without a fresh export/rebuild plan. |
