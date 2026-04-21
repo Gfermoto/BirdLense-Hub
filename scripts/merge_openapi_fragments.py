@@ -70,6 +70,18 @@ FRAG_UI = ROOT / "app" / "web" / "_openapi_paths_remaining.yaml"
 FRAG_PR = ROOT / "app" / "web" / "_openapi_processor_paths.yaml"
 GEN = ROOT / "scripts" / "generate_openapi_remaining_paths.py"
 
+# Bulk UI paths from generate_openapi_remaining_paths.py always start with ``/cameras``.
+# Manual paths in openapi.yaml must appear *before* this key so merge stays idempotent.
+_FRAG_UI_START = "\n  /cameras:\n"
+
+
+def _strip_generated_paths(head: str) -> str:
+    """Drop a previously merged fragment (and accidental duplicates) before re-inserting."""
+    idx = head.find(_FRAG_UI_START)
+    if idx == -1:
+        return head
+    return head[:idx].rstrip() + "\n"
+
 
 def main() -> None:
     subprocess.run([sys.executable, str(GEN)], check=True)
@@ -78,6 +90,7 @@ def main() -> None:
     if marker not in text:
         raise SystemExit("components: marker not found")
     head, tail = text.split(marker, 1)
+    head = _strip_generated_paths(head)
     # Do not use strip() — it removes leading indentation from the first path key.
     ui = FRAG_UI.read_text(encoding="utf-8").rstrip("\n")
     pr = FRAG_PR.read_text(encoding="utf-8").rstrip("\n")
