@@ -6,6 +6,8 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import CssBaseline from '@mui/material/CssBaseline';
+import Typography from '@mui/material/Typography';
+import { i18n } from './i18n';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ProtectedAreaProvider } from './contexts/ProtectedAreaContext';
 import { Navigation } from './components/Navigation';
@@ -240,13 +242,25 @@ function App() {
                   <Suspense
                     fallback={
                       <Box
+                        role="status"
+                        aria-live="polite"
+                        aria-busy="true"
                         sx={{
                           display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
                           justifyContent: 'center',
+                          gap: 2,
                           py: 8,
                         }}
                       >
-                        <CircularProgress />
+                        <CircularProgress
+                          aria-label={i18n.t('common.loading')}
+                          size={44}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {i18n.t('common.pageLoading')}
+                        </Typography>
                       </Box>
                     }
                   >
@@ -260,8 +274,9 @@ function App() {
                         />
                         <Route path="/videos/:id" element={<VideoDetails />} />
                         <Route path="/food" element={<FoodManagement />} />
+                        <Route path="/species" element={<MigrationCalendar />} />
                         <Route
-                          path="/species"
+                          path="/species-directory"
                           element={<SpeciesDirectoryPage />}
                         />
                         <Route path="/live" element={<LivePage />} />

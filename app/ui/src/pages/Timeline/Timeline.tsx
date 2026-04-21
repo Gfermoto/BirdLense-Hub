@@ -1,7 +1,9 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SpeciesVisit } from '../../types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { VisitCard } from '../../components/VisitCard';
@@ -62,8 +64,17 @@ export const Timeline = memo(function Timeline({
 }: {
   visits: SpeciesVisit[];
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  if (!visits.length) {
+    return (
+      <Alert severity="info" variant="outlined" sx={{ py: 2 }}>
+        {t('timeline.emptyVisits')}
+      </Alert>
+    );
+  }
 
   return (
     <Box

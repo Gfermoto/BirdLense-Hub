@@ -93,10 +93,18 @@ export function ProtectedAreaProvider({
     }
   }, [queryClient]);
 
+  /**
+   * После verify-password `invalidateQueries(check-access)` ещё не вернулся, а в кэше
+   * может лежать старая сессия (например contributor) — тогда нельзя брать роль только
+   * из checkResult: иначе isAdmin остаётся false и «Станция» не открывается.
+   * Пока локально разблокировали с паролем — доверяем roleState до прихода свежего check-access.
+   */
+  const serverRole: 'admin' | 'contributor' | null =
+    checkResult?.unlocked === true
+      ? ('role' in checkResult ? checkResult.role : undefined) || 'admin'
+      : null;
   const role =
-    checkResult?.unlocked && 'role' in checkResult
-      ? checkResult.role || 'admin'
-      : roleState;
+    unlockedState && roleState != null ? roleState : serverRole;
 
   const unlocked =
     !requiresPassword ||

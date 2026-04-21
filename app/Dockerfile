@@ -51,8 +51,11 @@ COPY app/shared/ ./shared/
 COPY app/processor/ ./processor/
 COPY app/app_config/ ./app_config/
 COPY app/scripts/ ./scripts/
-# Скрипт из корня репо (контекст сборки — родитель app/)
+# Скрипты из корня репо (контекст сборки — родитель app/).
+# Список обязательных путей дублируется в web/services/fusion_training_service.py:
+# REQUIRED_SHIPPED_SCRIPT_RELPATHS — при добавлении subprocess-скрипта расширьте оба места.
 COPY scripts/export_fusion_training_data.py ./scripts/
+COPY scripts/train_fusion.py ./scripts/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
 ARG BINARY_ZIP_URL=https://raw.githubusercontent.com/AleksandrRogachev94/BirdLense/main/app/processor/models/detection/nabirds_yolo11n_binary.zip

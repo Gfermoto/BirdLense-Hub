@@ -14,11 +14,10 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
-import { fetchBirdDirectory } from '../../api/api';
+import { fetchBirdDirectory, resolveImageUrl } from '../../api/api';
 import { PageHeader } from '../../components/PageHeader';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { resolveImageUrl } from '../../api/api';
 
 export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
@@ -98,11 +97,7 @@ export function SpeciesDirectoryPage() {
                 <Grid key={species.id} size={{ xs: 12, md: 6, xl: 4 }}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        alignItems="flex-start"
-                      >
+                      <Stack direction="row" spacing={2} alignItems="flex-start">
                         <Box
                           sx={{
                             width: 56,
@@ -121,11 +116,7 @@ export function SpeciesDirectoryPage() {
                               component="img"
                               src={resolveImageUrl(species.image_url)}
                               alt={species.name}
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                              }}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           ) : (
                             <SpeciesIcon speciesName={species.name} size={34} />
@@ -133,12 +124,7 @@ export function SpeciesDirectoryPage() {
                         </Box>
                         <Box sx={{ minWidth: 0, flex: 1 }}>
                           <Typography variant="h6">{species.name}</Typography>
-                          <Stack
-                            direction="row"
-                            flexWrap="wrap"
-                            gap={1}
-                            sx={{ mt: 1 }}
-                          >
+                          <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 1 }}>
                             <Chip
                               size="small"
                               color={species.active ? 'success' : 'default'}

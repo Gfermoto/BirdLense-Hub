@@ -15,7 +15,12 @@ import routes.ui_system_jobs_state as job_state
 from app_config.app_config import AppConfig, app_config
 from data_paths import data_dir
 from models import ActivityLog, db
-from services.fusion_training_service import repo_root, run_fusion_eval_job, run_fusion_export_job
+from services.fusion_training_service import (
+    ensure_shipped_fusion_layout_for_training,
+    repo_root,
+    run_fusion_eval_job,
+    run_fusion_export_job,
+)
 from services.processor_restart_service import write_processor_restart_flag
 
 _MIN_CORRECTED_EXAMPLES = 10
@@ -223,8 +228,6 @@ def _training_script_path() -> Path:
 
 def _run_training_subprocess(*, source_csv: str, out_dir: Path) -> subprocess.CompletedProcess[str]:
     script_path = _training_script_path()
-    if not script_path.exists():
-        raise RuntimeError("train_script_missing")
     cmd = [
         sys.executable,
         str(script_path),
@@ -239,6 +242,7 @@ def _run_training_subprocess(*, source_csv: str, out_dir: Path) -> subprocess.Co
 
 
 def run_recognition_training_job() -> dict[str, Any]:
+    ensure_shipped_fusion_layout_for_training()
     export_result = run_fusion_export_job()
     source_csv = str(export_result.get("output_path") or "").strip()
     if not source_csv or not os.path.isfile(source_csv):

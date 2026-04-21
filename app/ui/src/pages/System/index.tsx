@@ -51,6 +51,15 @@ export const System: React.FC = () => {
     });
   }, [isAdvanced, location.hash]);
 
+  React.useEffect(() => {
+    if (location.hash !== '#recognition-improvement') return;
+    const node = document.getElementById('recognition-improvement');
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash]);
+
   return (
     <ProtectedRoute title={t('nav.system')}>
       <Stack spacing={4} sx={{ ...systemStackSx, pb: 1 }}>
@@ -79,7 +88,12 @@ export const System: React.FC = () => {
             <Stack spacing={2} sx={systemStackSx}>
               <SystemReadinessCard />
               <SystemMonitor showVisitors={isAdvanced} />
-              <RecognitionImprovementCard />
+              <Box
+                id="recognition-improvement"
+                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
+              >
+                <RecognitionImprovementCard />
+              </Box>
               <ConfigAuditCard simple={!isAdvanced} />
               <ObservabilityCard simple={!isAdvanced} />
             </Stack>

@@ -36,7 +36,7 @@ export function SpeciesDataQualityCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data) {
     return (
-      <Alert severity="warning">
+      <Alert severity="warning" variant="outlined">
         {t('system.speciesDataQualityLoadError')}
       </Alert>
     );

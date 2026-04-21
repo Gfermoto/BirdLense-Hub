@@ -59,8 +59,14 @@ export function PageMessageState({
       }}
     >
       <Stack spacing={2} sx={{ width: '100%', maxWidth: 760 }}>
-        {title ? <Typography variant="h5">{title}</Typography> : null}
-        <Alert severity={severity}>{message}</Alert>
+        {title ? (
+          <Typography component="h1" variant="h5">
+            {title}
+          </Typography>
+        ) : null}
+        <Alert severity={severity} variant="outlined">
+          {message}
+        </Alert>
         {action ? <Box>{action}</Box> : null}
       </Stack>
     </Box>

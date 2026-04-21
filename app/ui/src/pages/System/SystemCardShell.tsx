@@ -65,7 +65,9 @@ export function SystemCardShell({
               flexWrap="wrap"
               useFlexGap
             >
-              <Typography variant="h6">{title}</Typography>
+              <Typography component="h3" variant="h6">
+                {title}
+              </Typography>
               {statusLabel ? (
                 <Chip
                   size="small"

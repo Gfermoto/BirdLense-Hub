@@ -145,7 +145,7 @@ const DetectionItem = ({
         onClose={() => setErrorMsg(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setErrorMsg(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setErrorMsg(null)}>
           {errorMsg}
         </Alert>
       </Snackbar>

@@ -96,7 +96,7 @@ const INaturalistButton = ({
         onClose={() => setErrorMsg(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setErrorMsg(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setErrorMsg(null)}>
           {errorMsg}
         </Alert>
       </Snackbar>
@@ -536,7 +536,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         onClose={() => setCorrectError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setCorrectError(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setCorrectError(null)}>
           {correctError}
         </Alert>
       </Snackbar>
@@ -546,7 +546,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         onClose={() => setCorrectSuccess(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" onClose={() => setCorrectSuccess(null)}>
+        <Alert severity="success" variant="filled" elevation={6} onClose={() => setCorrectSuccess(null)}>
           {correctSuccess}
         </Alert>
       </Snackbar>

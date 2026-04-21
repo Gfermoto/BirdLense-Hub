@@ -221,7 +221,7 @@ export function GeneralSection({
                     {source === 'homeassistant' && (
                       <>
                         <Grid size={{ xs: 12 }}>
-                          <Alert severity="info" sx={{ mb: 2 }}>
+                          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                             {t('settings.weatherHaAlert')}
                           </Alert>
                         </Grid>
@@ -423,6 +423,7 @@ export function GeneralSection({
               {yamlMsg ? (
                 <Alert
                   severity={yamlMsg.sev}
+                  variant="outlined"
                   sx={{ mb: 2 }}
                   onClose={() => setYamlMsg(null)}
                 >

@@ -52,7 +52,7 @@ export function FeederRelayFields({ form }: Props) {
               {source === 'mqtt' && (
                 <>
                   <Grid size={{ xs: 12 }}>
-                    <Alert severity="info" sx={{ mb: 2 }}>
+                    <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                       {t('settings.feedMqttHint')}
                     </Alert>
                   </Grid>
@@ -75,7 +75,7 @@ export function FeederRelayFields({ form }: Props) {
               {source === 'esphome' && (
                 <>
                   <Grid size={{ xs: 12 }}>
-                    <Alert severity="info" sx={{ mb: 2 }}>
+                    <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                       {t('settings.esphomeFeedHint')}
                     </Alert>
                   </Grid>

@@ -302,7 +302,9 @@ export function FileReplayCard({
         statusLabel={t('common.error')}
         statusTone="error"
       >
-        <Alert severity="error">{t('library.fileReplayLoadError')}</Alert>
+        <Alert severity="error" variant="outlined">
+          {t('library.fileReplayLoadError')}
+        </Alert>
       </LibraryCardShell>
     );
   }
@@ -319,6 +321,7 @@ export function FileReplayCard({
         {modeBanner ? (
           <Alert
             severity={modeBanner.severity}
+            variant="outlined"
             sx={{ mb: 2 }}
             onClose={() => setModeBanner(null)}
           >
@@ -399,6 +402,7 @@ export function FileReplayCard({
         {modeBanner ? (
           <Alert
             severity={modeBanner.severity}
+            variant="outlined"
             sx={{ mb: 2 }}
             onClose={() => setModeBanner(null)}
           >
@@ -503,6 +507,7 @@ export function FileReplayCard({
         {uploadError ? (
           <Alert
             severity="error"
+            variant="outlined"
             sx={{ mt: 1, mb: 1 }}
             onClose={() => setUploadError(null)}
           >
@@ -569,9 +574,13 @@ export function FileReplayCard({
             </Typography>
           </Stack>
         ) : filesQuery.isError ? (
-          <Alert severity="error">{t('library.fileReplayActionError')}</Alert>
+          <Alert severity="error" variant="outlined">
+            {t('library.fileReplayActionError')}
+          </Alert>
         ) : files.length === 0 ? (
-          <Alert severity="info">{t('library.fileReplayFilesEmpty')}</Alert>
+          <Alert severity="info" variant="outlined">
+            {t('library.fileReplayFilesEmpty')}
+          </Alert>
         ) : (
           <TableContainer>
             <Table size="small">
@@ -616,7 +625,9 @@ export function FileReplayCard({
 
         {(runMut.isError || stopMut.isError || loopMut.isError) && (
           <Box sx={{ mt: 2 }}>
-            <Alert severity="error">{t('library.fileReplayActionError')}</Alert>
+            <Alert severity="error" variant="outlined">
+              {t('library.fileReplayActionError')}
+            </Alert>
           </Box>
         )}
       </LibraryCardShell>

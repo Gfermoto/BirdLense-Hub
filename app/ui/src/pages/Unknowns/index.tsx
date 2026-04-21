@@ -616,7 +616,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <CircularProgress />
       </Box>
     );
-  if (error) return <Alert severity="error">{t('timeline.errorLoad')}</Alert>;
+  if (error)
+    return (
+      <Alert severity="error" variant="outlined">
+        {t('timeline.errorLoad')}
+      </Alert>
+    );
 
   return (
     <>
@@ -662,13 +667,14 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           {bulkActionError && !bulkDialogOpen && (
             <Alert
               severity="error"
+              variant="outlined"
               sx={{ mb: 2 }}
               onClose={() => setBulkActionError(null)}
             >
               {bulkActionError}
             </Alert>
           )}
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
@@ -717,7 +723,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       )}
 
       {canEdit && recentCorrections.length > 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
             {t('unknowns.recentCorrectionsTitle')}
           </Typography>
@@ -739,7 +745,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       )}
 
       {unknowns?.length === 0 ? (
-        <Alert severity="info">{t('unknowns.empty')}</Alert>
+        <Alert severity="info" variant="outlined">
+          {t('unknowns.empty')}
+        </Alert>
       ) : (
         <Box
           sx={{
@@ -815,24 +823,24 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <DialogTitle>{t('unknowns.bulkDeleteDialogTitle')}</DialogTitle>
         <DialogContent dividers>
           {bulkActionError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
               {bulkActionError}
             </Alert>
           )}
           {!bulkPreview ? (
-            <Alert severity="info">
+            <Alert severity="info" variant="outlined">
               {t('unknowns.bulkDeletePreviewRequired')}
             </Alert>
           ) : (
             <Stack spacing={2}>
-              <Alert severity="warning">
+              <Alert severity="warning" variant="outlined">
                 {t('unknowns.bulkDeleteDialogWarning', {
                   videoCount: bulkPreview.video_count,
                   unknownCount: bulkPreview.unknown_count,
                 })}
               </Alert>
               {bulkPreview.missing_video_ids.length > 0 && (
-                <Alert severity="info">
+                <Alert severity="info" variant="outlined">
                   {t('unknowns.bulkDeleteMissingVideos', {
                     count: bulkPreview.missing_video_ids.length,
                     ids: bulkPreview.missing_video_ids.join(', '),
@@ -923,7 +931,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         onClose={() => setCorrectError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setCorrectError(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setCorrectError(null)}>
           {correctError}
         </Alert>
       </Snackbar>
@@ -949,7 +957,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           ) : undefined
         }
       >
-        <Alert severity="success" onClose={clearSuccessSnackbar}>
+        <Alert severity="success" variant="filled" elevation={6} onClose={clearSuccessSnackbar}>
           {correctSuccess}
         </Alert>
       </Snackbar>

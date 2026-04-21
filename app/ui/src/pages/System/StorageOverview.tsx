@@ -286,12 +286,12 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
               />
             </Stack>
             {dbMessage && (
-              <Alert severity="success" sx={{ mt: 2 }}>
+              <Alert severity="success" variant="outlined" sx={{ mt: 2 }}>
                 {dbMessage}
               </Alert>
             )}
             {dbError && (
-              <Alert severity="error" sx={{ mt: 2 }}>
+              <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
                 {dbError}
               </Alert>
             )}
@@ -369,12 +369,12 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
                 {t('storage.purge')}
               </Button>
               {purgeMessage && (
-                <Alert severity="success" sx={{ mt: 2 }}>
+                <Alert severity="success" variant="outlined" sx={{ mt: 2 }}>
                   {purgeMessage}
                 </Alert>
               )}
               {purgeError && (
-                <Alert severity="error" sx={{ mt: 2 }}>
+                <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
                   {purgeError}
                 </Alert>
               )}

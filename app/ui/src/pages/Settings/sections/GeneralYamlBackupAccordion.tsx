@@ -47,6 +47,7 @@ export function GeneralYamlBackupAccordion({
         {yamlMsg ? (
           <Alert
             severity={yamlMsg.sev}
+            variant="outlined"
             sx={{ mb: 2 }}
             onClose={() => setYamlMsg(null)}
           >

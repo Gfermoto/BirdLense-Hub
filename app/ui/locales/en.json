@@ -123,6 +123,7 @@
     },
     "modeOverview": "Overview",
     "modeService": "Service",
+    "modeAria": "Library page layout: overview or service tools",
     "serviceNotice": "Archive and data maintenance. Day-to-day clips live under Recordings."
   },
   "overview": {
@@ -856,13 +857,16 @@
     "loading": "Loading...",
     "errorLoad": "Could not load the live camera list.",
     "modeGo2rtc": "RTC/MSE",
-    "modeMjpeg": "MJPEG"
+    "modeMjpeg": "MJPEG",
+    "streamModeAria": "Live video transport: WebRTC/MSE or MJPEG fallback"
   },
   "timeline": {
     "intro": "Pick a day that has recordings, open a clip, then jump to a species page or review if you need to fix recognition.",
     "reportsAndSharingHint": "eBird, CSV, and JSON export: open the menu from the download icon to the right of the species filter. iNaturalist: Share icon on a video detection row (visit card or recording detail). Monthly PDF report: Overview (home), next to the date picker.",
     "modeTimeline": "Timeline",
     "modeReview": "Review",
+    "modeSwitcherAria": "Choose timeline or review mode",
+    "emptyVisits": "No visits for this day with the current filters. Try another date, time-of-day filter, or clear the species filter.",
     "noRecords": "No records? If videos are on disk but not showing —",
     "scanImport": "Scan and import",
     "scanHint": "(Data → archive calendar)",
@@ -1043,7 +1047,8 @@
     "skipToContent": "Skip to main content",
     "pageNotFoundTitle": "Page not found",
     "pageNotFoundDescription": "The address may have changed or the link is outdated. Go home or pick a section from the menu.",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "pageLoading": "Loading this page…"
   },
   "migrationCalendar": {
     "title": "Seasonality",
@@ -1403,6 +1408,7 @@
     "recognitionImprovementTrainFailed": "Could not start recognition improvement",
     "recognitionImprovementRollbackDone": "Returned to the previous recognition mode",
     "recognitionImprovementRollbackFailed": "Could not roll back recognition mode",
+    "recognitionImprovementActionsHint": "Training runs in the background and may take a few minutes. When a new model is activated, the processor restarts automatically. Roll back returns to the previous model or heuristic if available.",
     "heroLoadError": "Could not assemble system summary",
     "heroHealthy": "Healthy",
     "heroNeedsAttention": "Needs attention",
@@ -1810,6 +1816,7 @@
     "food": "Food",
     "description": "Which food is in the feeder now; visits are linked to it for your records.",
     "active": "Active",
+    "tableAria": "Bird foods for the feeder — toggle which are active",
     "noDescription": "No description available",
     "loginRequired": "Sign in to change food in the feeder"
   },

@@ -29,7 +29,11 @@ export function PageSection({
         alignItems={{ xs: 'flex-start', md: 'center' }}
       >
         <Box>
-          <Typography variant="h5" sx={{ mb: description ? 0.75 : 0 }}>
+          <Typography
+            component="h2"
+            variant="h5"
+            sx={{ mb: description ? 0.75 : 0 }}
+          >
             {title}
           </Typography>
           {description ? (

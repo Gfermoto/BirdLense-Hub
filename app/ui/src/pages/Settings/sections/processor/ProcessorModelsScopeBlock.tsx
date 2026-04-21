@@ -29,7 +29,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('settings.processorModelsScopeDesc')}
         </Typography>
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
           <Typography variant="body2" component="div">
             <Trans
               i18nKey="settings.processorModelsSupportLink"
@@ -57,6 +57,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                     {!isTwo ? (
                       <Alert
                         severity="warning"
+                        variant="outlined"
                         action={
                           <Button
                             color="inherit"

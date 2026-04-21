@@ -239,7 +239,7 @@ export function ProcessorWeightsCard({
       <Typography variant={inline ? 'subtitle1' : 'h6'} fontWeight={600}>
         {t('system.processorWeightsTitle')}
       </Typography>
-      <Alert severity="error" sx={{ mt: 1 }}>
+      <Alert severity="error" variant="outlined" sx={{ mt: 1 }}>
         {getApiErrorMessage(
           statusQ.error,
           t('system.processorWeightsLoadError'),
@@ -270,12 +270,12 @@ export function ProcessorWeightsCard({
   const inner = (
     <Box>
       {info ? (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>
+        <Alert severity="success" variant="outlined" sx={{ mb: 2 }} onClose={() => setInfo(null)}>
           {info}
         </Alert>
       ) : null}
       {err ? (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>
+        <Alert severity="error" variant="outlined" sx={{ mb: 2 }} onClose={() => setErr(null)}>
           {err}
         </Alert>
       ) : null}

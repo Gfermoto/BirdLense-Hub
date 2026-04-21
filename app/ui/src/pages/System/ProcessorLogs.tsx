@@ -42,7 +42,7 @@ export const ProcessorLogs = () => {
       <Box>
         {isLoading && <CircularProgress size={24} />}
         {error ? (
-          <Alert severity="error">
+          <Alert severity="error" variant="outlined">
             {error instanceof Error ? error.message : 'Failed to load logs'}
           </Alert>
         ) : null}
