@@ -20,12 +20,12 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
-| Quickstart | [QUICKSTART.md](./QUICKSTART.md) |
-| Install | [INSTALL.md](./INSTALL.md) |
+| Quickstart | [QUICKSTART.md](./QUICKSTART.md) (EN only; см. [I18N_STATUS](./I18N_STATUS.md)) |
+| Install | [INSTALL.md](./INSTALL.md) · [RU](./INSTALL.ru.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
 | Scenarios | [SCENARIOS.md](./SCENARIOS.md) · [RU](./SCENARIOS.ru.md) |
-| Configuration | [CONFIGURATION.md](./CONFIGURATION.md) |
-| Features | [FEATURES.md](./FEATURES.md) |
+| Configuration | [CONFIGURATION.md](./CONFIGURATION.md) · [RU](./CONFIGURATION.ru.md) |
+| Features | [FEATURES.md](./FEATURES.md) · [RU](./FEATURES.ru.md) |
 | Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
 | Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Definition of Done (short gate) | [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md) · [RU](./DEFINITION_OF_DONE.ru.md) |
@@ -45,15 +45,15 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
-| Architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| HTTP API | [API.md](./API.md) + OpenAPI import |
+| Architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) · [RU](./ARCHITECTURE.ru.md) |
+| HTTP API | [API.md](./API.md) · [RU](./API.ru.md); Redoc [reference/openapi.md](./reference/openapi.md) · [RU](./reference/openapi.ru.md) |
 | API errors & security baseline | [API_ERRORS.md](./API_ERRORS.md) · [RU](./API_ERRORS.ru.md) |
 | OpenAPI (Redoc) | [reference/openapi.md](./reference/openapi.md) · [RU](./reference/openapi.ru.md) |
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) |
 | MCP | [MCP_SETUP.md](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) · [RU](./LOCAL_DEV.ru.md) |
-| CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
-| Testing | [TESTING.md](./TESTING.md) |
+| CodeQL (CI) | [CODEQL.md](./CODEQL.md) · [RU](./CODEQL.ru.md) |
+| Testing | [TESTING.md](./TESTING.md) · [RU](./TESTING.ru.md) |
 | CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
 | Accessibility | [A11Y.md](./A11Y.md) · [RU](./A11Y.ru.md) |
 | UX: Tooltips & inline hints | [UX_TOOLTIPS.md](./UX_TOOLTIPS.md) |
@@ -66,11 +66,11 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 | Page | Source |
 |------|--------|
-| Training | [TRAINING.md](./TRAINING.md) |
-| ML quality loop (RU) | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
-| Datasets | [DATASETS.md](./DATASETS.md) |
-| Versioning | [VERSIONING.md](./VERSIONING.md) |
-| Roadmap | [ROADMAP.md](./ROADMAP.md) |
+| Training | [TRAINING.md](./TRAINING.md) · [RU](./TRAINING.ru.md) |
+| ML quality loop (RU only) | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
+| Datasets | [DATASETS.md](./DATASETS.md) · [RU](./DATASETS.ru.md) |
+| Versioning | [VERSIONING.md](./VERSIONING.md) · [RU](./VERSIONING.ru.md) |
+| Roadmap | [ROADMAP.md](./ROADMAP.md) · [RU](./ROADMAP.ru.md) |
 
 ---
 
@@ -92,7 +92,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
-| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) |
+| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) (EN only by policy) |
 | Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 | Issues, board & roadmap | [ROADMAP.md](./ROADMAP.md) (Triage) · [RU](./ROADMAP.ru.md); repo root CONTRIBUTING.md |
 | GitHub via `gh` CLI | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
