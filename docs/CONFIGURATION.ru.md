@@ -19,7 +19,7 @@
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
-**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
+**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) (уровни паролей), [API](./API.ru.md) · [EN](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) · [EN](./GLOSSARY.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
 
 **По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
 

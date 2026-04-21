@@ -63,7 +63,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 10  | CORS demo → конфиг/env                                                                       | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo-host вынесен из hardcoded CORS defaults в `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`              | P3, web                  |
 | 11  | Доки: примеры алертов Prometheus                                                             | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md)                                      | P3, docs                 |
 | 12  | Галерея: не работает — разбор и починка (opt-in)                                             | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4                                                   | P2, web, bug             |
-| 13  | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео                          | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) | P2, web                  |
+| 13  | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео                          | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) — [спека UX](./UX_UNKNOWN_VIDEO_CORRECTION.ru.md) | P2, web                  |
 | 14  | Навигация по видео: подряд (напр. за день), без сброса в начало списка                       | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6**                                                         | P2, web                  |
 | 15  | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI                                                          | P3, web                  |
 | 16  | Overview: «Средняя длительность» считалась по визитам, а не по записям                       | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug             |
@@ -126,7 +126,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Системная база видов (канонизация)**     | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168): ✅ реализовано — единый реестр видов, нормализация по ID, backfill, фоновые metadata jobs и CI smoke quality-gate для всей базы.       |
 
 
-### Пожелания пользователей (backlog, маркет 2026)
+### Пожелания пользователей (backlog, март 2026)
 
 Отдельные issues для планирования; детали и критерии — в каждом issue.
 
