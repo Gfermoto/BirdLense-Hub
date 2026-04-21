@@ -117,7 +117,11 @@ export const LivePage = () => {
               onChange={(_, v: StreamMode | null) =>
                 v != null && setStreamMode(v)
               }
-              size="small"
+              size="medium"
+              aria-label={t('live.streamModeAria')}
+              sx={{
+                '& .MuiToggleButton-root': { minHeight: 40, px: 1.75 },
+              }}
             >
               <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
               <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>

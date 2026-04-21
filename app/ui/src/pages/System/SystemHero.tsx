@@ -67,7 +67,7 @@ export function SystemHero({ advanced }: SystemHeroProps) {
     !observabilityQ.data ||
     !catalogRepairQ.data
   ) {
-    return <Alert severity="warning">{t('system.heroLoadError')}</Alert>;
+    return <Alert severity="warning" variant="outlined">{t('system.heroLoadError')}</Alert>;
   }
 
   const readiness = readinessQ.data;
@@ -245,7 +245,7 @@ export function SystemHero({ advanced }: SystemHeroProps) {
           {issues.length > 0 ? (
             <Stack spacing={1}>
               {issues.slice(0, 4).map((issue) => (
-                <Alert key={issue} severity="warning" sx={{ py: 0 }}>
+                <Alert key={issue} severity="warning" variant="outlined" sx={{ py: 0 }}>
                   {issue}
                 </Alert>
               ))}

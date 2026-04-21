@@ -127,6 +127,23 @@ export function RecognitionImprovementCard() {
     }
   }, [summary?.active_mode, t]);
 
+  /** API `model.label` is English; show i18n mode text and only append an id for trained models. */
+  const currentModeHumanLabel = useMemo(() => {
+    if (summary?.active_mode !== 'trained') {
+      return activeModeLabel;
+    }
+    const raw = String(summary.model.label || '').trim();
+    const fallbackId = summary.model.active_model_id;
+    const id =
+      raw && !/^trained model$/i.test(raw)
+        ? raw
+        : fallbackId != null
+          ? String(fallbackId).trim()
+          : '';
+    if (!id) return activeModeLabel;
+    return `${activeModeLabel} (${id})`;
+  }, [summary, activeModeLabel]);
+
   const statusTone =
     summary?.active_mode === 'trained'
       ? 'success'
@@ -135,12 +152,28 @@ export function RecognitionImprovementCard() {
         : 'info';
 
   if (summaryQ.isLoading) {
-    return <LinearProgress />;
+    return (
+      <Box
+        role="status"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+        sx={{ py: 2, minWidth: 0 }}
+      >
+        <LinearProgress />
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 1.5 }}
+        >
+          {t('common.loading')}
+        </Typography>
+      </Box>
+    );
   }
 
   if (summaryQ.isError || !summary) {
     return (
-      <Alert severity="warning">
+      <Alert severity="warning" variant="outlined">
         {t('system.recognitionImprovementLoadError', {
           defaultValue: 'Could not load recognition improvement status',
         })}
@@ -161,17 +194,22 @@ export function RecognitionImprovementCard() {
       statusTone={statusTone}
     >
       <Stack spacing={2}>
-        {busy ? <LinearProgress /> : null}
+        {busy ? <LinearProgress aria-label={t('common.loading')} /> : null}
         {info ? (
           <Alert
             severity={trainingQ.data?.status === 'error' ? 'error' : 'info'}
+            variant="outlined"
             onClose={() => setInfo(null)}
+            role="status"
+            aria-live="polite"
           >
             {info}
           </Alert>
         ) : null}
         {trainingQ.data?.error ? (
-          <Alert severity="error">{trainingQ.data.error}</Alert>
+          <Alert severity="error" variant="outlined">
+            {trainingQ.data.error}
+          </Alert>
         ) : null}
 
         <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -206,7 +244,7 @@ export function RecognitionImprovementCard() {
             {t('system.recognitionImprovementCurrentMode', {
               defaultValue: 'Current mode',
             })}
-            : <strong>{summary.model.label || activeModeLabel}</strong>
+            : <strong>{currentModeHumanLabel}</strong>
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {summary.feedback.ready_for_training
@@ -234,26 +272,31 @@ export function RecognitionImprovementCard() {
           </Typography>
         </Box>
 
-        <Stack direction="row" flexWrap="wrap" gap={1}>
-          <Button
-            variant="contained"
-            disabled={busy || !summary.feedback.ready_for_training}
-            onClick={() => trainMutation.mutate()}
-          >
-            {t('system.recognitionImprovementUpdateModel', {
-              defaultValue: 'Update model',
-            })}
-          </Button>
-          <Button
-            variant="outlined"
-            color="warning"
-            disabled={busy || !summary.model.can_roll_back}
-            onClick={() => rollbackMutation.mutate()}
-          >
-            {t('system.recognitionImprovementRollback', {
-              defaultValue: 'Roll back',
-            })}
-          </Button>
+        <Stack spacing={1.25} alignItems="flex-start">
+          <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={1}>
+            <Button
+              variant="contained"
+              disabled={busy || !summary.feedback.ready_for_training}
+              onClick={() => trainMutation.mutate()}
+            >
+              {t('system.recognitionImprovementUpdateModel', {
+                defaultValue: 'Update model',
+              })}
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              disabled={busy || !summary.model.can_roll_back}
+              onClick={() => rollbackMutation.mutate()}
+            >
+              {t('system.recognitionImprovementRollback', {
+                defaultValue: 'Roll back',
+              })}
+            </Button>
+          </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 720 }}>
+            {t('system.recognitionImprovementActionsHint')}
+          </Typography>
         </Stack>
       </Stack>
     </SystemCardShell>

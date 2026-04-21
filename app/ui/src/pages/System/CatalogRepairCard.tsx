@@ -60,7 +60,7 @@ export function CatalogRepairCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data)
     return (
-      <Alert severity="warning">{t('system.catalogRepairLoadError')}</Alert>
+      <Alert severity="warning" variant="outlined">{t('system.catalogRepairLoadError')}</Alert>
     );
 
   const liveNextSec = Math.max(
@@ -154,12 +154,12 @@ export function CatalogRepairCard() {
 
         {running && <LinearProgress sx={{ mb: 1.5 }} />}
         {actionError ? (
-          <Alert severity="error" sx={{ mb: 1.5 }}>
+          <Alert severity="error" variant="outlined" sx={{ mb: 1.5 }}>
             {actionError}
           </Alert>
         ) : null}
         {data.error && (
-          <Alert severity="warning" sx={{ mb: 1.5 }}>
+          <Alert severity="warning" variant="outlined" sx={{ mb: 1.5 }}>
             {data.error}
           </Alert>
         )}

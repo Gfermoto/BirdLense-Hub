@@ -304,7 +304,14 @@ export function TimelinePage() {
     );
 
   const timelineModeSwitcher = (
-    <Box display="flex" gap={1} alignItems="center" sx={{ mb: 2 }}>
+    <Box
+      role="group"
+      aria-label={t('timeline.modeSwitcherAria')}
+      display="flex"
+      gap={1}
+      alignItems="center"
+      sx={{ mb: 2 }}
+    >
       <Chip
         color={!isReviewMode ? 'primary' : 'default'}
         variant={!isReviewMode ? 'filled' : 'outlined'}
@@ -386,7 +393,7 @@ export function TimelinePage() {
             />
           )}
           {showLibraryDiskScanHint && (
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
               {t('timeline.noRecords')}{' '}
               <Button
                 component={Link}
@@ -574,8 +581,11 @@ export function TimelinePage() {
           onClose={() => setExportError(null)}
           severity="error"
           variant="filled"
+          elevation={6}
           sx={{ width: '100%' }}
           data-testid="timeline-export-error"
+          role="alert"
+          aria-live="assertive"
         >
           {exportError}
         </Alert>

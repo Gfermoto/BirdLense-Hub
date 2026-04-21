@@ -44,7 +44,7 @@ export function HomeAssistantSection({ form }: Props) {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {t('settings.accordionHomeAssistantDesc')}
           </Typography>
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
             {t('settings.haEnvOverrideHint')}
           </Alert>
           <Grid container spacing={2}>

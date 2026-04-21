@@ -197,7 +197,7 @@ export function CaptureFeederSection({ form }: Props) {
                     {(enabled) =>
                       enabled ? (
                         <>
-                          <Alert severity="info" sx={{ mb: 2 }}>
+                          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                             {t('settings.frigateMotionIntro')}
                           </Alert>
                           <Grid container spacing={2}>
@@ -373,7 +373,7 @@ export function CaptureFeederSection({ form }: Props) {
                           {source === 'mqtt' ? (
                             <>
                               <Grid size={{ xs: 12 }}>
-                                <Alert severity="info">
+                                <Alert severity="info" variant="outlined">
                                   {t('settings.mqttSensorAlert')}
                                 </Alert>
                               </Grid>
@@ -397,7 +397,7 @@ export function CaptureFeederSection({ form }: Props) {
                           ) : (
                             <>
                               <Grid size={{ xs: 12 }}>
-                                <Alert severity="info">
+                                <Alert severity="info" variant="outlined">
                                   {t('settings.esphomeAlert')}
                                 </Alert>
                               </Grid>
@@ -491,7 +491,7 @@ export function CaptureFeederSection({ form }: Props) {
                       triggerOn ? (
                         <Grid container spacing={2}>
                           <Grid size={{ xs: 12 }}>
-                            <Alert severity="info">
+                            <Alert severity="info" variant="outlined">
                               {t('settings.triggerScalesPipelineHint')}
                             </Alert>
                           </Grid>

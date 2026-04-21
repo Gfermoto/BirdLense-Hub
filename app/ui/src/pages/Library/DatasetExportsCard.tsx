@@ -166,14 +166,14 @@ export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
       >
         <Stack spacing={2.5}>
           {error && (
-            <Alert severity="error" onClose={() => setError(null)}>
+            <Alert severity="error" variant="outlined" onClose={() => setError(null)}>
               <AlertTitle>{t('common.error')}</AlertTitle>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" onClose={() => setSuccess(null)}>
+            <Alert severity="success" variant="outlined" onClose={() => setSuccess(null)}>
               <AlertTitle>{t('common.success')}</AlertTitle>
               {success}
             </Alert>
@@ -341,7 +341,9 @@ export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
             </Stack>
           ) : null}
 
-          <Alert severity="info">{t('library.datasetToolsLibraryHint')}</Alert>
+          <Alert severity="info" variant="outlined">
+            {t('library.datasetToolsLibraryHint')}
+          </Alert>
         </Stack>
       </LibraryCardShell>
     </LocalizationProvider>

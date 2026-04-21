@@ -195,7 +195,7 @@ const SpeciesSummaryPage = () => {
   if (!speciesIdValid) {
     return (
       <Box sx={{ p: 2 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
           {t('speciesSummary.invalidId')}
         </Alert>
         <Button variant="contained" component={RouterLink} to="/species">
@@ -211,7 +211,11 @@ const SpeciesSummaryPage = () => {
       axios.isAxiosError(error) && error.response?.status === 404;
     return (
       <Box sx={{ p: 2 }}>
-        <Alert severity={notFound ? 'info' : 'error'} sx={{ mb: 2 }}>
+        <Alert
+          severity={notFound ? 'info' : 'error'}
+          variant="outlined"
+          sx={{ mb: 2 }}
+        >
           {notFound
             ? t('speciesSummary.notFound')
             : t('speciesSummary.errorLoad')}
@@ -251,6 +255,7 @@ const SpeciesSummaryPage = () => {
       {!data.species.active && data.species.parent && (
         <Alert
           severity="info"
+          variant="outlined"
           sx={{ mb: 3 }}
           action={
             <Link
@@ -381,6 +386,7 @@ const SpeciesSummaryPage = () => {
             {refreshMetaMutation.isError && (
               <Alert
                 severity="error"
+                variant="outlined"
                 sx={{ mt: 1 }}
                 onClose={() => refreshMetaMutation.reset()}
               >
@@ -390,6 +396,7 @@ const SpeciesSummaryPage = () => {
             {refreshMetaMutation.isSuccess && (
               <Alert
                 severity="success"
+                variant="outlined"
                 sx={{ mt: 1 }}
                 onClose={() => refreshMetaMutation.reset()}
               >

@@ -184,7 +184,7 @@ export function ConnectionsSection({ form }: Props) {
           </ServiceBlock>
 
           <ServiceBlock title={t('settings.accordionHomeAssistant')}>
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
               {t('settings.haEnvOverrideHint')}
             </Alert>
             <Grid container spacing={2}>
@@ -288,7 +288,7 @@ export function ConnectionsSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Alert severity="info">
+                <Alert severity="info" variant="outlined">
                   {t('settings.videoFileReplayLibraryHint')}{' '}
                   <RouterLink to="/library#file-replay">
                     {t('settings.videoFileModeLibraryLink')}
@@ -304,7 +304,7 @@ export function ConnectionsSection({ form }: Props) {
                 {(videoSource) =>
                   (videoSource ?? 'go2rtc').toLowerCase() === 'file' ? (
                     <Grid size={{ xs: 12 }}>
-                      <Alert severity="info" sx={{ mb: 1 }}>
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                         {t('settings.videoFileModeActiveHint')}{' '}
                         <RouterLink to="/library#file-replay">
                           {t('settings.videoFileModeLibraryLink')}

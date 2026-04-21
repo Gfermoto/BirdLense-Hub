@@ -27,7 +27,7 @@ export function ClassifierDatasetAlignmentCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data) {
     return (
-      <Alert severity="warning">
+      <Alert severity="warning" variant="outlined">
         {t('system.classifierAlignmentLoadError')}
       </Alert>
     );
@@ -56,7 +56,7 @@ export function ClassifierDatasetAlignmentCard() {
         </Typography>
 
         {!canCompare && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
             {data.classifier_error || t('system.classifierAlignmentNoWeights')}
           </Alert>
         )}

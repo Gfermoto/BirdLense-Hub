@@ -490,6 +490,7 @@ export const VideoDetails = () => {
                   {trackRegenErrorMessage && (
                     <Alert
                       severity="error"
+                      variant="outlined"
                       sx={{ mb: 1 }}
                       onClose={() => trackRegenStart.reset()}
                     >
@@ -499,6 +500,7 @@ export const VideoDetails = () => {
                   {specRegenErrorMessage && (
                     <Alert
                       severity="error"
+                      variant="outlined"
                       sx={{ mb: 1 }}
                       onClose={() => specRegenStart.reset()}
                     >
@@ -506,14 +508,14 @@ export const VideoDetails = () => {
                     </Alert>
                   )}
                   {showTracksRegenHint && (
-                    <Alert severity="info" sx={{ mb: 1 }}>
+                    <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                       {t('video.tracksMissingHint')}
                     </Alert>
                   )}
                   {followTrackRegen !== null &&
                     trackRemoteStatus?.status === 'running' &&
                     trackProgressOtherJob && (
-                      <Alert severity="warning" sx={{ mb: 1 }}>
+                      <Alert severity="warning" variant="outlined" sx={{ mb: 1 }}>
                         {t('video.trackRegenOtherVideo', {
                           id: trackProgress?.active_request_video_id ?? '?',
                         })}
@@ -522,7 +524,7 @@ export const VideoDetails = () => {
                   {followTrackRegen !== null &&
                     trackRemoteStatus?.status === 'running' &&
                     !trackProgressOtherJob && (
-                      <Alert severity="info" sx={{ mb: 1 }}>
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                         <LinearProgress
                           variant={
                             trackIndeterminate ? 'indeterminate' : 'determinate'
@@ -560,7 +562,7 @@ export const VideoDetails = () => {
                     )}
                   {followSpecRegen !== null &&
                     specRemoteStatus?.status === 'running' && (
-                      <Alert severity="info" sx={{ mb: 1 }}>
+                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                         <LinearProgress
                           variant={
                             specIndeterminate ? 'indeterminate' : 'determinate'
@@ -597,6 +599,7 @@ export const VideoDetails = () => {
                   {!trackRegenBusy && trackJobSummary && (
                     <Alert
                       severity={trackJobSummary.severity}
+                      variant="outlined"
                       sx={{ mb: 1 }}
                       onClose={() => setFinishedTrackRegen(null)}
                     >
@@ -606,6 +609,7 @@ export const VideoDetails = () => {
                   {!specRegenBusy && specJobSummary && (
                     <Alert
                       severity={specJobSummary.severity}
+                      variant="outlined"
                       sx={{ mb: 1 }}
                       onClose={() => setFinishedSpecRegen(null)}
                     >

@@ -60,7 +60,7 @@ export const FoodManagement = () => {
   return (
     <Box mb={4}>
       <PageHelp {...foodHelpConfig} />
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} role="region" aria-label={t('food.tableAria')}>
         <Table>
           <TableHead>
             <TableRow>

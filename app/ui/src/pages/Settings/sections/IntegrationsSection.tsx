@@ -235,12 +235,12 @@ export function IntegrationsSection({ form }: Props) {
                   ) : null}
                 </Box>
                 {ebirdSuggestError ? (
-                  <Alert severity="error" sx={{ mt: 1 }}>
+                  <Alert severity="error" variant="outlined" sx={{ mt: 1 }}>
                     {ebirdSuggestError}
                   </Alert>
                 ) : null}
                 {ebirdSuggestData && !ebirdSuggestData.ebird_api_configured ? (
-                  <Alert severity="info" sx={{ mt: 1 }}>
+                  <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
                     {t('settings.ebirdMappingSuggestNoKey')}
                   </Alert>
                 ) : null}

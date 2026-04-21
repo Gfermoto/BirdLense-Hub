@@ -30,11 +30,11 @@ export const Settings: React.FC = () => {
     textKey: string;
     apiMessage?: string;
   } | null>(null);
-  const { requiresPassword, isAdmin, canEdit } = useProtectedArea();
+  const { isAdmin, canEdit } = useProtectedArea();
 
-  const { data: settings, isLoading: isLoadingSettings } = useSettingsQuery(
-    !requiresPassword || canEdit,
-  );
+  /** Только админ видит страницу (ProtectedRoute requireAdmin) — грузим настройки в том же условии. */
+  const { data: settings, isLoading: isLoadingSettings } =
+    useSettingsQuery(isAdmin);
 
   const { data: observedSpecies, isLoading: isLoadingObserved } =
     useObservedSpeciesQuery();
@@ -107,12 +107,13 @@ export const Settings: React.FC = () => {
             description={`${t('settings.pageDescription')} ${t('settings.restartInfo')}`}
             titleVariant="h3"
           />
-          <Alert severity="success" sx={{ mb: 2 }}>
+          <Alert severity="info" variant="outlined" sx={{ mb: 0 }}>
             {t('settings.loaded')}
           </Alert>
           {restartMessage && (
             <Alert
               severity={restartMessage.type}
+              variant="outlined"
               sx={{ mb: 2 }}
               onClose={() => setRestartMessage(null)}
             >
@@ -135,6 +136,8 @@ export const Settings: React.FC = () => {
             <Alert
               onClose={() => setShowSuccessAlert(false)}
               severity="success"
+              variant="filled"
+              elevation={6}
               sx={{ width: '100%' }}
             >
               {t('settings.savedRestarting')}

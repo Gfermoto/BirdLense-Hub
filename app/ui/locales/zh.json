@@ -123,6 +123,7 @@
     },
     "modeOverview": "概览",
     "modeService": "服务",
+    "modeAria": "资料库页面视图：概览或服务工具",
     "serviceNotice": "归档与数据维护。日常观看录像请前往「记录」。"
   },
   "overview": {
@@ -856,13 +857,16 @@
     "loading": "加载中...",
     "errorLoad": "无法加载摄像机列表。",
     "modeGo2rtc": "实时时钟/MSE",
-    "modeMjpeg": "MJPEG"
+    "modeMjpeg": "MJPEG",
+    "streamModeAria": "直播传输方式：WebRTC/MSE 或 MJPEG 备用"
   },
   "timeline": {
     "intro": "选择有录像的日期，打开片段，需要时再进入物种页或识别复核。",
     "reportsAndSharingHint": "eBird、CSV 与 JSON：点击物种筛选右侧下载图标打开菜单。iNaturalist：视频检测行的分享图标（到访卡片或录制详情页）。月度 PDF 报告：总览（首页）日期选择器旁。",
     "modeTimeline": "时间轴",
     "modeReview": "审查",
+    "modeSwitcherAria": "在时间轴与审查模式之间切换",
+    "emptyVisits": "当前筛选条件下这一天没有到访记录。可更换日期、时间段，或清空物种筛选。",
     "noRecords": "没有记录吗？如果视频在磁盘上但未显示 —",
     "scanImport": "扫描并导入",
     "scanHint": "（「数据」→ 归档日历）",
@@ -1043,7 +1047,8 @@
     "skipToContent": "跳至主要内容",
     "pageNotFoundTitle": "未找到页面",
     "pageNotFoundDescription": "地址可能已变更或链接失效。请返回首页或从菜单选择栏目。",
-    "backToDashboard": "返回概览"
+    "backToDashboard": "返回概览",
+    "pageLoading": "正在加载页面…"
   },
   "migrationCalendar": {
     "title": "季节性",
@@ -1402,6 +1407,7 @@
     "recognitionImprovementTrainFailed": "无法启动识别优化",
     "recognitionImprovementRollbackDone": "已恢复到上一个识别模式",
     "recognitionImprovementRollbackFailed": "无法回滚识别模式",
+    "recognitionImprovementActionsHint": "训练在后台运行，可能需要几分钟。激活新模型后处理器会自动重启。回滚会回到上一个模型或内置启发式（若可用）。",
     "processorLogs": "处理器日志",
     "processorLogsHint": "最后{{lines}}行。每 10 秒自动刷新一次。用于在无法访问 docker 日志时进行远程诊断。",
     "processorWeightsTitle": "处理器权重 (YOLO)",
@@ -1767,6 +1773,7 @@
     "food": "食物",
     "description": "当前食槽中的饲料类型；系统会把它与到访记录关联。",
     "active": "积极的",
+    "tableAria": "喂食器可用饲料 — 勾选当前在用的种类",
     "noDescription": "无可用描述",
     "loginRequired": "登录以更换喂食器中的食物"
   },

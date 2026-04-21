@@ -23,7 +23,7 @@ export function SystemReadinessCard() {
 
   if (isLoading) return <LinearProgress />;
   if (error || !data)
-    return <Alert severity="warning">{t('system.readinessLoadError')}</Alert>;
+    return <Alert severity="warning" variant="outlined">{t('system.readinessLoadError')}</Alert>;
 
   const checks = [
     ['database', normalizeCheckStatus(data.checks.database.status)],
@@ -87,7 +87,7 @@ export function SystemReadinessCard() {
           ))}
         </Box>
 
-        <Alert severity={data.ready ? 'success' : 'warning'}>
+        <Alert severity={data.ready ? 'success' : 'warning'} variant="outlined">
           {data.ready
             ? t('system.readinessVerifyPass')
             : t('system.readinessVerifyFail')}

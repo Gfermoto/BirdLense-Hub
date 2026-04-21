@@ -183,6 +183,7 @@ function ActionRunnerInfoAlert({
   return (
     <Alert
       severity="info"
+      variant="outlined"
       onClose={onClose}
       sx={{
         minWidth: 0,
@@ -692,17 +693,21 @@ export function AutomationFusionCard() {
       <Stack spacing={2}>
         {running ? <LinearProgress /> : null}
         {lastInfo ? (
-          <Alert severity="info" onClose={() => setLastInfo(null)}>
+          <Alert
+            severity="info"
+            variant="outlined"
+            onClose={() => setLastInfo(null)}
+          >
             {lastInfo}
           </Alert>
         ) : null}
         {fusionExportQuery.isError ? (
-          <Alert severity="error">
+          <Alert severity="error" variant="outlined">
             {t('system.automationFusionExportFailed')}
           </Alert>
         ) : null}
         {fusionEvalQuery.isError ? (
-          <Alert severity="error">
+          <Alert severity="error" variant="outlined">
             {t('system.automationFusionEvalFailed')}
           </Alert>
         ) : null}
@@ -760,11 +765,14 @@ export function AutomationFusionCard() {
           </Tooltip>
         </Stack>
         {fusionExportQuery.data?.error ? (
-          <Alert severity="error">{fusionExportQuery.data.error}</Alert>
+          <Alert severity="error" variant="outlined">
+            {fusionExportQuery.data.error}
+          </Alert>
         ) : null}
         {fusionExportQuery.data?.result && !fusionExportQuery.data?.error ? (
           <Alert
             severity="success"
+            variant="outlined"
             sx={{ '& .MuiAlert-message': { width: '100%' } }}
           >
             <FusionExportResultBlock
@@ -773,11 +781,14 @@ export function AutomationFusionCard() {
           </Alert>
         ) : null}
         {fusionEvalQuery.data?.error ? (
-          <Alert severity="error">{fusionEvalQuery.data.error}</Alert>
+          <Alert severity="error" variant="outlined">
+            {fusionEvalQuery.data.error}
+          </Alert>
         ) : null}
         {fusionEvalQuery.data?.result && !fusionEvalQuery.data?.error ? (
           <Alert
             severity="success"
+            variant="outlined"
             sx={{ '& .MuiAlert-message': { width: '100%' } }}
           >
             <FusionEvalReportBlock
@@ -988,7 +999,9 @@ export function AutomationDangerZoneCard() {
       statusTone="error"
     >
       <Stack spacing={2}>
-        <Alert severity="warning">{t('system.automationDangerNote')}</Alert>
+        <Alert severity="warning" variant="outlined">
+          {t('system.automationDangerNote')}
+        </Alert>
         {runningLabel ? <LinearProgress /> : null}
         {lastInfo ? (
           <ActionRunnerInfoAlert text={lastInfo} onClose={clearInfo} />
@@ -1063,9 +1076,13 @@ function BirdnetFifoDialog({
             <CircularProgress size={32} />
           </Stack>
         ) : null}
-        {!loading && error ? <Alert severity="error">{error}</Alert> : null}
+        {!loading && error ? (
+          <Alert severity="error" variant="outlined">
+            {error}
+          </Alert>
+        ) : null}
         {!loading && !error && data && !data.available ? (
-          <Alert severity="warning">
+          <Alert severity="warning" variant="outlined">
             {t('system.automationBirdnetFifoUnavailable')}
           </Alert>
         ) : null}

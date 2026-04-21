@@ -119,7 +119,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                     {(src ?? 'mqtt') === 'mqtt' ? (
                       <>
                         <Grid size={{ xs: 12 }}>
-                          <Alert severity="info">
+                          <Alert severity="info" variant="outlined">
                             {t('settings.scalesMqttAlert')}
                           </Alert>
                         </Grid>
@@ -212,7 +212,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                     ) : (src ?? 'mqtt') === 'homeassistant' ? (
                       <>
                         <Grid size={{ xs: 12 }}>
-                          <Alert severity="info">
+                          <Alert severity="info" variant="outlined">
                             {t('settings.scalesHaAlert')}
                           </Alert>
                         </Grid>
@@ -236,7 +236,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                     ) : (
                       <>
                         <Grid size={{ xs: 12 }}>
-                          <Alert severity="info">
+                          <Alert severity="info" variant="outlined">
                             {t('settings.scalesEspAlert')}
                           </Alert>
                         </Grid>

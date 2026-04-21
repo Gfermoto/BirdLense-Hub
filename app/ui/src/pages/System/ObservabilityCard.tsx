@@ -55,7 +55,7 @@ export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
   if (isLoading) return <LinearProgress />;
   if (error || !data)
     return (
-      <Alert severity="warning">{t('system.observabilityLoadError')}</Alert>
+      <Alert severity="warning" variant="outlined">{t('system.observabilityLoadError')}</Alert>
     );
 
   const generatedCounts = data.notify_preview_generated_24h || {};
