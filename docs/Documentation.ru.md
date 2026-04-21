@@ -48,6 +48,8 @@ python3 scripts/merge_openapi_fragments.py
 
 Перед коммитом смотрите **`git diff app/web/openapi.yaml`**: перезаписывается крупный фрагмент файла. Текст в `info.description` и точные схемы ответов при необходимости восстановите вручную после регенерации.
 
+**Повторный merge без дублей:** `merge_openapi_fragments.py` перед вставкой удаляет уже смерженный массовый блок (от первого ключа пути **`/cameras`** до конца секции `paths`), затем снова дописывает фрагмент — повторный запуск не размножает пути. **Ручные пути держите выше `/cameras`** в `openapi.yaml` (генератор всегда начинает bulk-список с `/cameras`).
+
 **Не входят в опубликованный сайт** (`exclude_docs` в корневом `mkdocs.yml`): `docs/archive/**`, `docs/article/**` (черновики публикаций), `CONSILIUM_AUDIT.ru.md` (исторический аудит; см. [архив на GitHub](https://github.com/Gfermoto/BirdLense-Hub/tree/main/docs/archive)), а также `PRE_IMPLEMENTATION_UNKNOWN_TIMELINE*.md` (внутренний чеклист перед крупными изменениями UI/API — файл в репозитории, не часть операторского руководства) и `LEGACY_CLEANUP.md` (внутренние заметки по инвентарю/legacy).
 
 ### Публикация (CI)
