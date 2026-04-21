@@ -45,7 +45,9 @@ test.describe('Smoke tests', () => {
 
   test('Settings page loads', async ({ page }) => {
     await gotoReady(page, '/settings');
-    await expect(page.getByText(/Update Settings|Обновить настройки|更新设置/i)).toBeVisible({
+    await expect(
+      page.getByText(/Station settings|Настройки станции|站点设置|Settings loaded|Настройки загружены|设置已加载/i),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
@@ -119,9 +121,10 @@ test.describe('Smoke tests', () => {
     });
   });
 
-  test('Species legacy URL redirects to migration page', async ({ page }) => {
+  test('Species catalog URL shows migration calendar', async ({ page }) => {
     await gotoReady(page, '/species');
-    await expect(page).toHaveURL(/\/migration-calendar/);
+    await waitMainSpinnerGone(page);
+    await expect(page).toHaveURL(/\/species/);
     await expect(page.getByText(/Migration|Мигра|迁移/i).first()).toBeVisible({ timeout: 15000 });
   });
 
