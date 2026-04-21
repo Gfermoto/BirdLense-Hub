@@ -144,7 +144,7 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
                 onChange={(e) => field.handleChange(e.target.value)}
                 label={t('settings.learnedFusionModelPath')}
                 helperText={t('settings.learnedFusionModelPathHint')}
-                placeholder="models/fusion/fusion_state.pt"
+                placeholder=""
               />
             )}
           </form.Field>
