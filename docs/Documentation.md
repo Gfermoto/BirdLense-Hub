@@ -92,7 +92,7 @@ Docs are written so they can be **split into a static site** or **quoted in blog
 - [ ] [docs/README.md](./README.md) + [I18N_STATUS.md](./I18N_STATUS.md) updated when adding a new page.
 - [ ] **[ROADMAP](./ROADMAP.md)** § *Current stack*: React/Vite (and any pinned UI versions) match `app/ui/package.json` / lockfile; DB/migration notes match `app/web` reality.
 - [ ] [`mkdocs.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) — both **English nav** and the **Русский** section list new pages (or an explicit decision to keep them repo-only).
-- [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar; where both `DOC.md` and `DOC.ru.md` exist, **source** cells link to **both** (EN · RU or RU · EN) so the map stays a bilingual index, not a dead end.
+- [ ] [SITE_MAP.md](./SITE_MAP.md) and [SITE_MAP.ru.md](./SITE_MAP.ru.md) match the sidebar (**Meta** and **Repository (canonical files)** blocks follow the same order as the two groups in root `mkdocs.yml`); where both `DOC.md` and `DOC.ru.md` exist, **source** cells link to **both** (EN · RU or RU · EN) so the map stays a bilingual index, not a dead end.
 - [ ] After bulk OpenAPI regeneration: `python3 scripts/merge_openapi_fragments.py` — confirm diff and run `pytest web/tests/test_openapi_contract.py` plus `python3 -c "import yaml; yaml.safe_load(open('app/web/openapi.yaml'))"`.
 
 ---
