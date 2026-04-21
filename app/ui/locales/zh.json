@@ -1,24 +1,25 @@
 {
   "protected": {
-    "passwordRequired": "输入管理员密码以访问此部分。"
+    "passwordRequired": "此页面属于站点设置或服务维护。请输入管理员密码继续。"
   },
   "nav": {
-    "dashboard": "仪表板",
-    "timeline": "时间轴",
-    "migrationCalendar": "迁移",
+    "dashboard": "首页",
+    "timeline": "记录",
+    "migrationCalendar": "季节性",
     "unknowns": "未知数",
-    "food": "食物",
+    "food": "喂食器",
     "species": "物种",
     "live": "居住",
     "liveView": "实时取景",
-    "settings": "设置",
-    "settingsHint": "中心配置（YAML）：网络、处理器路径、集成 — 不是上传文件。",
-    "system": "系统",
-    "systemHint": "运行状态、物种目录、磁盘上的 YOLO、日志、维护 — 不是编辑 YAML。",
-    "library": "图书馆",
-    "libraryHint": "录像归档、训练用数据集导出、磁盘与数据库维护。",
+    "settings": "站点",
+    "settingsHint": "日常站点设置：摄像头、通知、识别和集成。",
+    "system": "服务",
+    "systemHint": "站点状态、诊断、识别改进和支持工具。",
+    "library": "数据",
+    "libraryHint": "归档、导出、存储和记录维护。",
     "supportProject": "支持",
-    "logout": "退出"
+    "logout": "退出",
+    "review": "校对"
   },
   "library": {
     "activity": "记录活动",
@@ -119,7 +120,17 @@
       "storageDescription": "归档的磁盘占用、录像量与数据库维护。处理器权重与物种目录工具在「系统」，不在此页。",
       "maintenanceTitle": "维护与调试",
       "maintenanceDescription": "较少使用的管理操作放在这里：文件回放、重新扫描、清理、恢复和其他运维工具。"
-    }
+    },
+    "modeOverview": "概览",
+    "modeService": "服务",
+    "serviceNotice": "此页面用于归档和数据维护。日常查看视频请使用“记录”。",
+    "guideTitle": "如何处理归档与数据",
+    "guideIntro": "当你需要检查归档本身、导出数据或维护存储时，请使用此页面。",
+    "guideStep1": "先查看归档日历，确认目标日期的文件确实存在。",
+    "guideStep2": "只有确认归档里有正确记录后，再执行数据集导出或存储检查。",
+    "guideStep3": "维护工具只应在服务模式下使用，而且仅在日常浏览不足以解决问题时使用。",
+    "openArchive": "打开归档",
+    "openMaintenance": "打开维护"
   },
   "overview": {
     "lastBird": "今天最后一只鸟",
@@ -307,6 +318,18 @@
     "learnedFusionModelPathHint": "一般保留集线器镜像默认值。仅当管理员明确给出另一模型文件名时再改（无需自行查找服务器路径）。",
     "learnedFusionAlpha": "学习融合权重（alpha）",
     "learnedFusionAlphaHint": "最终 = alpha × learned + (1 − alpha) × 规则置信度。可试 0.3–0.6；更小更保守。",
+    "recognitionImprovementHeading": "识别优化",
+    "recognitionImprovementIntro": "开启后，Hub 会使用内置置信度优化，并在积累足够人工修正后切换到训练模型。文件路径与维护操作不会出现在主用户流程中。",
+    "recognitionImprovementEnable": "优化识别",
+    "recognitionImprovementEnableHint": "如果希望只依赖基础规则，可以在这里关闭。",
+    "recognitionImprovementSensitivity": "优化灵敏度",
+    "recognitionImprovementSensitivityHint": "额外优化对最终置信度的影响强度。越低越保守。",
+    "recognitionImprovementCurrentModeLabel": "当前模式",
+    "recognitionImprovementExamplesLabel": "已修正样本：{{count}}",
+    "recognitionImprovementOpenSystem": "打开识别优化卡片",
+    "recognitionImprovementStatusDisabled": "优化已关闭",
+    "recognitionImprovementStatusHeuristic": "内置优化",
+    "recognitionImprovementStatusTrained": "训练模型",
     "frigateStandaloneHeading": "后备：没有 YOLO 轨迹的护卫舰访问",
     "frigateStandaloneWhenNoYolo": "如果 YOLO 没有轨迹但 Frigate 发送了事件，则创建访问",
     "frigateStandaloneWhenNoYoloHint": "否则，护卫舰触发的剪辑通常会作为零检测被删除。将阈值调低或禁用通知以限制噪音。",
@@ -616,8 +639,9 @@
     "processorSectionHeadingQuality": "Thresholds & guardrails",
     "processorSectionHeadingData": "Recording data & integrations",
     "processorModelsScopeTitle": "Models, scope & generic Bird",
-    "processorModelsScopeDesc": ".pt 与 allowlist 路径相对于处理器工作目录。同一块下方可上传至 data/custom_weights、查看指纹、重置并重启。",
+    "processorModelsScopeDesc": "这里保留日常识别行为设置：区域物种、generic Bird 与录像行为。模型文件管理和维护已移到服务模式。",
     "processorModelsCatalogDiagnosticsLink": "比对模型类别与目录/数据集文件夹：<syslink>系统 → 目录 → 目录诊断</syslink>（跟随链接会打开高级模式）。",
+    "processorModelsSupportLink": "权重上传、文件指纹与维护操作现在位于 <syslink>系统 → 服务模式</syslink>。",
     "processorWeightsIntroInline": "上面路径对应的文件状态：镜像内置或上传后的副本。上传/重置会更新 user_config 并请求重启处理器。",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyTwoStageDesc": "Hub uses binary detector → species classifier (two_stage).",
@@ -824,13 +848,23 @@
     "resolutionFullHD": "全高清 (1920x1080)",
     "resolutionHD": "高清 (1280x720)",
     "resolutionVGA": "VGA (640x480)",
-    "updateTitle": "更新设置",
+    "updateTitle": "站点设置",
     "restartInfo": "保存后，处理器会自动重新启动以应用更改。",
-    "pageDescription": "此处编辑中心配置（YAML 字段）：网络、处理器参数、集成。保存会应用更改并请求重启处理器。YOLO 权重上传、磁盘指纹、物种目录维护与日志在「系统」（高级工作区）。录像归档、数据集导出与磁盘/数据库工具在「图书馆」。",
+    "pageDescription": "按步骤设置站点：先连接摄像头和视频流，再配置通知，最后调整识别和集成。",
     "savedRestart": "设置已保存。处理器将在约 60 秒内重新启动。",
     "restartFailed": "无法重新启动处理器",
     "savedRestarting": "设置已保存。处理器正在重新启动。",
-    "saveError": "无法保存设置。检查您的连接或重试。"
+    "saveError": "无法保存设置。检查您的连接或重试。",
+    "guideTitle": "如何设置站点",
+    "guideIntro": "把这个页面当作简短流程，而不是一次填写所有字段。",
+    "guideStep1": "先连接摄像头和录制来源，让 BirdLense 能看到访问事件。",
+    "guideStep2": "确认视频流稳定后，再设置通知和外部集成。",
+    "guideStep3": "最后再调整识别阈值、校对队列和模型改进。",
+    "guideStep4": "保存后等待处理器重启，再到“服务”页面确认状态。",
+    "openConnections": "打开连接",
+    "openNotifications": "打开通知",
+    "openRecognition": "打开识别",
+    "openService": "打开服务状态"
   },
   "live": {
     "title": "直播 — 所有摄像机",
@@ -842,7 +876,7 @@
     "modeMjpeg": "MJPEG"
   },
   "timeline": {
-    "intro": "摄像头录像：选择日期和时间来查看鸟类检测视频。",
+    "intro": "选择一天，打开记录，然后从记录进入物种详情或识别校对。",
     "reportsAndSharingHint": "eBird、CSV 与 JSON：点击物种筛选右侧下载图标打开菜单。iNaturalist：视频检测行的分享图标（到访卡片或录制详情页）。月度 PDF 报告：总览（首页）日期选择器旁。",
     "modeTimeline": "时间轴",
     "modeReview": "审查",
@@ -869,7 +903,20 @@
     "timeEvening": "晚上（18-22）",
     "hourFilterChip": "小时：{{from}}–{{to}}",
     "expandVisitDetails": "展开参观详情",
-    "collapseVisitDetails": "折叠访问详情"
+    "collapseVisitDetails": "折叠访问详情",
+    "guideTitle": "如何查看记录",
+    "guideIntro": "这是普通用户和鸟类学家每天都会使用的主要路径。",
+    "guideStep1": "先选择有记录的一天，必要时再按时间或物种缩小范围。",
+    "guideStep2": "打开一次访问，观看视频并确认现场实际发生了什么。",
+    "guideStep3": "从记录跳转到物种页面，或在识别错误时进入“校对”。",
+    "openSpeciesDirectory": "打开物种目录",
+    "openReview": "打开校对队列",
+    "reviewGuideTitle": "如何校对不确定识别",
+    "reviewGuideIntro": "当系统不确定，或你知道识别结果不对时，请使用这个模式。",
+    "reviewGuideStep1": "先打开记录，确认你看到的确实是哪种鸟。",
+    "reviewGuideStep2": "确认当前物种，或选择正确物种并应用修正。",
+    "reviewGuideStep3": "修正累积足够后，前往“服务 → 识别改进”刷新训练模型。",
+    "openRecognitionImprovement": "打开识别改进"
   },
   "pwa": {
     "installPrompt": "将 BirdLense Hub 添加到您的主屏幕",
@@ -1173,7 +1220,13 @@
     "noPreviousRecording": "没有之前的录音",
     "noNextRecording": "以后不再录音",
     "neighborsDayHint": "当地日历日；可以继续到午夜之后。上一个/下一个步骤浏览该日历日的所有剪辑。",
-    "localDayLabel": "当地时间"
+    "localDayLabel": "当地时间",
+    "guideTitle": "如何阅读这条记录",
+    "guideIntro": "先以录像本身为准，再决定是否修正物种或得出结论。",
+    "guideStep1": "观看录像，并将时间轴标记与画面或声音进行对照。",
+    "guideStep2": "查看识别出的物种列表，如需上下文可打开物种页面。",
+    "guideStep3": "如果识别错误，请在这里或“校对”中修正，以便下次模型更新使用这些修正。",
+    "serviceToolsTitle": "此记录的服务工具"
   },
   "feed": {
     "feederControl": "送料器控制",
@@ -1341,7 +1394,10 @@
     "noon": "中午"
   },
   "system": {
-    "pageDescription": "运维中心：健康与资源、集成、物种目录质量；随后（高级工作区）磁盘上的 YOLO、自动化、诊断日志与危险区。YAML 路径编辑仍在「设置」。",
+    "pageDescription": "先确认站点是否健康，再查看需要注意的问题；只有普通用户路径不够用时才打开服务工具。",
+    "modeOverview": "概览",
+    "modeWorkspace": "服务",
+    "modeAria": "系统页面模式",
     "storage": "存储",
     "sections": {
       "healthTitle": "系统状态",
@@ -1356,11 +1412,31 @@
       "diagnosticsDescription": "日志和底层排错工具仍然可用，但只在明确切换到高级工作区时显示。",
       "overviewTitle": "运行概览",
       "overviewDescription": "先看整体健康，再查看资源和最常出问题的集成。",
-      "workspaceTitle": "管理工作区",
-      "workspaceDescription": "磁盘上的 YOLO 检查点（上传/重置/指纹）、fusion 与相关维护 — 与「设置」里只改 YAML 路径分开。",
+      "workspaceTitle": "服务模式",
+      "workspaceDescription": "这里放支持工具：权重上传/重置、原始 fusion 工作流、诊断与维护；普通用户不需要每天进入这里。",
       "dangerTitle": "危险区",
       "dangerDescription": "破坏性清理与不可逆操作单独隔离。"
     },
+    "recognitionImprovementTitle": "识别优化",
+    "recognitionImprovementDescription": "来自录像页面的人工修正会自动进入优化队列。样本足够后，无需接触文件或脚本即可刷新训练模型。",
+    "recognitionImprovementLoadError": "无法加载识别优化状态",
+    "recognitionImprovementModeDisabled": "优化已关闭",
+    "recognitionImprovementModeHeuristic": "内置启发式",
+    "recognitionImprovementModeTrained": "训练模型已启用",
+    "recognitionImprovementExamplesChip": "{{count}} 个样本",
+    "recognitionImprovementVideosChip": "{{count}} 个视频",
+    "recognitionImprovementSpeciesChip": "{{count}} 个物种",
+    "recognitionImprovementCurrentMode": "当前模式",
+    "recognitionImprovementReadyText": "已经有足够的修正样本可训练并激活新模型。",
+    "recognitionImprovementNeedMoreText": "建议再收集 {{count}} 个修正样本后进行下一次训练。",
+    "recognitionImprovementLastTraining": "上次训练",
+    "recognitionImprovementLastFeedback": "上次人工修正",
+    "recognitionImprovementUpdateModel": "更新模型",
+    "recognitionImprovementRollback": "回滚",
+    "recognitionImprovementTrainStarted": "已启动识别优化",
+    "recognitionImprovementTrainFailed": "无法启动识别优化",
+    "recognitionImprovementRollbackDone": "已恢复到上一个识别模式",
+    "recognitionImprovementRollbackFailed": "无法回滚识别模式",
     "processorLogs": "处理器日志",
     "processorLogsHint": "最后{{lines}}行。每 10 秒自动刷新一次。用于在无法访问 docker 日志时进行远程诊断。",
     "processorWeightsTitle": "处理器权重 (YOLO)",
@@ -1719,7 +1795,15 @@
       "telegram_text_failed": "文本回退失败",
       "unexpected_error": "意外错误",
       "unknown": "未知"
-    }
+    },
+    "guideTitle": "如何使用服务页面",
+    "guideIntro": "先看状态摘要，只有摘要提示问题时再继续深入。",
+    "guideStep1": "确认站点运行正常，通知可以送达。",
+    "guideStep2": "检查识别改进和物种目录问题，看它们是否影响日常结果。",
+    "guideStep3": "只有在支持、诊断、恢复或维护时才进入服务模式。",
+    "openHealth": "打开状态",
+    "openCatalog": "打开目录任务",
+    "openWorkspace": "打开服务工具"
   },
   "food": {
     "food": "食物",
@@ -1848,8 +1932,8 @@
       ]
     },
     "library": {
-      "title": "图书馆",
-      "description": "查看真实的录音档案、打开所需的时间、维护数据库并从一个地方准备数据集。库现在结合了存档可见性、数据集流、备份/恢复和试运行维护操作。",
+      "title": "数据与归档",
+      "description": "用这个页面检查归档本身、导出数据集和维护存储。日常浏览记录请使用“记录”。",
       "details": [
         {
           "title": "日历意味着什么",
@@ -1874,8 +1958,8 @@
       ]
     },
     "timeline": {
-      "title": "时间轴",
-      "description": "查看鸟类访问您的喂食器的时间历史记录。每次访问都会显示有关检测到的鸟类的详细信息，包括视频和音频观察。",
+      "title": "记录",
+      "description": "打开某一天，查看记录，并在需要时从记录进入物种详情或校对页面。",
       "details": [
         {
           "title": "访问控制",
@@ -1908,8 +1992,8 @@
       ]
     },
     "unknowns": {
-      "title": "未知数",
-      "description": "检查并纠正低置信度检测。置信度低于阈值（可在“设置”中配置）的检测将显示在此处以供手动验证。",
+      "title": "校对队列",
+      "description": "检查低置信度或过于笼统的识别，确认物种，并把修正反馈到识别改进流程。",
       "details": [
         {
           "title": "目的",
@@ -1956,8 +2040,8 @@
       ]
     },
     "videoDetails": {
-      "title": "视频详情",
-      "description": "查看有关记录的鸟类访问的详细信息，包括视频片段、音频频谱图以及视觉和音频分析的检测结果。",
+      "title": "记录详情",
+      "description": "把这页当作证据页：观看录像、检查检测结果，并在需要时修正物种。",
       "details": [
         {
           "title": "媒体播放器",
@@ -1985,5 +2069,27 @@
         }
       ]
     }
+  },
+  "speciesDirectory": {
+    "title": "物种",
+    "description": "浏览这个站点已经识别过的鸟类，打开物种卡片，并随时回到记录查看原始证据。",
+    "guideTitle": "如何使用物种页面",
+    "guideIntro": "当你已经知道要找哪种鸟，或者想比较站点曾经见过哪些鸟时，请从这里开始。",
+    "guideStep1": "按名称搜索物种，或先查看记录次数最多的鸟。",
+    "guideStep2": "打开物种卡片，查看趋势、近期访问和背景信息。",
+    "guideStep3": "如果需要原始证据，再返回“记录”查看对应视频。",
+    "search": "搜索物种",
+    "searchPlaceholder": "输入物种名称或说明",
+    "loadError": "无法加载物种目录",
+    "totalCount": "目录中共有 {{count}} 个物种",
+    "filteredCount": "显示 {{count}} 个",
+    "empty": "当前搜索没有匹配的物种。",
+    "activeNow": "最近见过",
+    "inHistory": "仅在归档中",
+    "recordsCount": "{{count}} 条记录",
+    "openSpecies": "打开物种卡片",
+    "openRecordingsForSpecies": "打开记录",
+    "openRecordings": "打开记录",
+    "openSeasonality": "打开季节性"
   }
 }

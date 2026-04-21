@@ -62,7 +62,7 @@ const heartbeat = keyframes`
 const NAV_KEYS = [
   { key: 'dashboard', path: '/' },
   { key: 'timeline', path: '/timeline' },
-  { key: 'migrationCalendar', path: '/migration-calendar' },
+  { key: 'species', path: '/species' },
   { key: 'food', path: '/food' },
 ] as const;
 
@@ -112,6 +112,7 @@ export function Navigation() {
     logoutAccess,
     isLoading,
     isAdmin,
+    canEdit,
   } = useProtectedArea();
   /** Настройки: только гость (вход) или админ. Оператор (contributor) — без пункта «Настройки». */
   const showSettingsLink = !requiresPassword || !unlocked || isAdmin;
@@ -160,6 +161,8 @@ export function Navigation() {
   };
 
   const needsPassword = isLoading || (requiresPassword && !unlocked);
+  const isReviewRoute =
+    currentPath === '/timeline' && /(?:^|[?&])review=1(?:&|$)/.test(location.search);
 
   const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (needsPassword) {
@@ -266,11 +269,24 @@ export function Navigation() {
                   onClick={handleMobileMenuClose}
                   component={Link}
                   to={item.path}
-                  selected={currentPath === item.path}
+                  selected={
+                    currentPath === item.path &&
+                    !(item.path === '/timeline' && isReviewRoute)
+                  }
                 >
                   {t(`nav.${item.key}`)}
                 </MenuItem>
               ))}
+              {canEdit ? (
+                <MenuItem
+                  onClick={handleMobileMenuClose}
+                  component={Link}
+                  to="/timeline?review=1"
+                  selected={isReviewRoute}
+                >
+                  {t('nav.review')}
+                </MenuItem>
+              ) : null}
 
               {/* Live View */}
               <MenuItem
@@ -430,7 +446,8 @@ export function Navigation() {
                 component={Link}
                 to={item.path}
                 sx={
-                  currentPath === item.path
+                  currentPath === item.path &&
+                  !(item.path === '/timeline' && isReviewRoute)
                     ? activeNavPillStyles
                     : navPillStyles
                 }
@@ -438,6 +455,15 @@ export function Navigation() {
                 {t(`nav.${item.key}`)}
               </Box>
             ))}
+            {canEdit ? (
+              <Box
+                component={Link}
+                to="/timeline?review=1"
+                sx={isReviewRoute ? activeNavPillStyles : navPillStyles}
+              >
+                {t('nav.review')}
+              </Box>
+            ) : null}
           </Box>
 
           {/* Action Buttons - Desktop */}

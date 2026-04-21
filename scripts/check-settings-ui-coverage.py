@@ -160,6 +160,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Bulk mapping maintained as config dictionary.",
         "next_step": "Consider import/export UI when species tools are expanded.",
     },
+    "detection.fusion_model_path": {
+        "category": "ops-only",
+        "reason": "Fusion model artifact is managed by product workflow or support tools, not typed as a path in Settings.",
+        "next_step": "Expose only via recognition improvement workflow / service mode.",
+    },
     # Ops/security-sensitive/infra-generated values.
     "web_push.enabled": {
         "category": "backend-managed",

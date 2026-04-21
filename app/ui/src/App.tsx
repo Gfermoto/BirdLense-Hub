@@ -30,6 +30,7 @@ const LivePage = lazy(() =>
 const Settings = lazy(() =>
   import('./pages/Settings').then((m) => ({ default: m.Settings })),
 );
+const SpeciesDirectoryPage = lazy(() => import('./pages/SpeciesDirectory'));
 const SpeciesSummary = lazy(() => import('./pages/SpeciesSummary'));
 const System = lazy(() =>
   import('./pages/System').then((m) => ({ default: m.System })),
@@ -261,9 +262,7 @@ function App() {
                         <Route path="/food" element={<FoodManagement />} />
                         <Route
                           path="/species"
-                          element={
-                            <Navigate to="/migration-calendar" replace />
-                          }
+                          element={<SpeciesDirectoryPage />}
                         />
                         <Route path="/live" element={<LivePage />} />
                         <Route path="/settings" element={<Settings />} />
@@ -289,7 +288,7 @@ function App() {
             </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>
-        <ReactQueryDevtools initialIsOpen={false} />
+        {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}
       </ThemeProvider>
     </QueryClientProvider>
   );

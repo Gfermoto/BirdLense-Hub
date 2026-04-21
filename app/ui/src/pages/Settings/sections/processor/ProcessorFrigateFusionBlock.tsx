@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
+import Alert from '@mui/material/Alert';
 import Grid from '@mui/material/Grid2';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
@@ -7,8 +9,11 @@ import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
+import Link from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
+import { fetchRecognitionImprovementSummary } from '../../../../api/api';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -16,6 +21,17 @@ type Props = {
 
 export function ProcessorFrigateFusionBlock({ form }: Props) {
   const { t } = useTranslation();
+  const summaryQ = useQuery({
+    queryKey: ['recognition-improvement-summary'],
+    queryFn: fetchRecognitionImprovementSummary,
+    staleTime: 10_000,
+  });
+  const improvementModeLabel =
+    summaryQ.data?.active_mode === 'trained'
+      ? t('settings.recognitionImprovementStatusTrained')
+      : summaryQ.data?.active_mode === 'disabled'
+        ? t('settings.recognitionImprovementStatusDisabled')
+        : t('settings.recognitionImprovementStatusHeuristic');
 
   return (
     <ServiceBlock title={t('settings.frigateFusionTitle')}>
@@ -111,12 +127,31 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
         </Grid>
         <Grid size={{ xs: 12 }}>
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>
-            {t('settings.learnedFusionHeading')}
+            {t('settings.recognitionImprovementHeading')}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('settings.learnedFusionIntro')}
+            {t('settings.recognitionImprovementIntro')}
           </Typography>
         </Grid>
+        {summaryQ.data ? (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity={summaryQ.data.feedback.ready_for_training ? 'success' : 'info'}>
+              <Typography variant="body2" component="div">
+                {t('settings.recognitionImprovementCurrentModeLabel')}: <strong>{improvementModeLabel}</strong>
+              </Typography>
+              <Typography variant="body2" component="div">
+                {t('settings.recognitionImprovementExamplesLabel', {
+                  count: summaryQ.data.feedback.corrected_examples,
+                })}
+              </Typography>
+              <Typography variant="body2" component="div">
+                <Link component={RouterLink} to="/system">
+                  {t('settings.recognitionImprovementOpenSystem')}
+                </Link>
+              </Typography>
+            </Alert>
+          </Grid>
+        ) : null}
         <Grid size={{ xs: 12 }}>
           <form.Field name="detection.use_learned_fusion">
             {(field) => (
@@ -127,27 +162,13 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
                     onChange={(e) => field.handleChange(e.target.checked)}
                   />
                 }
-                label={t('settings.learnedFusionEnable')}
+                label={t('settings.recognitionImprovementEnable')}
               />
             )}
           </form.Field>
           <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
-            {t('settings.learnedFusionEnableHint')}
+            {t('settings.recognitionImprovementEnableHint')}
           </FormHelperText>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="detection.fusion_model_path">
-            {(field) => (
-              <TextField
-                fullWidth
-                value={field.state.value ?? ''}
-                onChange={(e) => field.handleChange(e.target.value)}
-                label={t('settings.learnedFusionModelPath')}
-                helperText={t('settings.learnedFusionModelPathHint')}
-                placeholder=""
-              />
-            )}
-          </form.Field>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="detection.fusion_alpha">
@@ -170,8 +191,8 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
                   const n = Number(raw);
                   field.handleChange(Number.isNaN(n) ? undefined : n);
                 }}
-                label={t('settings.learnedFusionAlpha')}
-                helperText={t('settings.learnedFusionAlphaHint')}
+                label={t('settings.recognitionImprovementSensitivity')}
+                helperText={t('settings.recognitionImprovementSensitivityHint')}
               />
             )}
           </form.Field>
