@@ -1,6 +1,7 @@
 #!/bin/bash
 # Проверка EU-модели (YOLO 11, birds-525 + iNaturalist) на сервере.
-# Убеждаемся, что best.pt — европейские птицы и веса работают.
+# Классификатор: classification/weights/best.pt (HF gfermoto/birdlense-birds-eu).
+# Бинарник: detection/weights/best.pt из zip форка github.com/AleksandrRogachev94/BirdLense
 #
 # Запуск: ./scripts/verify-eu-model.sh
 # Требует: deploy.local.sh с DEPLOY_HOST и DEPLOY_REMOTE_DIR
@@ -14,15 +15,30 @@ HOST="${DEPLOY_HOST:?Set DEPLOY_HOST in deploy.local.sh}"
 # Как в scripts/deploy.sh по умолчанию; /opt/birdlense — устаревший пример из старых инструкций
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 
+_PORT_OPT=""
+if [ -n "${DEPLOY_SSH_PORT:-}" ] && [ "${DEPLOY_SSH_PORT}" != "22" ]; then
+  _PORT_OPT="-p ${DEPLOY_SSH_PORT}"
+fi
+SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
+
 echo "=== Проверка EU-модели на ${HOST} ==="
 echo ""
 
-echo "1. Файлы весов:"
-ssh "${HOST}" "ls -la ${REMOTE_DIR}/app/processor/models/classification/weights/best*.pt 2>/dev/null || true"
+echo "1. Файлы весов (classification best.pt + binary detection):"
+ssh ${SSH_OPTS} "${HOST}" "ls -la ${REMOTE_DIR}/app/processor/models/classification/weights/best*.pt ${REMOTE_DIR}/app/processor/models/detection/weights/best*.pt 2>/dev/null || true"
 echo ""
 
-echo "2. Классы модели best.pt (должно быть ~491):"
-ssh "${HOST}" "docker exec birdlense python3 -c \"
+echo "1b. CUDA в контейнере (если пусто — только CPU):"
+ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
+import torch
+print('   cuda_available:', torch.cuda.is_available())
+if torch.cuda.is_available():
+    print('   device:', torch.cuda.get_device_name(0))
+\" 2>/dev/null || echo '   (torch check failed)'"
+echo ""
+
+echo "2. Классы EU-классификатора best.pt (должно быть ~491):"
+ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
 from ultralytics import YOLO
 m = YOLO('/app/processor/models/classification/weights/best.pt', task='classify')
 n = len(m.names)
@@ -33,10 +49,19 @@ print(f'   EU-виды (примеры): {found[:5]}')
 \""
 echo ""
 
-echo "3. Тест классификатора (случайный кадр):"
-ssh "${HOST}" "docker exec birdlense python3 -c \"
+echo "2b. Бинарный детектор (должно быть мало классов, обычно 2):"
+ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
 from ultralytics import YOLO
+m = YOLO('/app/processor/models/detection/weights/best.pt', task='detect')
+print('   Классов:', len(m.names))
+print('   names:', dict(list(m.names.items())[:6]), '...' if len(m.names) > 6 else '')
+\" 2>/dev/null || echo '   ОШИБКА: не удалось загрузить binary best.pt'"
+echo ""
+
+echo "3. Тест классификатора (случайный кадр):"
+ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
 import numpy as np
+from ultralytics import YOLO
 m = YOLO('/app/processor/models/classification/weights/best.pt', task='classify')
 crop = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
 r = m(crop, verbose=False)
@@ -50,7 +75,18 @@ else:
 echo ""
 
 echo "4. Конфиг (detection_strategy, classifier path):"
-ssh "${HOST}" "grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/default_config.yaml 2>/dev/null || grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/user_config.yaml 2>/dev/null || echo '   (default_config)'"
+ssh ${SSH_OPTS} "${HOST}" "grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/default_config.yaml 2>/dev/null || grep -E 'detection_strategy|classifier:' ${REMOTE_DIR}/app/app_config/user_config.yaml 2>/dev/null || echo '   (default_config)'"
 echo ""
 
-echo "=== Готово. EU-модель активна, если: классов ~491, EU-виды в списке, тест OK. ==="
+echo "=== Итог ==="
+ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
+from ultralytics import YOLO
+c = YOLO('/app/processor/models/classification/weights/best.pt', task='classify')
+n = len(c.names)
+print('   classifier_classes:', n)
+if n < 50:
+    print('   WARNING: ожидались сотни классов (EU ~491). Сейчас мало классов — виды будут «ломаться».')
+d = YOLO('/app/processor/models/detection/weights/best.pt', task='detect')
+print('   binary_classes:', len(d.names))
+\" 2>/dev/null || true"
+echo "EU-модель в норме: classifier_classes ~491, в списке EU-виды, cuda_available=True (если есть GPU)."

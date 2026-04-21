@@ -36,7 +36,7 @@
 1. **Go2RTC** (внешний) → RTSP/HLS поток
 2. **Processor** подключается к Go2RTC, получает кадры
 3. **Триггер** (OpenCV, Frigate, MQTT, ESPHome) → начало записи
-4. **Detector** — подтверждение target первого уровня (`Bird | Squirrel`)
+4. **Detector** — подтверждение target первого уровня (`Bird | Rodent`)
 5. **YOLO classifier** — классификация вида для detector-confirmed треков
 6. **ByteTrack** — трекинг и bbox по кадрам
 7. **Fusion** — общий post-inference слой: detector/classifier outcome, promotion от Frigate, confidence boosters

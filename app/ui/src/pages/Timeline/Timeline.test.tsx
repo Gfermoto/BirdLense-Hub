@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Timeline } from './Timeline';
 import type { SpeciesVisit } from '../../types';
+import '../../i18n';
 
 vi.mock('@mui/material/useMediaQuery', () => ({
   default: () => false,
@@ -33,6 +34,13 @@ const visits: SpeciesVisit[] = [
 ];
 
 describe('Timeline', () => {
+  it('shows an empty-state message when there are no visits', () => {
+    render(<Timeline visits={[]} />);
+    expect(
+      screen.getByText(/no visits for this day/i),
+    ).toBeInTheDocument();
+  });
+
   it('keeps desktop visit card shells full width on both sides of the rail', () => {
     render(<Timeline visits={visits} />);
 

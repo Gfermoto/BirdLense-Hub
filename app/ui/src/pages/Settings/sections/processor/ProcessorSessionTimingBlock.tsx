@@ -91,6 +91,57 @@ export function ProcessorSessionTimingBlock({ form }: Props) {
             )}
           </form.Field>
         </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.min_seconds_between_recordings">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 0, max: 300, step: 1 }}
+                value={field.state.value ?? 8}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 0)
+                }
+                label={t('settings.minSecondsBetweenRecordings')}
+                helperText={t('settings.minSecondsBetweenRecordingsHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.file_max_record_floor_seconds">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 60, max: 172800, step: 60 }}
+                value={field.state.value ?? 86400}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 86400)
+                }
+                label={t('settings.fileMaxRecordFloorSeconds')}
+                helperText={t('settings.fileMaxRecordFloorSecondsHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.frigate_activity_hold_seconds">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 0, max: 120, step: 1 }}
+                value={field.state.value ?? 6}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 0)
+                }
+                label={t('settings.frigateActivityHoldSeconds')}
+                helperText={t('settings.frigateActivityHoldSecondsHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
       </Grid>
     </ServiceBlock>
   );

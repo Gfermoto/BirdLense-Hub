@@ -9,6 +9,10 @@ app/data/recordings
 app/data/dataset/
 app/data/cache/
 app/data/notify_temp
+# Снимки runtime процессора (локально / в volume; не коммитить)
+app/data/diagnostics/
+data/diagnostics/
+app/processor/data/
 app/data/processor.log*
 app.log
 .DS_Store
@@ -83,6 +87,8 @@ app/.coverage
 app/processor/models/
 # Исключение: текстовые allowlist-файлы — часть конфигурации, не весов
 !app/processor/models/classification/weights/class_names.txt
+# Краткая памятка по бинарному детектору (не веса)
+!app/processor/models/detection/README.md
 
 # Сгенерированная документация (make docs)
 docs/api/

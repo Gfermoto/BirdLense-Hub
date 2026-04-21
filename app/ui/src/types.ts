@@ -114,10 +114,37 @@ export interface BirdTaxonomy {
   isCommonVisitor: boolean;
 }
 
+/** Ночной / low-light: override полей процессора при срабатывании профиля. */
+export type ProcessorNightProfileOverrides = {
+  light_gate_min_brightness?: number;
+  light_gate_min_contrast?: number;
+  min_confidence_binary?: number;
+  min_confidence_binary_bird?: number;
+  min_confidence_binary_rodent?: number;
+  /** @deprecated см. min_confidence_binary_rodent */
+  min_confidence_binary_squirrel?: number;
+  min_track_duration?: number;
+  min_confidence_to_process?: number;
+  min_box_size_px?: number;
+  min_center_dist?: number;
+  max_classifications_per_frame?: number;
+};
+
+export type ProcessorAdaptiveProfiles = {
+  enabled?: boolean;
+  night?: {
+    max_brightness?: number;
+    max_contrast?: number;
+    overrides?: ProcessorNightProfileOverrides;
+  };
+};
+
 export interface Settings {
   general: {
     enable_notifications: boolean;
     notification_excluded_species: string[];
+    /** Требовать сессию для прямого MJPEG/потока (см. конфиг). */
+    require_auth_for_video_stream?: boolean;
     settings_password?: string;
     contributor_password?: string;
     /** Minutes without /api/* before login session clears; 0 = off. Default 30. */
@@ -170,11 +197,19 @@ export interface Settings {
     /** Post-roll seconds added to inactivity gap before stop (#157). */
     post_record_seconds?: number;
     max_inactive_seconds: number; // Max inactivity before stopping recording
+    /** Пауза после конца записи до следующего старта (сек). */
+    min_seconds_between_recordings?: number;
+    /** Нижняя граница max_record_seconds в режиме file + плейлист. */
+    file_max_record_floor_seconds?: number;
+    /** Удержание сессии при свежих событиях Frigate без YOLO на паре кадров. */
+    frigate_activity_hold_seconds?: number;
     min_track_duration?: number; // Min track duration (sec) for ByteTrack; shorter tracks discarded
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
     min_confidence_binary_bird?: number | null;
-    /** Мягче для Squirrel/rodent. null → как min_confidence_binary. */
+    /** Мягче для Rodent (грызуны). null → как min_confidence_binary. */
+    min_confidence_binary_rodent?: number | null;
+    /** @deprecated Используйте min_confidence_binary_rodent; читается из YAML для совместимости */
     min_confidence_binary_squirrel?: number | null;
     /** Bird с площадью bbox ≤ доли кадра — без species classifier; null/0 = выкл. */
     bird_skip_classifier_max_area_frac?: number | null;
@@ -182,7 +217,7 @@ export interface Settings {
     /** Min confidence to send Telegram photo notification (defaults to min_confidence_to_process if unset). */
     min_confidence_to_notify?: number;
     min_box_size_px?: number; // Minimum bbox width/height in pixels for detector candidates
-    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Squirrel"]
+    detector_scope?: string[]; // First-stage detector targets, e.g. ["Bird", "Rodent"]
     /** If false, run YOLO on every frame (ignore brightness/contrast gate). */
     light_gate_enabled?: boolean;
     light_gate_min_brightness?: number;
@@ -206,6 +241,49 @@ export interface Settings {
     /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
     generate_spectrogram_always?: boolean;
     included_bird_families: string[]; // List of bird families to use in detections
+    adaptive_profiles?: ProcessorAdaptiveProfiles;
+    frame_processing_warn_ms?: number;
+    inference_lores_px?: number;
+    binary_imgsz?: number;
+    classification_scheduler?: string;
+    max_classifications_per_frame?: number;
+    max_blur_checks?: number;
+    blur_threshold?: number;
+    min_center_dist?: number;
+    regional_species?: string[];
+    generic_bird_min_detector_conf?: number;
+    generic_bird_min_frames?: number;
+    generic_bird_min_area_frac?: number;
+    generic_bird_min_best_frame_score?: number;
+    key_frame_limit?: number;
+    keep_recording_when_no_detections?: boolean;
+    detection_strategy?: string;
+    models?: { binary?: string; classifier?: string };
+    save_images?: boolean;
+    birdnet_mqtt_prior_window_hours?: number;
+    birdnet_mqtt_bias_window_seconds?: number;
+    birdnet_mqtt_prior_ttl_hours?: number;
+    birdnet_mqtt_prior_half_life_hours?: number;
+    birdnet_mqtt_prior_min_confidence?: number;
+    birdnet_mqtt_observability_level?: string;
+    birdnet_mqtt_observability_debug?: boolean;
+    birdnet_fifo_snapshot_enabled?: boolean;
+    birdnet_fifo_snapshot_interval_sec?: number;
+    birdnet_fifo_snapshot_recent_limit?: number;
+    birdnet_fifo_snapshot_stale_sec?: number;
+    birdnet_fifo_hearing_active_hours?: number;
+    birdnet_fifo_persist_enabled?: boolean;
+    birdnet_fifo_sqlite_busy_ms?: number;
+    track_regen_frame_step?: number;
+    track_regen_detection_strategy?: string;
+    track_regen_lores_px?: number;
+    track_regen_video_timeout_sec?: number;
+    track_regen_precise_timeout_sec?: number;
+    track_regen_precise_detection_strategy?: string;
+    track_regen_precise_min_center_dist?: number;
+    track_regen_ignore_regional_species?: boolean;
+    track_regen_match_live_pipeline?: boolean;
+    track_regen_parallel_auto_with_manual?: boolean;
   };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather
@@ -283,7 +361,12 @@ export interface Settings {
     state?: string;
     location_name?: string;
     protocol?: string;
-    species_mapping?: Record<string, string>;  // eBird name -> BirdLense name
+    species_mapping?: Record<string, string>; // eBird name -> BirdLense name
+  };
+  species?: {
+    catalog_allowlist_file?: string;
+    catalog_strict_ingest?: boolean;
+    tuning_target_species_ids?: number[];
   };
   feed?: {
     source?: string;
@@ -296,6 +379,9 @@ export interface Settings {
   motion?: {
     source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
     check_every_n_frames?: number;
+    opencv_diff_threshold?: number;
+    opencv_min_contour_area?: number;
+    frigate_min_trigger_score?: number;
     frigate_camera_filter?: string[];
     frigate_label_filter?: string[];
     frigate_label_exclude?: string[];
@@ -331,7 +417,7 @@ export interface Settings {
     };
   };
   detection?: {
-    min_confidence_to_store?: number;  // 0–1; детекции ниже не сохраняются (6% → 0.20)
+    min_confidence_to_store?: number; // 0–1; детекции ниже не сохраняются (6% → 0.20)
     /** YOLO без треков, но Frigate прислал событие — сохранить визит по Frigate */
     frigate_standalone_when_no_yolo?: boolean;
     frigate_standalone_when_no_accepted_species?: boolean;
@@ -344,6 +430,10 @@ export interface Settings {
     dedup_window_seconds?: number;
     one_per_species?: boolean;
     cross_source_confidence_bonus?: number;
+    /** Доп. калибровка confidence после rule-based fusion (FusionScorer). */
+    use_learned_fusion?: boolean;
+    fusion_model_path?: string;
+    fusion_alpha?: number;
     absorb_generic_bird?: boolean;
     absorb_generic_bird_overlap_min_sec?: number;
     absorb_generic_bird_min_classifier_confidence?: number;
@@ -354,10 +444,10 @@ export interface Settings {
     api_url?: string;
   };
   webhook?: {
-    url?: string;  // POST при детекции (IFTTT, Zapier)
+    url?: string; // POST при детекции (IFTTT, Zapier)
   };
   ui?: {
-    unknown_confidence_threshold?: number;  // 0–1; детекции ниже попадают в «Неизвестные»
+    unknown_confidence_threshold?: number; // 0–1; детекции ниже попадают в «Неизвестные»
   };
 }
 

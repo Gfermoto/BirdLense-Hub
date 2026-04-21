@@ -10,7 +10,8 @@ export function PwaUpdatePrompt() {
   const [updateSW, setUpdateSW] = useState<(() => void) | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator))
+      return;
     import('virtual:pwa-register').then(({ registerSW }) => {
       const upd = registerSW({
         onNeedRefresh() {
@@ -41,7 +42,12 @@ export function PwaUpdatePrompt() {
         open={showRefresh}
         message={t('pwa.updateAvailable')}
         action={
-          <Button color="inherit" size="small" onClick={handleRefresh} sx={{ fontWeight: 600 }}>
+          <Button
+            color="inherit"
+            size="small"
+            onClick={handleRefresh}
+            sx={{ fontWeight: 600 }}
+          >
             {t('pwa.refresh')}
           </Button>
         }

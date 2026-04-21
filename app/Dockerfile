@@ -47,16 +47,25 @@ COPY app/data/images /app/_bundled_data/images
 # Web + processor + scripts + shared eBird helpers (processor imports without services.*)
 COPY app/ebird_region_core.py ./
 COPY app/web/ ./web/
+COPY app/shared/ ./shared/
 COPY app/processor/ ./processor/
 COPY app/app_config/ ./app_config/
 COPY app/scripts/ ./scripts/
-# Скрипт из корня репо (контекст сборки — родитель app/)
+# Скрипты из корня репо (контекст сборки — родитель app/).
+# Список обязательных путей дублируется в web/services/fusion_training_service.py:
+# REQUIRED_SHIPPED_SCRIPT_RELPATHS — при добавлении subprocess-скрипта расширьте оба места.
 COPY scripts/export_fusion_training_data.py ./scripts/
-# SHA256 классификатора — синхронизировать с CHECKSUMS (app/processor/.../best.pt) и fetch-processor-weights.sh.
+COPY scripts/train_fusion.py ./scripts/
+# SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
-# two_stage: .pt не в git; бинарный детектор должен быть предоставлен в контексте сборки,
-# EU-классификатор скачивается с Hugging Face. Если свои веса уже лежат в контексте, пропускаем скачивание.
+ARG BINARY_ZIP_URL=https://raw.githubusercontent.com/AleksandrRogachev94/BirdLense/main/app/processor/models/detection/nabirds_yolo11n_binary.zip
+# two_stage: бинарник из zip (форк https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor );
+# классификатор best.pt с https://huggingface.co/gfermoto/birdlense-birds-eu
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
+    && if [ ! -s processor/models/detection/nabirds_yolo11n_binary.zip ]; then \
+         curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 \
+           -o processor/models/detection/nabirds_yolo11n_binary.zip "${BINARY_ZIP_URL}"; \
+       fi \
     && if [ ! -s processor/models/detection/weights/best.pt ]; then \
          unzip -j -o processor/models/detection/nabirds_yolo11n_binary.zip weights/best.pt \
            -d processor/models/detection/weights/; \

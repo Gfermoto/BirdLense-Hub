@@ -88,7 +88,7 @@ E2E runs against a **live** instance (UI + API).
 3. Remote: `cd app && BASE_URL=http://YOUR_HOST:8085 make test-e2e`
 4. **Settings password:** set `E2E_SETTINGS_PASSWORD=...` for a full run. Without it, Settings tests and `GET /api/ui/settings` are **skipped**.
 
-**Suites:** `smoke.spec.ts` (home, nav, Settings, Live), `api.spec.ts` (health, status, settings, cameras, weather, feed dispense), `settings.spec.ts` (form, Video/MQTT/Feed sections), `migration.spec.ts` (Migration **From year** filter + reset to **All years**; **skipped** if the calendar has no species table / empty DB).
+**Suites:** `smoke.spec.ts` (home, nav, Settings, Live, **System** readiness strip), `api.spec.ts` (health, status, settings, cameras, weather, feed dispense, **`GET /api/ui/system/config-audit`**), `settings.spec.ts` (form, Video/MQTT/Feed sections, **Processor → save max recording seconds** round-trip when admin + optional `E2E_SETTINGS_PASSWORD`), `migration.spec.ts` (Migration **From year** filter + reset to **All years**; **skipped** if the calendar has no species table / empty DB).
 
 API-only (no browser): `cd app/e2e && npm test -- --grep @api`
 

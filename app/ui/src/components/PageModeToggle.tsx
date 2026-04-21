@@ -27,12 +27,18 @@ export function PageModeToggle({
     <ToggleButtonGroup
       value={value}
       exclusive
-      size="small"
+      size="medium"
       color="primary"
       onChange={(_, next: PageMode | null) => {
         if (next) onChange(next);
       }}
       aria-label={ariaLabel ?? t('common.viewMode')}
+      sx={{
+        '& .MuiToggleButton-root': {
+          minHeight: 40,
+          px: 1.75,
+        },
+      }}
     >
       <ToggleButton value="simple" aria-label={resolvedSimpleLabel}>
         {resolvedSimpleLabel}

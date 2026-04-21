@@ -52,6 +52,26 @@ def repo_root() -> Path:
     raise RuntimeError(msg)
 
 
+# Пути относительно repo_root(): обязаны попадать в образ (см. COPY scripts/*.py в app/Dockerfile).
+# Расширяйте список при добавлении subprocess-вызовов новых скриптов из корня репозитория.
+REQUIRED_SHIPPED_SCRIPT_RELPATHS: tuple[str, ...] = (
+    "scripts/export_fusion_training_data.py",
+    "scripts/train_fusion.py",
+)
+
+
+def ensure_shipped_fusion_layout_for_training() -> None:
+    """Проверить наличие fusion-скриптов в layout образа до долгого export/train."""
+    root = repo_root()
+    missing = [rel for rel in REQUIRED_SHIPPED_SCRIPT_RELPATHS if not (root / rel).is_file()]
+    if missing:
+        raise RuntimeError(
+            "shipped_fusion_scripts_missing: "
+            + ", ".join(missing)
+            + " (sync app/Dockerfile COPY with REQUIRED_SHIPPED_SCRIPT_RELPATHS in fusion_training_service.py)"
+        )
+
+
 def fusion_export_dir() -> Path:
     """Каталог data/exports/fusion."""
     out_dir = Path(data_dir()) / "exports" / "fusion"

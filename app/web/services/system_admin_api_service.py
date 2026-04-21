@@ -109,6 +109,23 @@ def start_single_video_spectrogram_regeneration(
                 "error": "Regeneration already in progress",
                 "status": job_state._regenerate_status,
             }, 409
+        # Сразу «running», чтобы UI мог опросить прогресс до первого тика воркера.
+        job_state._regenerate_status = {
+            "status": "running",
+            "result": None,
+            "error": None,
+            "progress": {
+                "processed": 0,
+                "total": 1,
+                "generated": 0,
+                "failed": 0,
+                "skipped": 0,
+                "current_video": video.video_path,
+                "current_video_id": video_id,
+                "active_request_video_id": video_id,
+                "phase": "queued",
+            },
+        }
     threading.Thread(
         target=run_regenerate_spectrograms_worker,
         args=(flask_app, True, None, None, [video_id]),
@@ -137,6 +154,22 @@ def start_single_video_track_regeneration(
                 "error": "Track regeneration already in progress",
                 "status": job_state._regenerate_tracks_status,
             }, 409
+        job_state._regenerate_tracks_status = {
+            "status": "running",
+            "result": None,
+            "error": None,
+            "progress": {
+                "processed": 0,
+                "total": 1,
+                "generated": 0,
+                "failed": 0,
+                "skipped": 0,
+                "current_video": video.video_path,
+                "current_video_id": video_id,
+                "active_request_video_id": video_id,
+                "phase": "queued",
+            },
+        }
     threading.Thread(
         target=run_regenerate_tracks_worker,
         args=(flask_app, force, None, None, None, [video_id], []),

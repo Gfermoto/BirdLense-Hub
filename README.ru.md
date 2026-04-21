@@ -4,7 +4,7 @@
 
 # BirdLense Hub
 
-[![Version](https://img.shields.io/badge/version-0.3.5-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
+[![Version](https://img.shields.io/badge/version-0.3.6-blue.svg)](./CHANGELOG.md) [English](./README.md) · [Contributing](./CONTRIBUTING.md) [RU](./CONTRIBUTING.ru.md) · [Security](./SECURITY.md) [RU](./SECURITY.ru.md)
 
 ### Краткое описание
 
@@ -18,11 +18,11 @@
 
 ### Модели
 
-Два компонента: **детектор** (птица/белка в кадре) и **классификатор** (вид птицы).
+Два компонента: **детектор** (птица или грызун Rodent в кадре) и **классификатор** (вид птицы).
 
 | Компонент | Версия | Дообучено на | Примечание |
 |-----------|--------|--------------|------------|
-| **Детектор** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/squirrel — **не меняется** при EU-обучении |
+| **Детектор** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel | Бинарный bird/rodent (веса могут содержать класс squirrel; хаб нормализует в Rodent) — **не меняется** при EU-обучении |
 | **Классификатор** | YOLO11n-cls | birds-525 + iNaturalist (≈490) | EU по умолчанию; US/NABirds — опциональный резерв |
 
 **Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
@@ -31,7 +31,7 @@
 
 **Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
-**Модели:** активный runtime — two-stage `detection/weights/best.pt` + `classification/weights/best.pt`. В `app/processor/models/` должны оставаться только runtime-артефакты вроде `best.pt` и `class_names.txt`; CSV, `args.yaml`, NCNN-экспорты и notebook-checkpoints — это мусор обучения/экспорта и их можно удалять или пересоздавать. `app/yolo11n.pt` оставлен только как compatibility-only артефакт; при необходимости его можно скачать через `scripts/fetch-processor-weights.sh --legacy-single-stage`.
+**Модели:** two-stage — `detection/weights/best.pt` (бинарник, zip из форка [AleksandrRogachev94/BirdLense → `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) и `classification/weights/best.pt` (EU, [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu)). Скачивание: `scripts/fetch-processor-weights.sh`. Рядом с классификатором — `class_names.txt`. `app/yolo11n.pt` — legacy (`--legacy-single-stage`).
 
 <details>
 <summary>📷 Скриншоты</summary>
@@ -96,6 +96,18 @@ UI: http://localhost:8085
 - **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `make test`, `make test-web`, E2E; тесты процессора требовательны к RAM.
 - **Участие:** [CONTRIBUTING.ru.md](./CONTRIBUTING.ru.md).
 
+### Первый прогон CI (как в Actions)
+
+1. **Node.js ≥ 22** (`app/ui/package.json` → `engines`, `app/ui/.nvmrc`).
+2. Из корня: **`make ci-local`** — при необходимости создаёт **`.venv-ci`** и запускает [`scripts/ci-full-local.sh`](./scripts/ci-full-local.sh) (тот же сценарий, что и [`.github/workflows/ci-pr.yml`](./.github/workflows/ci-pr.yml)).
+3. Только web pytest (как в CI, `PYTHONPATH`):
+
+```bash
+cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
+```
+
+**Карта экранов настроек:** [docs/UI_SETTINGS_MAP.ru.md](./docs/UI_SETTINGS_MAP.ru.md) · [EN](./docs/UI_SETTINGS_MAP.md)
+
 ## Требования
 
 - **Docker** — x86/amd64
@@ -124,6 +136,8 @@ UI: http://localhost:8085
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |
 | `make logs` | Логи |
+
+**Ворота релиза (коротко):** [Definition of Done](./docs/DEFINITION_OF_DONE.ru.md) · [EN](./docs/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [RELEASE_READINESS](./docs/RELEASE_READINESS.ru.md).
 
 Из `app/`:
 

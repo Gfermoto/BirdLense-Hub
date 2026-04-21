@@ -1,5 +1,6 @@
 """Канонический реестр видов: taxon, алиасы, резолв имён, бэкфилл и обогащение метаданными."""
 
+import logging
 import re
 import time
 import requests
@@ -24,6 +25,8 @@ from util import (
     _host_is_wikipedia_family,
     _url_hostname_lower,
 )
+
+_log = logging.getLogger(__name__)
 
 
 def _norm_key(name: str) -> str:
@@ -809,6 +812,7 @@ def repair_catalog_cards(
 
     metadata_fixed = 0
     images_replaced_from_inat = 0
+    enrich_exceptions = 0
 
     for sp in targets:
         before_img = bool((sp.image_url or "").strip())
@@ -819,8 +823,15 @@ def repair_catalog_cards(
                 changed = enrich_species_card_metadata(sp)
                 if changed and (not before_img or not before_desc):
                     metadata_fixed += 1
-            except Exception:
-                pass
+            except Exception as e:
+                enrich_exceptions += 1
+                _log.warning(
+                    "repair_catalog_cards: enrich failed for species id=%s name=%r: %s",
+                    getattr(sp, "id", None),
+                    getattr(sp, "name", None),
+                    e,
+                    exc_info=_log.isEnabledFor(logging.DEBUG),
+                )
 
         # Wikimedia links are often blocked by anti-abuse; replace only failing ones.
         current_img = (sp.image_url or "").strip()
@@ -878,6 +889,7 @@ def repair_catalog_cards(
         "images_replaced_from_inat": images_replaced_from_inat,
         "images_realigned_allowlist_science": realigned_sci,
         "still_missing": still_missing,
+        "enrich_exceptions": enrich_exceptions,
         "materialized_created": int(materialize.get("created") or 0),
         "materialized_missing_after": int(materialize.get("missing_after") or 0),
         "dry_run": dry_run,

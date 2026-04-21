@@ -9,17 +9,23 @@ afterEach(() => {
 
 describe('resolveImageUrl', () => {
   it('keeps direct non-proxied absolute URLs', () => {
-    expect(resolveImageUrl('https://example.com/bird.jpg')).toBe('https://example.com/bird.jpg');
+    expect(resolveImageUrl('https://example.com/bird.jpg')).toBe(
+      'https://example.com/bird.jpg',
+    );
   });
 
   it('proxies iNaturalist absolute URLs through the hub', () => {
-    expect(resolveImageUrl('https://static.inaturalist.org/photos/1/original.jpg')).toBe(
+    expect(
+      resolveImageUrl('https://static.inaturalist.org/photos/1/original.jpg'),
+    ).toBe(
       '/api/ui/species-image?url=https%3A%2F%2Fstatic.inaturalist.org%2Fphotos%2F1%2Foriginal.jpg',
     );
   });
 
   it('rejects unsafe data URLs', () => {
-    expect(resolveImageUrl('data:text/html;base64,PHNjcmlwdD4=')).toBeUndefined();
+    expect(
+      resolveImageUrl('data:text/html;base64,PHNjcmlwdD4='),
+    ).toBeUndefined();
   });
 });
 
@@ -54,7 +60,13 @@ describe('fetchReadiness', () => {
         checked_at: '2026-04-14T00:00:00Z',
         checks: {
           database: { status: 'error', error: 'database_unavailable' },
-          data_dir: { path: 'data/', exists: true, is_dir: true, writable: true, status: 'ok' },
+          data_dir: {
+            path: 'data/',
+            exists: true,
+            is_dir: true,
+            writable: true,
+            status: 'ok',
+          },
           app_config_dir: {
             path: 'app_config/',
             exists: true,
@@ -63,7 +75,13 @@ describe('fetchReadiness', () => {
             status: 'ok',
           },
         },
-        components: { web: 'ok', processor: 'offline', video: 'not_configured', mqtt: 'not_configured', yolo: 'unknown' },
+        components: {
+          web: 'ok',
+          processor: 'offline',
+          video: 'not_configured',
+          mqtt: 'not_configured',
+          yolo: 'unknown',
+        },
       },
     });
 

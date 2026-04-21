@@ -7,7 +7,8 @@ from typing import Iterable
 
 _FALLBACK_REASONS = {
     "fallback_bird",
-    "fallback_squirrel",
+    "fallback_rodent",
+    "fallback_squirrel",  # устар.: до переименования на Rodent
     "fallback_detector_generic",
     "review_only_generic_bird",
     "frigate_standalone",
@@ -136,7 +137,7 @@ def infer_threshold_path(row: dict) -> str:
             if classifier_present
             else "detector_store_floor_then_generic_guard"
         )
-    if reason in {"fallback_bird", "fallback_squirrel", "fallback_detector_generic"}:
+    if reason in {"fallback_bird", "fallback_rodent", "fallback_squirrel", "fallback_detector_generic"}:
         return "classifier_threshold_then_detector_store_floor" if classifier_present else "detector_store_floor"
     if reason in {"frigate_standalone", "frigate_standalone_excluded"} or bool(row.get("frigate_standalone")):
         return "frigate_standalone_min_score"
@@ -146,7 +147,7 @@ def infer_threshold_path(row: dict) -> str:
                 return "frigate_standalone_min_score+arbitration"
             if previous == "review_only_generic_bird":
                 return "generic_guard+arbitration"
-            if previous in {"fallback_bird", "fallback_squirrel", "fallback_detector_generic"}:
+            if previous in {"fallback_bird", "fallback_rodent", "fallback_squirrel", "fallback_detector_generic"}:
                 return "detector_store_floor+arbitration"
         return "arbitration"
     if kind == "rejected":

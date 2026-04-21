@@ -44,6 +44,8 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+export { i18n };
+
 export function setLanguage(code: LanguageCode) {
   i18n.changeLanguage(code);
   localStorage.setItem(STORAGE_KEY, code);

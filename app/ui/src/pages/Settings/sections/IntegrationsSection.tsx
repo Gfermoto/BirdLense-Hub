@@ -20,6 +20,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { PasswordField } from '../../../components/PasswordField';
 import { ServiceBlock } from '../shared/ServiceBlock';
+import { SpeciesCatalogSettingsBlock } from './SpeciesCatalogSettingsBlock';
 import type { Settings } from '../../../types';
 import {
   fetchEbirdMappingSuggestions,
@@ -33,7 +34,9 @@ type Props = {
 export function IntegrationsSection({ form }: Props) {
   const { t } = useTranslation();
   const [ebirdSuggestLoading, setEbirdSuggestLoading] = useState(false);
-  const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(null);
+  const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(
+    null,
+  );
   const [ebirdSuggestData, setEbirdSuggestData] =
     useState<EbirdMappingSuggestionsResponse | null>(null);
 
@@ -58,12 +61,13 @@ export function IntegrationsSection({ form }: Props) {
     }
   };
 
-  const applyEbirdMappingSuggestion = (ebirdName: string, birdlenseName: string) => {
+  const applyEbirdMappingSuggestion = (
+    ebirdName: string,
+    birdlenseName: string,
+  ) => {
     const cur = form.getFieldValue('ebird.species_mapping');
     const base =
-      cur && typeof cur === 'object' && !Array.isArray(cur)
-        ? { ...cur }
-        : {};
+      cur && typeof cur === 'object' && !Array.isArray(cur) ? { ...cur } : {};
     base[ebirdName] = birdlenseName;
     form.setFieldValue('ebird.species_mapping', base);
   };
@@ -74,8 +78,20 @@ export function IntegrationsSection({ form }: Props) {
         {t('settings.accordionIntegrations')}
       </AccordionSummary>
       <AccordionDetails>
-        <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
-          <Box component="legend" sx={{ clip: 'rect(0,0,0,0)', position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
+          <Box
+            component="legend"
+            sx={{
+              clip: 'rect(0,0,0,0)',
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+            }}
+          >
             {t('settings.accordionIntegrations')}
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -97,7 +113,11 @@ export function IntegrationsSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
                   {t('settings.ebirdSection')}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -159,7 +179,9 @@ export function IntegrationsSection({ form }: Props) {
                         minRows={2}
                         value={str}
                         onChange={(e) => {
-                          const lines = e.target.value.split('\n').filter(Boolean);
+                          const lines = e.target.value
+                            .split('\n')
+                            .filter(Boolean);
                           const obj: Record<string, string> = {};
                           for (const line of lines) {
                             const idx = line.indexOf(':');
@@ -169,7 +191,9 @@ export function IntegrationsSection({ form }: Props) {
                               if (k && v) obj[k] = v;
                             }
                           }
-                          field.handleChange(Object.keys(obj).length ? obj : {});
+                          field.handleChange(
+                            Object.keys(obj).length ? obj : {},
+                          );
                         }}
                         label={t('settings.ebirdSpeciesMapping')}
                         placeholder="Gray-headed Woodpecker: Grey-headed Woodpecker"
@@ -178,7 +202,15 @@ export function IntegrationsSection({ form }: Props) {
                     );
                   }}
                 </form.Field>
-                <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <Button
                     type="button"
                     variant="outlined"
@@ -186,7 +218,9 @@ export function IntegrationsSection({ form }: Props) {
                     disabled={ebirdSuggestLoading}
                     onClick={loadEbirdMappingSuggestions}
                     startIcon={
-                      ebirdSuggestLoading ? <CircularProgress size={14} color="inherit" /> : undefined
+                      ebirdSuggestLoading ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : undefined
                     }
                   >
                     {t('settings.ebirdMappingSuggestLoad')}
@@ -201,12 +235,12 @@ export function IntegrationsSection({ form }: Props) {
                   ) : null}
                 </Box>
                 {ebirdSuggestError ? (
-                  <Alert severity="error" sx={{ mt: 1 }}>
+                  <Alert severity="error" variant="outlined" sx={{ mt: 1 }}>
                     {ebirdSuggestError}
                   </Alert>
                 ) : null}
                 {ebirdSuggestData && !ebirdSuggestData.ebird_api_configured ? (
-                  <Alert severity="info" sx={{ mt: 1 }}>
+                  <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
                     {t('settings.ebirdMappingSuggestNoKey')}
                   </Alert>
                 ) : null}
@@ -216,9 +250,15 @@ export function IntegrationsSection({ form }: Props) {
                   <Table size="small" sx={{ mt: 1.5 }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>{t('settings.ebirdMappingColEbird')}</TableCell>
-                        <TableCell>{t('settings.ebirdMappingColBirdlense')}</TableCell>
-                        <TableCell align="right">{t('settings.ebirdMappingColAction')}</TableCell>
+                        <TableCell>
+                          {t('settings.ebirdMappingColEbird')}
+                        </TableCell>
+                        <TableCell>
+                          {t('settings.ebirdMappingColBirdlense')}
+                        </TableCell>
+                        <TableCell align="right">
+                          {t('settings.ebirdMappingColAction')}
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -262,7 +302,11 @@ export function IntegrationsSection({ form }: Props) {
                 {ebirdSuggestData &&
                 ebirdSuggestData.ebird_api_configured &&
                 ebirdSuggestData.suggestions.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1 }}
+                  >
                     {t('settings.ebirdMappingSuggestEmpty')}
                   </Typography>
                 ) : null}
@@ -319,6 +363,8 @@ export function IntegrationsSection({ form }: Props) {
               </Grid>
             </Grid>
           </ServiceBlock>
+
+          <SpeciesCatalogSettingsBlock form={form} />
         </Box>
       </AccordionDetails>
     </Accordion>

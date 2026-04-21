@@ -30,7 +30,9 @@ function formatTriggersLine(
       return t('status.triggersNone');
     }
     return active
-      .map((name) => t(TRIGGER_LINE_KEYS[name] ?? `status.triggerNames.${name}`))
+      .map((name) =>
+        t(TRIGGER_LINE_KEYS[name] ?? `status.triggerNames.${name}`),
+      )
       .join(' + ');
   }
   const legacy = (data.trigger_display ?? '').trim();

@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useCallback,
-  useLayoutEffect,
-} from 'react';
+import React, { useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import Box from '@mui/material/Box';
 import { VideoSpecies } from '../../../types';
 import { labelToUniqueHexColor } from '../../../util';

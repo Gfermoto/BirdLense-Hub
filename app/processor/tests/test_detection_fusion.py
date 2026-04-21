@@ -263,6 +263,46 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['yolo_track_present'] is False
 
 
+def test_frigate_standalone_attaches_frames_when_frigate_bbox_norm_on_event():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.62,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'bird',
+            'label': 'bird',
+            'confidence': 0.88,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+            'frigate_bbox_norm': [0.1, 0.2, 0.55, 0.65],
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    frames = out[0].get('frames')
+    assert isinstance(frames, list) and len(frames) == 1
+    assert frames[0]['t'] == 10.0
+    assert frames[0]['bbox'] == [0.1, 0.2, 0.55, 0.65]
+
+
 def test_frigate_standalone_injects_when_yolo_only_generic():
     """YOLO accepted only generic Bird — still add Frigate standalone rows (regression guard)."""
     start = datetime.now(timezone.utc)

@@ -35,7 +35,7 @@ def _is_generic_bird(row: dict) -> bool:
 
 def _is_rodent_like(row: dict) -> bool:
     key = _canonical_species_key(row)
-    return any(token in key for token in ("squirrel", "chipmunk", "rodent"))
+    return any(token in key for token in ("squirrel", "chipmunk", "rodent", "sciurus", "грызун"))
 
 
 def _is_specific_bird(row: dict) -> bool:

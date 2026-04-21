@@ -60,7 +60,7 @@ export const FoodManagement = () => {
   return (
     <Box mb={4}>
       <PageHelp {...foodHelpConfig} />
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} role="region" aria-label={t('food.tableAria')}>
         <Table>
           <TableHead>
             <TableRow>
@@ -80,7 +80,10 @@ export const FoodManagement = () => {
                         src={resolveImageUrl(food.image_url)}
                         alt={food.name}
                         onError={() =>
-                          setBrokenImages((prev) => ({ ...prev, [food.id]: true }))
+                          setBrokenImages((prev) => ({
+                            ...prev,
+                            [food.id]: true,
+                          }))
                         }
                         sx={{
                           width: 64,

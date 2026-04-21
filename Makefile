@@ -26,8 +26,13 @@ docs:
 
 # Статический сайт документации (MkDocs): см. docs/Documentation.md
 docs-site:
-	@command -v mkdocs >/dev/null 2>&1 || { echo "Установите: python3 -m venv .venv-docs && .venv-docs/bin/pip install -r requirements-docs.txt"; exit 1; }
-	mkdocs serve
+	@if [ -x .venv-docs/bin/mkdocs ]; then \
+		.venv-docs/bin/mkdocs serve; \
+	elif command -v mkdocs >/dev/null 2>&1; then \
+		mkdocs serve; \
+	else \
+		echo "Установите: python3 -m venv .venv-docs && .venv-docs/bin/pip install -r requirements-docs.txt"; exit 1; \
+	fi
 
 # Диагностика перезапусков на сервере (ssh birdlense)
 diagnose:

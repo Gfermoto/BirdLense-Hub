@@ -18,77 +18,86 @@ type Props = { form: ReactFormExtendedApi<Settings, undefined> };
 export function GeneralPerformanceAccordion({ form }: Props) {
   const { t } = useTranslation();
   return (
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          {t('settings.accordionPerformance')}
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box component="fieldset" sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('settings.accordionPerformanceDesc')}
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <form.Field name="performance.cache_redis_enabled">
-                  {(field) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.state.value !== false}
-                          onChange={(e) => field.handleChange(e.target.checked)}
-                        />
-                      }
-                      label={t('settings.performanceRedisEnabled')}
-                    />
-                  )}
-                </form.Field>
-                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
-                  {t('settings.performanceRedisEnabledHint')}
-                </FormHelperText>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <form.Subscribe
-                  selector={(s) => s.values.performance?.redis_url_effective_masked ?? ''}
-                >
-                  {(effectiveMasked) => (
-                    <form.Field name="performance.redis_url">
-                      {(field) => {
-                        const raw = (field.state.value ?? '').trim();
-                        const placeholder =
-                          !raw && effectiveMasked
-                            ? effectiveMasked
-                            : 'redis://redis:6379/0';
-                        return (
-                          <TextField
-                            fullWidth
-                            value={field.state.value ?? ''}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            label={t('settings.performanceRedisUrl')}
-                            placeholder={placeholder}
-                            helperText={
-                              <>
-                                <Box component="span" display="block">
-                                  {t('settings.performanceRedisUrlHint')}
-                                </Box>
-                                {effectiveMasked ? (
-                                  <Box component="span" display="block" sx={{ mt: 0.5 }}>
-                                    {t('settings.performanceRedisEffectiveNow', {
-                                      url: effectiveMasked,
-                                    })}
-                                  </Box>
-                                ) : null}
-                              </>
-                            }
-                          />
-                        );
-                      }}
-                    </form.Field>
-                  )}
-                </form.Subscribe>
-              </Grid>
+    <Accordion>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        {t('settings.accordionPerformance')}
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box
+          component="fieldset"
+          sx={{ border: 'none', p: 0, m: 0, minWidth: 0 }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('settings.accordionPerformanceDesc')}
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <form.Field name="performance.cache_redis_enabled">
+                {(field) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={field.state.value !== false}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                      />
+                    }
+                    label={t('settings.performanceRedisEnabled')}
+                  />
+                )}
+              </form.Field>
+              <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                {t('settings.performanceRedisEnabledHint')}
+              </FormHelperText>
             </Grid>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
+            <Grid size={{ xs: 12 }}>
+              <form.Subscribe
+                selector={(s) =>
+                  s.values.performance?.redis_url_effective_masked ?? ''
+                }
+              >
+                {(effectiveMasked) => (
+                  <form.Field name="performance.redis_url">
+                    {(field) => {
+                      const raw = (field.state.value ?? '').trim();
+                      const placeholder =
+                        !raw && effectiveMasked
+                          ? effectiveMasked
+                          : 'redis://redis:6379/0';
+                      return (
+                        <TextField
+                          fullWidth
+                          value={field.state.value ?? ''}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          label={t('settings.performanceRedisUrl')}
+                          placeholder={placeholder}
+                          helperText={
+                            <>
+                              <Box component="span" display="block">
+                                {t('settings.performanceRedisUrlHint')}
+                              </Box>
+                              {effectiveMasked ? (
+                                <Box
+                                  component="span"
+                                  display="block"
+                                  sx={{ mt: 0.5 }}
+                                >
+                                  {t('settings.performanceRedisEffectiveNow', {
+                                    url: effectiveMasked,
+                                  })}
+                                </Box>
+                              ) : null}
+                            </>
+                          }
+                        />
+                      );
+                    }}
+                  </form.Field>
+                )}
+              </form.Subscribe>
+            </Grid>
+          </Grid>
+        </Box>
+      </AccordionDetails>
+    </Accordion>
   );
 }

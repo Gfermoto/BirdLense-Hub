@@ -31,6 +31,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.6] - 2026-04-21
+
+### Changed
+
+- Версия проекта **0.3.6** (`VERSION`, OpenAPI, MkDocs `site_version`, UI `package.json`).
+
+---
+
 ## [0.3.5] - 2026-04-15
 
 ### Changed
@@ -852,7 +860,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Первый альфа-релиз.
 
-[Unreleased]: https://github.com/Gfermoto/BirdLense-Hub/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/Gfermoto/BirdLense-Hub/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.6
 [0.3.5]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.5
 [0.3.4]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.4
 [0.3.2]: https://github.com/Gfermoto/BirdLense-Hub/releases/tag/v0.3.2

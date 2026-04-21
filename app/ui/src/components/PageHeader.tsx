@@ -3,6 +3,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
@@ -30,6 +31,7 @@ export function PageHeader({
   descriptionMaxWidth = 900,
   sx,
 }: PageHeaderProps) {
+  const { t } = useTranslation();
   return (
     <Stack spacing={1.25} sx={sx}>
       <Stack
@@ -40,9 +42,11 @@ export function PageHeader({
       >
         <Box>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant={titleVariant}>{title}</Typography>
+            <Typography component="h1" variant={titleVariant}>
+              {title}
+            </Typography>
             {onHelpClick ? (
-              <Tooltip title={helpTooltip ?? ''}>
+              <Tooltip title={helpTooltip ?? t('common.clickForHelp')}>
                 <IconButton
                   onClick={onHelpClick}
                   size="small"

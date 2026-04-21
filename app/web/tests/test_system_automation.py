@@ -12,12 +12,22 @@ class _ImmediateThread:
             self._target()
 
 
-def test_repo_root_contains_fusion_export_script():
-    """Repository root should expose the bundled fusion export script."""
+def test_shipped_fusion_scripts_match_container_contract():
+    """Every path in REQUIRED_SHIPPED_SCRIPT_RELPATHS must exist (keep in sync with app/Dockerfile)."""
     from services import fusion_training_service as fts
 
-    script = fts.repo_root() / "scripts" / "export_fusion_training_data.py"
-    assert script.exists()
+    root = fts.repo_root()
+    for rel in fts.REQUIRED_SHIPPED_SCRIPT_RELPATHS:
+        assert (root / rel).is_file(), f"missing {rel} under {root}"
+
+
+def test_fusion_processor_src_resolvable():
+    """Recognition export/eval import fusion_metrics from processor/src (shipped via COPY processor/)."""
+    from services import fusion_training_service as fts
+
+    src = fts.fusion_processor_src_dir()
+    assert (src / "fusion_metrics.py").is_file()
+    assert (src / "fusion_model.py").is_file()
 
 
 def test_repo_root_finds_script_in_container_layout(tmp_path, monkeypatch):

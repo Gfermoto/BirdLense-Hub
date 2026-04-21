@@ -62,7 +62,7 @@ const heartbeat = keyframes`
 const NAV_KEYS = [
   { key: 'dashboard', path: '/' },
   { key: 'timeline', path: '/timeline' },
-  { key: 'migrationCalendar', path: '/migration-calendar' },
+  { key: 'species', path: '/species' },
   { key: 'food', path: '/food' },
 ] as const;
 
@@ -123,8 +123,7 @@ export function Navigation() {
     React.useState<null | HTMLElement>(null);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     React.useState<null | HTMLElement>(null);
-  const [showPasswordDialog, setShowPasswordDialog] =
-    React.useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = React.useState(false);
   const [pendingAction, setPendingAction] =
     React.useState<PendingAction | null>(null);
 
@@ -161,6 +160,12 @@ export function Navigation() {
   };
 
   const needsPassword = isLoading || (requiresPassword && !unlocked);
+  const isReviewRoute =
+    currentPath === '/timeline' &&
+    /(?:^|[?&])review=1(?:&|$)/.test(location.search);
+
+  const isNavItemActive = (path: string) =>
+    currentPath === path && !(path === '/timeline' && isReviewRoute);
 
   const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (needsPassword) {
@@ -267,7 +272,10 @@ export function Navigation() {
                   onClick={handleMobileMenuClose}
                   component={Link}
                   to={item.path}
-                  selected={currentPath === item.path}
+                  selected={
+                    currentPath === item.path &&
+                    !(item.path === '/timeline' && isReviewRoute)
+                  }
                 >
                   {t(`nav.${item.key}`)}
                 </MenuItem>
@@ -298,48 +306,62 @@ export function Navigation() {
 
               {/* Settings Section — только гость (вход) или админ; оператор без доступа */}
               {showSettingsLink || showAdminOnlyLinks ? (
-                <>
-                  <Divider />
-                  {showSettingsLink ? (
-                    <MenuItem
-                      onClick={(e) => handleProtectedNav('/settings', e, 'admin')}
-                      selected={currentPath === '/settings'}
-                    >
-                      <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
-                      {t('nav.settings')}
-                    </MenuItem>
-                  ) : null}
-                  {showAdminOnlyLinks ? (
-                    <MenuItem
-                      onClick={(e) => handleProtectedNav('/system', e, 'admin')}
-                      selected={currentPath === '/system'}
-                    >
-                      {t('nav.system')}
-                    </MenuItem>
-                  ) : null}
-                  {showAdminOnlyLinks ? (
-                    <MenuItem
-                      onClick={(e) => handleProtectedNav('/library', e, 'admin')}
-                      selected={currentPath === '/library'}
-                    >
-                      {t('nav.library')}
-                    </MenuItem>
-                  ) : null}
-                </>
+                <Divider key="mobile-menu-divider-admin" />
               ) : null}
+              {showSettingsLink ? (
+                <MenuItem
+                  key="mobile-menu-settings"
+                  onClick={(e) => handleProtectedNav('/settings', e, 'admin')}
+                  selected={currentPath === '/settings'}
+                  title={t('nav.settingsHint')}
+                >
+                  <SettingsIcon sx={{ mr: 1, fontSize: 20 }} />
+                  {t('nav.settings')}
+                </MenuItem>
+              ) : null}
+              {showAdminOnlyLinks ? (
+                <MenuItem
+                  key="mobile-menu-system"
+                  onClick={(e) => handleProtectedNav('/system', e, 'admin')}
+                  selected={currentPath === '/system'}
+                  title={t('nav.systemHint')}
+                >
+                  {t('nav.system')}
+                </MenuItem>
+              ) : null}
+              {showAdminOnlyLinks ? (
+                <MenuItem
+                  key="mobile-menu-library"
+                  onClick={(e) => handleProtectedNav('/library', e, 'admin')}
+                  selected={currentPath === '/library'}
+                  title={t('nav.libraryHint')}
+                >
+                  {t('nav.library')}
+                </MenuItem>
+              ) : null}
+              {showLogout ? <Divider key="mobile-menu-divider-logout" /> : null}
               {showLogout ? (
-                <>
-                  <Divider />
-                  <MenuItem onClick={() => void handleLogout()}>
-                    <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
-                    {t('nav.logout')}
-                  </MenuItem>
-                </>
+                <MenuItem
+                  key="mobile-menu-logout"
+                  onClick={() => void handleLogout()}
+                >
+                  <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
+                  {t('nav.logout')}
+                </MenuItem>
               ) : null}
 
               {/* Mobile: Status + Language */}
               <Divider />
-              <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
                 <StatusIndicator />
                 <LanguageSwitcher />
               </Box>
@@ -362,7 +384,13 @@ export function Navigation() {
                 component="img"
                 src={logoUrl}
                 alt="BirdLense Hub Logo"
-                sx={{ mr: 1, height: 32, width: 32, borderRadius: 0.5, flexShrink: 0 }}
+                sx={{
+                  mr: 1,
+                  height: 32,
+                  width: 32,
+                  borderRadius: 0.5,
+                  flexShrink: 0,
+                }}
               />
               <Typography variant="h6" noWrap>
                 {t('common.appName')}
@@ -408,11 +436,8 @@ export function Navigation() {
                 key={item.path}
                 component={Link}
                 to={item.path}
-                sx={
-                  currentPath === item.path
-                    ? activeNavPillStyles
-                    : navPillStyles
-                }
+                aria-current={isNavItemActive(item.path) ? 'page' : undefined}
+                sx={isNavItemActive(item.path) ? activeNavPillStyles : navPillStyles}
               >
                 {t(`nav.${item.key}`)}
               </Box>
@@ -431,6 +456,7 @@ export function Navigation() {
             <Button
               component={Link}
               to="/live"
+              aria-current={currentPath === '/live' ? 'page' : undefined}
               startIcon={
                 <FiberManualRecordIcon
                   sx={{
@@ -532,51 +558,52 @@ export function Navigation() {
               },
             }}
           >
-            {showSettingsLink || showAdminOnlyLinks ? (
-              <>
-                {showSettingsLink ? (
-                  <MenuItem
-                    component={Link}
-                    to="/settings"
-                    onClick={handleSettingsMenuClose}
-                    selected={currentPath === '/settings'}
-                  >
-                    {t('nav.settings')}
-                  </MenuItem>
-                ) : null}
-                {showAdminOnlyLinks ? (
-                  <MenuItem
-                    component={Link}
-                    to="/system"
-                    onClick={handleSettingsMenuClose}
-                    selected={currentPath === '/system'}
-                  >
-                    {t('nav.system')}
-                  </MenuItem>
-                ) : null}
-                {showAdminOnlyLinks ? (
-                  <MenuItem
-                    component={Link}
-                    to="/library"
-                    onClick={handleSettingsMenuClose}
-                    selected={currentPath === '/library'}
-                  >
-                    {t('nav.library')}
-                  </MenuItem>
-                ) : null}
-              </>
+            {showSettingsLink ? (
+              <MenuItem
+                key="settings-menu-station"
+                component={Link}
+                to="/settings"
+                onClick={handleSettingsMenuClose}
+                selected={currentPath === '/settings'}
+                title={t('nav.settingsHint')}
+              >
+                {t('nav.settings')}
+              </MenuItem>
             ) : null}
+            {showAdminOnlyLinks ? (
+              <MenuItem
+                key="settings-menu-system"
+                component={Link}
+                to="/system"
+                onClick={handleSettingsMenuClose}
+                selected={currentPath === '/system'}
+                title={t('nav.systemHint')}
+              >
+                {t('nav.system')}
+              </MenuItem>
+            ) : null}
+            {showAdminOnlyLinks ? (
+              <MenuItem
+                key="settings-menu-library"
+                component={Link}
+                to="/library"
+                onClick={handleSettingsMenuClose}
+                selected={currentPath === '/library'}
+                title={t('nav.libraryHint')}
+              >
+                {t('nav.library')}
+              </MenuItem>
+            ) : null}
+            {showLogout ? <Divider key="settings-menu-divider-logout" /> : null}
             {showLogout ? (
-              <>
-                <Divider />
-                <MenuItem
-                  onClick={() => void handleLogout()}
-                  sx={{ color: 'error.main' }}
-                >
-                  <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
-                  {t('nav.logout')}
-                </MenuItem>
-              </>
+              <MenuItem
+                key="settings-menu-logout"
+                onClick={() => void handleLogout()}
+                sx={{ color: 'error.main' }}
+              >
+                <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
+                {t('nav.logout')}
+              </MenuItem>
             ) : null}
           </Menu>
         </Toolbar>

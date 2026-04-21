@@ -52,7 +52,9 @@ const BirdSongButton = ({
   audioRef: React.MutableRefObject<HTMLAudioElement | null>;
 }) => {
   const { t } = useTranslation();
-  const [recordings, setRecordings] = useState<{ file: string; en?: string; type?: string }[]>([]);
+  const [recordings, setRecordings] = useState<
+    { file: string; en?: string; type?: string }[]
+  >([]);
   const [searchUrl, setSearchUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -152,8 +154,7 @@ const SpeciesSummaryPage = () => {
   const queryClient = useQueryClient();
   const { isAdmin } = useProtectedArea();
   const { id } = useParams<{ id: string }>();
-  const speciesId =
-    id && /^\d+$/.test(id) ? parseInt(id, 10) : undefined;
+  const speciesId = id && /^\d+$/.test(id) ? parseInt(id, 10) : undefined;
   const speciesIdValid = speciesId !== undefined && speciesId > 0;
   const [playingRecording, setPlayingRecording] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -164,12 +165,16 @@ const SpeciesSummaryPage = () => {
     queryFn: () => fetchSpeciesSummary(speciesId!),
     enabled: speciesIdValid,
   });
-  useDocumentTitle(data?.species.name ?? t('speciesSummary.totalDetectionStats'));
+  useDocumentTitle(
+    data?.species.name ?? t('speciesSummary.totalDetectionStats'),
+  );
 
   const refreshMetaMutation = useMutation({
     mutationFn: () => refreshSpeciesMetadata(speciesId as number),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['speciesSummary', speciesId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['speciesSummary', speciesId],
+      });
       void queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
       void queryClient.invalidateQueries({ queryKey: ['species'] });
       setImageLoadFailed(false);
@@ -190,29 +195,35 @@ const SpeciesSummaryPage = () => {
   if (!speciesIdValid) {
     return (
       <Box sx={{ p: 2 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
           {t('speciesSummary.invalidId')}
         </Alert>
-        <Button variant="contained" component={RouterLink} to="/migration-calendar">
+        <Button variant="contained" component={RouterLink} to="/species">
           {t('speciesSummary.openDirectory')}
         </Button>
       </Box>
     );
   }
 
-  if (isLoading)
-    return <PageLoadingState label={t('common.loading')} />;
+  if (isLoading) return <PageLoadingState label={t('common.loading')} />;
   if (error || !data) {
-    const notFound = axios.isAxiosError(error) && error.response?.status === 404;
+    const notFound =
+      axios.isAxiosError(error) && error.response?.status === 404;
     return (
       <Box sx={{ p: 2 }}>
-        <Alert severity={notFound ? 'info' : 'error'} sx={{ mb: 2 }}>
-          {notFound ? t('speciesSummary.notFound') : t('speciesSummary.errorLoad')}
+        <Alert
+          severity={notFound ? 'info' : 'error'}
+          variant="outlined"
+          sx={{ mb: 2 }}
+        >
+          {notFound
+            ? t('speciesSummary.notFound')
+            : t('speciesSummary.errorLoad')}
         </Alert>
         <Button variant="outlined" sx={{ mr: 1 }} onClick={() => refetch()}>
           {t('common.retry')}
         </Button>
-        <Button variant="contained" component={RouterLink} to="/migration-calendar">
+        <Button variant="contained" component={RouterLink} to="/species">
           {t('speciesSummary.openDirectory')}
         </Button>
       </Box>
@@ -225,16 +236,17 @@ const SpeciesSummaryPage = () => {
   );
 
   const hourly =
-    Array.isArray(data.stats.hourlyActivity) && data.stats.hourlyActivity.length === 24
+    Array.isArray(data.stats.hourlyActivity) &&
+    data.stats.hourlyActivity.length === 24
       ? data.stats.hourlyActivity
       : Array.from({ length: 24 }, () => 0);
   const subspeciesActivities = data.subspecies.map((sub) => ({
     name: sub.species.name,
-    data: (
-      Array.isArray(sub.stats.hourlyActivity) && sub.stats.hourlyActivity.length === 24
+    data:
+      Array.isArray(sub.stats.hourlyActivity) &&
+      sub.stats.hourlyActivity.length === 24
         ? sub.stats.hourlyActivity
-        : Array.from({ length: 24 }, () => 0)
-    ),
+        : Array.from({ length: 24 }, () => 0),
   }));
 
   return (
@@ -243,6 +255,7 @@ const SpeciesSummaryPage = () => {
       {!data.species.active && data.species.parent && (
         <Alert
           severity="info"
+          variant="outlined"
           sx={{ mb: 3 }}
           action={
             <Link
@@ -259,7 +272,9 @@ const SpeciesSummaryPage = () => {
                 },
               }}
             >
-              {t('speciesSummary.viewParent', { name: data.species.parent.name })}
+              {t('speciesSummary.viewParent', {
+                name: data.species.parent.name,
+              })}
             </Link>
           }
         >
@@ -299,7 +314,15 @@ const SpeciesSummaryPage = () => {
             </Box>
           </Grid>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexWrap: 'wrap',
+                mb: 1,
+              }}
+            >
               <Typography variant="h4" color="primary">
                 {data.species.name}
               </Typography>
@@ -318,16 +341,27 @@ const SpeciesSummaryPage = () => {
             >
               {data.species.description || t('speciesSummary.noDescription')}
             </Typography>
-            <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1} sx={{ mt: 0.5 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              flexWrap="wrap"
+              gap={1}
+              sx={{ mt: 0.5 }}
+            >
               {data.species.metadata_source_url && (
-                <Typography variant="caption" color="text.secondary" component="span">
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="span"
+                >
                   Source:{' '}
                   <a
                     href={data.species.metadata_source_url}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {data.species.metadata_source || data.species.metadata_source_url}
+                    {data.species.metadata_source ||
+                      data.species.metadata_source_url}
                   </a>
                 </Typography>
               )}
@@ -350,12 +384,22 @@ const SpeciesSummaryPage = () => {
               )}
             </Stack>
             {refreshMetaMutation.isError && (
-              <Alert severity="error" sx={{ mt: 1 }} onClose={() => refreshMetaMutation.reset()}>
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{ mt: 1 }}
+                onClose={() => refreshMetaMutation.reset()}
+              >
                 {t('speciesSummary.refreshMetadataError')}
               </Alert>
             )}
             {refreshMetaMutation.isSuccess && (
-              <Alert severity="success" sx={{ mt: 1 }} onClose={() => refreshMetaMutation.reset()}>
+              <Alert
+                severity="success"
+                variant="outlined"
+                sx={{ mt: 1 }}
+                onClose={() => refreshMetaMutation.reset()}
+              >
                 {t('speciesSummary.refreshMetadataDone')}
               </Alert>
             )}
@@ -490,7 +534,11 @@ const SpeciesSummaryPage = () => {
                   yAxis={[{ label: 'Cloudiness (%)' }]}
                 />
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ py: 4 }}
+                >
                   {t('speciesSummary.noWeatherData')}
                 </Typography>
               )}

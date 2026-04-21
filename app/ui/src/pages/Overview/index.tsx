@@ -12,7 +12,11 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData, fetchWeather, downloadReportPdf } from '../../api/api';
+import {
+  fetchOverviewData,
+  fetchWeather,
+  downloadReportPdf,
+} from '../../api/api';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -112,44 +116,55 @@ export const Overview = () => {
         <PageHelp
           {...overviewHelpConfig}
           actions={
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                value={selectedDay}
-                onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
-                disableFuture
-                format="YYYY-MM-DD"
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    'aria-label': t('commonLabels.date'),
-                  },
-                }}
-              />
-            </LocalizationProvider>
-            <Tooltip title={!canEdit ? t('common.loginRequiredForExport') : undefined}>
-              <span>
-                <Button
-                  variant="outlined"
-                  size="medium"
-                  startIcon={<DownloadIcon />}
-                  disabled={downloadingPdf || !canEdit}
-                  onClick={async () => {
-                    if (!canEdit) return;
-                    setDownloadingPdf(true);
-                    try {
-                      await downloadReportPdf(selectedDay.format('YYYY-MM'));
-                    } catch (err) {
-                      console.error('PDF download failed:', err);
-                    } finally {
-                      setDownloadingPdf(false);
-                    }
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  value={selectedDay}
+                  onChange={(newValue) => setSelectedDay(newValue as Dayjs)}
+                  disableFuture
+                  format="YYYY-MM-DD"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      'aria-label': t('commonLabels.date'),
+                    },
                   }}
-                >
-                  {downloadingPdf ? '...' : t('overview.downloadPdf')}
-                </Button>
-              </span>
-            </Tooltip>
+                />
+              </LocalizationProvider>
+              <Tooltip
+                title={
+                  !canEdit ? t('common.loginRequiredForExport') : undefined
+                }
+              >
+                <span>
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    startIcon={<DownloadIcon />}
+                    disabled={downloadingPdf || !canEdit}
+                    onClick={async () => {
+                      if (!canEdit) return;
+                      setDownloadingPdf(true);
+                      try {
+                        await downloadReportPdf(selectedDay.format('YYYY-MM'));
+                      } catch (err) {
+                        console.error('PDF download failed:', err);
+                      } finally {
+                        setDownloadingPdf(false);
+                      }
+                    }}
+                  >
+                    {downloadingPdf ? '...' : t('overview.downloadPdf')}
+                  </Button>
+                </span>
+              </Tooltip>
             </Box>
           }
         />
@@ -171,13 +186,23 @@ export const Overview = () => {
             >
               <BirdIcon sx={{ fontSize: 40 }} />
               <Box>
-                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.92)' }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: 'rgba(255,255,255,0.92)' }}
+                >
                   {t('overview.lastBird')}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#ffffff' }}>
-                  {(dayjs(overviewData.lastDetection.start_time ?? undefined).isValid()
-                    ? dayjs(overviewData.lastDetection.start_time).format('HH:mm')
-                    : '—')}{' '}
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, color: '#ffffff' }}
+                >
+                  {dayjs(
+                    overviewData.lastDetection.start_time ?? undefined,
+                  ).isValid()
+                    ? dayjs(overviewData.lastDetection.start_time).format(
+                        'HH:mm',
+                      )
+                    : '—'}{' '}
                   —{' '}
                   {overviewData.lastDetection.species_name === 'Bird'
                     ? t('overview.lastBirdUnknown')
@@ -249,10 +274,19 @@ export const Overview = () => {
           {overviewData?.stats.detectionByProvider &&
             Object.keys(overviewData.stats.detectionByProvider).length > 0 && (
               <Paper sx={{ p: 2, mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                <Typography
+                  variant="subtitle2"
+                  gutterBottom
+                  color="text.secondary"
+                >
                   {t('overview.bySource')}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mb: 1 }}
+                >
                   {t('overview.bySourceHint')}
                 </Typography>
                 {showVolunteerDataLabelingHint && (
@@ -299,7 +333,10 @@ export const Overview = () => {
         </Grid>
 
         {/* Weather Card — высота как две StatCard слева */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex', alignItems: 'stretch' }}>
+        <Grid
+          size={{ xs: 12, sm: 6, md: 4 }}
+          sx={{ display: 'flex', alignItems: 'stretch' }}
+        >
           {errorWeather && weather === undefined ? (
             <Paper sx={{ p: 2, width: '100%' }}>
               <Typography variant="subtitle2" color="error" gutterBottom>
@@ -308,7 +345,11 @@ export const Overview = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {(errorWeather as Error)?.message || String(errorWeather)}
               </Typography>
-              <Button size="small" variant="outlined" onClick={() => refetchWeather()}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => refetchWeather()}
+              >
                 {t('common.retry')}
               </Button>
             </Paper>
@@ -342,7 +383,10 @@ export const Overview = () => {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'minmax(280px, 320px) 1fr' },
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'minmax(280px, 320px) 1fr',
+              },
               gap: 2,
               alignItems: 'stretch',
               width: '100%',
@@ -355,7 +399,8 @@ export const Overview = () => {
               <Typography variant="h6" gutterBottom>
                 {t('overview.hourlyActivity')}
               </Typography>
-              {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
+              {overviewData?.topSpecies &&
+              overviewData.topSpecies.length > 0 ? (
                 <HourlyActivityChart data={overviewData.topSpecies} />
               ) : (
                 <Typography color="text.secondary" sx={{ py: 4 }}>
@@ -382,7 +427,10 @@ export const Overview = () => {
                 observerTimezone={overviewData.observer_timezone}
               />
             ) : (
-              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              <Typography
+                color="text.secondary"
+                sx={{ py: 4, textAlign: 'center' }}
+              >
                 {t('overview.noData')}
               </Typography>
             )}
@@ -402,13 +450,15 @@ export const Overview = () => {
                 size={450}
               />
             ) : (
-              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              <Typography
+                color="text.secondary"
+                sx={{ py: 4, textAlign: 'center' }}
+              >
                 {t('overview.noData')}
               </Typography>
             )}
           </Paper>
         </Grid>
-
       </Grid>
     </Box>
   );

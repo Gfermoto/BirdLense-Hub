@@ -48,7 +48,7 @@ export function ProcessorFalsePositiveGuardrailsBlock({ form }: Props) {
                   }}
                   label={t('settings.detectorScope')}
                   helperText={t('settings.detectorScopeHint')}
-                  placeholder="Bird, Squirrel"
+                  placeholder="Bird, Rodent"
                 />
               );
             }}

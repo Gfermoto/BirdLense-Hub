@@ -32,7 +32,12 @@ export const StatCard = memo(function StatCard({
             </Typography>
             <Typography variant="h5">{value}</Typography>
             {subtitle && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5 }}
+              >
                 {subtitle}
               </Typography>
             )}

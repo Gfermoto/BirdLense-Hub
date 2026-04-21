@@ -2502,6 +2502,7 @@ class TestConfigAudit:
 
         assert response.status_code == 200
         data = response.get_json()
+        assert isinstance(data.get("processor_runtime_hints"), list)
         assert "camera" not in data["deprecated_keys_present"]
         assert "camera" not in data["unknown_keys"]
         assert "mqtt.username" not in data["unknown_keys"]

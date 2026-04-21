@@ -34,8 +34,19 @@ export const Library: React.FC = () => {
       <Box display="grid" gap={4} sx={{ pb: 5 }}>
         <PageHelp
           {...libraryHelpConfig}
-          actions={<PageModeToggle value={mode} onChange={setMode} />}
+          actions={
+            <PageModeToggle
+              value={mode}
+              onChange={setMode}
+              simpleLabel={t('library.modeOverview')}
+              advancedLabel={t('library.modeService')}
+              ariaLabel={t('library.modeAria')}
+            />
+          }
         />
+        <Alert severity="info" variant="outlined">
+          {t('library.serviceNotice')}
+        </Alert>
         <PageSection
           title={t('library.sections.archiveTitle')}
           description={t('library.sections.archiveDescription')}
@@ -71,8 +82,13 @@ export const Library: React.FC = () => {
           ) : location.hash === '#file-replay' ? (
             <Alert
               severity="info"
+              variant="outlined"
               action={
-                <Button color="inherit" size="small" onClick={() => setMode('advanced')}>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => setMode('advanced')}
+                >
                   {t('common.advancedMode')}
                 </Button>
               }

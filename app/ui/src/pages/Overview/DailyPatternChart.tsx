@@ -209,8 +209,12 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
               ...(observerTimezone ? { timeZone: observerTimezone } : {}),
             });
             const parts = formatter.formatToParts(now);
-            const hoursPart = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-            const minutesPart = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+            const hoursPart = Number(
+              parts.find((p) => p.type === 'hour')?.value ?? '0',
+            );
+            const minutesPart = Number(
+              parts.find((p) => p.type === 'minute')?.value ?? '0',
+            );
             const currentAngle =
               ((hoursPart * 60 + minutesPart) * 360) / (24 * 60);
             const pos = polarToCartesian(

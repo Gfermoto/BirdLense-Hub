@@ -96,7 +96,8 @@ export function UnknownCard({
   const reviewReason = reviewReasonLabel(t, detection.review_reason);
 
   const pendingSpeciesChange =
-    selectedSpeciesId !== '' && Number(selectedSpeciesId) !== Number(detection.species_id);
+    selectedSpeciesId !== '' &&
+    Number(selectedSpeciesId) !== Number(detection.species_id);
 
   const handleCorrect = async () => {
     if (selectedSpeciesId === '' || correcting) return;
@@ -162,13 +163,19 @@ export function UnknownCard({
                 color="warning"
               />
               {detection.detection_provider && (
-                <Chip label={detection.detection_provider} size="small" variant="outlined" />
+                <Chip
+                  label={detection.detection_provider}
+                  size="small"
+                  variant="outlined"
+                />
               )}
               {detection.review_state && (
                 <Chip
-                  label={detection.review_state === 'pending'
-                    ? t('unknowns.reviewStatePending')
-                    : detection.review_state}
+                  label={
+                    detection.review_state === 'pending'
+                      ? t('unknowns.reviewStatePending')
+                      : detection.review_state
+                  }
                   size="small"
                   color="info"
                   variant="outlined"
@@ -198,9 +205,16 @@ export function UnknownCard({
               p: 1.5,
             }}
           >
-            <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              gap={0.5}
+            >
               <VideoFileIcon color="primary" />
-              <Typography variant="caption">{t('unknowns.viewVideo')}</Typography>
+              <Typography variant="caption">
+                {t('unknowns.viewVideo')}
+              </Typography>
             </Box>
           </CardActionArea>
           <Box display="flex" flexDirection="column" gap={1} minWidth={200}>
@@ -230,7 +244,11 @@ export function UnknownCard({
                 renderValue={(v: number | string) => {
                   if (v === '' || v === undefined) {
                     return (
-                      <Typography component="span" variant="body2" color="text.secondary">
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        color="text.secondary"
+                      >
                         {t('unknowns.speciesSelectPlaceholder')}
                       </Typography>
                     );
@@ -320,22 +338,28 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   });
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(() => {
-    const value = (searchParams.get('time_of_day') || 'all').trim().toLowerCase();
-    return (
-      ['all', 'night', 'morning', 'day', 'afternoon', 'evening'].includes(value)
-        ? (value as TimeOfDay)
-        : 'all'
-    );
+    const value = (searchParams.get('time_of_day') || 'all')
+      .trim()
+      .toLowerCase();
+    return ['all', 'night', 'morning', 'day', 'afternoon', 'evening'].includes(
+      value,
+    )
+      ? (value as TimeOfDay)
+      : 'all';
   });
 
-  const { data: unknowns, isLoading, error } = useQuery({
+  const {
+    data: unknowns,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
     queryFn: () => {
       if (!selectedDate) return [];
-      return fetchUnknownsForObserverDate(
-        selectedDate.format('YYYY-MM-DD'),
-        { timeOfDay, limit: 500 },
-      );
+      return fetchUnknownsForObserverDate(selectedDate.format('YYYY-MM-DD'), {
+        timeOfDay,
+        limit: 500,
+      });
     },
     enabled: !!selectedDate,
   });
@@ -356,15 +380,21 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   /** After correct/confirm: optional snackbar action to open this video (#81 phase B). */
   const [successVideoId, setSuccessVideoId] = useState<number | null>(null);
   const [selectedUnknownIds, setSelectedUnknownIds] = useState<number[]>([]);
-  const [bulkPreview, setBulkPreview] = useState<ReviewQueueDeletePreview | null>(null);
+  const [bulkPreview, setBulkPreview] =
+    useState<ReviewQueueDeletePreview | null>(null);
   const [bulkConfirmText, setBulkConfirmText] = useState('');
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
-  const unknownsQueryKey = ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay] as const;
+  const unknownsQueryKey = [
+    'unknowns',
+    selectedDate?.format('YYYY-MM-DD'),
+    timeOfDay,
+  ] as const;
 
   const selectedUnknowns = useMemo(
-    () => (unknowns ?? []).filter((item) => selectedUnknownIds.includes(item.id)),
+    () =>
+      (unknowns ?? []).filter((item) => selectedUnknownIds.includes(item.id)),
     [unknowns, selectedUnknownIds],
   );
   const selectedVideoIds = useMemo(
@@ -375,7 +405,8 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   const selectedVideoCount = selectedVideoIds.length;
 
   const resolveVideoIdForDetection = (detectionId: number): number | null => {
-    const list = queryClient.getQueryData<UnknownDetection[]>(unknownsQueryKey) ?? [];
+    const list =
+      queryClient.getQueryData<UnknownDetection[]>(unknownsQueryKey) ?? [];
     const row = list.find((u) => u.id === detectionId);
     return row?.video_id ?? null;
   };
@@ -421,8 +452,13 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   }, [unknowns, selectedUnknownIds]);
 
   const correctMutation = useMutation({
-    mutationFn: ({ detectionId, speciesId }: { detectionId: number; speciesId: number }) =>
-      updateDetectionSpecies(detectionId, speciesId, 'unknowns'),
+    mutationFn: ({
+      detectionId,
+      speciesId,
+    }: {
+      detectionId: number;
+      speciesId: number;
+    }) => updateDetectionSpecies(detectionId, speciesId, 'unknowns'),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
@@ -430,9 +466,10 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       queryClient.invalidateQueries({ queryKey: ['timeline'] });
       queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
-      const msg = data?.updated_count && data.updated_count > 1
-        ? t('video.correctedInVideos', { count: data.updated_count })
-        : t('unknowns.corrected');
+      const msg =
+        data?.updated_count && data.updated_count > 1
+          ? t('video.correctedInVideos', { count: data.updated_count })
+          : t('unknowns.corrected');
       setSuccessVideoId(resolveVideoIdForDetection(variables.detectionId));
       setCorrectSuccess(msg);
     },
@@ -442,7 +479,8 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: (detectionId: number) => confirmDetection(detectionId, 'unknowns'),
+    mutationFn: (detectionId: number) =>
+      confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
       queryClient.invalidateQueries({ queryKey: ['unknowns'] });
       queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
@@ -506,7 +544,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       setBulkActionError(null);
     },
     onError: (err: unknown) => {
-      setBulkActionError(getApiErrorMessage(err, t('unknowns.bulkDeleteFailed')));
+      setBulkActionError(
+        getApiErrorMessage(err, t('unknowns.bulkDeleteFailed')),
+      );
     },
   });
 
@@ -576,7 +616,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <CircularProgress />
       </Box>
     );
-  if (error) return <Alert severity="error">{t('timeline.errorLoad')}</Alert>;
+  if (error)
+    return (
+      <Alert severity="error" variant="outlined">
+        {t('timeline.errorLoad')}
+      </Alert>
+    );
 
   return (
     <>
@@ -598,7 +643,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           />
         </LocalizationProvider>
         <FormControl sx={{ minWidth: 160 }}>
-          <InputLabel id="unknowns-timeofday-label">{t('timeline.timeOfDay')}</InputLabel>
+          <InputLabel id="unknowns-timeofday-label">
+            {t('timeline.timeOfDay')}
+          </InputLabel>
           <Select
             labelId="unknowns-timeofday-label"
             value={timeOfDay}
@@ -620,14 +667,20 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           {bulkActionError && !bulkDialogOpen && (
             <Alert
               severity="error"
+              variant="outlined"
               sx={{ mb: 2 }}
               onClose={() => setBulkActionError(null)}
             >
               {bulkActionError}
             </Alert>
           )}
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+          <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+            >
               <Box>
                 <Typography variant="body2" fontWeight={600}>
                   {t('unknowns.bulkDeleteSummary', {
@@ -636,7 +689,10 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
                   })}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {t('unknowns.bulkDeleteHint', { phrase: bulkPreview?.confirmation_phrase || 'permanent_full' })}
+                  {t('unknowns.bulkDeleteHint', {
+                    phrase:
+                      bulkPreview?.confirmation_phrase || 'permanent_full',
+                  })}
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -666,16 +722,16 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         </>
       )}
 
-
       {canEdit && recentCorrections.length > 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
             {t('unknowns.recentCorrectionsTitle')}
           </Typography>
           <Box component="ul" sx={{ m: 0, pl: 2 }}>
             {recentCorrections.slice(0, 5).map((row) => (
               <Typography component="li" variant="body2" key={row.id}>
-                {formatLocalDateTime(row.created_at)} — {row.action === 'confirm_species'
+                {formatLocalDateTime(row.created_at)} —{' '}
+                {row.action === 'confirm_species'
                   ? t('unknowns.recentCorrectionConfirm')
                   : t('unknowns.recentCorrectionUpdate', {
                       from: row.from_species_name || t('common.na'),
@@ -689,7 +745,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       )}
 
       {unknowns?.length === 0 ? (
-        <Alert severity="info">{t('unknowns.empty')}</Alert>
+        <Alert severity="info" variant="outlined">
+          {t('unknowns.empty')}
+        </Alert>
       ) : (
         <Box
           sx={{
@@ -706,7 +764,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
               {t('unknowns.count', { count: unknowns?.length ?? 0 })}
             </Typography>
             {unknowns?.length === 500 && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5 }}
+              >
                 {t('unknowns.limitReached')}
               </Typography>
             )}
@@ -716,7 +779,8 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
               control={
                 <Checkbox
                   checked={
-                    unknowns.length > 0 && selectedUnknownIds.length === unknowns.length
+                    unknowns.length > 0 &&
+                    selectedUnknownIds.length === unknowns.length
                   }
                   indeterminate={
                     selectedUnknownIds.length > 0 &&
@@ -759,22 +823,24 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <DialogTitle>{t('unknowns.bulkDeleteDialogTitle')}</DialogTitle>
         <DialogContent dividers>
           {bulkActionError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
               {bulkActionError}
             </Alert>
           )}
           {!bulkPreview ? (
-            <Alert severity="info">{t('unknowns.bulkDeletePreviewRequired')}</Alert>
+            <Alert severity="info" variant="outlined">
+              {t('unknowns.bulkDeletePreviewRequired')}
+            </Alert>
           ) : (
             <Stack spacing={2}>
-              <Alert severity="warning">
+              <Alert severity="warning" variant="outlined">
                 {t('unknowns.bulkDeleteDialogWarning', {
                   videoCount: bulkPreview.video_count,
                   unknownCount: bulkPreview.unknown_count,
                 })}
               </Alert>
               {bulkPreview.missing_video_ids.length > 0 && (
-                <Alert severity="info">
+                <Alert severity="info" variant="outlined">
                   {t('unknowns.bulkDeleteMissingVideos', {
                     count: bulkPreview.missing_video_ids.length,
                     ids: bulkPreview.missing_video_ids.join(', '),
@@ -793,7 +859,11 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
               <Divider />
               <List dense disablePadding>
                 {bulkPreview.videos.map((video) => (
-                  <ListItem key={video.video_id} alignItems="flex-start" divider>
+                  <ListItem
+                    key={video.video_id}
+                    alignItems="flex-start"
+                    divider
+                  >
                     <ListItemText
                       primary={t('unknowns.bulkDeleteVideoItem', {
                         videoId: video.video_id,
@@ -801,15 +871,29 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
                       })}
                       secondary={
                         <>
-                          <Typography component="span" variant="body2" color="text.secondary">
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            color="text.secondary"
+                          >
                             {video.video_path || t('common.na')}
                           </Typography>
                           <br />
-                          <Typography component="span" variant="caption" color="text.secondary">
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            color="text.secondary"
+                          >
                             {t('unknowns.bulkDeleteVideoMeta', {
-                              species: video.species_names.join(', ') || t('common.na'),
-                              reasons: video.review_reasons.join(', ') || t('common.na'),
-                              fileExists: video.file_exists ? t('common.yes') : t('common.no'),
+                              species:
+                                video.species_names.join(', ') ||
+                                t('common.na'),
+                              reasons:
+                                video.review_reasons.join(', ') ||
+                                t('common.na'),
+                              fileExists: video.file_exists
+                                ? t('common.yes')
+                                : t('common.no'),
                             })}
                           </Typography>
                         </>
@@ -847,7 +931,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         onClose={() => setCorrectError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setCorrectError(null)}>
+        <Alert severity="error" variant="filled" elevation={6} onClose={() => setCorrectError(null)}>
           {correctError}
         </Alert>
       </Snackbar>
@@ -873,7 +957,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           ) : undefined
         }
       >
-        <Alert severity="success" onClose={clearSuccessSnackbar}>
+        <Alert severity="success" variant="filled" elevation={6} onClose={clearSuccessSnackbar}>
           {correctSuccess}
         </Alert>
       </Snackbar>

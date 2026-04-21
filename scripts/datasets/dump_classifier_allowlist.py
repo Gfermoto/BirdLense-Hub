@@ -25,7 +25,7 @@ def normalize_classifier_label(name: str) -> str:
 
 def main() -> None:
     p = argparse.ArgumentParser(description='Dump YOLO cls class names for BirdLense allowlist')
-    p.add_argument('weights', type=Path, help='Path to best.pt (classification)')
+    p.add_argument('weights', type=Path, help='Path to classification .pt (e.g. best.pt)')
     p.add_argument(
         '-o', '--output',
         type=Path,

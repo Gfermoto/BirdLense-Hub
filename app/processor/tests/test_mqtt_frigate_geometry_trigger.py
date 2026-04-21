@@ -244,6 +244,7 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         stored = agg._events[0]
         self.assertTrue(stored.get('_frigate_merge_suppressed'))
         self.assertEqual(stored.get('label'), 'cat')
+        self.assertEqual(stored.get('frigate_bbox_norm'), [0.02, 0.02, 0.2, 0.25])
 
 
 if __name__ == '__main__':

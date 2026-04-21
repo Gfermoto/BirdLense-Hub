@@ -58,6 +58,22 @@ test.describe('API endpoints @api', () => {
     expect(body).toBeDefined();
   });
 
+  test('GET /api/ui/system/config-audit returns JSON audit payload', async ({ request }) => {
+    const reqRes = await request.get('/api/ui/settings/requires-password');
+    const { requires } = await reqRes.json();
+    if (requires && !process.env.E2E_SETTINGS_PASSWORD) {
+      test.skip(true, 'Set E2E_SETTINGS_PASSWORD when hub protects settings');
+    }
+    await ensureSettingsUnlocked(request);
+    const res = await request.get('/api/ui/system/config-audit');
+    expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    expect(body).toBeDefined();
+    expect(typeof body).toBe('object');
+    expect(body).toHaveProperty('unknown_keys');
+    expect(body).toHaveProperty('deprecated_keys_present');
+  });
+
   test('POST /api/ui/feed/dispense returns 200 or 500 (not 404)', async ({ request }) => {
     const res = await request.post('/api/ui/feed/dispense');
     expect(res.status()).toBeLessThan(600);

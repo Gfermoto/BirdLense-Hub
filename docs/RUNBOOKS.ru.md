@@ -50,6 +50,18 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 
 3. Убедитесь, что в `app/.env` у `PROCESSOR_SECRET` реальное значение, а не заглушка из примера.
 
+## В логах «Slow frame processing» (медленная обработка кадра)
+
+Симптом: в логах процессора строки вида **`Slow frame processing: … ms >= … ms`** — время прохода детектора/пайплайна превышает **`processor.frame_processing_warn_ms`** (по умолчанию **450** мс). Высокое разрешение + VA-API всё равно упираются в бюджет кадра.
+
+1. **Система → Аудит конфигурации** — блок **Runtime процессора**: счётчик `slow_frame_processor_detect_total`, **p95** детектора vs порог (данные из `data/diagnostics/processor_runtime_stats.json`).
+2. **Настройки → Процессор → Модели** — уменьшите **`processor.binary_imgsz`** (например **640**, затем **512**), сохраните настройки и снова посмотрите логи.
+3. Если **шум в логах** приемлем по UX — поднимите **`processor.frame_processing_warn_ms`** (это **не ускоряет** инференс, только реже предупреждает).
+4. **Свет / ночь** — если YOLO часто не вызывается из‑за light gate, см. `processor.light_gate_*` и ночные оверрайды (recall vs нагрузка).
+5. **GPU / VA-API на VPS** — убедитесь, что контейнер реально использует ожидаемый путь: `docker logs birdlense` (строки VA-API / FFmpeg); на хосте при необходимости `intel_gpu_top`, `vainfo`. Без GPU остаётся CPU — на высоком разрешении slow frame ожидаемы.
+
+См. также [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md), [RELEASE_READINESS](./RELEASE_READINESS.ru.md). Ворота релиза: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.ru.md).
+
 ## Падает readiness при установке или после деплоя
 
 Сейчас readiness проверяет:

@@ -16,7 +16,7 @@ from sqlalchemy import func
 from models import Species, VideoSpecies
 from services.dataset_export_service import _sanitize_dirname
 from services.species_catalog_allowlist_service import load_catalog_allowlist_names
-from species_constants import GENERIC_BIRD_SPECIES
+from species_constants import ALIGNMENT_IGNORE_SPECIES_NAMES
 from util import (
     data_dir,
     load_species_canonical_mapping,
@@ -28,6 +28,8 @@ def _norm_key(name: str) -> str:
     if not name:
         return ""
     s = name.strip().lower()
+    # Типографский апостроф / модификатор буквы → ASCII (имена в БД vs YOLO)
+    s = s.replace("\u2019", "'").replace("\u2018", "'").replace("\u02bc", "'").replace("`", "'")
     s = s.replace("_", " ").replace("-", " ")
     s = re.sub(r"\s+", " ", s)
     return s
@@ -198,6 +200,12 @@ def build_classifier_dataset_alignment_report(
     norm_pairs = _normalized_classifier_labels(raw_labels)
     all_label_norms = {nk for _raw, nk in norm_pairs if nk}
     allowlist_names = load_catalog_allowlist_names(app_config_get) or ()
+    if allowlist_names and len(allowlist_names) != len(raw_labels):
+        report["hints"]["allowlist_vs_classifier_count"] = (
+            f"allowlist lines={len(allowlist_names)} vs classifier classes={len(raw_labels)}; "
+            "синхронизируйте class_names.txt с активными весами "
+            "(scripts/datasets/dump_classifier_allowlist.py)"
+        )
     allowlist_norms = {nk for name in allowlist_names for nk in _species_name_match_keys(name, mapping)}
     scoped_norm_pairs = [pair for pair in norm_pairs if not allowlist_norms or pair[1] in allowlist_norms]
     label_to_norms: dict[str, set[str]] = {}
@@ -225,13 +233,8 @@ def build_classifier_dataset_alignment_report(
 
     active_ids = _species_ids_with_video_detections(session)
     cat_unmatched_full: list[dict[str, Any]] = []
-    service_species = {
-        GENERIC_BIRD_SPECIES.strip().lower(),
-        "unknown",
-        "rodent",
-    }
     for sid, name in species_rows:
-        if (name or "").strip().lower() in service_species:
+        if (name or "").strip().lower() in ALIGNMENT_IGNORE_SPECIES_NAMES:
             continue
         if sid not in active_ids:
             continue
@@ -244,12 +247,15 @@ def build_classifier_dataset_alignment_report(
     folder_without_classifier: list[dict[str, Any]] = []
     for folder in sorted(dataset_names):
         folder_keys = _folder_norm_keys(folder, mapping)
-        if folder_keys & service_species:
+        if folder_keys & ALIGNMENT_IGNORE_SPECIES_NAMES:
             continue
         species_list = [
             (sid, name or "")
             for sid, name in species_rows
-            if (sp_keys.get(int(sid), set()) & folder_keys and (name or "").strip().lower() not in service_species)
+            if (
+                sp_keys.get(int(sid), set()) & folder_keys
+                and (name or "").strip().lower() not in ALIGNMENT_IGNORE_SPECIES_NAMES
+            )
         ]
         if not species_list:
             folder_orphans.append(folder)
@@ -303,11 +309,11 @@ def build_catalog_coverage_metrics(session, app_config_get) -> dict[str, Any]:
 
     # observed species (exclude generic placeholders)
     observed_ids = _species_ids_with_video_detections(session)
-    service_names = {"bird", "unknown"}
     observed_ids = {
         sid
         for sid in observed_ids
-        if (session.query(Species.name).filter(Species.id == sid).scalar() or "").strip().lower() not in service_names
+        if (session.query(Species.name).filter(Species.id == sid).scalar() or "").strip().lower()
+        not in ALIGNMENT_IGNORE_SPECIES_NAMES
     }
 
     dataset_folders = _dataset_split_class_names(app_config_get)

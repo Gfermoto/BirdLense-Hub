@@ -58,7 +58,7 @@ This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yo
 
 | Component | Version | Trained on |
 |-----------|---------|------------|
-| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (binary bird/squirrel) |
+| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (training data; runtime binary is **bird / rodent** → hub label **Rodent**) |
 | **EU classifier** | YOLO11n-cls | birds-525 + iNaturalist (~491 species) — active `best.pt` |
 | **US classifier** | YOLO11n-cls | NABirds (~400 species) — `best_US.pt` |
 
@@ -104,10 +104,10 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 | Path | Role |
 |------|------|
-| `classification/weights/best.pt` | EU classifier (YOLO11n-cls, default) |
+| `classification/weights/best.pt` | EU classifier from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (YOLO11n-cls, default) |
 | `classification/weights/best_US.pt` | US backup (optional) |
 | `classification/weights/class_names.txt` | Class allowlist for catalog alignment |
-| `detection/weights/best.pt` | Binary detector (YOLO11n) |
+| `detection/weights/best.pt` | Binary detector (YOLO11n); zip from [AleksandrRogachev94/BirdLense `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor) |
 
 Everything else in `app/processor/models/` is training/export output, not runtime input.
 
@@ -122,7 +122,7 @@ Everything else in `app/processor/models/` is training/export output, not runtim
 | **34data/birds-525-species** | 525 | [Hugging Face](https://huggingface.co/datasets/34data/birds-525-species) |
 | **iNaturalist Europe** | many | [API](https://api.inaturalist.org/v1/docs/), e.g. `place_id=96372` |
 
-The shipped detector is trained on **NABirds + COCO birds + OIDv4 squirrel**, and the shipped EU classifier is trained on **birds-525 + iNaturalist Europe (~490/491 species)**.
+The shipped detector is trained on **NABirds + COCO birds + OIDv4 squirrel** (Open Images rodent class name in the dataset); the hub normalizes the binary head to **Rodent**. The shipped EU classifier is trained on **birds-525 + iNaturalist Europe (~490/491 species)**.
 
 ### North America (weak signal for EU accuracy)
 

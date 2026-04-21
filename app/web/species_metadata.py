@@ -540,7 +540,9 @@ def update_species_info_from_wiki(sp):
             sp.metadata_source_url = inf_url
         updated = True
 
-    if sp.image_url and sp.description:
+    # Согласовано с coverage/repair: только пробелы в полях = «пусто», иначе enrich не вызывается снаружи,
+    # а здесь ранний выход и вовсе не даёт подтянуть Wikipedia/iNat.
+    if (sp.image_url or "").strip() and (sp.description or "").strip():
         return updated
 
     metadata_source = None
@@ -593,9 +595,9 @@ def update_species_info_from_wiki(sp):
 
     if not image_url:
         image_url = _manual_image_overrides.get(key) or image_url
-    if image_url and not sp.image_url:
+    if image_url and not (sp.image_url or "").strip():
         sp.image_url = image_url
-    if description and not sp.description:
+    if description and not (sp.description or "").strip():
         sp.description = description
     inferred_source, inferred_url = infer_metadata_source_fields(
         getattr(sp, "name", None),
