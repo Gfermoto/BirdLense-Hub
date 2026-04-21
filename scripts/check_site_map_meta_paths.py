@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Fail if mkdocs nav targets are missing from matching excerpts in docs/SITE_MAP.md.
+"""Fail if mkdocs nav targets are missing from matching excerpts in docs/SITE_MAP*.md.
 
-Checks: **Use the hub**, **Develop & integrate**, **ML & project**, **Meta**,
-**Repository (canonical files)** — same labels as root ``mkdocs.yml`` ``nav``.
+English ``nav``: **Use the hub**, **Develop & integrate**, **ML & project**, **Meta**,
+**Repository (canonical files)** — checked against ``docs/SITE_MAP.md``.
+
+Russian ``nav`` (flat block **Русский**): partitioned at known boundary filenames and
+checked against ``docs/SITE_MAP.ru.md`` (top menu + four sidebar sections).
 
 Run from repo root after ``pip install -r requirements-docs.txt`` (needs PyYAML).
 """
@@ -29,6 +32,14 @@ _DEVELOP = "## Sidebar — \u201cDevelop & integrate\u201d"
 _ML = "## Sidebar — \u201cML & project\u201d"
 _META = "## Meta (MkDocs sidebar"
 
+# SITE_MAP.ru.md — section headings (guillemets « », typographic quotes).
+_RU_TOP_START = "## Верхнее меню"
+_RU_USE_START = "## Сайдбар — «Использование»"
+_RU_DEV_START = "## Сайдбар — «Разработка и интеграции»"
+_RU_ML_START = "## Сайдбар — «ML и проект»"
+_RU_META_START = "## Мета (боковое меню"
+_RU_REPO_START = "## Репозиторий (канонические файлы)"
+
 
 def _nav_paths(nav_key: str) -> list[str]:
     spec = yaml.safe_load((ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
@@ -41,6 +52,28 @@ def _nav_paths(nav_key: str) -> list[str]:
                     out.extend(v for v in item.values() if isinstance(v, str))
             return out
     raise SystemExit(f"mkdocs.yml: nav key {nav_key!r} not found")
+
+
+def _partition_russian_nav(paths: list[str]) -> tuple[list[str], list[str], list[str], list[str], list[str]]:
+    """Split flat ``Русский`` nav into top / hub / develop / ml / meta by boundary files."""
+    if len(paths) < 5:
+        raise SystemExit("mkdocs.yml: Русский nav too short")
+    if paths[0] != "OVERVIEW.ru.md" or paths[1] != "README.ru.md":
+        raise SystemExit(
+            "mkdocs.yml: expected Russian nav to start with OVERVIEW.ru.md, README.ru.md"
+        )
+    try:
+        i_arch = paths.index("ARCHITECTURE.ru.md")
+        i_train = paths.index("TRAINING.ru.md")
+        i_repo = paths.index("REPOSITORY_LAYOUT.ru.md")
+    except ValueError as e:
+        raise SystemExit(f"mkdocs.yml: Russian nav missing boundary filename: {e}") from e
+    top = paths[:2]
+    hub = paths[2:i_arch]
+    develop = paths[i_arch:i_train]
+    ml = paths[i_train:i_repo]
+    meta = paths[i_repo:]
+    return top, hub, develop, ml, meta
 
 
 def _chunk(site: str, start_sub: str, end_sub: str) -> str:
@@ -76,10 +109,25 @@ def main() -> None:
     _check("ML & project", ml, ml_chunk)
     _check("Meta", meta, meta_chunk)
     _check("Repository", repo, repo_chunk)
+
+    site_ru = (ROOT / "docs" / "SITE_MAP.ru.md").read_text(encoding="utf-8")
+    ru_all = _nav_paths("Русский")
+    ru_top, ru_hub, ru_develop, ru_ml, ru_meta = _partition_russian_nav(ru_all)
+    top_chunk = _chunk(site_ru, _RU_TOP_START, _RU_USE_START)
+    ru_hub_chunk = _chunk(site_ru, _RU_USE_START, _RU_DEV_START)
+    ru_develop_chunk = _chunk(site_ru, _RU_DEV_START, _RU_ML_START)
+    ru_ml_chunk = _chunk(site_ru, _RU_ML_START, _RU_META_START)
+    ru_meta_chunk = _chunk(site_ru, _RU_META_START, _RU_REPO_START)
+    _check("RU top nav", ru_top, top_chunk)
+    _check("RU Use the hub", ru_hub, ru_hub_chunk)
+    _check("RU Develop & integrate", ru_develop, ru_develop_chunk)
+    _check("RU ML & project", ru_ml, ru_ml_chunk)
+    _check("RU Meta", ru_meta, ru_meta_chunk)
+
     print(
-        "check_site_map_meta_paths: OK ("
-        f"hub {len(hub)}, develop {len(develop)}, ml {len(ml)}, "
-        f"meta {len(meta)}, repo {len(repo)} paths)"
+        "check_site_map_meta_paths: OK (EN: "
+        f"hub {len(hub)}, develop {len(develop)}, ml {len(ml)}, meta {len(meta)}, repo {len(repo)}; "
+        f"RU: top {len(ru_top)}, hub {len(ru_hub)}, develop {len(ru_develop)}, ml {len(ru_ml)}, meta {len(ru_meta)})"
     )
 
 
