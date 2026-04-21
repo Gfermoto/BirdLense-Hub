@@ -88,20 +88,47 @@ Pick what matches you — you can read the rest as reference.
 
 ## Project meta
 
+The static site sidebar comes from root `mkdocs.yml`. For a **line-up with filenames** (same order as **Meta** and **Repository (canonical files)**), use [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md).
+
+### Meta (MkDocs `nav` → Meta)
+
 | Topic | Document |
 |-------|----------|
+| **Hub epics (GitHub tracker)** | [HUB_EPICS_TRACKER](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
 | **Repository layout** (onboarding) | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
+| **Verification log** (releases) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
-| Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| **Site map** (generator; keep `nav` aligned) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| Translation status | [I18N_STATUS](./I18N_STATUS.md) |
 | **Secrets rotation (production ops)** | [SECRETS_ROTATION](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
+| Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
-| **Issues, board & roadmap process** | [ROADMAP](./ROADMAP.md) (*Triage*) · [RU](./ROADMAP.ru.md); root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md) |
 | **GitHub CLI setup** (personal repo) | [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | **Wiki + CI reports** (Summary / Artifact / optional Wiki push) | [WIKI_AUTOMATION](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
-| Translation status | [I18N_STATUS](./I18N_STATUS.md) |
-| **Site sections ↔ files** (keep in sync with `mkdocs.yml`) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
-| **MkDocs site (build & GitHub Pages)** | [Documentation](./Documentation.md) (*Static documentation site*) |
+
+### Related process (not extra sidebar rows)
+
+| Topic | Document |
+|-------|----------|
+| **Issues, board & roadmap** | [ROADMAP](./ROADMAP.md) (*Triage*) · [RU](./ROADMAP.ru.md); root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md) |
+
+### Repository (canonical files — `docs/project/` stubs)
+
+| Topic | Document |
+|-------|----------|
+| Contributing | [project/contributing.md](./project/contributing.md) → root **CONTRIBUTING** on GitHub |
+| Security policy | [project/security-policy.md](./project/security-policy.md) → root **SECURITY** |
+| Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → root **CODE_OF_CONDUCT** |
+| Changelog | [project/changelog.md](./project/changelog.md) → root **CHANGELOG** |
+| OpenAPI (YAML) | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Root README | [project/root-readme.md](./project/root-readme.md) → root **README** |
+
+### Publishing & archive
+
+| Topic | Document |
+|-------|----------|
+| **MkDocs site** (build & GitHub Pages) | [Documentation](./Documentation.md) (*Static documentation site*) |
 | Historical notes | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (in repo; excluded from MkDocs build) |
 
 ---
