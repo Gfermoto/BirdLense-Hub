@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 import { useLocation } from 'react-router-dom';
-import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageHelp } from '../../components/PageHelp';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
@@ -46,25 +44,6 @@ export const Library: React.FC = () => {
           }
         />
         <Alert severity="info">{t('library.serviceNotice')}</Alert>
-        <ActionChecklistCard
-          title={t('library.guideTitle')}
-          intro={t('library.guideIntro')}
-          steps={[
-            t('library.guideStep1'),
-            t('library.guideStep2'),
-            t('library.guideStep3'),
-          ]}
-          actions={
-            <Stack direction="row" flexWrap="wrap" gap={1}>
-              <Button href="#recordings" size="small" variant="outlined">
-                {t('library.openArchive')}
-              </Button>
-              <Button href="#file-replay" size="small" variant="outlined">
-                {t('library.openMaintenance')}
-              </Button>
-            </Stack>
-          }
-        />
         <PageSection
           title={t('library.sections.archiveTitle')}
           description={t('library.sections.archiveDescription')}

@@ -850,7 +850,7 @@
     "resolutionVGA": "VGA (640x480)",
     "updateTitle": "站点设置",
     "restartInfo": "保存后，处理器会自动重新启动以应用更改。",
-    "pageDescription": "按步骤设置站点：先连接摄像头和视频流，再配置通知，最后调整识别和集成。",
+    "pageDescription": "设置按主题分组：常规、连接与视频、采集与喂食器、通知、集成与识别。打开对应区块，并参考各字段旁的说明。",
     "savedRestart": "设置已保存。处理器将在约 60 秒内重新启动。",
     "restartFailed": "无法重新启动处理器",
     "savedRestarting": "设置已保存。处理器正在重新启动。",

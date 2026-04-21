@@ -15,7 +15,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { fetchBirdDirectory } from '../../api/api';
-import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 import { PageHeader } from '../../components/PageHeader';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -55,30 +54,6 @@ export function SpeciesDirectoryPage() {
         title={t('speciesDirectory.title')}
         description={t('speciesDirectory.description')}
         titleVariant="h3"
-      />
-
-      <ActionChecklistCard
-        title={t('speciesDirectory.guideTitle')}
-        intro={t('speciesDirectory.guideIntro')}
-        steps={[
-          t('speciesDirectory.guideStep1'),
-          t('speciesDirectory.guideStep2'),
-          t('speciesDirectory.guideStep3'),
-        ]}
-        actions={
-          <Stack direction="row" flexWrap="wrap" gap={1}>
-            <Button component={RouterLink} to="/timeline" variant="outlined">
-              {t('speciesDirectory.openRecordings')}
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/migration-calendar"
-              variant="outlined"
-            >
-              {t('speciesDirectory.openSeasonality')}
-            </Button>
-          </Stack>
-        }
       />
 
       <TextField

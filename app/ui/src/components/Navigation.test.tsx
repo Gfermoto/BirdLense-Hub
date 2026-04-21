@@ -57,14 +57,14 @@ describe('Navigation', () => {
     protectedAreaState.canEdit = true;
   });
 
-  it('shows species and review entry points for editable users', async () => {
+  it('shows species and recordings entry points for editable users', async () => {
     const { container } = renderNav();
 
     await screen.findByRole('link', { name: /home/i });
     const speciesLink = container.querySelector('a[href="/species"]');
-    const reviewLink = container.querySelector('a[href="/timeline?review=1"]');
+    const timelineLink = container.querySelector('a[href="/timeline"]');
 
     expect(speciesLink).toBeInTheDocument();
-    expect(reviewLink).toBeInTheDocument();
+    expect(timelineLink).toBeInTheDocument();
   });
 });

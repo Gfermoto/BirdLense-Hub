@@ -36,7 +36,6 @@ import { VideoInfo } from './VideoInfo';
 import { VideoPlayer } from './VideoPlayer';
 import { DetectedSpecies } from './DetectedSpecies';
 import { PageHelp } from '../../components/PageHelp';
-import { ActionChecklistCard } from '../../components/ActionChecklistCard';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { videoDetailsHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -478,15 +477,6 @@ export const VideoDetails = () => {
           <VideoPlayer
             video={(displayVideo ?? video) as Video}
             showTracksRegenHint={showTracksRegenHint}
-          />
-          <ActionChecklistCard
-            title={t('video.guideTitle')}
-            intro={t('video.guideIntro')}
-            steps={[
-              t('video.guideStep1'),
-              t('video.guideStep2'),
-              t('video.guideStep3'),
-            ]}
           />
           {isAdmin && (
             <Accordion sx={{ mt: 1 }}>
