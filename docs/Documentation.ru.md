@@ -16,13 +16,17 @@
 
 **Навигация:** с [docs/README.md](./README.md).
 
+### Новая опубликованная страница
+
+Если страница попадает в сайт: обновите **`nav`** в корневом **`mkdocs.yml`**, блоки **Мета** и **Репозиторий (канонические файлы)** в [SITE_MAP.ru.md](./SITE_MAP.ru.md) / [SITE_MAP.md](./SITE_MAP.md), при необходимости таблицы в [README.ru.md](./README.ru.md) и [README.md](./README.md), строку в [I18N_STATUS.md](./I18N_STATUS.md) (раздел **Published site** там же на EN — общий чеклист для мейнтейнеров).
+
 ---
 
 ## Статический сайт документации (MkDocs + GitHub Pages)
 
 **Версия Python:** в **Docker-образе приложения** BirdLense — **Python 3.11** (база Ultralytics). **MkDocs** для этого репозитория собирается на **Python 3.12** (как в CI job **docs**) — используйте **отдельный venv** (например `.venv-docs`); не смешивайте с интерпретатором внутри контейнера приложения.
 
-В корне репозитория лежит **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)**: тема **Material**, каталог исходников — `docs/`, структура `nav` согласована с [SITE_MAP.ru.md](./SITE_MAP.ru.md). Файлы политики и метаданных в корне репозитория (contributing, security policy, changelog, OpenAPI) на сайте открываются через короткие страницы в [docs/project/](./project/contributing.md), чтобы ссылки из `docs/` не уходили в `../` (так ломается публикация на GitHub Pages).
+В корне репозитория лежит **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)**: тема **Material**, каталог исходников — `docs/`, `nav` сверяют с [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) (блоки **Мета** и **Репозиторий (канонические файлы)** — в том же порядке, что две группы в боковом меню). Файлы политики и метаданных в корне репозитория (contributing, security policy, changelog, OpenAPI) на сайте открываются через короткие страницы в [docs/project/](./project/contributing.md), чтобы ссылки из `docs/` не уходили в `../` (так ломается публикация на GitHub Pages).
 
 ### Сборка локально
 
@@ -87,7 +91,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 - [ ] Только плейсхолдеры, без реальных IP/путей.
 - [ ] Перекрёстные ссылки на ту же локаль, где есть пара.
 - [ ] Длинные инструкции (Colab): ячейки исполнимы; тексты print согласованы с языком страницы.
-- [ ] Обновлены [README.md](./README.md) и [I18N_STATUS.md](./I18N_STATUS.md) при новой странице.
+- [ ] Обновлены [README.md](./README.md) и [I18N_STATUS.md](./I18N_STATUS.md) при новой странице (полный контур: **Новая опубликованная страница** выше и **Published site** в I18N_STATUS).
 - [ ] **[ROADMAP.ru](./ROADMAP.ru.md)** § *Текущий стек*: версии React/Vite (и прочие зафиксированные UI-версии) совпадают с `app/ui/package.json` / lock; блок про БД/миграции соответствует `app/web`.
 - [ ] Корневой `mkdocs.yml`: новая страница в английском `nav` и в секции **Русский** (или осознанно только в репозитории).
 - [ ] [SITE_MAP.md](./SITE_MAP.md) и [SITE_MAP.ru.md](./SITE_MAP.ru.md) совпадают с боковым меню (блоки **Мета** и **Репозиторий (канонические файлы)** — в том же порядке, что две группы в корневом `mkdocs.yml`); если есть пара `DOC.md` / `DOC.ru.md`, в колонке **источник** даны ссылки **на оба** (EN · RU или RU · EN), чтобы карта была двуязычным указателем.
