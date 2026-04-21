@@ -1,6 +1,8 @@
 # UX Guide: Tooltips and Inline Hints
 
-English only (contributor-facing). This guide defines a consistent pattern for hints in BirdLense Hub UI.
+[Русский](./UX_TOOLTIPS.ru.md)
+
+Contributor-facing guide: a consistent pattern for hints in BirdLense Hub UI.
 
 ## Principles
 

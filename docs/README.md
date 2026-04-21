@@ -71,6 +71,7 @@ Pick what matches you — you can read the rest as reference.
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Domain integrity checks | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) |
 | MCP (Model Context Protocol — automation & integrations) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
+| **UX tooltips & inline hints** (contributors) | [UX_TOOLTIPS](./UX_TOOLTIPS.md) · [RU](./UX_TOOLTIPS.ru.md) |
 
 ---
 

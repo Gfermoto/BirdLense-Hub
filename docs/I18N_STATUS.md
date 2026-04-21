@@ -58,7 +58,7 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | LOCAL_DEV | ✅ | ✅ |
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
-| UX_TOOLTIPS | ✅ EN only | — |
+| UX_TOOLTIPS | ✅ | ✅ |
 | SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ EN only | — |
 | UX_UNKNOWN_VIDEO_CORRECTION | ✅ single page | — |
 | ARCHITECTURE | ✅ | ✅ |
