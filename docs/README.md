@@ -79,6 +79,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | English | Russian |
 |-------|---------|---------|
 | Model training (EU/US) | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
+| ML quality loop (operators) | — | [RU only](./ML_QUALITY_LOOP.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
 | Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |

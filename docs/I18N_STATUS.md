@@ -63,6 +63,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | SITE_MAP (sections ↔ files, MkDocs `nav`) | ✅ | ✅ |
 | UX_CANONICAL_MAP (roles / routes / journeys) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
+| ML_QUALITY_LOOP | — | ✅ (RU only) |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |

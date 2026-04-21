@@ -88,6 +88,7 @@ nav:
       - "Settings: composable triggers (phase 2 draft)": SETTINGS_TRIGGERS_PHASE2.md
   - "ML & project":
       - Training: TRAINING.md
+      - "ML quality loop (RU)": ML_QUALITY_LOOP.ru.md
       - Datasets: DATASETS.md
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
