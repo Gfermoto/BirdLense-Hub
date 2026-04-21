@@ -28,7 +28,7 @@ When a page is added to the static site: update root **`mkdocs.yml`** `nav`, the
 
 The repository ships **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml)** at the root: **MkDocs Material**, `docs_dir: docs`, `nav` cross-checked with [SITE_MAP.md](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) (**Meta** and **Repository (canonical files)** follow the same order as the two sidebar groups). Canonical policy files that live at the repo root (Contributing, Security policy, Changelog, OpenAPI YAML) are surfaced on the site via short pages under [docs/project/](./project/contributing.md) so internal links stay inside `docs/` and work when the site is published.
 
-**CI guard:** `python3 scripts/check_site_map_meta_paths.py` (needs PyYAML from `requirements-docs.txt`) asserts every **Meta** and **Repository (canonical files)** path in `mkdocs.yml` still appears inside the matching excerpts of `docs/SITE_MAP.md` before `mkdocs build --strict`.
+**CI guard:** `python3 scripts/check_site_map_meta_paths.py` (needs PyYAML from `requirements-docs.txt`) asserts every path under **Use the hub**, **Develop & integrate**, **ML & project**, **Meta**, and **Repository (canonical files)** in `mkdocs.yml` still appears inside the matching excerpts of `docs/SITE_MAP.md` before `mkdocs build --strict`.
 
 ### Build locally
 
