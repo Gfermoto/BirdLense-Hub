@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Rewrite entire git history: remove leaked host/IP from all blobs and commit messages.
+# OPTIONAL LAST RESORT — rewrites every commit (new SHAs). Prefer SECURITY.md §8.2 “keep history”:
+# sanitize current branch only; do not run this script unless the team accepts force-push.
+#
+# Removes leaked host/IP from all blobs and commit messages across history.
 #
 # Requires: git, Python 3, pip (installs git-filter-repo into user site-packages if missing).
 #
-# Usage (recommended — values do not stay in repo files; may still appear in shell history):
+# Usage (values do not stay in repo files; may still appear in shell history):
 #   ./scripts/redact-git-history-leaks.sh 'OLD_IPV4' 'OLD_HOSTNAME' [NEW_IPV4 NEW_HOSTNAME]
 #
 # Defaults for NEW_* match docs (RFC 5737 TEST-NET-3 + example.com):
@@ -89,7 +92,8 @@ echo "Replacement rules (first line only shown):"
 head -n 1 "$RULES_FILE" | sed 's/==>.*$/==>…/'
 echo "… ($(wc -l <"$RULES_FILE") lines total)"
 echo ""
-read -r -p "This rewrites ALL commits. Type YES to continue: " confirm
+echo "WARNING: every commit hash will change; you will need force-push. To KEEP history, Ctrl+C and read SECURITY §8.2."
+read -r -p "Type YES to rewrite entire history: " confirm
 [[ "$confirm" == "YES" ]] || { echo "aborted."; exit 1; }
 
 ensure_filter_repo
