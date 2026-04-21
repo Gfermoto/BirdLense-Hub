@@ -9,7 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
 const BASE_URL =
   process.env.BASE_URL ||
   process.env.E2E_BASE_URL ||
-  'https://birdlense.eyera.info';
+  'http://127.0.0.1:8085';
 
 export default defineConfig({
   testDir: './tests',

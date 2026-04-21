@@ -30,6 +30,8 @@ The repository ships **[mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/bl
 
 **CI guard:** `python3 scripts/check_site_map_meta_paths.py` (needs PyYAML from `requirements-docs.txt`) asserts every path under **Use the hub**, **Develop & integrate**, **ML & project**, **Meta**, and **Repository (canonical files)** in `mkdocs.yml` still appears inside the matching excerpts of `docs/SITE_MAP.md`, and every path under the flat **Русский** `nav` block appears in the matching excerpts of `docs/SITE_MAP.ru.md`, before `mkdocs build --strict`.
 
+**Scheduled catalog audit:** workflow [`catalog-cards-audit.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/catalog-cards-audit.yml) needs repository variable **`CATALOG_CARDS_AUDIT_URL`** (Actions → Variables) or a `base_url` input on manual dispatch — production hub URLs must not be hardcoded in the repo.
+
 ### Build locally
 
 ```bash

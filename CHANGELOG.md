@@ -190,7 +190,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Docs
 
-- **Деплой:** `scripts/deploy.local.sh.example` и [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `185.218.111.196:2222`, UI `birdlense.eyera.info` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
+- **Деплой:** `scripts/deploy.local.sh.example` и [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) описывают **два равноправных режима** — **LAN** (на площадке: `192.168.1.11:22`, UI `:8085`) и **удалённый** (VPS `203.0.113.10:2222` как пример [TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), UI `https://hub.example.com/` или IP); в `deploy.local.sh` держать активным один блок и переключать при смене места работы.
 - **Tech debt:** эпик [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220); **sub-issues** [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**закрыт** — модульные `ui_*_routes`), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**закрыт** — PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor фаза 2: **`MotionRecordingSession`** **сделано**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221)–[#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**#225** в хабе: Alembic **`001`** + сессия записи **сделано**); `scripts/github-issue-link-subissues.sh`. [ROADMAP.ru.md](docs/ROADMAP.ru.md) — **волна D**.
 - **Scales / roadmap:** [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) и [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыты. [CONFIGURATION](docs/CONFIGURATION.ru.md) — `integrations.scales.*` (MQTT / Home Assistant).
 
@@ -405,7 +405,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Система / история метрик:** таблица `system_resource_sample`, фоновый sampler (~30 с, хранение 72 ч, отключается `DISABLE_SYSTEM_METRICS_SAMPLER`), `GET /api/ui/system/metrics/history`; графики на «Системе» — серия с сервера + «хвост» живого опроса, выбор окна 6/24/48 ч. Интервал и хранение: `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC`, `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS`; см. CONFIGURATION, `app/.env.example`.
 
-- **Доки деплоя / MCP:** основная площадка в правилах и примерах — LAN **192.168.1.11:22**, UI **http://192.168.1.11:8085/**, MCP **`http://192.168.1.11:8085/mcp`**; публичный хост birdlense.eyera.info оставлен как альтернатива в `deploy.local.sh.example` и MCP_SETUP.
+- **Доки деплоя / MCP:** основная площадка в правилах и примерах — LAN **192.168.1.11:22**, UI **http://192.168.1.11:8085/**, MCP **`http://192.168.1.11:8085/mcp`**; публичный пример **`hub.example.com`** — в `deploy.local.sh.example` и MCP_SETUP (без реальных прод-хостов в репозитории).
 
 ### Added
 
@@ -443,7 +443,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Отчётность:** без отдельных страниц `PROJECT_REPORTING*` — правила в [docs/ROADMAP.md](docs/ROADMAP.md) / [RU](docs/ROADMAP.ru.md) и [CONTRIBUTING](CONTRIBUTING.md) / [RU](CONTRIBUTING.ru.md); вести **Issues** и доску, не дублировать политикой в `docs/`.
-- **Доки окружения:** прод-UI **https://birdlense.eyera.info/**, SSH **185.218.111.196:2222** — [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) / [RU](docs/DEPLOY_SERVER.ru.md), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
+- **Доки окружения:** примеры UI **https://hub.example.com/**, SSH **`203.0.113.10:2222`** (документационные значения) — [DEPLOY_SERVER](docs/DEPLOY_SERVER.md) / [RU](docs/DEPLOY_SERVER.ru.md), [MCP_SETUP](docs/MCP_SETUP.md) / [RU](docs/MCP_SETUP.ru.md), пример [`scripts/deploy.local.sh.example`](scripts/deploy.local.sh.example).
 - **#85 (video neighbors):** `GET /api/ui/videos/:id/neighbors` теперь поддерживает локальный день (`day_scope=local`, `tz_offset_minutes`) и опциональный переход на соседние сутки (`cross_day`); UI страницы видео использует локальный режим по умолчанию.
 - **#50 (processor MQTT resilience):** MQTT-клиент процессора использует встроенный reconnect/backoff paho (`reconnect_min_delay`/`reconnect_max_delay`), а в конфиг/доки добавлены параметры и пояснение про пропуски live-событий при обрывах.
 - **Settings UI (MQTT):** в форму добавлены `publish_topic`, `reconnect_min_delay`, `reconnect_max_delay` для полной настройки MQTT без ручного редактирования YAML.
