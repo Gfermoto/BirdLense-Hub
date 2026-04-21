@@ -74,7 +74,34 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 
 ---
 
-## Meta (footer or “Project”)
+## Meta (MkDocs sidebar — matches `nav` → **Meta**)
+
+| Page | Source |
+|------|--------|
+| Hub epics (GitHub tracker) | [HUB_EPICS_TRACKER.md](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
+| Repository layout | [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
+| Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
+| Doc conventions | [Documentation.md](./Documentation.md) · [RU](./Documentation.ru.md) |
+| Site map (generator) | [SITE_MAP.md](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) (EN only by policy) |
+| Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
+| Security analysis | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| Open-source prep | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
+| Governance | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
+| GitHub CLI setup | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
+| Wiki and CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
+
+**Related (not separate nav rows):** triage / board / issues — [ROADMAP.md](./ROADMAP.md) · [RU](./ROADMAP.ru.md); repo root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md).
+
+**Repo-only (excluded from MkDocs `exclude_docs`):** pre-implementation checklist — [EN on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md).
+
+**OpenAPI bulk path regeneration:** [Documentation.md § OpenAPI maintenance](./Documentation.md#openapi-spec-maintenance) (`merge_openapi_fragments.py`, `generate_openapi_remaining_paths.py`).
+
+---
+
+## Repository (canonical files) — MkDocs `nav` → **Repository (canonical files)**
+
+Stub pages under [`docs/project/`](./project/contributing.md) point at root policy files and the live OpenAPI YAML.
 
 | Page | Source |
 |------|--------|
@@ -82,22 +109,8 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Security policy | [project/security-policy.md](./project/security-policy.md) → root `SECURITY.md` |
 | Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → root `CODE_OF_CONDUCT.md` |
 | Changelog | [project/changelog.md](./project/changelog.md) → root `CHANGELOG.md` |
-| OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| OpenAPI (YAML) | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
 | Root README | [project/root-readme.md](./project/root-readme.md) → root `README.md` |
-| Repository layout | [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
-| Hub epics tracker (GitHub) | [HUB_EPICS_TRACKER.md](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
-| Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
-| Pre-implementation checklist (repo only; not in MkDocs) | [EN on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) |
-| Doc conventions | [Documentation.md](./Documentation.md) · [RU](./Documentation.ru.md) |
-| Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
-| Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
-| Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
-| i18n status | [I18N_STATUS.md](./I18N_STATUS.md) (EN only by policy) |
-| Governance & observer | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
-| Issues, board & roadmap | [ROADMAP.md](./ROADMAP.md) (Triage) · [RU](./ROADMAP.ru.md); repo root CONTRIBUTING.md |
-| GitHub via `gh` CLI | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
-| Wiki & CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
-| OpenAPI bulk path regeneration | [Documentation.md](./Documentation.md#openapi-spec-maintenance) (scripts `merge_openapi_fragments.py` / `generate_openapi_remaining_paths.py`) |
 
 **Implemented generator:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) at repo root (MkDocs Material); Russian pages are a section in the same `nav`.
 
