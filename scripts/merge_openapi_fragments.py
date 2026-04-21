@@ -74,6 +74,29 @@ GEN = ROOT / "scripts" / "generate_openapi_remaining_paths.py"
 # Manual paths in openapi.yaml must appear *before* this key so merge stays idempotent.
 _FRAG_UI_START = "\n  /cameras:\n"
 
+_GOOD_SERVERS = (
+    "servers:\n"
+    "  - url: http://birdlense.local/api/ui\n"
+    "    description: Hub UI API (browser and MCP)\n"
+    "  - url: http://birdlense.local/api/processor\n"
+    "    description: Processor ingest (requires X-Processor-Token when configured)\n"
+)
+
+
+def _normalize_servers_block(text: str) -> str:
+    """Replace the ``servers:`` … ``paths:`` region with a single canonical two-entry block.
+
+    The old ``str.replace(..., 1)`` expansion was not idempotent and could stack duplicate
+    ``description`` keys when ``merge_openapi_fragments`` ran more than once.
+    """
+    start = text.find("servers:\n")
+    if start == -1:
+        return text
+    paths_idx = text.find("\npaths:\n", start)
+    if paths_idx == -1:
+        return text
+    return text[:start] + _GOOD_SERVERS + text[paths_idx:]
+
 
 def _strip_generated_paths(head: str) -> str:
     """Drop a previously merged fragment (and accidental duplicates) before re-inserting."""
@@ -95,16 +118,7 @@ def main() -> None:
     ui = FRAG_UI.read_text(encoding="utf-8").rstrip("\n")
     pr = FRAG_PR.read_text(encoding="utf-8").rstrip("\n")
     merged = head.rstrip() + "\n" + ui + "\n" + pr + "\n" + marker + tail
-    # Second server for processor paths
-    merged = merged.replace(
-        "servers:\n  - url: http://birdlense.local/api/ui\n",
-        "servers:\n"
-        "  - url: http://birdlense.local/api/ui\n"
-        "    description: Hub UI API (browser and MCP)\n"
-        "  - url: http://birdlense.local/api/processor\n"
-        "    description: Processor ingest (requires X-Processor-Token when configured)\n",
-        1,
-    )
+    merged = _normalize_servers_block(merged)
     OPENAPI.write_text(merged, encoding="utf-8")
     _add_video_delete(OPENAPI)
     yaml.safe_load(OPENAPI.read_text(encoding="utf-8"))

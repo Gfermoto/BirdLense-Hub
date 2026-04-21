@@ -24,12 +24,7 @@ servers:
     description: Hub UI API (browser and MCP)
   - url: http://birdlense.local/api/processor
     description: Processor ingest (requires X-Processor-Token when configured)
-    description: Hub UI API (browser and MCP)
-  - url: http://birdlense.local/api/processor
-    description: Processor ingest (requires X-Processor-Token when configured)
-    description: Hub UI API (browser and MCP)
-  - url: http://birdlense.local/api/processor
-    description: Processor ingest (requires X-Processor-Token when configured)
+
 paths:
   /health:
     get:

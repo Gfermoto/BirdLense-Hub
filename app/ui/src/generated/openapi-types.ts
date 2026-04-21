@@ -3737,11 +3737,24 @@ export interface paths {
         };
         /**
          * Migration calendar
-         * @description Species times month matrix for migration view.
+         * @description Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity in range; dataset = class folders under data/dataset; full_eu = EU allowlist catalog. Legacy aliases: active -> observed; full -> full_eu. evidence is accepted for compatibility but ignored.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Catalog mode; active and full are legacy aliases. */
+                    catalog?: "observed" | "dataset" | "full_eu" | "active" | "full";
+                    /** @description Inclusive filter on visit year (optional). */
+                    start_year?: number;
+                    /** @description Inclusive filter on visit year (optional). */
+                    end_year?: number;
+                    /** @description Inclusive UTC start date YYYY-MM-DD (optional). */
+                    start_date?: string;
+                    /** @description Inclusive UTC end date YYYY-MM-DD (optional). */
+                    end_date?: string;
+                    /** @description Ignored; reserved for backward compatibility. */
+                    evidence?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -3757,6 +3770,15 @@ export interface paths {
                         "application/json": {
                             [key: string]: unknown;
                         };
+                    };
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Error */
@@ -5086,56 +5108,6 @@ export interface paths {
         /**
          * BirdNET FIFO diagnostics
          * @description Named pipe or FIFO status for BirdNET path.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/diagnostics/processor-runtime": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Processor runtime diagnostics
-         * @description Processor runtime counters, gauges and latency snapshot.
          */
         get: {
             parameters: {
