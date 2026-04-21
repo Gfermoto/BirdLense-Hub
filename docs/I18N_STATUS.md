@@ -1,5 +1,7 @@
 # Documentation — Bilingual Status
 
+[Русский](./I18N_STATUS.ru.md)
+
 English = main (`.md`). Russian = secondary (`.ru.md`).
 
 ## Workflow
@@ -23,7 +25,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 
 ## Published site (`mkdocs.yml`)
 
-When you add, remove, or rename a **published** page under `docs/`: update root **`mkdocs.yml`** `nav`, mirror the **Meta** and **Repository (canonical files)** order in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), refresh [README.md](./README.md) meta tables if operators should discover the page from the doc home, then extend the status table below.
+When you add, remove, or rename a **published** page under `docs/`: update root **`mkdocs.yml`** `nav`, mirror the **Meta** and **Repository (canonical files)** order in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), refresh [README.md](./README.md) meta tables if operators should discover the page from the doc home, then extend the status tables in this file and in [I18N_STATUS.ru.md](./I18N_STATUS.ru.md).
 
 ## Status
 
@@ -86,5 +88,5 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 1. Write or rewrite **English** in `DOC.md` (instructional, placeholders, cross-links).
 2. If Russian is required: create/update `DOC.ru.md` (same structure).
 3. Register in [docs/README.md](./README.md) (and [README.ru.md](./README.ru.md)).
-4. Update this table.
+4. Update this table and [I18N_STATUS.ru.md](./I18N_STATUS.ru.md) (same rows).
 5. If you add or change **HTTP routes** documented in OpenAPI: follow [OpenAPI maintenance](./project/openapi.md) (fragment merge / regen scripts) and run `pytest web/tests/test_openapi_contract.py` when the contract test applies.

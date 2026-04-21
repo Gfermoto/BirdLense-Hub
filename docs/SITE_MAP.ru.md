@@ -83,7 +83,7 @@
 | Журнал верификации релизов | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
 | Правила документации | [Documentation.ru.md](./Documentation.ru.md) · [EN](./Documentation.md) |
 | Карта сайта (генератор) | [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) |
-| Локализация | [I18N_STATUS.md](./I18N_STATUS.md) (таблица на EN) |
+| Локализация | [I18N_STATUS.ru.md](./I18N_STATUS.ru.md) · [EN](./I18N_STATUS.md) |
 | Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
 | Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) · [EN](./SECURITY.md) |
 | Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) · [EN](./OPEN_SOURCE_PREP.md) |

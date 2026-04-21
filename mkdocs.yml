@@ -156,7 +156,7 @@ nav:
       - Верификация релизов: VERIFICATION.ru.md
       - О документации: Documentation.ru.md
       - Карта сайта: SITE_MAP.ru.md
-      - Локализация: I18N_STATUS.md
+      - Локализация: I18N_STATUS.ru.md
       - Ротация секретов (прод): SECRETS_ROTATION.ru.md
       - Анализ безопасности: SECURITY.ru.md
       - Open-source: OPEN_SOURCE_PREP.ru.md
