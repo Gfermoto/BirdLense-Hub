@@ -19,9 +19,9 @@ alwaysApply: true
 
 ### Удалённо (публичный хост)
 
-**SSH:** например **`185.218.111.196`**, порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
+**SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
 
-**Веб-UI:** например **`https://birdlense.eyera.info/`** или `http://185.218.111.196:8085/` — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере.
+**Веб-UI:** например **`https://hub.example.com/`** или `http://203.0.113.10:8085/` — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере.
 
 **MCP:** тот же базовый URL, что и UI, путь **`/mcp`**.
 
@@ -64,7 +64,7 @@ VPS:
 
 ```
 Host birdlense-vps
-  HostName 185.218.111.196
+  HostName 203.0.113.10
   Port 2222
   User root
 ```

@@ -30,6 +30,8 @@
 
 **Проверка в CI:** `python3 scripts/check_site_map_meta_paths.py` (нужен PyYAML из `requirements-docs.txt`) сверяет пути из английских секций `nav` (**Use the hub**, **Develop & integrate**, **ML & project**, **Meta**, **Repository**) с отрывками `docs/SITE_MAP.md`, а плоский блок **Русский** — с отрывками `docs/SITE_MAP.ru.md`, до `mkdocs build --strict`.
 
+**По расписанию — аудит карточек видов:** в workflow [`catalog-cards-audit.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/catalog-cards-audit.yml) задайте переменную репозитория **`CATALOG_CARDS_AUDIT_URL`** (Settings → Secrets and variables → Actions → Variables) или при ручном запуске укажите `base_url`. Продакшен-URL хаба не должен быть захардкожен в репозитории.
+
 ### Сборка локально
 
 ```bash
