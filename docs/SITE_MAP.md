@@ -23,19 +23,20 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Quickstart | [QUICKSTART.md](./QUICKSTART.md) |
 | Install | [INSTALL.md](./INSTALL.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
-| Scenarios | [SCENARIOS.md](./SCENARIOS.md) |
+| Scenarios | [SCENARIOS.md](./SCENARIOS.md) · [RU](./SCENARIOS.ru.md) |
 | Configuration | [CONFIGURATION.md](./CONFIGURATION.md) |
 | Features | [FEATURES.md](./FEATURES.md) |
 | Domain contract | [DOMAIN_CONTRACT.md](./DOMAIN_CONTRACT.md) · [RU](./DOMAIN_CONTRACT.ru.md) |
 | Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Definition of Done (short gate) | [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md) · [RU](./DEFINITION_OF_DONE.ru.md) |
 | UI settings map | [UI_SETTINGS_MAP.md](./UI_SETTINGS_MAP.md) · [RU](./UI_SETTINGS_MAP.ru.md) |
+| UX canonical map (roles & journeys) | [UX_CANONICAL_MAP.md](./UX_CANONICAL_MAP.md) · [RU](./UX_CANONICAL_MAP.ru.md) |
 | Processor performance notes | [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) · [RU](./PROCESSOR_PERFORMANCE.ru.md) |
 | Config triggers inventory | [CONFIGURATION_TRIGGERS_INVENTORY.md](./CONFIGURATION_TRIGGERS_INVENTORY.md) · [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
-| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) |
+| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) · [RU](./TROUBLESHOOTING.ru.md) |
 | Runbooks | [RUNBOOKS.md](./RUNBOOKS.md) · [RU](./RUNBOOKS.ru.md) |
-| Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) |
-| Glossary | [GLOSSARY.md](./GLOSSARY.md) |
+| Recover config | [RECOVERY_CONFIG.md](./RECOVERY_CONFIG.md) · [RU](./RECOVERY_CONFIG.ru.md) |
+| Glossary | [GLOSSARY.md](./GLOSSARY.md) · [RU](./GLOSSARY.ru.md) |
 | Heimdall tiles | [HEIMDALL.md](./HEIMDALL.md) · [RU](./HEIMDALL.ru.md) |
 
 ---
@@ -48,9 +49,9 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | HTTP API | [API.md](./API.md) + OpenAPI import |
 | API errors & security baseline | [API_ERRORS.md](./API_ERRORS.md) · [RU](./API_ERRORS.ru.md) |
 | OpenAPI (Redoc) | [reference/openapi.md](./reference/openapi.md) · [RU](./reference/openapi.ru.md) |
-| Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
-| MCP | [MCP_SETUP.md](./MCP_SETUP.md) |
-| Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) |
+| Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) |
+| MCP | [MCP_SETUP.md](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
+| Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) · [RU](./LOCAL_DEV.ru.md) |
 | CodeQL (CI) | [CODEQL.md](./CODEQL.md) |
 | Testing | [TESTING.md](./TESTING.md) |
 | CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
@@ -87,7 +88,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Hub epics tracker (GitHub) | [HUB_EPICS_TRACKER.md](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
 | Verification log (releases) | [VERIFICATION.md](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Pre-implementation checklist (repo only; not in MkDocs) | [EN on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) · [RU on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) |
-| Doc conventions | [Documentation.md](./Documentation.md) |
+| Doc conventions | [Documentation.md](./Documentation.md) · [RU](./Documentation.ru.md) |
 | Security analysis (deep dive) | [SECURITY.md](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Secrets rotation (ops) | [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
 | Open-source prep (maintainers) | [OPEN_SOURCE_PREP.md](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
