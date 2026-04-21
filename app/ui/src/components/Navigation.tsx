@@ -277,16 +277,6 @@ export function Navigation() {
                   {t(`nav.${item.key}`)}
                 </MenuItem>
               ))}
-              {canEdit ? (
-                <MenuItem
-                  onClick={handleMobileMenuClose}
-                  component={Link}
-                  to="/timeline?review=1"
-                  selected={isReviewRoute}
-                >
-                  {t('nav.review')}
-                </MenuItem>
-              ) : null}
 
               {/* Live View */}
               <MenuItem
@@ -455,15 +445,6 @@ export function Navigation() {
                 {t(`nav.${item.key}`)}
               </Box>
             ))}
-            {canEdit ? (
-              <Box
-                component={Link}
-                to="/timeline?review=1"
-                sx={isReviewRoute ? activeNavPillStyles : navPillStyles}
-              >
-                {t('nav.review')}
-              </Box>
-            ) : null}
           </Box>
 
           {/* Action Buttons - Desktop */}
