@@ -60,7 +60,7 @@
 | LOCAL_DEV | ✅ | ✅ |
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
-| UX_TOOLTIPS | ✅ только EN | — |
+| UX_TOOLTIPS | ✅ | ✅ |
 | SETTINGS_TRIGGERS_PHASE2 (черновик) | ✅ только EN | — |
 | UX_UNKNOWN_VIDEO_CORRECTION | ✅ одна страница | — |
 | ARCHITECTURE | ✅ | ✅ |

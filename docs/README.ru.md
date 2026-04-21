@@ -69,6 +69,7 @@
 | Журнал автоматической верификации (релизы / критические фиксы) | [VERIFICATION](./VERIFICATION.ru.md) |
 | Проверка доменных инвариантов | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md) |
 | MCP (Model Context Protocol — автоматизация и интеграции) | [MCP_SETUP](./MCP_SETUP.ru.md) |
+| **UX: тултипы и подсказки** (контрибьюторы) | [UX_TOOLTIPS.ru.md](./UX_TOOLTIPS.ru.md) · [EN](./UX_TOOLTIPS.md) |
 
 ---
 
