@@ -74,7 +74,34 @@
 
 ---
 
-## Мета
+## Мета (боковое меню MkDocs — как в `nav` → **Meta**)
+
+| Страница | Источник |
+|----------|----------|
+| Трекер эпиков Hub (GitHub) | [HUB_EPICS_TRACKER.ru.md](./HUB_EPICS_TRACKER.ru.md) · [EN](./HUB_EPICS_TRACKER.md) |
+| Структура репозитория | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
+| Журнал верификации релизов | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
+| Правила документации | [Documentation.ru.md](./Documentation.ru.md) · [EN](./Documentation.md) |
+| Карта сайта (генератор) | [SITE_MAP.ru.md](./SITE_MAP.ru.md) · [EN](./SITE_MAP.md) |
+| Локализация | [I18N_STATUS.md](./I18N_STATUS.md) (таблица на EN) |
+| Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
+| Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) · [EN](./SECURITY.md) |
+| Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) · [EN](./OPEN_SOURCE_PREP.md) |
+| Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
+| Настройка GitHub (`gh`) | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
+| Wiki и отчёты CI | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
+
+**Связано (отдельных пунктов меню нет):** триаж / доска / issues — [ROADMAP.ru.md](./ROADMAP.ru.md) · [EN](./ROADMAP.md); корень репозитория [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md).
+
+**Только в репозитории (в MkDocs в `exclude_docs`):** чеклист до реализации — [RU на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) · [EN на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md).
+
+**Массовая регенерация путей OpenAPI:** [Documentation.ru.md § обслуживание OpenAPI](./Documentation.ru.md#openapi-spec-maintenance) (`merge_openapi_fragments.py`, `generate_openapi_remaining_paths.py`).
+
+---
+
+## Репозиторий (канонические файлы) — `nav` → **Repository (canonical files)**
+
+Заглушки в [`docs/project/`](./project/contributing.md) ведут на политики в корне репозитория и на актуальный `openapi.yaml`.
 
 | Страница | Источник |
 |----------|----------|
@@ -82,22 +109,8 @@
 | Политика безопасности | [project/security-policy.md](./project/security-policy.md) → корневой `SECURITY.md` |
 | Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → корень репозитория |
 | Changelog | [project/changelog.md](./project/changelog.md) → корневой `CHANGELOG.md` |
-| OpenAPI YAML | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
-| Корневой README | [project/root-readme.md](./project/root-readme.md) |
-| Структура репозитория | [REPOSITORY_LAYOUT.ru.md](./REPOSITORY_LAYOUT.ru.md) · [EN](./REPOSITORY_LAYOUT.md) |
-| Трекер эпиков Hub (GitHub) | [HUB_EPICS_TRACKER.ru.md](./HUB_EPICS_TRACKER.ru.md) · [EN](./HUB_EPICS_TRACKER.md) |
-| Журнал верификации релизов | [VERIFICATION.ru.md](./VERIFICATION.ru.md) · [EN](./VERIFICATION.md) |
-| Чеклист до реализации (только в репо, не в MkDocs) | [RU на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) · [EN на GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) |
-| Правила доков | [Documentation.ru.md](./Documentation.ru.md) · [EN](./Documentation.md) |
-| Анализ безопасности | [SECURITY.ru.md](./SECURITY.ru.md) · [EN](./SECURITY.md) |
-| Ротация секретов (прод) | [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md) · [EN](./SECRETS_ROTATION.md) |
-| Подготовка к open-source | [OPEN_SOURCE_PREP.ru.md](./OPEN_SOURCE_PREP.ru.md) · [EN](./OPEN_SOURCE_PREP.md) |
-| Локализация | [I18N_STATUS.md](./I18N_STATUS.md) (таблица на EN) |
-| Управление и наблюдатель | [GOVERNANCE.ru.md](./GOVERNANCE.ru.md) · [EN](./GOVERNANCE.md) |
-| Issues, доска и roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) (Триаж) · [EN](./ROADMAP.md); корень репо CONTRIBUTING.ru.md |
-| Настройка GitHub (`gh`) | [GITHUB_SETUP_GH.ru.md](./GITHUB_SETUP_GH.ru.md) · [EN](./GITHUB_SETUP_GH.md) |
-| Wiki и отчёты CI | [WIKI_AUTOMATION.ru.md](./WIKI_AUTOMATION.ru.md) · [EN](./WIKI_AUTOMATION.md) |
-| Массовая регенерация путей OpenAPI | [Documentation.ru.md](./Documentation.ru.md#openapi-spec-maintenance) (скрипты `merge_openapi_fragments.py` / `generate_openapi_remaining_paths.py`) |
+| OpenAPI (YAML) | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Корневой README | [project/root-readme.md](./project/root-readme.md) → корневой `README.md` |
 
 **Генератор:** [mkdocs.yml](https://github.com/Gfermoto/BirdLense-Hub/blob/main/mkdocs.yml) в корне репозитория (MkDocs Material); русские страницы — отдельная секция в `nav`.
 
