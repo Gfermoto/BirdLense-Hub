@@ -99,9 +99,7 @@ export function GeneralSecurityAccordion({ form }: Props) {
                       control={
                         <Switch
                           checked={Boolean(field.state.value)}
-                          onChange={(e) =>
-                            field.handleChange(e.target.checked)
-                          }
+                          onChange={(e) => field.handleChange(e.target.checked)}
                         />
                       }
                       label={t('settings.requireAuthVideoStream')}

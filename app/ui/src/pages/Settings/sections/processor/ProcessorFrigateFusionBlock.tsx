@@ -135,9 +135,14 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
         </Grid>
         {summaryQ.data ? (
           <Grid size={{ xs: 12 }}>
-            <Alert severity={summaryQ.data.feedback.ready_for_training ? 'success' : 'info'}>
+            <Alert
+              severity={
+                summaryQ.data.feedback.ready_for_training ? 'success' : 'info'
+              }
+            >
               <Typography variant="body2" component="div">
-                {t('settings.recognitionImprovementCurrentModeLabel')}: <strong>{improvementModeLabel}</strong>
+                {t('settings.recognitionImprovementCurrentModeLabel')}:{' '}
+                <strong>{improvementModeLabel}</strong>
               </Typography>
               <Typography variant="body2" component="div">
                 {t('settings.recognitionImprovementExamplesLabel', {

@@ -33,7 +33,9 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
   const configWarnings = Array.isArray(data.config_warnings)
     ? data.config_warnings
     : [];
-  const recallHints = Array.isArray(data.recall_warnings) ? data.recall_warnings : [];
+  const recallHints = Array.isArray(data.recall_warnings)
+    ? data.recall_warnings
+    : [];
   const processorRuntimeHints = Array.isArray(data.processor_runtime_hints)
     ? data.processor_runtime_hints
     : [];
@@ -104,7 +106,12 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('system.configAuditRuntimeTitle')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mb: 0.75 }}
+            >
               {t('system.configAuditRuntimeHint')}
             </Typography>
             <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>
@@ -151,7 +158,12 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('system.configAuditRecallHintsTitle')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mb: 0.75 }}
+            >
               {t('system.configAuditRecallHintsHint')}
             </Typography>
             <List dense disablePadding sx={{ listStyleType: 'disc', pl: 2 }}>

@@ -198,11 +198,7 @@ const SpeciesSummaryPage = () => {
         <Alert severity="warning" sx={{ mb: 2 }}>
           {t('speciesSummary.invalidId')}
         </Alert>
-        <Button
-          variant="contained"
-          component={RouterLink}
-          to="/species"
-        >
+        <Button variant="contained" component={RouterLink} to="/species">
           {t('speciesSummary.openDirectory')}
         </Button>
       </Box>
@@ -223,11 +219,7 @@ const SpeciesSummaryPage = () => {
         <Button variant="outlined" sx={{ mr: 1 }} onClick={() => refetch()}>
           {t('common.retry')}
         </Button>
-        <Button
-          variant="contained"
-          component={RouterLink}
-          to="/species"
-        >
+        <Button variant="contained" component={RouterLink} to="/species">
           {t('speciesSummary.openDirectory')}
         </Button>
       </Box>

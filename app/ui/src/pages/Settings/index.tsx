@@ -77,9 +77,12 @@ export const Settings: React.FC = () => {
   useEffect(() => {
     const h = location.hash.replace(/^#/, '');
     if (h !== 'processor-weights' && h !== 'processor-models') return;
-    const id = h === 'processor-models' ? 'processor-models' : 'processor-weights';
+    const id =
+      h === 'processor-models' ? 'processor-models' : 'processor-weights';
     requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
   }, [location.hash, isLoading, settings]);
 

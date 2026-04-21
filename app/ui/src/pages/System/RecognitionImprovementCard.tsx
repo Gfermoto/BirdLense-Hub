@@ -73,7 +73,9 @@ export function RecognitionImprovementCard() {
           defaultValue: 'Returned to the previous recognition mode',
         }),
       );
-      await qc.invalidateQueries({ queryKey: ['recognition-improvement-summary'] });
+      await qc.invalidateQueries({
+        queryKey: ['recognition-improvement-summary'],
+      });
     },
     onError: (error: unknown) => {
       setInfo(
@@ -95,7 +97,9 @@ export function RecognitionImprovementCard() {
     }
     if (pollTraining) {
       setPollTraining(false);
-      void qc.invalidateQueries({ queryKey: ['recognition-improvement-summary'] });
+      void qc.invalidateQueries({
+        queryKey: ['recognition-improvement-summary'],
+      });
     }
   }, [pollTraining, qc, trainingQ.data?.status]);
 
@@ -159,7 +163,10 @@ export function RecognitionImprovementCard() {
       <Stack spacing={2}>
         {busy ? <LinearProgress /> : null}
         {info ? (
-          <Alert severity={trainingQ.data?.status === 'error' ? 'error' : 'info'} onClose={() => setInfo(null)}>
+          <Alert
+            severity={trainingQ.data?.status === 'error' ? 'error' : 'info'}
+            onClose={() => setInfo(null)}
+          >
             {info}
           </Alert>
         ) : null}

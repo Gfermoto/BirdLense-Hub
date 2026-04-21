@@ -288,7 +288,9 @@ function App() {
             </Box>
           </ProtectedAreaProvider>
         </BrowserRouter>
-        {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+        {import.meta.env.DEV ? (
+          <ReactQueryDevtools initialIsOpen={false} />
+        ) : null}
       </ThemeProvider>
     </QueryClientProvider>
   );
