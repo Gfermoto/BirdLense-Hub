@@ -1741,6 +1741,7 @@
     "modelLineageTitle": "Линейка модели",
     "modelLineageFingerprint": "Fingerprint конфига",
     "modelLineageNoArtifacts": "Нет деталей по артефактам модели.",
+    "modelLineageArtifactsHint": "Чипы — только **файлы на диске** (веса детектора/классификатора, allowlist, опциональный fusion_state.pt). «fusion: нет» при включённом learned fusion в настройках нормально: путь к .pt пустой или файла нет — процессор использует **встроенную эвристику** без отдельного веса. Чтобы здесь было «fusion: есть», нужен реальный файл модели и непустой detection.fusion_model_path.",
     "statusPresent": "есть",
     "statusMissing": "нет",
     "hubMetricsForHeimdall": "Экспорт метрик Hub (для виджетов Heimdall)",
