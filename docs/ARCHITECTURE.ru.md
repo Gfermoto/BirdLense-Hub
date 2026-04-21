@@ -100,11 +100,14 @@ BirdLense держит три разные временные сущности:
 |------|----------|
 | `/` | Overview — статистика, графики, виджет «Последняя птица», PDF-отчёт |
 | `/timeline` | Timeline — записи (дата + время суток: Утро, День, Вечер, Ночь), экспорт CSV/JSON/eBird, iNaturalist |
-| `/unknowns` | Неизвестные — детекции с низкой confidence для ручной проверки |
+| `/unknowns` | Legacy URL — редирект на `/timeline?review=1` |
 | `/videos/:id` | VideoDetails — плеер (0.5x, 2x), детекции, спектрограмма, iNaturalist |
 | `/live` | Live — поток с камер |
-| `/species` | Редирект на Migration Calendar (legacy compatibility route) |
+| `/species` | Сетка сезонности (визиты × вид × месяц); в навигации — пункт **Виды** |
+| `/migration-calendar` | Тот же экран, что и `/species` (алиас / закладка) |
+| `/species-directory` | Каталог видов карточками (расширенный справочник) |
 | `/species/:id` | Species Summary — Xeno-canto (песни птиц) |
+| `/library` | Календарь записей, экспорт датасета, прогон с диска при `video.source: file` |
 | `/settings` | Настройки |
 | `/system` | System — Storage, Activity, Monitor, Processor Logs |
 | `/food` | Food Management |

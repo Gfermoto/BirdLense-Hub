@@ -8,8 +8,9 @@ Single-page map of **where** user, contributor, and admin tasks live in the Hub 
 |------|-----------------|----------------|
 | **Recordings** | `/timeline` | Main day-by-day workflow: open clips, inspect detections, export reports. |
 | **Review** | `/timeline?review=1` | Contributor/admin queue for uncertain detections and manual corrections. |
-| **Species** | `/species` | Species directory for browsing birds seen by the station. |
-| **Species seasonality** | `/migration-calendar` | Secondary seasonal view for species exploration. |
+| **Species (seasonality table)** | `/species` | Visits × species × month grid; primary nav **Species**. Same UI as `/migration-calendar`. |
+| **Species (alias)** | `/migration-calendar` | Bookmark / alternate URL for the same seasonality grid as `/species`. |
+| **Species (card directory)** | `/species-directory` | Card-style browser for species seen at the station. |
 | **Station** (admin) | `/settings` | Outcome-based station setup: cameras, notifications, recognition, integrations. |
 | **Service** (admin) | `/system` | Health, recognition improvement, diagnostics, and service-mode tooling. |
 | **Data** (admin) | `/library` | Archive verification, dataset export, storage, replay, and archive maintenance. |

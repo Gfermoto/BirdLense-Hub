@@ -18,7 +18,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Frigate** | Bird Classification `sub_label` merged with video ML |
 | **Timeline** | Visits by date, playback, spectrograms |
 | **Overview** | Stats, activity charts |
-| **Species** | Primary entry via Migration table (`/migration-calendar`) + per-species summary (`/species/:id`) |
+| **Species** | Seasonality table: **`/species`** (same UI as **`/migration-calendar`**) + card directory **`/species-directory`** + per-species summary **`/species/:id`** |
 | **Weather** | OpenWeather or Home Assistant |
 | **Telegram** | Detection alerts, optional best-frame photo |
 | **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
@@ -51,7 +51,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Last bird widget** | Overview |
 | **PWA** | Install prompt, offline cache |
 | **Detection source** | YOLO / Frigate / BirdNET badges on cards |
-| **Migration calendar** | `/migration-calendar` — visits by species × month |
+| **Migration calendar / Species table** | **`/species`** and **`/migration-calendar`** — same seasonality grid (visits by species × month); **`/species-directory`** — card browser |
 | **Xeno-canto** | Calls on species page |
 | **Per-species thresholds** | `processor.species_confidence_overrides` |
 | **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
