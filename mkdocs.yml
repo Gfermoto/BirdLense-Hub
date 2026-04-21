@@ -1,5 +1,5 @@
 # Static documentation site (MkDocs Material).
-# Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
+# Source of truth remains Markdown under docs/. Cross-check `nav` with docs/SITE_MAP*.md (Meta vs Repository order).
 # Релиз: VERSION в mkdocs extra.site_version (check scripts/check-docs-version.py); баннер — overrides/main.html.
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
