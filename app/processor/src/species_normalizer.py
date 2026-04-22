@@ -239,7 +239,13 @@ def merge_detections(
 
     def _can_frigate_promote(det: dict, ev: dict) -> bool:
         reason = str(det.get("decision_reason") or "").strip().lower()
-        if reason not in {"fallback_bird", "fallback_rodent", "fallback_squirrel"}:
+        # Weak classifier → review_only_generic_bird: still promote from Frigate sub_label.
+        if reason not in {
+            "fallback_bird",
+            "fallback_rodent",
+            "fallback_squirrel",
+            "review_only_generic_bird",
+        }:
             return False
         detector_label = str(det.get("detector_label") or det.get("species_name") or "").strip()
         if not detector_label:
