@@ -5,6 +5,7 @@ Moved from util.py (tech debt #222)."""
 import logging
 import os
 import re
+import time
 from urllib.parse import urlparse
 
 import requests
@@ -29,9 +30,84 @@ _wiki_title_overrides = {
     "grey headed fish eagle": "Grey-headed fish eagle",
 }
 
+# English common names that hit the wrong Wikipedia article if queried alone (dab page, human topic, …).
+# Value: stable enwiki title for the bird taxon.
+_DISAMBIG_WIKI_TITLE_BY_COMMON_KEY: dict[str, str] = {
+    "redhead": "Aythya americana",
+}
+
+# Строки каталога с ALL CAPS / опечатками (нет совпадения с allowlist) — подставляем стабильный заголовок en.wikipedia.
+_TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
+    "golden bower bird": "Golden bowerbird",
+    "greator sage grouse": "Greater sage-grouse",
+    "green winged dove": "Pacific emerald dove",
+    "groved billed ani": "Groove-billed ani",
+    "imperial shaq": "Imperial shag",
+    "iwi": "North Island brown kiwi",
+    "killdear": "Killdeer",
+    "mandrin duck": "Mandarin duck",
+    "mckays bunting": "McKay's bunting",
+    "orange brested bunting": "Orange-breasted bunting",
+    "parakett auklet": "Parakeet auklet",
+    "red wiskered bulbul": "Red-whiskered bulbul",
+    "rose breasted cockatoo": "Galah",
+    "rudy kingfisher": "Ruddy kingfisher",
+    "rufous trepe": "Rufous treepie",
+    "rufuos motmot": "Rufous motmot",
+    "samatran thrush": "Sumatran thrush",
+    "scarlet crowned fruit dove": "Wallace's fruit dove",
+    "smiths longspur": "Smith's longspur",
+    "spoon biled sandpiper": "Spoon-billed sandpiper",
+    "stripped manakin": "Striped manakin",
+    "stripped swallow": "Striated swallow",
+    "swinhoes pheasant": "Swinhoe's pheasant",
+    "touchan": "Toucan",
+    "townsends warbler": "Townsend's warbler",
+    "trumpter swan": "Trumpeter swan",
+    "umbrella bird": "Umbrellabird",
+    "venezuelian troupial": "Venezuelan troupial",
+    "vermilion flycather": "Vermilion flycatcher",
+    "wall creaper": "Wallcreeper",
+    "wilsons bird of paradise": "Wilson's bird-of-paradise",
+}
+
+# Intro extracts that clearly belong to non-bird encyclopedia articles (e.g. human genetics / hair).
+_NON_BIRD_METADATA_MARKERS_RE = re.compile(
+    r"(?is)\b("
+    r"MC1R|"
+    r"melanocortin\s+1\s+receptor|"
+    r"Fitzpatrick\s+scale|"
+    r"natural\s+red\s+hair|"
+    r"red\s+hair\s+is|"
+    r"hair\s+colou?rs?\s+are|"
+    r"human\s+populations?|"
+    r"erythromelanosis|"
+    r"chromosome\s+16\b|"
+    r"rs1805007|"
+    r"genetic\s+stud(y|ies)\s+of\s+red\s+hair"
+    r")\b"
+)
+
+# If any non-bird markers match, still accept extract when it clearly describes a bird (genetics edge case).
+_AVIAN_TOPIC_RESCUE_RE = re.compile(
+    r"(?is)\b("
+    r"species\s+of\s+(duck|goose|swan|bird)|"
+    r"waterfowl|"
+    r"Anatidae|"
+    r"Aythya|"
+    r"breeding\s+plumage|"
+    r"migrat(e|ion)|"
+    r"nest(s|ing)?\b.*\begg|"
+    r"\b(bill|beak|wing|feather|plumage)\b"
+    r")\b"
+)
+
 # Редкие случаи, когда Wikipedia-заголовок не даёт стабильное превью (не раздувать список).
 _manual_image_overrides = {
     "jacobin pigeon": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG",
+    # en.wikipedia без pageimage / iNat не матчит видовой ранг по common-name binomial из статьи
+    "samatran thrush": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Zoothera_mollissima.jpg/330px-Zoothera_mollissima.jpg",
+    "stripped manakin": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg/330px-Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg",
 }
 
 
@@ -174,6 +250,36 @@ def _extract_wiki_search_title(species_name: str) -> str:
     return left or right or s
 
 
+def _norm_ambiguous_common_key(display_name: str) -> str:
+    base = _extract_wiki_search_title(display_name or "") or (display_name or "").strip()
+    return re.sub(r"\s+", " ", base.strip().lower())
+
+
+def disambiguated_wikipedia_title_for_display_name(display_name: str) -> str | None:
+    """Stable en.wikipedia title for ambiguous bird common names (e.g. Redhead → Aythya americana)."""
+    return _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY.get(_norm_ambiguous_common_key(display_name))
+
+
+def _typo_catalog_wikipedia_title(db_display_name: str) -> str | None:
+    """en.wikipedia title for legacy ALL CAPS / misspelled catalog names (no allowlist binomial)."""
+    k = re.sub(r"\s+", " ", (db_display_name or "").strip().lower())
+    return _TYPO_SPECIES_WIKI_TITLE_BY_KEY.get(k)
+
+
+def wikipedia_extract_rejects_wrong_topic(extract: str | None) -> bool:
+    """True when a Wikipedia intro is clearly not about birds — try the next query title."""
+    if not (extract or "").strip():
+        return False
+    t = extract.strip()
+    if len(t) < 100:
+        return False
+    if not _NON_BIRD_METADATA_MARKERS_RE.search(t):
+        return False
+    if _AVIAN_TOPIC_RESCUE_RE.search(t):
+        return False
+    return True
+
+
 def _load_hierarchy_parent_map():
     """Загрузить маппинг child -> parent из hierarchy_names.txt."""
     path = os.path.join(os.path.dirname(__file__), "seed", "hierarchy_names.txt")
@@ -297,64 +403,85 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
     cache_key = (title or "").strip().lower()
     if use_cache and cache_key in _wiki_meta_cache:
         return _wiki_meta_cache[cache_key]
-    try:
-        url = "https://en.wikipedia.org/w/api.php"
-        params = {
-            "action": "query",
-            "prop": "pageimages|pageprops|extracts",
-            "format": "json",
-            "piprop": "thumbnail",
-            "titles": title,
-            "pithumbsize": 300,
-            "redirects": 1,
-            "exintro": 1,
-        }
-        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
-        response = requests.get(url, params=params, timeout=10, headers=headers)
-        response.raise_for_status()
-        if "json" not in (response.headers.get("Content-Type") or "").lower():
-            logging.warning(
-                "Wikipedia API non-JSON response for '%s' (content-type=%s)",
-                title,
-                response.headers.get("Content-Type"),
-            )
+    url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "prop": "pageimages|pageprops|extracts",
+        "format": "json",
+        "piprop": "thumbnail",
+        "titles": title,
+        "pithumbsize": 300,
+        "redirects": 1,
+        "exintro": 1,
+    }
+    headers = {
+        "User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"
+    }
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        if attempt:
+            time.sleep(min(12.0, 0.55 * (2**attempt)))
+        try:
+            response = requests.get(url, params=params, timeout=18, headers=headers)
+            if getattr(response, "status_code", None) == 429:
+                logging.debug(
+                    "Wikipedia 429 for title=%r (attempt %s/%s)",
+                    title,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            response.raise_for_status()
+            if "json" not in (response.headers.get("Content-Type") or "").lower():
+                logging.warning(
+                    "Wikipedia API non-JSON response for '%s' (content-type=%s)",
+                    title,
+                    response.headers.get("Content-Type"),
+                )
+                result = (None, None)
+                if use_cache:
+                    _wiki_meta_cache[cache_key] = result
+                return result
+            data = response.json()
+            pages_dict = (data.get("query") or {}).get("pages") or {}
+            pages = list(pages_dict.values())
+            if not pages:
+                result = (None, None)
+                if use_cache:
+                    _wiki_meta_cache[cache_key] = result
+                return result
+            page = pages[0]
+            image_url = page.get("thumbnail", {}).get("source")
+            description = re.sub(r"<[^>]*>", "", page.get("extract", "")).strip() or None
+            result = (image_url, description)
+            if use_cache:
+                _wiki_meta_cache[cache_key] = result
+            return result
+        except requests.HTTPError as e:
+            if getattr(e.response, "status_code", None) == 429:
+                logging.debug(
+                    "Wikipedia HTTPError 429 for title=%r (attempt %s/%s)",
+                    title,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
+            return None, None
+        except requests.RequestException as e:
+            logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
+            return None, None
+        except ValueError as e:
+            logging.warning("Wikipedia API decode failed for '%s': %s", title, e)
             result = (None, None)
             if use_cache:
                 _wiki_meta_cache[cache_key] = result
             return result
-        data = response.json()
-        pages_dict = (data.get("query") or {}).get("pages") or {}
-        pages = list(pages_dict.values())
-        if not pages:
-            result = (None, None)
-            if use_cache:
-                _wiki_meta_cache[cache_key] = result
-            return result
-        page = pages[0]
-        image_url = page.get("thumbnail", {}).get("source")
-        description = re.sub(r"<[^>]*>", "", page.get("extract", "")).strip() or None
-        result = (image_url, description)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except requests.RequestException as e:
-        logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except ValueError as e:
-        logging.warning("Wikipedia API decode failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except Exception as e:
-        logging.warning("Wikipedia API failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
+        except Exception as e:
+            logging.warning("Wikipedia API failed for '%s': %s", title, e)
+            return None, None
+    logging.warning("Wikipedia: gave up after %s attempts for title=%r", max_attempts, title)
+    return None, None
 
 
 # iNaturalist rank_level: subspecies≈5, species=10; genus=20, order=40 — не брать выше вида.
@@ -374,8 +501,31 @@ def _inat_row_is_fine_avian_taxon(row: dict) -> bool:
         return False
 
 
+def _inat_observations_count(row: dict) -> int:
+    try:
+        return max(0, int(row.get("observations_count") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _inat_rows_species_rank(rows: list) -> list:
+    """Только rank_level=10 (вид), без рода/семейства — для разрешения неоднозначного common name."""
+    out: list = []
+    for r in rows:
+        try:
+            if int(r.get("rank_level") or 999) == 10:
+                out.append(r)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
-    """Выбрать таксон уровня вида/подвида; для бинома — только точное совпадение name."""
+    """Выбрать таксон уровня вида/подвида; для бинома — только точное совпадение name.
+
+    Для общего имени без точного матча: среди видов (rank 10) берём таксон с наибольшим
+    ``observations_count`` — иначе карточки остаются без фото, хотя iNat отдаёт несколько птиц.
+    """
     fine = [r for r in results if _inat_row_is_fine_avian_taxon(r)]
     if not fine:
         return None
@@ -392,26 +542,42 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
         for row in fine:
             if (row.get("name") or "").strip().lower() == qnorm.lower():
                 return row
-        logging.warning(
+        logging.debug(
             "iNaturalist: no species-rank match for binomial %r among %s hits",
             q,
             len(fine),
         )
         return None
 
-    for row in fine:
+    species_rank = _inat_rows_species_rank(fine)
+    pool = species_rank if species_rank else fine
+
+    for row in pool:
         pcn = (row.get("preferred_common_name") or "").strip().lower()
         if pcn and pcn == q_lower:
             return row
-    for row in fine:
+    for row in pool:
         if (row.get("name") or "").strip().lower() == q_lower:
             return row
 
-    logging.warning(
-        "iNaturalist: using first species-rank hit for non-binomial query %r (no common-name match)",
+    if len(pool) == 1:
+        return pool[0]
+
+    best = sorted(
+        pool,
+        key=lambda r: (
+            -_inat_observations_count(r),
+            -int(r.get("id") or 0),
+        ),
+    )[0]
+    logging.info(
+        "iNaturalist: ambiguous non-binomial query %r — picked %r (obs=%s among %s species-level candidates)",
         q,
+        (best.get("name") or best.get("preferred_common_name") or ""),
+        _inat_observations_count(best),
+        len(pool),
     )
-    return fine[0]
+    return best
 
 
 def get_inaturalist_image_and_description(title):
@@ -422,40 +588,67 @@ def get_inaturalist_image_and_description(title):
     Не использует заказы/семейства (напр. Piciformes id=17550): только виды/подвиды;
     для запроса вида «Genus species» требуется точное совпадение scientific name.
     """
-    try:
-        query = (title or "").strip()
-        if not query:
-            return None, None, None
-        url = "https://api.inaturalist.org/v1/taxa"
-        params = {
-            "q": query,
-            "per_page": 30,
-            "locale": "en",
-            "is_active": "true",
-            "iconic_taxa": "Aves",
-        }
-        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
-        response = requests.get(url, params=params, timeout=10, headers=headers)
-        response.raise_for_status()
-        data = response.json() or {}
-        results = data.get("results") or []
-        if not results:
-            return None, None, None
-        top = _pick_inaturalist_taxon_row(query, results)
-        if not top:
-            return None, None, None
-        image_url = (top.get("default_photo") or {}).get("medium_url") or (top.get("default_photo") or {}).get(
-            "square_url"
-        )
-        description = top.get("wikipedia_summary") or (top.get("taxon_schemes_count") and top.get("name")) or None
-        if description and isinstance(description, str):
-            description = description.strip() or None
-        taxon_id = top.get("id")
-        source_url = f"https://www.inaturalist.org/taxa/{taxon_id}" if taxon_id else None
-        return image_url, description, source_url
-    except Exception as e:
-        logging.warning("iNaturalist API failed for '%s': %s", title, e)
+    query = (title or "").strip()
+    if not query:
         return None, None, None
+    url = "https://api.inaturalist.org/v1/taxa"
+    params = {
+        "q": query,
+        "per_page": 30,
+        "locale": "en",
+        "is_active": "true",
+        "iconic_taxa": "Aves",
+    }
+    headers = {
+        "User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"
+    }
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        if attempt:
+            time.sleep(min(12.0, 0.55 * (2**attempt)))
+        try:
+            response = requests.get(url, params=params, timeout=18, headers=headers)
+            if getattr(response, "status_code", None) == 429:
+                logging.debug(
+                    "iNaturalist 429 for query=%r (attempt %s/%s)",
+                    query,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            response.raise_for_status()
+            data = response.json() or {}
+            results = data.get("results") or []
+            if not results:
+                return None, None, None
+            top = _pick_inaturalist_taxon_row(query, results)
+            if not top:
+                return None, None, None
+            image_url = (top.get("default_photo") or {}).get("medium_url") or (top.get("default_photo") or {}).get(
+                "square_url"
+            )
+            description = top.get("wikipedia_summary") or (top.get("taxon_schemes_count") and top.get("name")) or None
+            if description and isinstance(description, str):
+                description = description.strip() or None
+            taxon_id = top.get("id")
+            source_url = f"https://www.inaturalist.org/taxa/{taxon_id}" if taxon_id else None
+            return image_url, description, source_url
+        except requests.HTTPError as e:
+            if getattr(e.response, "status_code", None) == 429:
+                logging.debug(
+                    "iNaturalist HTTPError 429 for query=%r (attempt %s/%s)",
+                    query,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            logging.warning("iNaturalist API failed for '%s': %s", title, e)
+            return None, None, None
+        except Exception as e:
+            logging.warning("iNaturalist API failed for '%s': %s", title, e)
+            return None, None, None
+    logging.warning("iNaturalist: gave up after %s attempts for query=%r", max_attempts, query)
+    return None, None, None
 
 
 def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
@@ -470,7 +663,7 @@ def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
 
 
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
-    """Порядок заголовков для Wikipedia/iNaturalist: таксон → allowlist binomial → enwiki common → имя в БД."""
+    """Порядок заголовков: taxon wiki → taxon binomial → allowlist binomial → дизамб. common → enwiki → БД."""
     titles: list[str] = []
     taxon = getattr(sp, "taxon", None)
     wt = (getattr(taxon, "wiki_title", None) or "").strip()
@@ -479,9 +672,22 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
         if t:
             titles.append(t)
 
+    if taxon:
+        sci_taxon = (getattr(taxon, "scientific_name", None) or "").strip()
+        if sci_taxon and _INAT_BINOMIAL_RE.match(sci_taxon):
+            titles.append(sci_taxon)
+
     sci_allow = _allowlist_scientific_for_species_name(sp.name or "")
     if sci_allow:
         titles.append(sci_allow)
+
+    dis = disambiguated_wikipedia_title_for_display_name(sp.name or "")
+    if dis:
+        titles.append(dis)
+
+    typo_t = _typo_catalog_wikipedia_title(sp.name or "")
+    if typo_t:
+        titles.append(typo_t)
 
     wiki_common = _en_wikipedia_bird_title_variant(sp.name or "")
     if wiki_common:
@@ -540,10 +746,22 @@ def update_species_info_from_wiki(sp):
             sp.metadata_source_url = inf_url
         updated = True
 
-    # Согласовано с coverage/repair: только пробелы в полях = «пусто», иначе enrich не вызывается снаружи,
-    # а здесь ранний выход и вовсе не даёт подтянуть Wikipedia/iNat.
-    if (sp.image_url or "").strip() and (sp.description or "").strip():
-        return updated
+    # Согласовано с coverage/repair: только пробелы в полях = «пусто», иначе enrich не вызывается снаружи.
+    # Уже заполненная карточка с «чужим» intro (dab/human topic) — сбрасываем и тянем заново.
+    desc_existing = (sp.description or "").strip()
+    if (sp.image_url or "").strip() and desc_existing:
+        if wikipedia_extract_rejects_wrong_topic(desc_existing):
+            logging.warning(
+                "species id=%s name=%r: clearing metadata (failed bird-topic sanity)",
+                getattr(sp, "id", None),
+                getattr(sp, "name", None),
+            )
+            sp.image_url = None
+            sp.description = None
+            sp.metadata_source = None
+            sp.metadata_source_url = None
+        else:
+            return updated
 
     metadata_source = None
     metadata_source_url = None
@@ -555,6 +773,11 @@ def update_species_info_from_wiki(sp):
         if image_url and description:
             break
         img2, desc2 = get_wikipedia_image_and_description(alt)
+        if desc2 and wikipedia_extract_rejects_wrong_topic(desc2):
+            # Do not keep a rejected extract in process memory cache (same title may be retried).
+            _wiki_meta_cache.pop((alt or "").strip().lower(), None)
+            logging.info("Wikipedia title %r skipped (intro failed bird-topic sanity)", alt)
+            continue
         if img2 and not image_url:
             image_url = img2
             metadata_source = metadata_source or "wikipedia"
@@ -569,6 +792,8 @@ def update_species_info_from_wiki(sp):
             if image_url and description:
                 break
             img3, desc3, src3 = get_inaturalist_image_and_description(alt)
+            if desc3 and wikipedia_extract_rejects_wrong_topic(desc3):
+                continue
             if img3 and not image_url:
                 image_url = img3
                 metadata_source = metadata_source or "inaturalist"

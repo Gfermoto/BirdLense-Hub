@@ -19,7 +19,7 @@
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
-**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) (уровни паролей), [API](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
+**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) (уровни паролей), [API](./API.ru.md) · [EN](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) · [EN](./GLOSSARY.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
 
 **По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
 
@@ -182,6 +182,7 @@
 | `file_path` | Один mp4, абсолютный путь в контейнере; пусто — плейлист из `file_dir` |
 | `file_dir` | Папка с `*.mp4` / `*.mov` / `*.mkv` (только файлы в каталоге, без рекурсии). В репозитории по умолчанию **`/app/data/file_test`** (Docker: `./data` хоста → `/app/data`). |
 | `file_loop` | Зацикливать плейлист/файл (карточка **прогон с диска** в **Библиотеке** пишет это при включении `source=file`; переключатель там же во время работы процессора) |
+| `file_realtime_simulation` | Только **`video.source=file`** (по умолчанию **false**). **true** — шаг кадров по **настенным часам** относительно FPS ролика (имитация реального времени; при отставании пайплайна **кадры пропускаются**). **false** — один кадр на вызов `capture()` (ускоренный прогон, проще отладка). UI: **Настройки → Подключения → прогон с диска (процессор)**. |
 | `file_test_max_upload_mb` | Лимит МиБ на один ролик при upload через Hub (**Библиотека** → прогон с диска). В коде зажато **64–65536**, по умолчанию **10240** (>10000 MiB). Прокси может отдать **413** раньше Flask — поднимите nginx `client_max_body_size` под размер ролика. Потолок тела запроса в Flask: **`FLASK_MAX_CONTENT_LENGTH`** (байты); дефолт в `web/config.py` большой, чтобы первым срабатывал лимит из YAML. |
 | *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |

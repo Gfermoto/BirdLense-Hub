@@ -28,3 +28,9 @@ For production deployments:
 - Store secrets in environment variables, not in `user_config.yaml`.
 
 See [docs/SECURITY.md](docs/SECURITY.md) for a detailed risk analysis.
+
+## Repository hygiene (public clone)
+
+- Do **not** commit real production hostnames, public IPs, or secrets. Keep those in **local** untracked files (e.g. `scripts/deploy.local.sh` is gitignored — use `scripts/deploy.local.sh.example`).
+- Prefer documentation examples from [TEST-NET-3 / RFC 5737](https://datatracker.ietf.org/doc/html/rfc5737) (e.g. `203.0.113.10`) or private LAN examples (`192.168.x.x`) where an IP is needed.
+- If something sensitive was pushed by mistake, rotate credentials/hosts where applicable and consider history cleanup (see `scripts/redact-git-history-leaks.sh`).

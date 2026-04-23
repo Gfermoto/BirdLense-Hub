@@ -14,12 +14,12 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 - **Recursive merge:** user values override defaults. A key **missing** from `user_config` leaves the default in place.
 - **Empty string is a value:** `some_key: ""` in `user_config` **clears** the default (it does **not** mean “fall back to default”). A common failure mode is `integrations.scales.mqtt_topic_prefix: ""`, which prevents derived `{prefix}/weight` subscriptions until you set `mqtt_topic` or remove the key.
-- **Saving from the web UI** writes the **full merged tree** to `user_config.yaml`, not a minimal diff. That pins many keys, so upgrading `default_config.yaml` alone will not change values already persisted in `user_config`.
+- **Saving from the web UI** writes the **full merged tree** to `user_config.yaml`, not a minimal diff. That pins many keys: (1) the file grows over time; (2) upgrading `default_config.yaml` in a newer Hub release **does not** change keys already persisted in `user_config`; (3) secrets that reached the merged in-memory config via env could theoretically be written into YAML on the next save — in production prefer keeping secrets in **env** only, avoid unnecessary saves from the UI, or use only `BIRDLENSE_*` without duplicate secret keys in YAML.
 - **Audit:** System → configuration audit (`GET /api/ui/system/config-audit`) includes MQTT feeder-scale checks (broker, prefix, explicit `""` keys in raw user YAML).
 
 **UI:** Most options are editable in the web app (Settings → gear). YAML remains for advanced cases and env-based overrides.
 
-**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) (password tiers), [API](./API.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
+**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) (password tiers), [API](./API.md) · [RU](./API.ru.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) · [RU](./GLOSSARY.ru.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
 
 **On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
 
@@ -182,6 +182,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `file_path` | Single mp4 absolute path in container; empty with `file_dir` for playlist |
 | `file_dir` | Folder with `*.mp4` / `*.mov` / `*.mkv` (flat list, not recursive). Default in repo: **`/app/data/file_test`** (Docker: host `./data` → `/app/data`). |
 | `file_loop` | Replay playlist/file in a loop (Library **File replay** card writes this when you enable `source=file`; loop can be toggled in the same card while the processor runs) |
+| `file_realtime_simulation` | **`video.source=file` only** (default **false**). **true** — advance frames on **wall-clock** time vs clip FPS (mimics real-time playback; **drops frames** if the pipeline lags). **false** — one frame per `capture()` (fast-forward, easier debugging). UI: **Settings → Connections → File replay (processor)**. |
 | `file_test_max_upload_mb` | Max MiB per clip uploaded via Hub (**Library** → file replay). Clamped **64–65536** in code; default **10240** (>10000 MiB). A reverse proxy may return **413** before Flask — set e.g. nginx `client_max_body_size` ≥ your largest clip. Flask body cap: env **`FLASK_MAX_CONTENT_LENGTH`** (bytes); default in `web/config.py` is large so the YAML limit applies first. |
 | *(behaviour)* | For **`video.source=file`** with a **folder playlist**, each **`VideoPlaylistSource`** clip triggers a **session finalize** when the file ends (crops/DB/notifications for that clip), then the next file continues in a new session. **`processor.max_inactive_seconds`** is floored to **120**s. **`processor.file_max_record_floor_seconds`** (default **86400**) is a wall-clock safety minimum for **`max_record_seconds`** so long files are not cut mid-clip by the live-camera default; lower it only if you want time-based splits. |
 | `go2rtc_url` | Go2RTC URL (`http://YOUR_HOST:1984`) |

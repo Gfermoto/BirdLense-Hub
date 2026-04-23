@@ -118,6 +118,16 @@
 
 Current baseline (Mar 2026): scan of full git history completed with **no leaks found**.
 
+## 8.2 Leaked hostname / IP — keep full commit history
+
+If a **hostname or IP** was ever pushed, you can still **keep every commit** (no SHA rewrite, no forced history rewrite for collaborators):
+
+1. **Sanitize the current tree** — remove or replace the strings on the default branch (and other active branches) in normal commits. **All past commit objects stay as-is**; `git log` remains unchanged; forks and links to old SHAs keep working.
+2. **Accept the trade-off** — older commits on GitHub may still contain the old string inside blobs until you take stronger action. Mitigate with: **rotate** any secrets that could be abused with that host; **private repo** if needed; avoid putting production endpoints in docs going forward.
+3. **Rewrite history (optional, last resort)** — only if the team explicitly agrees to **new commit hashes** and **`git push --force-with-lease`** on all branches/tags: interactive helper [`scripts/redact-git-history-leaks.sh`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/redact-git-history-leaks.sh) using [git-filter-repo](https://github.com/newren/git-filter-repo). Take a **bare mirror backup** first; everyone with a clone must realign to the new history.
+
+Default recommendation for this project: **step 1 + 2**; use step 3 only under maintainer decision.
+
 ---
 
 ## 9. Docker

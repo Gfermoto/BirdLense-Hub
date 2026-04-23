@@ -127,6 +127,30 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(result[0]['track_id'], 1)
         self.assertEqual(len(result[0]['frames']), 1)
 
+    def test_frigate_promotes_review_only_generic_bird_track(self):
+        """Слабый классификатор → review_only_generic_bird; Frigate sub_label должен подменять Bird."""
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.55,
+            'start_time': 0,
+            'end_time': 8,
+            'detection_provider': 'yolo',
+            'decision_reason': 'review_only_generic_bird',
+            'detector_label': 'Bird',
+            'track_id': 2,
+        }]
+        mqtt = [{
+            'species': 'Great Tit',
+            'label': 'bird',
+            'source': 'frigate',
+            'confidence': 0.88,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Great Tit')
+        self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
+
     def test_frigate_event_outside_video_window_is_skipped(self):
         yolo = [{
             'species_name': 'Bird',

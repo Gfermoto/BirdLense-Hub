@@ -95,6 +95,7 @@ mkdir -p "${ROOT}/.artifacts"
 ensure_venv_docs
 (
   cd "${ROOT}"
+  "${VENV_DOCS}/bin/python" scripts/check_site_map_meta_paths.py
   "${VENV_DOCS}/bin/mkdocs" build --strict
 )
 

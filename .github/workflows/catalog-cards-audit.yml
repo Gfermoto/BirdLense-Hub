@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: Base URL to audit
+        description: Hub base URL (https://...). Leave empty to use repo variable CATALOG_CARDS_AUDIT_URL.
         required: false
-        default: https://birdlense.eyera.info
+        default: ""
   schedule:
     - cron: "30 4 * * *"
 
@@ -31,9 +31,15 @@ jobs:
       - name: Run full cards audit
         env:
           BASE_URL_INPUT: ${{ github.event.inputs.base_url }}
+          HUB_AUDIT_DEFAULT: ${{ vars.CATALOG_CARDS_AUDIT_URL }}
         run: |
           set -euo pipefail
-          BASE_URL="${BASE_URL_INPUT:-https://birdlense.eyera.info}"
+          BASE_URL="${BASE_URL_INPUT:-}"
+          if [ -z "$BASE_URL" ]; then BASE_URL="${HUB_AUDIT_DEFAULT:-}"; fi
+          if [ -z "$BASE_URL" ]; then
+            echo "::error::No base URL: set repository variable CATALOG_CARDS_AUDIT_URL (Settings → Secrets and variables → Actions → Variables) or run workflow_dispatch with base_url."
+            exit 1
+          fi
           echo "Auditing ${BASE_URL}"
           # full_eu may contain species without image_url; Wikimedia often returns 429 under parallel CI fetches.
           # Report still lists all issues in the artifact; exit 0 unless a non-ignored issue remains.

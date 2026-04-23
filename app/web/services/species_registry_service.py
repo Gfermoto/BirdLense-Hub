@@ -17,6 +17,10 @@ from services.species_catalog_allowlist_service import (
 from services.species_metadata_enrichment_service import (
     enrich_species_metadata as enrich_species_card_metadata,
 )
+from species_metadata import (
+    refresh_species_metadata_from_sources,
+    wikipedia_extract_rejects_wrong_topic,
+)
 from util import load_species_canonical_mapping
 from util import (
     _extract_wiki_search_title,
@@ -713,7 +717,10 @@ def realign_species_images_from_allowlist_science(
 
     Ограничение limit на прогон — чтобы не упереться в rate limit Wikipedia при больших каталогах.
     """
-    from species_metadata import get_wikipedia_image_and_description
+    from species_metadata import (
+        get_inaturalist_image_and_description,
+        get_wikipedia_image_and_description,
+    )
     from services.species_catalog_allowlist_service import (
         allowlist_scientific_name_for_display_name,
     )
@@ -727,6 +734,9 @@ def realign_species_images_from_allowlist_science(
         if not sci:
             continue
         img, desc = get_wikipedia_image_and_description(sci, use_cache=False)
+        inat_src = None
+        if not img:
+            img, desc, inat_src = get_inaturalist_image_and_description(sci)
         if not img:
             continue
         if (sp.image_url or "").strip() == img.strip():
@@ -734,12 +744,18 @@ def realign_species_images_from_allowlist_science(
         sp.image_url = img
         if desc and not (sp.description or "").strip():
             sp.description = desc
-        inf_src, inf_url = infer_metadata_source_fields(getattr(sp, "name", None), img, None)
+        inf_src, inf_url = infer_metadata_source_fields(
+            getattr(sp, "name", None),
+            img,
+            inat_src,
+        )
         if inf_src:
             sp.metadata_source = inf_src
         if inf_url:
             sp.metadata_source_url = inf_url
         n += 1
+        # Снизить 429 при массовом realign (Wikipedia + iNat подряд).
+        time.sleep(0.12)
     return n
 
 
@@ -813,8 +829,32 @@ def repair_catalog_cards(
     metadata_fixed = 0
     images_replaced_from_inat = 0
     enrich_exceptions = 0
+    wrong_topic_refreshed = 0
 
     for sp in targets:
+        time.sleep(0.02)
+        desc_bad = (sp.description or "").strip()
+        if desc_bad and wikipedia_extract_rejects_wrong_topic(desc_bad):
+            if dry_run:
+                wrong_topic_refreshed += 1
+            else:
+                try:
+                    refresh_species_metadata_from_sources(sp)
+                    if enrich_species_card_metadata(sp):
+                        wrong_topic_refreshed += 1
+                        metadata_fixed += 1
+                except Exception as e:
+                    enrich_exceptions += 1
+                    _log.warning(
+                        "repair_catalog_cards: wrong-topic refresh failed id=%s name=%r: %s",
+                        getattr(sp, "id", None),
+                        getattr(sp, "name", None),
+                        e,
+                        exc_info=_log.isEnabledFor(logging.DEBUG),
+                    )
+
+    for sp in targets:
+        time.sleep(0.035)
         before_img = bool((sp.image_url or "").strip())
         before_desc = bool((sp.description or "").strip())
 
@@ -890,6 +930,7 @@ def repair_catalog_cards(
         "images_realigned_allowlist_science": realigned_sci,
         "still_missing": still_missing,
         "enrich_exceptions": enrich_exceptions,
+        "wrong_topic_refreshed": wrong_topic_refreshed,
         "materialized_created": int(materialize.get("created") or 0),
         "materialized_missing_after": int(materialize.get("missing_after") or 0),
         "dry_run": dry_run,

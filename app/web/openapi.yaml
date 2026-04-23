@@ -24,6 +24,7 @@ servers:
     description: Hub UI API (browser and MCP)
   - url: http://birdlense.local/api/processor
     description: Processor ingest (requires X-Processor-Token when configured)
+
 paths:
   /health:
     get:
@@ -2207,7 +2208,55 @@ paths:
       summary: Tare feeder scale
   /migration-calendar:
     get:
-      description: Species times month matrix for migration view.
+      description: 'Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity
+        in range; dataset = class folders under data/dataset; full_eu = EU allowlist catalog. Legacy aliases: active -> observed;
+        full -> full_eu. evidence is accepted for compatibility but ignored.'
+      parameters:
+      - description: Catalog mode; active and full are legacy aliases.
+        in: query
+        name: catalog
+        required: false
+        schema:
+          default: observed
+          enum:
+          - observed
+          - dataset
+          - full_eu
+          - active
+          - full
+          type: string
+      - description: Inclusive filter on visit year (optional).
+        in: query
+        name: start_year
+        required: false
+        schema:
+          type: integer
+      - description: Inclusive filter on visit year (optional).
+        in: query
+        name: end_year
+        required: false
+        schema:
+          type: integer
+      - description: Inclusive UTC start date YYYY-MM-DD (optional).
+        in: query
+        name: start_date
+        required: false
+        schema:
+          format: date
+          type: string
+      - description: Inclusive UTC end date YYYY-MM-DD (optional).
+        in: query
+        name: end_date
+        required: false
+        schema:
+          format: date
+          type: string
+      - description: Ignored; reserved for backward compatibility.
+        in: query
+        name: evidence
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -2216,6 +2265,12 @@ paths:
                 additionalProperties: true
                 type: object
           description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
         '403':
           content:
             application/json:
@@ -2777,24 +2832,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: BirdNET FIFO diagnostics
-  /system/diagnostics/processor-runtime:
-    get:
-      description: Processor runtime counters, gauges and latency snapshot.
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Processor runtime diagnostics
   /system/diagnostics/broken-videos:
     get:
       description: 'Diagnostics: files failing probe.'

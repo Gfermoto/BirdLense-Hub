@@ -100,11 +100,14 @@ High-level layout of the single-container app, data paths, and integrations. For
 |------|---------|
 | `/` | Overview — stats, charts, last bird, PDF report |
 | `/timeline` | Visits, time-of-day filter, CSV/JSON/eBird export, iNaturalist |
-| `/unknowns` | Low-confidence detections for manual review |
+| `/unknowns` | Legacy URL — redirects to `/timeline?review=1` |
 | `/videos/:id` | Player, detections, spectrogram, share |
 | `/live` | Live streams |
-| `/species` | Redirect to Migration Calendar (legacy compatibility route) |
+| `/species` | Seasonality grid (visits × species × month); primary nav label **Species** |
+| `/migration-calendar` | Same screen as `/species` (alias / bookmark) |
+| `/species-directory` | Card-style species browser (advanced directory) |
 | `/species/:id` | Species summary, Xeno-canto |
+| `/library` | Recordings calendar, dataset export, file-replay when `video.source: file` |
 | `/settings` | Configuration |
 | `/system` | Storage, activity, monitor, processor logs |
 | `/food` | Food management |

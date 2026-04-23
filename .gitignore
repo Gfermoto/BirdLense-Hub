@@ -40,6 +40,8 @@ app/configs/env.local
 
 # Deploy — локальные переопределения (IP, URL)
 scripts/deploy.local.sh
+# Правила для git filter-repo --replace-text (могут содержать реальные хост/IP)
+scripts/.git-filter-repo-replacements.local.txt
 
 # Deploy — никогда не коммитить
 .deploy_credentials

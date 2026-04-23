@@ -1,6 +1,6 @@
 # UX: Unknowns ↔ correction inside video (#81)
 
-[Русский кратко](#russian-summary): цель и фазы — ниже на EN для единого источника.
+[Русский](./UX_UNKNOWN_VIDEO_CORRECTION.ru.md)
 
 **Issue:** [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81)
 
@@ -33,11 +33,3 @@ Manual species correction works well when one choice applies to **many** detecti
 - [x] UX spec documented (this file + issue link).
 - [x] Implementation or phased plan recorded in issue comments / PR.
 - [x] No regression for bulk / multi-detection flows.
-
----
-
-## Русский {#russian-summary}
-
-**Цель:** одна понятная история для оператора: исправление вида в режиме «На проверке» и на странице видео — это **одно и то же действие** над детекцией (общий API), разные точки входа.
-
-**Фазы:** (A) тексты и справка, (B) опциональная навигация после исправления, (C) единая история правок между Unknowns/Video.

@@ -45,7 +45,7 @@
 | `/push/vapid-public` | GET | Публичный ключ VAPID для Web Push подписки |
 | `/push/subscribe` | POST | Регистрация Web Push подписки (body: `{subscription}`) |
 | `/report/pdf` | GET | Месячный PDF-отчёт (params: month=YYYY-MM или start_time, end_time) |
-| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу. Параметры: `catalog`=`active`\|`full`, `evidence`=`all`\|`video`, опционально годы/даты |
+| `/migration-calendar` | GET | Агрегация визитов по виду и месяцу. Параметры: `catalog`=`observed`\|`dataset`\|`full_eu` (legacy: `active`→`observed`, `full`→`full_eu`); опционально `start_year`/`end_year` или `start_date`/`end_date` (`YYYY-MM-DD`). Параметр `evidence` принимается для совместимости, но **игнорируется** (ответ одинаковый). |
 | `/species/:id/xeno-canto` | GET | Записи птичьих песен из Xeno-canto для вида |
 | `/species/:id/summary` | GET | Сводка по виду |
 | `/restart-processor` | POST | Перезапуск processor |

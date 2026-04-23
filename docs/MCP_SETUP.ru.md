@@ -56,7 +56,7 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 
 **LAN (пример):** **`http://192.168.1.11:8085/mcp`** — тот же хост, что и UI (`http://192.168.1.11:8085/`).
 
-**Публичный прод (HTTPS, другая площадка):** например **`https://birdlense.eyera.info/mcp`**; SSH, например **185.218.111.196:2222**, если этот сервер ещё используется. Тот же Bearer-токен; nginx отдаёт TLS и проксирует на Hub.
+**Публичный прод (HTTPS, другая площадка):** например **`https://hub.example.com/mcp`**; SSH, например **`root@203.0.113.10:2222`** (адрес из [TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737) — подставьте свой хост). Тот же Bearer-токен; nginx отдаёт TLS и проксирует на Hub.
 
 **Важно:** файл с секретами держите вне git (или в игнорируемом пути).
 
@@ -80,23 +80,23 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-token' >> YOUR_REMOTE_DIR/app/.env"
 
 ## Ошибка «Connect Timeout» / `SSE error: fetch failed`
 
-Сообщение вроде `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` означает, что **MCP-клиент не установил TCP/TLS до сервера** за отведённое время. Обычно это **сеть между вашим ПК и сервером**, а не неверный токен (до проверки Bearer запрос часто не доходит).
+Сообщение вроде `Connect Timeout Error (hub.example.com:443, timeout: 10000ms)` означает, что **MCP-клиент не установил TCP/TLS до сервера** за отведённое время. Обычно это **сеть между вашим ПК и сервером**, а не неверный токен (до проверки Bearer запрос часто не доходит).
 
 **Проверки на той же машине и в той же сети, где работает MCP-клиент:**
 
 ```bash
-curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/api/ui/health
-curl -m 15 -sS -H "Authorization: Bearer ВАШ_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/mcp
+curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://hub.example.com/api/ui/health
+curl -m 15 -sS -H "Authorization: Bearer ВАШ_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://hub.example.com/mcp
 ```
 
-- **curl тоже таймаут** — блокировка или плохой маршрут до `185.218.111.196:443` (провайдер, фаервол, офисная сеть). Попробуйте другую сеть, VPN или точку доступа.
+- **curl тоже таймаут** — блокировка или плохой маршрут до HTTPS на сервере (провайдер, фаервол, офисная сеть). Попробуйте другую сеть, VPN или точку доступа.
 - **curl быстро (200/401), клиент MCP — таймаут** — иногда мешают **системный прокси**, **IPv6** (битая AAAA) или изолированная сеть процесса клиента. Временно отключите прокси; при необходимости зафиксируйте IPv4 в `/etc/hosts` (Linux/macOS) или `C:\Windows\System32\drivers\etc\hosts`:  
-  `185.218.111.196 birdlense.eyera.info`
+  `203.0.113.10 hub.example.com`
 
 **Обход через SSH**, если SSH до VPS стабилен, а прямой HTTPS с ПК — нет:
 
 ```bash
-ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@185.218.111.196
+ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@203.0.113.10
 ```
 
 В MCP укажите **`http://127.0.0.1:18085/mcp`** и тот же заголовок `Authorization: Bearer …`. Пока эта сессия SSH открыта, трафик к хабу идёт через туннель.

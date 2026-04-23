@@ -1,29 +1,30 @@
 # Quickstart — BirdLense Hub
 
+[Русский](./QUICKSTART.ru.md)
+
 Fastest paths for the three common jobs: run the hub, develop locally, or verify a deploy.
 
 ## 1. Run on one machine
 
-From the repository root:
+From the repository root — **one command** (Docker, `app/.env`, stack, health checks):
 
 ```bash
 ./install.sh
-make verify
 ```
+
+Pre-built image (no local `docker compose build`):
+
+```bash
+./install.sh --pull
+```
+
+Same via Make: `make install` / `make install-pull`.
 
 What success looks like:
 
 - UI opens at `http://127.0.0.1:8085`
-- `make verify` passes
+- Script ends after `verify-stack` (health / readiness / status)
 - Settings page loads even if cameras / MQTT are not configured yet
-
-If you prefer the published image instead of building locally:
-
-```bash
-cd app
-make pull
-make verify
-```
 
 ## 2. Local development
 

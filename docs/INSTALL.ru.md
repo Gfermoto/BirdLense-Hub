@@ -16,7 +16,9 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 
 ---
 
-## Вариант 1: Одношаговая установка в Docker
+## Вариант 1: Одна команда из корня репозитория (рекомендуется)
+
+**Без обязательного `make`** на первом шаге:
 
 ```bash
 git clone https://github.com/Gfermoto/BirdLense-Hub.git
@@ -24,23 +26,25 @@ cd BirdLense-Hub
 ./install.sh
 ```
 
-Скрипт сам проверит Docker, при необходимости поставит его, создаст `app/.env` и поднимет стек из контейнеров.
+Скрипт: Docker → `app/scripts/setup-env.sh` (`app/.env`) → сборка и запуск стека → **`scripts/verify-stack.sh`**.
 
-## Вариант 2: Готовый образ (рекомендуется)
+**Готовый образ** (без локальной сборки Docker-образа):
 
 ```bash
-git clone https://github.com/Gfermoto/BirdLense-Hub.git
-cd BirdLense-Hub/app
-make pull
+./install.sh --pull
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: http://localhost:8085
+То же: `make install` / `make install-pull` из корня репозитория.
 
-Проверка:
+Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: `http://127.0.0.1:8085` (или `BIRDLENSE_PORT`).
+
+## Вариант 2: Только через Make (эквивалент варианту 1)
 
 ```bash
-cd ..
-make verify
+cd BirdLense-Hub
+make install
+# или
+make install-pull
 ```
 
 ## Вариант 3: Сборка из исходников
@@ -79,7 +83,7 @@ docker compose -f docker-compose.image.yml up -d
 
 **Тома Docker и uid:** процессы в контейнере `birdlense` идут от пользователя **birdlense (uid 1000)**. При старте entrypoint от root делает `chown` на примонтированные `./data` и `./app_config`. Если `chown` на вашей ФС недоступен, с хоста из каталога `app/`: `chown -R 1000:1000 data app_config`.
 
-1. **Секреты** — `make setup` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Вызывается при `make start`/`make pull`, а также из `./install.sh`.
+1. **Секреты** — `app/scripts/setup-env.sh` создаёт `app/.env` (PROCESSOR_SECRET, FLASK_SECRET_KEY). Его вызывает `./install.sh`; также он задействован в `make setup` / `make start` / `make pull`.
 2. **Конфиг** — `app/app_config/user_config.yaml`. Пример из каталога **`app/`** репозитория: `cp configs/minimal.yaml app_config/user_config.yaml`.
 3. **Go2RTC** — Настройки → Видео: URL (`http://IP:1984`).
 4. **Камеры** — Настройки → Камеры: stream names из Go2RTC.

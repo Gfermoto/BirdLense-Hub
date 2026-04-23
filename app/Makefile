@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-local venv-web test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -8,6 +8,8 @@ clean:
 
 # Локальный venv для pytest без Docker (тот же requirements, что в CI openapi job).
 VENV ?= .venv
+# Не подмешивать ~/.local и PIP_USER (иначе pip видит platformio/mkdocs и сыпет ложные dependency conflicts).
+WEB_VENV_ENV := env -u PIP_USER -u PYTHONPATH PYTHONNOUSERSITE=1
 
 # Настройка секретов (app/.env) — перед первым запуском
 setup:
@@ -78,19 +80,26 @@ test-web:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
 		bash -c 'if [ "$$TEST_WEB_VERBOSE" = 1 ]; then exec python -m pytest web/tests/ -v; else exec python -m pytest web/tests/ -q --tb=short; fi'
 
-# Один раз: python3 -m venv .venv && pip install -r web/requirements.txt
+# Один раз: venv + pip install -r web/requirements.txt (см. WEB_VENV_ENV — без ~/.local в PYTHONPATH).
 venv-web:
 	@if [ ! -x "$(VENV)/bin/python" ]; then \
-		python3 -m venv "$(VENV)" && \
-		"$(VENV)/bin/python" -m pip install -U pip; \
+		$(WEB_VENV_ENV) python3 -m venv "$(VENV)" && \
+		$(WEB_VENV_ENV) "$(VENV)/bin/python" -m pip install -U pip; \
 	fi
-	env -u PIP_USER "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
+	$(WEB_VENV_ENV) "$(VENV)/bin/python" -m pip install -U -r web/requirements.txt
 	@echo "venv-web: готово $(abspath $(VENV)) (используйте: make test-web-local)"
+
+# Полная пересборка web venv: удалить $(VENV) и заново только web/requirements.txt
+# (убирает «мусор» вроде platformio из старых ручных pip install в том же каталоге).
+venv-web-reset:
+	@echo "venv-web-reset: удаляю $(abspath $(VENV)) ..."
+	@rm -rf "$(VENV)"
+	@$(MAKE) venv-web
 
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
 # PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
 test-web-local: venv-web
-	env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
+	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)

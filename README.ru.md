@@ -88,7 +88,7 @@ UI: http://localhost:8085
 
 **Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
 
-Для одношагового запуска на Docker используйте `./install.sh` из корня репозитория. Скрипт сам ставит Docker при необходимости, создаёт `app/.env` и поднимает стек.
+Для одношагового запуска: **`./install.sh`** из корня репозитория (или **`make install`**). Скрипт ставит Docker при необходимости, создаёт `app/.env`, поднимает стек и проверяет health/readiness/status. Готовый образ: **`./install.sh --pull`** или **`make install-pull`**.
 
 ## Разработчикам
 
