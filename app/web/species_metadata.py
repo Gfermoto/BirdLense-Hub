@@ -36,6 +36,41 @@ _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY: dict[str, str] = {
     "redhead": "Aythya americana",
 }
 
+# Строки каталога с ALL CAPS / опечатками (нет совпадения с allowlist) — подставляем стабильный заголовок en.wikipedia.
+_TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
+    "golden bower bird": "Golden bowerbird",
+    "greator sage grouse": "Greater sage-grouse",
+    "green winged dove": "Pacific emerald dove",
+    "groved billed ani": "Groove-billed ani",
+    "imperial shaq": "Imperial shag",
+    "iwi": "North Island brown kiwi",
+    "killdear": "Killdeer",
+    "mandrin duck": "Mandarin duck",
+    "mckays bunting": "McKay's bunting",
+    "orange brested bunting": "Orange-breasted bunting",
+    "parakett auklet": "Parakeet auklet",
+    "red wiskered bulbul": "Red-whiskered bulbul",
+    "rose breasted cockatoo": "Galah",
+    "rudy kingfisher": "Ruddy kingfisher",
+    "rufous trepe": "Rufous treepie",
+    "rufuos motmot": "Rufous motmot",
+    "samatran thrush": "Sumatran thrush",
+    "scarlet crowned fruit dove": "Wallace's fruit dove",
+    "smiths longspur": "Smith's longspur",
+    "spoon biled sandpiper": "Spoon-billed sandpiper",
+    "stripped manakin": "Striped manakin",
+    "stripped swallow": "Striated swallow",
+    "swinhoes pheasant": "Swinhoe's pheasant",
+    "touchan": "Toucan",
+    "townsends warbler": "Townsend's warbler",
+    "trumpter swan": "Trumpeter swan",
+    "umbrella bird": "Umbrellabird",
+    "venezuelian troupial": "Venezuelan troupial",
+    "vermilion flycather": "Vermilion flycatcher",
+    "wall creaper": "Wallcreeper",
+    "wilsons bird of paradise": "Wilson's bird-of-paradise",
+}
+
 # Intro extracts that clearly belong to non-bird encyclopedia articles (e.g. human genetics / hair).
 _NON_BIRD_METADATA_MARKERS_RE = re.compile(
     r"(?is)\b("
@@ -220,6 +255,12 @@ def _norm_ambiguous_common_key(display_name: str) -> str:
 def disambiguated_wikipedia_title_for_display_name(display_name: str) -> str | None:
     """Stable en.wikipedia title for ambiguous bird common names (e.g. Redhead → Aythya americana)."""
     return _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY.get(_norm_ambiguous_common_key(display_name))
+
+
+def _typo_catalog_wikipedia_title(db_display_name: str) -> str | None:
+    """en.wikipedia title for legacy ALL CAPS / misspelled catalog names (no allowlist binomial)."""
+    k = re.sub(r"\s+", " ", (db_display_name or "").strip().lower())
+    return _TYPO_SPECIES_WIKI_TITLE_BY_KEY.get(k)
 
 
 def wikipedia_extract_rejects_wrong_topic(extract: str | None) -> bool:
@@ -636,6 +677,10 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
     dis = disambiguated_wikipedia_title_for_display_name(sp.name or "")
     if dis:
         titles.append(dis)
+
+    typo_t = _typo_catalog_wikipedia_title(sp.name or "")
+    if typo_t:
+        titles.append(typo_t)
 
     wiki_common = _en_wikipedia_bird_title_variant(sp.name or "")
     if wiki_common:
