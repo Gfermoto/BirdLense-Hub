@@ -435,8 +435,31 @@ def _inat_row_is_fine_avian_taxon(row: dict) -> bool:
         return False
 
 
+def _inat_observations_count(row: dict) -> int:
+    try:
+        return max(0, int(row.get("observations_count") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _inat_rows_species_rank(rows: list) -> list:
+    """Только rank_level=10 (вид), без рода/семейства — для разрешения неоднозначного common name."""
+    out: list = []
+    for r in rows:
+        try:
+            if int(r.get("rank_level") or 999) == 10:
+                out.append(r)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
-    """Выбрать таксон уровня вида/подвида; для бинома — только точное совпадение name."""
+    """Выбрать таксон уровня вида/подвида; для бинома — только точное совпадение name.
+
+    Для общего имени без точного матча: среди видов (rank 10) берём таксон с наибольшим
+    ``observations_count`` — иначе карточки остаются без фото, хотя iNat отдаёт несколько птиц.
+    """
     fine = [r for r in results if _inat_row_is_fine_avian_taxon(r)]
     if not fine:
         return None
@@ -460,22 +483,35 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
         )
         return None
 
-    for row in fine:
+    species_rank = _inat_rows_species_rank(fine)
+    pool = species_rank if species_rank else fine
+
+    for row in pool:
         pcn = (row.get("preferred_common_name") or "").strip().lower()
         if pcn and pcn == q_lower:
             return row
-    for row in fine:
+    for row in pool:
         if (row.get("name") or "").strip().lower() == q_lower:
             return row
 
-    if len(fine) == 1:
-        return fine[0]
-    logging.warning(
-        "iNaturalist: no unambiguous species-rank hit for non-binomial query %r (%s candidates); skip",
+    if len(pool) == 1:
+        return pool[0]
+
+    best = sorted(
+        pool,
+        key=lambda r: (
+            -_inat_observations_count(r),
+            -int(r.get("id") or 0),
+        ),
+    )[0]
+    logging.info(
+        "iNaturalist: ambiguous non-binomial query %r — picked %r (obs=%s among %s species-level candidates)",
         q,
-        len(fine),
+        (best.get("name") or best.get("preferred_common_name") or ""),
+        _inat_observations_count(best),
+        len(pool),
     )
-    return None
+    return best
 
 
 def get_inaturalist_image_and_description(title):

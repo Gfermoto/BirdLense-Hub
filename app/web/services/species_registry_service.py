@@ -717,7 +717,10 @@ def realign_species_images_from_allowlist_science(
 
     Ограничение limit на прогон — чтобы не упереться в rate limit Wikipedia при больших каталогах.
     """
-    from species_metadata import get_wikipedia_image_and_description
+    from species_metadata import (
+        get_inaturalist_image_and_description,
+        get_wikipedia_image_and_description,
+    )
     from services.species_catalog_allowlist_service import (
         allowlist_scientific_name_for_display_name,
     )
@@ -731,6 +734,9 @@ def realign_species_images_from_allowlist_science(
         if not sci:
             continue
         img, desc = get_wikipedia_image_and_description(sci, use_cache=False)
+        inat_src = None
+        if not img:
+            img, desc, inat_src = get_inaturalist_image_and_description(sci)
         if not img:
             continue
         if (sp.image_url or "").strip() == img.strip():
@@ -738,7 +744,11 @@ def realign_species_images_from_allowlist_science(
         sp.image_url = img
         if desc and not (sp.description or "").strip():
             sp.description = desc
-        inf_src, inf_url = infer_metadata_source_fields(getattr(sp, "name", None), img, None)
+        inf_src, inf_url = infer_metadata_source_fields(
+            getattr(sp, "name", None),
+            img,
+            inat_src,
+        )
         if inf_src:
             sp.metadata_source = inf_src
         if inf_url:
