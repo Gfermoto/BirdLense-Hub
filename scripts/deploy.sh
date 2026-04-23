@@ -41,9 +41,9 @@ fi
 # 0.9. Сборка UI локально (обход ETIMEDOUT npm на сервере)
 echo "0.9. Сборка UI локально..."
 cd "$(dirname "$0")/.."
-command -v node >/dev/null 2>&1 || { echo "Ошибка: node не найден. Нужен Node.js 22 для локальной сборки UI."; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "Ошибка: node не найден. Нужен Node.js 20.18+ или 22.x для локальной сборки UI (см. app/ui/package.json engines)."; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "Ошибка: npm не найден. Нужен npm 10+ для локальной сборки UI."; exit 1; }
-(cd app/ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
+(cd app/ui && npm ci --no-audit --no-fund && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
 
 # 0.95 Бэкап user_config на сервере перед rsync (восстановление: scripts/restore-config.sh или .bak.deploy-*)
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then

@@ -422,7 +422,7 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
         try:
             response = requests.get(url, params=params, timeout=18, headers=headers)
             if getattr(response, "status_code", None) == 429:
-                logging.warning(
+                logging.debug(
                     "Wikipedia 429 for title=%r (attempt %s/%s)",
                     title,
                     attempt + 1,
@@ -457,7 +457,7 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
             return result
         except requests.HTTPError as e:
             if getattr(e.response, "status_code", None) == 429:
-                logging.warning(
+                logging.debug(
                     "Wikipedia HTTPError 429 for title=%r (attempt %s/%s)",
                     title,
                     attempt + 1,
@@ -540,7 +540,7 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
         for row in fine:
             if (row.get("name") or "").strip().lower() == qnorm.lower():
                 return row
-        logging.warning(
+        logging.debug(
             "iNaturalist: no species-rank match for binomial %r among %s hits",
             q,
             len(fine),
@@ -605,7 +605,7 @@ def get_inaturalist_image_and_description(title):
         try:
             response = requests.get(url, params=params, timeout=18, headers=headers)
             if getattr(response, "status_code", None) == 429:
-                logging.warning(
+                logging.debug(
                     "iNaturalist 429 for query=%r (attempt %s/%s)",
                     query,
                     attempt + 1,
@@ -631,7 +631,7 @@ def get_inaturalist_image_and_description(title):
             return image_url, description, source_url
         except requests.HTTPError as e:
             if getattr(e.response, "status_code", None) == 429:
-                logging.warning(
+                logging.debug(
                     "iNaturalist HTTPError 429 for query=%r (attempt %s/%s)",
                     query,
                     attempt + 1,
