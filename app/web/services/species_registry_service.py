@@ -754,6 +754,8 @@ def realign_species_images_from_allowlist_science(
         if inf_url:
             sp.metadata_source_url = inf_url
         n += 1
+        # Снизить 429 при массовом realign (Wikipedia + iNat подряд).
+        time.sleep(0.12)
     return n
 
 
@@ -830,6 +832,7 @@ def repair_catalog_cards(
     wrong_topic_refreshed = 0
 
     for sp in targets:
+        time.sleep(0.02)
         desc_bad = (sp.description or "").strip()
         if desc_bad and wikipedia_extract_rejects_wrong_topic(desc_bad):
             if dry_run:
@@ -851,6 +854,7 @@ def repair_catalog_cards(
                     )
 
     for sp in targets:
+        time.sleep(0.035)
         before_img = bool((sp.image_url or "").strip())
         before_desc = bool((sp.description or "").strip())
 
