@@ -183,6 +183,47 @@ class TestINaturalistMetadata:
         assert "Magpie" in (description or "")
         assert source_url == "https://www.inaturalist.org/taxa/131"
 
+    def test_ambiguous_common_name_picks_highest_observations(self, monkeypatch):
+        """Несколько видов (rank 10) без точного совпадения common name — берём таксон с max observations_count."""
+
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    "results": [
+                        {
+                            "id": 100,
+                            "name": "Turdus migratorius",
+                            "rank": "species",
+                            "rank_level": 10,
+                            "iconic_taxon_name": "Aves",
+                            "preferred_common_name": "American Robin",
+                            "observations_count": 5_000_000,
+                            "default_photo": {"medium_url": "https://example.com/amro.jpg"},
+                            "wikipedia_summary": "American robin text",
+                        },
+                        {
+                            "id": 101,
+                            "name": "Erithacus rubecula",
+                            "rank": "species",
+                            "rank_level": 10,
+                            "iconic_taxon_name": "Aves",
+                            "preferred_common_name": "European Robin",
+                            "observations_count": 20_000_000,
+                            "default_photo": {"medium_url": "https://example.com/euro.jpg"},
+                            "wikipedia_summary": "European robin text",
+                        },
+                    ],
+                }
+
+        monkeypatch.setattr(species_metadata_mod.requests, "get", lambda *a, **k: _Resp())
+        image_url, description, source_url = get_inaturalist_image_and_description("Robin")
+        assert image_url == "https://example.com/euro.jpg"
+        assert "European" in (description or "")
+        assert source_url == "https://www.inaturalist.org/taxa/101"
+
 
 class TestEnWikipediaBirdTitleVariant:
     def test_eurasian_magpie_matches_wikipedia_url_style(self):
