@@ -105,6 +105,9 @@ _AVIAN_TOPIC_RESCUE_RE = re.compile(
 # Редкие случаи, когда Wikipedia-заголовок не даёт стабильное превью (не раздувать список).
 _manual_image_overrides = {
     "jacobin pigeon": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG",
+    # en.wikipedia без pageimage / iNat не матчит видовой ранг по common-name binomial из статьи
+    "samatran thrush": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Zoothera_mollissima.jpg/330px-Zoothera_mollissima.jpg",
+    "stripped manakin": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg/330px-Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg",
 }
 
 
