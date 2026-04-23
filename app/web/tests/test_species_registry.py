@@ -344,6 +344,23 @@ def test_disambiguated_wikipedia_title_redhead_variants():
     assert sm.disambiguated_wikipedia_title_for_display_name("Redhead (Breeding male)") == "Aythya americana"
 
 
+def test_typo_catalog_wikipedia_title_maps_misspellings():
+    import species_metadata as sm
+
+    assert sm._typo_catalog_wikipedia_title("KILLDEAR") == "Killdeer"
+    assert sm._typo_catalog_wikipedia_title("MANDRIN DUCK") == "Mandarin duck"
+    assert sm._typo_catalog_wikipedia_title("Unknown Typo Bird") is None
+
+
+def test_wikipedia_query_titles_includes_typo_catalog_title():
+    import species_metadata as sm
+    from types import SimpleNamespace
+
+    sp = SimpleNamespace(name="KILLDEAR", taxon=None)
+    titles = sm._wikipedia_query_titles_for_species(sp)
+    assert "Killdeer" in titles
+
+
 def test_update_species_info_from_wiki_skips_bad_wikipedia_then_accepts_good(app, monkeypatch):
     import species_metadata as sm
 
