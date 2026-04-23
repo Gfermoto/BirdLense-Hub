@@ -5,6 +5,7 @@ Moved from util.py (tech debt #222)."""
 import logging
 import os
 import re
+import time
 from urllib.parse import urlparse
 
 import requests
@@ -358,64 +359,83 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
     cache_key = (title or "").strip().lower()
     if use_cache and cache_key in _wiki_meta_cache:
         return _wiki_meta_cache[cache_key]
-    try:
-        url = "https://en.wikipedia.org/w/api.php"
-        params = {
-            "action": "query",
-            "prop": "pageimages|pageprops|extracts",
-            "format": "json",
-            "piprop": "thumbnail",
-            "titles": title,
-            "pithumbsize": 300,
-            "redirects": 1,
-            "exintro": 1,
-        }
-        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
-        response = requests.get(url, params=params, timeout=10, headers=headers)
-        response.raise_for_status()
-        if "json" not in (response.headers.get("Content-Type") or "").lower():
-            logging.warning(
-                "Wikipedia API non-JSON response for '%s' (content-type=%s)",
-                title,
-                response.headers.get("Content-Type"),
-            )
+    url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "prop": "pageimages|pageprops|extracts",
+        "format": "json",
+        "piprop": "thumbnail",
+        "titles": title,
+        "pithumbsize": 300,
+        "redirects": 1,
+        "exintro": 1,
+    }
+    headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"}
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        if attempt:
+            time.sleep(min(12.0, 0.55 * (2**attempt)))
+        try:
+            response = requests.get(url, params=params, timeout=18, headers=headers)
+            if getattr(response, "status_code", None) == 429:
+                logging.warning(
+                    "Wikipedia 429 for title=%r (attempt %s/%s)",
+                    title,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            response.raise_for_status()
+            if "json" not in (response.headers.get("Content-Type") or "").lower():
+                logging.warning(
+                    "Wikipedia API non-JSON response for '%s' (content-type=%s)",
+                    title,
+                    response.headers.get("Content-Type"),
+                )
+                result = (None, None)
+                if use_cache:
+                    _wiki_meta_cache[cache_key] = result
+                return result
+            data = response.json()
+            pages_dict = (data.get("query") or {}).get("pages") or {}
+            pages = list(pages_dict.values())
+            if not pages:
+                result = (None, None)
+                if use_cache:
+                    _wiki_meta_cache[cache_key] = result
+                return result
+            page = pages[0]
+            image_url = page.get("thumbnail", {}).get("source")
+            description = re.sub(r"<[^>]*>", "", page.get("extract", "")).strip() or None
+            result = (image_url, description)
+            if use_cache:
+                _wiki_meta_cache[cache_key] = result
+            return result
+        except requests.HTTPError as e:
+            if getattr(e.response, "status_code", None) == 429:
+                logging.warning(
+                    "Wikipedia HTTPError 429 for title=%r (attempt %s/%s)",
+                    title,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
+            return None, None
+        except requests.RequestException as e:
+            logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
+            return None, None
+        except ValueError as e:
+            logging.warning("Wikipedia API decode failed for '%s': %s", title, e)
             result = (None, None)
             if use_cache:
                 _wiki_meta_cache[cache_key] = result
             return result
-        data = response.json()
-        pages_dict = (data.get("query") or {}).get("pages") or {}
-        pages = list(pages_dict.values())
-        if not pages:
-            result = (None, None)
-            if use_cache:
-                _wiki_meta_cache[cache_key] = result
-            return result
-        page = pages[0]
-        image_url = page.get("thumbnail", {}).get("source")
-        description = re.sub(r"<[^>]*>", "", page.get("extract", "")).strip() or None
-        result = (image_url, description)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except requests.RequestException as e:
-        logging.warning("Wikipedia API HTTP failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except ValueError as e:
-        logging.warning("Wikipedia API decode failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
-    except Exception as e:
-        logging.warning("Wikipedia API failed for '%s': %s", title, e)
-        result = (None, None)
-        if use_cache:
-            _wiki_meta_cache[cache_key] = result
-        return result
+        except Exception as e:
+            logging.warning("Wikipedia API failed for '%s': %s", title, e)
+            return None, None
+    logging.warning("Wikipedia: gave up after %s attempts for title=%r", max_attempts, title)
+    return None, None
 
 
 # iNaturalist rank_level: subspecies≈5, species=10; genus=20, order=40 — не брать выше вида.
@@ -522,40 +542,65 @@ def get_inaturalist_image_and_description(title):
     Не использует заказы/семейства (напр. Piciformes id=17550): только виды/подвиды;
     для запроса вида «Genus species» требуется точное совпадение scientific name.
     """
-    try:
-        query = (title or "").strip()
-        if not query:
-            return None, None, None
-        url = "https://api.inaturalist.org/v1/taxa"
-        params = {
-            "q": query,
-            "per_page": 30,
-            "locale": "en",
-            "is_active": "true",
-            "iconic_taxa": "Aves",
-        }
-        headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app)"}
-        response = requests.get(url, params=params, timeout=10, headers=headers)
-        response.raise_for_status()
-        data = response.json() or {}
-        results = data.get("results") or []
-        if not results:
-            return None, None, None
-        top = _pick_inaturalist_taxon_row(query, results)
-        if not top:
-            return None, None, None
-        image_url = (top.get("default_photo") or {}).get("medium_url") or (top.get("default_photo") or {}).get(
-            "square_url"
-        )
-        description = top.get("wikipedia_summary") or (top.get("taxon_schemes_count") and top.get("name")) or None
-        if description and isinstance(description, str):
-            description = description.strip() or None
-        taxon_id = top.get("id")
-        source_url = f"https://www.inaturalist.org/taxa/{taxon_id}" if taxon_id else None
-        return image_url, description, source_url
-    except Exception as e:
-        logging.warning("iNaturalist API failed for '%s': %s", title, e)
+    query = (title or "").strip()
+    if not query:
         return None, None, None
+    url = "https://api.inaturalist.org/v1/taxa"
+    params = {
+        "q": query,
+        "per_page": 30,
+        "locale": "en",
+        "is_active": "true",
+        "iconic_taxa": "Aves",
+    }
+    headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"}
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        if attempt:
+            time.sleep(min(12.0, 0.55 * (2**attempt)))
+        try:
+            response = requests.get(url, params=params, timeout=18, headers=headers)
+            if getattr(response, "status_code", None) == 429:
+                logging.warning(
+                    "iNaturalist 429 for query=%r (attempt %s/%s)",
+                    query,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            response.raise_for_status()
+            data = response.json() or {}
+            results = data.get("results") or []
+            if not results:
+                return None, None, None
+            top = _pick_inaturalist_taxon_row(query, results)
+            if not top:
+                return None, None, None
+            image_url = (top.get("default_photo") or {}).get("medium_url") or (top.get("default_photo") or {}).get(
+                "square_url"
+            )
+            description = top.get("wikipedia_summary") or (top.get("taxon_schemes_count") and top.get("name")) or None
+            if description and isinstance(description, str):
+                description = description.strip() or None
+            taxon_id = top.get("id")
+            source_url = f"https://www.inaturalist.org/taxa/{taxon_id}" if taxon_id else None
+            return image_url, description, source_url
+        except requests.HTTPError as e:
+            if getattr(e.response, "status_code", None) == 429:
+                logging.warning(
+                    "iNaturalist HTTPError 429 for query=%r (attempt %s/%s)",
+                    query,
+                    attempt + 1,
+                    max_attempts,
+                )
+                continue
+            logging.warning("iNaturalist API failed for '%s': %s", title, e)
+            return None, None, None
+        except Exception as e:
+            logging.warning("iNaturalist API failed for '%s': %s", title, e)
+            return None, None, None
+    logging.warning("iNaturalist: gave up after %s attempts for query=%r", max_attempts, query)
+    return None, None, None
 
 
 def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
