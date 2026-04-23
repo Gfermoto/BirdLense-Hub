@@ -402,7 +402,7 @@ def test_update_species_info_from_wiki_skips_bad_wikipedia_then_accepts_good(app
 def test_update_species_info_from_wiki_clears_suspicious_existing_description(app, monkeypatch):
     import species_metadata as sm
 
-    bad = ("Natural red hair is associated with the MC1R gene in human populations. " * 8)
+    bad = "Natural red hair is associated with the MC1R gene in human populations. " * 8
     monkeypatch.setattr(sm, "_wikipedia_query_titles_for_species", lambda sp: ["GoodTitle"])
     monkeypatch.setattr(
         sm,
