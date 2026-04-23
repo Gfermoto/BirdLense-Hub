@@ -45,9 +45,7 @@ def _intel_gpu_top() -> float | None:
             if benign:
                 # rc=1 часто при этом всё же пишет JSON в -o FILE — душим только лог.
                 if now_m >= _intel_gpu_top_benign_stderr_next_log_monotonic:
-                    _intel_gpu_top_benign_stderr_next_log_monotonic = (
-                        now_m + _INTEL_GPU_TOP_BENIGN_STDERR_SUPPRESS_S
-                    )
+                    _intel_gpu_top_benign_stderr_next_log_monotonic = now_m + _INTEL_GPU_TOP_BENIGN_STDERR_SUPPRESS_S
                     _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)
             else:
                 _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)

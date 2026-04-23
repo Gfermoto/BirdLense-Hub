@@ -414,7 +414,9 @@ def get_wikipedia_image_and_description(title, *, use_cache: bool = True):
         "redirects": 1,
         "exintro": 1,
     }
-    headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"}
+    headers = {
+        "User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"
+    }
     max_attempts = 5
     for attempt in range(max_attempts):
         if attempt:
@@ -597,7 +599,9 @@ def get_inaturalist_image_and_description(title):
         "is_active": "true",
         "iconic_taxa": "Aves",
     }
-    headers = {"User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"}
+    headers = {
+        "User-Agent": "BirdLense-Hub/1.0 (Bird feeder monitoring app; +https://github.com/AleksandrRogachev94/BirdLense)"
+    }
     max_attempts = 5
     for attempt in range(max_attempts):
         if attempt:
