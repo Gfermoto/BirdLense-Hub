@@ -29,6 +29,43 @@ _wiki_title_overrides = {
     "grey headed fish eagle": "Grey-headed fish eagle",
 }
 
+# English common names that hit the wrong Wikipedia article if queried alone (dab page, human topic, …).
+# Value: stable enwiki title for the bird taxon.
+_DISAMBIG_WIKI_TITLE_BY_COMMON_KEY: dict[str, str] = {
+    "redhead": "Aythya americana",
+}
+
+# Intro extracts that clearly belong to non-bird encyclopedia articles (e.g. human genetics / hair).
+_NON_BIRD_METADATA_MARKERS_RE = re.compile(
+    r"(?is)\b("
+    r"MC1R|"
+    r"melanocortin\s+1\s+receptor|"
+    r"Fitzpatrick\s+scale|"
+    r"natural\s+red\s+hair|"
+    r"red\s+hair\s+is|"
+    r"hair\s+colou?rs?\s+are|"
+    r"human\s+populations?|"
+    r"erythromelanosis|"
+    r"chromosome\s+16\b|"
+    r"rs1805007|"
+    r"genetic\s+stud(y|ies)\s+of\s+red\s+hair"
+    r")\b"
+)
+
+# If any non-bird markers match, still accept extract when it clearly describes a bird (genetics edge case).
+_AVIAN_TOPIC_RESCUE_RE = re.compile(
+    r"(?is)\b("
+    r"species\s+of\s+(duck|goose|swan|bird)|"
+    r"waterfowl|"
+    r"Anatidae|"
+    r"Aythya|"
+    r"breeding\s+plumage|"
+    r"migrat(e|ion)|"
+    r"nest(s|ing)?\b.*\begg|"
+    r"\b(bill|beak|wing|feather|plumage)\b"
+    r")\b"
+)
+
 # Редкие случаи, когда Wikipedia-заголовок не даёт стабильное превью (не раздувать список).
 _manual_image_overrides = {
     "jacobin pigeon": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/A_Jacobin_Pigeon.JPG/330px-A_Jacobin_Pigeon.JPG",
@@ -172,6 +209,30 @@ def _extract_wiki_search_title(species_name: str) -> str:
         return right or left or s
     # Otherwise parentheses are usually morph/age/sex; use base species name.
     return left or right or s
+
+
+def _norm_ambiguous_common_key(display_name: str) -> str:
+    base = _extract_wiki_search_title(display_name or "") or (display_name or "").strip()
+    return re.sub(r"\s+", " ", base.strip().lower())
+
+
+def disambiguated_wikipedia_title_for_display_name(display_name: str) -> str | None:
+    """Stable en.wikipedia title for ambiguous bird common names (e.g. Redhead → Aythya americana)."""
+    return _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY.get(_norm_ambiguous_common_key(display_name))
+
+
+def wikipedia_extract_rejects_wrong_topic(extract: str | None) -> bool:
+    """True when a Wikipedia intro is clearly not about birds — try the next query title."""
+    if not (extract or "").strip():
+        return False
+    t = extract.strip()
+    if len(t) < 100:
+        return False
+    if not _NON_BIRD_METADATA_MARKERS_RE.search(t):
+        return False
+    if _AVIAN_TOPIC_RESCUE_RE.search(t):
+        return False
+    return True
 
 
 def _load_hierarchy_parent_map():
@@ -407,11 +468,14 @@ def _pick_inaturalist_taxon_row(query: str, results: list) -> dict | None:
         if (row.get("name") or "").strip().lower() == q_lower:
             return row
 
+    if len(fine) == 1:
+        return fine[0]
     logging.warning(
-        "iNaturalist: using first species-rank hit for non-binomial query %r (no common-name match)",
+        "iNaturalist: no unambiguous species-rank hit for non-binomial query %r (%s candidates); skip",
         q,
+        len(fine),
     )
-    return fine[0]
+    return None
 
 
 def get_inaturalist_image_and_description(title):
@@ -470,7 +534,7 @@ def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
 
 
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
-    """Порядок заголовков для Wikipedia/iNaturalist: таксон → allowlist binomial → enwiki common → имя в БД."""
+    """Порядок заголовков: taxon wiki → taxon binomial → allowlist binomial → дизамб. common → enwiki → БД."""
     titles: list[str] = []
     taxon = getattr(sp, "taxon", None)
     wt = (getattr(taxon, "wiki_title", None) or "").strip()
@@ -479,9 +543,18 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
         if t:
             titles.append(t)
 
+    if taxon:
+        sci_taxon = (getattr(taxon, "scientific_name", None) or "").strip()
+        if sci_taxon and _INAT_BINOMIAL_RE.match(sci_taxon):
+            titles.append(sci_taxon)
+
     sci_allow = _allowlist_scientific_for_species_name(sp.name or "")
     if sci_allow:
         titles.append(sci_allow)
+
+    dis = disambiguated_wikipedia_title_for_display_name(sp.name or "")
+    if dis:
+        titles.append(dis)
 
     wiki_common = _en_wikipedia_bird_title_variant(sp.name or "")
     if wiki_common:
@@ -540,10 +613,22 @@ def update_species_info_from_wiki(sp):
             sp.metadata_source_url = inf_url
         updated = True
 
-    # Согласовано с coverage/repair: только пробелы в полях = «пусто», иначе enrich не вызывается снаружи,
-    # а здесь ранний выход и вовсе не даёт подтянуть Wikipedia/iNat.
-    if (sp.image_url or "").strip() and (sp.description or "").strip():
-        return updated
+    # Согласовано с coverage/repair: только пробелы в полях = «пусто», иначе enrich не вызывается снаружи.
+    # Уже заполненная карточка с «чужим» intro (dab/human topic) — сбрасываем и тянем заново.
+    desc_existing = (sp.description or "").strip()
+    if (sp.image_url or "").strip() and desc_existing:
+        if wikipedia_extract_rejects_wrong_topic(desc_existing):
+            logging.warning(
+                "species id=%s name=%r: clearing metadata (failed bird-topic sanity)",
+                getattr(sp, "id", None),
+                getattr(sp, "name", None),
+            )
+            sp.image_url = None
+            sp.description = None
+            sp.metadata_source = None
+            sp.metadata_source_url = None
+        else:
+            return updated
 
     metadata_source = None
     metadata_source_url = None
@@ -555,6 +640,11 @@ def update_species_info_from_wiki(sp):
         if image_url and description:
             break
         img2, desc2 = get_wikipedia_image_and_description(alt)
+        if desc2 and wikipedia_extract_rejects_wrong_topic(desc2):
+            # Do not keep a rejected extract in process memory cache (same title may be retried).
+            _wiki_meta_cache.pop((alt or "").strip().lower(), None)
+            logging.info("Wikipedia title %r skipped (intro failed bird-topic sanity)", alt)
+            continue
         if img2 and not image_url:
             image_url = img2
             metadata_source = metadata_source or "wikipedia"
@@ -569,6 +659,8 @@ def update_species_info_from_wiki(sp):
             if image_url and description:
                 break
             img3, desc3, src3 = get_inaturalist_image_and_description(alt)
+            if desc3 and wikipedia_extract_rejects_wrong_topic(desc3):
+                continue
             if img3 and not image_url:
                 image_url = img3
                 metadata_source = metadata_source or "inaturalist"
