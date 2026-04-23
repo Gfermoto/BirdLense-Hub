@@ -317,3 +317,94 @@ def test_update_species_info_from_wiki_whitespace_image_counts_as_empty(
         assert ok is True
         assert "example.com/w.jpg" in (sp.image_url or "")
         assert "Real description" in (sp.description or "")
+
+
+def test_wikipedia_extract_rejects_human_hair_article():
+    import species_metadata as sm
+
+    blob = "Natural red hair is associated with the MC1R gene in human populations. " * 8
+    assert sm.wikipedia_extract_rejects_wrong_topic(blob) is True
+
+
+def test_wikipedia_extract_accepts_duck_article():
+    import species_metadata as sm
+
+    t = (
+        "The redhead (Aythya americana) is a medium-sized diving duck. "
+        "The scientific name is derived from Greek. The canvasback is migratory. "
+        "Males have distinctive breeding plumage with a coppery head."
+    )
+    assert sm.wikipedia_extract_rejects_wrong_topic(t) is False
+
+
+def test_disambiguated_wikipedia_title_redhead_variants():
+    import species_metadata as sm
+
+    assert sm.disambiguated_wikipedia_title_for_display_name("Redhead") == "Aythya americana"
+    assert sm.disambiguated_wikipedia_title_for_display_name("Redhead (Breeding male)") == "Aythya americana"
+
+
+def test_update_species_info_from_wiki_skips_bad_wikipedia_then_accepts_good(app, monkeypatch):
+    import species_metadata as sm
+
+    monkeypatch.setattr(sm, "_wikipedia_query_titles_for_species", lambda sp: ["BadTitle", "GoodTitle"])
+    monkeypatch.setattr(
+        sm,
+        "get_inaturalist_image_and_description",
+        lambda title: (None, None, None),
+    )
+
+    def fake_wiki(title, *, use_cache=True):
+        if title == "BadTitle":
+            return (
+                "https://example.com/human.jpg",
+                "Natural red hair is associated with the MC1R gene in human populations. " * 8,
+            )
+        if title == "GoodTitle":
+            return (
+                "https://example.com/bird.jpg",
+                "The redhead (Aythya americana) is a medium-sized diving duck. " * 5,
+            )
+        return None, None
+
+    monkeypatch.setattr(sm, "get_wikipedia_image_and_description", fake_wiki)
+
+    with app.app_context():
+        sp = Species(name="Redhead", description="", image_url="")
+        db.session.add(sp)
+        db.session.commit()
+        sm._wiki_meta_cache.clear()
+        ok = sm.update_species_info_from_wiki(sp)
+        db.session.commit()
+        db.session.refresh(sp)
+        assert ok is True
+        assert "bird.jpg" in (sp.image_url or "")
+        assert "Aythya" in (sp.description or "")
+
+
+def test_update_species_info_from_wiki_clears_suspicious_existing_description(app, monkeypatch):
+    import species_metadata as sm
+
+    bad = ("Natural red hair is associated with the MC1R gene in human populations. " * 8)
+    monkeypatch.setattr(sm, "_wikipedia_query_titles_for_species", lambda sp: ["GoodTitle"])
+    monkeypatch.setattr(
+        sm,
+        "get_wikipedia_image_and_description",
+        lambda title, use_cache=True: (
+            "https://example.com/bird.jpg",
+            "The redhead (Aythya americana) is a medium-sized diving duck. " * 5,
+        ),
+    )
+    monkeypatch.setattr(sm, "get_inaturalist_image_and_description", lambda title: (None, None, None))
+
+    with app.app_context():
+        sp = Species(name="Redhead", description=bad, image_url="https://example.com/wrong.jpg")
+        db.session.add(sp)
+        db.session.commit()
+        sm._wiki_meta_cache.clear()
+        ok = sm.update_species_info_from_wiki(sp)
+        db.session.commit()
+        db.session.refresh(sp)
+        assert ok is True
+        assert "Aythya" in (sp.description or "")
+        assert "bird.jpg" in (sp.image_url or "")

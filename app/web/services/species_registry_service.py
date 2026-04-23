@@ -17,6 +17,10 @@ from services.species_catalog_allowlist_service import (
 from services.species_metadata_enrichment_service import (
     enrich_species_metadata as enrich_species_card_metadata,
 )
+from species_metadata import (
+    refresh_species_metadata_from_sources,
+    wikipedia_extract_rejects_wrong_topic,
+)
 from util import load_species_canonical_mapping
 from util import (
     _extract_wiki_search_title,
@@ -813,6 +817,28 @@ def repair_catalog_cards(
     metadata_fixed = 0
     images_replaced_from_inat = 0
     enrich_exceptions = 0
+    wrong_topic_refreshed = 0
+
+    for sp in targets:
+        desc_bad = (sp.description or "").strip()
+        if desc_bad and wikipedia_extract_rejects_wrong_topic(desc_bad):
+            if dry_run:
+                wrong_topic_refreshed += 1
+            else:
+                try:
+                    refresh_species_metadata_from_sources(sp)
+                    if enrich_species_card_metadata(sp):
+                        wrong_topic_refreshed += 1
+                        metadata_fixed += 1
+                except Exception as e:
+                    enrich_exceptions += 1
+                    _log.warning(
+                        "repair_catalog_cards: wrong-topic refresh failed id=%s name=%r: %s",
+                        getattr(sp, "id", None),
+                        getattr(sp, "name", None),
+                        e,
+                        exc_info=_log.isEnabledFor(logging.DEBUG),
+                    )
 
     for sp in targets:
         before_img = bool((sp.image_url or "").strip())
@@ -890,6 +916,7 @@ def repair_catalog_cards(
         "images_realigned_allowlist_science": realigned_sci,
         "still_missing": still_missing,
         "enrich_exceptions": enrich_exceptions,
+        "wrong_topic_refreshed": wrong_topic_refreshed,
         "materialized_created": int(materialize.get("created") or 0),
         "materialized_missing_after": int(materialize.get("missing_after") or 0),
         "dry_run": dry_run,
