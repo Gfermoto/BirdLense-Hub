@@ -63,7 +63,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 10  | CORS demo → конфиг/env                                                                       | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo-host вынесен из hardcoded CORS defaults в `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS`              | P3, web                  |
 | 11  | Доки: примеры алертов Prometheus                                                             | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.ru.md)                                      | P3, docs                 |
 | 12  | Галерея: не работает — разбор и починка (opt-in)                                             | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context в потоке загрузки + доки/тесты v0.2.4                                                   | P2, web, bug             |
-| 13  | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео                          | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) | P2, web                  |
+| 13  | Ручная коррекция видов: связать «Неизвестные» и правки внутри видео                          | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ фазы A+B+C: единый API + snackbar «Открыть видео» + журнал последних ручных правок (Unknowns/Video) — [спека UX](./UX_UNKNOWN_VIDEO_CORRECTION.ru.md) | P2, web                  |
 | 14  | Навигация по видео: подряд (напр. за день), без сброса в начало списка                       | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6**                                                         | P2, web                  |
 | 15  | Соседи по видео: локальный TZ, переход на соседние сутки, ясность в доках (надстройка к #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ локальный день + `cross_day` + доки API/UI                                                          | P3, web                  |
 | 16  | Overview: «Средняя длительность» считалась по визитам, а не по записям                       | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ среднее по `Video` (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); подписи RU/EN | P3, web, bug             |
@@ -126,7 +126,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Системная база видов (канонизация)**     | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168): ✅ реализовано — единый реестр видов, нормализация по ID, backfill, фоновые metadata jobs и CI smoke quality-gate для всей базы.       |
 
 
-### Пожелания пользователей (backlog, маркет 2026)
+### Пожелания пользователей (backlog, март 2026)
 
 Отдельные issues для планирования; детали и критерии — в каждом issue.
 
@@ -136,7 +136,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 - [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — baseline a11y и **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); см. [A11Y.ru.md](./A11Y.ru.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: пункт «Каталог» убран из меню, legacy `/species` редиректит на `/migration-calendar`, deep-link `/species/:id` сохранён.
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: навигация к таблице сезонности; **актуальный UI (v0.3.6+):** пункт **Виды** → `/species` (та же сетка, что и `/migration-calendar` — второй URL-алиас); карточный каталог → `/species-directory`; deep-link `/species/:id` сохранён. (В тексте issue описан промежуточный вариант с редиректом только с `/species` — уже не соответствует коду.)
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — реализовано и закрыто: диаграмма распределения видов на Overview (сектор и легенда) ведёт в Timeline с фильтрами вида и даты.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — реализовано и закрыто: добавлен фильтр периода по датам (день-точность) для Migration; применяется к таблице, но не к региональному справочнику.
@@ -187,6 +187,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Топ региона + «кто из них у меня» | ✅ блок «Сравнение с регионом» на Migration (см. прогресс выше)                               |
 | [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Авто-пороги для топа региона      | ✅ merge в процессоре + настройки; дельта/пол от `min_confidence_to_process`; ручные overrides важнее; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
 | [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Пороги + MQTT BirdNET             | ✅ Снижение порога классификатора для видов из недавних MQTT BirdNET: `birdnet_mqtt_auto_confidence` и параметры delta/floor; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md)                    |
+| [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Таблица сезонности вместо старого каталога | Исторически: навигация к сетке; **сейчас** `/species` + `/migration-calendar` (один UI), `/species-directory` (карточки), `/species/:id` |
 | [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Фильтры видов                     | ✅ каталог: «Региональные» = топ eBird + детекции `birdnet_mqtt`; поле `regional_scope` в `GET /species`; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Корм для Европы                   | ✅ расширен `seed.py` + идемпотентное слияние по имени; см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → «Корм» |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping`           | ✅ API `GET /api/ui/settings/ebird-species-mapping-suggestions`, кнопка в настройках, общий кэш топа eBird; [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) |

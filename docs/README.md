@@ -27,7 +27,7 @@ Pick what matches you — you can read the rest as reference.
 | **Short description** (GitHub About, press) | [SHORT_DESCRIPTION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.md) | [RU](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SHORT_DESCRIPTION.ru.md) |
 | **Project story** (for landing & articles) | [OVERVIEW](./OVERVIEW.md) | [RU](./OVERVIEW.ru.md) |
 | **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
-| **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | — |
+| **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | [RU](./QUICKSTART.ru.md) |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
 | **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
@@ -40,6 +40,7 @@ Pick what matches you — you can read the rest as reference.
 | **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Definition of Done (short gate)** | [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md) | [RU](./DEFINITION_OF_DONE.ru.md) |
 | **UI settings map** | [UI_SETTINGS_MAP](./UI_SETTINGS_MAP.md) | [RU](./UI_SETTINGS_MAP.ru.md) |
+| **UX canonical map** (roles, routes, journeys) | [UX_CANONICAL_MAP](./UX_CANONICAL_MAP.md) | [RU](./UX_CANONICAL_MAP.ru.md) |
 | **Processor performance notes** | [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) | [RU](./PROCESSOR_PERFORMANCE.ru.md) |
 | **Config triggers inventory** | [CONFIGURATION_TRIGGERS_INVENTORY](./CONFIGURATION_TRIGGERS_INVENTORY.md) | [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
 | **API errors & security baseline** | [API_ERRORS](./API_ERRORS.md) | [RU](./API_ERRORS.ru.md) |
@@ -70,6 +71,7 @@ Pick what matches you — you can read the rest as reference.
 | Automated verification log (releases / critical fixes) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | Domain integrity checks | `GET /api/ui/system/domain-health` + [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) |
 | MCP (Model Context Protocol — automation & integrations) | [MCP_SETUP](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
+| **UX tooltips & inline hints** (contributors) | [UX_TOOLTIPS](./UX_TOOLTIPS.md) · [RU](./UX_TOOLTIPS.ru.md) |
 
 ---
 
@@ -78,6 +80,7 @@ Pick what matches you — you can read the rest as reference.
 | Topic | English | Russian |
 |-------|---------|---------|
 | Model training (EU/US) | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
+| ML quality loop (operators) | — | [RU only](./ML_QUALITY_LOOP.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
 | Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
@@ -86,20 +89,47 @@ Pick what matches you — you can read the rest as reference.
 
 ## Project meta
 
+The static site sidebar comes from root `mkdocs.yml`. For a **line-up with filenames** (same order as **Meta** and **Repository (canonical files)**), use [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md).
+
+### Meta (MkDocs `nav` → Meta)
+
 | Topic | Document |
 |-------|----------|
+| **Hub epics (GitHub tracker)** | [HUB_EPICS_TRACKER](./HUB_EPICS_TRACKER.md) · [RU](./HUB_EPICS_TRACKER.ru.md) |
 | **Repository layout** (onboarding) | [REPOSITORY_LAYOUT](./REPOSITORY_LAYOUT.md) · [RU](./REPOSITORY_LAYOUT.ru.md) |
+| **Verification log** (releases) | [VERIFICATION](./VERIFICATION.md) · [RU](./VERIFICATION.ru.md) |
 | How docs are written (placeholders, i18n, site reuse) | [Documentation](./Documentation.md) · [RU](./Documentation.ru.md) |
-| Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
+| **Site map** (generator; keep `nav` aligned) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
+| Translation status | [I18N_STATUS](./I18N_STATUS.md) · [RU](./I18N_STATUS.ru.md) |
 | **Secrets rotation (production ops)** | [SECRETS_ROTATION](./SECRETS_ROTATION.md) · [RU](./SECRETS_ROTATION.ru.md) |
+| Security analysis (technical) | [SECURITY](./SECURITY.md) · [RU](./SECURITY.ru.md) |
 | Open-source release checklist | [OPEN_SOURCE_PREP](./OPEN_SOURCE_PREP.md) · [RU](./OPEN_SOURCE_PREP.ru.md) |
 | Governance & external review | [GOVERNANCE](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
-| **Issues, board & roadmap process** | [ROADMAP](./ROADMAP.md) (*Triage*) · [RU](./ROADMAP.ru.md); root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md) |
 | **GitHub CLI setup** (personal repo) | [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | **Wiki + CI reports** (Summary / Artifact / optional Wiki push) | [WIKI_AUTOMATION](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
-| Translation status | [I18N_STATUS](./I18N_STATUS.md) |
-| **Site sections ↔ files** (keep in sync with `mkdocs.yml`) | [SITE_MAP](./SITE_MAP.md) · [RU](./SITE_MAP.ru.md) |
-| **MkDocs site (build & GitHub Pages)** | [Documentation](./Documentation.md) (*Static documentation site*) |
+
+### Related process (not extra sidebar rows)
+
+| Topic | Document |
+|-------|----------|
+| **Issues, board & roadmap** | [ROADMAP](./ROADMAP.md) (*Triage*) · [RU](./ROADMAP.ru.md); root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md) |
+
+### Repository (canonical files — `docs/project/` stubs)
+
+| Topic | Document |
+|-------|----------|
+| Contributing | [project/contributing.md](./project/contributing.md) → root **CONTRIBUTING** on GitHub |
+| Security policy | [project/security-policy.md](./project/security-policy.md) → root **SECURITY** |
+| Code of Conduct | [project/code-of-conduct.md](./project/code-of-conduct.md) → root **CODE_OF_CONDUCT** |
+| Changelog | [project/changelog.md](./project/changelog.md) → root **CHANGELOG** |
+| OpenAPI (YAML) | [project/openapi.md](./project/openapi.md) → `app/web/openapi.yaml` |
+| Root README | [project/root-readme.md](./project/root-readme.md) → root **README** |
+
+### Publishing & archive
+
+| Topic | Document |
+|-------|----------|
+| **MkDocs site** (build & GitHub Pages) | [Documentation](./Documentation.md) (*Static documentation site*) |
 | Historical notes | [archive/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/archive/README.md) (in repo; excluded from MkDocs build) |
 
 ---

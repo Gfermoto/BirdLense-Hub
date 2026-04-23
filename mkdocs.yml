@@ -1,5 +1,5 @@
 # Static documentation site (MkDocs Material).
-# Source of truth remains Markdown under docs/. Nav mirrors docs/SITE_MAP.md.
+# Source of truth remains Markdown under docs/. Cross-check `nav` with docs/SITE_MAP*.md (Meta vs Repository order).
 # Релиз: VERSION в mkdocs extra.site_version (check scripts/check-docs-version.py); баннер — overrides/main.html.
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
@@ -63,6 +63,7 @@ nav:
       - "Release readiness": RELEASE_READINESS.md
       - "Definition of Done (short gate)": DEFINITION_OF_DONE.md
       - "UI settings map": UI_SETTINGS_MAP.md
+      - "UX canonical map (roles & journeys)": UX_CANONICAL_MAP.md
       - "Processor performance notes": PROCESSOR_PERFORMANCE.md
       - "Config triggers inventory": CONFIGURATION_TRIGGERS_INVENTORY.md
       - Troubleshooting: TROUBLESHOOTING.md
@@ -87,6 +88,7 @@ nav:
       - "Settings: composable triggers (phase 2 draft)": SETTINGS_TRIGGERS_PHASE2.md
   - "ML & project":
       - Training: TRAINING.md
+      - "ML quality loop (RU)": ML_QUALITY_LOOP.ru.md
       - Datasets: DATASETS.md
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
@@ -113,6 +115,7 @@ nav:
   - "Русский":
       - Обзор: OVERVIEW.ru.md
       - Оглавление: README.ru.md
+      - Быстрый старт: QUICKSTART.ru.md
       - Установка: INSTALL.ru.md
       - Чеклист деплоя на сервер: DEPLOY_SERVER.ru.md
       - Сценарии: SCENARIOS.ru.md
@@ -122,6 +125,7 @@ nav:
       - "Готовность к релизу": RELEASE_READINESS.ru.md
       - "Definition of Done (короткие ворота)": DEFINITION_OF_DONE.ru.md
       - "Карта настроек UI": UI_SETTINGS_MAP.ru.md
+      - "Каноническая UX-карта": UX_CANONICAL_MAP.ru.md
       - "Производительность процессора": PROCESSOR_PERFORMANCE.ru.md
       - "Инвентаризация триггеров конфига": CONFIGURATION_TRIGGERS_INVENTORY.ru.md
       - Решение проблем: TROUBLESHOOTING.ru.md
@@ -140,9 +144,9 @@ nav:
       - Тестирование: TESTING.ru.md
       - "CI и качество": CI_AND_QUALITY.ru.md
       - Доступность: A11Y.ru.md
-      - "UX: подсказки и тултипы": UX_TOOLTIPS.md
-      - "Проверка видов: список и видео": UX_UNKNOWN_VIDEO_CORRECTION.md
-      - "Настройки: триггеры (фаза 2, черновик)": SETTINGS_TRIGGERS_PHASE2.md
+      - "UX: подсказки и тултипы": UX_TOOLTIPS.ru.md
+      - "Проверка видов: список и видео": UX_UNKNOWN_VIDEO_CORRECTION.ru.md
+      - "Настройки: триггеры (фаза 2, черновик)": SETTINGS_TRIGGERS_PHASE2.ru.md
       - Обучение: TRAINING.ru.md
       - "Цикл качества ML": ML_QUALITY_LOOP.ru.md
       - Датасеты: DATASETS.ru.md
@@ -153,7 +157,7 @@ nav:
       - Верификация релизов: VERIFICATION.ru.md
       - О документации: Documentation.ru.md
       - Карта сайта: SITE_MAP.ru.md
-      - Локализация: I18N_STATUS.md
+      - Локализация: I18N_STATUS.ru.md
       - Ротация секретов (прод): SECRETS_ROTATION.ru.md
       - Анализ безопасности: SECURITY.ru.md
       - Open-source: OPEN_SOURCE_PREP.ru.md

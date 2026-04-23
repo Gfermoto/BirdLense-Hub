@@ -1,5 +1,7 @@
 # Documentation — Bilingual Status
 
+[Русский](./I18N_STATUS.ru.md)
+
 English = main (`.md`). Russian = secondary (`.ru.md`).
 
 ## Workflow
@@ -21,6 +23,10 @@ Removed from `archive/`: ROLLBACK_LOST_FEATURES, SYSTEM_UI_AND_FRIGATE_REFERENCE
 
 Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` / `[English](./DOC.md)`.
 
+## Published site (`mkdocs.yml`)
+
+When you add, remove, or rename a **published** page under `docs/`: update root **`mkdocs.yml`** `nav`, mirror the **Meta** and **Repository (canonical files)** order in [SITE_MAP.md](./SITE_MAP.md) / [SITE_MAP.ru.md](./SITE_MAP.ru.md), refresh [README.md](./README.md) meta tables if operators should discover the page from the doc home, then extend the status tables in this file and in [I18N_STATUS.ru.md](./I18N_STATUS.ru.md).
+
 ## Status
 
 | Document | EN | RU |
@@ -32,6 +38,7 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | SECURITY | ✅ | ✅ |
 | **docs/** | | |
 | README (hub) | ✅ | ✅ |
+| QUICKSTART | ✅ | ✅ |
 | REPOSITORY_LAYOUT | ✅ | ✅ |
 | OVERVIEW (story / landing source) | ✅ | ✅ |
 | INSTALL | ✅ | ✅ |
@@ -51,9 +58,9 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | LOCAL_DEV | ✅ | ✅ |
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
-| UX_TOOLTIPS | ✅ EN only | — |
-| SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ EN only | — |
-| UX_UNKNOWN_VIDEO_CORRECTION | ✅ single page | — |
+| UX_TOOLTIPS | ✅ | ✅ |
+| SETTINGS_TRIGGERS_PHASE2 (draft) | ✅ | ✅ |
+| UX_UNKNOWN_VIDEO_CORRECTION | ✅ | ✅ |
 | ARCHITECTURE | ✅ | ✅ |
 | API | ✅ | ✅ |
 | reference/openapi (Redoc embed) | ✅ | ✅ |
@@ -61,7 +68,9 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 | ACCESS_CONTROL | ✅ | ✅ |
 | RECOVERY_CONFIG | ✅ | ✅ |
 | SITE_MAP (sections ↔ files, MkDocs `nav`) | ✅ | ✅ |
+| UX_CANONICAL_MAP (roles / routes / journeys) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
+| ML_QUALITY_LOOP | — | ✅ (RU only) |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
@@ -80,5 +89,5 @@ Each paired doc links to the other at the top: `[Русский](./DOC.ru.md)` /
 1. Write or rewrite **English** in `DOC.md` (instructional, placeholders, cross-links).
 2. If Russian is required: create/update `DOC.ru.md` (same structure).
 3. Register in [docs/README.md](./README.md) (and [README.ru.md](./README.ru.md)).
-4. Update this table.
+4. Update this table and [I18N_STATUS.ru.md](./I18N_STATUS.ru.md) (same rows).
 5. If you add or change **HTTP routes** documented in OpenAPI: follow [OpenAPI maintenance](./project/openapi.md) (fragment merge / regen scripts) and run `pytest web/tests/test_openapi_contract.py` when the contract test applies.

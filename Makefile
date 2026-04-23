@@ -1,4 +1,11 @@
-.PHONY: deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+
+# Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
+install:
+	@./install.sh
+
+install-pull:
+	@./install.sh --pull
 
 # Все проверки как в CI (Python security, ruff, pytest web, UI, docs). Без Docker по умолчанию.
 ci-local:
@@ -57,7 +64,7 @@ proxy-rotation-remove:
 # Аудит карточек видов (фото/описание/доступность через proxy)
 # Примеры:
 #   make audit-cards
-#   BASE_URL=https://birdlense.eyera.info make audit-cards
+#   BASE_URL=https://hub.example.com make audit-cards
 audit-cards:
 	@python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
 

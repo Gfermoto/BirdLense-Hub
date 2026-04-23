@@ -37,6 +37,8 @@ def configure_process_logging() -> None:
     root.setLevel(logging.INFO)
     root.handlers.clear()
     root.addHandler(handler)
+    # Alembic: INFO на каждый create_app() — приглушаем до WARNING.
+    logging.getLogger("alembic").setLevel(logging.WARNING)
 
 
 def init_request_logging(app) -> None:

@@ -15,9 +15,9 @@ _log = logging.getLogger("gpu_stats")
 
 _CACHE_PATH = "/tmp/.birdlense_gpu_stats_cache"
 _MIN_DELTA_NS = 100_000_000  # 100ms
-# intel_gpu_top в Docker без PMU шлёт одну и ту же ошибку на каждый poll метрик — душим до 1 раза в час.
-_INTEL_GPU_TOP_PMU_SUPPRESS_S = 3600.0
-_intel_gpu_top_pmu_next_log_monotonic = 0.0
+# intel_gpu_top в Docker: PMU / запись в /tmp — одни и те же ошибки на каждый poll — душим до 1 раза в час.
+_INTEL_GPU_TOP_BENIGN_STDERR_SUPPRESS_S = 3600.0
+_intel_gpu_top_benign_stderr_next_log_monotonic = 0.0
 
 
 def _intel_gpu_top() -> float | None:
@@ -34,15 +34,18 @@ def _intel_gpu_top() -> float | None:
         rc = result.returncode
         stderr = (result.stderr or "")[:200]
         if rc not in (0, 124):
-            global _intel_gpu_top_pmu_next_log_monotonic
+            global _intel_gpu_top_benign_stderr_next_log_monotonic
             sl = stderr.lower()
             pmu_denied = "pmu" in sl and "permission denied" in sl
+            output_file_denied = "permission denied" in sl and (
+                "output file" in sl or "failed to open" in sl or "open output" in sl
+            )
+            benign = pmu_denied or output_file_denied
             now_m = time.monotonic()
-            if pmu_denied:
-                # intel_gpu_top часто пишет JSON при rc=1 (PMU недоступен в контейнере).
-                # Душим только предупреждение в лог, метрику берём из файла при наличии.
-                if now_m >= _intel_gpu_top_pmu_next_log_monotonic:
-                    _intel_gpu_top_pmu_next_log_monotonic = now_m + _INTEL_GPU_TOP_PMU_SUPPRESS_S
+            if benign:
+                # rc=1 часто при этом всё же пишет JSON в -o FILE — душим только лог.
+                if now_m >= _intel_gpu_top_benign_stderr_next_log_monotonic:
+                    _intel_gpu_top_benign_stderr_next_log_monotonic = now_m + _INTEL_GPU_TOP_BENIGN_STDERR_SUPPRESS_S
                     _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)
             else:
                 _log.warning("intel_gpu_top rc=%s stderr=%s", rc, stderr)

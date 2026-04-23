@@ -104,7 +104,11 @@ def _check_species(base_url: str, species_id: int, timeout: float) -> list[CardI
 
 def main() -> int:
     p = argparse.ArgumentParser(description='Audit full_eu species cards.')
-    p.add_argument('--base-url', default='https://birdlense.eyera.info')
+    p.add_argument(
+        '--base-url',
+        default='http://127.0.0.1:8085',
+        help='Hub base URL (no trailing slash). Default: local stack.',
+    )
     p.add_argument('--timeout', type=float, default=20.0)
     p.add_argument('--workers', type=int, default=12)
     p.add_argument('--limit', type=int, default=0, help='check only first N species (0 = all)')

@@ -8,7 +8,7 @@ This map defines the primary route for each role and task after the UX reset.
 
 | Role | Primary routes | Main goal |
 |------|----------------|-----------|
-| `guest` | `/`, `/timeline`, `/species`, `/species/:id`, `/live`, `/food`, `/migration-calendar` | Observe birds, browse recordings, inspect species pages. |
+| `guest` | `/`, `/timeline`, `/species`, `/migration-calendar`, `/species-directory`, `/species/:id`, `/live`, `/food` | Observe birds, browse recordings, inspect species pages. (`/species` and `/migration-calendar` are the same seasonality UI.) |
 | `contributor` | guest routes + `/timeline?review=1` | Correct uncertain detections and improve recognition quality. |
 | `admin` | contributor routes + `/settings`, `/system`, `/library` | Configure the station, maintain data, and use service tooling. |
 
@@ -28,7 +28,7 @@ This map defines the primary route for each role and task after the UX reset.
    - `/videos/:id`
 
 3. Find a bird species
-   - `/species`
+   - `/species` (or `/migration-calendar` — same screen) for the seasonality table; `/species-directory` for card browse
    - Search species
    - `/species/:id`
    - Back to `/timeline?speciesId=<id>` for source recordings
@@ -49,8 +49,9 @@ This map defines the primary route for each role and task after the UX reset.
 |-------|---------|
 | `/timeline` | Everyday recordings workflow |
 | `/timeline?review=1` | Review queue for uncertain detections |
-| `/species` | Species directory |
-| `/migration-calendar` | Seasonal view, secondary to species browsing |
+| `/species` | Seasonality grid (visits × species × month); primary nav **Species** |
+| `/migration-calendar` | Same component as `/species` (alias URL) |
+| `/species-directory` | Card-style species directory |
 | `/settings` | Station setup and outcome-based configuration |
 | `/system` | Service overview and support tools |
 | `/library` | Data archive and maintenance |

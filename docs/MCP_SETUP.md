@@ -62,7 +62,7 @@ Replace:
 
 **LAN example:** **`http://192.168.1.11:8085/mcp`** — same host as the UI (`http://192.168.1.11:8085/`).
 
-**Public host (TLS, alternate):** e.g. **`https://birdlense.eyera.info/mcp`** — SSH e.g. `185.218.111.196:2222` if that deployment is still in use. Same Bearer token; nginx terminates HTTPS and proxies to the Hub.
+**Public host (TLS, alternate):** e.g. **`https://hub.example.com/mcp`** — SSH e.g. `root@203.0.113.10:2222` (address from [TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737); substitute your real host). Same Bearer token; nginx terminates HTTPS and proxies to the Hub.
 
 With a valid token, tools such as settings read/update can run **without** typing the settings UI password (server-side trust).
 
@@ -86,22 +86,22 @@ You can combine **3a** and **3b** in one `mcpServers` object. GitMCP is **not** 
 
 ## Connect timeout / `SSE error: fetch failed`
 
-A message like `Connect Timeout Error (birdlense.eyera.info:443, timeout: 10000ms)` means the **MCP client never completed TCP/TLS** to the server in time. This is usually **network path from your PC to the VPS**, not a wrong token (the Bearer check may never run).
+A message like `Connect Timeout Error (hub.example.com:443, timeout: 10000ms)` means the **MCP client never completed TCP/TLS** to the server in time. This is usually **network path from your PC to the server**, not a wrong token (the Bearer check may never run).
 
 **On the same machine and network as the MCP client:**
 
 ```bash
-curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/api/ui/health
-curl -m 15 -sS -H "Authorization: Bearer YOUR_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://birdlense.eyera.info/mcp
+curl -m 15 -sS -o /dev/null -w '%{http_code}\n' https://hub.example.com/api/ui/health
+curl -m 15 -sS -H "Authorization: Bearer YOUR_MCP_TOKEN" -o /dev/null -w '%{http_code}\n' https://hub.example.com/mcp
 ```
 
-- If **curl also times out** — routing or firewall to `185.218.111.196:443`. Try another network or VPN.
-- If **curl is fast (200/401) but the MCP client times out** — try disabling the **system proxy**, forcing **IPv4** (e.g. add `185.218.111.196 birdlense.eyera.info` to hosts), or updating the client.
+- If **curl also times out** — routing or firewall to the server’s HTTPS port. Try another network or VPN.
+- If **curl is fast (200/401) but the MCP client times out** — try disabling the **system proxy**, forcing **IPv4** (e.g. add `203.0.113.10 hub.example.com` to hosts if you must pin IPv4), or updating the client.
 
 **SSH tunnel** when SSH to the VPS works but direct HTTPS from the PC does not:
 
 ```bash
-ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@185.218.111.196
+ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@203.0.113.10
 ```
 
 Point MCP at **`http://127.0.0.1:18085/mcp`** with the same `Authorization: Bearer …` while the session stays open.

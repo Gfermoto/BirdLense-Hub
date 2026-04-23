@@ -43,7 +43,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/push/vapid-public` | GET | Web Push VAPID public key |
 | `/push/subscribe` | POST | Register push subscription |
 | `/report/pdf` | GET | Monthly PDF (`month=YYYY-MM` or time range) |
-| `/migration-calendar` | GET | Visits aggregated by species × month. Query: `catalog`=`active`\|`full`, `evidence`=`all`\|`video`, plus optional year/date filters |
+| `/migration-calendar` | GET | Visits aggregated by species × month. Query: `catalog`=`observed`\|`dataset`\|`full_eu` (legacy aliases: `active`→`observed`, `full`→`full_eu`); optional `start_year`/`end_year` or `start_date`/`end_date` (`YYYY-MM-DD`). `evidence` is accepted for compatibility but **ignored** (same response for any value). |
 | `/species/:id/xeno-canto` | GET | Xeno-canto clips for species |
 | `/species/:id/summary` | GET | Species summary |
 | `/restart-processor` | POST | Restart processor (**Admin**) |
