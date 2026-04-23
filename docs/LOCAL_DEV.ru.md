@@ -112,6 +112,8 @@ cd app
 python -m pytest web/tests/test_openapi_contract.py -q
 ```
 
+**Только web на хосте (без Docker):** `cd app && make test-web-local` — venv `app/.venv` из `web/requirements.txt`. Если `pip` ругается на посторонние пакеты (например **PlatformIO**), проверьте, что в shell не выставлен **`PYTHONPATH` на `~/.local/.../site-packages`**; при необходимости **`make venv-web-reset`**.
+
 Или только часть:
 ```bash
 docker compose run --rm -v $(pwd):/app birdlense python -m pytest web/tests/test_api.py -v -k "unknowns or overview"
