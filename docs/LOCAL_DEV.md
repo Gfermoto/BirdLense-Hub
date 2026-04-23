@@ -111,6 +111,8 @@ Build the UI **before** `docker compose build` unless your image runs `npm` insi
 | Processor | `cd app && make test` |
 | E2E | `cd app && make start` then `make test-e2e` (optional `E2E_SETTINGS_PASSWORD`, `BASE_URL`) |
 
+**Host-only web tests (no Docker):** `cd app && make test-web-local` — uses `app/.venv` from `web/requirements.txt`. If `pip` warns about unrelated tools (e.g. **PlatformIO**), your shell may set **`PYTHONPATH` to `~/.local/.../site-packages`** — unset it, or run **`make venv-web-reset`** to recreate a clean venv.
+
 Focused pytest example:
 
 ```bash
