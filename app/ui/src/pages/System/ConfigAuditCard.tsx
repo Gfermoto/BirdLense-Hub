@@ -9,7 +9,7 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
-import { fetchConfigAudit } from '../../api/api';
+import { fetchConfigAudit } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import { localizedConfigAuditWarning } from './configAuditWarningLocale';
 import { SystemCardShell } from './SystemCardShell';

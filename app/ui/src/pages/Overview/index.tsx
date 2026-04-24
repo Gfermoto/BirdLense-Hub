@@ -16,7 +16,7 @@ import {
   fetchOverviewData,
   fetchWeather,
   downloadReportPdf,
-} from '../../api/api';
+} from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
