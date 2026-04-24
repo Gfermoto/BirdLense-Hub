@@ -2569,8 +2569,13 @@ class TestSpeciesSummaryReadOnly:
     def test_summary_hourly_activity_uses_observer_local_hour(self, app, client):
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, db
+        from observer_time import observer_local_hour
 
         unique = f"API Summary Time Owl {id(app)}"
+        # Rolling last_30d window uses real "now"; fixed March dates fall out of range in April+.
+        now_utc = datetime.now(timezone.utc)
+        visit_start = (now_utc - timedelta(hours=2)).replace(tzinfo=None, microsecond=0)
+        visit_end = visit_start + timedelta(minutes=10)
         with app.app_context():
             app_config.set("secrets.latitude", "55.7558")
             app_config.set("secrets.longitude", "37.6176")
@@ -2580,20 +2585,21 @@ class TestSpeciesSummaryReadOnly:
             db.session.add(
                 SpeciesVisit(
                     species_id=sp.id,
-                    start_time=datetime(2026, 3, 24, 21, 15, 0),
-                    end_time=datetime(2026, 3, 24, 21, 25, 0),
+                    start_time=visit_start,
+                    end_time=visit_end,
                     max_simultaneous=4,
                 ),
             )
             db.session.commit()
             sid = sp.id
+            expected_hour = observer_local_hour(visit_start.replace(tzinfo=timezone.utc))
         from services.http_response_cache import bust_response_caches
 
         bust_response_caches()
         r = client.get(f"/api/ui/species/{sid}/summary")
         assert r.status_code == 200
         data = r.get_json()
-        assert data["stats"]["hourlyActivity"][0] == 4
+        assert data["stats"]["hourlyActivity"][expected_hour] == 4
 
     def test_refresh_metadata_requires_settings_password(self, app, client, monkeypatch):
         from app_config.app_config import app_config
