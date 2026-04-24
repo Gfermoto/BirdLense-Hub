@@ -90,6 +90,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Governance | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 | GitHub CLI setup | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | Wiki and CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
+| Web services domain map (#344) | [project/WEB_SERVICES_DOMAIN_MAP.md](./project/WEB_SERVICES_DOMAIN_MAP.md) |
 
 **Related (not separate nav rows):** triage / board / issues — [ROADMAP.md](./ROADMAP.md) · [RU](./ROADMAP.ru.md); repo root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md).
 
