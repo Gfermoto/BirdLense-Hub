@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **[#343](https://github.com/Gfermoto/BirdLense-Hub/issues/343) (фаза A):** UI — вынесены **`app/ui/src/api/client.ts`** (base URL + timeout axios), **`app/ui/src/api/timeline.ts`** (таймлайн + unknowns list/export); публичные импорты по-прежнему из **`api.tsx`**; расширены **`queryKeys`** и миграция ключей на страницах **Timeline** / **Unknowns**; тест **`timeline.test.ts`**.
+- **[#343](https://github.com/Gfermoto/BirdLense-Hub/issues/343) (фаза A):** UI — **`client.ts`** (base URL, axios timeout, **`JOB_STATUS_POLL_TIMEOUT_MS`**), **`timeline.ts`**, **`video.ts`** (видео, соседи, fusion trace, nearest recording day, delete/regen/merge); реэкспорты из **`api.tsx`**; **`queryKeys`** — таймлайн, unknowns, **video**, bird-directory, species summary; миграция ключей на **Timeline**, **Unknowns**, **VideoDetails** / **VideoInfo** / **DetectedSpecies**; тесты **`timeline.test.ts`**, **`video.test.ts`**.
 
 - **Документация (CONFIGURATION):** EN/RU — блок **On this page** / **По странице** (быстрые якоря), ссылки на **`app/.env.example`** и **`docs/project/openapi.md`** в шапке; **I18N_STATUS** — строка **SETTINGS_TRIGGERS_PHASE2**, шаг про OpenAPI/contract-тест при смене HTTP-маршрутов.
 

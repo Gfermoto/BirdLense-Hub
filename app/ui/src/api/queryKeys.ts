@@ -54,4 +54,23 @@ export const queryKeys = {
   corrections: {
     recent: ['corrections-recent'] as const,
   },
+  video: {
+    /** Префикс для сброса кэша по всем роликам. */
+    all: ['video'] as const,
+    detail: (id: string) => ['video', id] as const,
+    neighbors: (id: string) => ['video-neighbors', id] as const,
+    neighborsAll: ['video-neighbors'] as const,
+    detectionFrames: (id: string) => ['video-detection-frames', id] as const,
+    listAll: ['videos'] as const,
+    trackRegenStatusUi: (videoId: number | null, nonce: number) =>
+      ['track-regen-status-ui', videoId, nonce] as const,
+    specRegenStatusUi: (videoId: number | null, nonce: number) =>
+      ['spec-regen-status-ui', videoId, nonce] as const,
+  },
+  birdDirectory: {
+    all: ['bird-directory'] as const,
+  },
+  speciesSummary: {
+    all: ['speciesSummary'] as const,
+  },
 } as const;

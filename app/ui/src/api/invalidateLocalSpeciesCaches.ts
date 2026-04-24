@@ -1,16 +1,18 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import { queryKeys } from './queryKeys';
+
 /** Ключи, которые зависят от правки вида на видео (согласовано с VideoInfo при удалении). */
 const AFTER_LOCAL_SPECIES_EDIT_KEYS = [
-  ['unknowns'],
-  ['unknowns-count'],
-  ['speciesVisits'],
-  ['overview'],
-  ['timeline'],
-  ['migration-calendar'],
-  ['bird-directory'],
-  ['species'],
-  ['speciesSummary'],
+  queryKeys.unknowns.all,
+  queryKeys.timeline.unknownsCountAll,
+  queryKeys.timeline.speciesVisitsAll,
+  queryKeys.overview.all,
+  queryKeys.calendar.timelineTab,
+  queryKeys.calendar.migration,
+  queryKeys.birdDirectory.all,
+  queryKeys.species.directory,
+  queryKeys.speciesSummary.all,
 ] as const;
 
 /**
@@ -21,7 +23,9 @@ export function invalidateLocalSpeciesEditCaches(
   videoId: string | number | null | undefined,
 ): void {
   if (videoId != null) {
-    queryClient.invalidateQueries({ queryKey: ['video', String(videoId)] });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.video.detail(String(videoId)),
+    });
   }
   for (const key of AFTER_LOCAL_SPECIES_EDIT_KEYS) {
     queryClient.invalidateQueries({ queryKey: [...key] });
