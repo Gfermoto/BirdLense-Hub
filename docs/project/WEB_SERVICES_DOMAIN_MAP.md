@@ -75,9 +75,11 @@
 
 ## 7. `processor_ingest`
 
+Подпакет: `app/web/services/processor_ingest/` (`gateway.py` — секрет процессора, SSRF для webhook, нормализация детекций, POST webhook); HTTP — `routes/processor_routes.py` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344) фаза C).
+
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
-| `/api/processor/*` | `processor_routes.py` | `visit_processor`, `http_response_cache`, парсинг JSON из `api_json_validation`; часть доменной логики пока в самом модуле маршрутов — кандидат на вынос (#344 фаза C) |
+| `/api/processor/*` | `processor_routes.py` | `processor_ingest.gateway`, `visit_processor`, `http_response_cache`, парсинг JSON из `api_json_validation` |
 
 ---
 
