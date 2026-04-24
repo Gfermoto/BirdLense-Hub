@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../../api/api';
 import {
   type BirdnetFifoDialogSnapshot,
   type BirdnetFifoPayload,
@@ -36,7 +37,6 @@ import {
   fetchBirdnetFifoSnapshot,
   fetchFusionEvalStatus,
   fetchFusionExportStatus,
-  getApiErrorMessage,
   materializeSpeciesAllowlist,
   mergeDuplicateSpecies,
   previewBrokenVideosPurge,
@@ -49,7 +49,7 @@ import {
   seedSpeciesRegistry,
   startFusionEval,
   startFusionExport,
-} from '../../api/api';
+} from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 

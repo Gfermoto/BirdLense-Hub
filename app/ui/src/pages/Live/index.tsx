@@ -7,7 +7,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCameras } from '../../api/api';
+import { fetchCameras } from '../../api/camerasHealth';
 import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';

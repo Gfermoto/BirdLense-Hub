@@ -7,7 +7,7 @@ import CloudOutlined from '@mui/icons-material/CloudOutlined';
 import SmartToyOutlined from '@mui/icons-material/SmartToyOutlined';
 import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import { useQuery } from '@tanstack/react-query';
-import { fetchStatus } from '../api/api';
+import { fetchStatus } from '../api/camerasHealth';
 import { queryKeys } from '../api/queryKeys';
 
 const TRIGGER_LINE_KEYS: Record<string, string> = {

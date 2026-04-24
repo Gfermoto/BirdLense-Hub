@@ -14,9 +14,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchOverviewData,
-  fetchWeather,
   downloadReportPdf,
-} from '../../api/api';
+} from '../../api/speciesOverviewDetections';
+import { fetchWeather } from '../../api/weatherRegion';
 import { queryKeys } from '../../api/queryKeys';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';

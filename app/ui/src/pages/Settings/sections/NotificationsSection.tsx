@@ -27,10 +27,10 @@ import type { Settings } from '../../../types';
 import {
   fetchVapidPublicKey,
   refreshTelegramProxy,
-  subscribePush,
-  patchSettings,
   sendTestNotification,
-} from '../../../api/api';
+  subscribePush,
+} from '../../../api/notificationsProcessor';
+import { patchSettings } from '../../../api/settingsSession';
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);

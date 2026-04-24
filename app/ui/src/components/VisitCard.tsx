@@ -24,7 +24,7 @@ import Alert from '@mui/material/Alert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
-import { downloadDetectionCropForINaturalist } from '../api/api';
+import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';

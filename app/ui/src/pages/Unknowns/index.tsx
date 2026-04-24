@@ -40,19 +40,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import Snackbar from '@mui/material/Snackbar';
 import Tooltip from '@mui/material/Tooltip';
+import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
+import { fetchUnknownsForObserverDate } from '../../api/timeline';
+import type { UnknownDetection } from '../../api/timeline';
 import {
-  fetchUnknownsForObserverDate,
-  fetchBirdDirectory,
-  updateDetectionSpecies,
   confirmDetection,
+  deleteReviewQueueVideos,
+  fetchBirdDirectory,
   fetchRecentCorrections,
   previewReviewQueueDelete,
-  deleteReviewQueueVideos,
-  resolveImageUrl,
+  updateDetectionSpecies,
   type ReviewQueueDeletePreview,
-  type UnknownDetection,
-  getApiErrorMessage,
-} from '../../api/api';
+} from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';

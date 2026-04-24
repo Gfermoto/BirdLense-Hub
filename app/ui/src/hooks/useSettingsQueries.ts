@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchObservedSpecies, fetchSettings } from '../api/api';
+import { fetchSettings } from '../api/settingsSession';
+import { fetchObservedSpecies } from '../api/speciesOverviewDetections';
 import { queryKeys } from '../api/queryKeys';
 
 export function useSettingsQuery(enabled: boolean) {

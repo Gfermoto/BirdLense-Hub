@@ -26,14 +26,14 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { getApiErrorMessage } from '../../api/api';
 import {
-  fetchTimelineForObserverDate,
   exportTimelineForObserverDate,
+  fetchTimelineForObserverDate,
   fetchUnknownsForObserverDate,
-  fetchNearestRecordingDay,
-  fetchOverviewData,
-  getApiErrorMessage,
-} from '../../api/api';
+} from '../../api/timeline';
+import { fetchNearestRecordingDay } from '../../api/video';
+import { fetchOverviewData } from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';

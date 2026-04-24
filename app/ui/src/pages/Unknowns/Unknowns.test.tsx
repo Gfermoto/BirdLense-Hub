@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { UnknownCard } from './index';
-import type { UnknownDetection } from '../../api/api';
+import type { UnknownDetection } from '../../api/timeline';
 
 /** Align with App.tsx BrowserRouter future flags (silences v7 upgrade warnings). */
 const memoryRouterFuture = {

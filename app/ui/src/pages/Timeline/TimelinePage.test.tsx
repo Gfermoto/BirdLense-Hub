@@ -19,12 +19,29 @@ const exportTimelineForObserverDate = vi.hoisted(() =>
   vi.fn().mockResolvedValue(undefined),
 );
 
-vi.mock('../../api/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../api/api')>();
+vi.mock('../../api/timeline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/timeline')>();
   return {
     ...actual,
     exportTimelineForObserverDate,
     fetchTimelineForObserverDate: vi.fn().mockResolvedValue([]),
+    fetchUnknownsForObserverDate: vi.fn().mockResolvedValue([]),
+  };
+});
+
+vi.mock('../../api/video', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/video')>();
+  return {
+    ...actual,
+    fetchNearestRecordingDay: vi.fn().mockResolvedValue({ found: false }),
+  };
+});
+
+vi.mock('../../api/speciesOverviewDetections', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../api/speciesOverviewDetections')>();
+  return {
+    ...actual,
     fetchOverviewData: vi.fn().mockResolvedValue({
       topSpecies: [],
       stats: {
@@ -39,8 +56,6 @@ vi.mock('../../api/api', async (importOriginal) => {
       hourlyTemperature: Array(24).fill(null),
       observer_timezone: 'UTC',
     }),
-    fetchUnknownsForObserverDate: vi.fn().mockResolvedValue([]),
-    fetchNearestRecordingDay: vi.fn().mockResolvedValue({ found: false }),
   };
 });
 

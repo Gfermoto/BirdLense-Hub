@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography';
 import BuildIcon from '@mui/icons-material/Build';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
-import { BASE_API_URL } from '../../api/api';
+import { BASE_API_URL } from '../../api/client';
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 

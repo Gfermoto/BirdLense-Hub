@@ -23,7 +23,7 @@ import { StatusIndicator } from './StatusIndicator';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 import { useQuery } from '@tanstack/react-query';
-import { fetchFeedInfo } from '../api/api';
+import { fetchFeedInfo } from '../api/birdFoodFeed';
 import { queryKeys } from '../api/queryKeys';
 
 // Pulse animation for the live indicator

@@ -7,11 +7,8 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
-import {
-  fetchCatalogRepairStatus,
-  getApiErrorMessage,
-  startCatalogRepair,
-} from '../../api/api';
+import { getApiErrorMessage } from '../../api/api';
+import { fetchCatalogRepairStatus, startCatalogRepair } from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 

@@ -25,14 +25,10 @@ import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
-import {
-  resolveImageUrl,
-  downloadDetectionCropForINaturalist,
-  updateDetectionSpecies,
-  mergeVideoSpecies,
-  fetchBirdDirectory,
-  getApiErrorMessage,
-} from '../../api/api';
+import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
+import { downloadDetectionCropForINaturalist } from '../../api/dataset';
+import { fetchBirdDirectory, updateDetectionSpecies } from '../../api/speciesOverviewDetections';
+import { mergeVideoSpecies } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
