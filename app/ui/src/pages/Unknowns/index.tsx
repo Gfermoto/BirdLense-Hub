@@ -53,6 +53,7 @@ import {
   type UnknownDetection,
   getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
@@ -348,12 +349,21 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       : 'all';
   });
 
+  const unknownsListKey = useMemo(
+    () =>
+      queryKeys.unknowns.list(
+        selectedDate?.format('YYYY-MM-DD') ?? '',
+        timeOfDay,
+      ),
+    [selectedDate, timeOfDay],
+  );
+
   const {
     data: unknowns,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['unknowns', selectedDate?.format('YYYY-MM-DD'), timeOfDay],
+    queryKey: unknownsListKey,
     queryFn: () => {
       if (!selectedDate) return [];
       return fetchUnknownsForObserverDate(selectedDate.format('YYYY-MM-DD'), {
@@ -365,12 +375,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   });
 
   const { data: speciesList = [] } = useQuery({
-    queryKey: ['species'],
+    queryKey: queryKeys.species.directory,
     queryFn: () => fetchBirdDirectory(),
     staleTime: 5 * 60 * 1000,
   });
   const { data: recentCorrections = [] } = useQuery({
-    queryKey: ['corrections-recent'],
+    queryKey: queryKeys.corrections.recent,
     queryFn: () => fetchRecentCorrections(8),
     enabled: canEdit,
   });
@@ -386,12 +396,6 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
-  const unknownsQueryKey = [
-    'unknowns',
-    selectedDate?.format('YYYY-MM-DD'),
-    timeOfDay,
-  ] as const;
-
   const selectedUnknowns = useMemo(
     () =>
       (unknowns ?? []).filter((item) => selectedUnknownIds.includes(item.id)),
@@ -406,7 +410,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
 
   const resolveVideoIdForDetection = (detectionId: number): number | null => {
     const list =
-      queryClient.getQueryData<UnknownDetection[]>(unknownsQueryKey) ?? [];
+      queryClient.getQueryData<UnknownDetection[]>(unknownsListKey) ?? [];
     const row = list.find((u) => u.id === detectionId);
     return row?.video_id ?? null;
   };
@@ -460,12 +464,18 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       speciesId: number;
     }) => updateDetectionSpecies(detectionId, speciesId, 'unknowns'),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.unknownsCountAll,
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.speciesVisitsAll,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.overview.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.calendar.timelineTab,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.corrections.recent });
       const msg =
         data?.updated_count && data.updated_count > 1
           ? t('video.correctedInVideos', { count: data.updated_count })
@@ -482,12 +492,18 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     mutationFn: (detectionId: number) =>
       confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
-      queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['overview'] });
-      queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['corrections-recent'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.unknownsCountAll,
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.speciesVisitsAll,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.overview.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.calendar.timelineTab,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.corrections.recent });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
       setCorrectSuccess(t('unknowns.corrected'));
     },
@@ -531,12 +547,20 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['unknowns'] });
-      await queryClient.invalidateQueries({ queryKey: ['unknowns-count'] });
-      await queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
-      await queryClient.invalidateQueries({ queryKey: ['overview'] });
-      await queryClient.invalidateQueries({ queryKey: ['timeline'] });
-      await queryClient.invalidateQueries({ queryKey: ['migration-calendar'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.unknownsCountAll,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.speciesVisitsAll,
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.overview.all });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calendar.timelineTab,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calendar.migration,
+      });
       setSelectedUnknownIds([]);
       setBulkPreview(null);
       setBulkDialogOpen(false);
