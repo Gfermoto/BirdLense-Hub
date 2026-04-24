@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **[#341](https://github.com/Gfermoto/BirdLense-Hub/issues/341):** на POST upload-роутах (веса процессора, file-test, restore SQLite, YAML import) отклоняется непустой **`Content-Encoding`**, кроме единственного значения **`identity`** — снижает риск decompression bomb при нетипичных клиентах (`services/upload_request_encoding_guard.py`). Путь из ревью `processor.js` / `uploads.js` в этом репозитории отсутствует; дублирующих Flask-логгеров по коду не найдено.
+
 - **[#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339):** nginx больше не отдаёт весь volume `DATA_DIR` по префиксу `/data/`. Разрешены только **`/data/recordings/`**, **`/data/images/`**, **`/data/file_test/`** (видео, картинки каталога, file-replay); остальное, включая **`/data/db/*.db`**, датасет и кэш, получает **403** (`app/nginx/standalone.conf.template`, `standalone.conf`, `default.conf`).
 
 ### Changed
