@@ -8,6 +8,7 @@ import pytest
 
 import util as util_mod
 from routes import processor_routes as processor_routes_mod
+from services.processor_ingest import gateway as processor_gateway_mod
 from auth import client_ip_for_rate_limit, settings_check_access
 
 
@@ -145,11 +146,11 @@ class TestWebhookUrlValidation:
 
     def test_rejects_private_ip_webhook(self):
         """Private IP webhook targets must be blocked."""
-        assert processor_routes_mod._is_safe_webhook_url("http://127.0.0.1/hook") is False
+        assert processor_gateway_mod.is_safe_webhook_url("http://127.0.0.1/hook") is False
 
     def test_rejects_non_http_scheme_webhook(self):
         """Only http/https webhook schemes are allowed."""
-        assert processor_routes_mod._is_safe_webhook_url("file:///tmp/hook") is False
+        assert processor_gateway_mod.is_safe_webhook_url("file:///tmp/hook") is False
 
     def test_create_video_skips_unsafe_webhook_url(self, app, client, monkeypatch, tmp_path):
         """Unsafe webhook config must not result in outbound POST."""
@@ -164,7 +165,7 @@ class TestWebhookUrlValidation:
         monkeypatch.setattr(processor_routes_mod, "_check_processor_secret", lambda: True)
         posted = []
         monkeypatch.setattr(
-            processor_routes_mod.requests, "post", lambda *args, **kwargs: posted.append((args, kwargs))
+            processor_gateway_mod.requests, "post", lambda *args, **kwargs: posted.append((args, kwargs))
         )
         monkeypatch.setattr(processor_routes_mod, "fetch_weather", lambda: {})
         monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)

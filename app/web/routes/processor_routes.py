@@ -1,14 +1,15 @@
-"""HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды."""
+"""HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды.
 
-import ipaddress
+Доменные хелперы (секрет, webhook SSRF, нормализация детекций) —
+``services.processor_ingest.gateway`` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
+"""
+
 import json
 import os
-import secrets
-import socket
 import threading
+from datetime import datetime, timezone
+
 from flask import request
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
 
 from models import ActivityLog, db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
@@ -20,124 +21,27 @@ from services.api_json_validation import (
     parse_request_json_object_allow_empty,
 )
 from services.http_response_cache import bust_response_caches
-import requests
+from services.processor_ingest.gateway import (
+    check_processor_secret_token,
+    fire_webhook,
+    is_safe_webhook_url,
+    log_ingest_activity,
+    processor_detection_payload,
+)
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
 
 
-def _log_activity(type_name: str, payload: dict) -> None:
-    try:
-        db.session.add(ActivityLog(type=type_name, data=json.dumps(payload)))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-
-def _processor_detection_payload(raw: dict) -> dict:
-    """Strip unknown keys but keep explicit eligibility flags for VisitProcessor."""
-    if not isinstance(raw, dict):
-        return {}
-    allowed = {
-        "species_name",
-        "species",
-        "confidence",
-        "start_time",
-        "end_time",
-        "source",
-        "track_id",
-        "frames",
-        "detection_provider",
-        "visit_eligible",
-        "notification_eligible",
-        "arbitration_reason",
-        "decision_reason_before_arbitration",
-        "decision_reason",
-        "decision_kind",
-        "outcome_bucket",
-        "evidence_state",
-        "trust_band",
-        "detector_confidence",
-        "classifier_confidence",
-    }
-    return {k: raw[k] for k in allowed if k in raw}
-
-
-def _is_public_ip(ip: str) -> bool:
-    try:
-        addr = ipaddress.ip_address(ip)
-    except ValueError:
-        return False
-    return not any(
-        (
-            addr.is_private,
-            addr.is_loopback,
-            addr.is_link_local,
-            addr.is_multicast,
-            addr.is_reserved,
-            addr.is_unspecified,
-        )
-    )
-
-
-def _is_safe_webhook_url(url: str) -> bool:
-    raw = (url or "").strip()
-    if not raw:
-        return False
-    try:
-        parsed = urlparse(raw)
-    except ValueError:
-        return False
-    if parsed.scheme not in ("http", "https"):
-        return False
-    host = (parsed.hostname or "").strip()
-    if not host:
-        return False
-    if host.lower() == "localhost":
-        return False
-    try:
-        infos = socket.getaddrinfo(host, parsed.port or None, type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return False
-    if not infos:
-        return False
-    for info in infos:
-        addr = info[4][0]
-        if not _is_public_ip(addr):
-            return False
-    return True
-
-
-def _fire_webhook(url: str, species_list: list, start_time: datetime, logger):
-    """POST each detection to webhook URL. Runs in thread, logs errors."""
-    for sp in species_list:
-        try:
-            species_name = sp.get("species_name") or sp.get("species") or sp.get("name") or "unknown"
-            confidence = float(sp.get("confidence") or 0)
-            det_start = float(sp.get("start_time") or 0)
-            detection_time = start_time + timedelta(seconds=det_start)
-            if detection_time.tzinfo is None:
-                detection_time = detection_time.replace(tzinfo=timezone.utc)
-            payload = {
-                "species": species_name,
-                "confidence": round(confidence, 4),
-                "time": detection_time.isoformat(),
-                "source": sp.get("source", "video"),
-            }
-            requests.post(url, json=payload, timeout=5)
-        except Exception as e:
-            logger.warning("Webhook POST failed: %s", e)
-
-
 def _check_processor_secret():
     """Return True if request is from processor (has valid secret). In production, empty secret blocks access."""
-    secret = os.environ.get("PROCESSOR_SECRET", "").strip()
-    token = request.headers.get("X-Processor-Token") or ""
-    if not secret:
-        is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
-        return not is_prod  # Allow when secret not configured only in dev
-    return secrets.compare_digest(token, secret)
+    is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
+    return check_processor_secret_token(
+        request_token=request.headers.get("X-Processor-Token") or "",
+        env_secret=os.environ.get("PROCESSOR_SECRET", ""),
+        is_prod=is_prod,
+    )
 
 
 def register_routes(app):
@@ -161,7 +65,7 @@ def register_routes(app):
         species_list = data.get("species", []) or []
         if not species_list:
             return {"error": "Missing species"}, 400
-        species_list = [_processor_detection_payload(s) for s in species_list if isinstance(s, dict)]
+        species_list = [processor_detection_payload(s) for s in species_list if isinstance(s, dict)]
         species_list = [s for s in species_list if s.get("species_name") or s.get("species")]
         if not species_list:
             return {"error": "Missing species"}, 400
@@ -176,7 +80,7 @@ def register_routes(app):
         if not ok_file:
             if reason == "video_path_invalid":
                 return {"error": "Invalid video_path format"}, 400
-            _log_activity(
+            log_ingest_activity(
                 "ingest_gate",
                 {
                     "reason": reason or "video_file_missing",
@@ -229,9 +133,9 @@ def register_routes(app):
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
             if webhook_url and species_list:
-                if _is_safe_webhook_url(webhook_url):
+                if is_safe_webhook_url(webhook_url):
                     threading.Thread(
-                        target=_fire_webhook,
+                        target=fire_webhook,
                         args=(webhook_url, species_list, start_time, app.logger),
                         daemon=True,
                     ).start()
@@ -296,7 +200,7 @@ def register_routes(app):
                 suppress_reason,
                 preview_source,
             )
-            _log_activity(
+            log_ingest_activity(
                 "notify_suppressed",
                 {
                     "species": detection,
