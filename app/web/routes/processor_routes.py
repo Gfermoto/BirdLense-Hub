@@ -1,7 +1,7 @@
 """HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды.
 
-Доменные хелперы (секрет, webhook SSRF, нормализация детекций) —
-``services.processor_ingest.gateway`` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
+Доменная логика: ``services.processor_ingest`` — ``gateway``, ``video_ingest``
+([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
 """
 
 import json
@@ -26,9 +26,9 @@ from services.processor_ingest.gateway import (
     fire_webhook,
     is_safe_webhook_url,
     log_ingest_activity,
-    processor_detection_payload,
 )
-from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
+from services.processor_ingest.video_ingest import prepare_processor_video
+from recording_layout_paths import RECORDING_VIDEO_PATH_RE
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
@@ -56,57 +56,19 @@ def register_routes(app):
             return perr, 400
         if not data:
             return {"error": "JSON body required"}, 400
-        try:
-            start_time = datetime.fromisoformat(data.get("start_time"))
-            end_time = datetime.fromisoformat(data.get("end_time"))
-        except (ValueError, TypeError):
-            return {"error": "Invalid datetime format"}, 400
-
-        species_list = data.get("species", []) or []
-        if not species_list:
-            return {"error": "Missing species"}, 400
-        species_list = [processor_detection_payload(s) for s in species_list if isinstance(s, dict)]
-        species_list = [s for s in species_list if s.get("species_name") or s.get("species")]
-        if not species_list:
-            return {"error": "Missing species"}, 400
-        # Отсечь детекции с низким confidence (4% и т.п.)
         min_conf = float(app_config.get("detection.min_confidence_to_store") or 0.05)
-        species_list = [s for s in species_list if float(s.get("confidence") or 0) >= min_conf]
-        if not species_list:
-            return {"error": "All species below min_confidence_to_store threshold"}, 400
-
-        video_path = (data.get("video_path") or "").strip()
-        ok_file, resolved_full, reason = stat_recording_layout_file(video_path, kind="video")
-        if not ok_file:
-            if reason == "video_path_invalid":
-                return {"error": "Invalid video_path format"}, 400
-            log_ingest_activity(
-                "ingest_gate",
-                {
-                    "reason": reason or "video_file_missing",
-                    "video_path": video_path,
-                    "resolved_path": resolved_full,
-                },
-            )
-            return {
-                "error": "Video file is missing or unreadable on hub storage",
-                "reason": reason or "video_file_missing",
-                "video_path": video_path,
-            }, 400
-
-        spec_path = (data.get("spectrogram_path") or "").strip()
-        if spec_path:
-            ok_spec, _, _ = stat_recording_layout_file(spec_path, kind="spectrogram")
-            if not ok_spec:
-                data["spectrogram_path"] = ""
+        prep = prepare_processor_video(data, min_confidence=min_conf)
+        if prep[0] is False:
+            return prep[1], prep[2]
+        pv = prep[1]
 
         try:
             video = Video(
                 processor_version=data["processor_version"],
-                start_time=start_time,
-                end_time=end_time,
-                video_path=video_path,
-                spectrogram_path=data.get("spectrogram_path"),
+                start_time=pv.start_time,
+                end_time=pv.end_time,
+                video_path=pv.video_path,
+                spectrogram_path=pv.spectrogram_path,
                 **fetch_weather(),
             )
             raw_sw = data.get("scales_weight_delta_kg")
@@ -125,18 +87,18 @@ def register_routes(app):
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
-            visit_processor.process_detections(video, species_list)
+            visit_processor.process_detections(video, pv.species_list)
 
             db.session.commit()
             bust_response_caches()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
-            if webhook_url and species_list:
+            if webhook_url and pv.species_list:
                 if is_safe_webhook_url(webhook_url):
                     threading.Thread(
                         target=fire_webhook,
-                        args=(webhook_url, species_list, start_time, app.logger),
+                        args=(webhook_url, pv.species_list, pv.start_time, app.logger),
                         daemon=True,
                     ).start()
                 else:
