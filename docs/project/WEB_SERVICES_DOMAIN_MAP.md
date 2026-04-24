@@ -10,7 +10,7 @@
 
 ## 1. `species_catalog`
 
-Подпакет кода: `app/web/services/species_catalog/` (фаза B [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)) — модули **`allowlist.py`**, **`reconcile.py`**; shims **`species_catalog_allowlist_service.py`**, **`species_catalog_reconcile_service.py`** сохраняют старые импорты.
+Подпакет кода: `app/web/services/species_catalog/` (фаза B [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)) — модули **`allowlist.py`**, **`reconcile.py`**, **`api.py`**; shims **`species_catalog_*_service.py`** в корне `services/` сохраняют старые импорты.
 
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|

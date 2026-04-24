@@ -18,11 +18,23 @@ from services.species_catalog.allowlist import (
     species_matches_allowlist,
     species_name_match_norm_keys,
 )
+from services.species_catalog.api import (
+    fetch_bird_families_list,
+    fetch_bird_families_list_safe,
+    fetch_observed_species_list,
+    fetch_species_catalog_list,
+    fetch_track_regen_species_options,
+)
 from services.species_catalog.reconcile import reconcile_species_catalog
 
 __all__ = [
     "allowlist_scientific_name_for_display_name",
     "clear_allowlist_cache",
+    "fetch_bird_families_list",
+    "fetch_bird_families_list_safe",
+    "fetch_observed_species_list",
+    "fetch_species_catalog_list",
+    "fetch_track_regen_species_options",
     "ingest_name_matches_allowlist",
     "load_catalog_allowlist_names",
     "load_catalog_allowlist_norm_keys",
