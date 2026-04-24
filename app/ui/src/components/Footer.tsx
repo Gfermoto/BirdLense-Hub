@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
-import { fetchStatus } from '../api/api';
+import { fetchStatus } from '../api/camerasHealth';
 import { queryKeys } from '../api/queryKeys';
 import birdnetLogoUrl from '../assets/birdnet-logo.svg';
 

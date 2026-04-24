@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { formatSunTimeLocal } from '../api/api';
+import { formatSunTimeLocal } from '../api/weatherRegion';
 
 export interface SunTimes {
   dawn: string;

@@ -20,7 +20,7 @@ import {
   downloadDbBackup,
   purgeStorageRecordings,
   restoreDbBackup,
-} from '../../api/api';
+} from '../../api/settingsYamlDb';
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';

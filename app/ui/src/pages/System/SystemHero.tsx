@@ -14,7 +14,9 @@ import {
   fetchConfigAudit,
   fetchObservability,
   fetchReadiness,
-} from '../../api/api';
+} from '../../api/systemAuditMetrics';
+import { fetchBirdFood } from '../../api/birdFoodFeed';
+import { fetchSpeciesRegistryHub } from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 
 type SystemHeroProps = {

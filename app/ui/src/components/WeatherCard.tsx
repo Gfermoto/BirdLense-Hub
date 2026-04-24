@@ -14,7 +14,7 @@ import CloudIcon from '@mui/icons-material/Cloud';
 import WindIcon from '@mui/icons-material/Air';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Weather } from '../types';
-import { fetchSunTimes } from '../api/api';
+import { fetchSunTimes } from '../api/weatherRegion';
 import { queryKeys } from '../api/queryKeys';
 import { SunHorizon, type SunTimes } from './SunHorizon';
 import { formatLocalDateTime } from '../util';
