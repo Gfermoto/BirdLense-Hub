@@ -79,7 +79,7 @@ export function FileReplayCard({
   );
 
   const statusQuery = useQuery({
-    queryKey: ['file-test-status'],
+    queryKey: queryKeys.fileTest.status,
     queryFn: fetchFileTestStatus,
     refetchInterval: statusPollInterval,
     retry: false,
@@ -89,7 +89,7 @@ export function FileReplayCard({
     statusQuery.isSuccess && statusQuery.data?.video_source === 'file';
 
   const filesQuery = useQuery({
-    queryKey: ['file-test-files'],
+    queryKey: queryKeys.fileTest.files,
     queryFn: fetchFileTestFiles,
     enabled: fileMode,
     refetchInterval: fileMode ? filesPollInterval : false,
@@ -113,8 +113,8 @@ export function FileReplayCard({
   }, [inactive, statusQuery.data]);
 
   const invalidateAfterConfigChange = () => {
-    void qc.invalidateQueries({ queryKey: ['file-test-status'] });
-    void qc.invalidateQueries({ queryKey: ['file-test-files'] });
+    void qc.invalidateQueries({ queryKey: queryKeys.fileTest.status });
+    void qc.invalidateQueries({ queryKey: queryKeys.fileTest.files });
     void qc.invalidateQueries({ queryKey: queryKeys.settings.all });
   };
 
@@ -178,18 +178,18 @@ export function FileReplayCard({
   const runMut = useMutation({
     mutationFn: () => fileTestRun({ armed: true, loop: loopLocal }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['file-test-status'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.status });
     },
   });
 
   const loopMut = useMutation({
     mutationFn: (v: boolean) => fileTestRun({ loop: v }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['file-test-status'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.status });
     },
     onError: () => {
       loopQuietUntilRef.current = 0;
-      void qc.invalidateQueries({ queryKey: ['file-test-status'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.status });
     },
   });
 
@@ -214,14 +214,14 @@ export function FileReplayCard({
   const stopMut = useMutation({
     mutationFn: () => fileTestStop(),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['file-test-status'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.status });
     },
   });
 
   const delMut = useMutation({
     mutationFn: (name: string) => fileTestDeleteFile(name),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['file-test-files'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.files });
     },
   });
 
@@ -229,7 +229,7 @@ export function FileReplayCard({
     mutationFn: (f: File) => fileTestUpload(f),
     onMutate: () => setUploadError(null),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['file-test-files'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.fileTest.files });
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
     onError: (err: unknown) => {

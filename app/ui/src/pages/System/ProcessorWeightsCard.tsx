@@ -17,6 +17,7 @@ import {
   uploadProcessorWeight,
   type ProcessorWeightsSlotStatus,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
 function formatBytes(n: number | null | undefined): string {
@@ -136,7 +137,7 @@ export function ProcessorWeightsCard({
   const allowRef = useRef<HTMLInputElement>(null);
 
   const statusQ = useQuery({
-    queryKey: ['processor-weights-status'],
+    queryKey: queryKeys.systemPanels.processorWeightsStatus,
     queryFn: fetchProcessorWeightsStatus,
   });
 
@@ -155,7 +156,9 @@ export function ProcessorWeightsCard({
     onSuccess: async () => {
       setErr(null);
       setInfo(t('system.processorWeightsUploadOk'));
-      await qc.invalidateQueries({ queryKey: ['processor-weights-status'] });
+      await qc.invalidateQueries({
+        queryKey: queryKeys.systemPanels.processorWeightsStatus,
+      });
     },
     onError: (e: unknown) => {
       const code = e instanceof Error ? e.message : '';
@@ -180,7 +183,9 @@ export function ProcessorWeightsCard({
     onSuccess: async () => {
       setErr(null);
       setInfo(t('system.processorWeightsResetOk'));
-      await qc.invalidateQueries({ queryKey: ['processor-weights-status'] });
+      await qc.invalidateQueries({
+        queryKey: queryKeys.systemPanels.processorWeightsStatus,
+      });
     },
     onError: (e: unknown) => {
       setErr(getApiErrorMessage(e, t('system.processorWeightsResetFailed')));

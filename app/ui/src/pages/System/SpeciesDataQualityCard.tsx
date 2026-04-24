@@ -19,16 +19,17 @@ import {
   fetchCatalogCoverageMetrics,
   fetchSpeciesDataQuality,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 
 export function SpeciesDataQualityCard() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['species-data-quality'],
+    queryKey: queryKeys.systemPanels.speciesDataQuality,
     queryFn: fetchSpeciesDataQuality,
     staleTime: 60_000,
   });
   const { data: coverage } = useQuery({
-    queryKey: ['catalog-coverage-metrics'],
+    queryKey: queryKeys.systemPanels.catalogCoverageMetrics,
     queryFn: fetchCatalogCoverageMetrics,
     staleTime: 60_000,
   });

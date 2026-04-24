@@ -26,6 +26,7 @@ import CloudIcon from '@mui/icons-material/Cloud';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import { SpeciesSummary } from '../../types';
+import { queryKeys } from '../../api/queryKeys';
 import {
   fetchSpeciesSummary,
   fetchXenoCantoRecordings,
@@ -161,7 +162,7 @@ const SpeciesSummaryPage = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery<SpeciesSummary>({
-    queryKey: ['speciesSummary', speciesId],
+    queryKey: queryKeys.speciesSummary.bySpecies(String(speciesId ?? '')),
     queryFn: () => fetchSpeciesSummary(speciesId!),
     enabled: speciesIdValid,
   });
@@ -173,10 +174,14 @@ const SpeciesSummaryPage = () => {
     mutationFn: () => refreshSpeciesMetadata(speciesId as number),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['speciesSummary', speciesId],
+        queryKey: queryKeys.speciesSummary.bySpecies(String(speciesId!)),
       });
-      void queryClient.invalidateQueries({ queryKey: ['speciesSummary'] });
-      void queryClient.invalidateQueries({ queryKey: ['species'] });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.speciesSummary.all,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.species.directory,
+      });
       setImageLoadFailed(false);
     },
   });
