@@ -1,17 +1,15 @@
 """HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды.
 
-Доменная логика: ``services.processor_ingest`` — ``gateway``, ``video_ingest``
-([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
+Доменная логика: ``services.processor_ingest`` — ``gateway``, ``video_ingest``,
+``notify_ingest``, ``activity_log_ingest`` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
 """
 
-import json
 import os
 import threading
-from datetime import datetime, timezone
 
 from flask import request
 
-from models import ActivityLog, db, BirdFood, Video, Species
+from models import db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
@@ -25,8 +23,9 @@ from services.processor_ingest.gateway import (
     check_processor_secret_token,
     fire_webhook,
     is_safe_webhook_url,
-    log_ingest_activity,
 )
+from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
+from services.processor_ingest.notify_ingest import process_processor_notify_detections
 from services.processor_ingest.video_ingest import prepare_processor_video
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE
 
@@ -146,134 +145,13 @@ def register_routes(app):
         data, perr = parse_request_json_object_allow_empty(request)
         if perr is not None:
             return perr, 400
-        detection = data.get("detection")
-        image_path = data.get("image_path")
-        image_base64 = data.get("image_base64")
-        link = data.get("link") or "live"
-        preview_source = data.get("preview_source") or "unknown"
-        notification_eligible = bool(data.get("notification_eligible", True))
-        suppress_reason = str(data.get("suppress_reason") or "").strip() or "notification_ineligible"
-        image_bytes = None
-        image_status = "missing"
-        if not notification_eligible:
-            app.logger.info(
-                "notify/detections: suppressed %s (eligible=false, reason=%s, preview_source=%s)",
-                detection,
-                suppress_reason,
-                preview_source,
-            )
-            log_ingest_activity(
-                "notify_suppressed",
-                {
-                    "species": detection,
-                    "preview_source": preview_source,
-                    "suppress_reason": suppress_reason,
-                    "telegram_delivery": "skipped",
-                    "has_image": bool(image_base64 or image_path),
-                },
-            )
-            return {"message": f"Successfully received notification of {detection}", "skipped": True}, 200
-        if image_base64:
-            try:
-                import base64
-
-                image_bytes = base64.b64decode(image_base64)
-            except Exception as e:
-                app.logger.warning("Failed to decode image_base64 for notify: %s", e)
-                image_status = "decode_failed"
-        if image_base64 and not image_bytes:
-            app.logger.warning("notify/detections: image_base64 present but decode produced empty bytes")
-            image_status = "decode_failed"
-        elif not image_base64:
-            app.logger.info(
-                "notify/detections: no image for %s (preview_source=%s)",
-                detection,
-                preview_source,
-            )
-            image_status = "missing"
-        else:
-            app.logger.info(
-                "notify/detections: image present for %s (preview_source=%s, bytes=%s)",
-                detection,
-                preview_source,
-                len(image_bytes or b""),
-            )
-            image_status = "present"
-        if not image_base64 and not image_path:
-            app.logger.info(
-                "notify/detections: skipped %s (no preview context, preview_source=%s)",
-                detection,
-                preview_source,
-            )
-            try:
-                db.session.add(
-                    ActivityLog(
-                        type="notify_preview",
-                        data=json.dumps(
-                            {
-                                "species": detection,
-                                "preview_source": preview_source,
-                                "has_image": False,
-                                "image_status": image_status,
-                                "telegram_delivery": "skipped",
-                                "photo_requested": False,
-                                "photo_available": False,
-                                "photo_sent": False,
-                                "fallback_reason": "no_preview_context",
-                            }
-                        ),
-                    )
-                )
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            return {"message": f"Successfully received notification of {detection}", "skipped": True}, 200
-        excluded_species = app_config.get("general.notification_excluded_species", [])
-        if detection not in excluded_species:
-            lower = detection.lower()
-            icon = (
-                "chipmunk"
-                if any(s in lower for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка"))
-                else "bird"
-            )
-            notify_result = (
-                notify(
-                    f"{detection} Detected",
-                    tags=icon,
-                    image_path=image_path,
-                    image_bytes=image_bytes,
-                    link=link,
-                    timestamp=datetime.now(timezone.utc),
-                    fallback_reason_hint="decode_failed" if image_status == "decode_failed" else None,
-                )
-                or {}
-            )
-            fallback_reason = notify_result.get("fallback_reason")
-            if image_status == "decode_failed":
-                fallback_reason = "decode_failed"
-            try:
-                db.session.add(
-                    ActivityLog(
-                        type="notify_preview",
-                        data=json.dumps(
-                            {
-                                "species": detection,
-                                "preview_source": preview_source,
-                                "has_image": bool(image_bytes),
-                                "image_status": image_status,
-                                "telegram_delivery": notify_result.get("telegram_delivery", "unknown"),
-                                "photo_requested": bool(notify_result.get("photo_requested", False)),
-                                "photo_available": bool(notify_result.get("photo_available", False)),
-                                "photo_sent": bool(notify_result.get("photo_sent", False)),
-                                "fallback_reason": fallback_reason,
-                            }
-                        ),
-                    )
-                )
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        return {"message": f"Successfully received notification of {detection}"}, 200
+        excluded = app_config.get("general.notification_excluded_species", [])
+        return process_processor_notify_detections(
+            data,
+            logger=app.logger,
+            notify_fn=notify,
+            excluded_species=excluded,
+        )
 
     @app.route("/api/processor/notify/motion", methods=["POST"])
     def notify_motion_route():
@@ -286,37 +164,7 @@ def register_routes(app):
         if not _check_processor_secret():
             app.logger.warning("activity_log: 403 Forbidden (PROCESSOR_SECRET mismatch)")
             return {"error": "Forbidden"}, 403
-        try:
-            data, perr = parse_request_json_object_allow_empty(request)
-            if perr is not None:
-                return perr, 400
-            activity_type = data.get("type")
-            raw_data = data.get("data")
-            activity_data = json.dumps(raw_data) if raw_data is not None else "{}"
-            if len(activity_data) > 65536:
-                return {"error": "Activity data too large (max 64 KB)"}, 400
-            activity_id = data.get("id")
-            if activity_id is not None:
-                activity_id = int(activity_id)
-
-            if not activity_type:
-                return {"error": 'Field "type" is required'}, 400
-
-            if activity_id is None:
-                new_log = ActivityLog(type=activity_type, data=activity_data)
-                db.session.add(new_log)
-                db.session.commit()
-                return {"message": "Activity log created successfully", "id": new_log.id}, 201
-            else:
-                log = db.session.get(ActivityLog, activity_id)
-                if not log:
-                    return {"error": "Activity log with this ID not found"}, 404
-                log.type = activity_type
-                log.data = activity_data
-                log.updated_at = datetime.now(timezone.utc)
-                db.session.commit()
-                return {"message": "Activity log updated successfully", "id": log.id}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception("activity_log failed: %s", e)
-            return {"error": "Internal server error"}, 500
+        data, perr = parse_request_json_object_allow_empty(request)
+        if perr is not None:
+            return perr, 400
+        return upsert_activity_log_from_processor(data, logger=app.logger)
