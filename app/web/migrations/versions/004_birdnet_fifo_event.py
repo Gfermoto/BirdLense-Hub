@@ -25,6 +25,7 @@ def upgrade():
         "birdnet_fifo_event",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("ts_epoch", sa.Float(), nullable=False),
+        # SA 2.x: на PostgreSQL колонка создаётся как JSONB, на SQLite — JSON.
         sa.Column("payload", sa.JSON(), nullable=False),
     )
     op.create_index(

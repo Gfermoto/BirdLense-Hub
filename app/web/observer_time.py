@@ -51,10 +51,10 @@ def fetch_sun_times(date_str: str) -> dict | None:
 
 @lru_cache(maxsize=32)
 def _observer_timezone_name_cached(lat: str, lon: str) -> str:
-    import zoneinfo
-    from timezonefinder import TimezoneFinder
-
     try:
+        import zoneinfo
+        from timezonefinder import TimezoneFinder
+
         lat_f = float(str(lat).replace(",", "."))
         lon_f = float(str(lon).replace(",", "."))
         tf = TimezoneFinder()

@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **[#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339):** nginx больше не отдаёт весь volume `DATA_DIR` по префиксу `/data/`. Разрешены только **`/data/recordings/`**, **`/data/images/`**, **`/data/file_test/`** (видео, картинки каталога, file-replay); остальное, включая **`/data/db/*.db`**, датасет и кэш, получает **403** (`app/nginx/standalone.conf.template`, `standalone.conf`, `default.conf`).
+
 ### Changed
 
 - **Документация (CONFIGURATION):** EN/RU — блок **On this page** / **По странице** (быстрые якоря), ссылки на **`app/.env.example`** и **`docs/project/openapi.md`** в шапке; **I18N_STATUS** — строка **SETTINGS_TRIGGERS_PHASE2**, шаг про OpenAPI/contract-тест при смене HTTP-маршрутов.
@@ -28,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Процессор в настройках:** `ProcessorSection.tsx` разбит на восемь блоков в `sections/processor/*.tsx` (пороги, тайминги, мультикамера/BirdNET, расширенные пороги, guardrails, light gate, спектрограмма/датасет, Frigate fusion) — оркестратор ~70 строк.
 
 - **Coverage настроек:** из `AUTO_ALLOWLIST_KEYS` убраны ключи, для которых уже есть `form.Field` в дереве Settings (меньше ложного «planned-ui» для полей с UI).
+
+- **[#340](https://github.com/Gfermoto/BirdLense-Hub/issues/340):** тесты `processor_runtime_stats` для больших байтовых gauge (порядка 100 GiB), окна latency с `maxlen=200` и отрицательных сэмплов; в миграции **`004_birdnet_fifo_event`** уточнено, что `sa.JSON()` на PostgreSQL создаётся как JSONB (SQLAlchemy 2.x).
 
 ---
 
