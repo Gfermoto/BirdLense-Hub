@@ -105,6 +105,7 @@ nav:
       - Governance: GOVERNANCE.md
       - GitHub CLI setup: GITHUB_SETUP_GH.md
       - Wiki and CI reports: WIKI_AUTOMATION.md
+      - "Web services domain map (#344)": project/WEB_SERVICES_DOMAIN_MAP.md
   - "Repository (canonical files)":
       - Contributing: project/contributing.md
       - Security policy: project/security-policy.md
