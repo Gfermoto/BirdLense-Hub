@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Coverage настроек:** из `AUTO_ALLOWLIST_KEYS` убраны ключи, для которых уже есть `form.Field` в дереве Settings (меньше ложного «planned-ui» для полей с UI).
 
+- **[#340](https://github.com/Gfermoto/BirdLense-Hub/issues/340):** тесты `processor_runtime_stats` для больших байтовых gauge (порядка 100 GiB), окна latency с `maxlen=200` и отрицательных сэмплов; в миграции **`004_birdnet_fifo_event`** уточнено, что `sa.JSON()` на PostgreSQL создаётся как JSONB (SQLAlchemy 2.x).
+
 ---
 
 ## [0.3.6] - 2026-04-21
