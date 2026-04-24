@@ -52,11 +52,12 @@
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
 | ~~**Критический**~~ **Исправлено** | `location /data/` + `alias` — запрос `/data/../.env`. | Проверка `..` в URI → 403 во всех конфигах nginx. |
+| ~~**Критический**~~ **Исправлено** | Тот же широкий alias отдавал весь volume: **`/data/db/birdlense.db`**, кропы датасета, кэш — без HTTP-auth. | **Allowlist** в nginx: только `/data/recordings/`, `/data/images/`, `/data/file_test/`; остальное под `/data/*` → **403** ([#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339)). |
 | **Высокий** | `/data/recordings/` без аутентификации; предсказуемые пути к `video.mp4`. | Выдача через API с auth или ограничение по IP. |
 
 **Смягчение (на выбор при публичном доступе):** (1) **allowlist по IP** — отдельный `location ^~ /data/recordings/` с `allow`/`deny` (пример `app/nginx/examples/recordings_allowlist.conf.snippet`, [DEPLOY_SERVER.ru.md §8](./DEPLOY_SERVER.ru.md)); (2) **без прямой раздачи медиа** — снаружи только reverse proxy на `/api/…` и авторизованные stream-роуты; (3) **`auth_request`** к сессии Hub — сложнее, в образ по умолчанию не входит.
 
-**Проверка:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — при уязвимости будет 200.
+**Проверки:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — при уязвимости будет 200. **`curl -I "http://YOUR_HOST:8085/data/db/birdlense.db"`** — должно быть **403** (не `application/octet-stream`).
 
 ---
 
