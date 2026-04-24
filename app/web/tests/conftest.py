@@ -83,6 +83,12 @@ def _reset_global_test_state():
             _cache._store.clear()
     except Exception:
         pass
+    try:
+        from observer_time import _observer_timezone_name_cached
+
+        _observer_timezone_name_cached.cache_clear()
+    except Exception:
+        pass
     # Reset UI long-job status (shared module, not ui_system_routes)
     try:
         import routes.ui_system_jobs_state as _js
