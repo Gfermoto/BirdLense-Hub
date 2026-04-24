@@ -18,6 +18,7 @@ import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
 import dayjs, { Dayjs } from 'dayjs';
 import { BASE_API_URL } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { LibraryCardShell } from './LibraryCardShell';
 import { getDayjsLocale, type StorageDay } from './libraryShared';
 
@@ -118,7 +119,7 @@ export function RecordingsCalendar() {
     isLoading,
     isError,
   } = useQuery<StorageDay[]>({
-    queryKey: ['storageStats'],
+    queryKey: queryKeys.storage.stats,
     queryFn: async () => {
       const { data } = await axios.get<StorageDay[]>(
         `${BASE_API_URL}/storage/stats`,

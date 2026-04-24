@@ -6,6 +6,7 @@ import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import { fetchObservability } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
 const PREVIEW_ORDER = [
@@ -41,7 +42,7 @@ const FALLBACK_ORDER = [
 export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['system-observability'],
+    queryKey: queryKeys.systemPanels.observability,
     queryFn: fetchObservability,
     staleTime: 30_000,
   });

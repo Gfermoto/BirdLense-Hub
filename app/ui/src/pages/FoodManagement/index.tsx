@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import Info from '@mui/icons-material/Info';
 import { resolveImageUrl, fetchBirdFood, toggleBirdFood } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { BirdFood } from '../../types';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState } from '../../components/PageState';
@@ -27,17 +28,17 @@ export const FoodManagement = () => {
   const { isAdmin } = useProtectedArea();
   const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const { data: foodData, isLoading } = useQuery({
-    queryKey: ['birdFood'],
+    queryKey: queryKeys.birdFood.all,
     queryFn: fetchBirdFood,
   });
 
   const toggleMutation = useMutation({
     mutationFn: toggleBirdFood,
     onMutate: async (foodId) => {
-      await queryClient.cancelQueries({ queryKey: ['birdFood'] });
-      const previousFoods = queryClient.getQueryData(['birdFood']);
+      await queryClient.cancelQueries({ queryKey: queryKeys.birdFood.all });
+      const previousFoods = queryClient.getQueryData(queryKeys.birdFood.all);
 
-      queryClient.setQueryData(['birdFood'], (old: BirdFood[]) =>
+      queryClient.setQueryData(queryKeys.birdFood.all, (old: BirdFood[]) =>
         old.map((food) =>
           food.id === foodId ? { ...food, active: !food.active } : food,
         ),
@@ -46,10 +47,10 @@ export const FoodManagement = () => {
       return { previousFoods };
     },
     onError: (_err, _variables, context) => {
-      queryClient.setQueryData(['birdFood'], context?.previousFoods);
+      queryClient.setQueryData(queryKeys.birdFood.all, context?.previousFoods);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['birdFood'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdFood.all });
     },
   });
 

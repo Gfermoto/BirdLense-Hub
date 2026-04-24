@@ -24,6 +24,7 @@ import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFeedInfo } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 
 // Pulse animation for the live indicator
 const pulse = keyframes`
@@ -128,7 +129,7 @@ export function Navigation() {
     React.useState<PendingAction | null>(null);
 
   const { data: feedInfo } = useQuery({
-    queryKey: ['feed-info'],
+    queryKey: queryKeys.feed.info,
     queryFn: fetchFeedInfo,
     staleTime: 1000 * 30,
   });

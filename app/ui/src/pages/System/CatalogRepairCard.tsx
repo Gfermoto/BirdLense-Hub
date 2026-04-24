@@ -12,6 +12,7 @@ import {
   getApiErrorMessage,
   startCatalogRepair,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
 export function CatalogRepairCard() {
@@ -19,7 +20,7 @@ export function CatalogRepairCard() {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
-    queryKey: ['catalog-repair-status'],
+    queryKey: queryKeys.systemPanels.catalogRepairStatus,
     queryFn: fetchCatalogRepairStatus,
     staleTime: 5_000,
     refetchInterval: (q) =>
@@ -32,7 +33,9 @@ export function CatalogRepairCard() {
     mutationFn: (limit: number) => startCatalogRepair(limit),
     onSuccess: async () => {
       setActionError(null);
-      await qc.invalidateQueries({ queryKey: ['catalog-repair-status'] });
+      await qc.invalidateQueries({
+        queryKey: queryKeys.systemPanels.catalogRepairStatus,
+      });
     },
     onError: (mutationError: unknown) => {
       setActionError(

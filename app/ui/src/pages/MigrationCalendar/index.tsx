@@ -19,6 +19,7 @@ import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { fetchMigrationCalendar, fetchRegionComparison } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
@@ -94,12 +95,12 @@ export const MigrationCalendar = () => {
   }, [periodMode, startYear, endYear, startDate, endDate, catalogMode]);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['migration-calendar', params],
+    queryKey: queryKeys.calendar.migrationData(params),
     queryFn: () => fetchMigrationCalendar(params),
   });
 
   const { data: regionComparison } = useQuery({
-    queryKey: ['region-comparison'],
+    queryKey: queryKeys.calendar.regionComparison,
     queryFn: () => fetchRegionComparison(),
     staleTime: 1000 * 60 * 10, // 10 min
     retry: false,

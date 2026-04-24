@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispenseFeed, fetchFeedInfo, postScaleTare } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../util';
 
@@ -70,7 +71,7 @@ export const FeedCard = () => {
   const [tareLoading, setTareLoading] = useState(false);
 
   const { data: feedInfo } = useQuery({
-    queryKey: ['feed-info'],
+    queryKey: queryKeys.feed.info,
     queryFn: fetchFeedInfo,
     staleTime: 1000 * 15,
     refetchInterval: (query) =>
@@ -90,7 +91,7 @@ export const FeedCard = () => {
       success: result.success,
     });
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['feed-info'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.info });
     }
   };
 
@@ -129,7 +130,7 @@ export const FeedCard = () => {
       success: result.success,
     });
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['feed-info'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.info });
     }
   };
 

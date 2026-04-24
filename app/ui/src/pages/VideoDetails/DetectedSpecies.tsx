@@ -33,6 +33,7 @@ import {
   fetchBirdDirectory,
   getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
 interface GroupedSpecies {
@@ -119,7 +120,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const queryClient = useQueryClient();
 
   const { data: speciesList = [] } = useQuery({
-    queryKey: ['species'],
+    queryKey: queryKeys.species.directory,
     queryFn: () => fetchBirdDirectory(),
     staleTime: 5 * 60 * 1000,
   });

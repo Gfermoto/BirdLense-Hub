@@ -37,17 +37,17 @@ export function SystemHero({ advanced }: SystemHeroProps) {
     refetchInterval: 30_000,
   });
   const configAuditQ = useQuery({
-    queryKey: ['config-audit'],
+    queryKey: queryKeys.systemPanels.configAudit,
     queryFn: fetchConfigAudit,
     staleTime: 30_000,
   });
   const observabilityQ = useQuery({
-    queryKey: ['system-observability'],
+    queryKey: queryKeys.systemPanels.observability,
     queryFn: fetchObservability,
     staleTime: 30_000,
   });
   const catalogRepairQ = useQuery({
-    queryKey: ['catalog-repair-status'],
+    queryKey: queryKeys.systemPanels.catalogRepairStatus,
     queryFn: fetchCatalogRepairStatus,
     staleTime: 5_000,
     refetchInterval: (q) =>
