@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **[#343](https://github.com/Gfermoto/BirdLense-Hub/issues/343) (фаза A):** UI — вынесены **`app/ui/src/api/client.ts`** (base URL + timeout axios), **`app/ui/src/api/timeline.ts`** (таймлайн + unknowns list/export); публичные импорты по-прежнему из **`api.tsx`**; расширены **`queryKeys`** и миграция ключей на страницах **Timeline** / **Unknowns**; тест **`timeline.test.ts`**.
+
 - **Документация (CONFIGURATION):** EN/RU — блок **On this page** / **По странице** (быстрые якоря), ссылки на **`app/.env.example`** и **`docs/project/openapi.md`** в шапке; **I18N_STATUS** — строка **SETTINGS_TRIGGERS_PHASE2**, шаг про OpenAPI/contract-тест при смене HTTP-маршрутов.
 
 - **Документация (рефакторинг):** в **README** EN/RU — одна строка для CI-политики вместо дублирующихся ссылок на **CI_AND_QUALITY**; в блоке безопасности EN — ссылка на **SECURITY.ru**; в **README.ru** — симметричные EN-ссылки для ACCESS/SECURITY; в таблицах команд — регенерация OpenAPI. В **Documentation** EN/RU — раздел **OpenAPI spec maintenance** с якорем `{#openapi-spec-maintenance}`, пункт чеклиста ревью и строка в **Key documents**; **SITE_MAP** EN/RU — строка про скрипты OpenAPI.

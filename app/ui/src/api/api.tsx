@@ -1,7 +1,5 @@
-import { Dayjs } from 'dayjs';
 import {
   BirdFood,
-  SpeciesVisit,
   Settings,
   SpeciesSummary,
   OverviewData,
@@ -12,15 +10,9 @@ import axios from 'axios';
 import { formatLocalTime } from '../util';
 import type { TimeOfDay } from '../utils/timeUtils';
 import type { components } from '../generated/openapi-types';
+import { BASE_API_URL, BASE_URL } from './client';
 
-// Relative path = same origin (works with any host/IP). При SSR/тестах — из env или дефолт.
-export const BASE_URL =
-  typeof window !== 'undefined'
-    ? ''
-    : (import.meta.env?.VITE_BASE_URL as string) || '';
-export const BASE_API_URL = `${BASE_URL}/api/ui`;
-
-axios.defaults.timeout = 30000;
+export { BASE_URL, BASE_API_URL } from './client';
 
 /** Текст ошибки из JSON `{ error: string }` или fallback (для мутаций UI). */
 export function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -67,90 +59,15 @@ export const resolveImageUrl = (
   return base ? `${base}/${url}` : `/${url}`;
 };
 
-export const fetchTimeline = async (
-  startTime: Dayjs,
-  endTime: Dayjs,
-): Promise<SpeciesVisit[]> => {
-  const response = await axios.get(`${BASE_API_URL}/timeline`, {
-    params: {
-      start_time: startTime.unix(),
-      end_time: endTime.unix(),
-    },
-  });
-  return response.data;
-};
-
-export const fetchTimelineForObserverDate = async (
-  date: string,
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null },
-): Promise<SpeciesVisit[]> => {
-  const response = await axios.get(`${BASE_API_URL}/timeline`, {
-    params: {
-      date,
-      ...(options?.hour != null
-        ? { hour: options.hour }
-        : { time_of_day: options?.timeOfDay ?? 'all' }),
-    },
-  });
-  return response.data;
-};
-
-/** Export timeline as CSV, JSON, or eBird format. Triggers download. */
-export const exportTimeline = async (
-  startTime: Dayjs,
-  endTime: Dayjs,
-  format: 'csv' | 'json' | 'ebird',
-): Promise<void> => {
-  const params = new URLSearchParams({
-    start_time: String(startTime.unix()),
-    end_time: String(endTime.unix()),
-    format,
-  });
-  const url = `${BASE_API_URL}/timeline/export?${params}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename =
-    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-
-export const exportTimelineForObserverDate = async (
-  date: string,
-  format: 'csv' | 'json' | 'ebird',
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null },
-): Promise<void> => {
-  const params = new URLSearchParams({
-    date,
-    format,
-    ...(options?.hour != null
-      ? { hour: String(options.hour) }
-      : { time_of_day: options?.timeOfDay ?? 'all' }),
-  });
-  const url = `${BASE_API_URL}/timeline/export?${params}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename =
-    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
+export {
+  exportTimeline,
+  exportTimelineForObserverDate,
+  fetchTimeline,
+  fetchTimelineForObserverDate,
+  fetchUnknowns,
+  fetchUnknownsForObserverDate,
+} from './timeline';
+export type { UnknownDetection } from './timeline';
 
 export const fetchWeather = async () => {
   const response = await axios.get(`${BASE_API_URL}/weather`);
@@ -1901,22 +1818,6 @@ export const fetchXenoCantoRecordings = async (
   return response.data;
 };
 
-export interface UnknownDetection {
-  id: number;
-  video_id: number;
-  species_id: number;
-  species_name: string;
-  confidence: number;
-  start_time: string;
-  end_time: string;
-  source: string;
-  detection_provider?: string;
-  image_url?: string;
-  review_state?: 'pending' | 'reviewed' | 'not_applicable';
-  review_reason?: 'low_confidence' | 'generic_bird' | string;
-  review_source?: string;
-}
-
 export interface ReviewQueueDeletePreviewVideo {
   video_id: number;
   video_path: string | null;
@@ -1943,37 +1844,6 @@ export interface ReviewQueueDeletePreview {
   missing_video_ids: number[];
   videos: ReviewQueueDeletePreviewVideo[];
 }
-
-export const fetchUnknowns = async (
-  startTime: Dayjs,
-  endTime: Dayjs,
-  limit = 100,
-): Promise<UnknownDetection[]> => {
-  const response = await axios.get(`${BASE_API_URL}/unknowns`, {
-    params: {
-      start_time: startTime.unix(),
-      end_time: endTime.unix(),
-      limit,
-    },
-  });
-  return response.data;
-};
-
-export const fetchUnknownsForObserverDate = async (
-  date: string,
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null; limit?: number },
-): Promise<UnknownDetection[]> => {
-  const response = await axios.get(`${BASE_API_URL}/unknowns`, {
-    params: {
-      date,
-      limit: options?.limit ?? 100,
-      ...(options?.hour != null
-        ? { hour: options.hour }
-        : { time_of_day: options?.timeOfDay ?? 'all' }),
-    },
-  });
-  return response.data;
-};
 
 /** Download monthly PDF report. month: YYYY-MM */
 export const downloadReportPdf = async (month: string): Promise<void> => {
