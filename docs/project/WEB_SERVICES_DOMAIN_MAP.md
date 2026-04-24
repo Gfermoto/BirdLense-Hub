@@ -75,7 +75,7 @@
 
 ## 7. `processor_ingest`
 
-Подпакет: `app/web/services/processor_ingest/` — `gateway.py` (секрет, SSRF webhook, детекции, POST webhook), `video_ingest.py` (валидация тела `POST /api/processor/videos` без БД); HTTP — `routes/processor_routes.py` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344) фаза C).
+Подпакет: `app/web/services/processor_ingest/` — `gateway.py`, `video_ingest.py`, `notify_ingest.py`, `activity_log_ingest.py`; HTTP — `routes/processor_routes.py` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344) фаза C).
 
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
