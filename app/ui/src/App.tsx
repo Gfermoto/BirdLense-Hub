@@ -16,7 +16,7 @@ import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { trackSiteVisitor } from './api/api';
+import { trackSiteVisitor } from './api/systemAuditMetrics';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));

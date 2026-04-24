@@ -18,7 +18,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
   fetchCatalogCoverageMetrics,
   fetchSpeciesDataQuality,
-} from '../../api/api';
+} from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 
 export function SpeciesDataQualityCard() {

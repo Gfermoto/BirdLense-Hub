@@ -9,14 +9,9 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
-import {
-  fetchCatalogRepairStatus,
-  fetchConfigAudit,
-  fetchObservability,
-  fetchReadiness,
-} from '../../api/systemAuditMetrics';
-import { fetchBirdFood } from '../../api/birdFoodFeed';
-import { fetchSpeciesRegistryHub } from '../../api/speciesRegistryHub';
+import { fetchReadiness } from '../../api/camerasHealth';
+import { fetchConfigAudit, fetchObservability } from '../../api/systemAuditMetrics';
+import { fetchCatalogRepairStatus } from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 
 type SystemHeroProps = {

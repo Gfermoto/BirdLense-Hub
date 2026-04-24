@@ -6,7 +6,8 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import { SettingsForm } from './SettingsForm';
-import { updateSettings, restartProcessor } from '../../api/api';
+import { restartProcessor } from '../../api/notificationsProcessor';
+import { updateSettings } from '../../api/settingsSession';
 import { queryKeys } from '../../api/queryKeys';
 import {
   useObservedSpeciesQuery,

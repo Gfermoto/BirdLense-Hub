@@ -26,7 +26,7 @@ import {
   downloadSettingsYamlSafe,
   fetchCoordinatesByZip,
   importSettingsYaml,
-} from '../../../api/api';
+} from '../../../api/settingsYamlDb';
 import { queryKeys } from '../../../api/queryKeys';
 import type { Settings } from '../../../types';
 import { ServiceBlock } from '../shared/ServiceBlock';

@@ -13,7 +13,7 @@ import Link from '@mui/material/Link';
 import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
-import { fetchRecognitionImprovementSummary } from '../../../../api/api';
+import { fetchRecognitionImprovementSummary } from '../../../../api/speciesRegistryHub';
 import { queryKeys } from '../../../../api/queryKeys';
 
 type Props = {

@@ -3,7 +3,7 @@ import Avatar from '@mui/material/Avatar';
 import { BirdIcon } from './icons/BirdIcon';
 import { RodentIcon } from './icons/RodentIcon';
 import { isRodentLike } from '../util';
-import { resolveImageUrl } from '../api/birdFoodFeed';
+import { resolveImageUrl } from '../api/api';
 
 interface SpeciesIconProps {
   speciesName: string;

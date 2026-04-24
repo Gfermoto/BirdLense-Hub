@@ -41,8 +41,9 @@ const rollbackRecognitionImprovement = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ active_mode: 'heuristic' }),
 );
 
-vi.mock('../../api/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../api/api')>();
+vi.mock('../../api/speciesRegistryHub', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../api/speciesRegistryHub')>();
   return {
     ...actual,
     fetchRecognitionImprovementSummary,

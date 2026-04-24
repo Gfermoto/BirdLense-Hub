@@ -13,7 +13,7 @@ import {
   downloadSettingsYamlFull,
   downloadSettingsYamlSafe,
   importSettingsYaml,
-} from '../../../api/api';
+} from '../../../api/settingsYamlDb';
 import { queryKeys } from '../../../api/queryKeys';
 
 type Props = {
