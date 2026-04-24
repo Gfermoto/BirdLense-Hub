@@ -8,6 +8,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCameras } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -73,7 +74,7 @@ export const LivePage = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['cameras'],
+    queryKey: queryKeys.live.cameras,
     queryFn: fetchCameras,
   });
 

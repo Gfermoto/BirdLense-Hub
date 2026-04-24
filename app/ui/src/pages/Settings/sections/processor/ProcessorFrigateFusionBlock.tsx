@@ -14,6 +14,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
 import { fetchRecognitionImprovementSummary } from '../../../../api/api';
+import { queryKeys } from '../../../../api/queryKeys';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -22,7 +23,7 @@ type Props = {
 export function ProcessorFrigateFusionBlock({ form }: Props) {
   const { t } = useTranslation();
   const summaryQ = useQuery({
-    queryKey: ['recognition-improvement-summary'],
+    queryKey: queryKeys.systemPanels.recognitionImprovementSummary,
     queryFn: fetchRecognitionImprovementSummary,
     staleTime: 10_000,
   });

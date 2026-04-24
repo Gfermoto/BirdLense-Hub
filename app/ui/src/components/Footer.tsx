@@ -5,6 +5,7 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import { fetchStatus } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 import birdnetLogoUrl from '../assets/birdnet-logo.svg';
 
 const footerLinkSx = {
@@ -41,7 +42,7 @@ function Dot() {
 export function Footer() {
   const { t } = useTranslation();
   const { data: status } = useQuery({
-    queryKey: ['status'],
+    queryKey: queryKeys.health.status,
     queryFn: fetchStatus,
   });
   const birdnetUrl = status?.birdnet_url?.trim();

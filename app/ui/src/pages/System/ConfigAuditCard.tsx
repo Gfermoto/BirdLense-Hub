@@ -10,13 +10,14 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { fetchConfigAudit } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { localizedConfigAuditWarning } from './configAuditWarningLocale';
 import { SystemCardShell } from './SystemCardShell';
 
 export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['config-audit'],
+    queryKey: queryKeys.systemPanels.configAudit,
     queryFn: fetchConfigAudit,
     staleTime: 30_000,
   });

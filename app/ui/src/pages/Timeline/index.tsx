@@ -34,6 +34,7 @@ import {
   fetchOverviewData,
   getApiErrorMessage,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
@@ -128,7 +129,7 @@ export function TimelinePage() {
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
   const { data: observerOverview } = useQuery({
-    queryKey: ['timeline-observer-timezone'],
+    queryKey: queryKeys.timeline.observerTimezone,
     queryFn: () => fetchOverviewData(dayjs().format('YYYY-MM-DD')),
     staleTime: 1000 * 60 * 30,
   });
@@ -162,12 +163,11 @@ export function TimelinePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: [
-      'speciesVisits',
-      selectedDate?.format('YYYY-MM-DD'),
+    queryKey: queryKeys.timeline.speciesVisits(
+      selectedDate?.format('YYYY-MM-DD') ?? '',
       timeOfDay,
       filterHour,
-    ],
+    ),
     queryFn: () => {
       if (!selectedDate) return [];
       return fetchTimelineForObserverDate(
@@ -179,12 +179,11 @@ export function TimelinePage() {
   });
 
   const { data: unknownsCount = 0 } = useQuery({
-    queryKey: [
-      'unknowns-count',
-      selectedDate?.format('YYYY-MM-DD'),
+    queryKey: queryKeys.timeline.unknownsCount(
+      selectedDate?.format('YYYY-MM-DD') ?? '',
       timeOfDay,
       filterHour,
-    ],
+    ),
     queryFn: async () => {
       if (!selectedDate) return 0;
       const rows = await fetchUnknownsForObserverDate(

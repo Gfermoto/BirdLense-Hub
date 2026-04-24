@@ -1,4 +1,6 @@
-/** Central React Query keys (#296) — invalidate via queryKeys.* for stable contracts. */
+/** Central React Query keys (#296, #343) — invalidate via queryKeys.* for stable contracts. */
+
+import type { MigrationCalendarParams } from './migrationCalendar';
 
 export const queryKeys = {
   settings: {
@@ -9,6 +11,27 @@ export const queryKeys = {
   },
   species: {
     observed: ['species', 'observed'] as const,
+    /** Справочник видов (Unknowns picker и др.). */
+    directory: ['species'] as const,
+  },
+  overview: {
+    all: ['overview'] as const,
+    byDay: (date: string) => ['overview', date] as const,
+  },
+  weather: {
+    widget: ['weather'] as const,
+    sunTimes: (date: string) => ['sun-times', date] as const,
+  },
+  storage: {
+    stats: ['storageStats'] as const,
+  },
+  calendar: {
+    /** Кэш вкладок/виджетов, привязанных к строке «timeline». */
+    timelineTab: ['timeline'] as const,
+    migration: ['migration-calendar'] as const,
+    migrationData: (params: MigrationCalendarParams) =>
+      ['migration-calendar', params] as const,
+    regionComparison: ['region-comparison'] as const,
   },
   system: {
     readiness: ['system', 'readiness'] as const,
@@ -18,5 +41,87 @@ export const queryKeys = {
     visitors: (days: number) => ['system', 'visitors', days] as const,
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
+  },
+  /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
+  systemPanels: {
+    configAudit: ['config-audit'] as const,
+    observability: ['system-observability'] as const,
+    catalogRepairStatus: ['catalog-repair-status'] as const,
+    recognitionImprovementSummary: ['recognition-improvement-summary'] as const,
+    recognitionImprovementTrainStatus: [
+      'recognition-improvement-train-status',
+    ] as const,
+    speciesDataQuality: ['species-data-quality'] as const,
+    catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
+    classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
+    processorWeightsStatus: ['processor-weights-status'] as const,
+    fusionExportStatus: ['fusion-export-status'] as const,
+    fusionEvalStatus: ['fusion-eval-status'] as const,
+  },
+  feed: {
+    info: ['feed-info'] as const,
+  },
+  /** Polling `/api/ui/status` в шапке/футере. */
+  health: {
+    status: ['status'] as const,
+  },
+  live: {
+    cameras: ['cameras'] as const,
+  },
+  birdFood: {
+    all: ['birdFood'] as const,
+  },
+  fileTest: {
+    status: ['file-test-status'] as const,
+    files: ['file-test-files'] as const,
+  },
+  /** Страница каталога видов (отдельно от `bird-directory`). */
+  speciesDirectory: {
+    list: ['species-directory'] as const,
+  },
+  /** Таймлайн + счётчик unknowns на той же дате (#343). */
+  timeline: {
+    observerTimezone: ['timeline-observer-timezone'] as const,
+    speciesVisits: (
+      date: string,
+      timeOfDay: string,
+      filterHour: number | null,
+    ) => ['speciesVisits', date, timeOfDay, filterHour] as const,
+    /** Префикс для invalidateQueries — все окна таймлайна. */
+    speciesVisitsAll: ['speciesVisits'] as const,
+    unknownsCount: (
+      date: string,
+      timeOfDay: string,
+      filterHour: number | null,
+    ) => ['unknowns-count', date, timeOfDay, filterHour] as const,
+    unknownsCountAll: ['unknowns-count'] as const,
+  },
+  unknowns: {
+    list: (date: string, timeOfDay: string) =>
+      ['unknowns', date, timeOfDay] as const,
+    all: ['unknowns'] as const,
+  },
+  corrections: {
+    recent: ['corrections-recent'] as const,
+  },
+  video: {
+    /** Префикс для сброса кэша по всем роликам. */
+    all: ['video'] as const,
+    detail: (id: string) => ['video', id] as const,
+    neighbors: (id: string) => ['video-neighbors', id] as const,
+    neighborsAll: ['video-neighbors'] as const,
+    detectionFrames: (id: string) => ['video-detection-frames', id] as const,
+    listAll: ['videos'] as const,
+    trackRegenStatusUi: (videoId: number | null, nonce: number) =>
+      ['track-regen-status-ui', videoId, nonce] as const,
+    specRegenStatusUi: (videoId: number | null, nonce: number) =>
+      ['spec-regen-status-ui', videoId, nonce] as const,
+  },
+  birdDirectory: {
+    all: ['bird-directory'] as const,
+  },
+  speciesSummary: {
+    all: ['speciesSummary'] as const,
+    bySpecies: (speciesId: string) => ['speciesSummary', speciesId] as const,
   },
 } as const;

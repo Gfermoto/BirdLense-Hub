@@ -38,6 +38,7 @@ import {
   type FusionTraceStep,
   type FusionTraceTrack,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../../util';
 
@@ -168,19 +169,31 @@ export const VideoInfo = ({ video }: { video: Video }) => {
     onSuccess: async () => {
       setDeleteDialogOpen(false);
       const vid = String(video.id);
-      queryClient.removeQueries({ queryKey: ['video', vid] });
-      queryClient.removeQueries({ queryKey: ['video-neighbors', vid] });
+      queryClient.removeQueries({ queryKey: queryKeys.video.detail(vid) });
+      queryClient.removeQueries({ queryKey: queryKeys.video.neighbors(vid) });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['unknowns'] }),
-        queryClient.invalidateQueries({ queryKey: ['unknowns-count'] }),
-        queryClient.invalidateQueries({ queryKey: ['videos'] }),
-        queryClient.invalidateQueries({ queryKey: ['video-neighbors'] }),
-        queryClient.invalidateQueries({ queryKey: ['timeline'] }),
-        queryClient.invalidateQueries({ queryKey: ['speciesVisits'] }),
-        queryClient.invalidateQueries({ queryKey: ['overview'] }),
-        queryClient.invalidateQueries({ queryKey: ['migration-calendar'] }),
-        queryClient.invalidateQueries({ queryKey: ['bird-directory'] }),
-        queryClient.invalidateQueries({ queryKey: ['speciesSummary'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.unknownsCountAll,
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.video.listAll }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.video.neighborsAll,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.calendar.timelineTab,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.speciesVisitsAll,
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.overview.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.calendar.migration,
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.birdDirectory.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.speciesSummary.all,
+        }),
       ]);
       const back = safeInternalPath(
         (location.state as { from?: string } | null)?.from,
