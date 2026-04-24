@@ -1,6 +1,7 @@
 # Example: restrict direct access to recordings by client IP (nginx).
-# Product default: location /data/ in standalone.conf.template serves all of /app/data/.
-# Threat: predictable paths .../recordings/YYYY/MM/DD/HHMMSS/video.mp4 without HTTP auth.
+# Product default (#339): standalone.conf.template allowlists only /data/recordings/,
+# /data/images/, /data/file_test/ — не весь volume (SQLite db/, dataset/, cache/ — 403).
+# Threat (остаётся): предсказуемые URL записей без HTTP auth — ниже IP-allowlist при необходимости.
 #
 # How to use:
 # 1) Merge into server { } in the generated default.conf (after entrypoint), or maintain a fork
