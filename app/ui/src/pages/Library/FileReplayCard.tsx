@@ -25,10 +25,10 @@ import {
   fileTestRun,
   fileTestStop,
   fileTestUpload,
-  patchSettings,
-  restartProcessor,
   type FileTestStatusPayload,
-} from '../../api/api';
+} from '../../api/fileTest';
+import { restartProcessor } from '../../api/notificationsProcessor';
+import { patchSettings } from '../../api/settingsSession';
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';

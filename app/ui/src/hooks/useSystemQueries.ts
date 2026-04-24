@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchReadiness } from '../api/camerasHealth';
 import {
-  fetchReadiness,
   fetchProcessorLogs,
   fetchSystemMetricsHistory,
   fetchSystemMetricsLive,
   fetchSystemVisitors,
-} from '../api/api';
+} from '../api/systemAuditMetrics';
 import { queryKeys } from '../api/queryKeys';
 
 export function useSystemMetricsLiveQuery() {

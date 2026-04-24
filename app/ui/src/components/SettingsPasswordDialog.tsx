@@ -7,7 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import { PasswordField } from './PasswordField';
-import { verifySettingsPassword } from '../api/api';
+import { verifySettingsPassword } from '../api/settingsSession';
 
 export const SettingsPasswordDialog = ({
   open,

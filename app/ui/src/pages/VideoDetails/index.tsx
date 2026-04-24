@@ -5,16 +5,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
-  fetchVideo,
-  fetchVideoNeighbors,
-  fetchVideoDetectionFrames,
-  fetchTrackRegenerationStatus,
   fetchSpectrogramRegenerationStatus,
-  regenerateTracksForSingleVideo,
-  regenerateSpectrogramForSingleVideo,
-  type TrackRegenerationJobStatus,
+  fetchTrackRegenerationStatus,
   type SpectrogramRegenerationJobStatus,
-} from '../../api/api';
+  type TrackRegenerationJobStatus,
+} from '../../api/speciesOverviewDetections';
+import {
+  fetchVideo,
+  fetchVideoDetectionFrames,
+  fetchVideoNeighbors,
+  regenerateSpectrogramForSingleVideo,
+  regenerateTracksForSingleVideo,
+} from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';

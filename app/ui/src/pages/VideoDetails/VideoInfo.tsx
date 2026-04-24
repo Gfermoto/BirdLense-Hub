@@ -28,16 +28,15 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Video } from '../../types';
 import { WeatherCard } from '../../components/WeatherCard';
+import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
+import { BASE_API_URL } from '../../api/client';
 import {
-  BASE_API_URL,
   deleteVideo,
   fetchVideoFusionTrace,
-  getApiErrorMessage,
-  resolveImageUrl,
   type FusionTracePayload,
   type FusionTraceStep,
   type FusionTraceTrack,
-} from '../../api/api';
+} from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../../util';

@@ -9,14 +9,14 @@ import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { getApiErrorMessage } from '../../api/api';
 import {
   fetchProcessorWeightsStatus,
-  getApiErrorMessage,
   resetProcessorWeights,
   restartProcessor,
   uploadProcessorWeight,
   type ProcessorWeightsSlotStatus,
-} from '../../api/api';
+} from '../../api/notificationsProcessor';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 

@@ -25,7 +25,7 @@ import type { Settings } from '../../../types';
 import {
   fetchEbirdMappingSuggestions,
   type EbirdMappingSuggestionsResponse,
-} from '../../../api/api';
+} from '../../../api/settingsSession';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;

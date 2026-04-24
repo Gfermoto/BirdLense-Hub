@@ -14,7 +14,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import { fetchClassifierDatasetAlignment } from '../../api/api';
+import { fetchClassifierDatasetAlignment } from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 
 export function ClassifierDatasetAlignmentCard() {
