@@ -9,3 +9,6 @@ export const BASE_URL =
 export const BASE_API_URL = `${BASE_URL}/api/ui`;
 
 axios.defaults.timeout = 30000;
+
+/** Длинный timeout для POST перегенерации треков/спектрограмм и опроса job status. */
+export const JOB_STATUS_POLL_TIMEOUT_MS = 120_000;

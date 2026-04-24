@@ -15,6 +15,7 @@ import {
   type TrackRegenerationJobStatus,
   type SpectrogramRegenerationJobStatus,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
@@ -164,7 +165,7 @@ export const VideoDetails = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['video', params.id],
+    queryKey: queryKeys.video.detail(String(params.id)),
     queryFn: () => fetchVideo(params.id as string),
   });
   useDocumentTitle(
@@ -172,7 +173,7 @@ export const VideoDetails = () => {
   );
 
   const { data: neighbors } = useQuery({
-    queryKey: ['video-neighbors', params.id],
+    queryKey: queryKeys.video.neighbors(String(params.id)),
     queryFn: () => fetchVideoNeighbors(params.id as string),
     enabled: Boolean(params.id),
   });
@@ -182,7 +183,7 @@ export const VideoDetails = () => {
     isPending: detectionFramesPending,
     error: detectionFramesError,
   } = useQuery({
-    queryKey: ['video-detection-frames', params.id],
+    queryKey: queryKeys.video.detectionFrames(String(params.id)),
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
     enabled: Boolean(params.id),
   });
@@ -244,7 +245,10 @@ export const VideoDetails = () => {
   });
 
   const { data: trackRemoteStatus } = useQuery({
-    queryKey: ['track-regen-status-ui', followTrackRegen, trackRegenPollNonce],
+    queryKey: queryKeys.video.trackRegenStatusUi(
+      followTrackRegen,
+      trackRegenPollNonce,
+    ),
     queryFn: fetchTrackRegenerationStatus,
     enabled: followTrackRegen !== null,
     staleTime: 0,
@@ -253,7 +257,10 @@ export const VideoDetails = () => {
   });
 
   const { data: specRemoteStatus } = useQuery({
-    queryKey: ['spec-regen-status-ui', followSpecRegen, specRegenPollNonce],
+    queryKey: queryKeys.video.specRegenStatusUi(
+      followSpecRegen,
+      specRegenPollNonce,
+    ),
     queryFn: fetchSpectrogramRegenerationStatus,
     enabled: followSpecRegen !== null,
     staleTime: 0,
@@ -281,11 +288,15 @@ export const VideoDetails = () => {
     if (!st || st.status === 'running') return;
     setFinishedTrackRegen(st);
     setFollowTrackRegen(null);
-    void queryClient.invalidateQueries({ queryKey: ['video', params.id] });
     void queryClient.invalidateQueries({
-      queryKey: ['video-detection-frames', params.id],
+      queryKey: queryKeys.video.detail(String(params.id)),
     });
-    void queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.video.detectionFrames(String(params.id)),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.timeline.speciesVisitsAll,
+    });
   }, [followTrackRegen, trackRemoteStatus, queryClient, params.id]);
 
   useEffect(() => {
@@ -294,8 +305,12 @@ export const VideoDetails = () => {
     if (!st || st.status === 'running') return;
     setFinishedSpecRegen(st);
     setFollowSpecRegen(null);
-    void queryClient.invalidateQueries({ queryKey: ['video', params.id] });
-    void queryClient.invalidateQueries({ queryKey: ['speciesVisits'] });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.video.detail(String(params.id)),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.timeline.speciesVisitsAll,
+    });
   }, [followSpecRegen, specRemoteStatus, queryClient, params.id]);
 
   const trackJobSummary = useMemo(
