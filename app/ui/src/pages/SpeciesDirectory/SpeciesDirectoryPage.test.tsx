@@ -30,8 +30,9 @@ const fetchBirdDirectory = vi.hoisted(() =>
   ]),
 );
 
-vi.mock('../../api/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../api/api')>();
+vi.mock('../../api/speciesOverviewDetections', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../api/speciesOverviewDetections')>();
   return {
     ...actual,
     fetchBirdDirectory,

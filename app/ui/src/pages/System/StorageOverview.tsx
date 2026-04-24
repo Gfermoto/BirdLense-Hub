@@ -15,12 +15,12 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { BASE_API_URL } from '../../api/client';
 import {
-  BASE_API_URL,
   downloadDbBackup,
   purgeStorageRecordings,
   restoreDbBackup,
-} from '../../api/api';
+} from '../../api/settingsYamlDb';
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';

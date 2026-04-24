@@ -30,8 +30,8 @@ vi.mock('./StatusIndicator', () => ({
   StatusIndicator: () => <div>status</div>,
 }));
 
-vi.mock('../api/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../api/api')>();
+vi.mock('../api/birdFoodFeed', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/birdFoodFeed')>();
   return {
     ...actual,
     fetchFeedInfo: vi.fn().mockResolvedValue({ donate_url: '' }),

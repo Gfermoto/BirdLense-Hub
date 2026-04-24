@@ -11,7 +11,7 @@ import ScaleIcon from '@mui/icons-material/Scale';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { dispenseFeed, fetchFeedInfo, postScaleTare } from '../api/api';
+import { dispenseFeed, fetchFeedInfo, postScaleTare } from '../api/birdFoodFeed';
 import { queryKeys } from '../api/queryKeys';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../util';

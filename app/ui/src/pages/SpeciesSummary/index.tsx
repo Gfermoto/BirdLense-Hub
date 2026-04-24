@@ -27,16 +27,16 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import { SpeciesSummary } from '../../types';
 import { queryKeys } from '../../api/queryKeys';
+import { resolveImageUrl } from '../../api/api';
 import {
   fetchSpeciesSummary,
   fetchXenoCantoRecordings,
   refreshSpeciesMetadata,
-} from '../../api/api';
+} from '../../api/speciesOverviewDetections';
 import { useTranslation } from 'react-i18next';
 import { labelToUniqueHexColor } from '../../util';
 import { VisitCard } from '../../components/VisitCard';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
-import { resolveImageUrl } from '../../api/api';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { PageLoadingState } from '../../components/PageState';

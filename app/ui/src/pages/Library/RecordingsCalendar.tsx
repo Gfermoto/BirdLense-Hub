@@ -17,7 +17,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
 import dayjs, { Dayjs } from 'dayjs';
-import { BASE_API_URL } from '../../api/api';
+import { BASE_API_URL } from '../../api/client';
 import { queryKeys } from '../../api/queryKeys';
 import { LibraryCardShell } from './LibraryCardShell';
 import { getDayjsLocale, type StorageDay } from './libraryShared';

@@ -7,10 +7,10 @@ import React, {
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchSettingsRequiresPassword,
   checkSettingsAccess,
+  fetchSettingsRequiresPassword,
   logoutSettingsSession,
-} from '../api/api';
+} from '../api/settingsSession';
 import { queryKeys } from '../api/queryKeys';
 
 interface ProtectedAreaContextValue {

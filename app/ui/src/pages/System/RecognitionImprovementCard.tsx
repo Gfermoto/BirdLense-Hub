@@ -8,13 +8,13 @@ import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { getApiErrorMessage } from '../../api/api';
 import {
   fetchRecognitionImprovementSummary,
   fetchRecognitionImprovementTrainStatus,
-  getApiErrorMessage,
   rollbackRecognitionImprovement,
   startRecognitionImprovementTrain,
-} from '../../api/api';
+} from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
