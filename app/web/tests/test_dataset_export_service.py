@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from models import db, Species, Video, VideoSpecies
 from services import dataset_export_service as des
+import services.dataset_export.export_core as des_core
 
 
 class TestDatasetExportOrphans:
@@ -103,7 +104,7 @@ class TestDatasetExportOrphans:
             train.mkdir(parents=True, exist_ok=True)
             (train / f"{video.id}_1_1.jpg").write_bytes(b"not-an-image")
             (train / "999999_1_2.jpg").write_bytes(b"not-an-image")
-            monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
+            monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
 
             result = des.clean_dataset(
                 dry_run=True,
@@ -120,8 +121,8 @@ class TestDatasetExportOrphans:
         for i in range(5):
             (train_a / f"1_1_{i}.jpg").write_bytes(b"jpeg")
             (train_b / f"2_1_{i}.jpg").write_bytes(b"jpeg")
-        monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(des, "_get_image_dimensions", lambda _p: None)
+        monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
+        monkeypatch.setattr(des_core, "_get_image_dimensions", lambda _p: None)
 
         zip_bytes, err = des.build_dataset_zip(
             ready_for_train=True,
@@ -145,8 +146,8 @@ class TestDatasetExportOrphans:
         train_a.mkdir(parents=True, exist_ok=True)
         for i in range(20):
             (train_a / f"100_{i}_{i}.jpg").write_bytes(b"x")
-        monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(des, "_get_image_dimensions", lambda _p: None)
+        monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
+        monkeypatch.setattr(des_core, "_get_image_dimensions", lambda _p: None)
 
         zip_bytes, err = des.build_dataset_zip(
             ready_for_train=True,
@@ -173,8 +174,8 @@ class TestDatasetExportOrphans:
         (train_a / "1_1_11.jpg").write_bytes(b"b")
         for i in range(10):
             (train_a / f"9_{i}_{i}.jpg").write_bytes(b"x")
-        monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(des, "_get_image_dimensions", lambda _p: None)
+        monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
+        monkeypatch.setattr(des_core, "_get_image_dimensions", lambda _p: None)
 
         zip_ok, err_ok = des.build_dataset_zip(
             ready_for_train=True,
@@ -209,8 +210,8 @@ class TestDatasetExportOrphans:
         for i in range(5):
             (train_a / f"1_1_{i}.jpg").write_bytes(b"x")
         (train_b / "2_1_0.jpg").write_bytes(b"y")
-        monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(des, "_get_image_dimensions", lambda _p: None)
+        monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
+        monkeypatch.setattr(des_core, "_get_image_dimensions", lambda _p: None)
 
         zip_ok, err_ok = des.build_dataset_zip(
             ready_for_train=True,
@@ -243,10 +244,10 @@ class TestDatasetExportOrphans:
             (train_a / f"10_{idx}_{idx}.jpg").write_bytes(b"a")
         for idx in range(4):
             (train_a / f"20_{idx}_{idx}.jpg").write_bytes(b"b")
-        monkeypatch.setattr(des, "data_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(des, "_get_image_dimensions", lambda _p: None)
+        monkeypatch.setattr(des_core, "data_dir", lambda: str(tmp_path))
+        monkeypatch.setattr(des_core, "_get_image_dimensions", lambda _p: None)
         monkeypatch.setattr(
-            des,
+            des_core,
             "_video_metadata_for_ids",
             lambda _ids: {
                 10: {
