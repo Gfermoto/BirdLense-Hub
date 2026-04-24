@@ -3,6 +3,10 @@
 Фаза B [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344): модули переносятся
 сюда по одному; корневые ``services/species_*.py`` остаются shims до полной миграции импортов.
 
+Корневой пакет реэкспортирует только **allowlist** (лёгкий слой без циклов).
+Для API и reconcile импортируйте ``services.species_catalog.api`` и
+``services.species_catalog.reconcile`` (или shims ``species_catalog_*_service``).
+
 См. также: ``docs/project/WEB_SERVICES_DOMAIN_MAP.md``.
 """
 
@@ -18,27 +22,13 @@ from services.species_catalog.allowlist import (
     species_matches_allowlist,
     species_name_match_norm_keys,
 )
-from services.species_catalog.api import (
-    fetch_bird_families_list,
-    fetch_bird_families_list_safe,
-    fetch_observed_species_list,
-    fetch_species_catalog_list,
-    fetch_track_regen_species_options,
-)
-from services.species_catalog.reconcile import reconcile_species_catalog
 
 __all__ = [
     "allowlist_scientific_name_for_display_name",
     "clear_allowlist_cache",
-    "fetch_bird_families_list",
-    "fetch_bird_families_list_safe",
-    "fetch_observed_species_list",
-    "fetch_species_catalog_list",
-    "fetch_track_regen_species_options",
     "ingest_name_matches_allowlist",
     "load_catalog_allowlist_names",
     "load_catalog_allowlist_norm_keys",
-    "reconcile_species_catalog",
     "resolve_allowlist_path",
     "species_matches_allowlist",
     "species_name_match_norm_keys",

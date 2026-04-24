@@ -10,7 +10,7 @@
 
 ## 1. `species_catalog`
 
-Подпакет кода: `app/web/services/species_catalog/` (фазы B–C [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)) — модули **`allowlist.py`**, **`reconcile.py`**, **`api.py`**, **`registry.py`** (канонический реестр видов); shims **`species_catalog_*_service.py`** и **`species_registry_service.py`** сохраняют старые импорты.
+Подпакет кода: `app/web/services/species_catalog/` (фазы B–C [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)) — модули **`allowlist.py`**, **`reconcile.py`**, **`api.py`**, **`registry.py`** (канонический реестр видов); shims **`species_catalog_*_service.py`** и **`species_registry_service.py`** сохраняют старые импорты. В **`species_catalog/__init__.py`** реэкспорт только **allowlist** (без `api`/`reconcile` в корне пакета — иначе циклический импорт при загрузке; API и reconcile подключаются через подмодули или shims).
 
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
@@ -60,6 +60,8 @@
 ---
 
 ## 6. `notifications_and_integrations`
+
+Логика Telegram / Web Push: пакет **`app/web/notifications/`** (`__init__.py`; раньше одиночный **`notifications.py`**, #344); `util` / **`compat_reexports`** сохраняют совместимость импортов.
 
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|

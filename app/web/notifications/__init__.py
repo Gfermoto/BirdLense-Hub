@@ -1,6 +1,7 @@
 """Telegram and Web Push notification helpers.
 
-Extracted from util.py. util.py re-exports everything here for backward compatibility.
+Пакет ``notifications/`` (раньше одиночный модуль ``notifications.py``; #344).
+Изначально вынесено из ``util.py``; ``util`` реэкспортирует через ``compat_reexports``.
 
 Note: path-safety helpers (`read_safe_image_bytes`, `remove_safe_image_file`) are lazy-imported
 from util where needed to avoid a circular import at module load time (util imports this module).
