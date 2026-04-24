@@ -32,11 +32,16 @@ jobs:
         env:
           BASE_URL_INPUT: ${{ github.event.inputs.base_url }}
           HUB_AUDIT_DEFAULT: ${{ vars.CATALOG_CARDS_AUDIT_URL }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           BASE_URL="${BASE_URL_INPUT:-}"
           if [ -z "$BASE_URL" ]; then BASE_URL="${HUB_AUDIT_DEFAULT:-}"; fi
           if [ -z "$BASE_URL" ]; then
+            if [ "${EVENT_NAME}" = "schedule" ]; then
+              echo "::notice::Catalog cards audit skipped (no CATALOG_CARDS_AUDIT_URL). Set repo variable Actions → Variables → CATALOG_CARDS_AUDIT_URL to enable nightly runs, or use workflow_dispatch with base_url."
+              exit 0
+            fi
             echo "::error::No base URL: set repository variable CATALOG_CARDS_AUDIT_URL (Settings → Secrets and variables → Actions → Variables) or run workflow_dispatch with base_url."
             exit 1
           fi
