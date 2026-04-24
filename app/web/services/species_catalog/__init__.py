@@ -1,6 +1,9 @@
-"""Shim: реализация перенесена в ``services.species_catalog.allowlist`` (#344 фаза B).
+"""Bounded context: species catalog (allowlist, API, reconcile, …).
 
-Сохраняйте существующие импорты ``from services.species_catalog_allowlist_service import …``.
+Фаза B [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344): модули переносятся
+сюда по одному; корневые ``services/species_*.py`` остаются shims до полной миграции импортов.
+
+См. также: ``docs/project/WEB_SERVICES_DOMAIN_MAP.md``.
 """
 
 from __future__ import annotations

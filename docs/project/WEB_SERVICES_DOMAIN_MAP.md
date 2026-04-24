@@ -10,6 +10,8 @@
 
 ## 1. `species_catalog`
 
+Подпакет кода: `app/web/services/species_catalog/` (фаза B [#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)) — первый модуль **`allowlist.py`**; корневой shim **`species_catalog_allowlist_service.py`** сохраняет старые импорты.
+
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
 | `/api/ui/species`, `/api/ui/bird_families`, `/api/ui/species-image`, `/api/ui/species/...` | `ui_species_catalog_routes.py`, `ui_species_media_routes.py` | `species_catalog_*`, `species_summary_*`, `species_image_proxy_*`, `species_metadata_*`, `xeno_canto_*`, `species_tuning_*` |
