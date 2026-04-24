@@ -15,6 +15,7 @@ import WindIcon from '@mui/icons-material/Air';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Weather } from '../types';
 import { fetchSunTimes } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 import { SunHorizon, type SunTimes } from './SunHorizon';
 import { formatLocalDateTime } from '../util';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
@@ -44,7 +45,7 @@ export const WeatherCard = ({ weather, date }: WeatherCardProps) => {
   })();
 
   const { data: sunTimes } = useQuery({
-    queryKey: ['sun-times', date],
+    queryKey: queryKeys.weather.sunTimes(date || ''),
     queryFn: () => fetchSunTimes(date!),
     enabled: !!date && isConfigured,
     staleTime: 1000 * 60 * 60,

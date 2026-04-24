@@ -17,6 +17,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { BASE_API_URL } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 interface ScanResult {
@@ -59,10 +60,10 @@ export function DatabaseMaintenanceCard() {
       setScanResult(data);
       qc.invalidateQueries({ queryKey: ['storageStats'] });
       qc.invalidateQueries({ queryKey: ['videos'] });
-      qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: queryKeys.overview.all });
       qc.invalidateQueries({ queryKey: ['speciesVisits'] });
       qc.invalidateQueries({ queryKey: ['timeline'] });
-      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
       qc.invalidateQueries({ queryKey: ['bird-directory'] });
       qc.invalidateQueries({ queryKey: ['species'] });
       qc.invalidateQueries({ queryKey: ['speciesSummary'] });
@@ -98,9 +99,9 @@ export function DatabaseMaintenanceCard() {
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
       qc.invalidateQueries({ queryKey: ['videos'] });
       qc.invalidateQueries({ queryKey: ['speciesVisits'] });
-      qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: queryKeys.overview.all });
       qc.invalidateQueries({ queryKey: ['timeline'] });
-      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
       qc.invalidateQueries({ queryKey: ['bird-directory'] });
       qc.invalidateQueries({ queryKey: ['species'] });
       qc.invalidateQueries({ queryKey: ['speciesSummary'] });
@@ -137,9 +138,9 @@ export function DatabaseMaintenanceCard() {
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
       qc.invalidateQueries({ queryKey: ['videos'] });
       qc.invalidateQueries({ queryKey: ['speciesVisits'] });
-      qc.invalidateQueries({ queryKey: ['overview'] });
+      qc.invalidateQueries({ queryKey: queryKeys.overview.all });
       qc.invalidateQueries({ queryKey: ['timeline'] });
-      qc.invalidateQueries({ queryKey: ['migration-calendar'] });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
       qc.invalidateQueries({ queryKey: ['bird-directory'] });
       qc.invalidateQueries({ queryKey: ['species'] });
       qc.invalidateQueries({ queryKey: ['speciesSummary'] });
