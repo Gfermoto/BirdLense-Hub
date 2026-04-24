@@ -685,17 +685,19 @@ class TestTimeline:
             db.session.add(species)
             db.session.flush()
             species_name = species.name
+            # Midday UTC on 2026-03-25 lies in observer-local calendar 2026-03-25 for both UTC
+            # and Europe/Moscow (unlike late evening UTC on 2026-03-24, which is «next day» only in MSK).
             visit = SpeciesVisit(
                 species_id=species.id,
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 10, 0),
                 max_simultaneous=1,
             )
             video = Video(
                 processor_version="test",
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 5, 30),
-                video_path="data/recordings/2026/03/24/210500/video.mp4",
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 0, 30),
+                video_path="data/recordings/2026/03/25/140000/video.mp4",
             )
             db.session.add_all([visit, video])
             db.session.flush()
@@ -732,15 +734,15 @@ class TestTimeline:
             db.session.flush()
             visit = SpeciesVisit(
                 species_id=species.id,
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 10, 0),
                 max_simultaneous=1,
             )
             video = Video(
                 processor_version="test",
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 5, 30),
-                video_path=f"data/recordings/2026/03/24/210501/dedup{id(app)}.mp4",
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 0, 30),
+                video_path=f"data/recordings/2026/03/25/140001/dedup{id(app)}.mp4",
             )
             db.session.add_all([visit, video])
             db.session.flush()
@@ -798,15 +800,15 @@ class TestTimeline:
             species_name = species.name
             visit = SpeciesVisit(
                 species_id=species.id,
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 15, 0),
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 10, 0),
                 max_simultaneous=1,
             )
             video = Video(
                 processor_version="test",
-                start_time=datetime(2026, 3, 24, 21, 5, 0),
-                end_time=datetime(2026, 3, 24, 21, 5, 30),
-                video_path=f"data/recordings/2026/03/24/210502/scales_{id(app)}.mp4",
+                start_time=datetime(2026, 3, 25, 14, 0, 0),
+                end_time=datetime(2026, 3, 25, 14, 0, 30),
+                video_path=f"data/recordings/2026/03/25/140002/scales_{id(app)}.mp4",
                 scales_weight_delta_kg=0.015,
             )
             db.session.add_all([visit, video])
