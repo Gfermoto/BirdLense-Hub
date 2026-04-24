@@ -29,10 +29,7 @@ def prepare_processor_video(
     data: dict,
     *,
     min_confidence: float,
-) -> (
-    tuple[Literal[True], PreparedProcessorVideo]
-    | tuple[Literal[False], dict, int]
-):
+) -> tuple[Literal[True], PreparedProcessorVideo] | tuple[Literal[False], dict, int]:
     """Проверить тело ``/api/processor/videos`` и пути файлов.
 
     При ошибке доступа к файлу (не invalid format) пишет ``ingest_gate`` в activity log.
