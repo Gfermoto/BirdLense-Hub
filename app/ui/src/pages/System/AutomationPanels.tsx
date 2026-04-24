@@ -50,6 +50,7 @@ import {
   startFusionEval,
   startFusionExport,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
 function statusLabel(status?: SystemJobStatus | null): string {
@@ -583,14 +584,14 @@ export function AutomationFusionCard() {
   const [lastInfo, setLastInfo] = useState<string | null>(null);
 
   const fusionExportQuery = useQuery({
-    queryKey: ['fusion-export-status'],
+    queryKey: queryKeys.systemPanels.fusionExportStatus,
     queryFn: fetchFusionExportStatus,
     refetchInterval: (q) =>
       q.state.data?.status === 'running' || fusionExportPolling ? 2_500 : false,
     staleTime: 0,
   });
   const fusionEvalQuery = useQuery({
-    queryKey: ['fusion-eval-status'],
+    queryKey: queryKeys.systemPanels.fusionEvalStatus,
     queryFn: fetchFusionEvalStatus,
     refetchInterval: (q) =>
       q.state.data?.status === 'running' || fusionEvalPolling ? 2_500 : false,

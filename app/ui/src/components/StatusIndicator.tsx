@@ -8,6 +8,7 @@ import SmartToyOutlined from '@mui/icons-material/SmartToyOutlined';
 import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStatus } from '../api/api';
+import { queryKeys } from '../api/queryKeys';
 
 const TRIGGER_LINE_KEYS: Record<string, string> = {
   opencv: 'status.triggerNames.opencv',
@@ -120,7 +121,7 @@ const StatusDot = ({
 export const StatusIndicator = () => {
   const { t } = useTranslation();
   const { data } = useQuery({
-    queryKey: ['status'],
+    queryKey: queryKeys.health.status,
     queryFn: fetchStatus,
     refetchInterval: 10000,
   });

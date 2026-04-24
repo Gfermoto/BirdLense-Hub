@@ -15,6 +15,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { fetchBirdDirectory, resolveImageUrl } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -25,7 +26,7 @@ export function SpeciesDirectoryPage() {
   useDocumentTitle(t('nav.species'));
 
   const speciesQ = useQuery({
-    queryKey: ['species-directory'],
+    queryKey: queryKeys.speciesDirectory.list,
     queryFn: fetchBirdDirectory,
     staleTime: 5 * 60 * 1000,
   });

@@ -42,6 +42,43 @@ export const queryKeys = {
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
   },
+  /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
+  systemPanels: {
+    configAudit: ['config-audit'] as const,
+    observability: ['system-observability'] as const,
+    catalogRepairStatus: ['catalog-repair-status'] as const,
+    recognitionImprovementSummary: ['recognition-improvement-summary'] as const,
+    recognitionImprovementTrainStatus: [
+      'recognition-improvement-train-status',
+    ] as const,
+    speciesDataQuality: ['species-data-quality'] as const,
+    catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
+    classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
+    processorWeightsStatus: ['processor-weights-status'] as const,
+    fusionExportStatus: ['fusion-export-status'] as const,
+    fusionEvalStatus: ['fusion-eval-status'] as const,
+  },
+  feed: {
+    info: ['feed-info'] as const,
+  },
+  /** Polling `/api/ui/status` в шапке/футере. */
+  health: {
+    status: ['status'] as const,
+  },
+  live: {
+    cameras: ['cameras'] as const,
+  },
+  birdFood: {
+    all: ['birdFood'] as const,
+  },
+  fileTest: {
+    status: ['file-test-status'] as const,
+    files: ['file-test-files'] as const,
+  },
+  /** Страница каталога видов (отдельно от `bird-directory`). */
+  speciesDirectory: {
+    list: ['species-directory'] as const,
+  },
   /** Таймлайн + счётчик unknowns на той же дате (#343). */
   timeline: {
     observerTimezone: ['timeline-observer-timezone'] as const,
@@ -85,5 +122,6 @@ export const queryKeys = {
   },
   speciesSummary: {
     all: ['speciesSummary'] as const,
+    bySpecies: (speciesId: string) => ['speciesSummary', speciesId] as const,
   },
 } as const;

@@ -15,6 +15,7 @@ import {
   rollbackRecognitionImprovement,
   startRecognitionImprovementTrain,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
 function formatTs(value?: string | null): string {
@@ -30,12 +31,12 @@ export function RecognitionImprovementCard() {
   const [pollTraining, setPollTraining] = useState(false);
 
   const summaryQ = useQuery({
-    queryKey: ['recognition-improvement-summary'],
+    queryKey: queryKeys.systemPanels.recognitionImprovementSummary,
     queryFn: fetchRecognitionImprovementSummary,
     staleTime: 10_000,
   });
   const trainingQ = useQuery({
-    queryKey: ['recognition-improvement-train-status'],
+    queryKey: queryKeys.systemPanels.recognitionImprovementTrainStatus,
     queryFn: fetchRecognitionImprovementTrainStatus,
     staleTime: 0,
     refetchInterval: (q) =>
@@ -74,7 +75,7 @@ export function RecognitionImprovementCard() {
         }),
       );
       await qc.invalidateQueries({
-        queryKey: ['recognition-improvement-summary'],
+        queryKey: queryKeys.systemPanels.recognitionImprovementSummary,
       });
     },
     onError: (error: unknown) => {
@@ -98,7 +99,7 @@ export function RecognitionImprovementCard() {
     if (pollTraining) {
       setPollTraining(false);
       void qc.invalidateQueries({
-        queryKey: ['recognition-improvement-summary'],
+        queryKey: queryKeys.systemPanels.recognitionImprovementSummary,
       });
     }
   }, [pollTraining, qc, trainingQ.data?.status]);

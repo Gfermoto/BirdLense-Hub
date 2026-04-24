@@ -15,11 +15,12 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { fetchClassifierDatasetAlignment } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 
 export function ClassifierDatasetAlignmentCard() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['classifier-dataset-alignment'],
+    queryKey: queryKeys.systemPanels.classifierDatasetAlignment,
     queryFn: fetchClassifierDatasetAlignment,
     staleTime: 120_000,
   });
