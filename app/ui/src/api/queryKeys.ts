@@ -22,6 +22,9 @@ export const queryKeys = {
     widget: ['weather'] as const,
     sunTimes: (date: string) => ['sun-times', date] as const,
   },
+  storage: {
+    stats: ['storageStats'] as const,
+  },
   calendar: {
     /** Кэш вкладок/виджетов, привязанных к строке «timeline». */
     timelineTab: ['timeline'] as const,

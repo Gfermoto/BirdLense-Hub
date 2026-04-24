@@ -21,6 +21,7 @@ import {
   purgeStorageRecordings,
   restoreDbBackup,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 
@@ -77,7 +78,7 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
   const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
   const [purgeError, setPurgeError] = useState<string | null>(null);
   const { data: storageStats, isLoading } = useQuery<StorageStats[]>({
-    queryKey: ['storageStats'],
+    queryKey: queryKeys.storage.stats,
     queryFn: async () => {
       const { data } = await axios.get<StorageStats[]>(
         `${BASE_API_URL}/storage/stats`,
@@ -188,7 +189,7 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
           size: formatBytes(res.deletedSize),
         }),
       );
-      await queryClient.invalidateQueries({ queryKey: ['storageStats'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.storage.stats });
     } catch (e: unknown) {
       const err = e as {
         response?: { data?: { error?: string } };
