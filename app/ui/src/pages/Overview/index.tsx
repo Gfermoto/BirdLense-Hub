@@ -17,6 +17,7 @@ import {
   fetchWeather,
   downloadReportPdf,
 } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FeedCard } from '../../components/FeedCard';
 import { StatCard } from '../../components/StatCard';
@@ -59,7 +60,7 @@ export const Overview = () => {
     error: errorSightings,
     refetch: refetchOverview,
   } = useQuery({
-    queryKey: ['overview', selectedDay?.format('YYYY-MM-DD')],
+    queryKey: queryKeys.overview.byDay(selectedDay?.format('YYYY-MM-DD') || ''),
     queryFn: () => fetchOverviewData(selectedDay?.format('YYYY-MM-DD') || ''),
     enabled: !!selectedDay,
   });
@@ -71,7 +72,7 @@ export const Overview = () => {
     isFetching: isWeatherFetching,
     refetch: refetchWeather,
   } = useQuery({
-    queryKey: ['weather'],
+    queryKey: queryKeys.weather.widget,
     queryFn: () => fetchWeather(),
   });
 

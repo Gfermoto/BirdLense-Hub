@@ -1,5 +1,7 @@
 /** Central React Query keys (#296, #343) — invalidate via queryKeys.* for stable contracts. */
 
+import type { MigrationCalendarParams } from './migrationCalendar';
+
 export const queryKeys = {
   settings: {
     all: ['settings'] as const,
@@ -14,11 +16,19 @@ export const queryKeys = {
   },
   overview: {
     all: ['overview'] as const,
+    byDay: (date: string) => ['overview', date] as const,
+  },
+  weather: {
+    widget: ['weather'] as const,
+    sunTimes: (date: string) => ['sun-times', date] as const,
   },
   calendar: {
     /** Кэш вкладок/виджетов, привязанных к строке «timeline». */
     timelineTab: ['timeline'] as const,
     migration: ['migration-calendar'] as const,
+    migrationData: (params: MigrationCalendarParams) =>
+      ['migration-calendar', params] as const,
+    regionComparison: ['region-comparison'] as const,
   },
   system: {
     readiness: ['system', 'readiness'] as const,
