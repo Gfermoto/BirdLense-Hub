@@ -2,9 +2,27 @@
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 import data_paths as data_paths_mod
 import services.broken_videos_inventory_service as broken_videos_inventory_mod
 from services.http_response_cache import bust_response_caches
+
+
+@pytest.fixture(name="moscow_observer_tz")
+def _moscow_observer_tz(monkeypatch):
+    """Без timezonefinder в окружении lat/lon даёт UTC и ломает ожидания по Москве."""
+    import zoneinfo
+
+    from observer_time import _observer_timezone_name_cached
+
+    monkeypatch.setattr(
+        "observer_time.get_observer_timezone",
+        lambda: zoneinfo.ZoneInfo("Europe/Moscow"),
+    )
+    _observer_timezone_name_cached.cache_clear()
+    yield
+    _observer_timezone_name_cached.cache_clear()
 
 
 class TestSystemMaintenanceEndpoints:
@@ -374,6 +392,7 @@ class TestSystemMaintenanceEndpoints:
             assert late_detection.species_visit_id == visits[1].id
 
 
+@pytest.mark.usefixtures("moscow_observer_tz")
 class TestOverviewDayOverlap:
     def test_overview_counts_visit_that_crosses_midnight(self, app, client):
         from app_config.app_config import app_config
@@ -566,6 +585,7 @@ class TestOverviewDayOverlap:
         assert body["stats"]["detectionByProvider"]["frigate"] == 1
 
 
+@pytest.mark.usefixtures("moscow_observer_tz")
 class TestObserverLocalRanges:
     def test_observer_local_night_covers_early_morning_of_selected_date(self, app):
         from app_config.app_config import app_config
