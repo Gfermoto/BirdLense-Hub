@@ -111,10 +111,7 @@ def process_processor_notify_detections(
         lower = (detection or "").lower()
         icon = (
             "chipmunk"
-            if any(
-                s in lower
-                for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка")
-            )
+            if any(s in lower for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка"))
             else "bird"
         )
         notify_result = (
