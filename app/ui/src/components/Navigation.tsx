@@ -270,6 +270,7 @@ export function Navigation() {
               {NAV_KEYS.map((item) => (
                 <MenuItem
                   key={item.path}
+                  data-testid={`nav-mobile-${item.key}`}
                   onClick={handleMobileMenuClose}
                   component={Link}
                   to={item.path}
@@ -435,6 +436,7 @@ export function Navigation() {
             {NAV_KEYS.map((item) => (
               <Box
                 key={item.path}
+                data-testid={`nav-pill-${item.key}`}
                 component={Link}
                 to={item.path}
                 aria-current={isNavItemActive(item.path) ? 'page' : undefined}
@@ -457,6 +459,7 @@ export function Navigation() {
             <Button
               component={Link}
               to="/live"
+              data-testid="nav-live"
               aria-current={currentPath === '/live' ? 'page' : undefined}
               startIcon={
                 <FiberManualRecordIcon
