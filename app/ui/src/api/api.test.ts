@@ -88,6 +88,6 @@ describe('fetchReadiness', () => {
     const payload = await fetchReadiness();
 
     expect(payload.ready).toBe(false);
-    expect(payload.checks.database.status).toBe('error');
+    expect(payload.checks.database?.status).toBe('error');
   });
 });

@@ -1,3 +1,5 @@
+import type { components } from './generated/openapi-types';
+
 export interface SpeciesVisit {
   id: number;
   start_time: string;
@@ -93,14 +95,12 @@ export interface Video {
   } | null;
 }
 
-export interface BirdFood {
+/** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */
+export type BirdFood = components['schemas']['BirdFood'] & {
   id: number;
   name: string;
   active: boolean;
-  description?: string;
-  /** Relative path (data/images/food/...) — use resolveImageUrl() */
-  image_url?: string;
-}
+};
 
 export interface BirdTaxonomy {
   id: string;

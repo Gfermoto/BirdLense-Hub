@@ -28,12 +28,12 @@ test.describe('Smoke tests', () => {
   test('homepage loads and shows main navigation', async ({ page }) => {
     await gotoReady(page, '/');
     await expect(page).toHaveTitle(/Bird/i, { timeout: 15000 });
-    await expect(page.locator('a[href="/timeline"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('nav-pill-timeline')).toBeVisible({ timeout: 15000 });
   });
 
   test('navigation links work', async ({ page }) => {
     await gotoReady(page, '/');
-    await page.locator('a[href="/timeline"]').first().click();
+    await page.getByTestId('nav-pill-timeline').click();
     await expect(page).toHaveURL(/\/timeline/);
 
     await page.goto('/settings');
