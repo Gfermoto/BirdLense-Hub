@@ -49,6 +49,8 @@
 
 ## 5. `dataset_export`
 
+Подпакет: `app/web/services/dataset_export/` (`export_core.py`); shim **`dataset_export_service.py`**.
+
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
 | `/api/ui/dataset/*`, `/api/ui/detections/<id>/*` (crop, confirm, PATCH) | `ui_corrections_dataset_routes.py` | `dataset_export_*`, `dataset_export_request_*`, `detection_crop_*`, `detection_species_correction_*` |
