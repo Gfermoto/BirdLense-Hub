@@ -40,6 +40,8 @@
 
 ## 4. `system_diagnostics_and_jobs`
 
+Фоновая перегенерация треков: подпакет `app/web/services/system_track_regen/` (`worker_core.py`); shim **`system_track_regen_worker.py`**.
+
 | Префикс / зона | Файлы маршрутов | Сервисы (ориентир) |
 |----------------|-----------------|---------------------|
 | `/api/ui/system/*` (metrics, observability, diagnostics, storage, db, retention, review-queue, maintenance, recognition, fusion eval/export, file-test, processor-weights) | `ui_system_*.py`, фрагменты в `ui_system_routes.py` (config-audit, logs, domain-health, activity, regenerate-*) | `system_*`, `processor_logs_*`, `sqlite_admin_*`, `review_queue_*`, `system_maintenance_*`, `system_file_test_*`, `fusion_*`, `ml_*`, `broken_videos_*`, … |
