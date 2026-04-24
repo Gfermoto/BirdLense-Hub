@@ -26,10 +26,10 @@ export function SystemReadinessCard() {
     return <Alert severity="warning" variant="outlined">{t('system.readinessLoadError')}</Alert>;
 
   const checks = [
-    ['database', normalizeCheckStatus(data.checks.database.status)],
-    ['dataDir', normalizeCheckStatus(data.checks.data_dir.status)],
-    ['configDir', normalizeCheckStatus(data.checks.app_config_dir.status)],
-    ['web', normalizeCheckStatus(data.components.web)],
+    ['database', normalizeCheckStatus(data.checks.database?.status ?? '')],
+    ['dataDir', normalizeCheckStatus(data.checks.data_dir?.status ?? '')],
+    ['configDir', normalizeCheckStatus(data.checks.app_config_dir?.status ?? '')],
+    ['web', normalizeCheckStatus(data.components.web ?? '')],
   ] as const;
 
   return (
