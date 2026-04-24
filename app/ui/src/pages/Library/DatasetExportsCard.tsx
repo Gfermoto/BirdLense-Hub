@@ -17,6 +17,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { BASE_API_URL, exportDataset, retroExportDataset } from '../../api/api';
+import { queryKeys } from '../../api/queryKeys';
 import { LibraryCardShell } from './LibraryCardShell';
 import { formatBytes, getDayjsLocale, type StorageDay } from './libraryShared';
 
@@ -39,7 +40,7 @@ export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
   }));
 
   const { data: storageStats = [] } = useQuery<StorageDay[]>({
-    queryKey: ['storageStats'],
+    queryKey: queryKeys.storage.stats,
     queryFn: async () => {
       const { data } = await axios.get<StorageDay[]>(
         `${BASE_API_URL}/storage/stats`,

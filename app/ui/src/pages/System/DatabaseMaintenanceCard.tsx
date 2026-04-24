@@ -58,15 +58,15 @@ export function DatabaseMaintenanceCard() {
     },
     onSuccess: (data) => {
       setScanResult(data);
-      qc.invalidateQueries({ queryKey: ['storageStats'] });
-      qc.invalidateQueries({ queryKey: ['videos'] });
+      qc.invalidateQueries({ queryKey: queryKeys.storage.stats });
+      qc.invalidateQueries({ queryKey: queryKeys.video.listAll });
       qc.invalidateQueries({ queryKey: queryKeys.overview.all });
-      qc.invalidateQueries({ queryKey: ['speciesVisits'] });
-      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: queryKeys.timeline.speciesVisitsAll });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.timelineTab });
       qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
-      qc.invalidateQueries({ queryKey: ['bird-directory'] });
-      qc.invalidateQueries({ queryKey: ['species'] });
-      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
+      qc.invalidateQueries({ queryKey: queryKeys.birdDirectory.all });
+      qc.invalidateQueries({ queryKey: queryKeys.species.directory });
+      qc.invalidateQueries({ queryKey: queryKeys.speciesSummary.all });
     },
     onError: (err) => setError(err.message),
   });
@@ -97,14 +97,14 @@ export function DatabaseMaintenanceCard() {
     onSuccess: (data) => {
       setCleanPreview(null);
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
-      qc.invalidateQueries({ queryKey: ['videos'] });
-      qc.invalidateQueries({ queryKey: ['speciesVisits'] });
+      qc.invalidateQueries({ queryKey: queryKeys.video.listAll });
+      qc.invalidateQueries({ queryKey: queryKeys.timeline.speciesVisitsAll });
       qc.invalidateQueries({ queryKey: queryKeys.overview.all });
-      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.timelineTab });
       qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
-      qc.invalidateQueries({ queryKey: ['bird-directory'] });
-      qc.invalidateQueries({ queryKey: ['species'] });
-      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
+      qc.invalidateQueries({ queryKey: queryKeys.birdDirectory.all });
+      qc.invalidateQueries({ queryKey: queryKeys.species.directory });
+      qc.invalidateQueries({ queryKey: queryKeys.speciesSummary.all });
       setTimeout(() => setApplyResult(null), 8000);
     },
     onError: (err) => setError(err.message),
@@ -136,14 +136,14 @@ export function DatabaseMaintenanceCard() {
     onSuccess: (data) => {
       setRealignPreview(null);
       setApplyResult(data.message ?? t('system.dbMaintenanceDone'));
-      qc.invalidateQueries({ queryKey: ['videos'] });
-      qc.invalidateQueries({ queryKey: ['speciesVisits'] });
+      qc.invalidateQueries({ queryKey: queryKeys.video.listAll });
+      qc.invalidateQueries({ queryKey: queryKeys.timeline.speciesVisitsAll });
       qc.invalidateQueries({ queryKey: queryKeys.overview.all });
-      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.timelineTab });
       qc.invalidateQueries({ queryKey: queryKeys.calendar.migration });
-      qc.invalidateQueries({ queryKey: ['bird-directory'] });
-      qc.invalidateQueries({ queryKey: ['species'] });
-      qc.invalidateQueries({ queryKey: ['speciesSummary'] });
+      qc.invalidateQueries({ queryKey: queryKeys.birdDirectory.all });
+      qc.invalidateQueries({ queryKey: queryKeys.species.directory });
+      qc.invalidateQueries({ queryKey: queryKeys.speciesSummary.all });
       setTimeout(() => setApplyResult(null), 8000);
     },
     onError: (err) => setError(err.message),
