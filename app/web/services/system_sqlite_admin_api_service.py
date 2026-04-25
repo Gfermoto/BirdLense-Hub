@@ -109,11 +109,12 @@ def restore_sqlite_database_from_upload(
             pass
 
 
-def run_retention_and_bust_caches(dry_run: bool = False, mode: str = None) -> tuple[dict, int]:
+def run_retention_and_bust_caches(dry_run: bool = False, mode: str | None = None) -> tuple[dict, int]:
     """Run retention with optional dry_run and mode override."""
     try:
         count, size = run_retention(dry_run=dry_run, mode=mode)
-        bust_system_response_caches()
+        if not dry_run:
+            bust_system_response_caches()
         return {
             "message": f"Deleted {count} recordings" if not dry_run else f"Would delete {count} recordings",
             "deletedCount": count,

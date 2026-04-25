@@ -7,7 +7,7 @@ Create Date: 2026-04-25
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import sqlite
+
 
 # revision identifiers
 revision = '001'
@@ -17,10 +17,12 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('video', sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True))
-    op.create_index('ix_video_deleted_at', 'video', ['deleted_at'], unique=False)
+    with op.batch_alter_table('video') as batch_op:
+        batch_op.add_column(sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True))
+        batch_op.create_index('ix_video_deleted_at', ['deleted_at'], unique=False)
 
 
 def downgrade():
-    op.drop_index('ix_video_deleted_at', table_name='video')
-    op.drop_column('video', 'deleted_at')
+    with op.batch_alter_table('video') as batch_op:
+        batch_op.drop_index('ix_video_deleted_at')
+        batch_op.drop_column('deleted_at')

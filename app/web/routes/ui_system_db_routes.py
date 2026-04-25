@@ -86,4 +86,8 @@ def register_ui_system_db_routes(app):
         data = request.get_json(silent=True) or {}
         dry_run = bool(data.get("dry_run", False))
         mode = data.get("mode")
+        # validate mode if provided
+        if mode is not None:
+            if not isinstance(mode, str) or mode not in {"cascade", "files_only", "disabled"}:
+                return {"error": "Invalid mode (allowed: cascade, files_only, disabled)"}, 400
         return run_retention_and_bust_caches(dry_run=dry_run, mode=mode)

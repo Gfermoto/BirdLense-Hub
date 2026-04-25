@@ -14,6 +14,14 @@ from util import recordings_dir
 
 logger = logging.getLogger(__name__)
 
+# Cache for last run metrics (updated after each successful run)
+_last_run_metrics = {
+    "retention_last_run": None,
+    "retention_last_deleted_count": 0,
+    "retention_last_freed_bytes": 0,
+    "retention_mode": "cascade",
+}
+
 
 def _delete_video_row_cascade(video: Video) -> None:
     """Удалить VideoSpecies и осиротевшие SpeciesVisit, затем Video (как в delete_video API)."""
@@ -123,7 +131,7 @@ def _cleanup_dataset_ttl(dataset_max_age_days: int, grace_hours: int, dry_run: b
     """Delete dataset files older than dataset_max_age_days based on mtime."""
     if dataset_max_age_days <= 0:
         return
-    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'data', 'dataset')
+    root = os.path.join(os.path.dirname(recordings_dir()), 'dataset')
     if not os.path.isdir(root):
         return
     cutoff = datetime.now(timezone.utc) - timedelta(days=dataset_max_age_days, hours=grace_hours)
@@ -145,33 +153,34 @@ def _cleanup_migration_ttl(migration_max_age_days: int, grace_hours: int, dry_ru
     """Remove SpeciesVisit rows older than migration_max_age_days that have no live references."""
     if migration_max_age_days <= 0:
         return
-    from sqlalchemy import and_
-    from datetime import timedelta as td
-    cutoff = datetime.now(timezone.utc) - td(days=migration_max_age_days, hours=grace_hours)
-    from models import SpeciesVisit, VideoSpecies
-    visits = db.session.query(SpeciesVisit).filter(SpeciesVisit.start_time < cutoff).all()
-    deleted = 0
-    for sv in visits:
-        has_refs = db.session.query(VideoSpecies).filter(VideoSpecies.species_visit_id == sv.id).first() is not None
-        if not has_refs:
-            if not dry_run:
-                db.session.delete(sv)
-            deleted += 1
-    if not dry_run and deleted:
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Migration TTL cleanup failed: {e}")
+    cutoff = datetime.now(timezone.utc) - timedelta(days=migration_max_age_days, hours=grace_hours)
+    subq = db.session.query(VideoSpecies.species_visit_id).distinct().subquery()
+    q = db.session.query(SpeciesVisit).filter(
+        SpeciesVisit.start_time < cutoff,
+        ~SpeciesVisit.id.in_(subq),
+    )
+    if dry_run:
+        deleted = q.count()
+        logger.info(f"Migration TTL (dry_run): would remove {deleted} stale SpeciesVisit rows")
+        return
+    deleted = q.delete(synchronize_session=False)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Migration TTL cleanup failed: {e}")
     if deleted:
         logger.info(f"Migration TTL: removed {deleted} stale SpeciesVisit rows")
 
 
 def _fetch_metrics():
-    from datetime import datetime
+    """Return last run metrics for UI display."""
+    # Populate from cached state
     return {
-        "retention_last_run": datetime.now(timezone.utc).isoformat(),
-        "retention_mode": app_config.get("retention.mode", "cascade"),
+        "retention_last_run": _last_run_metrics.get("retention_last_run"),
+        "retention_mode": _last_run_metrics.get("retention_mode"),
+        "retention_last_deleted_count": _last_run_metrics.get("retention_last_deleted_count"),
+        "retention_last_freed_bytes": _last_run_metrics.get("retention_last_freed_bytes"),
     }
 
 
@@ -180,7 +189,8 @@ def run_retention(dry_run: bool = False, mode: str = None):
     Returns (deleted_count, deleted_size) for recordings cleanup.
     """
     cfg = app_config.config
-    mode = mode or str(cfg.get("retention.mode", "cascade")).lower()
+    mode_raw = mode if mode is not None else cfg.get("retention.mode", "cascade")
+    mode = str(mode_raw).strip().lower() if mode_raw else "cascade"
     if mode == "disabled":
         logger.info("Retention mode=disabled, skipping")
         return 0, 0
@@ -202,7 +212,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
             return 0, 0
         cutoff = None
         if cut_days and int(cut_days) > 0:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days))
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
 
         deleted_files, freed = _files_only_cleanup(
             rec_dir, cutoff or datetime.min, batch_size, grace_hours,
@@ -216,7 +226,8 @@ def run_retention(dry_run: bool = False, mode: str = None):
             videos = Video.query.filter(Video.start_time < cutoff).all()
             for v in videos:
                 v.deleted_at = datetime.now(timezone.utc)
-                v.video_path = None
+                # keep paths unchanged to avoid NOT NULL violation
+                # (optional: could clear spectrogram_path if nullable)
                 v.spectrogram_path = None
                 deleted_video_ids.add(v.id)
             try:
@@ -232,14 +243,17 @@ def run_retention(dry_run: bool = False, mode: str = None):
             return 0, 0
         cutoff = None
         if cut_days and int(cut_days) > 0:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days))
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
         if max_gb and float(max_gb) > 0:
             # size-based loop (cascade mode must delete oldest first)
             while True:
                 sz = _get_recordings_size_gb()
                 if sz <= float(max_gb):
                     break
-                oldest = Video.query.order_by(Video.start_time.asc()).first()
+                q = Video.query.order_by(Video.start_time.asc())
+                if protect_favorites:
+                    q = q.filter(Video.favorite == False)
+                oldest = q.first()
                 if not oldest:
                     break
                 try:
@@ -265,7 +279,10 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 db.session.rollback()
 
         if cutoff and mode == "cascade":
-            videos = Video.query.filter(Video.start_time < cutoff).all()
+            videos = Video.query.filter(Video.start_time < cutoff)
+            if protect_favorites:
+                videos = videos.filter(Video.favorite == False)
+            videos = videos.all()
             for video in videos:
                 try:
                     if video.video_path:
@@ -305,6 +322,12 @@ def run_retention(dry_run: bool = False, mode: str = None):
             logger.info(f"Retention: deleted {recordings_deleted} videos, {recordings_freed / 1024 / 1024:.1f} MB")
         if deleted_video_ids:
             logger.info(f"Retention: soft-deleted Video rows: {len(deleted_video_ids)}")
+
+    # Update cached metrics for UI
+    _last_run_metrics["retention_last_run"] = datetime.now(timezone.utc).isoformat()
+    _last_run_metrics["retention_last_deleted_count"] = recordings_deleted
+    _last_run_metrics["retention_last_freed_bytes"] = recordings_freed
+    _last_run_metrics["retention_mode"] = mode
 
     # metrics
     m = _fetch_metrics()

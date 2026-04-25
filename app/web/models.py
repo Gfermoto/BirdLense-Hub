@@ -207,6 +207,7 @@ class Video(db.Model):
         # Hot paths: overview/report overlap on [start,end] vs day/window (#294).
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
+        Index("ix_video_deleted_at", "deleted_at"),
     )
 
 

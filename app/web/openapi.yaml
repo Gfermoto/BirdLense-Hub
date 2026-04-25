@@ -2814,6 +2814,67 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Restore SQLite from upload
+  /system/retention:
+    get:
+      summary: Get retention configuration and last run stats
+      responses:
+        '200':
+          description: Retention config and stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionConfigResponse'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+    post:
+      summary: Run retention policy (delete old recordings)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  description: Preview only, do not actually delete
+                mode:
+                  type: string
+                  enum: [cascade, files_only, disabled]
+                  description: Override retention mode
+      responses:
+        '200':
+          description: Retention completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deletedCount:
+                    type: integer
+                  deletedSize:
+                    type: integer
+                  dryRun:
+                    type: boolean
+                  mode:
+                    type: string
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
   /system/diagnostics/birdnet-fifo:
     get:
       description: Named pipe or FIFO status for BirdNET path.
