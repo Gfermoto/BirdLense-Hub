@@ -50,6 +50,35 @@ def register_ui_system_db_routes(app):
             db.engine,
         )
 
+    @app.route("/api/ui/system/retention", methods=["GET"])
+    @require_ui_settings_password
+    def get_retention_config():
+        """Get retention configuration and last run stats."""
+        from app_config.app_config import app_config as cfg
+        rc = cfg.get("retention", {})
+        # safe public values
+        safe = {
+            "mode": rc.get("mode", "cascade"),
+            "days": rc.get("days"),
+            "max_gb": rc.get("max_gb"),
+            "dataset_max_age_days": rc.get("dataset_max_age_days", 0),
+            "migration_max_age_days": rc.get("migration_max_age_days", 0),
+            "protect_favorites": rc.get("protect_favorites", True),
+            "min_age_hours": rc.get("min_age_hours", 1),
+            "batch_size": rc.get("batch_size", 50),
+        }
+        # add last-run metrics
+        try:
+            from services.retention_service import _fetch_metrics
+            m = _fetch_metrics()
+            safe["last_run"] = m.get("retention_last_run")
+            safe["last_deleted_count"] = m.get("retention_last_deleted_count", 0)
+            safe["last_freed_bytes"] = m.get("retention_last_freed_bytes", 0)
+            safe["last_mode"] = m.get("retention_mode", "cascade")
+        except Exception:
+            pass
+        return safe, 200
+
     @app.route("/api/ui/system/retention", methods=["POST"])
     @require_ui_settings_password
     def trigger_retention():

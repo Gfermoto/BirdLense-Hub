@@ -3863,6 +3863,38 @@ components:
       properties:
         error:
           type: string
+    RetentionConfigResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [cascade, files_only, disabled]
+        days:
+          type: integer
+          nullable: true
+        max_gb:
+          type: number
+          nullable: true
+        dataset_max_age_days:
+          type: integer
+        migration_max_age_days:
+          type: integer
+        protect_favorites:
+          type: boolean
+        min_age_hours:
+          type: integer
+        batch_size:
+          type: integer
+        last_run:
+          type: string
+          format: date-time
+          nullable: true
+        last_deleted_count:
+          type: integer
+        last_freed_bytes:
+          type: integer
+        last_mode:
+          type: string
     ConfigAuditResponse:
       type: object
       required:

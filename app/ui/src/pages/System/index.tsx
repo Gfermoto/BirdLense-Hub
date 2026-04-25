@@ -13,6 +13,7 @@ import { ProcessorLogs } from './ProcessorLogs';
 import { SystemReadinessCard } from './SystemReadinessCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
+import { RetentionPolicy } from './Retention/RetentionPolicy';
 import Box from '@mui/material/Box';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
@@ -93,6 +94,7 @@ export const System: React.FC = () => {
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
               >
                 <RecognitionImprovementCard />
+                <RetentionPolicy />
               </Box>
               <ConfigAuditCard simple={!isAdvanced} />
               <ObservabilityCard simple={!isAdvanced} />

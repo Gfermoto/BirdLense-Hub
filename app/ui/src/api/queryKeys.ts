@@ -41,6 +41,7 @@ export const queryKeys = {
     visitors: (days: number) => ['system', 'visitors', days] as const,
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
+    retentionConfig: ['system', 'retention-config'] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {
