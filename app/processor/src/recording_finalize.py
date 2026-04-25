@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
-import shutil
 import time
 from collections import Counter
 from datetime import datetime
@@ -12,37 +10,28 @@ from typing import Any, Optional
 
 from api import API
 from app_config.app_config import app_config
-from dataset_saver import save_dataset_crops
 from decision_trace_builder import build_decision_trace_payload
-from decision_outcome import compute_outcome_bucket
 from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
 from processor_support import get_data_dir
+from recording_cleanup_policy import should_keep_empty_recording
+from recording_dataset_crops import maybe_save_dataset_crops
+from recording_decision_trace_log import write_decision_trace_activity
+from recording_file_gate import _is_playable_video_file
+from recording_ingest_gate import log_missing_video_gate
+from recording_mqtt_window import get_recording_mqtt_events
+from recording_no_detection_log import log_no_detections_after_merge
+from recording_notify_dispatch import notify_unique_species
+from recording_post_fusion_rejections import collect_post_fusion_rejections
+from recording_scales_evidence import estimate_recording_scales_delta
+from recording_session_cleanup import remove_session_dir
+from recording_video_response import response_video_id
+from recording_spectrogram import maybe_generate_recording_spectrogram
 from spectrogram import generate_spectrogram
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
 _no_detections_warn_next_monotonic = 0.0
-
-
-def _is_playable_video_file(path: str) -> bool:
-    if not path or not os.path.isfile(path):
-        return False
-    try:
-        if os.path.getsize(path) <= 1024:
-            return False
-        import cv2
-
-        cap = cv2.VideoCapture(path)
-        try:
-            if not cap.isOpened():
-                return False
-            ok, _frame = cap.read()
-            return bool(ok)
-        finally:
-            cap.release()
-    except Exception:
-        return False
 
 
 def finalize_motion_recording(
@@ -69,20 +58,14 @@ def finalize_motion_recording(
     video_detections = [item for item in decisions if item.get("accepted", False)]
     rejected_decisions = [item for item in decisions if not item.get("accepted", False)]
     yolo_passed_count = len(video_detections)
-    mqtt_events = []
-    if mqtt_aggregator:
-        lookback = merge_window
-        if yolo_tracks_count == 0:
-            triggered_cam = getattr(motion_detector, "get_triggered_camera", lambda: None)()
-            if triggered_cam:
-                lookback = max(merge_window, 60)
-                logging.info(
-                    "Frigate trigger, 0 YOLO: extended MQTT lookback to %ds",
-                    lookback,
-                )
-        mqtt_events = mqtt_aggregator.get_events_in_window(
-            start_time, end_time, merge_window, lookback_seconds=lookback
-        )
+    mqtt_events = get_recording_mqtt_events(
+        mqtt_aggregator,
+        motion_detector,
+        start_time=start_time,
+        end_time=end_time,
+        merge_window=merge_window,
+        yolo_tracks_count=yolo_tracks_count,
+    )
     if yolo_tracks_count > 0:
         min_dur = app_config.get("processor.min_track_duration", 1)
         logging.info(
@@ -130,18 +113,14 @@ def finalize_motion_recording(
         )
 
     audio_detections: list = []
-    spectrogram_path = None
-    has_birdnet_event = any(ev.get("source") == "birdnet" for ev in mqtt_events)
-    spectrogram_always = bool(app_config.get("processor.generate_spectrogram_always"))
-    if spectrogram_always or has_birdnet_event:
-        px_per_sec = app_config.get("processor.spectrogram_px_per_sec") or 200
-        spectrogram_filename = f"spectrogram_{px_per_sec}.jpg"
-        spectrogram_output = os.path.join(output_path_physical, spectrogram_filename)
-        if generate_spectrogram(video_output, spectrogram_output, px_per_sec):
-            # output_path_logical — каталог сессии (см. get_output_path), файл в нём же.
-            spectrogram_path = f"{output_path_logical}/{spectrogram_filename}"
-        else:
-            logging.warning("Spectrogram generation failed (BirdNET event present)")
+    spectrogram_path = maybe_generate_recording_spectrogram(
+        app_config,
+        mqtt_events=mqtt_events,
+        video_output=video_output,
+        output_path_physical=output_path_physical,
+        output_path_logical=output_path_logical,
+        generate_func=generate_spectrogram,
+    )
 
     accepted_pre_fusion = list(video_detections)
     video_detections = build_fused_video_detections(
@@ -151,36 +130,13 @@ def finalize_motion_recording(
         end_time=end_time,
         app_config=app_config,
     )
-    try:
-        min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
-    except (TypeError, ValueError):
-        min_conf_store = 0.05
-    fused_ids = {d.get("track_id") for d in video_detections if d.get("track_id") is not None}
-    for item in accepted_pre_fusion:
-        tid = item.get("track_id")
-        if tid is None:
-            continue
-        if tid in fused_ids:
-            continue
-        conf = float(item.get("confidence") or 0.0)
-        if conf >= min_conf_store:
-            # Should not happen often; keep out of persistence path.
-            continue
-        rejected_decisions.append(
-            {
-                **item,
-                "accepted": False,
-                "decision_reason": "rejected_post_fusion_below_store_threshold",
-                "decision_kind": "rejected",
-                "outcome_bucket": compute_outcome_bucket(
-                    accepted=False,
-                    visit_eligible=bool(item.get("visit_eligible", True)),
-                    decision_kind="rejected",
-                ),
-                "trust_band": "red",
-                "reject_reason_code": "low_confidence",
-            }
+    rejected_decisions.extend(
+        collect_post_fusion_rejections(
+            app_config,
+            accepted_pre_fusion=accepted_pre_fusion,
+            persisted_detections=video_detections,
         )
+    )
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
     fusion_yolo = 0
@@ -251,17 +207,13 @@ def finalize_motion_recording(
     )
     if len(video_detections) == 0 and mqtt_aggregator:
         global _no_detections_warn_next_monotonic
-        now_m = time.monotonic()
-        msg = (
-            "No detections after merge. YOLO tracks: %s, MQTT events in window: %s",
-            len(frame_processor.tracks),
-            len(mqtt_events),
+        _no_detections_warn_next_monotonic = log_no_detections_after_merge(
+            track_count=len(frame_processor.tracks),
+            mqtt_event_count=len(mqtt_events),
+            now_monotonic=time.monotonic(),
+            next_warn_monotonic=_no_detections_warn_next_monotonic,
+            warn_interval_seconds=_NO_DETECTIONS_WARN_INTERVAL_S,
         )
-        if now_m >= _no_detections_warn_next_monotonic:
-            logging.warning(*msg)
-            _no_detections_warn_next_monotonic = now_m + _NO_DETECTIONS_WARN_INTERVAL_S
-        else:
-            logging.debug(*msg)
 
     video_file_ok = _is_playable_video_file(video_output)
     if len(video_detections) > 0 and not video_file_ok:
@@ -270,46 +222,23 @@ def finalize_motion_recording(
             len(video_detections),
             video_output,
         )
-        try:
-            if api:
-                api.activity_log(
-                    type="ingest_gate",
-                    data={
-                        "reason": "video_file_missing",
-                        "stage": "processor_finalize",
-                        "video_path": video_path_for_api,
-                        "video_output": video_output,
-                        "detection_count": len(video_detections),
-                    },
-                )
-        except Exception:
-            logging.exception("ingest_gate activity_log failed")
+        log_missing_video_gate(
+            api,
+            detection_count=len(video_detections),
+            video_path_for_api=video_path_for_api,
+            video_output=video_output,
+        )
 
     if len(video_detections) > 0 and video_file_ok:
-        scales_delta_kg = None
-        has_non_audio = any(d.get("source") != "audio" for d in video_detections)
-        scales_on = app_config.get("integrations.scales.enabled")
-        weight_est = app_config.get("integrations.scales.weight_estimate_enabled", True)
-        if scales_on and weight_est and scales_topic_arg and has_non_audio:
-            from scale_sample_log import estimate_weight_delta_kg
-
-            raw_min = app_config.get("integrations.scales.min_delta_kg_for_estimate")
-            try:
-                min_d = float(raw_min or 0.008)
-            except (TypeError, ValueError):
-                min_d = 0.008
-            require_spike = app_config.get("integrations.scales.estimate_require_consecutive_spike", True)
-            est, _n = estimate_weight_delta_kg(
-                data_dir,
-                start_time,
-                end_time,
-                min_delta_kg=min_d,
-                require_consecutive_spike=bool(require_spike),
-            )
-            scales_delta_kg = est
-            scales_evidence["estimated_delta_kg"] = est
-            scales_evidence["sample_count"] = int(_n or 0)
-            scales_evidence["min_delta_kg"] = float(min_d)
+        scales_delta_kg, scales_evidence_update = estimate_recording_scales_delta(
+            app_config,
+            video_detections,
+            scales_topic_arg=scales_topic_arg,
+            data_dir=data_dir,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        scales_evidence.update(scales_evidence_update)
         resp = api.create_video(
             video_detections,
             audio_detections,
@@ -319,130 +248,35 @@ def finalize_motion_recording(
             spectrogram_path,
             scales_weight_delta_kg=scales_delta_kg,
         )
-        video_id = resp.get("video_id") if isinstance(resp, dict) else None
+        video_id = response_video_id(resp)
         if video_id is not None:
             try:
                 decision_trace["video_id"] = int(video_id)
             except (TypeError, ValueError):
                 decision_trace["video_id"] = video_id
-        save_crops = app_config.get("processor.save_dataset_crops")
-        if video_id is not None and save_crops and video_detections:
-            crops_data_dir = get_data_dir()
-            raw_mc = app_config.get("processor.dataset_min_confidence", 0.5)
-            min_conf = float(raw_mc)
-            save_dataset_crops(
-                video_detections,
-                video_id,
-                crops_data_dir,
-                min_confidence=min_conf,
-                video_output_path=video_output,
-            )
-        seen = set()
-        for d in video_detections:
-            sn = d.get("species_name") or d.get("species") or ""
-            if sn and sn not in seen:
-                seen.add(sn)
-                notify_ok = bool(d.get("notification_eligible", True))
-                _dk = str(d.get("decision_kind") or "").strip().lower()
-                if _dk in ("review_only_generic", "frigate_standalone_excluded"):
-                    notify_ok = False
-                image_base64, preview_source = encode_notify_preview_base64(d, video_output)
-                if not notify_ok:
-                    logging.info(
-                        "Notify suppressed for %s (eligible=false, kind=%s, reason=%s)",
-                        sn,
-                        d.get("decision_kind"),
-                        d.get("decision_reason"),
-                    )
-                    continue
-                if image_base64 is None:
-                    logging.info(
-                        "Notify %s without photo: no preview (provider=%s, source=%s)",
-                        sn,
-                        d.get("detection_provider", "unknown"),
-                        preview_source,
-                    )
-                    continue
-                raw_notify = app_config.get("processor.min_confidence_to_notify")
-                try:
-                    min_notify = (
-                        float(raw_notify)
-                        if raw_notify is not None and str(raw_notify).strip() != ""
-                        else float(app_config.get("processor.min_confidence_to_process") or 0.30)
-                    )
-                except (TypeError, ValueError):
-                    min_notify = float(app_config.get("processor.min_confidence_to_process") or 0.30)
-                if float(d.get("confidence") or 0.0) < min_notify:
-                    logging.info(
-                        "Notify suppressed for %s: confidence=%.3f < processor.min_confidence_to_notify=%.3f",
-                        sn,
-                        float(d.get("confidence") or 0.0),
-                        min_notify,
-                    )
-                    continue
-                else:
-                    logging.info(
-                        "Notify preview source: %s (%s)",
-                        preview_source,
-                        sn,
-                    )
-                try:
-                    link = f"videos/{video_id}" if video_id else "live"
-                    api.notify_species(
-                        sn,
-                        image_base64=image_base64,
-                        link=link,
-                        preview_source=preview_source,
-                        notification_eligible=True,
-                    )
-                    try:
-                        api.activity_log(
-                            type="notify_preview_generated",
-                            data={
-                                "species": sn,
-                                "video_id": video_id,
-                                "preview_source": preview_source,
-                                "has_image": bool(image_base64),
-                            },
-                        )
-                    except Exception as e:
-                        logging.warning("notify_preview activity_log failed: %s", e)
-                except Exception as e:
-                    resp_err = getattr(e, "response", None)
-                    hint = ""
-                    if resp_err is not None:
-                        if resp_err.status_code == 403:
-                            hint = " (check PROCESSOR_SECRET in app/.env)"
-                        hint = f" {resp_err.status_code}{hint}"
-                    logging.warning("Notify species failed%s: %s", hint, e)
-    try:
-        if api and (decision_trace.get("persisted_tracks") or decision_trace.get("rejected_tracks")):
-            api.activity_log("decision_trace", decision_trace)
-    except Exception:
-        logging.exception("Failed to write decision_trace activity log")
-    if not video_file_ok:
-        try:
-            shutil.rmtree(output_path_physical)
-        except OSError as e:
-            logging.warning("Finalize: could not remove bad session dir %s: %s", output_path_physical, e)
-    elif len(video_detections) == 0:
-        keep_empty = bool(
-            app_config.get(
-                "processor.keep_recording_when_no_detections",
-            )
+        maybe_save_dataset_crops(
+            app_config,
+            video_id=video_id,
+            video_detections=video_detections,
+            data_dir=get_data_dir(),
+            video_output=video_output,
         )
-        file_src = str(app_config.get("video.source") or "").strip().lower() == "file"
-        if keep_empty and file_src:
+        notify_unique_species(
+            api,
+            app_config,
+            video_detections=video_detections,
+            video_output=video_output,
+            video_id=video_id,
+            encode_func=encode_notify_preview_base64,
+        )
+    write_decision_trace_activity(api, decision_trace)
+    if not video_file_ok:
+        remove_session_dir(output_path_physical, reason="bad")
+    elif len(video_detections) == 0:
+        if should_keep_empty_recording(app_config):
             logging.info(
                 "keep_recording_when_no_detections: retaining session (0 detections, file source): %s",
                 output_path_physical,
             )
         else:
-            try:
-                shutil.rmtree(output_path_physical)
-            except OSError as e:
-                logging.warning(
-                    "Finalize: could not remove empty session dir %s: %s",
-                    output_path_physical,
-                    e,
-                )
+            remove_session_dir(output_path_physical, reason="empty")

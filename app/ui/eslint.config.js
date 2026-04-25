@@ -42,6 +42,16 @@ export default [
       'react/react-in-jsx-scope': 'off', // Disable 'React must be in scope when using JSX
       'react/prop-types': 'off', // Disable prop-types validation as we use TypeScript
       'prettier/prettier': 'warn', // Report Prettier issues as warnings
+      // Сырой queryKey: ['segment', …] — только через queryKeys.* (#359).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Property[key.name='queryKey'][value.type='ArrayExpression'] > ArrayExpression > Literal:first-child",
+          message:
+            'React Query: не используй литерал массива с «сырой» первой ячейкой — только queryKeys.* из src/api/queryKeys.ts (или [...] от ключа из queryKeys, см. invalidateLocalSpeciesCaches).',
+        },
+      ],
       'no-restricted-imports': [
         'error',
         {

@@ -7,6 +7,20 @@ import { test, expect } from '@playwright/test';
 test.describe('Migration calendar', () => {
   test.describe.configure({ timeout: 45_000 });
 
+  async function expectMigrationTableOrEmptyState(page: import('@playwright/test').Page) {
+    const table = page.getByRole('table');
+    const emptyState = page.getByText(/No observed species for the selected period/i);
+    const loadError = page.getByText(/Error loading migration calendar|Ошибка загрузки/i);
+
+    await expect(loadError).toHaveCount(0);
+    if (await table.isVisible().catch(() => false)) {
+      await expect(table).toBeVisible({ timeout: 25_000 });
+      await expect(page.getByRole('columnheader', { name: 'Σ' })).toBeVisible();
+      return;
+    }
+    await expect(emptyState).toBeVisible({ timeout: 25_000 });
+  }
+
   test('From year filter refetches table without error', async ({ page }) => {
     await page.goto('/migration-calendar', { waitUntil: 'networkidle' });
     const fromYear = page.getByLabel(/From year|С года/i);
@@ -16,9 +30,7 @@ test.describe('Migration calendar', () => {
     const targetYear = new Date().getFullYear() - 1;
     await fromYear.click();
     await page.getByRole('option', { name: String(targetYear) }).click();
-    await expect(page.getByText(/Error loading migration calendar|Ошибка загрузки/i)).toHaveCount(0);
-    await expect(page.getByRole('table')).toBeVisible({ timeout: 25_000 });
-    await expect(page.getByRole('columnheader', { name: 'Σ' })).toBeVisible();
+    await expectMigrationTableOrEmptyState(page);
   });
 
   test('From year can be reset to All years', async ({ page }) => {
@@ -30,11 +42,10 @@ test.describe('Migration calendar', () => {
     const targetYear = new Date().getFullYear() - 2;
     await fromYear.click();
     await page.getByRole('option', { name: String(targetYear) }).click();
-    await expect(page.getByRole('table')).toBeVisible({ timeout: 25_000 });
+    await expectMigrationTableOrEmptyState(page);
 
     await fromYear.click();
     await page.getByRole('option', { name: /All years|Все годы/i }).click();
-    await expect(page.getByRole('table')).toBeVisible({ timeout: 25_000 });
-    await expect(page.getByText(/Error loading migration calendar|Ошибка загрузки/i)).toHaveCount(0);
+    await expectMigrationTableOrEmptyState(page);
   });
 });

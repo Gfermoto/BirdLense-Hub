@@ -1,6 +1,6 @@
 # BirdLense Hub — Документация
 
-> **Версия 0.3.6** (источник правды: корневой файл `VERSION`) · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
+> **Версия 0.3.7** (источник правды: корневой файл `VERSION`) · OpenAPI: [YAML](./project/openapi.md) · **Интерактив:** [Redoc](./reference/openapi.ru.md) · **Сайт доков:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/)
 
 [English](./README.md)
 
@@ -27,7 +27,7 @@
 | **Установка и деплой** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
 | **Быстрый старт и проверка** | [QUICKSTART](./QUICKSTART.md) | [RU](./QUICKSTART.ru.md) |
 | **Сценарии** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
-| **Конфигурация** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
+| **Конфигурация** | [CONFIGURATION](./CONFIGURATION.md) · [Policy](./CONFIGURATION_POLICY.md) | [RU](./CONFIGURATION.ru.md) · [Политика](./CONFIGURATION_POLICY.ru.md) |
 | **Термины (Hub, Frigate, слияние…)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
 | **Доменный контракт** (trigger/clip/visit/review/taxon) | [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) | [RU](./DOMAIN_CONTRACT.ru.md) |
 | **Возможности и API** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |

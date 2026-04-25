@@ -30,6 +30,30 @@
 
 **Отдельно:** **CodeQL** — [CODEQL.ru](./CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
+### Пирамида тестов и точечные прогоны ([#348](https://github.com/Gfermoto/BirdLense-Hub/issues/348))
+
+**SoT «что именно крутит CI»:** [`.github/workflows/ci-pr.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/ci-pr.yml) (параллельные job) и один локальный драйвер — **`scripts/ci-full-local.sh`** (`make ci-local` / `make ci-local-docker`).
+
+| Слой / gate | Где выполняется | Какие классы регрессий ловит в первую очередь |
+| ------------- | ----------------- | ----------------------------------------------- |
+| **Bandit + pip-audit** | `python-security`; начало `ci-full-local.sh` | небезопасные шаблоны; известные уязвимости зависимостей |
+| **Ruff + pytest-срезы** | `openapi-contract`; в `ci-full-local.sh` — полный `pytest web/tests/` в `.venv-ci` | стиль/формат; OpenAPI/API; registry, export, settings/auth, ingest |
+| **UI (Node)** | `ui-build`; фаза UI в `ci-full-local.sh` | TS/React, Vitest, ESLint, prod build, дрейф codegen |
+| **Docs** | `docs`; та же фаза в скрипте | MkDocs strict, settings UI coverage, синхрон `VERSION` |
+| **Docker + processor + web + E2E** | `docker-tests`; хвост `ci-full-local.sh` | образ, тесты в контейнере, Playwright smoke, аудит карточек |
+
+**Быстрые пути (тип правки → сначала это, часто до ~5–10 мин на прогретой машине):**
+
+| Меняли… | Что запустить |
+| --------- | ---------------- |
+| Только OpenAPI / сгенерированные TS-типы | `cd app/ui && npm run codegen:openapi` и `git diff --exit-code -- src/generated/openapi-types.ts`; или с корня **`make test-web-contract-local`** (контракт OpenAPI + жёсткий gate UI API auth в `app/.venv`) |
+| Только Flask (web) | `cd app && make test-web-local` после `make venv-web`, или узкий файл: `pytest web/tests/test_….py` |
+| Processor без тяжёлых весов | `cd app && make test-processor-light` |
+| Только документация MkDocs | из корня: `.venv-docs/bin/mkdocs build --strict` |
+| Перед пушем «как в CI» | `make ci-local` (+ **`make ci-local-docker`**, если трогали runtime / нужен smoke) |
+
+**E2E / селекторы:** для smoke и хрупких состояний (пилюли навигации, пустые состояния, **гейт пароля настроек** / оверлеи с `aria-hidden`) предпочитайте стабильные **`data-testid`** и `getByTestId`; текст/роль — только если однозначно в обеих темах и локалях.
+
 ### Unit-тесты (processor)
 
 ```bash

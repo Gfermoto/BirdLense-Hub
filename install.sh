@@ -62,9 +62,9 @@ ensure_docker() {
 
 run_compose() {
   if have_user_docker; then
-    (cd "${APP_DIR}" && docker compose "$@")
+    (cd "${APP_DIR}" && BIRDLENSE_PORT="${UI_PORT}" docker compose "$@")
   elif have_sudo_docker; then
-    (cd "${APP_DIR}" && sudo docker compose "$@")
+    (cd "${APP_DIR}" && sudo BIRDLENSE_PORT="${UI_PORT}" docker compose "$@")
   else
     log "ERROR: cannot run docker compose."
     exit 1

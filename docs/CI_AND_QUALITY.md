@@ -30,9 +30,9 @@ From the **repository root** (see `scripts/ci-full-local.sh`):
 | **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (`check` + `format --check`) + full **`pytest web/tests/`** inside a dedicated **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, OpenAPI codegen drift check, **Vitest**, `typecheck`, `lint`, `build`), **Settings UI coverage** script, **MkDocs** `build --strict` via **`.venv-docs`**, **radon** summary (informational). |
 | **`make ci-local-docker`** | Everything above, then **processor weights** fetch (with retries), **`docker compose build`**, **`make test`** + **`make test-web`** under `app/`, stack **up**, **Playwright** `app/e2e/tests/smoke.spec.ts`, then **down**. |
 
-**Requirements:** **Node.js ≥ 22** for the UI phase (matches CI and `app/ui/package.json` `engines`). **Docker** for `ci-local-docker`. The script uses **`PYTHONNOUSERSITE=1`** and clears inherited **`PYTHONPATH`** for `pip` so dependencies land in **`.venv-ci`**, not only `~/.local` (both venv dirs are **gitignored**).
+**Requirements:** **Node.js ≥ 22** for the UI phase (matches CI and `app/ui/package.json` `engines`). Before failing, `ci-full-local.sh` tries **`nvm`** (`$NVM_DIR` or `~/.nvm`, then `nvm use` from `app/ui/.nvmrc`) and **`fnm`** so non-interactive `make ci-local` is not stuck on a system Node 20. **Docker** for `ci-local-docker`. The script uses **`PYTHONNOUSERSITE=1`** and clears inherited **`PYTHONPATH`** for `pip` so dependencies land in **`.venv-ci`**, not only `~/.local` (both venv dirs are **gitignored**).
 
-See [TESTING](./TESTING.md) §1 and [LOCAL_DEV](./LOCAL_DEV.md).
+See [TESTING](./TESTING.md) §1 (including **Test pyramid** / targeted runs) and [LOCAL_DEV](./LOCAL_DEV.md).
 
 ## Ruff
 

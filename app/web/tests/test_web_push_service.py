@@ -2,6 +2,8 @@
 
 import pytest
 
+pytest.importorskip("pywebpush", reason="зависимость web/requirements.txt; см. make test-web-local")
+
 
 class TestSendWebPushCleanup:
     """send_web_push удаляет нечитаемые подписки из БД."""

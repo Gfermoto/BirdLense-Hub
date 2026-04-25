@@ -30,6 +30,30 @@ The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository 
 
 **Related workflows:** **CodeQL** (see [CODEQL](./CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
+### Test pyramid & targeted local runs ([#348](https://github.com/Gfermoto/BirdLense-Hub/issues/348))
+
+**Source of truth for “what CI runs”:** [`.github/workflows/ci-pr.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/ci-pr.yml) (parallel jobs) and, for a single local driver, **`scripts/ci-full-local.sh`** (`make ci-local` / `make ci-local-docker`).
+
+| Layer / gate | Where it runs | Main regression classes caught |
+| -------------- | ---------------- | -------------------------------- |
+| **Bandit + pip-audit** | CI `python-security`; start of `ci-full-local.sh` | insecure patterns; known vulnerable deps |
+| **Ruff + pytest slices** | CI `openapi-contract`; `ci-full-local.sh` (full `pytest web/tests/` in `.venv-ci`) | style/format; API/OpenAPI drift; registry, dataset export, settings/auth, processor ingest smoke |
+| **UI (Node)** | CI `ui-build`; `ci-full-local.sh` | TS/React correctness, Vitest, ESLint, production build, OpenAPI → TS codegen drift |
+| **Docs** | CI `docs`; `ci-full-local.sh` | MkDocs strict, settings UI coverage script, `VERSION` sync |
+| **Docker + processor + web + E2E** | CI `docker-tests`; tail of `ci-full-local.sh` | image build, processor + Flask in container, Playwright smoke, catalog audit |
+
+**Fast paths (typical change → run this first, often &lt; 5–10 minutes on a warm machine):**
+
+| You changed… | Suggested check |
+| -------------- | ----------------- |
+| OpenAPI / generated TS types only | `cd app/ui && npm run codegen:openapi` then `git diff --exit-code -- src/generated/openapi-types.ts`; or **`make test-web-contract-local`** from repo root (OpenAPI contract + strict UI API auth tests in `app/.venv`) |
+| Flask route / service (web only) | `cd app && make test-web-local` after `make venv-web`, or narrow: `pytest web/tests/test_<area>.py` |
+| Processor logic (no heavy YOLO) | `cd app && make test-processor-light` |
+| Markdown / MkDocs only | `.venv-docs/bin/mkdocs build --strict` from repo root |
+| “Full parity before push” | `make ci-local` (add **`make ci-local-docker`** when runtime or E2E smoke matters) |
+
+**E2E selector policy:** Prefer stable **`data-testid`** on elements that drive smoke flows (nav pills, empty states, **Settings password gate** / overlays where `aria-hidden` can confuse role-based queries). New Playwright specs should default to `getByTestId` for those widgets; use text/role selectors only when they are unambiguous in both themes and locales.
+
 ### Processor unit tests
 
 ```bash

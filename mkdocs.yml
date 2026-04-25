@@ -79,6 +79,7 @@ nav:
       - Access control: ACCESS_CONTROL.md
       - MCP setup: MCP_SETUP.md
       - Local development: LOCAL_DEV.md
+      - "Runtime coupling (Docker)": RUNTIME_COUPLING.md
       - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
       - "CI & quality policy": CI_AND_QUALITY.md
@@ -105,6 +106,7 @@ nav:
       - Governance: GOVERNANCE.md
       - GitHub CLI setup: GITHUB_SETUP_GH.md
       - Wiki and CI reports: WIKI_AUTOMATION.md
+      - "Web services domain map (#344)": project/WEB_SERVICES_DOMAIN_MAP.md
   - "Repository (canonical files)":
       - Contributing: project/contributing.md
       - Security policy: project/security-policy.md
@@ -140,6 +142,7 @@ nav:
       - Доступ: ACCESS_CONTROL.ru.md
       - MCP: MCP_SETUP.ru.md
       - Локальная разработка: LOCAL_DEV.ru.md
+      - "Связность runtime (Docker)": RUNTIME_COUPLING.ru.md
       - CodeQL (CI): CODEQL.ru.md
       - Тестирование: TESTING.ru.md
       - "CI и качество": CI_AND_QUALITY.ru.md
@@ -167,7 +170,7 @@ nav:
 
 extra:
   # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
-  site_version: "0.3.6"
+  site_version: "0.3.7"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub

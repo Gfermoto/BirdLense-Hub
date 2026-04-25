@@ -1,16 +1,15 @@
-"""HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды."""
+"""HTTP API процессора: приём видео/детекций, вебхуки, защита секретом и SSRF-гварды.
 
-import ipaddress
-import json
+Доменная логика: ``services.processor_ingest`` — ``gateway``, ``video_ingest``,
+``notify_ingest``, ``activity_log_ingest`` ([#344](https://github.com/Gfermoto/BirdLense-Hub/issues/344)).
+"""
+
 import os
-import secrets
-import socket
 import threading
-from flask import request
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
 
-from models import ActivityLog, db, BirdFood, Video, Species
+from flask import request
+
+from models import db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
@@ -20,124 +19,28 @@ from services.api_json_validation import (
     parse_request_json_object_allow_empty,
 )
 from services.http_response_cache import bust_response_caches
-import requests
-from recording_layout_paths import RECORDING_VIDEO_PATH_RE, stat_recording_layout_file
+from services.processor_ingest.gateway import (
+    check_processor_secret_token,
+    fire_webhook,
+    is_safe_webhook_url,
+)
+from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
+from services.processor_ingest.notify_ingest import process_processor_notify_detections
+from services.processor_ingest.video_ingest import prepare_processor_video
+from recording_layout_paths import RECORDING_VIDEO_PATH_RE
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
 
 
-def _log_activity(type_name: str, payload: dict) -> None:
-    try:
-        db.session.add(ActivityLog(type=type_name, data=json.dumps(payload)))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-
-def _processor_detection_payload(raw: dict) -> dict:
-    """Strip unknown keys but keep explicit eligibility flags for VisitProcessor."""
-    if not isinstance(raw, dict):
-        return {}
-    allowed = {
-        "species_name",
-        "species",
-        "confidence",
-        "start_time",
-        "end_time",
-        "source",
-        "track_id",
-        "frames",
-        "detection_provider",
-        "visit_eligible",
-        "notification_eligible",
-        "arbitration_reason",
-        "decision_reason_before_arbitration",
-        "decision_reason",
-        "decision_kind",
-        "outcome_bucket",
-        "evidence_state",
-        "trust_band",
-        "detector_confidence",
-        "classifier_confidence",
-    }
-    return {k: raw[k] for k in allowed if k in raw}
-
-
-def _is_public_ip(ip: str) -> bool:
-    try:
-        addr = ipaddress.ip_address(ip)
-    except ValueError:
-        return False
-    return not any(
-        (
-            addr.is_private,
-            addr.is_loopback,
-            addr.is_link_local,
-            addr.is_multicast,
-            addr.is_reserved,
-            addr.is_unspecified,
-        )
-    )
-
-
-def _is_safe_webhook_url(url: str) -> bool:
-    raw = (url or "").strip()
-    if not raw:
-        return False
-    try:
-        parsed = urlparse(raw)
-    except ValueError:
-        return False
-    if parsed.scheme not in ("http", "https"):
-        return False
-    host = (parsed.hostname or "").strip()
-    if not host:
-        return False
-    if host.lower() == "localhost":
-        return False
-    try:
-        infos = socket.getaddrinfo(host, parsed.port or None, type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return False
-    if not infos:
-        return False
-    for info in infos:
-        addr = info[4][0]
-        if not _is_public_ip(addr):
-            return False
-    return True
-
-
-def _fire_webhook(url: str, species_list: list, start_time: datetime, logger):
-    """POST each detection to webhook URL. Runs in thread, logs errors."""
-    for sp in species_list:
-        try:
-            species_name = sp.get("species_name") or sp.get("species") or sp.get("name") or "unknown"
-            confidence = float(sp.get("confidence") or 0)
-            det_start = float(sp.get("start_time") or 0)
-            detection_time = start_time + timedelta(seconds=det_start)
-            if detection_time.tzinfo is None:
-                detection_time = detection_time.replace(tzinfo=timezone.utc)
-            payload = {
-                "species": species_name,
-                "confidence": round(confidence, 4),
-                "time": detection_time.isoformat(),
-                "source": sp.get("source", "video"),
-            }
-            requests.post(url, json=payload, timeout=5)
-        except Exception as e:
-            logger.warning("Webhook POST failed: %s", e)
-
-
 def _check_processor_secret():
     """Return True if request is from processor (has valid secret). In production, empty secret blocks access."""
-    secret = os.environ.get("PROCESSOR_SECRET", "").strip()
-    token = request.headers.get("X-Processor-Token") or ""
-    if not secret:
-        is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
-        return not is_prod  # Allow when secret not configured only in dev
-    return secrets.compare_digest(token, secret)
+    is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
+    return check_processor_secret_token(
+        request_token=request.headers.get("X-Processor-Token") or "",
+        env_secret=os.environ.get("PROCESSOR_SECRET", ""),
+        is_prod=is_prod,
+    )
 
 
 def register_routes(app):
@@ -152,57 +55,19 @@ def register_routes(app):
             return perr, 400
         if not data:
             return {"error": "JSON body required"}, 400
-        try:
-            start_time = datetime.fromisoformat(data.get("start_time"))
-            end_time = datetime.fromisoformat(data.get("end_time"))
-        except (ValueError, TypeError):
-            return {"error": "Invalid datetime format"}, 400
-
-        species_list = data.get("species", []) or []
-        if not species_list:
-            return {"error": "Missing species"}, 400
-        species_list = [_processor_detection_payload(s) for s in species_list if isinstance(s, dict)]
-        species_list = [s for s in species_list if s.get("species_name") or s.get("species")]
-        if not species_list:
-            return {"error": "Missing species"}, 400
-        # Отсечь детекции с низким confidence (4% и т.п.)
         min_conf = float(app_config.get("detection.min_confidence_to_store") or 0.05)
-        species_list = [s for s in species_list if float(s.get("confidence") or 0) >= min_conf]
-        if not species_list:
-            return {"error": "All species below min_confidence_to_store threshold"}, 400
-
-        video_path = (data.get("video_path") or "").strip()
-        ok_file, resolved_full, reason = stat_recording_layout_file(video_path, kind="video")
-        if not ok_file:
-            if reason == "video_path_invalid":
-                return {"error": "Invalid video_path format"}, 400
-            _log_activity(
-                "ingest_gate",
-                {
-                    "reason": reason or "video_file_missing",
-                    "video_path": video_path,
-                    "resolved_path": resolved_full,
-                },
-            )
-            return {
-                "error": "Video file is missing or unreadable on hub storage",
-                "reason": reason or "video_file_missing",
-                "video_path": video_path,
-            }, 400
-
-        spec_path = (data.get("spectrogram_path") or "").strip()
-        if spec_path:
-            ok_spec, _, _ = stat_recording_layout_file(spec_path, kind="spectrogram")
-            if not ok_spec:
-                data["spectrogram_path"] = ""
+        prep = prepare_processor_video(data, min_confidence=min_conf)
+        if prep[0] is False:
+            return prep[1], prep[2]
+        pv = prep[1]
 
         try:
             video = Video(
                 processor_version=data["processor_version"],
-                start_time=start_time,
-                end_time=end_time,
-                video_path=video_path,
-                spectrogram_path=data.get("spectrogram_path"),
+                start_time=pv.start_time,
+                end_time=pv.end_time,
+                video_path=pv.video_path,
+                spectrogram_path=pv.spectrogram_path,
                 **fetch_weather(),
             )
             raw_sw = data.get("scales_weight_delta_kg")
@@ -221,18 +86,18 @@ def register_routes(app):
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
-            visit_processor.process_detections(video, species_list)
+            visit_processor.process_detections(video, pv.species_list)
 
             db.session.commit()
             bust_response_caches()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
-            if webhook_url and species_list:
-                if _is_safe_webhook_url(webhook_url):
+            if webhook_url and pv.species_list:
+                if is_safe_webhook_url(webhook_url):
                     threading.Thread(
-                        target=_fire_webhook,
-                        args=(webhook_url, species_list, start_time, app.logger),
+                        target=fire_webhook,
+                        args=(webhook_url, pv.species_list, pv.start_time, app.logger),
                         daemon=True,
                     ).start()
                 else:
@@ -280,134 +145,13 @@ def register_routes(app):
         data, perr = parse_request_json_object_allow_empty(request)
         if perr is not None:
             return perr, 400
-        detection = data.get("detection")
-        image_path = data.get("image_path")
-        image_base64 = data.get("image_base64")
-        link = data.get("link") or "live"
-        preview_source = data.get("preview_source") or "unknown"
-        notification_eligible = bool(data.get("notification_eligible", True))
-        suppress_reason = str(data.get("suppress_reason") or "").strip() or "notification_ineligible"
-        image_bytes = None
-        image_status = "missing"
-        if not notification_eligible:
-            app.logger.info(
-                "notify/detections: suppressed %s (eligible=false, reason=%s, preview_source=%s)",
-                detection,
-                suppress_reason,
-                preview_source,
-            )
-            _log_activity(
-                "notify_suppressed",
-                {
-                    "species": detection,
-                    "preview_source": preview_source,
-                    "suppress_reason": suppress_reason,
-                    "telegram_delivery": "skipped",
-                    "has_image": bool(image_base64 or image_path),
-                },
-            )
-            return {"message": f"Successfully received notification of {detection}", "skipped": True}, 200
-        if image_base64:
-            try:
-                import base64
-
-                image_bytes = base64.b64decode(image_base64)
-            except Exception as e:
-                app.logger.warning("Failed to decode image_base64 for notify: %s", e)
-                image_status = "decode_failed"
-        if image_base64 and not image_bytes:
-            app.logger.warning("notify/detections: image_base64 present but decode produced empty bytes")
-            image_status = "decode_failed"
-        elif not image_base64:
-            app.logger.info(
-                "notify/detections: no image for %s (preview_source=%s)",
-                detection,
-                preview_source,
-            )
-            image_status = "missing"
-        else:
-            app.logger.info(
-                "notify/detections: image present for %s (preview_source=%s, bytes=%s)",
-                detection,
-                preview_source,
-                len(image_bytes or b""),
-            )
-            image_status = "present"
-        if not image_base64 and not image_path:
-            app.logger.info(
-                "notify/detections: skipped %s (no preview context, preview_source=%s)",
-                detection,
-                preview_source,
-            )
-            try:
-                db.session.add(
-                    ActivityLog(
-                        type="notify_preview",
-                        data=json.dumps(
-                            {
-                                "species": detection,
-                                "preview_source": preview_source,
-                                "has_image": False,
-                                "image_status": image_status,
-                                "telegram_delivery": "skipped",
-                                "photo_requested": False,
-                                "photo_available": False,
-                                "photo_sent": False,
-                                "fallback_reason": "no_preview_context",
-                            }
-                        ),
-                    )
-                )
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            return {"message": f"Successfully received notification of {detection}", "skipped": True}, 200
-        excluded_species = app_config.get("general.notification_excluded_species", [])
-        if detection not in excluded_species:
-            lower = detection.lower()
-            icon = (
-                "chipmunk"
-                if any(s in lower for s in ("rodent", "грызун", "squirrel", "chipmunk", "mouse", "мышь", "белка"))
-                else "bird"
-            )
-            notify_result = (
-                notify(
-                    f"{detection} Detected",
-                    tags=icon,
-                    image_path=image_path,
-                    image_bytes=image_bytes,
-                    link=link,
-                    timestamp=datetime.now(timezone.utc),
-                    fallback_reason_hint="decode_failed" if image_status == "decode_failed" else None,
-                )
-                or {}
-            )
-            fallback_reason = notify_result.get("fallback_reason")
-            if image_status == "decode_failed":
-                fallback_reason = "decode_failed"
-            try:
-                db.session.add(
-                    ActivityLog(
-                        type="notify_preview",
-                        data=json.dumps(
-                            {
-                                "species": detection,
-                                "preview_source": preview_source,
-                                "has_image": bool(image_bytes),
-                                "image_status": image_status,
-                                "telegram_delivery": notify_result.get("telegram_delivery", "unknown"),
-                                "photo_requested": bool(notify_result.get("photo_requested", False)),
-                                "photo_available": bool(notify_result.get("photo_available", False)),
-                                "photo_sent": bool(notify_result.get("photo_sent", False)),
-                                "fallback_reason": fallback_reason,
-                            }
-                        ),
-                    )
-                )
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        return {"message": f"Successfully received notification of {detection}"}, 200
+        excluded = app_config.get("general.notification_excluded_species", [])
+        return process_processor_notify_detections(
+            data,
+            logger=app.logger,
+            notify_fn=notify,
+            excluded_species=excluded,
+        )
 
     @app.route("/api/processor/notify/motion", methods=["POST"])
     def notify_motion_route():
@@ -420,37 +164,7 @@ def register_routes(app):
         if not _check_processor_secret():
             app.logger.warning("activity_log: 403 Forbidden (PROCESSOR_SECRET mismatch)")
             return {"error": "Forbidden"}, 403
-        try:
-            data, perr = parse_request_json_object_allow_empty(request)
-            if perr is not None:
-                return perr, 400
-            activity_type = data.get("type")
-            raw_data = data.get("data")
-            activity_data = json.dumps(raw_data) if raw_data is not None else "{}"
-            if len(activity_data) > 65536:
-                return {"error": "Activity data too large (max 64 KB)"}, 400
-            activity_id = data.get("id")
-            if activity_id is not None:
-                activity_id = int(activity_id)
-
-            if not activity_type:
-                return {"error": 'Field "type" is required'}, 400
-
-            if activity_id is None:
-                new_log = ActivityLog(type=activity_type, data=activity_data)
-                db.session.add(new_log)
-                db.session.commit()
-                return {"message": "Activity log created successfully", "id": new_log.id}, 201
-            else:
-                log = db.session.get(ActivityLog, activity_id)
-                if not log:
-                    return {"error": "Activity log with this ID not found"}, 404
-                log.type = activity_type
-                log.data = activity_data
-                log.updated_at = datetime.now(timezone.utc)
-                db.session.commit()
-                return {"message": "Activity log updated successfully", "id": log.id}, 200
-        except Exception as e:
-            db.session.rollback()
-            app.logger.exception("activity_log failed: %s", e)
-            return {"error": "Internal server error"}, 500
+        data, perr = parse_request_json_object_allow_empty(request)
+        if perr is not None:
+            return perr, 400
+        return upsert_activity_log_from_processor(data, logger=app.logger)

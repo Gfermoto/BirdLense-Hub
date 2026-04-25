@@ -29,9 +29,31 @@ make stop && make start
 
 ---
 
+## Старт одного контейнера (entrypoint): куда смотреть, если «зависло» {#single-container-startup-stuck}
+
+Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](./RUNTIME_COUPLING.ru.md).
+
+| Симптом | Куда смотреть |
+| --------- | ---------------- |
+| Пустая страница / 502 от nginx | `docker exec birdlense tail -100 /var/log/nginx/error.log` — upstream на `127.0.0.1:8000` |
+| Долгое ожидание health / первый ответ | `docker logs birdlense` — `create_app()`, Telegram, миграции БД; см. раздел **«Спам App is UP!»** выше |
+| UI есть, нет детекций / live | Processor отдельно: логи `main.py`, Go2RTC/MQTT; см. раздел **«Пороги processor»** ниже |
+| Ошибки Redis | `docker compose ps` — здоров ли `birdlense-redis`; `REDIS_URL` в `app/.env` |
+
+Проверки с хоста (порт по умолчанию):
+
+```bash
+curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/health"
+curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/readiness" | head -c 400
+```
+
+Внутри контейнера gunicorn — **`127.0.0.1:8000`** (не публикуется наружу); nginx — **`8080`**.
+
+---
+
 ## Перезапуски и подвисания
 
-В контейнере: nginx, gunicorn, processor (в цикле). Processor перезапускается без выхода контейнера. Контейнер падает при выходе nginx/gunicorn/entrypoint.
+В контейнере: nginx, gunicorn, processor (в цикле). Processor перезапускается без выхода контейнера. nginx и gunicorn запущены в фоне: если они упадут, контейнер может остаться живым, но стать unhealthy или частично сломанным. Контейнер выходит при завершении foreground entrypoint / processor loop или остановке runtime.
 
 **Проверить:**
 ```bash

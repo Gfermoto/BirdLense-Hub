@@ -52,6 +52,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) |
 | MCP | [MCP_SETUP.md](./MCP_SETUP.md) · [RU](./MCP_SETUP.ru.md) |
 | Local dev | [LOCAL_DEV.md](./LOCAL_DEV.md) · [RU](./LOCAL_DEV.ru.md) |
+| Runtime coupling (Docker) | [RUNTIME_COUPLING.md](./RUNTIME_COUPLING.md) · [RU](./RUNTIME_COUPLING.ru.md) |
 | CodeQL (CI) | [CODEQL.md](./CODEQL.md) · [RU](./CODEQL.ru.md) |
 | Testing | [TESTING.md](./TESTING.md) · [RU](./TESTING.ru.md) |
 | CI & quality policy | [CI_AND_QUALITY.md](./CI_AND_QUALITY.md) · [RU](./CI_AND_QUALITY.ru.md) |
@@ -90,6 +91,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Governance | [GOVERNANCE.md](./GOVERNANCE.md) · [RU](./GOVERNANCE.ru.md) |
 | GitHub CLI setup | [GITHUB_SETUP_GH.md](./GITHUB_SETUP_GH.md) · [RU](./GITHUB_SETUP_GH.ru.md) |
 | Wiki and CI reports | [WIKI_AUTOMATION.md](./WIKI_AUTOMATION.md) · [RU](./WIKI_AUTOMATION.ru.md) |
+| Web services domain map (#344) | [project/WEB_SERVICES_DOMAIN_MAP.md](./project/WEB_SERVICES_DOMAIN_MAP.md) |
 
 **Related (not separate nav rows):** triage / board / issues — [ROADMAP.md](./ROADMAP.md) · [RU](./ROADMAP.ru.md); repo root [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md).
 

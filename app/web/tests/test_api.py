@@ -361,7 +361,7 @@ class TestTrackRegenFallback:
         import types
 
         from models import ActivityLog, Video, db
-        from services import system_track_regen_worker as worker_mod
+        import services.system_track_regen.worker_core as worker_mod
 
         with app.app_context():
             video = Video(
@@ -460,7 +460,7 @@ class TestTrackRegenFallback:
 
         from app_config.app_config import app_config
         from models import Video, db
-        from services import system_track_regen_worker as worker_mod
+        import services.system_track_regen.worker_core as worker_mod
         import routes.ui_system_jobs_state as job_state
 
         with app.app_context():
@@ -553,7 +553,7 @@ class TestTrackRegenFallback:
         import types
 
         from models import Video, db
-        from services import system_track_regen_worker as worker_mod
+        import services.system_track_regen.worker_core as worker_mod
         import services.visit_processor as vp_mod
 
         with app.app_context():

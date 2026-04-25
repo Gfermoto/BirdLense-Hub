@@ -42,3 +42,8 @@ services:
       - TRUSTED_PROXY=${TRUSTED_PROXY:-}
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

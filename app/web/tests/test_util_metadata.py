@@ -237,9 +237,9 @@ class TestAllowlistScientificForDisplayName:
     """Бином из allowlist для общего имени вида в БД (регрессия сороки / Pica pica)."""
 
     def test_magpie_common_name_maps_to_pica_pica(self, tmp_path, monkeypatch):
-        from services.species_catalog_allowlist_service import (
-            allowlist_scientific_name_for_display_name,
+        from services.species_catalog.allowlist import (
             _load_allowlist_names_cached,
+            allowlist_scientific_name_for_display_name,
         )
 
         p = tmp_path / "allow.txt"
@@ -247,7 +247,7 @@ class TestAllowlistScientificForDisplayName:
         abspath = str(p.resolve())
 
         monkeypatch.setattr(
-            "services.species_catalog_allowlist_service.resolve_allowlist_path",
+            "services.species_catalog.allowlist.resolve_allowlist_path",
             lambda _get: abspath,
         )
         _load_allowlist_names_cached.cache_clear()
