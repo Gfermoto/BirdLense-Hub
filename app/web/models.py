@@ -183,6 +183,7 @@ class Video(db.Model):
     video_path: Mapped[str] = mapped_column(nullable=False)
     spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Weather data
     weather_main: Mapped[str] = mapped_column(String(), nullable=True)  # short category, e.g., Rain
     weather_description: Mapped[str] = mapped_column(

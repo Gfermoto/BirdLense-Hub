@@ -3342,37 +3342,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Track batch status
-  /system/retention:
-    post:
-      description: 'Admin: apply configured retention rules.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              type: object
-        required: false
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Run retention policy
   /system/review-queue/delete:
     post:
       description: 'Admin: apply bulk delete.'

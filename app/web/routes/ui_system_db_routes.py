@@ -54,4 +54,7 @@ def register_ui_system_db_routes(app):
     @require_ui_settings_password
     def trigger_retention():
         """Run retention policy (delete old recordings)."""
-        return run_retention_and_bust_caches()
+        data = request.get_json(silent=True) or {}
+        dry_run = bool(data.get("dry_run", False))
+        mode = data.get("mode")
+        return run_retention_and_bust_caches(dry_run=dry_run, mode=mode)
