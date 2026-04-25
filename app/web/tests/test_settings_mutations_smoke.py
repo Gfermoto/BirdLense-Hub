@@ -213,6 +213,39 @@ def test_settings_patch_general_with_admin_session(app, client, monkeypatch):
         app_config.set("general.donate_url", old_donate)
 
 
+def test_settings_patch_rejects_invalid_section_shape(app, client, monkeypatch):
+    """PATCH не должен сохранять scalar вместо config section mapping."""
+    from app_config.app_config import app_config
+
+    monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
+    monkeypatch.delenv("FLASK_ENV", raising=False)
+    _patch_general_key(monkeypatch, "settings_password", "patch-admin-pw")
+    _patch_general_key(monkeypatch, "contributor_password", "")
+    monkeypatch.setattr(
+        app_config,
+        "save",
+        lambda: (_ for _ in ()).throw(AssertionError("invalid settings PATCH must not save")),
+    )
+    old_mqtt = app_config.config.get("mqtt")
+    try:
+        with client.session_transaction() as sess:
+            sess["access_role"] = "admin"
+
+        r = client.patch(
+            "/api/ui/settings",
+            json={"mqtt": "not-a-dict"},
+            content_type="application/json",
+        )
+
+        assert r.status_code == 400
+        body = r.get_json() or {}
+        assert body.get("error") == "Validation failed"
+        assert any("mqtt" in msg for msg in body.get("issues") or [])
+        assert app_config.config.get("mqtt") == old_mqtt
+    finally:
+        app_config.config["mqtt"] = old_mqtt
+
+
 def test_settings_patch_contributor_merges_safe_field(app, client, monkeypatch):
     """Оператор может PATCH; админские пароли из payload не применяются."""
     from app_config.app_config import app_config

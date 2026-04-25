@@ -29,7 +29,7 @@ Pick what matches you — you can read the rest as reference.
 | **Install & deploy** | [INSTALL](./INSTALL.md) | [RU](./INSTALL.ru.md) |
 | **Quickstart & verify** | [QUICKSTART](./QUICKSTART.md) | [RU](./QUICKSTART.ru.md) |
 | **Recipes & workflows** | [SCENARIOS](./SCENARIOS.md) | [RU](./SCENARIOS.ru.md) |
-| **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) | [RU](./CONFIGURATION.ru.md) |
+| **Config keys & env** | [CONFIGURATION](./CONFIGURATION.md) · [Policy](./CONFIGURATION_POLICY.md) | [RU](./CONFIGURATION.ru.md) · [Политика](./CONFIGURATION_POLICY.ru.md) |
 | **Terms (Hub, Frigate, merge, …)** | [GLOSSARY](./GLOSSARY.md) | [RU](./GLOSSARY.ru.md) |
 | **Domain contract** (trigger/clip/visit/review/taxon) | [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md) | [RU](./DOMAIN_CONTRACT.ru.md) |
 | **Feature matrix & API hints** | [FEATURES](./FEATURES.md) | [RU](./FEATURES.ru.md) |
