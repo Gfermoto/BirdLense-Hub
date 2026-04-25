@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { ensureSettingsUnlocked, unlockSettingsIfNeeded } from '../helpers/settings';
 
 test.describe('Settings page', () => {
+  const settingsHeading = /Station settings|Настройки станции|站点设置/i;
+
   test.beforeEach(async ({ page, request }) => {
     const reqRes = await request.get('/api/ui/settings/requires-password');
     const { requires } = await reqRes.json();
@@ -18,7 +20,7 @@ test.describe('Settings page', () => {
   });
 
   test('Settings form loads with all sections', async ({ page }) => {
-    await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: settingsHeading })).toBeVisible();
     await expect(page.getByRole('button', { name: /Общее|General/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Подключения|Connections/i })).toBeVisible();
   });
@@ -70,7 +72,7 @@ test.describe('Settings processor save', () => {
     await page.goto('/settings');
     await page.waitForLoadState('domcontentloaded');
     await unlockSettingsIfNeeded(page);
-    await expect(page.getByText(/Update Settings|Обновить настройки/i)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('heading', { name: settingsHeading })).toBeVisible({ timeout: 30000 });
 
     const spin = page.getByRole('spinbutton', {
       name: /Max recording seconds|Макс\. секунд записи|最大录音秒数/i,

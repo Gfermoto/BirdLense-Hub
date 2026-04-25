@@ -52,7 +52,7 @@ python3 -m venv .venv-docs
 
 ### Чеклист перед релизом (мейнтейнер)
 
-- [ ] Из **корня репозитория:** `make ci-local` (полный паритет с job **CI** на GitHub, кроме тяжёлого Docker-слоя — см. [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md)); по желанию **`make ci-local-docker`** для локальных `make test` / `test-web` + Playwright smoke
+- [ ] Из **корня репозитория:** `make ci-local` (полный паритет с job **CI** на GitHub, кроме тяжёлого Docker-слоя — см. [CI_AND_QUALITY.ru](./CI_AND_QUALITY.ru.md)); по желанию **`make ci-local-docker`** для локальных `make test` / `test-web` + Playwright smoke. **`scripts/ci-full-local.sh`** подхватывает **nvm** / **fnm** по `app/ui/.nvmrc`, если в `PATH` нет `node` или версия &lt; 22.
 - [ ] `cd app && make test && make test-web` (или зелёный **CI** на PR `dev` → `main`)
 - [ ] `cd app && make verify`
 - [ ] Из корня репо: `mkdocs build --strict` (или команды с `.venv-docs` выше)
@@ -75,6 +75,8 @@ make local
 3. **start** — запускает контейнер
 
 Без камер и Go2RTC процессор переходит в режим ожидания — веб-интерфейс и API работают.
+
+Порядок старта Docker, `PYTHONPATH`, health vs readiness: [RUNTIME_COUPLING.ru.md](./RUNTIME_COUPLING.ru.md). Если после `compose up` «висит»: [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md#single-container-startup-stuck).
 
 ## Ручной запуск
 
@@ -99,17 +101,17 @@ docker compose logs -f --tail=100
 
 ## Тестирование
 
-### API-тесты (в контейнере)
+### API-тесты
 
 ```bash
 cd app
 make test-web
 ```
 
-Контрактный смоук OpenAPI (Issue #54):
+Контрактный smoke OpenAPI + жёсткий gate UI API auth (быстрый host-only путь):
+
 ```bash
-cd app
-python -m pytest web/tests/test_openapi_contract.py -q
+make test-web-contract-local
 ```
 
 **Только web на хосте (без Docker):** `cd app && make test-web-local` — venv `app/.venv` из `web/requirements.txt`. Если `pip` ругается на посторонние пакеты (например **PlatformIO**), проверьте, что в shell не выставлен **`PYTHONPATH` на `~/.local/.../site-packages`**; при необходимости **`make venv-web-reset`**.
@@ -212,4 +214,4 @@ docker compose logs birdlense
 
 ### Тесты зависают
 
-Тесты используют `:memory:` SQLite. Если зависают — проверьте `docker compose ps`, контейнер должен быть запущен для `make test-web`.
+`make test-web` запускает одноразовый Docker-контейнер с примонтированным кодом; живой app stack для него не нужен. Проверьте, что образ собирается и Docker отвечает. Запущенный stack нужен для `make verify` и E2E.

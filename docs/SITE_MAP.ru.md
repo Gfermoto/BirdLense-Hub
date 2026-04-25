@@ -52,6 +52,7 @@
 | Доступ и роли | [ACCESS_CONTROL.ru.md](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) |
 | MCP | [MCP_SETUP.ru.md](./MCP_SETUP.ru.md) · [EN](./MCP_SETUP.md) |
 | Локальная разработка | [LOCAL_DEV.ru.md](./LOCAL_DEV.ru.md) · [EN](./LOCAL_DEV.md) |
+| Связность runtime (Docker) | [RUNTIME_COUPLING.ru.md](./RUNTIME_COUPLING.ru.md) · [EN](./RUNTIME_COUPLING.md) |
 | CodeQL (CI) | [CODEQL.ru.md](./CODEQL.ru.md) · [EN](./CODEQL.md) |
 | Тесты | [TESTING.ru.md](./TESTING.ru.md) · [EN](./TESTING.md) |
 | CI и качество | [CI_AND_QUALITY.ru.md](./CI_AND_QUALITY.ru.md) · [EN](./CI_AND_QUALITY.md) |

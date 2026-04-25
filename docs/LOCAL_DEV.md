@@ -55,7 +55,7 @@ Details: [Documentation](./Documentation.md).
 
 ### Maintainer checklist (before a release)
 
-- [ ] From **repo root:** `make ci-local` (full parity with GitHub **CI** jobs except Docker-heavy layer — see [CI_AND_QUALITY](./CI_AND_QUALITY.md)); optional **`make ci-local-docker`** if you need processor image tests + Playwright smoke locally
+- [ ] From **repo root:** `make ci-local` (full parity with GitHub **CI** jobs except Docker-heavy layer — see [CI_AND_QUALITY](./CI_AND_QUALITY.md)); optional **`make ci-local-docker`** if you need processor image tests + Playwright smoke locally. **`scripts/ci-full-local.sh`** tries **nvm** / **fnm** against `app/ui/.nvmrc` if `node` on `PATH` is missing or &lt; 22 (non-interactive `make` friendly).
 - [ ] `cd app && make test && make test-web` (or green **CI** on `dev` → `main`)
 - [ ] `cd app && make verify`
 - [ ] From repo root: `mkdocs build --strict` (or `.venv-docs` commands above)
@@ -76,6 +76,8 @@ make local
 Open **http://localhost:8085**.
 
 `make local` runs **setup** (creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` if missing), **local-build** (UI + Docker image), then **start**.
+
+Docker **startup order**, `PYTHONPATH`, and health vs readiness: [RUNTIME_COUPLING](./RUNTIME_COUPLING.md). If the stack seems stuck after `compose up`, see [TROUBLESHOOTING](./TROUBLESHOOTING.md#single-container-startup-stuck).
 
 Without cameras or Go2RTC, the processor idles in wait mode — **the web UI and API still work**.
 
@@ -105,9 +107,10 @@ Build the UI **before** `docker compose build` unless your image runs `npm` insi
 ## Running tests
 
 | Layer | Command |
-|-------|---------|
+| ------- | --------- |
 | Web API | `cd app && make test-web` |
-| OpenAPI contract smoke | `cd app && python -m pytest web/tests/test_openapi_contract.py -q` |
+| OpenAPI / UI auth contract smoke | `make test-web-contract-local` |
+| Host-only web API | `cd app && make test-web-local` |
 | Processor | `cd app && make test` |
 | E2E | `cd app && make start` then `make test-e2e` (optional `E2E_SETTINGS_PASSWORD`, `BASE_URL`) |
 
@@ -188,4 +191,4 @@ CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](ht
 
 **Container exits** — `docker compose logs birdlense`; ensure port not in use (`ss -tlnp | grep 8085`)
 
-**Tests hang** — web tests expect a running container; check `docker compose ps`
+**Tests hang** — `make test-web` starts a one-off Docker container with the test code mounted in; it does not require a live app stack. Check that the image builds and Docker is responsive. A live stack is needed for `make verify` and E2E.

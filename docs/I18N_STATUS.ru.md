@@ -58,6 +58,7 @@
 | RELEASE_READINESS | ✅ | ✅ |
 | CI_AND_QUALITY | ✅ | ✅ |
 | LOCAL_DEV | ✅ | ✅ |
+| RUNTIME_COUPLING | ✅ | ✅ |
 | CODEQL (CI) | ✅ | ✅ |
 | A11Y | ✅ | ✅ |
 | UX_TOOLTIPS | ✅ | ✅ |

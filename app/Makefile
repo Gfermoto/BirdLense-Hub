@@ -1,4 +1,4 @@
-.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
+.PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 all: build
 
@@ -18,7 +18,7 @@ setup:
 # Локальная разработка: setup + local-build + start
 local: setup local-build start
 	@echo ""
-	@echo "BirdLense Hub: http://localhost:${BIRDLENSE_PORT:-8085}"
+	@echo "BirdLense Hub: http://localhost:$${BIRDLENSE_PORT:-8085}"
 	@echo "Логи: make logs"
 
 # Полная сборка для локального запуска: UI + Docker-образ
@@ -38,13 +38,13 @@ build:
 start: setup
 	@echo "Starting BirdLense Hub..."
 	@docker compose up -d
-	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
 pull: setup
 	@docker compose -f docker-compose.pull.yml pull
 	@docker compose -f docker-compose.pull.yml up -d
-	@echo "BirdLense Hub on port ${BIRDLENSE_PORT:-8085}. Logs: make logs"
+	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:
 	@docker compose down
@@ -79,6 +79,13 @@ test-processor-light:
 test-web:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
 		bash -c 'if [ "$$TEST_WEB_VERBOSE" = 1 ]; then exec python -m pytest web/tests/ -v; else exec python -m pytest web/tests/ -q --tb=short; fi'
+
+# Узкий набор: OpenAPI-контракт + жёсткий gate API auth (~минуты на хосте, без Docker). См. docs/TESTING.md § Test pyramid (#348).
+test-web-contract-local: venv-web
+	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest \
+		web/tests/test_openapi_contract.py \
+		web/tests/test_strict_ui_api_auth.py \
+		-q --tb=line
 
 # Один раз: venv + pip install -r web/requirements.txt (см. WEB_VENV_ENV — без ~/.local в PYTHONPATH).
 venv-web:
