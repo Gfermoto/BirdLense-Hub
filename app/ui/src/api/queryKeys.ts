@@ -1,4 +1,4 @@
-/** Central React Query keys (#296, #343) — invalidate via queryKeys.* for stable contracts. */
+/** Central React Query keys (#296, #343, #359) — в UI только `queryKeys.*`; сырой `queryKey: ['…']` запрещён ESLint. */
 
 import type { MigrationCalendarParams } from './migrationCalendar';
 

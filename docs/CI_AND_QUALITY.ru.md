@@ -30,9 +30,9 @@
 | **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (проверка и `format --check`) + весь **`pytest web/tests/`** в отдельном **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, дрейф OpenAPI codegen, **Vitest**, `typecheck`, `lint`, `build`), скрипт **покрытия Settings UI**, **MkDocs** `build --strict` через **`.venv-docs`**, сводка **radon**. |
 | **`make ci-local-docker`** | Всё выше, затем загрузка **весов processor**, **`docker compose build`**, **`make test`** + **`make test-web`** в `app/`, подъём стека, **Playwright** `app/e2e/tests/smoke.spec.ts`, остановка стека. |
 
-**Требования:** **Node.js ≥ 22** для фазы UI (как в CI и `engines` в `app/ui/package.json`). **Docker** — для `ci-local-docker`. Для `pip` включается **`PYTHONNOUSERSITE=1`** и сбрасывается унаследованный **`PYTHONPATH`**, чтобы зависимости ставились в **`.venv-ci`**, а не только в `~/.local` (каталоги **`.venv-ci`** / **`.venv-docs`** в git не коммитятся).
+**Требования:** **Node.js ≥ 22** для фазы UI (как в CI и `engines` в `app/ui/package.json`). Перед ошибкой `ci-full-local.sh` пробует **nvm** (`$NVM_DIR` или `~/.nvm`, затем `nvm use` из `app/ui/.nvmrc`) и **fnm**, чтобы неинтерактивный `make ci-local` не упирался в системный Node 20. **Docker** — для `ci-local-docker`. Для `pip` включается **`PYTHONNOUSERSITE=1`** и сбрасывается унаследованный **`PYTHONPATH`**, чтобы зависимости ставились в **`.venv-ci`**, а не только в `~/.local` (каталоги **`.venv-ci`** / **`.venv-docs`** в git не коммитятся).
 
-См. [TESTING.ru](./TESTING.ru.md) §1 и [LOCAL_DEV.ru](./LOCAL_DEV.ru.md).
+См. [TESTING.ru](./TESTING.ru.md) §1 (в т.ч. **пирамида тестов** / точечные прогоны) и [LOCAL_DEV.ru](./LOCAL_DEV.ru.md).
 
 ## Ruff
 

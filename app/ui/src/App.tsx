@@ -61,9 +61,10 @@ const theme = createTheme({
       paper: '#1E293B', // Slate 800
     },
     primary: {
-      main: '#10B981', // Emerald 500
+      main: '#10B981', // Emerald 500 (readable on dark background as text/outline color)
       /** Текст/иконки на сплошной заливке primary — WCAG AA для обычного текста */
       dark: '#047857',
+      light: '#34D399',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -151,6 +152,20 @@ const theme = createTheme({
           backgroundColor: '#047857',
           color: '#ffffff',
           '&:hover': { backgroundColor: '#065f46' },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        /** Keep contained primary buttons WCAG AA with white text. */
+        containedPrimary: {
+          '--variant-containedBg': '#047857',
+          '--variant-containedHoverBg': '#065f46',
+          backgroundColor: '#047857',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#065f46',
+          },
         },
       },
     },

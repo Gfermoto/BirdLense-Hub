@@ -1,7 +1,7 @@
 import pytest
 
 from app_config.app_config import app_config
-import services.species_registry_service as registry_mod
+import services.species_catalog.registry as registry_mod
 from services.species_registry_service import (
     _rotate_need_slice,
     enrich_species_metadata,

@@ -14,3 +14,7 @@
 При добавлении маршрута в Hub: сначала обновить **`openapi.yaml`**, перегенерировать типы, затем заменить ручной тип на `paths[...]` / `components['schemas'][...]`, если схема стала точной.
 
 См. также: [OpenAPI specification](openapi.md).
+
+## React Query (`queryKey`)
+
+Новые ключи кэша — **только** через фабрики в `app/ui/src/api/queryKeys.ts` (`queryKeys.*`); в компонентах не вводить `queryKey: ['строка', …]` (ловит ESLint `no-restricted-syntax` в `app/ui/eslint.config.js`, [#359](https://github.com/Gfermoto/BirdLense-Hub/issues/359)). Исключение: копирование уже типизированного ключа, например `{ queryKey: [...key] }` в `invalidateLocalSpeciesCaches.ts`.

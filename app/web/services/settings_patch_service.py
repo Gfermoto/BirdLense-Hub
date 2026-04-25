@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import copy
 
-from app_config.app_config import app_config
+from app_config.app_config import app_config, validate_merged_config
 from services.cache import cache_delete_prefix, reset_redis_client
 from services.ui_password_service import hash_password_fields_in_updates
 from services.http_response_cache import bust_response_caches
+
+
+class SettingsPatchValidationError(ValueError):
+    """Settings PATCH would produce an invalid merged config."""
+
+    def __init__(self, issues: list[str]):
+        super().__init__("Invalid settings patch")
+        self.issues = issues
 
 
 def normalize_settings_patch_updates(
@@ -40,8 +48,17 @@ def normalize_settings_patch_updates(
     return out
 
 
+def validate_settings_patch_updates(normalized_updates: dict) -> None:
+    """Reject PATCH payloads that would corrupt merged config shape."""
+    candidate = app_config.merge_dicts(app_config.config, normalized_updates)
+    issues = validate_merged_config(candidate)
+    if issues:
+        raise SettingsPatchValidationError(issues)
+
+
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
+    validate_settings_patch_updates(normalized_updates)
     to_merge = hash_password_fields_in_updates(normalized_updates)
     app_config.config = app_config.merge_dicts(
         app_config.config,

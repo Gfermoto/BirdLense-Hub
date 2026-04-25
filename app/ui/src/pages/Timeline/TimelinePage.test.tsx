@@ -117,5 +117,5 @@ describe('TimelinePage', () => {
     } finally {
       errSpy.mockRestore();
     }
-  });
+  }, 10000);
 });

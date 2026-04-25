@@ -31,9 +31,31 @@ Notification tuning: [CONFIGURATION](./CONFIGURATION.md) → Notifications.
 
 ---
 
+## Single-container startup (entrypoint): if stuck {#single-container-startup-stuck}
+
+The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](./ARCHITECTURE.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](./RUNTIME_COUPLING.md).
+
+| Symptom | Where to look |
+| -------- | ---------------- |
+| Blank page / 502 from nginx | `docker exec birdlense tail -100 /var/log/nginx/error.log` — upstream to `127.0.0.1:8000` failing |
+| Health wait / slow first response | `docker logs birdlense` — `create_app()`, Telegram `notify_app_startup`, DB migrations; compare with [Telegram spam](#telegram-app-is-up-spam-loop) |
+| UI loads but no detections / live | Processor is separate: logs for `main.py`, Go2RTC/MQTT; [processor thresholds](#processor-thresholds-saved-in-ui-behavior-unchanged) |
+| Redis-related errors | `docker compose ps` — `birdlense-redis` healthy; `REDIS_URL` in `app/.env` |
+
+Quick probes (from host, default port):
+
+```bash
+curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/health"
+curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/readiness" | head -c 400
+```
+
+Inside the container, gunicorn listens on **`127.0.0.1:8000`** (not published); nginx on **`8080`**.
+
+---
+
 ## Restarts, hangs, exit codes
 
-One container runs nginx, gunicorn, and the processor loop. The processor can restart **inside** the container; the container exits if nginx/gunicorn/entrypoint die.
+One container runs nginx, gunicorn, and the processor loop. The processor can restart **inside** the container. nginx and gunicorn run in the background; if they die, the container may stay up but become unhealthy or partially broken. The container exits when the foreground entrypoint / processor loop exits or the runtime stops it.
 
 ```bash
 docker inspect birdlense --format '{{.State.ExitCode}} {{.State.Error}}'

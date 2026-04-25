@@ -1,0 +1,15 @@
+# Draft merge file — issue #347 Phase C (optional multi-service dev).
+# Default install is unchanged: do NOT add this file to install.sh / make start.
+#
+# Smoke-merge (must succeed):
+#   docker compose -f docker-compose.yml -f docker-compose.dev-split.example.yml config
+#
+# When image CMD supports split roles, add services here with:
+#   profiles: ["dev-split"]
+# so `docker compose up` without --profile stays single-stack.
+#
+# Design notes: docs/RUNTIME_COUPLING.md
+
+x-birdlense-dev-split-draft:
+  doc: ../docs/RUNTIME_COUPLING.md
+  tracker: https://github.com/Gfermoto/BirdLense-Hub/issues/347
