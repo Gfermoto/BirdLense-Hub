@@ -1,4 +1,5 @@
 """Парсинг bird_present и запись состояния весов (префикс MQTT)."""
+
 import json
 import os
 import sys
@@ -13,6 +14,7 @@ from mqtt_aggregator import (  # noqa: E402
     _parse_bird_present_payload,
     write_feeder_scale_state,
 )
+from mqtt_scale_state import write_feeder_scale_state as write_feeder_scale_state_direct  # noqa: E402
 
 
 class TestScaleMqttTopics(unittest.TestCase):
@@ -35,6 +37,15 @@ class TestScaleMqttTopics(unittest.TestCase):
                 b = json.load(f)
             self.assertEqual(b["weight"], 12.3)
             self.assertTrue(b["bird_present"])
+
+    def test_write_feeder_scale_state_direct_module(self):
+        with tempfile.TemporaryDirectory() as d:
+            write_feeder_scale_state_direct(d, 7.5, "g", history_max_lines=100)
+            path = os.path.join(d, "feeder_scale_state.json")
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(data["weight"], 7.5)
+            self.assertEqual(data["unit"], "g")
 
 
 if __name__ == "__main__":

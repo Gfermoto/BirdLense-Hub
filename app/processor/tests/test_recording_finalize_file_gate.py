@@ -13,10 +13,14 @@ src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.append(src_path)
 
 import recording_finalize as recording_finalize_mod  # noqa: E402
+from recording_file_gate import _is_playable_video_file as is_playable_video_file_direct  # noqa: E402
 from recording_finalize import finalize_motion_recording  # noqa: E402
 
 
 class TestRecordingFinalizeFileGate(unittest.TestCase):
+    def test_is_playable_video_file_direct_module_rejects_missing_path(self):
+        self.assertFalse(is_playable_video_file_direct('/tmp/birdlense-missing-video.mp4'))
+
     def test_skips_api_when_output_video_missing(self):
         api = MagicMock()
         motion_detector = MagicMock()

@@ -26,15 +26,26 @@ import paho.mqtt.client as mqtt
 from app_config.app_config import app_config
 from birdnet_merge_key import birdnet_merge_key
 from frigate_bbox import frigate_after_to_normalized_xyxy
+from mqtt_event_parsers import (
+    _frigate_after_has_tracked_geometry,
+    _frigate_labels_match_exclude,
+    _parse_bird_present_payload,
+    _parse_birdnet_event,  # noqa: F401 - re-export for existing callers
+    _parse_birdnet_event_with_reason,
+    _parse_frigate_event,  # noqa: F401 - re-export for existing callers
+    _parse_frigate_event_dict,
+    _parse_frigate_snapshot_topic,
+    _parse_iso8601_utc,
+    _parse_scale_payload,
+)
+from mqtt_scale_state import FEEDER_SCALE_STATE_FILE, write_feeder_scale_state
 from processor_runtime_stats import inc_counter, set_gauge
-from scale_sample_log import append_feeder_scale_sample, weight_reading_to_kg
+from scale_sample_log import weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
 
 # After TCP drop, still report "connected" to heartbeat/UI for this many seconds.
 MQTT_DISCONNECT_DISPLAY_GRACE_SEC = 120
-
-FEEDER_SCALE_STATE_FILE = "feeder_scale_state.json"
 
 
 def _normalize_obs_level(raw) -> str:
@@ -44,95 +55,6 @@ def _normalize_obs_level(raw) -> str:
     return "info"
 
 
-def _parse_iso8601_utc(value) -> datetime | None:
-    if not value:
-        return None
-    try:
-        ts = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except (TypeError, ValueError):
-        return None
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
-    return ts.astimezone(timezone.utc)
-
-
-def _parse_bird_present_payload(payload: bytes) -> bool | None:
-    """ON/OFF, 1/0, true/false — как HA binary_sensor / ESPHome."""
-    if not payload:
-        return None
-    try:
-        raw = payload.decode("utf-8", errors="replace").strip().lower()
-    except Exception:
-        return None
-    if raw in ("on", "true", "1", "yes"):
-        return True
-    if raw in ("off", "false", "0", "no"):
-        return False
-    return None
-
-
-def _parse_scale_payload(payload: bytes) -> float | None:
-    """Число веса из plain text, JSON {value|weight|state} или HA state string."""
-    if not payload:
-        return None
-    try:
-        raw = payload.decode("utf-8", errors="replace").strip()
-    except Exception:
-        return None
-    if not raw:
-        return None
-    try:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            for k in ("value", "weight", "state", "Weight"):
-                v = data.get(k)
-                if v is not None and str(v).strip() != "":
-                    return float(str(v).replace(",", "."))
-        return float(data)
-    except (json.JSONDecodeError, TypeError, ValueError):
-        pass
-    try:
-        return float(raw.replace(",", "."))
-    except ValueError:
-        return None
-
-
-def write_feeder_scale_state(
-    data_dir: str,
-    weight: float | None = None,
-    unit: str | None = None,
-    *,
-    bird_present: bool | None = None,
-    history_max_lines: int = 10000,
-) -> None:
-    """Сохранить вес и/или bird_present для UI; журнал JSONL только при новом весе."""
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-        path = os.path.join(data_dir, FEEDER_SCALE_STATE_FILE)
-        now = datetime.now(timezone.utc).isoformat()
-        prev: dict = {}
-        if os.path.isfile(path):
-            try:
-                with open(path, encoding="utf-8") as f:
-                    prev = json.load(f)
-            except (OSError, json.JSONDecodeError):
-                prev = {}
-        rec = dict(prev)
-        rec["updated_at"] = now
-        if weight is not None:
-            u = unit or rec.get("unit") or "kg"
-            u = str(u).strip().lower()[:8] or "kg"
-            rec["weight"] = float(weight)
-            rec["unit"] = u
-            append_feeder_scale_sample(data_dir, float(weight), u, max_lines=history_max_lines)
-        if bird_present is not None:
-            rec["bird_present"] = bool(bird_present)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(rec, f, ensure_ascii=False)
-    except OSError as e:
-        logger.debug("write_feeder_scale_state: %s", e)
-
-
 # HA Discovery state topics (we publish state here)
 HA_TOPIC_LAST_SPECIES = "birdlense/sensor/last_species/state"
 HA_TOPIC_LAST_CONFIDENCE = "birdlense/sensor/last_confidence/state"
@@ -140,199 +62,6 @@ HA_TOPIC_LAST_TIME = "birdlense/sensor/last_detection_time/state"
 HA_TOPIC_BIRD_DETECTED = "birdlense/binary_sensor/bird_detected/state"
 HA_TOPIC_FEEDER_WEIGHT = "birdlense/sensor/feeder_weight/state"
 HA_TOPIC_FEEDER_BIRD_PRESENT = "birdlense/binary_sensor/feeder_bird_present/state"
-
-
-def _frigate_labels_match_exclude(labels: set, exclude: set) -> bool:
-    """True if any non-empty label matches ``exclude`` (case-insensitive)."""
-    if not exclude:
-        return False
-    ex = {str(x).strip().lower() for x in exclude if x is not None and str(x).strip()}
-    if not ex:
-        return False
-    for lab in labels:
-        if lab is None:
-            continue
-        s = str(lab).strip().lower()
-        if s and s in ex:
-            return True
-    return False
-
-
-def _frigate_dict_has_box_or_region(obj: dict) -> bool:
-    """True if Frigate object state has box or region (coordinates may be nested)."""
-    box = obj.get("box")
-    if isinstance(box, (list, tuple)) and len(box) >= 4:
-        return True
-    if box is not None and box != "":
-        return True
-    region = obj.get("region")
-    if isinstance(region, (list, tuple)) and len(region) >= 2:
-        return True
-    if region is not None and region != "":
-        return True
-    return False
-
-
-def _frigate_after_has_tracked_geometry(after: dict) -> bool:
-    """True if Frigate ``after`` carries a tracked box/region (incl. ``snapshot.box`` on newer Frigate)."""
-    if not isinstance(after, dict):
-        return False
-    if _frigate_dict_has_box_or_region(after):
-        return True
-    snap = after.get("snapshot")
-    if isinstance(snap, dict) and _frigate_dict_has_box_or_region(snap):
-        return True
-    return False
-
-
-def _parse_frigate_event_dict(data: dict) -> dict | None:
-    """Parse Frigate JSON object (already decoded). Uses after for final state."""
-    if not isinstance(data, dict):
-        return None
-    after = data.get("after") or data
-    before = data.get("before") or {}
-    camera = after.get("camera") or before.get("camera", "")
-    label = after.get("label") or before.get("label", "")
-    sub_label_raw = after.get("sub_label") or before.get("sub_label")
-    sub_label = ""
-    if isinstance(sub_label_raw, str):
-        sub_label = sub_label_raw
-    elif isinstance(sub_label_raw, (list, tuple)) and sub_label_raw:
-        sub_label = str(sub_label_raw[0]) if sub_label_raw else ""
-    score = after.get("top_score") or after.get("score") or before.get("top_score") or before.get("score", 0)
-    try:
-        confidence = float(score)
-    except (TypeError, ValueError):
-        confidence = 0.0
-    frame_time = after.get("frame_time") or before.get("frame_time") or data.get("frame_time")
-    if frame_time is not None:
-        try:
-            ts = datetime.fromtimestamp(float(frame_time), tz=timezone.utc)
-            timestamp = ts.isoformat()
-        except (ValueError, TypeError, OSError):
-            timestamp = datetime.now(timezone.utc).isoformat()
-    else:
-        timestamp = datetime.now(timezone.utc).isoformat()
-    return {
-        "source": "frigate",
-        "species": sub_label or label or "unknown",
-        "label": label,
-        "sub_label": sub_label,
-        "confidence": confidence,
-        "camera": camera,
-        "timestamp": timestamp,
-    }
-
-
-def _parse_frigate_event(payload):
-    """Parse Frigate event bytes (MQTT payload)."""
-    try:
-        data = json.loads(payload.decode())
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        logger.warning("Frigate parse error: %s", e)
-        return None
-    return _parse_frigate_event_dict(data)
-
-
-def _parse_frigate_snapshot_topic(topic: str) -> tuple[str, str] | None:
-    """Parse topic ``<prefix>/<camera>/<label>/snapshot`` -> (camera, label)."""
-    parts = [p for p in str(topic or "").split("/") if p]
-    if len(parts) < 4:
-        return None
-    if parts[-1].lower() != "snapshot":
-        return None
-    camera = parts[-3].strip()
-    label = parts[-2].strip()
-    if not camera or not label:
-        return None
-    return camera, label
-
-
-def _parse_birdnet_event_with_reason(payload):
-    """Return ``(event, reason_code)`` for BirdNET-Pi/BirdNET-Go MQTT payloads."""
-    try:
-        data = json.loads(payload.decode())
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None, "parse_json_error"
-    if not isinstance(data, dict):
-        return None, "payload_not_object"
-    # BirdNET-Pi: Common_Name, Confidence_Score
-    # BirdNET-Go: CommonName, Confidence
-    species = (
-        data.get("Common_Name")
-        or data.get("CommonName")
-        or data.get("comname")
-        or data.get("species")
-        or data.get("common_name")
-        or data.get("label")
-        or data.get("Com_Name")
-        or "unknown"
-    )
-    species = str(species).strip() if species is not None else "unknown"
-    if not species:
-        species = "unknown"
-    conf_raw = (
-        data.get("Confidence_Score") or data.get("confidence") or data.get("score") or data.get("Confidence") or 0
-    )
-    try:
-        confidence = float(str(conf_raw).replace(",", "."))
-    except (ValueError, TypeError):
-        confidence = 0.0
-
-    source_obj = data.get("Source")
-    audio_source = None
-    if isinstance(source_obj, dict):
-        audio_source = (
-            source_obj.get("displayName")
-            or source_obj.get("safeString")
-            or source_obj.get("name")
-            or source_obj.get("id")
-        )
-    elif source_obj not in (None, ""):
-        audio_source = str(source_obj)
-    if not audio_source:
-        audio_source = data.get("SourceNode") or data.get("source_node") or data.get("audio_source")
-
-    # BirdNET-Go: BeginTime — точное время детекции для слияния с YOLO/Frigate
-    ts_str = data.get("BeginTime") or data.get("Date") or data.get("timestamp")
-    ts = _parse_iso8601_utc(ts_str)
-    ts_reason = "provided"
-    if ts is None:
-        ts = datetime.now(timezone.utc)
-        ts_reason = "fallback_now"
-    timestamp = ts.isoformat()
-
-    ev = {
-        "source": "birdnet",
-        "species": species,
-        "common_name": species,
-        "confidence": confidence,
-        "timestamp": timestamp,
-        "_ts_epoch": ts.timestamp(),
-    }
-    # BirdNET-Go: ScientificName для маппинга, BirdImage.URL для UI
-    if data.get("ScientificName"):
-        ev["scientific_name"] = data["ScientificName"]
-    if data.get("SpeciesCode"):
-        ev["species_code"] = data["SpeciesCode"]
-    if audio_source:
-        ev["audio_source"] = str(audio_source)
-    if data.get("camera") or data.get("CameraId") or data.get("camera_id"):
-        ev["camera_id"] = data.get("camera") or data.get("CameraId") or data.get("camera_id")
-    if data.get("site_id") or data.get("SiteId"):
-        ev["site_id"] = data.get("site_id") or data.get("SiteId")
-    bird_img = data.get("BirdImage")
-    if isinstance(bird_img, dict) and bird_img.get("URL"):
-        ev["bird_image_url"] = bird_img["URL"]
-    if species.lower() == "unknown":
-        return ev, f"ok_unknown_species_timestamp_{ts_reason}"
-    return ev, f"ok_timestamp_{ts_reason}"
-
-
-def _parse_birdnet_event(payload):
-    """Back-compatible helper returning event only."""
-    ev, _ = _parse_birdnet_event_with_reason(payload)
-    return ev
 
 
 class MQTTEventAggregator:

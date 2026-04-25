@@ -36,7 +36,10 @@ from services.session_idle_service import (
     clear_session_activity_timestamp,
     stamp_session_activity_now,
 )
-from services.settings_patch_service import apply_settings_patch_from_request
+from services.settings_patch_service import (
+    SettingsPatchValidationError,
+    apply_settings_patch_from_request,
+)
 from util import data_dir, notify_telegram_test
 
 
@@ -228,6 +231,8 @@ def register_ui_settings_routes(app):
                 contributor_tier_configured=contributor_tier_configured(),
             )
             return payload, 200
+        except SettingsPatchValidationError as e:
+            return {"error": "Validation failed", "issues": e.issues}, 400
 
         except Exception:
             app.logger.exception("Update settings failed")
