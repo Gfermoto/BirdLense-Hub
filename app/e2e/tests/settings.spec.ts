@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { ensureSettingsUnlocked, unlockSettingsIfNeeded } from '../helpers/settings';
 
-test.describe('Settings page', () => {
-  const settingsHeading = /Station settings|Настройки станции|站点设置/i;
+const settingsHeading = /Station settings|Настройки станции|站点设置/i;
 
+test.describe('Settings page', () => {
   test.beforeEach(async ({ page, request }) => {
     const reqRes = await request.get('/api/ui/settings/requires-password');
     const { requires } = await reqRes.json();
