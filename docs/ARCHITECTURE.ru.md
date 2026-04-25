@@ -29,6 +29,17 @@
 
 **Порты:** nginx внутри контейнера слушает **8080**; Compose пробрасывает **`BIRDLENSE_PORT`** на хосте (по умолчанию **8085**) → **8080**. Flask (gunicorn) для **`/api`** — **8000** внутри; MCP — **8001**; MJPEG процессора — **8082**; наружу обычно открыт только порт nginx.
 
+### Процессы, порты и сигналы health {#runtime-processes-ports-and-health-signals}
+
+| Процесс | Прослушивание (контейнер) | Роль | Признак «ок» |
+| --------- | --------------------------- | ------ | ---------------- |
+| **nginx** | `0.0.0.0:8080` | Статика UI, `/api` → gunicorn, `/mcp`, прокси Go2RTC, `/data`, `/processor/live` | HTTP 200 на `/` или `/api/ui/health` через проброшенный порт |
+| **gunicorn** | `127.0.0.1:8000` | Flask (`/api/ui/*`, `/api/processor/*`, …) | **`GET /api/ui/health`** → `{"status":"ok"}` — цикл ожидания в `entrypoint.sh` и `healthcheck` в Compose |
+| **MCP** (опционально) | `127.0.0.1:8001` | FastMCP streamable HTTP | Только при `mcp.enabled`; nginx — `/mcp` |
+| **processor** | MJPEG **8082** (внутренний) | `main.py`: ingest, детекция, запись, MQTT | Отдельного HTTP health в образе нет; логи, UI, **`POST /api/processor/*`** |
+
+**Readiness vs liveness (только web):** **`/api/ui/health`** — дешёлая liveness-проба. **`/api/ui/readiness`** — БД, запись в `data/` и `app_config/`, компоненты; **503**, если не готов (`readiness_service`).
+
 ## Потоки данных
 
 ### Видео

@@ -15,6 +15,56 @@ CI_FULL_DOCKER="${CI_FULL_DOCKER:-0}"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 
+# Если в неинтерактивном `make` первым в PATH оказался системный Node (<22), подхватить nvm/fnm
+# из .nvmrc в app/ui (как в CI setup-node 22). Не вызывает `nvm install` (сеть может быть недоступна).
+ci_try_activate_node_22() {
+  local major want_major=22
+  if command -v node >/dev/null 2>&1; then
+    major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)' 2>/dev/null)" || major=0
+    if [[ "${major}" -ge "${want_major}" ]]; then
+      return 0
+    fi
+  fi
+
+  local ui_dir="${ROOT}/app/ui"
+  local nvm_dir="${NVM_DIR:-${HOME}/.nvm}"
+
+  if [[ -s "${nvm_dir}/nvm.sh" ]]; then
+    # shellcheck disable=SC1090
+    export NVM_DIR="${nvm_dir}"
+    # shellcheck source=/dev/null
+    . "${NVM_DIR}/nvm.sh"
+    # nvm меняет PATH текущего shell — не в subshell
+    pushd "${ui_dir}" >/dev/null || return 1
+    nvm use >/dev/null 2>&1 || nvm use 22 >/dev/null 2>&1 || nvm use lts/jod >/dev/null 2>&1 || true
+    popd >/dev/null || true
+    if command -v node >/dev/null 2>&1; then
+      major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)' 2>/dev/null)" || major=0
+      if [[ "${major}" -ge "${want_major}" ]]; then
+        printf 'ci-full-local: Node через nvm: %s (%s)\n' "$(node -v)" "$(command -v node)" >&2
+        return 0
+      fi
+    fi
+  fi
+
+  if command -v fnm >/dev/null 2>&1; then
+    # shellcheck disable=SC2312
+    eval "$(fnm env 2>/dev/null)" || true
+    pushd "${ui_dir}" >/dev/null || return 1
+    fnm use >/dev/null 2>&1 || true
+    popd >/dev/null || true
+    if command -v node >/dev/null 2>&1; then
+      major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)' 2>/dev/null)" || major=0
+      if [[ "${major}" -ge "${want_major}" ]]; then
+        printf 'ci-full-local: Node через fnm: %s (%s)\n' "$(node -v)" "$(command -v node)" >&2
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
 # PYTHONNOUSERSITE: не подмешивать user-site в pytest.
 # -u PYTHONPATH: если в окружении PYTHONPATH указывает на ~/.local, pip считает зависимости
 #   «уже установленными» и не кладёт их в venv (ломается import под NOUSERSITE).
@@ -65,12 +115,21 @@ log "VERSION / docs version"
 
 log "UI: codegen drift + vitest + typecheck + lint + build"
 if ! command -v node >/dev/null 2>&1; then
+  ci_try_activate_node_22 || true
+fi
+if ! command -v node >/dev/null 2>&1; then
   echo "ci-full-local: не найден node. Нужен Node >= 22 (app/ui/package.json engines)." >&2
   exit 1
 fi
 node_major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)')"
 if [[ "${node_major}" -lt 22 ]]; then
-  echo "ci-full-local: нужен Node.js >= 22 (как в GitHub Actions). Сейчас: $(node -v). Пример: nvm install 22 && nvm use 22" >&2
+  ci_try_activate_node_22 || true
+  node_major="$(node -p 'parseInt(process.versions.node.split(".")[0],10)')"
+fi
+if [[ "${node_major}" -lt 22 ]]; then
+  echo "ci-full-local: нужен Node.js >= 22 (как в GitHub Actions). Сейчас: $(node -v) ($(command -v node 2>/dev/null || true))." >&2
+  echo "  Установите Node 22+ или выполните в интерактивной оболочке: cd app/ui && nvm use" >&2
+  echo "  (скрипт подхватывает ~/.nvm/nvm.sh и app/ui/.nvmrc, если nvm уже установлен)." >&2
   exit 1
 fi
 (
@@ -157,7 +216,10 @@ log "Docker: build + processor unittest + web pytest + E2E smoke"
     fi
     sleep 2
   done
-  curl -sf "${BASE}/api/ui/health" >/dev/null
+  if ! curl -sf "${BASE}/api/ui/health" >/dev/null; then
+    echo "hub health failed after ${i:-60} attempts" >&2
+    exit 1
+  fi
   cd e2e
   npm ci
   # По умолчанию только браузер (как в app/Makefile e2e). --with-deps тянет sudo и ломает
@@ -168,6 +230,15 @@ log "Docker: build + processor unittest + web pytest + E2E smoke"
     npx playwright install chromium
   fi
   BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
+  cd "${ROOT}"
+  python3 scripts/audit_species_cards.py \
+    --base-url "${BASE}" \
+    --workers 4 \
+    --limit 200 \
+    --ignore-direct-image-429 \
+    --ignore-empty-description \
+    --ignore-empty-image-url \
+    --report-path .artifacts/catalog-cards-audit.local.json
 )
 
 trap - EXIT

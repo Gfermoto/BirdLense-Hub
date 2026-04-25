@@ -79,6 +79,7 @@ nav:
       - Access control: ACCESS_CONTROL.md
       - MCP setup: MCP_SETUP.md
       - Local development: LOCAL_DEV.md
+      - "Runtime coupling (Docker)": RUNTIME_COUPLING.md
       - CodeQL (CI): CODEQL.md
       - Testing: TESTING.md
       - "CI & quality policy": CI_AND_QUALITY.md
@@ -141,6 +142,7 @@ nav:
       - Доступ: ACCESS_CONTROL.ru.md
       - MCP: MCP_SETUP.ru.md
       - Локальная разработка: LOCAL_DEV.ru.md
+      - "Связность runtime (Docker)": RUNTIME_COUPLING.ru.md
       - CodeQL (CI): CODEQL.ru.md
       - Тестирование: TESTING.ru.md
       - "CI и качество": CI_AND_QUALITY.ru.md

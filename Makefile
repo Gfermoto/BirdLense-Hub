@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -14,6 +14,10 @@ ci-local:
 # Плюс сборка образа, make test / test-web и Playwright smoke (как job docker-tests в CI).
 ci-local-docker:
 	@CI_FULL_DOCKER=1 ./scripts/ci-full-local.sh
+
+# Быстрый web-контракт на хосте (venv в app/, без Docker). См. docs/TESTING.md — Test pyramid (#348).
+test-web-contract-local:
+	@$(MAKE) -C app test-web-contract-local
 
 deploy:
 	@./scripts/deploy.sh

@@ -145,6 +145,12 @@ export const FeedCard = () => {
             <Button
               variant="contained"
               color="primary"
+              sx={{
+                // WCAG AA: white text on emerald 500 fails contrast (2.53:1).
+                backgroundColor: '#047857',
+                color: '#ffffff',
+                '&:hover': { backgroundColor: '#065f46' },
+              }}
               startIcon={<RestaurantIcon />}
               onClick={handleDispense}
               disabled={loading || !isAdmin}

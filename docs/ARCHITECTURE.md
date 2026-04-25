@@ -31,6 +31,17 @@ High-level layout of the single-container app, data paths, and integrations. For
 
 **Host vs container ports:** nginx listens on **8080** inside the container; Compose maps host **`BIRDLENSE_PORT`** (default **8085**) → **8080**. Flask (gunicorn) serves **`/api`** on **8000** internally; optional MCP on **8001**; processor MJPEG on **8082** — these are not published directly; only nginx’s port is exposed.
 
+### Runtime processes, ports, and health signals {#runtime-processes-ports-and-health-signals}
+
+| Process | Bind (container) | Role | “OK” signal |
+| -------- | ------------------- | ------ | ------------- |
+| **nginx** | `0.0.0.0:8080` (see `BIRDLENSE_PORT` in image) | Static UI, `/api` → gunicorn, `/mcp`, Go2RTC proxy, `/data`, `/processor/live` | HTTP 200 on `/` or `/api/ui/health` via mapped host port |
+| **gunicorn** | `127.0.0.1:8000` | Flask (`/api/ui/*`, `/api/processor/*`, …) | **`GET /api/ui/health`** → `{"status":"ok"}` — used by `entrypoint.sh` wait loop and Compose `healthcheck` |
+| **MCP** (optional) | `127.0.0.1:8001` | FastMCP streamable HTTP | Only if `mcp.enabled`; nginx routes `/mcp` |
+| **processor** | MJPEG server on **8082** (internal) | `main.py`: ingest, detection, recording, MQTT | No HTTP liveness URL today; use logs, UI status, and successful **`POST /api/processor/*`** from the processor |
+
+**Readiness vs liveness (web only):** **`GET /api/ui/health`** is a cheap liveness probe. **`GET /api/ui/readiness`** adds DB, writable `data/`, `app_config/`, and component status — returns **503** when `ready` is false (`readiness_service`). Orchestrators may use health for “container up” and readiness for “accept traffic” once you align probes with your policy.
+
 ---
 
 ## Data flows
