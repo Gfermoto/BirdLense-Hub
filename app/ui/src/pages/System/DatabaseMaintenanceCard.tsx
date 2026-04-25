@@ -19,6 +19,7 @@ import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { BASE_API_URL } from '../../api/client';
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { RetentionPolicy } from './Retention/RetentionPolicy';
 
 interface ScanResult {
   imported?: number;
@@ -244,6 +245,11 @@ export function DatabaseMaintenanceCard() {
               </Alert>
             </Collapse>
           </Box>
+
+          <Divider />
+
+          {/* Retention (TTL / modes) — рядом с обслуживанием записей */}
+          <RetentionPolicy />
 
           <Divider />
 

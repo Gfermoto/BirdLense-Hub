@@ -55,6 +55,7 @@ def register_ui_system_db_routes(app):
     def get_retention_config():
         """Get retention configuration and last run stats."""
         from app_config.app_config import app_config as cfg
+
         rc = cfg.get("retention", {})
         # safe public values
         safe = {
@@ -70,6 +71,7 @@ def register_ui_system_db_routes(app):
         # add last-run metrics
         try:
             from services.retention_service import _fetch_metrics
+
             m = _fetch_metrics()
             safe["last_run"] = m.get("retention_last_run")
             safe["last_deleted_count"] = m.get("retention_last_deleted_count", 0)

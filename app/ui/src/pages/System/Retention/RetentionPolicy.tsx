@@ -1,38 +1,25 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Collapse,
-  Divider,
-  Stack,
-  Typography,
-  Alert,
-  AlertTitle,
-  LinearProgress,
-  Chip,
-  Switch,
-  FormControlLabel,
-  FormGroup,
-  TextField,
-  MenuItem,
-  Tooltip,
-  useTheme,
-} from '@mui/material';
-import {
-  CloudSyncIcon,
-  BuildIcon,
-  PlaylistAddCheckIcon,
-} from '@mui/icons-material';
-import { BASE_API_URL } from '../../../../api/client';
-import { queryKeys } from '../../../../api/queryKeys';
-import { useQueryClient } from '@tanstack/react-query';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
+import LinearProgress from '@mui/material/LinearProgress';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import BuildIcon from '@mui/icons-material/Build';
+import CloudSyncIcon from '@mui/icons-material/CloudSync';
+import { BASE_API_URL } from '../../../api/client';
+import { queryKeys } from '../../../api/queryKeys';
+
+type RetentionMode = 'cascade' | 'files_only' | 'disabled';
 
 interface RetentionConfig {
-  mode: 'cascade' | 'files_only' | 'disabled';
+  mode: RetentionMode;
   days?: number | null;
   max_gb?: number | null;
   dataset_max_age_days: number;
@@ -46,269 +33,162 @@ interface RetentionConfig {
   last_mode?: string;
 }
 
-interface PreviewData {
+interface RetentionRunResponse {
+  message?: string;
   deletedCount?: number;
   deletedSize?: number;
   dryRun?: boolean;
   mode?: string;
-  message?: string;
 }
 
+/** Политика хранения записей: превью/запуск (режим из конфига можно переопределить на время запроса). */
 export function RetentionPolicy() {
   const { t } = useTranslation();
-  const theme = useTheme();
   const qc = useQueryClient();
+  const [runMode, setRunMode] = useState<RetentionMode>('cascade');
 
-  // Fetch current config
-  const { data: config, isLoading, error } = useQuery({
-    queryKey: queryKeys.system.retentionConfig(),
+  const configQuery = useQuery({
+    queryKey: queryKeys.system.retentionConfig,
     queryFn: async () => {
       const { data } = await axios.get<RetentionConfig>(
-        `${BASE_API_URL}/ui/system/retention`,
+        `${BASE_API_URL}/system/retention`,
       );
       return data;
     },
     refetchOnWindowFocus: false,
   });
 
+  useEffect(() => {
+    if (configQuery.data?.mode) {
+      setRunMode(configQuery.data.mode);
+    }
+  }, [configQuery.data?.mode]);
+
   const runMutation = useMutation({
-    mutationFn: (body: any) =>
-      axios.post<{ message?: string }>(
-        `${BASE_API_URL}/ui/system/retention`,
-        body,
-      ),
+    mutationFn: async (dry_run: boolean) => {
+      const { data } = await axios.post<RetentionRunResponse>(
+        `${BASE_API_URL}/system/retention`,
+        { dry_run, mode: runMode },
+      );
+      return data;
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.system.retentionConfig() });
+      void qc.invalidateQueries({ queryKey: queryKeys.system.retentionConfig });
     },
   });
 
-  const isSubmitting = runMutation.isPending;
-
-  const handleSubmit = (mode: 'dry_run' | 'apply') => async (body: any) => {
-    await runMutation.mutateAsync({ ...body, dry_run: mode === 'dry_run' });
-  };
-
-  const getModeLabel = (mode: RetentionConfig['mode']) => {
-    switch (mode) {
-      case 'files_only':
-        return t('system.retentionModeFilesOnly');
-      case 'disabled':
-        return t('system.retentionModeDisabled');
-      default:
-        return t('system.retentionModeCascade');
-    }
-  };
-
-  if (isLoading) {
+  if (configQuery.isLoading) {
     return <LinearProgress />;
   }
 
-  if (error || !config) {
+  if (configQuery.error || !configQuery.data) {
     return (
-      <Alert severity="error">
-        {t('system.retentionConfigError')}
-      </Alert>
+      <Alert severity="error">{t('system.retentionConfigError')}</Alert>
     );
   }
 
+  const cfg = configQuery.data;
+
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          {t('system.retentionTitle')}
+    <Box>
+      <Typography variant="subtitle2" gutterBottom>
+        {t('system.retentionTitle')}
+      </Typography>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        display="block"
+        sx={{ mb: 1.5 }}
+      >
+        {t('system.retentionSubtitle')}
+      </Typography>
+
+      <Stack spacing={1.5} sx={{ mb: 2 }}>
+        <TextField
+          select
+          size="small"
+          label={t('system.retentionModeRunLabel')}
+          value={runMode}
+          onChange={(e) => setRunMode(e.target.value as RetentionMode)}
+          fullWidth
+        >
+          <MenuItem value="cascade">cascade</MenuItem>
+          <MenuItem value="files_only">files_only</MenuItem>
+          <MenuItem value="disabled">disabled</MenuItem>
+        </TextField>
+        <Typography variant="caption" color="text.secondary">
+          {t('system.retentionConfigFromServer')}: {cfg.mode}, {t('system.retentionDays')}:{' '}
+          {cfg.days ?? '—'}, {t('system.retentionMaxGb')}: {cfg.max_gb ?? '—'},{' '}
+          {t('system.retentionDatasetTtl')}: {cfg.dataset_max_age_days},{' '}
+          {t('system.retentionMigrationTtl')}: {cfg.migration_max_age_days},{' '}
+          {t('system.retentionProtectFavorites')}: {String(cfg.protect_favorites)},{' '}
+          {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
+          {t('system.retentionBatch')}: {cfg.batch_size}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('system.retentionSubtitle')}
-        </Typography>
+      </Stack>
 
-        {runMutation.error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {runMutation.error.message}
-          </Alert>
-        )}
+      {runMutation.isError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {runMutation.error.message}
+        </Alert>
+      )}
 
-        {runMutation.isSuccess && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {t('system.retentionApplied')}
-          </Alert>
-        )}
+      {runMutation.isSuccess && runMutation.data && (
+        <Alert
+          severity={runMutation.data.dryRun ? 'info' : 'success'}
+          sx={{ mb: 1 }}
+        >
+          {runMutation.data.message}
+          {runMutation.data.deletedCount != null && (
+            <Typography component="span" variant="body2" sx={{ display: 'block', mt: 0.5 }}>
+              {t('system.retentionResultCounts', {
+                n: runMutation.data.deletedCount,
+                mb: Math.round((runMutation.data.deletedSize ?? 0) / 1024 / 1024),
+              })}
+            </Typography>
+          )}
+        </Alert>
+      )}
 
-        {/* Mode selector */}
-        <FormGroup sx={{ mb: 3 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={config.mode === 'disabled'}
-                onChange={(e) => {
-                  /* handled via apply */}
-                }}
-              />
-            }
-            label={<strong>{t('system.retentionModeLabel')}</strong>}
-          />
-          <TextField
-            select
-            size="small"
-            fullWidth
-            value={config.mode}
-            onChange={(e) => {
-              /* mode change handled via apply */
-            }}
-            sx={{ mb: 1 }}
-          >
-            <MenuItem value="cascade">cascade</MenuItem>
-            <MenuItem value="files_only">files_only</MenuItem>
-            <MenuItem value="disabled">disabled</MenuItem>
-          </TextField>
-        </FormGroup>
+      <Stack direction="row" spacing={1}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<CloudSyncIcon />}
+          disabled={runMutation.isPending}
+          onClick={() => runMutation.mutate(true)}
+        >
+          {t('system.dbPreviewAction')}
+        </Button>
+        <Button
+          size="small"
+          variant="contained"
+          color="warning"
+          startIcon={<BuildIcon />}
+          disabled={runMutation.isPending}
+          onClick={() => runMutation.mutate(false)}
+        >
+          {t('system.dbApplyAction')}
+        </Button>
+      </Stack>
 
-        {/* Config fields - shown based on mode */}
-        <Stack spacing={2} sx={{ mb: 3 }}>
-          <TextField
-            label={t('system.retentionDays')}
-            type="number"
-            size="small"
-            fullWidth
-            value={config.days ?? ''}
-            onChange={(e) => {
-              /* handled via apply */
-            }}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label={t('system.retentionMaxGb')}
-            type="number"
-            size="small"
-            fullWidth
-            value={config.max_gb ?? ''}
-            onChange={(e) => {
-              /* handled via apply */
-            }}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label={t('system.datasetMaxAgeDays')}
-            type="number"
-            size="small"
-            fullWidth
-            value={config.dataset_max_age_days}
-            onChange={(e) => {
-              /* handled via apply */
-            }}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label={t('system.migrationMaxAgeDays')}
-            type="number"
-            size="small"
-            fullWidth
-            value={config.migration_max_age_days}
-            onChange={(e) => {
-              /* handled via apply */
-            }}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label={t('system.batchSize')}
-            type="number"
-            size="small"
-            fullWidth
-            value={config.batch_size}
-            onChange={(e) => {
-              /* handled via apply */
-            }}
-            InputLabelProps={{ shrink: true }}
-          />
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={config.protect_favorites}
-                  onChange={(e, checked) => {
-                    /* handled via apply */
-                  }}
-                />
-              }
-              label={t('system.protectFavorites')}
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={config.min_age_hours > 0}
-                  onChange={(e, checked) => {
-                    /* handled via apply */
-                  }}
-                />
-              }
-              label={t('system.minAgeHoursLabel')}
-            />
-            <TextField
-              label={t('system.minAgeHours')}
-              type="number"
-              size="small"
-              fullWidth
-              value={config.min_age_hours}
-              onChange={(e) => {
-                /* handled via apply */
-              }}
-              InputLabelProps={{ shrink: true }}
-            />
-          </FormGroup>
-        </Stack>
-
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<CloudSyncIcon />}
-            onClick={() => handleSubmit('dry_run')({ mode: config.mode })}
-            disabled={isSubmitting}
-          >
-            {t('system.dryRun')}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<BuildIcon />}
-            onClick={() => handleSubmit('apply')({ mode: config.mode })}
-            disabled={isSubmitting}
-          >
-            {t('system.apply')}
-          </Button>
-        </Stack>
-
-        {/* Last run info */}
-        <Collapse in={!!config.last_run}>
-          <Alert
-            severity="info"
-            variant="outlined"
-            icon={false}
-            sx={{ mb: 1 }}
-          >
-            <AlertTitle>{t('system.lastRun')}</AlertTitle>
-            {config.last_mode && (
-              <Box sx={{ mb: 0.5 }}>
-                {t('system.mode')}: <Chip label={config.last_mode} size="small" />
-              </Box>
-            )}
-            {config.last_deleted_count !== undefined && (
-              <Box sx={{ mb: 0.5 }}>
-                {t('system.deletedCount')}: {config.last_deleted_count}
-              </Box>
-            )}
-            {config.last_freed_bytes !== undefined && (
-              <Box sx={{ mb: 0.5 }}>
-                {t('system.freedBytes')}: {Math.round(config.last_freed_bytes / 1024 / 1024)} MB
-              </Box>
-            )}
-            {config.last_run && (
-              <Box sx={{ mb: 0.5 }}>
-                {t('system.runAt')}: {new Date(config.last_run).toLocaleString()}
-              </Box>
-            )}
-          </Alert>
-        </Collapse>
-      </CardContent>
-    </Card>
+      <Collapse in={!!cfg.last_run}>
+        <Alert severity="info" variant="outlined" icon={false} sx={{ mt: 1.5, py: 0.5 }}>
+          <Typography variant="caption" display="block">
+            {t('system.retentionLastRun')}:{' '}
+            {cfg.last_run ? new Date(cfg.last_run).toLocaleString() : '—'}
+          </Typography>
+          {cfg.last_mode != null && (
+            <Typography variant="caption" display="block">
+              {t('system.retentionLastStats', {
+                mode: cfg.last_mode,
+                n: cfg.last_deleted_count ?? 0,
+                mb: Math.round((cfg.last_freed_bytes ?? 0) / 1024 / 1024),
+              })}
+            </Typography>
+          )}
+        </Alert>
+      </Collapse>
+    </Box>
   );
 }

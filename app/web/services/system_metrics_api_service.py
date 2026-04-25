@@ -89,6 +89,7 @@ def build_metrics_summary_dict(flask_app: Flask) -> dict[str, Any]:
     # Fetch latest retention metrics from service
     try:
         from services.retention_service import _fetch_metrics
+
         m = _fetch_metrics()
         payload["retention_last_run"] = m.get("retention_last_run")
         payload["retention_last_deleted_count"] = m.get("retention_last_deleted_count", 0)

@@ -64,8 +64,9 @@ def _recordings_dir():
     return recordings_dir()
 
 
-def _files_only_cleanup(rec_dir: str, cutoff: datetime, batch_size: int, grace_hours: int,
-                         protect_favorites: bool, dry_run: bool) -> tuple[int, int]:
+def _files_only_cleanup(
+    rec_dir: str, cutoff: datetime, batch_size: int, grace_hours: int, protect_favorites: bool, dry_run: bool
+) -> tuple[int, int]:
     """Delete recording files older than cutoff without touching DB.
     Returns (deleted_count, freed_bytes).
     """
@@ -74,7 +75,7 @@ def _files_only_cleanup(rec_dir: str, cutoff: datetime, batch_size: int, grace_h
     now = datetime.now(timezone.utc)
     deleted_count = 0
     freed_bytes = 0
-    extensions = {'.mp4', '.mkv', '.mov', '.avi', '.webm', '.ts', '.m3u8'}
+    extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".ts", ".m3u8"}
     for year in sorted(os.listdir(rec_dir), reverse=True):
         year_path = os.path.join(rec_dir, year)
         if not os.path.isdir(year_path):
@@ -103,7 +104,7 @@ def _files_only_cleanup(rec_dir: str, cutoff: datetime, batch_size: int, grace_h
                         try:
                             fsize = os.path.getsize(fp)
                             # favorites check: inspect content (lightweight by filename heuristics)
-                            if protect_favorites and 'favorite' in fname.lower():
+                            if protect_favorites and "favorite" in fname.lower():
                                 continue
                             to_remove.append(fp)
                             freed_bytes += fsize
@@ -131,13 +132,13 @@ def _cleanup_dataset_ttl(dataset_max_age_days: int, grace_hours: int, dry_run: b
     """Delete dataset files older than dataset_max_age_days based on mtime."""
     if dataset_max_age_days <= 0:
         return
-    root = os.path.join(os.path.dirname(recordings_dir()), 'dataset')
+    root = os.path.join(os.path.dirname(recordings_dir()), "dataset")
     if not os.path.isdir(root):
         return
     cutoff = datetime.now(timezone.utc) - timedelta(days=dataset_max_age_days, hours=grace_hours)
     for base, dirs, files in os.walk(root, topdown=False):
         for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+            if fname.lower().endswith((".jpg", ".jpeg", ".png")):
                 fp = os.path.join(base, fname)
                 try:
                     mtime = datetime.fromtimestamp(os.path.getmtime(fp), tz=timezone.utc)
@@ -215,8 +216,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
             cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
 
         deleted_files, freed = _files_only_cleanup(
-            rec_dir, cutoff or datetime.min, batch_size, grace_hours,
-            protect_favorites, dry_run
+            rec_dir, cutoff or datetime.min, batch_size, grace_hours, protect_favorites, dry_run
         )
         recordings_deleted = deleted_files
         recordings_freed = freed
@@ -252,7 +252,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
                     break
                 q = Video.query.order_by(Video.start_time.asc())
                 if protect_favorites:
-                    q = q.filter(Video.favorite == False)
+                    q = q.filter(Video.favorite.is_(False))
                 oldest = q.first()
                 if not oldest:
                     break
@@ -281,7 +281,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
         if cutoff and mode == "cascade":
             videos = Video.query.filter(Video.start_time < cutoff)
             if protect_favorites:
-                videos = videos.filter(Video.favorite == False)
+                videos = videos.filter(Video.favorite.is_(False))
             videos = videos.all()
             for video in videos:
                 try:
@@ -306,17 +306,9 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 logger.error(f"Retention commit failed: {e}")
 
         # dataset TTL
-        _cleanup_dataset_ttl(
-            cfg.get("retention.dataset_max_age_days", 0),
-            grace_hours,
-            dry_run
-        )
+        _cleanup_dataset_ttl(cfg.get("retention.dataset_max_age_days", 0), grace_hours, dry_run)
         # migration TTL
-        _cleanup_migration_ttl(
-            cfg.get("retention.migration_max_age_days", 0),
-            grace_hours,
-            dry_run
-        )
+        _cleanup_migration_ttl(cfg.get("retention.migration_max_age_days", 0), grace_hours, dry_run)
 
         if recordings_deleted:
             logger.info(f"Retention: deleted {recordings_deleted} videos, {recordings_freed / 1024 / 1024:.1f} MB")

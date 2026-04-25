@@ -5098,6 +5098,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get retention configuration and last run stats */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Retention config and stats */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RetentionConfigResponse"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Run retention policy (delete old recordings) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Preview only, do not actually delete */
+                        dry_run?: boolean;
+                        /**
+                         * @description Override retention mode
+                         * @enum {string}
+                         */
+                        mode?: "cascade" | "files_only" | "disabled";
+                    };
+                };
+            };
+            responses: {
+                /** @description Retention completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                            deletedCount?: number;
+                            deletedSize?: number;
+                            dryRun?: boolean;
+                            mode?: string;
+                        };
+                    };
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/diagnostics/birdnet-fifo": {
         parameters: {
             query?: never;
@@ -6318,71 +6419,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system/retention": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run retention policy
-         * @description Admin: apply configured retention rules.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/system/review-queue/delete": {
         parameters: {
             query?: never;
@@ -7481,6 +7517,22 @@ export interface components {
     schemas: {
         Error: {
             error?: string;
+        };
+        RetentionConfigResponse: {
+            /** @enum {string} */
+            mode?: "cascade" | "files_only" | "disabled";
+            days?: number | null;
+            max_gb?: number | null;
+            dataset_max_age_days?: number;
+            migration_max_age_days?: number;
+            protect_favorites?: boolean;
+            min_age_hours?: number;
+            batch_size?: number;
+            /** Format: date-time */
+            last_run?: string | null;
+            last_deleted_count?: number;
+            last_freed_bytes?: number;
+            last_mode?: string;
         };
         ConfigAuditResponse: {
             deprecated_keys_present: string[];
